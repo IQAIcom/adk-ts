@@ -1,10 +1,9 @@
 import * as dotenv from "dotenv";
-import { Agent, BaseTool, type Message, type MessageRole } from "../../src";
+import { Agent, type Message, type MessageRole } from "../../src";
 import { OpenAILLM } from "../../src/llm/providers/openai/OpenAILLM";
 import { LLMRegistry } from "../../src/llm/registry/LLMRegistry";
-import type { ToolContext } from "../../src/models/context/ToolContext";
-import type { FunctionDeclaration } from "../../src/models/request/FunctionDeclaration";
-
+import { CalculatorTool } from "./calculator";
+import { WeatherTool } from "./weather";
 // Load environment variables from .env file
 dotenv.config();
 
@@ -13,124 +12,6 @@ LLMRegistry.registerLLM(OpenAILLM);
 
 // Enable debug mode for showing agent loop
 const DEBUG = true;
-
-/**
- * Custom Calculator Tool
- */
-class CalculatorTool extends BaseTool {
-	constructor() {
-		super({
-			name: "calculator",
-			description: "Perform basic arithmetic calculations",
-		});
-	}
-
-	getDeclaration(): FunctionDeclaration {
-		return {
-			name: this.name,
-			description: this.description,
-			parameters: {
-				type: "object",
-				properties: {
-					operation: {
-						type: "string",
-						description:
-							"The operation to perform: add, subtract, multiply, divide",
-						enum: ["add", "subtract", "multiply", "divide"],
-					},
-					a: {
-						type: "number",
-						description: "First operand",
-					},
-					b: {
-						type: "number",
-						description: "Second operand",
-					},
-				},
-				required: ["operation", "a", "b"],
-			},
-		};
-	}
-
-	async runAsync(
-		args: {
-			operation: string;
-			a: number;
-			b: number;
-		},
-		_context: ToolContext,
-	): Promise<any> {
-		console.log(`Calculating: ${args.a} ${args.operation} ${args.b}`);
-
-		switch (args.operation) {
-			case "add":
-				return { result: args.a + args.b };
-			case "subtract":
-				return { result: args.a - args.b };
-			case "multiply":
-				return { result: args.a * args.b };
-			case "divide":
-				if (args.b === 0) {
-					throw new Error("Division by zero is not allowed");
-				}
-				return { result: args.a / args.b };
-			default:
-				throw new Error(`Unknown operation: ${args.operation}`);
-		}
-	}
-}
-
-/**
- * Weather Tool (Mock Implementation)
- */
-class WeatherTool extends BaseTool {
-	constructor() {
-		super({
-			name: "weather",
-			description: "Get the current weather for a location",
-		});
-	}
-
-	getDeclaration(): FunctionDeclaration {
-		return {
-			name: this.name,
-			description: this.description,
-			parameters: {
-				type: "object",
-				properties: {
-					location: {
-						type: "string",
-						description: "The city or location to get weather for",
-					},
-				},
-				required: ["location"],
-			},
-		};
-	}
-
-	async runAsync(
-		args: {
-			location: string;
-		},
-		_context: ToolContext,
-	): Promise<any> {
-		console.log(`Getting weather for: ${args.location}`);
-
-		// Mock implementation - would be replaced with an actual API call
-		const conditions = ["sunny", "cloudy", "rainy", "snowy"];
-		const randomTemp = Math.floor(Math.random() * 35) + 0; // 0-35°C
-		const randomCondition =
-			conditions[Math.floor(Math.random() * conditions.length)];
-
-		return {
-			location: args.location,
-			temperature: `${randomTemp}°C`,
-			condition: randomCondition,
-			humidity: `${Math.floor(Math.random() * 100)}%`,
-			updated: new Date().toISOString(),
-		};
-	}
-}
 
 /**
  * Demonstrates the Agent loop with tool execution
