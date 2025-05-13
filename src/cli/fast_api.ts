@@ -3,10 +3,9 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { SessionService } from "@adk/memory";
+import { InMemorySessionService, type SessionService } from "@adk/memory";
 import { InMemoryArtifactService } from "../artifacts";
 import { Runner } from "../runners";
-import { InMemorySessionService } from "../sessions";
 import { StreamingMode } from "@adk/models";
 
 /**
@@ -93,23 +92,21 @@ export function getFastApiApp(options: FastApiOptions): any {
   };
 
   // Create session endpoint
-  const createSessionEndpoint = (appName: string, userId: string) => {
-    const session = sessionService.createSession(appName, userId);
+  const createSessionEndpoint = async (appName: string, userId: string) => {
+    const session = await sessionService.createSession(userId, {
+      appName,
+    });
     return {
       sessionId: session.id,
       userId: session.userId,
-      appName: session.appName,
-      createdAt: session.lastUpdateTime,
+      createdAt: session.createdAt,
+      appName: session.metadata.appName,
     };
   };
 
   // Get session endpoint
-  const getSessionEndpoint = (
-    appName: string,
-    userId: string,
-    sessionId: string,
-  ) => {
-    const session = sessionService.getSession(appName, userId, sessionId);
+  const getSessionEndpoint = (sessionId: string) => {
+    const session = sessionService.getSession(sessionId);
     if (!session) {
       throw new Error("Session not found");
     }
@@ -146,8 +143,10 @@ export function getFastApiApp(options: FastApiOptions): any {
 
       // Run the agent and collect events
       const events = [];
-      for await (const event of runner.runAsync(userId, sessionId, content, {
-        streamingMode,
+      for await (const event of runner.runAsync({
+        userId,
+        sessionId,
+        newMessage: content,
       })) {
         events.push(event);
       }
