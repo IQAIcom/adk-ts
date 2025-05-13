@@ -1,212 +1,385 @@
-import type { SessionService } from "../../memory/services/SessionService";
-import { RunConfig } from "../config/RunConfig";
-import type {
-	BaseMemoryService,
-	SearchMemoryOptions,
-	SearchMemoryResponse,
-} from "../memory/MemoryService";
-import type { Session } from "../memory/Session";
-import type { Message } from "../request/LLMRequest";
+// Invocation context module for the Google Agent Development Kit (ADK) in TypeScript
+// Mirrors the invocation context functionality from the Python SDK
+
+import { Content } from "@google-cloud/vertexai";
+import {
+  BaseAgent,
+  RunConfig,
+  BaseMemoryService,
+  InMemorySessionService,
+} from "@pontus-devoteam/adk";
+import { Session } from "inspector";
+import { BaseArtifactService, InMemoryArtifactService } from "../../artifacts";
+import { EventActions } from "../../events/event_actions";
+import { BaseSessionService } from "../../sessions/base_session_service";
+import { State } from "../../sessions/state";
+import { LiveRequestQueue } from "../request/LiveRequestQueue";
+import { ActiveStreamingTool } from "../request/ActiveStreamingTool";
+import { TranscriptionEntry } from "../memory/TranscriptionEntry";
 
 /**
- * Contextual data for a specific agent invocation
+ * Context provided during agent invocation.
  */
 export class InvocationContext {
-	/**
-	 * Unique session ID for the current conversation
-	 */
-	sessionId: string;
+  /**
+   * The agent being invoked.
+   */
+  agent: BaseAgent;
 
-	/**
-	 * Current conversation history
-	 */
-	messages: Message[];
+  /**
+   * The configuration for this run.
+   */
+  runConfig: RunConfig;
 
-	/**
-	 * Run configuration
-	 */
-	config: RunConfig;
+  /**
+   * The queue for live requests.
+   */
+  requestQueue: LiveRequestQueue;
 
-	/**
-	 * User identifier associated with the session
-	 */
-	userId?: string;
+  /**
+   * The service for managing artifacts.
+   */
+  artifactService: BaseArtifactService;
 
-	/**
-	 * Application name (for multi-app environments)
-	 */
-	appName?: string;
+  /**
+   * The service for managing memory.
+   */
+  memoryService: BaseMemoryService | null;
 
-	/**
-	 * Memory service for long-term storage
-	 */
-	memoryService?: BaseMemoryService;
+  /**
+   * The service for managing sessions.
+   */
+  sessionService: BaseSessionService;
 
-	/**
-	 * Session service for session management
-	 */
-	sessionService?: SessionService;
+  /**
+   * The current session.
+   */
+  session: Session | null = null;
 
-	/**
-	 * Additional context metadata
-	 */
-	metadata: Record<string, any>;
+  /**
+   * The content from the user.
+   */
+  userContent: Content | null = null;
 
-	/**
-	 * Variables stored in the context
-	 */
-	private variables: Map<string, any>;
+  /**
+   * The unique identifier for this invocation.
+   */
+  invocationId: string;
 
-	/**
-	 * In-memory storage for node execution results
-	 */
-	memory: Map<string, any> = new Map<string, any>();
+  /**
+   * The branch for this invocation.
+   */
+  branch: string | null = null;
 
-	/**
-	 * Constructor for InvocationContext
-	 */
-	constructor(
-		options: {
-			sessionId?: string;
-			messages?: Message[];
-			config?: RunConfig;
-			userId?: string;
-			appName?: string;
-			memoryService?: BaseMemoryService;
-			sessionService?: SessionService;
-			metadata?: Record<string, any>;
-		} = {},
-	) {
-		this.sessionId = options.sessionId || this.generateSessionId();
-		this.messages = options.messages || [];
-		this.config = options.config || new RunConfig();
-		this.userId = options.userId;
-		this.appName = options.appName;
-		this.memoryService = options.memoryService;
-		this.sessionService = options.sessionService;
-		this.metadata = options.metadata || {};
-		this.variables = new Map<string, any>();
-	}
+  /**
+   * Flag to indicate if the invocation should end.
+   */
+  endInvocation: boolean = false;
 
-	/**
-	 * Generates a unique session ID
-	 */
-	private generateSessionId(): string {
-		return `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-	}
+  /**
+   * The name of the application.
+   */
+  appName: string;
 
-	/**
-	 * Sets a variable in the context
-	 */
-	setVariable(name: string, value: any): void {
-		this.variables.set(name, value);
-	}
+  /**
+   * The ID of the user.
+   */
+  userId: string;
 
-	/**
-	 * Gets a variable from the context
-	 */
-	getVariable<T>(name: string, defaultValue?: T): T | undefined {
-		return (
-			this.variables.has(name) ? this.variables.get(name) : defaultValue
-		) as T | undefined;
-	}
+  /**
+   * The running streaming tools of this invocation.
+   * Based on Python: active_streaming_tools: Optional[dict[str, ActiveStreamingTool]] = None
+   */
+  activeStreamingTools?: Record<string, ActiveStreamingTool> | null;
 
-	/**
-	 * Adds a message to the conversation history
-	 */
-	addMessage(message: Message): void {
-		this.messages.push(message);
-	}
+  /**
+   * Caches necessary data for transcription.
+   * Based on Python: transcription_cache: Optional[list[TranscriptionEntry]] = None
+   */
+  transcriptionCache?: TranscriptionEntry[] | null;
 
-	/**
-	 * Creates a new context with the same configuration but empty message history
-	 */
-	createChildContext(): InvocationContext {
-		return new InvocationContext({
-			sessionId: this.sessionId,
-			config: this.config,
-			userId: this.userId,
-			appName: this.appName,
-			memoryService: this.memoryService,
-			sessionService: this.sessionService,
-			metadata: { ...this.metadata },
-		});
-	}
+  /**
+   * Creates a new invocation context.
+   */
+  constructor(options: {
+    agent: BaseAgent;
+    runConfig: RunConfig;
+    requestQueue?: LiveRequestQueue;
+    artifactService?: BaseArtifactService;
+    memoryService?: BaseMemoryService | null;
+    sessionService?: BaseSessionService;
+    session?: Session | null;
+    userContent?: Content | null;
+    invocationId?: string;
+    branch?: string | null;
+    appName?: string;
+    userId?: string;
+    endInvocation?: boolean;
+    activeStreamingTools?: Record<string, ActiveStreamingTool> | null;
+    transcriptionCache?: TranscriptionEntry[] | null;
+  }) {
+    this.agent = options.agent;
+    this.runConfig = options.runConfig;
+    this.requestQueue = options.requestQueue || new LiveRequestQueue();
+    this.artifactService =
+      options.artifactService || new InMemoryArtifactService();
+    this.memoryService = options.memoryService || null;
+    this.sessionService =
+      options.sessionService || new InMemorySessionService();
+    this.session = options.session || null;
+    this.userContent = options.userContent || null;
+    this.invocationId = options.invocationId || generateInvocationId();
+    this.branch = options.branch || null;
+    this.appName = options.appName || this.agent.name;
+    this.userId = options.userId || "default_user";
+    this.endInvocation = options.endInvocation || false;
+    this.activeStreamingTools = options.activeStreamingTools || null;
+    this.transcriptionCache = options.transcriptionCache || null;
+  }
 
-	/**
-	 * Loads a session from the session service
-	 * @returns The loaded session or undefined if not found
-	 */
-	async loadSession(): Promise<Session | undefined> {
-		if (!this.sessionService) {
-			return undefined;
-		}
+  /**
+   * Tracks number of llm calls made.
+   * Based on Python: increment_llm_call_count
+   */
+  incrementLlmCallCount(): void {
+    // TODO: Implement actual cost management logic if needed
+    // console.log('LLM call count incremented (placeholder)');
+  }
 
-		return await this.sessionService.getSession(this.sessionId);
-	}
+  /**
+   * Creates a copy of this invocation context with modifications.
+   *
+   * @param modifications The modifications to apply to the context
+   * @returns A new invocation context with the modifications applied
+   */
+  withModifications(
+    modifications: Partial<{
+      agent: BaseAgent;
+      runConfig: RunConfig;
+      requestQueue: LiveRequestQueue;
+      artifactService: BaseArtifactService;
+      memoryService: BaseMemoryService | null;
+      sessionService: BaseSessionService;
+      session: Session | null;
+      userContent: Content | null;
+      invocationId: string;
+      branch: string | null;
+      appName: string;
+      userId: string;
+      endInvocation: boolean;
+      activeStreamingTools?: Record<string, ActiveStreamingTool> | null;
+      transcriptionCache?: TranscriptionEntry[] | null;
+    }>,
+  ): InvocationContext {
+    return new InvocationContext({
+      agent: modifications.agent || this.agent,
+      runConfig: modifications.runConfig || this.runConfig,
+      requestQueue: modifications.requestQueue || this.requestQueue,
+      artifactService: modifications.artifactService || this.artifactService,
+      memoryService:
+        modifications.memoryService !== undefined
+          ? modifications.memoryService
+          : this.memoryService,
+      sessionService: modifications.sessionService || this.sessionService,
+      session:
+        modifications.session !== undefined
+          ? modifications.session
+          : this.session,
+      userContent:
+        modifications.userContent !== undefined
+          ? modifications.userContent
+          : this.userContent,
+      invocationId: modifications.invocationId || this.invocationId,
+      branch:
+        modifications.branch !== undefined ? modifications.branch : this.branch,
+      appName: modifications.appName || this.appName,
+      userId: modifications.userId || this.userId,
+      endInvocation:
+        modifications.endInvocation !== undefined
+          ? modifications.endInvocation
+          : this.endInvocation,
+      activeStreamingTools:
+        modifications.activeStreamingTools !== undefined
+          ? modifications.activeStreamingTools
+          : this.activeStreamingTools,
+      transcriptionCache:
+        modifications.transcriptionCache !== undefined
+          ? modifications.transcriptionCache
+          : this.transcriptionCache,
+    });
+  }
+}
 
-	/**
-	 * Saves the current conversation to a session
-	 * @returns The saved session
-	 */
-	async saveSession(): Promise<Session | undefined> {
-		if (!this.sessionService || !this.userId) {
-			return undefined;
-		}
+/**
+ * Context provided during callback execution.
+ */
+export class CallbackContext {
+  /**
+   * The invocation context for this callback.
+   */
+  protected _invocationContext: InvocationContext;
 
-		// Get existing session or create a new one
-		let session = await this.sessionService.getSession(this.sessionId);
+  /**
+   * The actions for the event.
+   */
+  protected _eventActions: EventActions;
 
-		if (!session) {
-			// Create a new session
-			session = await this.sessionService.createSession(
-				this.userId,
-				this.metadata,
-			);
-			this.sessionId = session.id;
-		}
+  /**
+   * Creates a new callback context.
+   *
+   * @param invocationContext The invocation context for this callback
+   * @param eventActions The event actions
+   */
+  constructor(
+    invocationContext: InvocationContext,
+    eventActions?: EventActions,
+  ) {
+    this._invocationContext = invocationContext;
+    this._eventActions = eventActions || new EventActions();
+  }
 
-		// Update session with current messages
-		session.messages = [...this.messages];
-		session.metadata = { ...this.metadata };
-		session.updatedAt = new Date();
+  /**
+   * Gets the invocation context.
+   */
+  get invocationContext(): InvocationContext {
+    return this._invocationContext;
+  }
 
-		// Save state variables
-		Object.entries(this.variables).forEach(([key, value]) => {
-			session?.state.set(key, value);
-		});
+  /**
+   * Gets the event actions.
+   */
+  get eventActions(): EventActions {
+    return this._eventActions;
+  }
 
-		// Update the session
-		await this.sessionService.updateSession(session);
+  /**
+   * Gets the agent from the invocation context.
+   */
+  get agent(): BaseAgent {
+    return this._invocationContext.agent;
+  }
 
-		// If we have a memory service, add to memory
-		if (this.memoryService) {
-			await this.memoryService.addSessionToMemory(session);
-		}
+  /**
+   * Gets the run configuration from the invocation context.
+   */
+  get runConfig(): RunConfig {
+    return this._invocationContext.runConfig;
+  }
 
-		return session;
-	}
+  /**
+   * Gets the session from the invocation context.
+   */
+  get session(): Session | null {
+    return this._invocationContext.session;
+  }
 
-	/**
-	 * Searches memory for relevant information
-	 * @param query The search query
-	 * @param options Search options
-	 * @returns Search results or empty response if no memory service
-	 */
-	async searchMemory(
-		query: string,
-		options?: SearchMemoryOptions,
-	): Promise<SearchMemoryResponse> {
-		if (!this.memoryService) {
-			return { memories: [] };
-		}
+  /**
+   * Gets the state interface for the callback.
+   */
+  get state(): State {
+    // In a real implementation, this would be a proper State instance
+    // For now, we provide a simplified interface that matches the Python version
+    const state = new State();
 
-		// If no session ID provided in options, use the current session ID
-		const searchOptions = {
-			...options,
-			sessionId: options?.sessionId || this.sessionId,
-		};
+    return state;
+  }
 
-		return await this.memoryService.searchMemory(query, searchOptions);
-	}
+  /**
+   * Checks if the callback context has state delta.
+   * This is used to determine if the event should be generated after callback execution.
+   *
+   * @returns Whether the callback context has state delta
+   */
+  hasStateDelta(): boolean {
+    // In a real implementation, this would check if the state has been modified
+    // For now, we assume no state changes by default
+    return this._eventActions.hasStateChanges();
+  }
+}
+
+/**
+ * A read-only view of the invocation context for safe data access.
+ */
+export class ReadonlyContext {
+  /**
+   * The wrapped invocation context.
+   */
+  private _context: InvocationContext;
+
+  /**
+   * Creates a new read-only context.
+   *
+   * @param context The invocation context to wrap
+   */
+  constructor(context: InvocationContext) {
+    this._context = context;
+  }
+
+  /**
+   * Gets the agent from the invocation context.
+   */
+  get agent(): BaseAgent {
+    return this._context.agent;
+  }
+
+  /**
+   * Gets the run configuration from the invocation context.
+   */
+  get runConfig(): RunConfig {
+    return this._context.runConfig;
+  }
+
+  /**
+   * Gets the session from the invocation context.
+   */
+  get session(): Session | null {
+    return this._context.session;
+  }
+
+  /**
+   * Gets the user content from the invocation context.
+   */
+  get userContent(): Content | null {
+    return this._context.userContent;
+  }
+
+  /**
+   * Gets the application name from the invocation context.
+   */
+  get appName(): string {
+    return this._context.appName;
+  }
+
+  /**
+   * Gets the user ID from the invocation context.
+   */
+  get userId(): string {
+    return this._context.userId;
+  }
+
+  /**
+   * Gets the artifact service from the invocation context.
+   */
+  get artifactService(): BaseArtifactService {
+    return this._context.artifactService;
+  }
+
+  /**
+   * Gets the memory service from the invocation context.
+   */
+  get memoryService(): BaseMemoryService | null {
+    return this._context.memoryService;
+  }
+}
+
+/**
+ * Generates a unique identifier for invocation contexts.
+ *
+ * @returns A unique invocation ID
+ */
+export function generateInvocationId(): string {
+  // Using a combination of timestamp and random string for uniqueness
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 7);
+  return `ctx-${timestamp}-${randomStr}`;
 }
