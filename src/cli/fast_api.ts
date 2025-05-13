@@ -3,10 +3,10 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { InMemorySessionService, type SessionService } from "@adk/memory";
 import { InMemoryArtifactService } from "../artifacts";
 import { Runner } from "../runners";
-import { StreamingMode } from "@adk/models";
+import { StreamingMode } from "../models";
+import { InMemorySessionService, SessionService } from "../memory";
 
 /**
  * FastAPI server configuration options
@@ -142,7 +142,7 @@ export function getFastApiApp(options: FastApiOptions): any {
       };
 
       // Run the agent and collect events
-      const events = [];
+      const events: Event[] = [];
       for await (const event of runner.runAsync({
         userId,
         sessionId,
