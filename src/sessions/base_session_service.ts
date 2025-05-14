@@ -1,8 +1,8 @@
 // Base session service module for the Google Agent Development Kit (ADK) in TypeScript
 // Mirrors the base session service functionality from the Python SDK
 
-import { Event } from "../events/event";
-import { Session } from "./session";
+import type { Event } from "../events/event";
+import type { Session } from "./session";
 import { State } from "./state";
 
 /**

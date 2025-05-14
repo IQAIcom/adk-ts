@@ -127,7 +127,7 @@ export interface LlmResponse {
 	promptFeedback?: AdkPromptFeedback;
 }
 
-import { BaseLlmConnection } from "./base_llm_connection";
+import type { BaseLlmConnection } from "./base_llm_connection";
 
 export abstract class BaseLlm {
 	model: string;

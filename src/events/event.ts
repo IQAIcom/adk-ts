@@ -1,7 +1,7 @@
 // Event module for the Google Agent Development Kit (ADK) in TypeScript
 // Mirrors the event functionality from the Python SDK
 
-import { Content } from "../models/base_llm";
+import type { Content } from "../models/base_llm";
 import { EventActions } from "./event_actions";
 
 // Interface for function call part
@@ -174,7 +174,7 @@ export class Event {
 	 */
 	getFunctionCalls(): FunctionCallPart[] {
 		const funcCalls: FunctionCallPart[] = [];
-		if (this.content && this.content.parts) {
+		if (this.content?.parts) {
 			for (const part of this.content.parts) {
 				if (part.functionCall) {
 					funcCalls.push({
@@ -196,7 +196,7 @@ export class Event {
 	 */
 	getFunctionResponses(): FunctionCallPart[] {
 		const funcResponses: FunctionCallPart[] = [];
-		if (this.content && this.content.parts) {
+		if (this.content?.parts) {
 			for (const part of this.content.parts) {
 				if (part.functionResponse) {
 					funcResponses.push({
@@ -217,7 +217,7 @@ export class Event {
 	 * @returns Whether the event has a trailing code execution result
 	 */
 	hasTrailingCodeExecutionResult(): boolean {
-		if (this.content && this.content.parts && this.content.parts.length > 0) {
+		if (this.content?.parts && this.content.parts.length > 0) {
 			return !!this.content.parts[this.content.parts.length - 1]
 				.codeExecutionResult;
 		}

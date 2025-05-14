@@ -1,8 +1,8 @@
+import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
 import type {
 	FunctionDeclaration,
 	JSONSchema,
 } from "../../models/request/FunctionDeclaration";
-import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
 import type { BaseTool } from "../base/BaseTool";
 
 // Define our own JSONSchemaType since it's not exported from FunctionDeclaration

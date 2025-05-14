@@ -33,13 +33,6 @@ export class InMemorySessionService extends BaseSessionService {
 	private appState: Record<string, Record<string, unknown>> = {};
 
 	/**
-	 * Creates a new InMemorySessionService.
-	 */
-	constructor() {
-		super();
-	}
-
-	/**
 	 * Creates a new session.
 	 *
 	 * @param appName The name of the app
