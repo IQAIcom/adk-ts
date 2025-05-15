@@ -4,7 +4,7 @@ import type {
 	SearchMemoryResponse,
 } from "../memory-service";
 import type { Session } from "../../sessions/session";
-import type { Message } from "../../models/llm-request";
+import type { Content } from "../../models/llm-request";
 
 /**
  * An in-memory memory service for development and testing
@@ -58,65 +58,37 @@ export class InMemoryMemoryService implements BaseMemoryService {
 
 		// Search each session
 		for (const session of sessionsToSearch) {
-			const matchedEvents: Message[] = [];
+			const matchedEvents: Content[] = [];
 			const scores: number[] = [];
 
-			// Check each message in the session
-			for (const message of session.messages) {
-				// Skip non-text content for now
-				let content = "";
-				if (typeof message.content === "string") {
-					content = message.content;
-				} else if (Array.isArray(message.content)) {
-					// Extract text from content array
-					for (const part of message.content) {
-						if (part.type === "text") {
-							content += `${part.text} `;
-						}
-					}
-				} else if (message.content && message.content.type === "text") {
-					content = message.content.text;
-				}
+			// Iterate over contents in the session
+			for (const content of session.contents || []) {
+				// For simplicity, concatenate text from all parts of a content item
+				const contentText = content.parts
+					.filter((part) => "text" in part)
+					.map((part) => (part as any).text)
+					.join(" ")
+					.toLowerCase();
 
-				// Skip empty content
-				if (!content) continue;
-
-				// Calculate relevance score based on term matches
-				const normalizedContent = content.toLowerCase();
-				let termMatches = 0;
-
-				for (const term of queryTerms) {
-					if (normalizedContent.includes(term)) {
-						termMatches++;
-					}
-				}
-
-				const score =
-					queryTerms.length > 0 ? termMatches / queryTerms.length : 0;
-
-				// Apply threshold if provided
-				if (options?.threshold !== undefined && score < options.threshold) {
-					continue;
-				}
-
-				// If the message is relevant, add it to matched events
-				if (score > 0) {
-					matchedEvents.push(message);
-					scores.push(score);
+				// Basic keyword matching (case-insensitive)
+				if (contentText.includes(query.toLowerCase())) {
+					matchedEvents.push(content);
+					// Simple scoring: 1 for match, 0 otherwise. Could be more sophisticated.
+					scores.push(1);
 				}
 			}
 
-			// If there are matched events, add to results
 			if (matchedEvents.length > 0) {
-				// Calculate average relevance score
-				const avgScore =
-					scores.reduce((sum, score) => sum + score, 0) / scores.length;
+				// Calculate average score for the session based on matched events
+				const averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
 
-				response.memories.push({
-					sessionId: session.id,
-					events: matchedEvents,
-					relevanceScore: avgScore,
-				});
+				if (!options?.threshold || averageScore >= options.threshold) {
+					response.memories.push({
+						sessionId: session.id,
+						events: matchedEvents,
+						relevanceScore: averageScore,
+					});
+				}
 			}
 		}
 

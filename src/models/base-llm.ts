@@ -19,6 +19,13 @@ export abstract class BaseLLM {
 	}
 
 	/**
+	 * Optional method for providers to pre-process the request,
+	 * for example, to ensure message ordering expected by the specific LLM API.
+	 * e.g., Anthropic requires user messages to precede assistant messages.
+	 */
+	protected _maybeAppendUserContent?(llmRequest: LLMRequest): void;
+
+	/**
 	 * Returns a list of supported models in regex for LLMRegistry
 	 */
 	static supportedModels(): string[] {

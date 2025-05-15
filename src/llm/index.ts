@@ -6,17 +6,26 @@
  * to maintain compatibility with existing code.
  */
 
+import { AnthropicLLM } from "./providers/anthropic/anthropic-llm";
+import { GoogleLLM } from "./providers/google/google-llm";
+import { OpenAILLM } from "./providers/openai/openai-llm";
+
+import {
+	BaseLLM,
+	// AnthropicLLM, // Now imported directly
+	// GoogleLLM,    // Now imported directly
+	// OpenAILLM,    // Now imported directly
+} from "../models"; // BaseLLM is still in ../models
+
 export {
-  BaseLLM,
-  BaseLLMConnection,
-  AnthropicLLM,
-  GoogleLLM,
-  OpenAILLM,
-  LLMRegistry,
-} from "../models";
+	BaseLLM,
+	AnthropicLLM, // Re-export the directly imported ones
+	GoogleLLM,
+	OpenAILLM,
+};
 
 // Re-export LiteLLM placeholder
 export { default as LiteLLM } from "./providers/litellm/lite-llm";
 
 // Re-export registry for convenience
-export * from "../models/llm-registry";
+export * from "./registry";

@@ -5,9 +5,9 @@ import type { LLMResponse } from "./llm-response";
  */
 export abstract class BaseLLMConnection {
 	/**
-	 * Whether the connection is active
+	 * Indicates if the connection is active
 	 */
-	private _isActive = true;
+	protected _isActive = true;
 
 	/**
 	 * Gets whether the connection is active

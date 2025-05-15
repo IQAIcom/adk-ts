@@ -1,5 +1,5 @@
 import type { RunConfig } from "./run-config";
-import type { Message } from "../models/llm-request";
+import type { Content } from "../models/llm-request";
 
 /**
  * Base class for all agents in the Agent Development Kit
@@ -110,7 +110,7 @@ export abstract class BaseAgent {
 	 * Runs the agent with the given messages and configuration
 	 */
 	abstract run(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 		sessionId?: string;
 	}): Promise<any>;
@@ -119,7 +119,7 @@ export abstract class BaseAgent {
 	 * Runs the agent with streaming support
 	 */
 	abstract runStreaming(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 		sessionId?: string;
 	}): AsyncIterable<any>;

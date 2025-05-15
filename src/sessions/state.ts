@@ -90,3 +90,9 @@ export class SessionState {
 		return state;
 	}
 }
+
+export enum SessionLifecycleState {
+	ACTIVE = "active",
+	ENDED = "ended",
+	EXPIRED = "expired",
+}

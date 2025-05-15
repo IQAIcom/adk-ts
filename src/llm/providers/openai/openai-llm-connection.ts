@@ -1,5 +1,14 @@
 import type OpenAI from "openai";
-import type { LLMRequest } from "../../../models/llm-request";
+import type {
+	LLMRequest,
+	Content,
+	Part,
+	Role,
+	TextPart,
+	FunctionCallPart,
+	FunctionCallData,
+	FunctionResponsePart,
+} from "../../../models/llm-request";
 import { LLMResponse } from "../../../models/llm-response";
 import { BaseLLMConnection } from "../../base-llm-connection";
 
@@ -63,27 +72,107 @@ export class OpenAILLMConnection extends BaseLLMConnection {
 		this.defaultParams = defaultParams;
 
 		// Initialize messages from the initial request
-		this.messages = initialRequest.messages.map((message) => {
-			// Base message without name
-			const baseMsg: Partial<OpenAI.Chat.ChatCompletionMessageParam> = {
-				role: message.role as OpenAI.Chat.ChatCompletionMessageParam["role"],
-				content: typeof message.content === "string" ? message.content : "",
-			};
+		this.messages = this.convertAdkContentsToOpenAIMessages(
+			initialRequest.contents,
+		);
+	}
 
-			// Add name only for function or tool messages where it's needed
-			if (message.role === "function" && message.name) {
-				(baseMsg as OpenAI.Chat.ChatCompletionFunctionMessageParam).name =
-					message.name;
+	/**
+	 * Converts ADK Content[] to OpenAI.Chat.ChatCompletionMessageParam[]
+	 * This is a simplified version for the connection; OpenAILLM has a more detailed one.
+	 */
+	private convertAdkContentsToOpenAIMessages(
+		contents: Content[],
+	): OpenAI.Chat.ChatCompletionMessageParam[] {
+		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
+		for (const content of contents) {
+			let role: OpenAI.Chat.ChatCompletionRole;
+			let messageContent:
+				| string
+				| OpenAI.Chat.Completions.ChatCompletionContentPartText[]
+				| null = "";
+			const partsForOpenAI: OpenAI.Chat.Completions.ChatCompletionContentPartText[] =
+				[];
+			let toolCalls: OpenAI.Chat.ChatCompletionMessageToolCall[] | undefined =
+				undefined;
+			let tool_call_id: string | undefined = undefined;
+
+			switch (content.role) {
+				case "user":
+					role = "user";
+					break;
+				case "model": // ADK 'model' can be assistant or have tool_calls
+					role = "assistant";
+					break;
+				case "function": // ADK 'function' role means a tool/function produced this
+					role = "tool"; // OpenAI expects role 'tool' for function responses
+					break;
+				default:
+					console.warn(
+						`[OpenAILLMConnection] Unknown ADK role: ${content.role}, skipping content.`,
+					);
+					continue;
 			}
 
-			// Add tool_call_id for tool messages
-			if (message.role === "tool" && message.tool_call_id) {
-				(baseMsg as OpenAI.Chat.ChatCompletionToolMessageParam).tool_call_id =
-					message.tool_call_id;
+			for (const part of content.parts) {
+				if ("text" in part) {
+					partsForOpenAI.push({ type: "text", text: (part as TextPart).text });
+				} else if ("functionCall" in part && role === "assistant") {
+					// This is from the assistant asking to call a function/tool
+					if (!toolCalls) toolCalls = [];
+					const fc = (part as FunctionCallPart).functionCall;
+					toolCalls.push({
+						id: fc.id || `tool_${Date.now()}`,
+						type: "function",
+						function: { name: fc.name, arguments: JSON.stringify(fc.args) },
+					});
+				} else if ("functionResponse" in part && role === "tool") {
+					// This is the result of a function/tool call
+					const fr = (part as FunctionResponsePart).functionResponse;
+					messageContent = JSON.stringify(fr.response);
+					tool_call_id = `placeholder_tool_call_id_for_${fr.name}`;
+				}
+				// TODO: Handle InlineDataPart for images (OpenAI vision)
 			}
 
-			return baseMsg as OpenAI.Chat.ChatCompletionMessageParam;
-		});
+			if (role !== "tool") {
+				if (partsForOpenAI.length === 1) {
+					messageContent = partsForOpenAI[0].text;
+				} else if (partsForOpenAI.length > 1) {
+					messageContent = partsForOpenAI;
+				} else {
+					if (role === "assistant" && !toolCalls) messageContent = null;
+				}
+			}
+
+			if (role === "assistant") {
+				openAiMessages.push({
+					role,
+					content: messageContent,
+					tool_calls: toolCalls,
+				});
+			} else if (role === "tool") {
+				if (!tool_call_id) {
+					console.error(
+						"[OpenAILLMConnection] tool_call_id is missing for a 'tool' role message. OpenAI API will reject this.",
+					);
+					continue;
+				}
+				openAiMessages.push({
+					role,
+					content: messageContent as string,
+					tool_call_id,
+				});
+			} else {
+				openAiMessages.push({
+					role,
+					content: messageContent as
+						| string
+						| OpenAI.Chat.Completions.ChatCompletionContentPartText[],
+				});
+			}
+		}
+		return openAiMessages;
 	}
 
 	/**
@@ -126,25 +215,18 @@ export class OpenAILLMConnection extends BaseLLMConnection {
 		}
 
 		try {
-			// Add the new message to the history
-			this.messages.push({
-				role: "user",
-				content: message,
-			});
+			this.messages.push({ role: "user", content: message });
 
-			// Create a parameters object
-			const params: OpenAI.Chat.ChatCompletionCreateParams = {
-				model: this.model,
-				messages: this.messages,
-				stream: true,
-				temperature: this.defaultParams.temperature,
-				max_tokens: this.defaultParams.max_tokens,
-				top_p: this.defaultParams.top_p,
-				frequency_penalty: this.defaultParams.frequency_penalty,
-				presence_penalty: this.defaultParams.presence_penalty,
-			};
+			// Explicitly type params for streaming to help type inference for the client call
+			const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming =
+				{
+					model: this.model,
+					messages: this.messages,
+					stream: true,
+					...(this
+						.defaultParams as Partial<OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming>),
+				};
 
-			// Add tools if they exist in the initial request
 			if (
 				this.initialRequest.config.functions &&
 				this.initialRequest.config.functions.length > 0
@@ -154,159 +236,170 @@ export class OpenAILLMConnection extends BaseLLMConnection {
 					function: {
 						name: func.name,
 						description: func.description,
-						parameters: func.parameters,
+						parameters: func.parameters as Record<string, unknown>,
 					},
 				}));
 			}
 
-			// Get a streaming response
 			const stream = await this.client.chat.completions.create(params);
-			let responseContent = "";
-			let functionCall: any = null;
-			const toolCalls: any[] = [];
 
-			// Process the stream
+			let accumulatedText = "";
+			// The map stores the accumulated state of each tool call detected in the stream
+			const accumulatedToolCallsMap: Map<
+				string,
+				{ id: string; name: string; arguments: string; type: "function" }
+			> = new Map();
+			let finalTurnComplete = false;
+
 			for await (const chunk of stream) {
-				if (chunk.choices.length === 0) continue;
+				if (!this.isActive) break; // Stop processing if connection closed externally
 
-				const delta = chunk.choices[0].delta;
+				const choice = chunk.choices[0];
+				if (!choice) continue;
 
-				// Add to the content
+				const delta = choice.delta;
+				const currentParts: Part[] = [];
+				let isPartialUpdate = true; // Most chunks are partial
+
 				if (delta?.content) {
-					responseContent += delta.content;
+					accumulatedText += delta.content;
+					currentParts.push({ text: delta.content });
 				}
 
-				// Process function calls
-				if (delta?.function_call) {
-					if (!functionCall) {
-						functionCall = {
-							name: delta.function_call.name || "",
-							arguments: delta.function_call.arguments || "",
-						};
-					} else {
-						functionCall.name += delta.function_call.name || "";
-						functionCall.arguments += delta.function_call.arguments || "";
-					}
-				}
-
-				// Process tool calls
 				if (delta?.tool_calls) {
-					for (const toolDelta of delta.tool_calls) {
-						const id = toolDelta.id || "";
-						let tool = toolCalls.find((t) => t.id === id);
-
-						if (!tool) {
-							tool = {
-								id,
-								function: {
-									name: toolDelta.function?.name || "",
-									arguments: toolDelta.function?.arguments || "",
-								},
-							};
-							toolCalls.push(tool);
-						} else {
-							tool.function.name += toolDelta.function?.name || "";
-							tool.function.arguments += toolDelta.function?.arguments || "";
+					for (const toolCallDelta of delta.tool_calls) {
+						if (toolCallDelta.id) {
+							let existingToolCall = accumulatedToolCallsMap.get(
+								toolCallDelta.id,
+							);
+							if (!existingToolCall) {
+								existingToolCall = {
+									id: toolCallDelta.id,
+									type: "function", // Assuming all tool calls are functions
+									name: toolCallDelta.function?.name || "",
+									arguments: toolCallDelta.function?.arguments || "",
+								};
+							} else {
+								if (toolCallDelta.function?.name) {
+									existingToolCall.name += toolCallDelta.function.name;
+								}
+								if (toolCallDelta.function?.arguments) {
+									existingToolCall.arguments +=
+										toolCallDelta.function.arguments;
+								}
+							}
+							accumulatedToolCallsMap.set(toolCallDelta.id, existingToolCall);
 						}
 					}
 				}
 
-				// Create and send a response
-				if (this.responseCallback) {
-					const response = new LLMResponse({
-						content: delta?.content || null,
-						role: "assistant",
-						function_call: functionCall,
-						tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-						is_partial: true,
-					});
+				if (choice.finish_reason) {
+					isPartialUpdate = false;
+					finalTurnComplete = true;
+					// If finished due to tool_calls, all tool call parts are now complete
+					if (
+						choice.finish_reason === "tool_calls" &&
+						accumulatedToolCallsMap.size > 0
+					) {
+						currentParts.length = 0; // Clear any partial text from this chunk
+						accumulatedToolCallsMap.forEach((tc) => {
+							try {
+								currentParts.push({
+									functionCall: {
+										id: tc.id,
+										name: tc.name,
+										args: JSON.parse(tc.arguments || "{}"),
+									},
+								});
+							} catch (e) {
+								console.error(
+									"[OpenAILLMConnection] Error parsing tool call arguments:",
+									e,
+									"Args:",
+									tc.arguments,
+								);
+								currentParts.push({
+									functionCall: {
+										id: tc.id,
+										name: tc.name,
+										args: { error: "failed to parse arguments" },
+									},
+								});
+							}
+						});
+						// Add accumulated text if any, before the tool calls
+						if (accumulatedText.trim()) {
+							currentParts.unshift({ text: accumulatedText.trim() });
+						}
+					} else if (accumulatedText) {
+						// If finished for other reasons (e.g. stop, length), use accumulated text
+						currentParts.push({ text: accumulatedText });
+					}
+				} else if (!delta?.content && !delta?.tool_calls) {
+					// If it's not a finish event and there's no new content or tool_call delta, skip yielding empty response.
+					continue;
+				}
 
-					this.responseCallback(response);
+				if (currentParts.length > 0) {
+					const response = new LLMResponse({
+						content: { role: "model", parts: currentParts },
+						is_partial: isPartialUpdate,
+						turn_complete: finalTurnComplete,
+						raw_response: chunk,
+					});
+					this.responseCallback?.(response);
+
+					if (finalTurnComplete) {
+						// Update conversational history for next turn
+						const finalToolCallsForHistory: OpenAI.Chat.ChatCompletionMessageToolCall[] =
+							Array.from(accumulatedToolCallsMap.values()).map((tc) => ({
+								id: tc.id,
+								type: "function", // type is 'function' for tool_calls
+								function: { name: tc.name, arguments: tc.arguments },
+							}));
+
+						this.messages.push({
+							role: "assistant",
+							content: accumulatedText || null,
+							tool_calls:
+								finalToolCallsForHistory.length > 0
+									? finalToolCallsForHistory
+									: undefined,
+						});
+						accumulatedText = "";
+						accumulatedToolCallsMap.clear();
+					}
 				}
 			}
 
-			// Add the assistant message to the history
-			this.messages.push({
-				role: "assistant",
-				content: responseContent,
-				function_call: functionCall,
-				tool_calls:
-					toolCalls.length > 0
-						? toolCalls.map((tool) => ({
-								id: tool.id,
-								type: "function",
-								function: {
-									name: tool.function.name,
-									arguments: tool.function.arguments,
-								},
-							}))
-						: undefined,
-			});
-
-			// If we have a final function call, add a function result message
-			if (functionCall) {
-				// Notify listeners that the response is complete
-				if (this.responseCallback) {
-					const response = new LLMResponse({
-						content: responseContent,
-						function_call: functionCall,
-						role: "assistant",
-						is_partial: false,
-					});
-
-					this.responseCallback(response);
-				}
-
-				if (this.endCallback) {
-					this.endCallback();
-				}
-			}
-			// If we have tool calls, add tool result messages
-			else if (toolCalls.length > 0) {
-				// Notify listeners that the response is complete
-				if (this.responseCallback) {
-					const response = new LLMResponse({
-						content: responseContent,
-						tool_calls: toolCalls.map((tool) => ({
-							id: tool.id,
-							function: {
-								name: tool.function.name,
-								arguments: tool.function.arguments,
-							},
-						})),
-						role: "assistant",
-						is_partial: false,
-					});
-
-					this.responseCallback(response);
-				}
-
-				if (this.endCallback) {
-					this.endCallback();
-				}
-			}
-			// Simple text response
-			else {
-				// Notify listeners that the response is complete
-				if (this.responseCallback) {
-					const response = new LLMResponse({
-						content: responseContent,
-						role: "assistant",
-						is_partial: false,
-					});
-
-					this.responseCallback(response);
-				}
-
-				if (this.endCallback) {
-					this.endCallback();
-				}
+			if (finalTurnComplete || !this.isActive) {
+				// Also call end if connection was closed during stream
+				this.endCallback?.();
 			}
 		} catch (error) {
-			if (this.errorCallback) {
-				this.errorCallback(error as Error);
+			if (error instanceof Error) {
+				this.errorCallback?.(error);
+				this.responseCallback?.(
+					new LLMResponse({
+						content: { role: "model", parts: [{ text: error.message }] },
+						error_message: error.message,
+						turn_complete: true,
+					}),
+				);
+			} else {
+				this.errorCallback?.(new Error("Unknown error in OpenAI connection"));
+				this.responseCallback?.(
+					new LLMResponse({
+						content: {
+							role: "model",
+							parts: [{ text: "Unknown error in OpenAI connection" }],
+						},
+						error_message: "Unknown error in OpenAI connection",
+						turn_complete: true,
+					}),
+				);
 			}
-			throw error;
+			this.endCallback?.(); // Ensure end is called on error
 		}
 	}
 

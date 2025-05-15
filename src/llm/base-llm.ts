@@ -26,6 +26,35 @@ export abstract class BaseLLM {
 	}
 
 	/**
+	 * Appends a user content to the request if necessary.
+	 * This ensures that the model can continue to output, especially
+	 * if the last message was not from the user or if contents are empty.
+	 * @param llmRequest The LLMRequest to potentially modify.
+	 */
+	protected _maybeAppendUserContent(llmRequest: LLMRequest): void {
+		const textForEmpty =
+			"Handle the requests as specified in the System Instruction.";
+		const textForNonUserLast =
+			"Continue processing previous requests as instructed. Exit or provide a summary if no more outputs are needed.";
+
+		if (!llmRequest.contents || llmRequest.contents.length === 0) {
+			llmRequest.contents.push({
+				role: "user",
+				parts: [{ text: textForEmpty }],
+			});
+			return;
+		}
+
+		const lastContent = llmRequest.contents[llmRequest.contents.length - 1];
+		if (lastContent.role !== "user") {
+			llmRequest.contents.push({
+				role: "user",
+				parts: [{ text: textForNonUserLast }],
+			});
+		}
+	}
+
+	/**
 	 * Generates content from the given request
 	 *
 	 * @param llmRequest The request to send to the LLM

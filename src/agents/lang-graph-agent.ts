@@ -1,11 +1,7 @@
 import type { RunConfig } from "./run-config";
 import { InvocationContext } from "./invocation-context";
-import type {
-	Message,
-	MessageContent,
-	TextContent,
-} from "../models/llm-request";
-import type { LLMResponse } from "../models/llm-response";
+import type { Content, Part, TextPart, Role } from "../models/llm-request";
+import { LLMResponse } from "../models/llm-response";
 import { BaseAgent } from "./base-agent";
 
 /**
@@ -147,42 +143,33 @@ export class LangGraphAgent extends BaseAgent {
 		// TODO: Add cycle detection if needed
 	}
 	/**
-	 * Check if a value is an LLMResponse
+	 * Check if a value is an LLMResponse from our model
+	 * and likely represents a model's turn.
 	 */
-	private isLLMResponse(value: any): value is LLMResponse {
+	private isModelResponse(value: any): value is LLMResponse {
 		return (
 			value &&
 			typeof value === "object" &&
-			"role" in value &&
-			typeof value.role === "string" &&
-			(value.role === "assistant" ||
-				value.role === "system" ||
-				value.role === "user")
+			"content" in value && // Check for the content property
+			value.content && // Ensure content is not null/undefined
+			typeof value.content === "object" && // Ensure content is an object
+			"role" in value.content &&
+			value.content.role === "model"
 		);
 	}
 
 	/**
-	 * Extracts text from MessageContent
+	 * Extracts text from Content object
 	 */
-	private extractTextContent(
-		content: MessageContent | null | undefined,
-	): string {
-		if (!content) return "";
-
-		if (typeof content === "string") {
-			return content;
+	private extractTextFromContent(content?: Content | null): string {
+		if (!content || !content.parts) return "";
+		let text = "";
+		for (const part of content.parts) {
+			if ("text" in part) {
+				text += `${(part as TextPart).text} `;
+			}
 		}
-		if (Array.isArray(content)) {
-			return content
-				.filter((item) => item.type === "text")
-				.map((item) => (item as TextContent).text)
-				.join(" ");
-		}
-		if (content.type === "text") {
-			return content.text;
-		}
-
-		return "";
+		return text.trim();
 	}
 
 	/**
@@ -232,7 +219,7 @@ export class LangGraphAgent extends BaseAgent {
 	private async executeConditionalNode(
 		node: LangGraphNode,
 		targetName: string,
-		messages: Message[],
+		currentContents: Content[],
 		config?: RunConfig,
 	): Promise<{ shouldExecute: boolean; result?: any }> {
 		if (!node.condition) {
@@ -241,18 +228,17 @@ export class LangGraphAgent extends BaseAgent {
 
 		// Create a mock context for the condition check
 		const mockContext = new InvocationContext({
-			messages,
+			contents: currentContents,
 			config,
 		});
 
 		// Create a mock LLMResponse for the condition check
-		const mockResponse: LLMResponse = {
-			role: "assistant",
-			content:
-				messages.length > 0
-					? this.extractTextContent(messages[messages.length - 1].content)
-					: "",
-		};
+		// This needs to align with how conditions expect to evaluate responses.
+		// For now, we'll use the last content if available.
+		const lastContent = currentContents[currentContents.length - 1];
+		const mockResponse: LLMResponse = new LLMResponse({
+			content: lastContent,
+		});
 
 		const shouldExecute = await node.condition(mockResponse, mockContext);
 		if (!shouldExecute) {
@@ -267,16 +253,16 @@ export class LangGraphAgent extends BaseAgent {
 	}
 
 	/**
-	 * Runs the agent with the given messages and configuration
+	 * Runs the agent with the given Content array and configuration
 	 * Executes the graph by traversing nodes based on conditions
 	 */
 	async run(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 	}): Promise<LLMResponse> {
 		// Create invocation context
 		const context = new InvocationContext({
-			messages: options.messages,
+			contents: options.contents,
 			config: options.config,
 		});
 
@@ -287,25 +273,31 @@ export class LangGraphAgent extends BaseAgent {
 		}
 
 		if (this.nodes.size === 0) {
-			return {
-				content: "No nodes defined in the graph.",
-				role: "assistant",
-			};
+			return new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: "No nodes defined in the graph." }],
+				},
+			});
 		}
 
 		// Start with the root node
 		const rootNode = this.nodes.get(this.rootNode);
 		if (!rootNode) {
-			return {
-				content: `Root node "${this.rootNode}" not found.`,
-				role: "assistant",
-			};
+			return new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: `Root node "${this.rootNode}" not found.` }],
+				},
+			});
 		}
 
 		// Initialize execution
 		let stepCount = 0;
-		const nodesToExecute: Array<{ node: LangGraphNode; messages: Message[] }> =
-			[{ node: rootNode, messages: [...options.messages] }];
+		const nodesToExecute: Array<{
+			node: LangGraphNode;
+			currentContents: Content[];
+		}> = [{ node: rootNode, currentContents: [...options.contents] }];
 
 		// Track executed nodes for logging
 		const executedNodes: string[] = [];
@@ -315,7 +307,7 @@ export class LangGraphAgent extends BaseAgent {
 			stepCount++;
 
 			// Get next node to execute
-			const { node, messages } = nodesToExecute.shift()!;
+			const { node, currentContents: nodeContents } = nodesToExecute.shift()!;
 			if (process.env.DEBUG === "true") {
 				console.log(
 					`[LangGraphAgent] Step ${stepCount}: Executing node "${node.name}"`,
@@ -325,8 +317,8 @@ export class LangGraphAgent extends BaseAgent {
 
 			try {
 				// Execute node function
-				const result = await node.agent.run({
-					messages: messages,
+				const result: LLMResponse = await node.agent.run({
+					contents: nodeContents,
 					config: context.config,
 				});
 
@@ -339,12 +331,9 @@ export class LangGraphAgent extends BaseAgent {
 					result,
 				});
 
-				// If the result is an LLMResponse, add it to the messages
-				if (this.isLLMResponse(result)) {
-					context.messages.push({
-						role: "assistant",
-						content: this.extractTextContent(result.content),
-					});
+				// If the result is a model response, add its content to the context's history
+				if (this.isModelResponse(result) && result.content) {
+					context.addContent(result.content);
 				}
 
 				// Determine the next node(s) to execute
@@ -363,7 +352,7 @@ export class LangGraphAgent extends BaseAgent {
 						const { shouldExecute } = await this.executeConditionalNode(
 							targetNode,
 							targetName,
-							context.messages,
+							context.contents,
 							context.config,
 						);
 
@@ -385,15 +374,21 @@ export class LangGraphAgent extends BaseAgent {
 				if (nextNode) {
 					nodesToExecute.push({
 						node: nextNode,
-						messages: [...context.messages],
+						currentContents: [...context.contents],
 					});
 				}
 			} catch (error) {
 				console.error(`[LangGraphAgent] Error in node "${node.name}":`, error);
-				return {
-					content: `Error in node "${node.name}": ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
-				};
+				return new LLMResponse({
+					content: {
+						role: "model",
+						parts: [
+							{
+								text: `Error in node "${node.name}": ${error instanceof Error ? error.message : String(error)}`,
+							},
+						],
+					},
+				});
 			}
 		}
 
@@ -401,31 +396,38 @@ export class LangGraphAgent extends BaseAgent {
 		const lastNodeResult = this.results[this.results.length - 1]?.result;
 
 		// If the final result is an LLMResponse, return it directly
-		if (this.isLLMResponse(lastNodeResult)) {
+		if (lastNodeResult instanceof LLMResponse) {
 			return lastNodeResult;
 		}
 
 		// Otherwise, create a response with the final result information
-		return {
-			content: `Graph execution complete. Final result from node "${this.results[this.results.length - 1]?.node}": ${
-				typeof lastNodeResult === "string"
-					? lastNodeResult
-					: JSON.stringify(lastNodeResult, null, 2)
-			}`,
-			role: "assistant",
-		};
+		const finalText =
+			typeof lastNodeResult === "string"
+				? lastNodeResult
+				: JSON.stringify(lastNodeResult, null, 2);
+
+		return new LLMResponse({
+			content: {
+				role: "model",
+				parts: [
+					{
+						text: `Graph execution complete. Final result from node "${this.results[this.results.length - 1]?.node}": ${finalText}`,
+					},
+				],
+			},
+		});
 	}
 
 	/**
 	 * Runs the agent with streaming support
 	 */
 	async *runStreaming(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 	}): AsyncIterable<LLMResponse> {
 		// Create invocation context
 		const context = new InvocationContext({
-			messages: options.messages,
+			contents: options.contents,
 			config: options.config,
 		});
 
@@ -436,34 +438,48 @@ export class LangGraphAgent extends BaseAgent {
 		}
 
 		if (this.nodes.size === 0) {
-			yield {
-				content: "No nodes defined in the graph.",
-				role: "assistant",
-			};
+			yield new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: "No nodes defined in the graph." }],
+				},
+				turn_complete: true,
+			});
 			return;
 		}
 
 		// Start with the root node
 		const rootNode = this.nodes.get(this.rootNode);
 		if (!rootNode) {
-			yield {
-				content: `Root node "${this.rootNode}" not found.`,
-				role: "assistant",
-			};
+			yield new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: `Root node "${this.rootNode}" not found.` }],
+				},
+				turn_complete: true,
+			});
 			return;
 		}
 
 		// Initial status message
-		yield {
-			content: `Starting graph execution from root node "${this.rootNode}"...`,
-			role: "assistant",
+		yield new LLMResponse({
+			content: {
+				role: "model",
+				parts: [
+					{
+						text: `Starting graph execution from root node "${this.rootNode}"...`,
+					},
+				],
+			},
 			is_partial: true,
-		};
+		});
 
 		// Initialize execution
 		let stepCount = 0;
-		const nodesToExecute: Array<{ node: LangGraphNode; messages: Message[] }> =
-			[{ node: rootNode, messages: [...options.messages] }];
+		const nodesToExecute: Array<{
+			node: LangGraphNode;
+			currentContents: Content[];
+		}> = [{ node: rootNode, currentContents: [...options.contents] }];
 
 		// Track executed nodes for logging
 		const executedNodes: string[] = [];
@@ -473,7 +489,7 @@ export class LangGraphAgent extends BaseAgent {
 			stepCount++;
 
 			// Get next node to execute
-			const { node, messages } = nodesToExecute.shift()!;
+			const { node, currentContents: nodeContents } = nodesToExecute.shift()!;
 			if (process.env.DEBUG === "true") {
 				console.log(
 					`[LangGraphAgent] Step ${stepCount}: Executing node "${node.name}" (streaming)`,
@@ -483,8 +499,8 @@ export class LangGraphAgent extends BaseAgent {
 
 			try {
 				// Execute node function
-				const result = await node.agent.run({
-					messages: messages,
+				const result: LLMResponse = await node.agent.run({
+					contents: nodeContents,
 					config: context.config,
 				});
 
@@ -497,24 +513,27 @@ export class LangGraphAgent extends BaseAgent {
 					result,
 				});
 
-				// If the result is an LLMResponse, add it to the messages
-				if (this.isLLMResponse(result)) {
-					context.messages.push({
-						role: "assistant",
-						content: this.extractTextContent(result.content),
-					});
+				// If the result is a model response, add its content to the context's history
+				if (this.isModelResponse(result) && result.content) {
+					context.addContent(result.content);
 				}
 
 				// Update with node result
-				yield {
-					content: `Completed node "${node.name}". ${
-						this.isLLMResponse(result)
-							? `\nNode output: ${this.extractTextContent(result.content)}`
-							: ""
-					}`,
-					role: "assistant",
+				const resultText = this.isModelResponse(result)
+					? this.extractTextFromContent(result.content)
+					: "Non-model response";
+				yield new LLMResponse({
+					content: {
+						role: "model",
+						parts: [
+							{
+								text: `Completed node "${node.name}".
+Node output: ${resultText}`,
+							},
+						],
+					},
 					is_partial: true,
-				};
+				});
 
 				// Determine the next node(s) to execute
 				let nextNodeName: string | null = null;
@@ -532,7 +551,7 @@ export class LangGraphAgent extends BaseAgent {
 						const { shouldExecute } = await this.executeConditionalNode(
 							targetNode,
 							targetName,
-							context.messages,
+							context.contents,
 							context.config,
 						);
 
@@ -554,15 +573,23 @@ export class LangGraphAgent extends BaseAgent {
 				if (nextNode) {
 					nodesToExecute.push({
 						node: nextNode,
-						messages: [...context.messages],
+						currentContents: [...context.contents],
 					});
 				}
 			} catch (error) {
 				console.error(`[LangGraphAgent] Error in node "${node.name}":`, error);
-				yield {
-					content: `Error in node "${node.name}": ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
-				};
+				yield new LLMResponse({
+					content: {
+						role: "model",
+						parts: [
+							{
+								text: `Error in node "${node.name}": ${error instanceof Error ? error.message : String(error)}`,
+							},
+						],
+					},
+					turn_complete: true,
+				});
+
 				return;
 			}
 		}
@@ -571,17 +598,24 @@ export class LangGraphAgent extends BaseAgent {
 		const lastNodeResult = this.results[this.results.length - 1]?.result;
 
 		// Final update
-		if (this.isLLMResponse(lastNodeResult)) {
-			yield lastNodeResult;
+		if (lastNodeResult instanceof LLMResponse) {
+			yield new LLMResponse({ ...lastNodeResult, turn_complete: true });
 		} else {
-			yield {
-				content: `Graph execution complete. Final result from node "${this.results[this.results.length - 1]?.node}": ${
-					typeof lastNodeResult === "string"
-						? lastNodeResult
-						: JSON.stringify(lastNodeResult, null, 2)
-				}`,
-				role: "assistant",
-			};
+			const finalText =
+				typeof lastNodeResult === "string"
+					? lastNodeResult
+					: JSON.stringify(lastNodeResult, null, 2);
+			yield new LLMResponse({
+				content: {
+					role: "model",
+					parts: [
+						{
+							text: `Graph execution complete. Final result from node "${this.results[this.results.length - 1]?.node}": ${finalText}`,
+						},
+					],
+				},
+				turn_complete: true,
+			});
 		}
 	}
 }

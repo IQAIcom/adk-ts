@@ -1,4 +1,4 @@
-import type { Session } from "./session";
+import type { Session } from "../sessions/session";
 
 /**
  * Represents a single memory retrieval result

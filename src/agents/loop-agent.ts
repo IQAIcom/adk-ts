@@ -1,6 +1,6 @@
 import type { RunConfig } from "./run-config";
-import type { Message, MessageRole } from "../models/llm-request";
-import type { LLMResponse } from "../models/llm-response";
+import type { Content, Role, Part, TextPart } from "../models/llm-request";
+import { LLMResponse } from "../models/llm-response";
 import { BaseAgent } from "./base-agent";
 
 /**
@@ -98,7 +98,7 @@ export class LoopAgent extends BaseAgent {
 	private async shouldContinue(
 		response: LLMResponse,
 		iterationCount: number,
-		messages: Message[],
+		currentContents: Content[],
 		config?: RunConfig,
 	): Promise<boolean> {
 		// Stop if we've reached maximum iterations
@@ -131,37 +131,45 @@ export class LoopAgent extends BaseAgent {
 			}
 
 			// Add the response to messages for the condition agent
-			const conditionMessages: Message[] = [
-				...messages,
-				{
-					role: "assistant" as MessageRole,
-					content: response.content || "",
-				},
-				{
-					role: "user" as MessageRole,
-					content:
-						'Should the loop continue? Respond with "yes" to continue or "no" to stop.',
-				},
-			];
+			const conditionContents: Content[] = [...currentContents];
+			if (response.content) {
+				conditionContents.push(response.content);
+			}
+			conditionContents.push({
+				role: "user" as Role,
+				parts: [
+					{
+						text: 'Should the loop continue? Respond with "yes" to continue or "no" to stop.',
+					},
+				],
+			});
 
 			// Run the condition agent
 			try {
-				const conditionResponse = await this.conditionAgent.run({
-					messages: conditionMessages,
+				const conditionAgentResponse = await this.conditionAgent.run({
+					contents: conditionContents,
 					config,
 				});
 
 				// Check response content for yes/no
-				const content = conditionResponse.content?.toLowerCase() || "";
-				const shouldContinue =
-					content.includes("yes") && !content.includes("no");
+				let textContent = "";
+				if (conditionAgentResponse.content?.parts) {
+					for (const part of conditionAgentResponse.content.parts) {
+						if ("text" in part) {
+							textContent += `${(part as TextPart).text.toLowerCase()} `;
+						}
+					}
+				}
+				textContent = textContent.trim();
+				const shouldContinueLoop =
+					textContent.includes("yes") && !textContent.includes("no");
 
 				if (process.env.DEBUG === "true") {
 					console.log(
-						`[LoopAgent] Condition agent result: ${shouldContinue ? "Continue loop" : "Stop loop"}`,
+						`[LoopAgent] Condition agent result: ${shouldContinueLoop ? "Continue loop" : "Stop loop"}`,
 					);
 				}
-				return shouldContinue;
+				return shouldContinueLoop;
 			} catch (error) {
 				console.error("[LoopAgent] Error in condition agent:", error);
 				return false;
@@ -177,7 +185,7 @@ export class LoopAgent extends BaseAgent {
 	 * Executes the sub-agent in a loop until the condition is met
 	 */
 	async run(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 	}): Promise<LLMResponse> {
 		// Log execution
@@ -188,10 +196,12 @@ export class LoopAgent extends BaseAgent {
 		}
 
 		if (this.subAgents.length === 0) {
-			return {
-				content: "No sub-agent defined for loop execution.",
-				role: "assistant",
-			};
+			return new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: "No sub-agent defined for loop execution." }],
+				},
+			});
 		}
 
 		// Get the agent to loop
@@ -199,12 +209,12 @@ export class LoopAgent extends BaseAgent {
 
 		// Initialize loop variables
 		let iterationCount = 0;
-		const currentMessages = [...options.messages];
+		const currentLoopContents = [...options.contents];
 		let lastResponse: LLMResponse | null = null;
-		let shouldContinueLoop = true;
+		let shouldContinueLoopFlag = true;
 
 		// Execute the loop
-		while (shouldContinueLoop && iterationCount < this.maxIterations) {
+		while (shouldContinueLoopFlag && iterationCount < this.maxIterations) {
 			iterationCount++;
 			if (process.env.DEBUG === "true") {
 				console.log(
@@ -215,7 +225,7 @@ export class LoopAgent extends BaseAgent {
 			try {
 				// Run the agent
 				const response = await subAgent.run({
-					messages: currentMessages,
+					contents: currentLoopContents,
 					config: options.config,
 				});
 
@@ -223,24 +233,27 @@ export class LoopAgent extends BaseAgent {
 				lastResponse = response;
 
 				// Add the response to messages for the next iteration
-				currentMessages.push({
-					role: "assistant" as MessageRole,
-					content: response.content || "",
-				});
+				if (response.content) {
+					currentLoopContents.push(response.content);
+				}
 
 				// Check if we should continue the loop
-				shouldContinueLoop = await this.shouldContinue(
+				shouldContinueLoopFlag = await this.shouldContinue(
 					response,
 					iterationCount,
-					currentMessages,
+					currentLoopContents,
 					options.config,
 				);
 
 				// If we're continuing, add a transition message for the next iteration
-				if (shouldContinueLoop) {
-					currentMessages.push({
-						role: "user" as MessageRole,
-						content: `Iteration ${iterationCount} complete. Continue to iteration ${iterationCount + 1}.`,
+				if (shouldContinueLoopFlag) {
+					currentLoopContents.push({
+						role: "user" as Role,
+						parts: [
+							{
+								text: `Iteration ${iterationCount} complete. Continue to iteration ${iterationCount + 1}.`,
+							},
+						],
 					});
 				}
 			} catch (error) {
@@ -254,24 +267,40 @@ export class LoopAgent extends BaseAgent {
 
 		// Prepare the final response
 		if (!lastResponse) {
-			return {
-				content: "No response generated from loop execution.",
-				role: "assistant",
-			};
+			return new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: "No response generated from loop execution." }],
+				},
+			});
 		}
 
 		// Return the final response with loop information
-		return {
-			content: `Completed ${iterationCount} iterations. Final result:\n\n${lastResponse.content || ""}`,
-			role: "assistant",
-		};
+		let finalText = "";
+		if (lastResponse.content?.parts) {
+			for (const part of lastResponse.content.parts) {
+				if ("text" in part) finalText += `${(part as TextPart).text} `;
+			}
+		}
+		finalText = finalText.trim();
+
+		return new LLMResponse({
+			content: {
+				role: "model",
+				parts: [
+					{
+						text: `Completed ${iterationCount} iterations. Final result:\n\n${finalText}`,
+					},
+				],
+			},
+		});
 	}
 
 	/**
 	 * Runs the agent with streaming support
 	 */
 	async *runStreaming(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 	}): AsyncIterable<LLMResponse> {
 		// Log execution
@@ -282,30 +311,39 @@ export class LoopAgent extends BaseAgent {
 		}
 
 		if (this.subAgents.length === 0) {
-			yield {
-				content: "No sub-agent defined for loop execution.",
-				role: "assistant",
-			};
+			yield new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: "No sub-agent defined for loop execution." }],
+				},
+				turn_complete: true,
+			});
 			return;
 		}
 
 		// Get the agent to loop
-		const loopAgent = this.subAgents[0];
+		const loopAgentToExecute = this.subAgents[0];
 
 		// Initialize loop variables
 		let iterationCount = 0;
-		const currentMessages = [...options.messages];
-		let shouldContinueLoop = true;
+		const currentLoopStreamContents = [...options.contents];
+		let shouldContinueLoopStream = true;
 
 		// Initial status message
-		yield {
-			content: `Starting loop execution with max ${this.maxIterations} iterations...`,
-			role: "assistant",
+		yield new LLMResponse({
+			content: {
+				role: "model",
+				parts: [
+					{
+						text: `Starting loop execution with max ${this.maxIterations} iterations...`,
+					},
+				],
+			},
 			is_partial: true,
-		};
+		});
 
 		// Execute the loop
-		while (shouldContinueLoop && iterationCount < this.maxIterations) {
+		while (shouldContinueLoopStream && iterationCount < this.maxIterations) {
 			iterationCount++;
 			if (process.env.DEBUG === "true") {
 				console.log(
@@ -314,94 +352,138 @@ export class LoopAgent extends BaseAgent {
 			}
 
 			// Status update for this iteration
-			yield {
-				content: `Running iteration ${iterationCount}/${this.maxIterations}...`,
-				role: "assistant",
+			yield new LLMResponse({
+				content: {
+					role: "model",
+					parts: [
+						{
+							text: `Running iteration ${iterationCount}/${this.maxIterations}...`,
+						},
+					],
+				},
 				is_partial: true,
-			};
+			});
 
 			try {
 				// Run the agent with streaming
-				const streamGenerator = loopAgent.runStreaming({
-					messages: currentMessages,
+				const streamGenerator = loopAgentToExecute.runStreaming({
+					contents: currentLoopStreamContents,
 					config: options.config,
 				});
 
 				// Track the last non-partial chunk
-				let lastChunk: LLMResponse | null = null;
+				let lastChunkFromIteration: LLMResponse | null = null;
 
 				// Stream each chunk from the current iteration
 				for await (const chunk of streamGenerator) {
-					// Enhance the chunk with loop information
-					const enhancedChunk = {
-						...chunk,
-						content: `Iteration ${iterationCount}/${this.maxIterations}: ${chunk.content || ""}`,
-						is_partial: true,
+					let chunkText = "";
+					if (chunk.content?.parts) {
+						for (const part of chunk.content.parts) {
+							if ("text" in part) chunkText += `${(part as TextPart).text} `;
+						}
+					}
+					chunkText = chunkText.trim();
+
+					const enhancedChunkContent: Content = {
+						role: "model" as Role,
+						parts: [
+							{
+								text: `Iteration ${iterationCount}/${this.maxIterations}: ${chunkText}`,
+							},
+						],
 					};
 
-					yield enhancedChunk;
+					yield new LLMResponse({
+						...chunk,
+						content: enhancedChunkContent,
+						is_partial: true,
+					});
 
 					if (!chunk.is_partial) {
-						lastChunk = chunk;
+						lastChunkFromIteration = chunk;
 					}
 				}
 
 				// Need the last complete chunk for condition checking
-				if (!lastChunk) {
+				if (!lastChunkFromIteration) {
 					if (process.env.DEBUG === "true") {
 						console.warn(
 							`[LoopAgent] No complete chunk received from iteration ${iterationCount}`,
 						);
 					}
-					shouldContinueLoop = false;
+					shouldContinueLoopStream = false;
 					continue;
 				}
 
 				// Add the response to messages for the next iteration
-				currentMessages.push({
-					role: "assistant" as MessageRole,
-					content: lastChunk.content || "",
-				});
+				if (lastChunkFromIteration.content) {
+					currentLoopStreamContents.push(lastChunkFromIteration.content);
+				}
 
 				// Check if we should continue the loop
-				shouldContinueLoop = await this.shouldContinue(
-					lastChunk,
+				shouldContinueLoopStream = await this.shouldContinue(
+					lastChunkFromIteration,
 					iterationCount,
-					currentMessages,
+					currentLoopStreamContents,
 					options.config,
 				);
 
 				// If we're continuing, add a transition message for the next iteration
-				if (shouldContinueLoop) {
-					currentMessages.push({
-						role: "user" as MessageRole,
-						content: `Iteration ${iterationCount} complete. Continue to iteration ${iterationCount + 1}.`,
+				if (shouldContinueLoopStream) {
+					currentLoopStreamContents.push({
+						role: "user" as Role,
+						parts: [
+							{
+								text: `Iteration ${iterationCount} complete. Continue to iteration ${iterationCount + 1}.`,
+							},
+						],
 					});
 
 					// Status update between iterations
-					yield {
-						content: `Completed iteration ${iterationCount}. ${shouldContinueLoop ? "Continuing to next iteration..." : "Loop complete."}`,
-						role: "assistant",
-						is_partial: shouldContinueLoop,
-					};
+					yield new LLMResponse({
+						content: {
+							role: "model",
+							parts: [
+								{
+									text: `Completed iteration ${iterationCount}. ${shouldContinueLoopStream ? "Continuing to next iteration..." : "Loop complete."}`,
+								},
+							],
+						},
+						is_partial: shouldContinueLoopStream,
+						turn_complete: !shouldContinueLoopStream,
+					});
 				}
 			} catch (error) {
 				console.error(
 					`[LoopAgent] Error in loop iteration ${iterationCount}:`,
 					error,
 				);
-				yield {
-					content: `Error in loop iteration ${iterationCount}: ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
-				};
+				yield new LLMResponse({
+					content: {
+						role: "model",
+						parts: [
+							{
+								text: `Error in loop iteration ${iterationCount}: ${error instanceof Error ? error.message : String(error)}`,
+							},
+						],
+					},
+					turn_complete: true,
+				});
 				return;
 			}
 		}
 
 		// Final message summarizing the loop execution
-		yield {
-			content: `Loop execution completed after ${iterationCount} iterations.`,
-			role: "assistant",
-		};
+		yield new LLMResponse({
+			content: {
+				role: "model",
+				parts: [
+					{
+						text: `Loop execution completed after ${iterationCount} iterations.`,
+					},
+				],
+			},
+			turn_complete: true,
+		});
 	}
 }

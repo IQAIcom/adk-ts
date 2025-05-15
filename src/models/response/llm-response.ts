@@ -1,4 +1,8 @@
-import type { Content } from "./llm-request";
+import type { Content } from "../llm-request";
+
+// The FunctionCall and ToolCall interfaces previously defined here are now redundant.
+// Function/tool call information will be part of the `Content` object's `parts`,
+// typically as a `FunctionCallPart` (defined in llm-request.ts).
 
 /**
  * Response from an LLM, aligned with the Content/Part model.
@@ -45,7 +49,7 @@ export class LLMResponse {
 		raw_response?: any;
 	}) {
 		this.content = data.content;
-		this.is_partial = data.is_partial ?? false; // Default is_partial to false
+		this.is_partial = data.is_partial || false;
 		this.turn_complete = data.turn_complete;
 		this.error_code = data.error_code;
 		this.error_message = data.error_message;

@@ -24,13 +24,13 @@ export type { ToolConfig } from "./tools/base/base-tool";
 export { LLMRegistry } from "./models/llm-registry";
 
 // LLM Providers - Direct access to specific providers
-export { OpenAILLM } from "./models/openai-llm";
-export { AnthropicLLM } from "./models/anthropic-llm";
-export { GoogleLLM } from "./models/google-llm";
+export { OpenAILLM } from "./llm/providers/openai/openai-llm";
+export { AnthropicLLM } from "./llm/providers/anthropic/anthropic-llm";
+export { GoogleLLM } from "./llm/providers/google/google-llm";
 
 // LLM Connections
-export { OpenAILLMConnection } from "./models/openai-llm-connection";
-export { AnthropicLLMConnection } from "./models/anthropic-llm-connection";
+export { OpenAILLMConnection } from "./llm/providers/openai/openai-llm-connection";
+export { AnthropicLLMConnection } from "./llm/providers/anthropic/anthropic-llm-connection";
 
 // Initialize providers - Automatically registers all LLMs
 import "./models/registry";
@@ -42,14 +42,23 @@ export { GoogleSearch } from "./tools/common/google-search";
 // Request/Response Models
 export {
 	LLMRequest,
-	Message,
-	MessageRole,
-	MessageContent,
+	// Message, // Commented out in llm-request.ts
+	// MessageRole, // Replaced by Role
+	// MessageContent, // Replaced by Part & Content
+	Content, // New
+	Part, // New
+	Role, // New
+	TextPart, // New
+	InlineDataPart, // New
+	FunctionCallData, // New
+	FunctionCallPart, // New
+	FunctionResponseData, // New
+	FunctionResponsePart, // New
 } from "./models/llm-request";
 export {
 	LLMResponse,
-	FunctionCall,
-	ToolCall,
+	// FunctionCall, // Commented out in llm-response.ts
+	// ToolCall, // Commented out in llm-response.ts
 } from "./models/llm-response";
 export {
 	FunctionDeclaration,

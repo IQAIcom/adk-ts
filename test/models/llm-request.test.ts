@@ -1,27 +1,30 @@
 import { describe, expect, it } from "vitest";
 import {
-	type ImageContent,
 	LLMRequest,
 	type LLMRequestConfig,
-	type Message,
-	type MessageRole,
-	type TextContent,
+	type Content,
+	type Part,
+	type Role,
+	type TextPart,
+	type InlineDataPart,
 } from "../../src/models/llm-request";
+import type { FunctionDeclaration } from "../../src";
 
 describe("LLMRequest", () => {
-	it("should initialize with simple messages", () => {
-		const messages: Message[] = [{ role: "user", content: "Hello, world!" }];
+	it("should initialize with simple content", () => {
+		const contents: Content[] = [
+			{ role: "user", parts: [{ text: "Hello, world!" }] },
+		];
 
-		const request = new LLMRequest({ messages });
+		const request = new LLMRequest({ contents });
 
-		expect(request.messages).toEqual(messages);
+		expect(request.contents).toEqual(contents);
 		expect(request.config).toBeDefined();
 	});
 
-	it("should initialize with messages and config", () => {
-		const messages: Message[] = [
-			{ role: "system", content: "You are a helpful assistant." },
-			{ role: "user", content: "Hello, world!" },
+	it("should initialize with contents and config", () => {
+		const contents: Content[] = [
+			{ role: "user", parts: [{ text: "Hello, world!" }] },
 		];
 
 		const config: LLMRequestConfig = {
@@ -29,73 +32,70 @@ describe("LLMRequest", () => {
 			max_tokens: 100,
 		};
 
-		const request = new LLMRequest({ messages, config });
+		const request = new LLMRequest({ contents, config });
 
-		expect(request.messages).toEqual(messages);
+		expect(request.contents).toEqual(contents);
 		expect(request.config).toEqual(config);
 	});
 
-	it("should handle empty messages array", () => {
-		const request = new LLMRequest({ messages: [] });
+	it("should handle empty contents array", () => {
+		const request = new LLMRequest({ contents: [] });
 
-		expect(request.messages).toEqual([]);
+		expect(request.contents).toEqual([]);
 		expect(request.config).toBeDefined();
 	});
 
-	it("should handle multimodal content", () => {
-		const textContent: TextContent = {
-			type: "text",
-			text: "What is this image?",
-		};
-		const imageContent: ImageContent = {
-			type: "image",
-			image_url: { url: "https://example.com/image.jpg" },
+	it("should handle multimodal content (text and inline data)", () => {
+		const textPart: TextPart = { text: "What is this image?" };
+		const imagePart: InlineDataPart = {
+			inlineData: {
+				mimeType: "image/jpeg",
+				data: "/9j/4AAQSkZJRgABAQEAYABgAAD...",
+			},
 		};
 
-		const messages: Message[] = [
+		const contents: Content[] = [
 			{
 				role: "user",
-				content: [textContent, imageContent],
+				parts: [textPart, imagePart],
 			},
 		];
 
-		const request = new LLMRequest({ messages });
+		const request = new LLMRequest({ contents });
 
-		expect(request.messages).toEqual(messages);
-		expect(Array.isArray(request.messages[0].content)).toBe(true);
-
-		const content = request.messages[0].content as Array<
-			TextContent | ImageContent
-		>;
-		expect(content[0].type).toBe("text");
-		expect(content[1].type).toBe("image");
+		expect(request.contents).toEqual(contents);
+		expect(request.contents[0].parts.length).toBe(2);
+		const firstPart = request.contents[0].parts[0] as TextPart;
+		const secondPart = request.contents[0].parts[1] as InlineDataPart;
+		expect(firstPart.text).toBe("What is this image?");
+		expect(secondPart.inlineData.mimeType).toBe("image/jpeg");
 	});
 
 	it("should handle functions in config", () => {
-		const messages: Message[] = [
-			{ role: "user", content: "What is the weather in Paris?" },
+		const contents: Content[] = [
+			{ role: "user", parts: [{ text: "What is the weather in Paris?" }] },
 		];
 
-		const config: LLMRequestConfig = {
-			functions: [
-				{
-					name: "get_weather",
-					description: "Get the weather for a location",
-					parameters: {
-						type: "object",
-						properties: {
-							location: {
-								type: "string",
-								description: "The city and state or country",
-							},
-						},
-						required: ["location"],
+		const getWeatherFunction: FunctionDeclaration = {
+			name: "get_weather",
+			description: "Get the weather for a location",
+			parameters: {
+				type: "object",
+				properties: {
+					location: {
+						type: "string",
+						description: "The city and state or country",
 					},
 				},
-			],
+				required: ["location"],
+			},
 		};
 
-		const request = new LLMRequest({ messages, config });
+		const config: LLMRequestConfig = {
+			functions: [getWeatherFunction],
+		};
+
+		const request = new LLMRequest({ contents, config });
 
 		expect(request.config.functions).toBeDefined();
 		expect(request.config.functions?.length).toBe(1);
@@ -103,30 +103,24 @@ describe("LLMRequest", () => {
 	});
 
 	it("should set default config if not provided", () => {
-		const messages: Message[] = [{ role: "user", content: "Hello" }];
+		const contents: Content[] = [{ role: "user", parts: [{ text: "Hello" }] }];
 
-		const request = new LLMRequest({ messages });
+		const request = new LLMRequest({ contents });
 
 		expect(request.config).toEqual({});
 	});
 
-	it("should support all message roles", () => {
-		const roles: MessageRole[] = [
-			"user",
-			"assistant",
-			"system",
-			"function",
-			"tool",
-		];
+	it("should support defined roles for Content objects", () => {
+		const roles: Role[] = ["user", "model", "function"];
 
 		for (const role of roles) {
-			const message: Message = {
+			const contentItem: Content = {
 				role,
-				content: `I am a ${role} message`,
+				parts: [{ text: `I am a ${role} message` }],
 			};
 
-			const request = new LLMRequest({ messages: [message] });
-			expect(request.messages[0].role).toBe(role);
+			const request = new LLMRequest({ contents: [contentItem] });
+			expect(request.contents[0].role).toBe(role);
 		}
 	});
 });

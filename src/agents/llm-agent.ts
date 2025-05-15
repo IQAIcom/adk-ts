@@ -5,11 +5,20 @@ import type { RunConfig } from "./run-config";
 import { InvocationContext } from "./invocation-context";
 import { ToolContext } from "../tools/tool-context";
 import type {
-  BaseMemoryService,
-  SearchMemoryOptions,
+	BaseMemoryService,
+	SearchMemoryOptions,
 } from "../memory/memory-service";
-import { LLMRequest, type Message } from "../models/llm-request";
-import type { LLMResponse, ToolCall } from "../models/llm-response";
+import {
+	LLMRequest,
+	type Content,
+	type Part,
+	type Role,
+	type TextPart,
+	type FunctionCallPart,
+	type FunctionCallData,
+	type FunctionResponsePart,
+} from "../models/llm-request";
+import { LLMResponse } from "../models/llm-response";
 import type { BaseTool } from "../tools/base/base-tool";
 import { BaseAgent } from "./base-agent";
 
@@ -17,669 +26,734 @@ import { BaseAgent } from "./base-agent";
  * Configuration for Agent
  */
 export interface AgentConfig {
-  /**
-   * Name of the agent
-   */
-  name: string;
+	/**
+	 * Name of the agent
+	 */
+	name: string;
 
-  /**
-   * Description of the agent
-   */
-  description: string;
+	/**
+	 * Description of the agent
+	 */
+	description: string;
 
-  /**
-   * The LLM model to use
-   */
-  model: string;
+	/**
+	 * The LLM model to use
+	 */
+	model: string;
 
-  /**
-   * Instructions for the agent
-   */
-  instructions?: string;
+	/**
+	 * Instructions for the agent
+	 */
+	instructions?: string;
 
-  /**
-   * Tools available to the agent
-   */
-  tools?: BaseTool[];
+	/**
+	 * Tools available to the agent
+	 */
+	tools?: BaseTool[];
 
-  /**
-   * Maximum number of tool execution steps
-   */
-  maxToolExecutionSteps?: number;
+	/**
+	 * Maximum number of tool execution steps
+	 */
+	maxToolExecutionSteps?: number;
 
-  /**
-   * Memory service for long-term storage and retrieval
-   */
-  memoryService?: BaseMemoryService;
+	/**
+	 * Memory service for long-term storage and retrieval
+	 */
+	memoryService?: BaseMemoryService;
 
-  /**
-   * Session service for managing conversations
-   */
-  sessionService?: SessionService;
+	/**
+	 * Session service for managing conversations
+	 */
+	sessionService?: SessionService;
 
-  /**
-   * User ID for the session (required for session persistence)
-   */
-  userId?: string;
+	/**
+	 * User ID for the session (required for session persistence)
+	 */
+	userId?: string;
 
-  /**
-   * Application name (for multi-app environments)
-   */
-  appName?: string;
+	/**
+	 * Application name (for multi-app environments)
+	 */
+	appName?: string;
 
-  /**
-   * Whether to automatically augment prompts with relevant memory
-   */
-  useMemoryAugmentation?: boolean;
+	/**
+	 * Whether to automatically augment prompts with relevant memory
+	 */
+	useMemoryAugmentation?: boolean;
 
-  /**
-   * The maximum number of memory items to include in augmentation
-   */
-  maxMemoryItems?: number;
+	/**
+	 * The maximum number of memory items to include in augmentation
+	 */
+	maxMemoryItems?: number;
 
-  /**
-   * The minimum relevance score for memory augmentation (0-1)
-   */
-  memoryRelevanceThreshold?: number;
+	/**
+	 * The minimum relevance score for memory augmentation (0-1)
+	 */
+	memoryRelevanceThreshold?: number;
 }
 
 /**
  * Standard Agent implementation that uses an LLM
  */
 export class Agent extends BaseAgent {
-  /**
-   * The LLM model to use
-   */
-  private model: string;
-
-  /**
-   * The LLM instance
-   */
-  private llm: BaseLLM;
-
-  /**
-   * Instructions for the agent
-   */
-  private instructions?: string;
-
-  /**
-   * Tools available to the agent
-   */
-  private tools: BaseTool[];
-
-  /**
-   * Maximum number of tool execution steps to prevent infinite loops
-   */
-  private maxToolExecutionSteps: number;
-
-  /**
-   * Memory service for long-term storage and retrieval
-   */
-  private memoryService?: BaseMemoryService;
-
-  /**
-   * Session service for managing conversations
-   */
-  private sessionService?: SessionService;
-
-  /**
-   * User ID for the session
-   */
-  private userId?: string;
-
-  /**
-   * Application name
-   */
-  private appName?: string;
-
-  /**
-   * Whether to automatically augment prompts with relevant memory
-   */
-  private useMemoryAugmentation: boolean;
-
-  /**
-   * The maximum number of memory items to include in augmentation
-   */
-  private maxMemoryItems: number;
-
-  /**
-   * The minimum relevance score for memory augmentation (0-1)
-   */
-  private memoryRelevanceThreshold: number;
-
-  /**
-   * Constructor for Agent
-   */
-  constructor(config: AgentConfig) {
-    super({
-      name: config.name,
-      description: config.description,
-    });
-
-    this.model = config.model;
-    this.instructions = config.instructions;
-    this.tools = config.tools || [];
-    this.maxToolExecutionSteps = config.maxToolExecutionSteps || 10;
-    this.memoryService = config.memoryService;
-    this.sessionService = config.sessionService;
-    this.userId = config.userId;
-    this.appName = config.appName;
-    this.useMemoryAugmentation = config.useMemoryAugmentation ?? false;
-    this.maxMemoryItems = config.maxMemoryItems ?? 5;
-    this.memoryRelevanceThreshold = config.memoryRelevanceThreshold ?? 0.3;
-
-    // Get the LLM instance
-    this.llm = LLMRegistry.newLLM(this.model);
-  }
-
-  /**
-   * Finds a tool by name
-   */
-  private findTool(name: string): BaseTool | undefined {
-    return this.tools.find((tool) => tool.name === name);
-  }
-
-  /**
-   * Executes a tool call and returns the result
-   */
-  private async executeTool(
-    toolCall: ToolCall,
-    context: InvocationContext,
-  ): Promise<{ name: string; result: any }> {
-    const { name, arguments: argsString } = toolCall.function;
-    if (process.env.DEBUG === "true") {
-      console.log(`Executing tool: ${name}`);
-    }
-
-    // Find the tool
-    const tool = this.findTool(name);
-    if (!tool) {
-      console.warn(`Tool '${name}' not found`);
-      return {
-        name,
-        result: `Error: Tool '${name}' not found.`,
-      };
-    }
-
-    try {
-      // Parse arguments
-      const args = JSON.parse(argsString);
-
-      // Create a tool execution context
-      const toolContext = new ToolContext({
-        invocationContext: context,
-        parameters: args,
-      });
-
-      toolContext.toolName = name;
-      toolContext.toolId = toolCall.id;
-
-      // Execute the tool
-      const result = await tool.runAsync(args, toolContext);
-      if (process.env.DEBUG === "true") {
-        console.log(`Tool ${name} execution complete`);
-      }
-
-      return {
-        name,
-        result: typeof result === "string" ? result : JSON.stringify(result),
-      };
-    } catch (error) {
-      console.error(`Error executing tool ${name}:`, error);
-      return {
-        name,
-        result: `Error executing tool ${name}: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  }
-
-  /**
-   * Execute multiple tools in parallel
-   */
-  private async executeTools(
-    toolCalls: ToolCall[],
-    context: InvocationContext,
-  ): Promise<{ name: string; result: any; id: string }[]> {
-    // Execute all tools in parallel and include the original tool call ID with the result
-    const results = await Promise.all(
-      toolCalls.map(async (toolCall) => {
-        const result = await this.executeTool(toolCall, context);
-        return {
-          ...result,
-          id: toolCall.id, // Include the original tool call ID
-        };
-      }),
-    );
-    return results;
-  }
-
-  /**
-   * Augments context with relevant memory
-   */
-  private async augmentWithMemory(context: InvocationContext): Promise<void> {
-    // Skip if memory augmentation is disabled or no memory service
-    if (!this.useMemoryAugmentation || !context.memoryService) {
-      return;
-    }
-
-    try {
-      // Extract query from the last user message
-      const lastUserMsg = [...context.messages]
-        .reverse()
-        .find((msg) => msg.role === "user");
-      if (!lastUserMsg || !lastUserMsg.content) {
-        return;
-      }
-
-      // Get the query text
-      let query = "";
-      if (typeof lastUserMsg.content === "string") {
-        query = lastUserMsg.content;
-      } else if (Array.isArray(lastUserMsg.content)) {
-        // Extract text from content array
-        for (const part of lastUserMsg.content) {
-          if (part.type === "text") {
-            query += `${part.text} `;
-          }
-        }
-      } else if (lastUserMsg.content.type === "text") {
-        query = lastUserMsg.content.text;
-      }
-
-      if (!query.trim()) {
-        return;
-      }
-
-      // Search memory with the query
-      const searchOptions: SearchMemoryOptions = {
-        threshold: this.memoryRelevanceThreshold,
-        limit: this.maxMemoryItems,
-      };
-
-      const memories = await context.searchMemory(query, searchOptions);
-
-      // Skip if no relevant memories found
-      if (!memories.memories.length) {
-        return;
-      }
-
-      // Generate a summary of relevant memories to add as system message
-      const relevantInfo: string[] = [];
-
-      for (const memory of memories.memories) {
-        const sessionId = memory.sessionId;
-        const events = memory.events as Message[];
-
-        // Format each memory
-        const formattedEvents = events.map((event) => {
-          const role = event.role === "user" ? "User" : "Assistant";
-          let content = "";
-
-          if (typeof event.content === "string") {
-            content = event.content;
-          } else if (Array.isArray(event.content)) {
-            // Extract text from content array
-            for (const part of event.content) {
-              if (part.type === "text") {
-                content += `${part.text} `;
-              }
-            }
-          } else if (event.content && event.content.type === "text") {
-            content = event.content.text;
-          }
-
-          return `${role}: ${content}`;
-        });
-
-        relevantInfo.push(
-          `Session ${sessionId.substring(0, 8)}:\n${formattedEvents.join("\n")}`,
-        );
-      }
-
-      // Add memory information as a system message at the beginning
-      if (relevantInfo.length > 0) {
-        const memoryMessage: Message = {
-          role: "system",
-          content: `Relevant information from previous conversations:\n\n${relevantInfo.join("\n\n")}`,
-        };
-
-        // Insert after existing system messages
-        const lastSystemIndex = context.messages.findIndex(
-          (m) => m.role !== "system",
-        );
-        if (lastSystemIndex > 0) {
-          context.messages.splice(lastSystemIndex, 0, memoryMessage);
-        } else {
-          context.messages.unshift(memoryMessage);
-        }
-      }
-    } catch (error) {
-      console.error("Error augmenting with memory:", error);
-      // Continue without memory augmentation on error
-    }
-  }
-
-  /**
-   * Saves the session to memory
-   */
-  private async saveToMemory(context: InvocationContext): Promise<void> {
-    try {
-      if (context.sessionService && this.userId) {
-        // Ensure we have the user ID set
-        context.userId = context.userId || this.userId;
-
-        // Save the session
-        await context.saveSession();
-      }
-    } catch (error) {
-      console.error("Error saving to memory:", error);
-      // Continue without saving to memory on error
-    }
-  }
-
-  /**
-   * Generates a unique session ID
-   */
-  private generateSessionId(): string {
-    return `${this.name}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  }
-
-  /**
-   * Runs the agent with the given messages and configuration
-   */
-  async run(options: {
-    messages: Message[];
-    config?: RunConfig;
-    sessionId?: string;
-  }): Promise<LLMResponse> {
-    // Generate session ID if not provided
-    const sessionId = options.sessionId || this.generateSessionId();
-
-    const context = new InvocationContext({
-      sessionId,
-      messages: [...options.messages],
-      config: options.config,
-      userId: this.userId,
-      appName: this.appName,
-      memoryService: this.memoryService,
-      sessionService: this.sessionService,
-    });
-
-    try {
-      // Add system message with instructions if provided
-      if (this.instructions) {
-        context.messages.unshift({
-          role: "system",
-          content: this.instructions,
-        });
-      }
-
-      // Add tool declarations if any tools are available
-      const functions = this.tools.map((tool) => tool.getDeclaration());
-
-      const responseGenerator = await this.llm.generateContentAsync(
-        new LLMRequest({
-          messages: context.messages,
-          config: {
-            ...options.config,
-            functions: functions.length > 0 ? functions : undefined,
-          },
-        }),
-      );
-
-      let response: LLMResponse | undefined;
-      for await (const chunk of responseGenerator) {
-        response = chunk;
-      }
-
-      if (!response) {
-        throw new Error("No response from LLM");
-      }
-
-      let stepCount = 0;
-      while (stepCount < this.maxToolExecutionSteps) {
-        stepCount++;
-
-        if (process.env.DEBUG === "true") {
-          console.log(`\n[Agent] Step ${stepCount}: Thinking...`);
-        }
-
-        // Request a response from the LLM
-        const llmRequest = new LLMRequest({
-          messages: context.messages,
-          config: {
-            ...options.config,
-            functions: functions.length > 0 ? functions : undefined,
-          },
-        });
-
-        // Use generateContentAsync instead of generateContent
-        const responseIterator = this.llm.generateContentAsync(llmRequest);
-        let currentResponse: LLMResponse | undefined;
-
-        for await (const chunk of responseIterator) {
-          currentResponse = chunk;
-        }
-
-        if (!currentResponse) {
-          throw new Error("No response from LLM");
-        }
-
-        if (
-          currentResponse.tool_calls &&
-          currentResponse.tool_calls.length > 0
-        ) {
-          // The LLM wants to use tools
-          if (process.env.DEBUG === "true") {
-            console.log("[Agent] Executing tools...");
-          }
-
-          // Add the assistant message with tool_calls to the conversation first
-          context.addMessage({
-            role: "assistant",
-            content: currentResponse.content || "",
-            tool_calls: currentResponse.tool_calls,
-          });
-
-          // Execute the tools
-          const toolResults = await this.executeTools(
-            currentResponse.tool_calls,
-            context,
-          );
-
-          // Add the results to the context manually
-          for (const result of toolResults) {
-            context.addMessage({
-              role: "tool",
-              tool_call_id: result.id,
-              content: result.result,
-            });
-          }
-        } else {
-          // This is a final response without tool calls
-          if (process.env.DEBUG === "true") {
-            console.log("[Agent] No tool calls, finishing...");
-          }
-
-          // Add the final assistant message to the conversation
-          context.addMessage({
-            role: "assistant",
-            content: currentResponse.content || "",
-          });
-
-          // Save to memory if enabled
-          await this.saveToMemory(context);
-
-          // Return the final response
-          return currentResponse;
-        }
-      }
-
-      return response;
-    } catch (error) {
-      console.error("Error in agent execution:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Runs the agent with streaming support
-   */
-  async *runStreaming(options: {
-    messages: Message[];
-    config?: RunConfig;
-    sessionId?: string;
-  }): AsyncGenerator<LLMResponse> {
-    const context = new InvocationContext({
-      sessionId: options.sessionId,
-      messages: options.messages,
-      config: options.config,
-      userId: this.userId,
-      appName: this.appName,
-      memoryService: this.memoryService,
-      sessionService: this.sessionService,
-    });
-
-    // Add system instructions if provided
-    if (this.instructions) {
-      context.messages.unshift({
-        role: "system",
-        content: this.instructions,
-      });
-    }
-
-    // Augment with memory if enabled
-    await this.augmentWithMemory(context);
-
-    // Execute agent loop (thinking and tool execution)
-    let stepCount = 0;
-    let hadToolCalls = false;
-
-    while (stepCount < this.maxToolExecutionSteps) {
-      if (process.env.DEBUG === "true") {
-        console.log(`\n[Agent] Step ${stepCount + 1}: Thinking...`);
-      }
-
-      // Get tool declarations
-      const toolDeclarations = this.tools
-        .map((tool) => tool.getDeclaration())
-        .filter((declaration) => declaration !== null);
-
-      // Create the request
-      const request = {
-        messages: context.messages,
-        config: {
-          functions: toolDeclarations as any[],
-          stream: true,
-        },
-      };
-
-      // Stream response from LLM
-      const responseGenerator = this.llm.generateContentAsync(request);
-
-      // Capture the final response for tool execution
-      let finalResponse: LLMResponse | null = null;
-      hadToolCalls = false;
-
-      // Stream response chunks
-      for await (const responseChunk of responseGenerator) {
-        // Update current full response
-        finalResponse = responseChunk;
-
-        // Yield the chunk
-        yield responseChunk;
-
-        // Check if there are tool calls to execute
-        hadToolCalls =
-          Boolean(responseChunk.function_call) ||
-          (responseChunk.tool_calls !== undefined &&
-            responseChunk.tool_calls.length > 0);
-      }
-
-      if (!finalResponse) {
-        throw new Error("No response received from LLM");
-      }
-
-      // Add assistant response to conversation history
-      context.addMessage({
-        role: "assistant",
-        content: finalResponse.content || "",
-        function_call: finalResponse.function_call,
-      });
-
-      // If no tool calls, we're done
-      if (!hadToolCalls) {
-        if (process.env.DEBUG === "true") {
-          console.log("[Agent] No tool calls, finishing...");
-        }
-        break;
-      }
-
-      if (process.env.DEBUG === "true") {
-        console.log("[Agent] Executing tools...");
-      }
-      stepCount++;
-
-      // Execute function_call for backward compatibility
-      if (finalResponse.function_call) {
-        const toolCall = {
-          id: "function-call",
-          function: {
-            name: finalResponse.function_call.name,
-            arguments: finalResponse.function_call.arguments,
-          },
-        };
-
-        // For function_call, we don't modify the assistant message that was already added
-
-        const [result] = await this.executeTools([toolCall], context);
-
-        // Add function response to conversation history
-        context.addMessage({
-          role: "function",
-          name: result.name,
-          content: JSON.stringify(result.result),
-        });
-      }
-      // Execute tool_calls
-      else if (
-        finalResponse.tool_calls &&
-        finalResponse.tool_calls.length > 0
-      ) {
-        if (process.env.DEBUG === "true") {
-          console.log(
-            `[Agent] Executing ${finalResponse.tool_calls.length} tool(s)...`,
-          );
-        }
-
-        // Replace the assistant message with one that includes tool_calls
-        // First, remove the last message (which should be the assistant message we just added)
-        context.messages.pop();
-
-        // Add the assistant message with tool_calls
-        context.addMessage({
-          role: "assistant",
-          content: finalResponse.content || "",
-          tool_calls: finalResponse.tool_calls,
-        });
-
-        const results = await this.executeTools(
-          finalResponse.tool_calls,
-          context,
-        );
-
-        // Add tool responses to conversation history
-        for (const result of results) {
-          context.addMessage({
-            role: "tool",
-            tool_call_id: result.id,
-            content: result.result,
-          });
-        }
-      }
-    }
-
-    // Save to memory if enabled
-    await this.saveToMemory(context);
-  }
+	/**
+	 * The LLM model to use
+	 */
+	private model: string;
+
+	/**
+	 * The LLM instance
+	 */
+	private llm: BaseLLM;
+
+	/**
+	 * Instructions for the agent
+	 */
+	private instructions?: string;
+
+	/**
+	 * Tools available to the agent
+	 */
+	private tools: BaseTool[];
+
+	/**
+	 * Maximum number of tool execution steps to prevent infinite loops
+	 */
+	private maxToolExecutionSteps: number;
+
+	/**
+	 * Memory service for long-term storage and retrieval
+	 */
+	private memoryService?: BaseMemoryService;
+
+	/**
+	 * Session service for managing conversations
+	 */
+	private sessionService?: SessionService;
+
+	/**
+	 * User ID for the session
+	 */
+	private userId?: string;
+
+	/**
+	 * Application name
+	 */
+	private appName?: string;
+
+	/**
+	 * Whether to automatically augment prompts with relevant memory
+	 */
+	private useMemoryAugmentation: boolean;
+
+	/**
+	 * The maximum number of memory items to include in augmentation
+	 */
+	private maxMemoryItems: number;
+
+	/**
+	 * The minimum relevance score for memory augmentation (0-1)
+	 */
+	private memoryRelevanceThreshold: number;
+
+	/**
+	 * Constructor for Agent
+	 */
+	constructor(config: AgentConfig) {
+		super({
+			name: config.name,
+			description: config.description,
+		});
+
+		this.model = config.model;
+		this.instructions = config.instructions;
+		this.tools = config.tools || [];
+		this.maxToolExecutionSteps = config.maxToolExecutionSteps || 10;
+		this.memoryService = config.memoryService;
+		this.sessionService = config.sessionService;
+		this.userId = config.userId;
+		this.appName = config.appName;
+		this.useMemoryAugmentation = config.useMemoryAugmentation ?? false;
+		this.maxMemoryItems = config.maxMemoryItems ?? 5;
+		this.memoryRelevanceThreshold = config.memoryRelevanceThreshold ?? 0.3;
+
+		// Get the LLM instance
+		this.llm = LLMRegistry.newLLM(this.model);
+	}
+
+	/**
+	 * Finds a tool by name
+	 */
+	private findTool(name: string): BaseTool | undefined {
+		return this.tools.find((tool) => tool.name === name);
+	}
+
+	/**
+	 * Executes a tool call and returns the result
+	 */
+	private async executeTool(
+		functionCallData: FunctionCallData,
+		invocationContext: InvocationContext,
+	): Promise<{ name: string; result: any }> {
+		const { name, args } = functionCallData;
+		if (process.env.DEBUG === "true") {
+			console.log(`Executing tool: ${name} with args:`, args);
+		}
+
+		// Find the tool
+		const tool = this.findTool(name);
+		if (!tool) {
+			console.warn(`Tool '${name}' not found`);
+			return {
+				name,
+				result: { error: `Tool '${name}' not found.` },
+			};
+		}
+
+		try {
+			// Create a tool execution context
+			const toolContext = new ToolContext({
+				invocationContext,
+				parameters: args,
+			});
+
+			toolContext.toolName = name;
+
+			// Execute the tool
+			const result = await tool.runAsync(args, toolContext);
+			if (process.env.DEBUG === "true") {
+				console.log(`Tool ${name} execution complete`);
+			}
+
+			return { name, result };
+		} catch (error) {
+			console.error(`Error executing tool ${name}:`, error);
+			return {
+				name,
+				result: {
+					error: `Error executing tool ${name}: ${error instanceof Error ? error.message : String(error)}`,
+				},
+			};
+		}
+	}
+
+	/**
+	 * Execute multiple tools in parallel
+	 */
+	private async executeTools(
+		functionCallParts: FunctionCallPart[],
+		context: InvocationContext,
+	): Promise<{ name: string; result: any }[]> {
+		// Execute all tools in parallel and include the original tool call ID with the result
+		const results = await Promise.all(
+			functionCallParts.map(async (part) => {
+				const result = await this.executeTool(part.functionCall, context);
+				return {
+					...result,
+				};
+			}),
+		);
+		return results;
+	}
+
+	/**
+	 * Augments context with relevant memory
+	 */
+	private async augmentWithMemory(context: InvocationContext): Promise<void> {
+		// Skip if memory augmentation is disabled or no memory service
+		if (!this.useMemoryAugmentation || !context.memoryService) {
+			return;
+		}
+
+		try {
+			// Extract query from the last user message
+			const lastUserContent = [...(context.contents || [])]
+				.reverse()
+				.find((c: Content) => c.role === "user");
+			if (!lastUserContent || !lastUserContent.parts) {
+				return;
+			}
+
+			// Get the query text
+			let query = "";
+			for (const part of lastUserContent.parts) {
+				if ("text" in part) {
+					query += `${(part as TextPart).text} `;
+				}
+			}
+			query = query.trim();
+
+			if (!query) {
+				return;
+			}
+
+			// Search memory with the query
+			const searchOptions: SearchMemoryOptions = {
+				threshold: this.memoryRelevanceThreshold,
+				limit: this.maxMemoryItems,
+			};
+
+			const memories = await context.searchMemory(query, searchOptions);
+
+			// Skip if no relevant memories found
+			if (!memories.memories.length) {
+				return;
+			}
+
+			// Generate a summary of relevant memories to add as system message
+			const relevantInfo: string[] = [];
+
+			for (const memory of memories.memories) {
+				const sessionId = memory.sessionId;
+				const events = memory.events as Content[];
+
+				// Format each memory
+				const formattedEvents = events.map((eventContent) => {
+					const role = eventContent.role === "user" ? "User" : "Assistant";
+					let textContent = "";
+					for (const part of eventContent.parts) {
+						if ("text" in part) {
+							textContent += `${(part as TextPart).text} `;
+						}
+					}
+					return `${role}: ${textContent.trim()}`;
+				});
+
+				relevantInfo.push(
+					`Session ${sessionId.substring(0, 8)}:\n${formattedEvents.join("\n")}`,
+				);
+			}
+
+			// Add memory information as a system message at the beginning
+			if (relevantInfo.length > 0) {
+				const memorySystemContent: Content = {
+					role: "system" as Role,
+					parts: [
+						{
+							text: `Relevant information from previous conversations:\n\n${relevantInfo.join("\n\n")}`,
+						},
+					],
+				};
+
+				// Insert after existing system messages
+				const lastSystemIndex = (context.contents || []).findIndex(
+					(c: Content) => c.role !== ("system" as Role),
+				);
+				if (lastSystemIndex > 0) {
+					(context.contents || []).splice(
+						lastSystemIndex,
+						0,
+						memorySystemContent,
+					);
+				} else {
+					(context.contents || []).unshift(memorySystemContent);
+				}
+			}
+		} catch (error) {
+			console.error("Error augmenting with memory:", error);
+			// Continue without memory augmentation on error
+		}
+	}
+
+	/**
+	 * Saves the session to memory
+	 */
+	private async saveToMemory(context: InvocationContext): Promise<void> {
+		try {
+			if (context.sessionService && this.userId) {
+				// Ensure we have the user ID set
+				context.userId = context.userId || this.userId;
+
+				// Save the session
+				await context.saveSession();
+			}
+		} catch (error) {
+			console.error("Error saving to memory:", error);
+			// Continue without saving to memory on error
+		}
+	}
+
+	/**
+	 * Generates a unique session ID
+	 */
+	private generateSessionId(): string {
+		return `${this.name}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+	}
+
+	/**
+	 * Runs the agent with the given messages and configuration
+	 */
+	async run(options: {
+		contents: Content[];
+		config?: RunConfig;
+		sessionId?: string;
+	}): Promise<LLMResponse> {
+		const sessionId = options.sessionId || this.generateSessionId();
+		const context = new InvocationContext({
+			sessionId,
+			contents: [...options.contents],
+			config: options.config,
+			userId: this.userId,
+			appName: this.appName,
+			memoryService: this.memoryService,
+			sessionService: this.sessionService,
+		});
+
+		let finalResponseForCatch: LLMResponse | undefined;
+
+		try {
+			if (this.instructions) {
+				context.addContent({
+					role: "system" as Role,
+					parts: [{ text: this.instructions }],
+				});
+			}
+
+			const functions = this.tools.map((tool) => tool.getDeclaration());
+			const currentContents = [...(context.contents || [])];
+
+			if (this.instructions) {
+				const systemInstructionContent: Content = {
+					role: "system" as Role,
+					parts: [{ text: this.instructions }],
+				};
+				if (
+					!currentContents.find(
+						(c) =>
+							c.role === ("system" as Role) &&
+							c.parts.some(
+								(p: Part) => "text" in p && p.text === this.instructions,
+							),
+					)
+				) {
+					currentContents.unshift(systemInstructionContent);
+				}
+			}
+
+			let stepCount = 0;
+			let accumulatedFinalResponse: LLMResponse | undefined;
+
+			// eslint-disable-next-line no-constant-condition
+			while (true) {
+				stepCount++;
+				if (stepCount > this.maxToolExecutionSteps) {
+					throw new Error("Maximum tool execution steps reached.");
+				}
+
+				if (process.env.DEBUG === "true") {
+					console.log(`\n[Agent] Step ${stepCount}: Thinking...`);
+				}
+
+				const llmRequest = new LLMRequest({
+					contents: currentContents,
+					config: {
+						...options.config,
+						functions: functions.length > 0 ? functions : undefined,
+					},
+				});
+
+				const responseIterator = this.llm.generateContentAsync(llmRequest);
+				let currentIterationFinalContent: Content | undefined;
+
+				for await (const chunk of responseIterator) {
+					if (chunk.content) {
+						currentIterationFinalContent = chunk.content;
+					}
+					if (!chunk.is_partial || chunk.turn_complete) {
+						currentIterationFinalContent = chunk.content;
+						accumulatedFinalResponse = chunk;
+					}
+				}
+
+				if (!currentIterationFinalContent) {
+					if (accumulatedFinalResponse?.content) {
+						currentIterationFinalContent = accumulatedFinalResponse.content;
+					} else {
+						throw new Error(
+							"No response content from LLM after iterating all chunks.",
+						);
+					}
+				}
+
+				if (!currentIterationFinalContent) {
+					throw new Error(
+						"currentIterationFinalContent is unexpectedly undefined before processing.",
+					);
+				}
+
+				currentContents.push(currentIterationFinalContent);
+				finalResponseForCatch = accumulatedFinalResponse;
+
+				const functionCallParts: FunctionCallPart[] = [];
+				if (currentIterationFinalContent.parts) {
+					for (const part of currentIterationFinalContent.parts) {
+						if ("functionCall" in part) {
+							functionCallParts.push(part as FunctionCallPart);
+						}
+					}
+				}
+
+				if (functionCallParts.length > 0) {
+					if (process.env.DEBUG === "true") {
+						console.log("[Agent] Executing tools...");
+					}
+					const toolResults = await this.executeTools(
+						functionCallParts,
+						context,
+					);
+
+					for (const result of toolResults) {
+						const functionResponseContent: Content = {
+							role: "function",
+							parts: [
+								{
+									functionResponse: {
+										name: result.name,
+										response: result.result,
+									},
+								} as FunctionResponsePart,
+							],
+						};
+						currentContents.push(functionResponseContent);
+					}
+				} else {
+					if (process.env.DEBUG === "true") {
+						console.log("[Agent] No tool calls, finishing...");
+					}
+					await this.saveToMemory(context);
+					if (!accumulatedFinalResponse) {
+						if (!currentIterationFinalContent) {
+							throw new Error(
+								"Cannot create LLMResponse: currentIterationFinalContent is undefined.",
+							);
+						}
+						return new LLMResponse({ content: currentIterationFinalContent });
+					}
+					return accumulatedFinalResponse;
+				}
+			}
+		} catch (error) {
+			console.error("Error in agent execution:", error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			if (finalResponseForCatch) {
+				return new LLMResponse({
+					...finalResponseForCatch,
+					content: finalResponseForCatch.content || {
+						role: "model",
+						parts: [{ text: `Error after response: ${errorMessage}` }],
+					},
+					error_code: "AGENT_EXECUTION_SUBSEQUENT_ERROR",
+					error_message: errorMessage,
+				});
+			}
+			return new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: `Error in agent execution: ${errorMessage}` }],
+				},
+				error_code: "AGENT_EXECUTION_ERROR",
+				error_message: errorMessage,
+			});
+		}
+	}
+
+	/**
+	 * Runs the agent with streaming support
+	 */
+	async *runStreaming(options: {
+		contents: Content[];
+		config?: RunConfig;
+		sessionId?: string;
+	}): AsyncGenerator<LLMResponse> {
+		const sessionId = options.sessionId || this.generateSessionId();
+		const context = new InvocationContext({
+			sessionId,
+			contents: [...options.contents],
+			config: options.config,
+			userId: this.userId,
+			appName: this.appName,
+			memoryService: this.memoryService,
+			sessionService: this.sessionService,
+		});
+
+		const currentContents = [...(context.contents || [])];
+
+		if (this.instructions) {
+			const systemInstructionContent: Content = {
+				role: "system" as Role,
+				parts: [{ text: this.instructions }],
+			};
+			if (
+				!currentContents.find(
+					(c) =>
+						c.role === ("system" as Role) &&
+						c.parts.some(
+							(p: Part) => "text" in p && p.text === this.instructions,
+						),
+				)
+			) {
+				currentContents.unshift(systemInstructionContent);
+			}
+		}
+		await this.augmentWithMemory(context);
+
+		let stepCount = 0;
+		// eslint-disable-next-line no-constant-condition
+		while (true) {
+			stepCount++;
+			if (stepCount > this.maxToolExecutionSteps) {
+				yield new LLMResponse({
+					content: {
+						role: "model",
+						parts: [{ text: "Maximum tool execution steps reached." }],
+					},
+					error_code: "MAX_STEPS_REACHED",
+					error_message: "Maximum tool execution steps reached.",
+					turn_complete: true,
+				});
+				return;
+			}
+
+			if (process.env.DEBUG === "true") {
+				console.log(`\n[Agent] Step ${stepCount}: Thinking...`);
+			}
+
+			const toolDeclarations = this.tools
+				.map((tool) => tool.getDeclaration())
+				.filter((declaration) => declaration !== null);
+
+			const request = new LLMRequest({
+				contents: currentContents,
+				config: {
+					...(options.config || {}),
+					functions: toolDeclarations.length > 0 ? toolDeclarations : undefined,
+				},
+			});
+
+			const responseGenerator = this.llm.generateContentAsync(request, true);
+
+			let accumulatedModelContent: Content = { role: "model", parts: [] };
+			let finalChunkForToolProcessing: LLMResponse | null = null;
+			let hasPendingFunctionCalls = false;
+
+			for await (const responseChunk of responseGenerator) {
+				yield responseChunk;
+
+				if (responseChunk.content) {
+					if (
+						responseChunk.content.role === accumulatedModelContent.role ||
+						!accumulatedModelContent.role
+					) {
+						accumulatedModelContent.parts.push(...responseChunk.content.parts);
+						if (responseChunk.content.role)
+							accumulatedModelContent.role = responseChunk.content.role;
+					} else {
+						accumulatedModelContent = {
+							role: responseChunk.content.role,
+							parts: [...responseChunk.content.parts],
+						};
+					}
+
+					for (const part of responseChunk.content.parts) {
+						if ("functionCall" in part) {
+							hasPendingFunctionCalls = true;
+						}
+					}
+				}
+
+				if (
+					responseChunk.turn_complete ||
+					(!responseChunk.is_partial && hasPendingFunctionCalls)
+				) {
+					finalChunkForToolProcessing = responseChunk;
+					if (hasPendingFunctionCalls) break;
+				}
+				if (responseChunk.turn_complete && !hasPendingFunctionCalls) {
+					finalChunkForToolProcessing = responseChunk;
+					break;
+				}
+			}
+
+			if (
+				!finalChunkForToolProcessing ||
+				!finalChunkForToolProcessing.content
+			) {
+				if (!accumulatedModelContent.parts.length && !hasPendingFunctionCalls) {
+					break;
+				}
+				if (accumulatedModelContent.parts.length > 0) {
+					finalChunkForToolProcessing = new LLMResponse({
+						content: accumulatedModelContent,
+						turn_complete: true,
+					});
+				} else {
+					yield new LLMResponse({
+						content: {
+							role: "model",
+							parts: [
+								{
+									text: "No suitable response from LLM stream for processing.",
+								},
+							],
+						},
+						error_code: "STREAM_PROCESSING_ERROR",
+						error_message:
+							"No complete response with content received from LLM stream for tool processing.",
+						turn_complete: true,
+					});
+					return;
+				}
+			}
+
+			const modelResponseContentToAdd = finalChunkForToolProcessing?.content;
+
+			if (!modelResponseContentToAdd && !hasPendingFunctionCalls) {
+				break;
+			}
+
+			if (modelResponseContentToAdd) {
+				currentContents.push(modelResponseContentToAdd);
+			}
+
+			const functionCallPartsToExecute: FunctionCallPart[] = [];
+			if (modelResponseContentToAdd?.parts) {
+				for (const part of modelResponseContentToAdd.parts) {
+					if ("functionCall" in part) {
+						functionCallPartsToExecute.push(part as FunctionCallPart);
+					}
+				}
+			}
+
+			if (functionCallPartsToExecute.length > 0) {
+				if (process.env.DEBUG === "true") {
+					console.log("[Agent] Executing tools...");
+				}
+				const toolResults = await this.executeTools(
+					functionCallPartsToExecute,
+					context,
+				);
+				for (const result of toolResults) {
+					const functionResponseContent: Content = {
+						role: "function",
+						parts: [
+							{
+								functionResponse: {
+									name: result.name,
+									response: result.result,
+								},
+							} as FunctionResponsePart,
+						],
+					};
+					currentContents.push(functionResponseContent);
+				}
+			} else {
+				if (process.env.DEBUG === "true") {
+					console.log("[Agent] No tool calls, finishing stream...");
+				}
+				break;
+			}
+		}
+		await this.saveToMemory(context);
+	}
 }

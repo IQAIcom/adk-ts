@@ -3,22 +3,18 @@
  */
 
 // Export memory models and interfaces
-export {
+export type {
 	Session,
-	SessionState,
 	ListSessionOptions,
-} from "../models/memory/session";
-export {
-	BaseMemoryService,
+} from "../sessions/session";
+export { SessionLifecycleState } from "../sessions/session";
+export type {
 	MemoryResult,
 	SearchMemoryResponse,
 	SearchMemoryOptions,
-} from "../models/memory/memory-service";
+} from "./memory-service";
+export { BaseMemoryService } from "./memory-service";
 
 // Export memory service implementations
 export { InMemoryMemoryService } from "./services/inmemory-memory-service";
 export { PersistentMemoryService } from "./services/persistent-memory-service";
-export {
-	SessionService,
-	InMemorySessionService,
-} from "./services/session-service";

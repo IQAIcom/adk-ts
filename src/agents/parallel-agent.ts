@@ -1,6 +1,6 @@
 import type { RunConfig } from "./run-config";
-import type { Message } from "../models/llm-request";
-import type { LLMResponse } from "../models/llm-response";
+import type { Content, Role, Part, TextPart } from "../models/llm-request";
+import { LLMResponse } from "../models/llm-response";
 import { BaseAgent } from "./base-agent";
 
 /**
@@ -50,7 +50,7 @@ export class ParallelAgent extends BaseAgent {
 	 * Executes all sub-agents in parallel
 	 */
 	async run(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 	}): Promise<LLMResponse> {
 		// Log execution
@@ -61,17 +61,19 @@ export class ParallelAgent extends BaseAgent {
 		}
 
 		if (this.subAgents.length === 0) {
-			return {
-				content: "No sub-agents defined for parallel execution.",
-				role: "assistant",
-			};
+			return new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: "No sub-agents defined for parallel execution." }],
+				},
+			});
 		}
 
 		// Create promise array for parallel execution
 		const agentPromises = this.subAgents.map((agent) => {
 			return agent
 				.run({
-					messages: options.messages,
+					contents: options.contents,
 					config: options.config,
 				})
 				.catch((error) => {
@@ -79,10 +81,16 @@ export class ParallelAgent extends BaseAgent {
 						`[ParallelAgent] Error in sub-agent ${agent.name}:`,
 						error,
 					);
-					return {
-						content: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
-						role: "assistant",
-					} as LLMResponse;
+					return new LLMResponse({
+						content: {
+							role: "model",
+							parts: [
+								{
+									text: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
+								},
+							],
+						},
+					});
 				});
 		});
 
@@ -90,20 +98,22 @@ export class ParallelAgent extends BaseAgent {
 		const results = await Promise.all(agentPromises);
 
 		// Combine results from all agents
-		let combinedContent = "";
+		const combinedParts: Part[] = [];
 		for (let i = 0; i < results.length; i++) {
 			const agentName = this.subAgents[i].name;
 			const result = results[i];
 
-			// Add agent result to combined content
-			combinedContent += `### ${agentName}\n\n${result.content || "No content"}\n\n`;
+			combinedParts.push({ text: `### ${agentName}\n\n` });
+			if (result.content?.parts) {
+				combinedParts.push(...result.content.parts);
+			}
+			combinedParts.push({ text: "\n\n" });
 		}
 
 		// Return combined results
-		return {
-			content: combinedContent.trim(),
-			role: "assistant",
-		};
+		return new LLMResponse({
+			content: { role: "model", parts: combinedParts },
+		});
 	}
 
 	/**
@@ -111,7 +121,7 @@ export class ParallelAgent extends BaseAgent {
 	 * Collects streaming responses from all sub-agents
 	 */
 	async *runStreaming(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 	}): AsyncIterable<LLMResponse> {
 		// Log execution
@@ -122,10 +132,13 @@ export class ParallelAgent extends BaseAgent {
 		}
 
 		if (this.subAgents.length === 0) {
-			yield {
-				content: "No sub-agents defined for parallel execution.",
-				role: "assistant",
-			};
+			yield new LLMResponse({
+				content: {
+					role: "model",
+					parts: [{ text: "No sub-agents defined for parallel execution." }],
+				},
+				turn_complete: true,
+			});
 			return;
 		}
 
@@ -134,7 +147,7 @@ export class ParallelAgent extends BaseAgent {
 		const agentPromises = this.subAgents.map((agent) => {
 			return agent
 				.run({
-					messages: options.messages,
+					contents: options.contents,
 					config: options.config,
 				})
 				.catch((error) => {
@@ -142,62 +155,103 @@ export class ParallelAgent extends BaseAgent {
 						`[ParallelAgent] Error in sub-agent ${agent.name}:`,
 						error,
 					);
-					return {
-						content: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
-						role: "assistant",
-					} as LLMResponse;
+					return new LLMResponse({
+						content: {
+							role: "model",
+							parts: [
+								{
+									text: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
+								},
+							],
+						},
+					});
 				});
 		});
 
 		// First yield a starting message
-		yield {
-			content: `Starting parallel execution of ${this.subAgents.length} agents...`,
-			role: "assistant",
+		yield new LLMResponse({
+			content: {
+				role: "model",
+				parts: [
+					{
+						text: `Starting parallel execution of ${this.subAgents.length} agents...`,
+					},
+				],
+			},
 			is_partial: true,
-		};
+		});
 
 		// Execute all agents in parallel and yield updates as they complete
-		const results: Array<{ agent: BaseAgent; response: LLMResponse }> = [];
-		const pendingPromises = [...agentPromises];
+		const localSubAgents = [...this.subAgents];
+		const resultsArray: Array<{ agentName: string; response: LLMResponse }> =
+			[];
+		const pendingPromisesArray = [...agentPromises];
 
 		// Process agents as they complete
-		while (pendingPromises.length > 0) {
-			const completedPromise = await Promise.race(
-				pendingPromises.map((promise, index) =>
-					promise.then((result) => ({ index, result })),
-				),
+		while (pendingPromisesArray.length > 0) {
+			// Create an array of promises that also includes the original index
+			const indexedPromises = pendingPromisesArray.map(
+				(promise, index) =>
+					promise
+						.then((response) => ({ response, originalIndex: index }))
+						.catch((error) => ({ error, originalIndex: index })), // Handle individual promise rejections if not caught earlier
 			);
 
-			// Remove the completed promise
-			const completedAgent = this.subAgents[completedPromise.index];
-			pendingPromises.splice(completedPromise.index, 1);
-			this.subAgents.splice(completedPromise.index, 1);
+			const completed = await Promise.race(indexedPromises);
 
-			// Store result
-			results.push({
-				agent: completedAgent,
-				response: completedPromise.result,
+			// Find the agent corresponding to the completed promise using originalIndex before splicing
+			const agentName = localSubAgents[completed.originalIndex].name;
+
+			let response: LLMResponse;
+			if ("error" in completed) {
+				// Type guard for completed promise
+				console.error(
+					`[ParallelAgent] Error in sub-agent ${agentName} during streaming:`,
+					completed.error,
+				);
+				response = new LLMResponse({
+					content: {
+						role: "model",
+						parts: [
+							{
+								text: `Error processing agent ${agentName}: ${completed.error}`,
+							},
+						],
+					},
+					turn_complete: true, // Mark as complete for this errored agent stream part
+				});
+			} else {
+				response = completed.response;
+			}
+
+			pendingPromisesArray.splice(completed.originalIndex, 1); // Remove based on original index
+			localSubAgents.splice(completed.originalIndex, 1); // Keep localSubAgents in sync
+
+			resultsArray.push({
+				agentName,
+				response,
 			});
 
-			// Build the current combined response
-			let combinedContent = "";
-			for (const { agent, response } of results) {
-				combinedContent += `### ${agent.name}\n\n${response.content || "No content"}\n\n`;
+			const combinedPartsStreaming: Part[] = [];
+			for (const { agentName: name, response: res } of resultsArray) {
+				combinedPartsStreaming.push({ text: `### ${name}\n\n` });
+				if (res.content?.parts) {
+					combinedPartsStreaming.push(...res.content.parts);
+				}
+				combinedPartsStreaming.push({ text: "\n\n" });
 			}
 
-			// Add pending agents
-			if (pendingPromises.length > 0) {
-				combinedContent += `\n### Waiting for ${pendingPromises.length} more agents to complete...\n`;
+			if (pendingPromisesArray.length > 0) {
+				combinedPartsStreaming.push({
+					text: `\n### Waiting for ${pendingPromisesArray.length} more agents to complete...\n`,
+				});
 			}
 
-			// Yield the current state
-			yield {
-				content: combinedContent.trim(),
-				role: "assistant",
-				is_partial: pendingPromises.length > 0,
-			};
+			yield new LLMResponse({
+				content: { role: "model", parts: combinedPartsStreaming },
+				is_partial: pendingPromisesArray.length > 0,
+				turn_complete: pendingPromisesArray.length === 0,
+			});
 		}
-
-		// Final combined response should have already been yielded in the loop
 	}
 }

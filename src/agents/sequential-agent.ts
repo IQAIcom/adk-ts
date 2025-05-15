@@ -1,5 +1,5 @@
 import type { RunConfig } from "./run-config";
-import type { Message } from "../models/llm-request";
+import type { Content, Role, Part, TextPart } from "../models/llm-request";
 import type { LLMResponse } from "../models/llm-response";
 import { BaseAgent } from "./base-agent";
 
@@ -57,7 +57,7 @@ export class SequentialAgent extends BaseAgent {
 	 * Executes sub-agents sequentially, passing output from one to the next
 	 */
 	async run(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 	}): Promise<EnhancedLLMResponse> {
 		// Log execution
@@ -69,17 +69,19 @@ export class SequentialAgent extends BaseAgent {
 
 		if (this.subAgents.length === 0) {
 			return {
-				content: "No sub-agents defined for sequential execution.",
-				role: "assistant",
+				content: {
+					role: "model",
+					parts: [{ text: "No sub-agents defined for sequential execution." }],
+				},
 				metadata: {
 					agent_name: this.name,
 					agent_type: "sequential",
 					status: "empty",
 				},
-			};
+			} as EnhancedLLMResponse;
 		}
 
-		const currentMessages = [...options.messages];
+		const currentRunContents = [...options.contents];
 		let finalResponse: EnhancedLLMResponse | null = null;
 
 		// Execute agents in sequence
@@ -95,7 +97,7 @@ export class SequentialAgent extends BaseAgent {
 			try {
 				// Run the current agent with the messages
 				const response = (await agent.run({
-					messages: currentMessages,
+					contents: currentRunContents,
 					config: options.config,
 				})) as EnhancedLLMResponse;
 
@@ -104,11 +106,9 @@ export class SequentialAgent extends BaseAgent {
 
 				// Prepare input for the next agent by adding the response as a message
 				if (i < this.subAgents.length - 1) {
-					currentMessages.push({
-						role: "assistant",
-						content: response.content || "",
-						function_call: response.function_call,
-					});
+					if (response.content) {
+						currentRunContents.push(response.content);
+					}
 				}
 			} catch (error) {
 				console.error(
@@ -116,29 +116,37 @@ export class SequentialAgent extends BaseAgent {
 					error,
 				);
 				return {
-					content: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
+					content: {
+						role: "model",
+						parts: [
+							{
+								text: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
+							},
+						],
+					},
 					metadata: {
 						agent_name: this.name,
 						agent_type: "sequential",
 						error: true,
 						sub_agent: agent.name,
 					},
-				};
+				} as EnhancedLLMResponse;
 			}
 		}
 
 		// Return the final response with metadata
 		if (!finalResponse) {
 			return {
-				content: "No response generated from sequential execution.",
-				role: "assistant",
+				content: {
+					role: "model",
+					parts: [{ text: "No response generated from sequential execution." }],
+				},
 				metadata: {
 					agent_name: this.name,
 					agent_type: "sequential",
 					status: "no_response",
 				},
-			};
+			} as EnhancedLLMResponse;
 		}
 
 		// Add metadata about the sequential execution
@@ -149,7 +157,7 @@ export class SequentialAgent extends BaseAgent {
 				agent_name: this.name,
 				agent_type: "sequential",
 			},
-		};
+		} as EnhancedLLMResponse;
 	}
 
 	/**
@@ -157,7 +165,7 @@ export class SequentialAgent extends BaseAgent {
 	 * Streams responses from each sub-agent in sequence
 	 */
 	async *runStreaming(options: {
-		messages: Message[];
+		contents: Content[];
 		config?: RunConfig;
 	}): AsyncIterable<EnhancedLLMResponse> {
 		// Log execution
@@ -169,18 +177,21 @@ export class SequentialAgent extends BaseAgent {
 
 		if (this.subAgents.length === 0) {
 			yield {
-				content: "No sub-agents defined for sequential execution.",
-				role: "assistant",
+				content: {
+					role: "model",
+					parts: [{ text: "No sub-agents defined for sequential execution." }],
+				},
 				metadata: {
 					agent_name: this.name,
 					agent_type: "sequential",
 					status: "empty",
 				},
-			};
+				turn_complete: true,
+			} as EnhancedLLMResponse;
 			return;
 		}
 
-		const currentMessages = [...options.messages];
+		const currentStreamContents = [...options.contents];
 
 		// Execute agents in sequence with streaming
 		for (let i = 0; i < this.subAgents.length; i++) {
@@ -195,19 +206,19 @@ export class SequentialAgent extends BaseAgent {
 			try {
 				// Run the current agent with streaming
 				const streamGenerator = agent.runStreaming({
-					messages: currentMessages,
+					contents: currentStreamContents,
 					config: options.config,
 				});
 
 				// Collect all chunks to build the complete response for the next agent
 				const chunks: EnhancedLLMResponse[] = [];
-				let lastChunk: EnhancedLLMResponse | null = null;
+				let lastChunkFromStream: EnhancedLLMResponse | null = null;
 
 				// Stream each chunk from the current agent
 				for await (const chunk of streamGenerator) {
 					// Add metadata about the sequential execution
 					const enhancedChunk = {
-						...chunk,
+						...(chunk as EnhancedLLMResponse),
 						metadata: {
 							...((chunk as EnhancedLLMResponse).metadata || {}),
 							agent_name: this.name,
@@ -219,17 +230,15 @@ export class SequentialAgent extends BaseAgent {
 					} as EnhancedLLMResponse;
 
 					yield enhancedChunk;
-					chunks.push(chunk as EnhancedLLMResponse);
-					lastChunk = chunk as EnhancedLLMResponse;
+					chunks.push(enhancedChunk);
+					lastChunkFromStream = enhancedChunk;
 				}
 
 				// Prepare input for the next agent
-				if (i < this.subAgents.length - 1 && lastChunk) {
-					currentMessages.push({
-						role: "assistant",
-						content: lastChunk.content || "",
-						function_call: lastChunk.function_call,
-					});
+				if (i < this.subAgents.length - 1 && lastChunkFromStream) {
+					if (lastChunkFromStream.content) {
+						currentStreamContents.push(lastChunkFromStream.content);
+					}
 				}
 			} catch (error) {
 				console.error(
@@ -237,15 +246,22 @@ export class SequentialAgent extends BaseAgent {
 					error,
 				);
 				yield {
-					content: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
+					content: {
+						role: "model",
+						parts: [
+							{
+								text: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
+							},
+						],
+					},
 					metadata: {
 						agent_name: this.name,
 						agent_type: "sequential",
 						error: true,
 						sub_agent: agent.name,
 					},
-				};
+					turn_complete: true,
+				} as EnhancedLLMResponse;
 				return;
 			}
 		}
