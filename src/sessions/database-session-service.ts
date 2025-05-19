@@ -1,18 +1,19 @@
-import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, varchar, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { eq } from "drizzle-orm";
 
-import type { Message } from "../models/llm-request";
 import type { SessionService } from "./base-session-service";
 import type { ListSessionOptions, Session } from "./session";
 import { SessionState } from "./state";
+import type { Event } from "../events/event";
+import { generateEventId } from "../events/event";
 
 // Define Drizzle schema for sessions
 // Adjust column types based on your specific DB and needs
 export const sessionsSchema = pgTable("sessions", {
 	id: varchar("id", { length: 255 }).primaryKey(),
 	userId: varchar("user_id", { length: 255 }).notNull(),
-	messages: jsonb("messages").default("[]").$type<Message[]>(), // Store Message array as JSONB
+	events: jsonb("events").default("[]").$type<Event[]>(),
 	metadata: jsonb("metadata").default("{}").$type<Record<string, any>>(),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.defaultNow()
@@ -20,7 +21,7 @@ export const sessionsSchema = pgTable("sessions", {
 	updatedAt: timestamp("updated_at", { withTimezone: true })
 		.defaultNow()
 		.notNull(),
-	state: jsonb("state").default("{}").$type<Record<string, any>>(), // Store serialized SessionState as JSONB
+	state: jsonb("state").default("{}").$type<Record<string, any>>(),
 });
 
 // Type for the Drizzle schema (optional but good for type safety)
@@ -54,7 +55,7 @@ export class DatabaseSessionService implements SessionService {
 		this.sessionsTable = config.sessionsTable || sessionsSchema;
 	}
 
-	private generateSessionId(): string {
+	private generateInternalSessionId(): string {
 		return `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 	}
 
@@ -62,18 +63,18 @@ export class DatabaseSessionService implements SessionService {
 		userId: string,
 		metadata: Record<string, any> = {},
 	): Promise<Session> {
-		const sessionId = this.generateSessionId();
+		const sessionId = this.generateInternalSessionId();
 		const now = new Date();
 		const sessionState = new SessionState();
 
 		const newSessionData: SessionRow = {
 			id: sessionId,
 			userId,
-			messages: [] as Message[],
+			events: [],
 			metadata,
 			createdAt: now,
-			updatedAt: now, // Drizzle's defaultNow() on schema handles this, but explicit is fine
-			state: sessionState.toObject(), // Serialize SessionState
+			updatedAt: now,
+			state: sessionState.toObject(),
 		};
 
 		const results = await this.db
@@ -91,12 +92,9 @@ export class DatabaseSessionService implements SessionService {
 		return {
 			id: result.id,
 			userId: result.userId,
-			messages: Array.isArray(result.messages)
-				? (result.messages as Message[])
-				: [],
+			events: Array.isArray(result.events) ? (result.events as Event[]) : [],
 			metadata: result.metadata || {},
 			state: SessionState.fromObject(result.state || {}),
-			// Ensure dates are Date objects if Drizzle returns strings for some drivers/configs
 			createdAt: new Date(result.createdAt),
 			updatedAt: new Date(result.updatedAt),
 		};
@@ -117,8 +115,8 @@ export class DatabaseSessionService implements SessionService {
 		return {
 			id: sessionData.id,
 			userId: sessionData.userId,
-			messages: Array.isArray(sessionData.messages)
-				? (sessionData.messages as Message[])
+			events: Array.isArray(sessionData.events)
+				? (sessionData.events as Event[])
 				: [],
 			metadata: sessionData.metadata || {},
 			state: SessionState.fromObject(sessionData.state || {}),
@@ -128,19 +126,48 @@ export class DatabaseSessionService implements SessionService {
 	}
 
 	async updateSession(session: Session): Promise<void> {
-		const updateData: Partial<SessionRow> = {
+		const updateData: Partial<SessionRow> & { id: string } = {
+			id: session.id,
 			userId: session.userId,
-			messages: session.messages as Message[],
+			events: session.events as Event[],
 			metadata: session.metadata,
-			// createdAt should typically not be updated after creation
 			updatedAt: new Date(),
 			state: session.state.toObject(),
 		};
+		const { id, ...setData } = updateData;
 
 		await this.db
 			.update(this.sessionsTable)
-			.set(updateData)
-			.where(eq(this.sessionsTable.id, session.id));
+			.set(setData)
+			.where(eq(this.sessionsTable.id, id));
+	}
+
+	async appendEvent(sessionId: string, event: Event): Promise<void> {
+		const currentSession = await this.getSession(sessionId);
+		if (!currentSession) {
+			throw new Error(`Session with ID ${sessionId} not found.`);
+		}
+
+		const eventToAppend = { ...event };
+		if (!eventToAppend.id) {
+			eventToAppend.id = generateEventId();
+		}
+		if (
+			eventToAppend.timestamp === undefined ||
+			eventToAppend.timestamp === null
+		) {
+			eventToAppend.timestamp = Date.now() / 1000;
+		}
+
+		const updatedEvents = [...currentSession.events, eventToAppend];
+
+		await this.db
+			.update(this.sessionsTable)
+			.set({
+				events: updatedEvents,
+				updatedAt: new Date(),
+			})
+			.where(eq(this.sessionsTable.id, sessionId));
 	}
 
 	async listSessions(
@@ -153,24 +180,16 @@ export class DatabaseSessionService implements SessionService {
 			.where(eq(this.sessionsTable.userId, userId));
 
 		if (options?.limit !== undefined && options.limit > 0) {
-			query = query.limit(options.limit) as typeof query; // Using 'as' to help TypeScript if inference is tricky
+			query = query.limit(options.limit) as typeof query;
 		}
-
-		// TODO: Add filtering for createdAfter, updatedAfter, metadataFilter
-		// This would require dynamic query building with Drizzle's `and` / `or` operators
-		// and potentially more complex `where` clauses.
-		// Example for createdAfter (assuming options.createdAfter is a Date):
-		// if (options?.createdAfter) {
-		//   query = query.where(gte(this.sessionsTable.createdAt, options.createdAfter));
-		// }
 
 		const results: SessionRow[] = await query;
 
 		return results.map((sessionData: SessionRow) => ({
 			id: sessionData.id,
 			userId: sessionData.userId,
-			messages: Array.isArray(sessionData.messages)
-				? (sessionData.messages as Message[])
+			events: Array.isArray(sessionData.events)
+				? (sessionData.events as Event[])
 				: [],
 			metadata: sessionData.metadata || {},
 			state: SessionState.fromObject(sessionData.state || {}),

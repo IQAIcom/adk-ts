@@ -1,5 +1,7 @@
 import type { Message } from "../models/llm-request";
 import type { RunConfig } from "./run-config";
+import type { InvocationContext } from "./invocation-context";
+import type { Event } from "../events/event";
 
 /**
  * Base class for all agents in the Agent Development Kit
@@ -123,4 +125,14 @@ export abstract class BaseAgent {
 		config?: RunConfig;
 		sessionId?: string;
 	}): AsyncIterable<any>;
+
+	/**
+	 * Runs the agent asynchronously, yielding events.
+	 * This is the primary method for agent execution by the Runner.
+	 * @param context The invocation context for this run.
+	 * @returns An async generator of events.
+	 */
+	abstract runAsync(
+		context: InvocationContext,
+	): AsyncGenerator<Event, void, void>;
 }

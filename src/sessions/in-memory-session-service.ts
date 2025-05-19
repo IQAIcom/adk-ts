@@ -1,3 +1,4 @@
+import type { Event } from "@adk/events";
 import type { SessionService } from "./base-session-service";
 import type { ListSessionOptions, Session } from "./session";
 import { SessionState } from "./state";
@@ -16,6 +17,9 @@ export class InMemorySessionService implements SessionService {
 	constructor() {
 		this.sessions = new Map<string, Session>();
 	}
+	appendEvent(sessionId: string, event: Event): Promise<void> {
+		throw new Error("Method not implemented.");
+	}
 
 	/**
 	 * Creates a new session
@@ -33,7 +37,7 @@ export class InMemorySessionService implements SessionService {
 		const session: Session = {
 			id: sessionId,
 			userId,
-			messages: [],
+			events: [],
 			metadata,
 			createdAt: now,
 			updatedAt: now,

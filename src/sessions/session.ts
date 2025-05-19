@@ -1,4 +1,4 @@
-import type { Message } from "../models/llm-request";
+import type { Event } from "../events/event";
 import type { SessionState } from "./state";
 
 /**
@@ -16,9 +16,10 @@ export interface Session {
 	userId: string;
 
 	/**
-	 * Conversation history
+	 * Chronological list of events in the conversation.
+	 * Replaces the previous `messages: Message[]`.
 	 */
-	messages: Message[];
+	events: Event[];
 
 	/**
 	 * Additional session metadata

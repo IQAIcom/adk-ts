@@ -3,29 +3,36 @@ import type {
 	SearchMemoryOptions,
 	SearchMemoryResponse,
 } from "../memory/base-memory-service";
-import type { Message } from "../models/llm-request";
+import type { Event } from "../events/event";
 import type { SessionService } from "../sessions/base-session-service";
 import type { Session } from "../sessions/session";
 import { RunConfig } from "./run-config";
+import type { BaseArtifactService } from "../artifacts/base-artifact-service";
+import type { BaseAgent } from "./base-agent";
 
 /**
  * Contextual data for a specific agent invocation
  */
 export class InvocationContext {
 	/**
+	 * Unique ID for this specific invocation
+	 */
+	invocationId: string;
+
+	/**
 	 * Unique session ID for the current conversation
 	 */
 	sessionId: string;
 
 	/**
-	 * Current conversation history
+	 * Current conversation history as events
 	 */
-	messages: Message[];
+	events: Event[];
 
 	/**
 	 * Run configuration
 	 */
-	config: RunConfig;
+	runConfig: RunConfig;
 
 	/**
 	 * User identifier associated with the session
@@ -48,6 +55,21 @@ export class InvocationContext {
 	sessionService?: SessionService;
 
 	/**
+	 * Artifact service for managing artifacts
+	 */
+	artifactService?: BaseArtifactService;
+
+	/**
+	 * The agent currently being executed in this context.
+	 */
+	agent?: BaseAgent;
+
+	/**
+	 * The name of the agent currently being executed.
+	 */
+	currentAgentName?: string;
+
+	/**
 	 * Additional context metadata
 	 */
 	metadata: Record<string, any>;
@@ -65,25 +87,31 @@ export class InvocationContext {
 	/**
 	 * Constructor for InvocationContext
 	 */
-	constructor(
-		options: {
-			sessionId?: string;
-			messages?: Message[];
-			config?: RunConfig;
-			userId?: string;
-			appName?: string;
-			memoryService?: BaseMemoryService;
-			sessionService?: SessionService;
-			metadata?: Record<string, any>;
-		} = {},
-	) {
+	constructor(options: {
+		invocationId: string;
+		sessionId?: string;
+		events?: Event[];
+		runConfig?: RunConfig;
+		userId?: string;
+		appName?: string;
+		memoryService?: BaseMemoryService;
+		sessionService?: SessionService;
+		artifactService?: BaseArtifactService;
+		agent?: BaseAgent;
+		currentAgentName?: string;
+		metadata?: Record<string, any>;
+	}) {
+		this.invocationId = options.invocationId;
 		this.sessionId = options.sessionId || this.generateSessionId();
-		this.messages = options.messages || [];
-		this.config = options.config || new RunConfig();
+		this.events = options.events || [];
+		this.runConfig = options.runConfig || new RunConfig();
 		this.userId = options.userId;
 		this.appName = options.appName;
 		this.memoryService = options.memoryService;
 		this.sessionService = options.sessionService;
+		this.artifactService = options.artifactService;
+		this.agent = options.agent;
+		this.currentAgentName = options.currentAgentName;
 		this.metadata = options.metadata || {};
 		this.variables = new Map<string, any>();
 	}
@@ -112,23 +140,25 @@ export class InvocationContext {
 	}
 
 	/**
-	 * Adds a message to the conversation history
+	 * Adds an event to the conversation history
 	 */
-	addMessage(message: Message): void {
-		this.messages.push(message);
+	addEvent(event: Event): void {
+		this.events.push(event);
 	}
 
 	/**
-	 * Creates a new context with the same configuration but empty message history
+	 * Creates a new context with the same configuration but empty event history
 	 */
 	createChildContext(): InvocationContext {
 		return new InvocationContext({
+			invocationId: this.invocationId,
 			sessionId: this.sessionId,
-			config: this.config,
+			runConfig: this.runConfig,
 			userId: this.userId,
 			appName: this.appName,
 			memoryService: this.memoryService,
 			sessionService: this.sessionService,
+			artifactService: this.artifactService,
 			metadata: { ...this.metadata },
 		});
 	}
@@ -166,15 +196,15 @@ export class InvocationContext {
 			this.sessionId = session.id;
 		}
 
-		// Update session with current messages
-		session.messages = [...this.messages];
+		// Update session with current events
+		session.events = [...this.events];
 		session.metadata = { ...this.metadata };
 		session.updatedAt = new Date();
 
 		// Save state variables
-		Object.entries(this.variables).forEach(([key, value]) => {
+		for (const [key, value] of this.variables.entries()) {
 			session?.state.set(key, value);
-		});
+		}
 
 		// Update the session
 		await this.sessionService.updateSession(session);
@@ -209,4 +239,10 @@ export class InvocationContext {
 
 		return await this.memoryService.searchMemory(query, searchOptions);
 	}
+}
+
+// Utility function to generate InvocationContext IDs, if needed externally
+// Though runner currently generates its own.
+export function generateInvocationContextId(): string {
+	return `inv-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }

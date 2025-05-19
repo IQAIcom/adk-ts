@@ -47,7 +47,7 @@ export function validateSession(session: Session): void {
 export function cloneSession(session: Session): Session {
 	return {
 		...session,
-		messages: [...session.messages],
+		events: [...session.events],
 		metadata: { ...session.metadata },
 		// State is handled by reference since it has its own methods
 	};

@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as p from "@clack/prompts";
+import chalk from "chalk";
+import inquirer from "inquirer";
 
 // Get all example directories and files
 const examplesDir = path.resolve(__dirname);
@@ -48,23 +49,25 @@ getExampleFiles(examplesDir);
 examples.sort((a, b) => a.name.localeCompare(b.name));
 
 async function main() {
-	p.intro("ADK Examples Runner");
+	console.log(chalk?.blue("ADK Examples Runner") || "ADK Examples Runner");
 	console.log("Select an example to run:\n");
 
-	const selectedExample = await p.select({
-		message: "Choose an example to run:",
-		options: examples.map((example) => ({
-			label: example.name,
-			value: example,
-		})),
-	});
+	const { selectedExample } = await inquirer.prompt([
+		{
+			type: "list",
+			name: "selectedExample",
+			message: "Choose an example to run:",
+			choices: examples.map((example) => ({
+				name: example.name,
+				value: example,
+			})),
+			pageSize: 20,
+		},
+	]);
 
-	if (p.isCancel(selectedExample)) {
-		p.cancel("Operation cancelled");
-		process.exit(0);
-	}
-
-	console.log(`\nRunning example: ${selectedExample.name}\n`);
+	console.log(
+		`\nRunning example: ${chalk?.green(selectedExample.name) || selectedExample.name}\n`,
+	);
 
 	// Get absolute paths to everything
 	const tsNodeBin = path.resolve(
@@ -92,16 +95,14 @@ async function main() {
 	);
 
 	exampleProcess.on("close", (code) => {
-		if (code === 0) {
-			p.outro(`Example finished successfully (code ${code})`);
-		} else {
-			console.log(`\nExample finished with error code ${code}`);
-			process.exit(code || 1);
-		}
+		console.log(
+			`\nExample finished with ${
+				code === 0
+					? chalk?.green(`code ${code}`) || `code ${code}`
+					: chalk?.red(`code ${code}`) || `code ${code}`
+			}`,
+		);
 	});
 }
 
-main().catch((error) => {
-	console.error("Error running example:", error);
-	process.exit(1);
-});
+main().catch(console.error);
