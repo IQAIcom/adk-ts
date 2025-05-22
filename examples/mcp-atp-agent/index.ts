@@ -1,7 +1,16 @@
-import { Agent, LLMRegistry, OpenAILLM, type MessageRole } from "@adk";
+import {
+	Agent,
+	LLMRegistry,
+	OpenAILLM,
+	type MessageRole,
+	InMemoryRunner,
+	type Message,
+	RunConfig,
+} from "@adk";
 import { McpError, McpToolset } from "@adk/tools/mcp";
 import type { McpConfig } from "@adk/tools/mcp/types";
 import * as dotenv from "dotenv";
+import { v4 as uuidv4 } from "uuid"; // For generating session IDs - though not strictly needed if session service creates ID
 
 // Load environment variables from .env file
 dotenv.config();
@@ -11,37 +20,110 @@ LLMRegistry.registerLLM(OpenAILLM);
 const DEBUG = process.env.DEBUG === "true" || true;
 
 /**
- * Demonstrates an agent using MCP tools from the @iqai/mcp-atp server.
+ * Processes events from the agent runner and extracts the final assistant message.
+ */
+async function getAssistantResponse(
+	eventStream: AsyncGenerator<any, void, unknown>,
+): Promise<string | null> {
+	let lastAssistantMessage: string | null = null;
+	let currentToolCalls: any[] = [];
+	console.log("--- Event Stream Start ---");
+	for await (const event of eventStream) {
+		// Log the raw event type and data for debugging
+		if (DEBUG && event && typeof event.type === "string") {
+			console.log(
+				`[EVENT]: ${event.type.toUpperCase()}`,
+				JSON.stringify(event.data, null, 2),
+			);
+		}
+
+		switch (event.type) {
+			case "message_part": // Corresponds to EventType.MESSAGE_PART
+				if (event.data?.role === "assistant" && event.data?.content) {
+					// In a true streaming UI, you'd append this. For now, we'll see if it helps capture.
+					lastAssistantMessage =
+						(lastAssistantMessage || "") + event.data.content;
+				}
+				break;
+			case "message_completed": // Corresponds to EventType.MESSAGE_COMPLETED
+				if (
+					event.data?.message?.role === "assistant" &&
+					event.data?.message?.content
+				) {
+					lastAssistantMessage = event.data.message.content as string;
+				}
+				break;
+			case "tool_calls_generation": // Corresponds to EventType.TOOL_CALLS_GENERATION
+				if (event.data?.tool_calls && event.data.tool_calls.length > 0) {
+					currentToolCalls = event.data.tool_calls;
+					console.log(
+						`[INFO] Agent wants to call tools: ${JSON.stringify(currentToolCalls.map((tc) => tc.function.name))}`,
+					);
+				}
+				break;
+			case "tool_calls_completed": // Corresponds to EventType.TOOL_CALLS_COMPLETED
+				console.log(
+					`[INFO] Tools finished execution. Results: ${JSON.stringify(event.data?.tool_results?.map((tr: any) => ({ name: tr.tool_call_id, result: tr.result?.slice(0, 100) + (tr.result?.length > 100 ? "..." : "") })))}`,
+				);
+				// After tools run, the LLM will generate a textual response. Reset lastAssistantMessage
+				// if we only want the *final* textual response post-tool_calls.
+				// However, sometimes the LLM might speak *before* calling a tool.
+				// For now, we'll let it accumulate or be overwritten by a final MESSAGE_COMPLETED.
+				currentToolCalls = []; // Reset tool calls
+				break;
+			case "run_completed": // Corresponds to EventType.RUN_COMPLETED
+				console.log("[INFO] Run completed.");
+				if (event.data?.messages) {
+					const messages = event.data.messages as Message[];
+					const finalAssistantMsg = messages
+						.filter((m) => m.role === "assistant")
+						.pop();
+					if (finalAssistantMsg?.content) {
+						lastAssistantMessage = finalAssistantMsg.content as string;
+					}
+				}
+				// This is a terminal event, so we can break if we're sure this is the definitive end.
+				console.log("--- Event Stream End (Run Completed) ---");
+				return lastAssistantMessage; // Exit once run is fully complete
+			default:
+				// Handle other event types or ignore
+				break;
+		}
+	}
+	console.log("--- Event Stream End (Loop Exhausted) ---");
+	return lastAssistantMessage;
+}
+
+/**
+ * Demonstrates an agent using MCP tools from the @iqai/mcp-atp server, managed by a Runner.
  */
 async function main() {
 	let toolset: McpToolset | null = null;
+	let runner: InMemoryRunner | null = null;
 
-	console.log("🚀 Starting MCP ATP Agent Example");
+	console.log("🚀 Starting MCP ATP Agent Example with Runner");
 
-	// Retrieve required environment variables
 	const walletPrivateKey = process.env.WALLET_PRIVATE_KEY;
 	const atpApiKey = process.env.ATP_API_KEY;
+	const atpUseDev = process.env.ATP_USE_DEV || "false";
 	const exampleTokenContract = process.env.EXAMPLE_ATP_TOKEN_CONTRACT;
 
 	if (!exampleTokenContract) {
 		console.error(
 			"❌ Error: EXAMPLE_ATP_TOKEN_CONTRACT is not set in the .env file.",
 		);
-		console.log(
-			"Please add EXAMPLE_ATP_TOKEN_CONTRACT to your .env file to run this example.",
-		);
 		process.exit(1);
 	}
 
-	if (!walletPrivateKey) {
-		console.warn(
-			"⚠️ Warning: WALLET_PRIVATE_KEY is not set. Some ATP tools requiring a wallet will fail.",
-		);
-	}
-	if (!atpApiKey) {
-		console.warn(
-			"⚠️ Warning: ATP_API_KEY is not set. Some ATP tools requiring an API key might fail.",
-		);
+	// Optional: Log the env vars being passed to McpConfig for verification
+	const mcpEnv = {
+		...(walletPrivateKey && { WALLET_PRIVATE_KEY: walletPrivateKey }),
+		...(atpApiKey && { ATP_API_KEY: atpApiKey }),
+		...(atpUseDev && { ATP_USE_DEV: atpUseDev }),
+		PATH: process.env.PATH || "",
+	};
+	if (DEBUG) {
+		// console.log("ℹ️ MCP Config transport.env that will be used:", mcpEnv);
 	}
 
 	try {
@@ -49,199 +131,139 @@ async function main() {
 			name: "ATP MCP Client",
 			description: "Client for the @iqai/mcp-atp server",
 			debug: DEBUG,
-			retryOptions: {
-				maxRetries: 2,
-				initialDelay: 200,
-			},
-			cacheConfig: {
-				enabled: false,
-			},
+			retryOptions: { maxRetries: 2, initialDelay: 200 },
+			cacheConfig: { enabled: false },
 			transport: {
 				mode: "stdio",
-				command: "pnpm",
-				args: ["dlx", "@iqai/mcp-atp"],
-				env: {
-					...(process.env.WALLET_PRIVATE_KEY && {
-						WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
-					}),
-					...(process.env.ATP_API_KEY && {
-						ATP_API_KEY: process.env.ATP_API_KEY,
-					}),
-					...(process.env.ATP_USE_DEV && {
-						ATP_USE_DEV: process.env.ATP_USE_DEV,
-					}),
-					PATH: process.env.PATH || "", // important to pass PATH to child processes
-				},
+				command: "pnpm", // or npx
+				args: ["dlx", "@iqai/mcp-atp"], // or ["-y", "@iqai/mcp-atp"]
+				env: mcpEnv,
 			},
 		};
 
-		// Create a toolset for the MCP server
 		console.log("🔄 Connecting to @iqai/mcp-atp server via MCP...");
 		toolset = new McpToolset(mcpConfig);
-
-		// Get tools from the toolset
 		const mcpTools = await toolset.getTools();
 
 		if (mcpTools.length === 0) {
-			console.warn(
-				"⚠️ No tools retrieved from the MCP server. Ensure the server is running correctly and accessible.",
-			);
-			// Attempt to proceed, but agent might not have tools
+			console.warn("⚠️ No tools retrieved from MCP server.");
 		}
-
 		console.log(
-			`✅ Retrieved ${mcpTools.length} tools from the @iqai/mcp-atp server:"`,
+			`✅ Retrieved ${mcpTools.length} tools from @iqai/mcp-atp server.`,
 		);
-		mcpTools.forEach((tool) => {
-			console.log(`   - ${tool.name}: ${tool.description}`);
-		});
 
-		// Create the agent with MCP ATP tools
 		const agent = new Agent({
-			name: "mcp_atp_assistant",
+			name: "mcp_atp_runner_assistant",
 			model: process.env.LLM_MODEL || "gpt-4o-mini",
-			description: "An assistant that can interact with the IQ AI ATP via MCP",
-			instructions:
-				"You are a helpful assistant that can interact with the IQ AI Agent Tokenization Platform (ATP).",
+			description:
+				"An assistant interacting with IQ AI ATP via MCP, managed by a Runner",
+			instructions: `You are a helpful assistant for the IQ AI Agent Tokenization Platform (ATP).
+			Tools: ATP_AGENT_STATS, ATP_GET_AGENT_LOGS, ATP_ADD_AGENT_LOG, ATP_BUY_AGENT, ATP_SELL_AGENT.
+			Your EXAMPLE_ATP_TOKEN_CONTRACT is ${exampleTokenContract}.
+			For ATP_ADD_AGENT_LOG, use apiKey: "${atpApiKey || "YOUR_ATP_API_KEY_PLACEHOLDER"}".
+			Be concise. If a key is missing for a tool, state that the operation cannot be performed due to the missing key.`,
 			tools: mcpTools,
 			maxToolExecutionSteps: 3,
 		});
 
-		console.log("🤖 Agent initialized with MCP ATP tools.");
-		console.log("-----------------------------------");
+		runner = new InMemoryRunner(agent);
+		console.log("🤖 Agent and Runner initialized.");
 
-		// Example 1: Get Agent Statistics
-		console.log(`
-🌟 Example 1: Get Agent Statistics for ${exampleTokenContract}`);
-		const statsQuery = `Get the agent statistics for token contract ${exampleTokenContract}`;
-		console.log(`💬 User Query: ${statsQuery}`);
-		console.log("-----------------------------------");
+		const userId = "test-user-mcp-runner";
 
-		const statsResponse = await agent.run({
-			messages: [
-				{
-					role: "user" as MessageRole,
-					content: statsQuery,
-				},
-			],
+		// Create the session before starting interactions
+		console.log(`Creating session for user ${userId}...`);
+		const newSession = await runner.sessionService.createSession(userId, {
+			// Optional initial metadata
+			initiatedBy: "mcp-atp-agent-runner-example",
+			creationTimestamp: new Date().toISOString(),
 		});
-
-		console.log(`💡 Agent Response: ${statsResponse.content}`);
+		const sessionId = newSession.id; // Use const as it's assigned once
+		console.log(`✅ Session ${sessionId} created.`);
 		console.log("-----------------------------------");
 
-		// Example 2: Get Agent Logs
-		console.log(`
-🌟 Example 2: Get Agent Logs for ${exampleTokenContract}`);
-		const logsQuery = `Retrieve the first page of logs for agent token contract ${exampleTokenContract}, with a limit of 5.`;
-		console.log(`💬 User Query: ${logsQuery}`);
-		console.log("-----------------------------------");
+		// currentMessages will be managed by the SessionService internal to the InMemoryRunner
 
-		const logsResponse = await agent.run({
-			messages: [
-				{
-					role: "user" as MessageRole,
-					content: logsQuery,
-				},
-			],
-		});
+		async function runInteraction(userQuery: string) {
+			console.log(`
+💬 User Query: ${userQuery}`);
+			console.log("-----------------------------------");
 
-		console.log(`💡 Agent Response: ${logsResponse.content}`);
-		console.log("-----------------------------------");
+			const newMessage: Message = { role: "user", content: userQuery };
 
-		// Example 3: Add Agent Log
-		const logMessage = "This is a test log added by the ADK example agent.";
-		console.log(`
-🌟 Example 3: Add Agent Log to ${exampleTokenContract}`);
-		const addLogQuery = `Add the following log message to agent token contract ${exampleTokenContract}: "${logMessage}"`;
-		console.log(`💬 User Query: ${addLogQuery}`);
-		console.log("-----------------------------------");
+			const runParams = {
+				newMessage: newMessage,
+				sessionId: sessionId,
+				userId: userId,
+				// runConfig: new RunConfig(), // Optionally add a default RunConfig if needed
+			};
 
-		const addLogResponse = await agent.run({
-			messages: [
-				{
-					role: "user" as MessageRole,
-					content: addLogQuery,
-				},
-			],
-		});
-		console.log(`💡 Agent Response: ${addLogResponse.content}`);
-		console.log("-----------------------------------");
+			if (DEBUG) {
+				console.log(
+					"[DEBUG] Calling runner.runAsync with params:",
+					JSON.stringify(runParams, null, 2),
+				);
+			}
 
-		// Example 4: Buy Agent Tokens
-		const iqAmountToBuy = 1000;
-		console.log(`
-🌟 Example 4: Buy ${iqAmountToBuy} IQ worth of Agent Tokens for ${exampleTokenContract}`);
-		const buyQuery = `Buy ${iqAmountToBuy} IQ worth of agent tokens for token contract ${exampleTokenContract}.`;
-		console.log(`💬 User Query: ${buyQuery}`);
-		console.log("-----------------------------------");
+			const eventStream = runner!.runAsync(runParams);
 
-		const buyResponse = await agent.run({
-			messages: [
-				{
-					role: "user" as MessageRole,
-					content: buyQuery,
-				},
-			],
-		});
-		console.log(`💡 Agent Response: ${buyResponse.content}`);
-		console.log("-----------------------------------");
+			const assistantResponse = await getAssistantResponse(eventStream);
+			console.log(
+				`💡 Agent Response: ${assistantResponse || "No textual response from assistant."}`,
+			);
+			console.log("-----------------------------------");
+		}
 
-		// Example 5: Sell Agent Tokens
-		const tokensToSell = 1000;
-		console.log(`
-🌟 Example 5: Sell ${tokensToSell} Agent Tokens for ${exampleTokenContract}`);
-		const sellQuery = `Sell ${tokensToSell} agent tokens for token contract ${exampleTokenContract}.`;
-		console.log(`💬 User Query: ${sellQuery}`);
-		console.log("-----------------------------------");
+		console.log(
+			"🌟 Simulating sequential interactions with the agent via Runner...",
+		);
 
-		const sellResponse = await agent.run({
-			messages: [
-				{
-					role: "user" as MessageRole,
-					content: sellQuery,
-				},
-			],
-		});
-		console.log(`💡 Agent Response: ${sellResponse.content}`);
-		console.log("-----------------------------------");
+		await runInteraction(
+			`Get agent statistics for token contract ${exampleTokenContract}`,
+		);
+		await runInteraction(
+			`Retrieve the first page of logs for agent token contract ${exampleTokenContract}, limit 5.`,
+		);
 
-		console.log("✅ MCP ATP Agent examples complete!");
+		const logMessage = "Test log from ADK Runner example.";
+		await runInteraction(
+			`Add this log to ${exampleTokenContract}: "${logMessage}"`,
+		);
+
+		const iqAmountToBuy = 10000; // Reduced amount for testing
+		await runInteraction(
+			`Buy ${iqAmountToBuy} IQ of tokens for ${exampleTokenContract}.`,
+		);
+
+		const tokensToSell = 10000; // Reduced amount for testing
+		await runInteraction(
+			`Sell ${tokensToSell} tokens of ${exampleTokenContract}.`,
+		);
+
+		console.log("✅ MCP ATP Agent Runner examples complete!");
 	} catch (error) {
 		if (error instanceof McpError) {
 			console.error(`❌ MCP Error (${error.type}): ${error.message}`);
-			if (error.originalError) {
+			if (error.originalError)
 				console.error("   Original error:", error.originalError);
-				// Check for the specific ENOENT error for npx
-				if (
-					error.originalError instanceof Error &&
-					error.originalError.message.includes("spawn npx ENOENT")
-				) {
-					console.error(
-						"   Hint: This often means 'npx' was not found. Ensure Node.js and npm are correctly installed and their bin directory is in your system's PATH.",
-					);
-				}
-			}
 		} else {
 			console.error("❌ An unexpected error occurred:", error);
 		}
 	} finally {
 		if (toolset) {
-			console.log("🧹 Cleaning up MCP resources...");
+			console.log("🧹 Closing MCP toolset...");
 			await toolset
 				.close()
-				.catch((err) =>
-					console.error("   Error during MCP toolset cleanup:", err),
-				);
+				.catch((err) => console.error("Error closing toolset:", err));
 		}
-		// process.exit(0); // Commented out to see if it exits cleanly on its own
+		if (runner) {
+			// InMemoryRunner doesn't have an explicit close/dispose, but if it did, call here.
+			console.log("🧹 Runner cleanup (if any needed).");
+		}
 	}
 }
 
 main().catch((error) => {
-	if (error instanceof McpError) {
-		console.error(`💥 Fatal MCP Error (${error.type}): ${error.message}`);
-	} else {
-		console.error("💥 Fatal Error in main execution:", error);
-	}
+	console.error("💥 Fatal Error in main execution:", error);
 	process.exit(1);
 });
