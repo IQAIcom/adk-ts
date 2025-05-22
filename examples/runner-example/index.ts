@@ -1,14 +1,15 @@
 import {
 	Agent,
-	InMemoryRunner,
 	LLMRegistry,
-	type MessageRole,
 	OpenAILLM,
-	RunConfig,
 	StreamingMode,
+	type Message,
+	type MessageRole,
+	RunConfig,
 } from "@adk";
 import * as dotenv from "dotenv";
-import { v4 as uuidv4 } from "uuid";
+import * as readline from "node:readline";
+import chalk from "chalk";
 
 // Load environment variables from .env file if it exists
 dotenv.config();
@@ -16,115 +17,121 @@ dotenv.config();
 // Register the OpenAI LLM
 LLMRegistry.registerLLM(OpenAILLM);
 
-// Initialize the agent with OpenAI's model
-const agent = new Agent({
-	name: "runner_assistant",
-	model: "gpt-3.5-turbo", // This will use the LLMRegistry to get the right provider
-	description: "A simple assistant demonstrating Runner usage",
-	instructions:
-		"You are a helpful assistant. Answer questions directly and accurately. When asked about the three laws of robotics, explain that they were created by Isaac Asimov and describe them in detail.",
+// Create readline interface
+const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout,
 });
 
-// Create an in-memory runner with our agent
-const runner = new InMemoryRunner(agent, { appName: "RunnerDemo" });
-
-// Generate unique ID for user
-const userId = uuidv4();
-
-async function runConversation() {
-	console.log("🤖 Starting a runner example with OpenAI's model...");
-
-	// Create a session using the InMemorySessionService from the runner
-	console.log("📝 Creating a new session...");
-	const session = await runner.sessionService.createSession(userId);
-	const sessionId = session.id;
-
-	console.log(`🔑 Session ID: ${sessionId}`);
-	console.log(`👤 User ID: ${userId}`);
-
-	// Run the first question
-	console.log("\n📝 First question: 'What are the three laws of robotics?'");
-	await processMessage("What are the three laws of robotics?", sessionId);
-
-	// Run a follow-up question
-	console.log("\n📝 Follow-up question: 'Who formulated these laws?'");
-	await processMessage("Who formulated these laws?", sessionId);
-
-	// Run another follow-up question
-	console.log(
-		"\n📝 Third question: 'Can you suggest three practical applications of these laws in modern AI systems?'",
-	);
-	await processMessage(
-		"Can you suggest three practical applications of these laws in modern AI systems?",
-		sessionId,
-	);
-
-	console.log("\n✅ Example completed successfully!");
+// Promise-based prompt function
+function prompt(question: string): Promise<string> {
+	return new Promise((resolve) => {
+		rl.question(question, (answer) => {
+			resolve(answer);
+		});
+	});
 }
 
-async function processMessage(messageContent: string, sessionId: string) {
-	console.log(`👤 User: ${messageContent}`);
-	console.log("🤖 Assistant: ");
+async function runConversation() {
+	console.log(
+		chalk.blue.bold(
+			"🤖 Starting a direct agent example with OpenAI's model...",
+		),
+	);
+
+	// Initialize the agent with OpenAI's model
+	const agent = new Agent({
+		name: "direct_assistant",
+		model: "gpt-3.5-turbo",
+		description: "A direct assistant using OpenAI",
+		instructions:
+			"You are a helpful assistant. Answer questions accurately and concisely. Each response should be different and directly address the user's specific question.",
+	});
+
+	console.log(
+		chalk.cyan(
+			"\n💬 You can now chat with the assistant. Type 'exit' to quit.",
+		),
+	);
+
+	// Store conversation history
+	const messages: Message[] = [
+		{
+			role: "system" as MessageRole,
+			content:
+				"You are a helpful assistant. Answer questions accurately and concisely. Each response should be different and directly address the user's specific question.",
+		},
+	];
+
+	let userInput = "";
+
+	while (userInput.toLowerCase() !== "exit") {
+		userInput = await prompt(chalk.yellow.bold("\n👤 You: "));
+
+		if (userInput.toLowerCase() === "exit") {
+			break;
+		}
+
+		if (userInput.trim() !== "") {
+			// Add user message to history
+			messages.push({
+				role: "user" as MessageRole,
+				content: userInput,
+			});
+
+			// Process with agent
+			await processMessages(agent, messages);
+		}
+	}
+
+	console.log(chalk.blue.bold("\n✅ Chat session ended. Goodbye!"));
+	rl.close();
+}
+
+async function processMessages(agent: Agent, messages: Message[]) {
+	console.log(chalk.cyan("🤖 Assistant: "));
 
 	try {
-		// Set up streaming configuration
-		const runConfig = new RunConfig({
-			streamingMode: StreamingMode.SSE,
-		});
+		// Use streaming for a better experience
+		let fullResponse = "";
+		let streamContent = "";
 
-		// Create a new message
-		const newMessage = {
-			role: "user" as MessageRole,
-			content: messageContent,
-		};
-
-		// Track streaming state
-		let isStreaming = false;
-		let streamedContent = "";
-
-		// Process the message through the runner
-		for await (const event of runner.runAsync({
-			userId,
-			sessionId,
-			newMessage,
-			runConfig,
+		for await (const response of agent.runStreaming({
+			messages,
+			config: new RunConfig({
+				streamingMode: StreamingMode.SSE,
+			}),
 		})) {
-			// Skip events without content
-			if (!event.content) continue;
+			if (response.is_partial) {
+				process.stdout.write(chalk.green(response.content || ""));
+				streamContent += response.content || "";
+			} else {
+				fullResponse = response.content || "";
 
-			// Only process assistant messages
-			if (event.author === "assistant") {
-				if (event.is_partial) {
-					// Handle streaming chunks
-					isStreaming = true;
-					process.stdout.write(event.content);
-					streamedContent += event.content;
+				// If we haven't already streamed everything, show the full response
+				if (streamContent.trim() !== fullResponse.trim()) {
+					console.log(chalk.dim("\nFull response:"), chalk.green(fullResponse));
 				} else {
-					// Handle complete response
-					if (!isStreaming) {
-						// If we haven't streamed anything yet, print the full response
-						console.log(event.content);
-					} else if (streamedContent.trim() !== event.content.trim()) {
-						// If the final content is different from what we've streamed, print it
-						console.log("\nFull response:", event.content);
-					} else {
-						// We've already streamed the content, just add a newline
-						console.log();
-					}
+					// We've already streamed the content, just add a newline
+					console.log();
 				}
 			}
 		}
 
-		// Ensure there's a newline after streaming
-		if (isStreaming && !streamedContent.endsWith("\n")) {
-			console.log();
-		}
+		// Add assistant's response to history for next iteration
+		messages.push({
+			role: "assistant" as MessageRole,
+			content: fullResponse,
+		});
 	} catch (error: any) {
-		console.error("Error processing message:", error?.message || String(error));
+		console.error(
+			chalk.red("Error processing message:"),
+			error?.message || String(error),
+		);
 	}
 }
 
 // Run the example
 runConversation().catch((error) => {
-	console.error("❌ Error in runner example:", error);
+	console.error(chalk.red("❌ Error in direct agent example:"), error);
 });
