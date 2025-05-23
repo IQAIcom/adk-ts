@@ -2,6 +2,8 @@ import {
 	Agent,
 	BaseTool,
 	type FunctionDeclaration,
+	GoogleLLM,
+	LLMRegistry,
 	type Message,
 	type MessageRole,
 	type ToolContext,
@@ -10,6 +12,9 @@ import * as dotenv from "dotenv";
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Register Google LLM
+LLMRegistry.registerLLM(GoogleLLM);
 
 /**
  * Example demonstrating Anthropic Claude with native tool calling
@@ -91,11 +96,11 @@ class WeatherTool extends BaseTool {
 
 async function main() {
 	try {
-		// Create the agent with Claude model and weather tool
+		// Create the agent with Gemini model and weather tool
 		const agent = new Agent({
-			name: "anthropic_weather_assistant",
-			model: "claude-3-5-sonnet-20240620", // Using Claude 3.5 Sonnet with tool calling support
-			description: "A weather assistant powered by Anthropic Claude",
+			name: "gemini_weather_assistant",
+			model: "gemini-2.0-flash", // Using Gemini Flash with tool calling support
+			description: "A weather assistant powered by Google Gemini",
 			instructions: `You are a helpful assistant that can provide weather information.
 When asked about weather for a location, use the get_weather tool to retrieve the data.
 Be conversational and friendly in your responses.
@@ -113,7 +118,7 @@ Always include the weather condition, temperature, and humidity in your response
 		// Enable debug logging
 		process.env.DEBUG = "true";
 
-		console.log("Anthropic Claude 3 Agent initialized with weather tool");
+		console.log("Google Gemini Agent initialized with weather tool");
 		console.log("---------------------------------------------------");
 
 		// Query example with explicit call to action
@@ -202,7 +207,7 @@ Always include the weather condition, temperature, and humidity in your response
 			console.log("\nNo tool calls were made in the response.");
 		}
 
-		console.log("\nAnthropic tool calling example complete!");
+		console.log("\nGoogle Gemini tool calling example complete!");
 	} catch (error) {
 		console.error("Error:", error);
 		if (error instanceof Error) {

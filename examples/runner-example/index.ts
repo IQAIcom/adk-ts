@@ -1,9 +1,9 @@
 import {
 	Agent,
+	GoogleLLM,
 	InMemoryRunner,
 	LLMRegistry,
 	type MessageRole,
-	OpenAILLM,
 	RunConfig,
 	StreamingMode,
 } from "@adk";
@@ -13,14 +13,15 @@ import { v4 as uuidv4 } from "uuid";
 // Load environment variables from .env file if it exists
 dotenv.config();
 
-// Register the OpenAI LLM
-LLMRegistry.registerLLM(OpenAILLM);
+// Register the Google LLM
+LLMRegistry.registerLLM(GoogleLLM);
 
-// Initialize the agent with OpenAI's model
+// Initialize the agent with Google's Gemini model
 const agent = new Agent({
 	name: "runner_assistant",
-	model: "gpt-3.5-turbo", // This will use the LLMRegistry to get the right provider
-	description: "A simple assistant demonstrating Runner usage",
+	model: "gemini-2.0-flash", // This will use the LLMRegistry to get the right provider
+	description:
+		"A simple assistant demonstrating Runner usage with Google Gemini",
 	instructions:
 		"You are a helpful assistant. Answer questions directly and accurately. When asked about the three laws of robotics, explain that they were created by Isaac Asimov and describe them in detail.",
 });
@@ -32,7 +33,7 @@ const runner = new InMemoryRunner(agent, { appName: "RunnerDemo" });
 const userId = uuidv4();
 
 async function runConversation() {
-	console.log("🤖 Starting a runner example with OpenAI's model...");
+	console.log("🤖 Starting a runner example with Google's Gemini model...");
 
 	// Create a session using the InMemorySessionService from the runner
 	console.log("📝 Creating a new session...");

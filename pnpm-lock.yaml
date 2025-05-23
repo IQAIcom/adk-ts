@@ -17,9 +17,9 @@ importers:
       '@google-cloud/vertexai':
         specifier: ^0.5.0
         version: 0.5.0
-      '@google/generative-ai':
-        specifier: ^0.1.3
-        version: 0.1.3
+      '@google/genai':
+        specifier: ^1.0.0
+        version: 1.0.0(@modelcontextprotocol/sdk@1.11.1)
       '@modelcontextprotocol/sdk':
         specifier: ^1.11.1
         version: 1.11.1
@@ -34,7 +34,7 @@ importers:
         version: 0.43.1
       openai:
         specifier: ^4.93.0
-        version: 4.97.0(zod@3.24.4)
+        version: 4.97.0(ws@8.18.2)(zod@3.24.4)
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -66,6 +66,9 @@ importers:
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
+      tsx:
+        specifier: ^4.19.4
+        version: 4.19.4
       typedoc:
         specifier: ^0.28.2
         version: 0.28.4(typescript@5.8.3)
@@ -77,7 +80,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: ^3.1.3
-        version: 3.1.3(@types/node@20.17.45)(yaml@2.7.1)
+        version: 3.1.3(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1)
 
 packages:
 
@@ -304,9 +307,11 @@ packages:
     resolution: {integrity: sha512-qIFHYTXA5UCLdm9JG+Xf1suomCXxRqa1PKdYjqXuhZsCm8mn37Rb0Tf8djlhDzuRVWyWoQTmsWpsk28ZTmbqJg==}
     engines: {node: '>=18.0.0'}
 
-  '@google/generative-ai@0.1.3':
-    resolution: {integrity: sha512-Cm4uJX1sKarpm1mje/MiOIinM7zdUUrQp/5/qGPAgznbdd/B9zup5ehT6c1qGqycFcSopTA1J1HpqHS5kJR8hQ==}
+  '@google/genai@1.0.0':
+    resolution: {integrity: sha512-IQiL8UlPblGDrMhTuiHZbfMDVx0KY3eYkmB5Ro9wwyXovYCFIhL5ZC7LP42FjFUj0eWUa4Auo8Ixqf2dqx9JjA==}
     engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.11.0
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -1031,6 +1036,9 @@ packages:
     resolution: {integrity: sha512-VaUJspBffn/LMCJVoMvSAdmscJyS1auj5Zulnn5UoYcY531UWmdwhRWkcGKnGU93m5HSXP9LP2usOryrBtQowA==}
     engines: {node: '>=16'}
 
+  get-tsconfig@4.10.1:
+    resolution: {integrity: sha512-auHyJ4AgMz7vgS8Hp3N6HXSmlMdUyhSUrfBF16w153rxtLIEOE+HGqaBppczZvnHLqQJfiHotCYpNhl0lUROFQ==}
+
   gh-pages@6.3.0:
     resolution: {integrity: sha512-Ot5lU6jK0Eb+sszG8pciXdjMXdBJ5wODvgjR+imihTqsUWF2K6dJ9HST55lgqcs8wWcw6o6wAsUzfcYRhJPXbA==}
     engines: {node: '>=10'}
@@ -1449,6 +1457,9 @@ packages:
     resolution: {integrity: sha512-RmkhL8CAyCRPXCE28MMH0z2PNWQBNk2Q09ZdxM9IOOXwxwZbN+qbWaatPkdkWIKL2ZVDImrN/pK5HTRz2PcS4g==}
     engines: {node: '>= 0.8'}
 
+  resolve-pkg-maps@1.0.0:
+    resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
+
   restore-cursor@5.1.0:
     resolution: {integrity: sha512-oMA2dcrw6u0YfxJQXm342bFKX/E4sG9rbTzO9ptUcR/e8A33cHuvStiYOwH7fszkZlZ1z/ta9AAoPk2F4qIOHA==}
     engines: {node: '>=18'}
@@ -1648,6 +1659,11 @@ packages:
     resolution: {integrity: sha512-NoZ4roiN7LnbKn9QqE1amc9DJfzvZXxF4xDavcOWt1BPkdx+m+0gJuPM+S0vCe7zTJMYUP0R8pO2XMr+Y8oLIg==}
     engines: {node: '>=6'}
 
+  tsx@4.19.4:
+    resolution: {integrity: sha512-gK5GVzDkJK1SI1zwHf32Mqxf2tSJkNx+eYcNly5+nHvWqXUJYUkWBQtKauoESz3ymezAI++ZwT855x5p5eop+Q==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
+
   type-is@2.0.1:
     resolution: {integrity: sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==}
     engines: {node: '>= 0.6'}
@@ -1809,6 +1825,18 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  ws@8.18.2:
+    resolution: {integrity: sha512-DMricUmwGZUVr++AEAe2uiVM7UoO9MAVZMDu05UQOaUII0lp+zOzLLU4Xqh/JvTqklB1T4uELaaPBKyjE1r4fQ==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
 
   yaml@2.7.1:
     resolution: {integrity: sha512-10ULxpnOCQXxJvBgxsn9ptjq6uviG/htZKk9veJGhlqn3w/DxQ631zFF+nlQXLwmImeS5amR2dl2U8sg6U9jsQ==}
@@ -1981,7 +2009,18 @@ snapshots:
       - encoding
       - supports-color
 
-  '@google/generative-ai@0.1.3': {}
+  '@google/genai@1.0.0(@modelcontextprotocol/sdk@1.11.1)':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.11.1
+      google-auth-library: 9.15.1
+      ws: 8.18.2
+      zod: 3.24.4
+      zod-to-json-schema: 3.24.5(zod@3.24.4)
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - supports-color
+      - utf-8-validate
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -2147,13 +2186,13 @@ snapshots:
       chai: 5.2.0
       tinyrainbow: 2.0.0
 
-  '@vitest/mocker@3.1.3(vite@6.3.5(@types/node@20.17.45)(yaml@2.7.1))':
+  '@vitest/mocker@3.1.3(vite@6.3.5(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1))':
     dependencies:
       '@vitest/spy': 3.1.3
       estree-walker: 3.0.3
       magic-string: 0.30.17
     optionalDependencies:
-      vite: 6.3.5(@types/node@20.17.45)(yaml@2.7.1)
+      vite: 6.3.5(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1)
 
   '@vitest/pretty-format@3.1.3':
     dependencies:
@@ -2632,6 +2671,10 @@ snapshots:
 
   get-stream@8.0.1: {}
 
+  get-tsconfig@4.10.1:
+    dependencies:
+      resolve-pkg-maps: 1.0.0
+
   gh-pages@6.3.0:
     dependencies:
       async: 3.2.6
@@ -2928,7 +2971,7 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@4.97.0(zod@3.24.4):
+  openai@4.97.0(ws@8.18.2)(zod@3.24.4):
     dependencies:
       '@types/node': 18.19.99
       '@types/node-fetch': 2.6.12
@@ -2938,6 +2981,7 @@ snapshots:
       formdata-node: 4.4.1
       node-fetch: 2.7.0
     optionalDependencies:
+      ws: 8.18.2
       zod: 3.24.4
     transitivePeerDependencies:
       - encoding
@@ -3020,6 +3064,8 @@ snapshots:
       http-errors: 2.0.0
       iconv-lite: 0.6.3
       unpipe: 1.0.0
+
+  resolve-pkg-maps@1.0.0: {}
 
   restore-cursor@5.1.0:
     dependencies:
@@ -3254,6 +3300,13 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
+  tsx@4.19.4:
+    dependencies:
+      esbuild: 0.25.4
+      get-tsconfig: 4.10.1
+    optionalDependencies:
+      fsevents: 2.3.3
+
   type-is@2.0.1:
     dependencies:
       content-type: 1.0.5
@@ -3293,13 +3346,13 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite-node@3.1.3(@types/node@20.17.45)(yaml@2.7.1):
+  vite-node@3.1.3(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1):
     dependencies:
       cac: 6.7.14
       debug: 4.4.0
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 6.3.5(@types/node@20.17.45)(yaml@2.7.1)
+      vite: 6.3.5(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -3314,7 +3367,7 @@ snapshots:
       - tsx
       - yaml
 
-  vite@6.3.5(@types/node@20.17.45)(yaml@2.7.1):
+  vite@6.3.5(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1):
     dependencies:
       esbuild: 0.25.4
       fdir: 6.4.4(picomatch@4.0.2)
@@ -3325,12 +3378,13 @@ snapshots:
     optionalDependencies:
       '@types/node': 20.17.45
       fsevents: 2.3.3
+      tsx: 4.19.4
       yaml: 2.7.1
 
-  vitest@3.1.3(@types/node@20.17.45)(yaml@2.7.1):
+  vitest@3.1.3(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1):
     dependencies:
       '@vitest/expect': 3.1.3
-      '@vitest/mocker': 3.1.3(vite@6.3.5(@types/node@20.17.45)(yaml@2.7.1))
+      '@vitest/mocker': 3.1.3(vite@6.3.5(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1))
       '@vitest/pretty-format': 3.1.3
       '@vitest/runner': 3.1.3
       '@vitest/snapshot': 3.1.3
@@ -3347,8 +3401,8 @@ snapshots:
       tinyglobby: 0.2.13
       tinypool: 1.0.2
       tinyrainbow: 2.0.0
-      vite: 6.3.5(@types/node@20.17.45)(yaml@2.7.1)
-      vite-node: 3.1.3(@types/node@20.17.45)(yaml@2.7.1)
+      vite: 6.3.5(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1)
+      vite-node: 3.1.3(@types/node@20.17.45)(tsx@4.19.4)(yaml@2.7.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 20.17.45
@@ -3403,6 +3457,8 @@ snapshots:
       strip-ansi: 7.1.0
 
   wrappy@1.0.2: {}
+
+  ws@8.18.2: {}
 
   yaml@2.7.1: {}
 

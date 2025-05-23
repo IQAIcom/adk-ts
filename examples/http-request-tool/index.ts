@@ -1,11 +1,11 @@
-import { Agent, HttpRequestTool, LLMRegistry, OpenAILLM } from "@adk";
+import { Agent, GoogleLLM, HttpRequestTool, LLMRegistry } from "@adk";
 import * as dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
 
 // Register LLM provider
-LLMRegistry.registerLLM(OpenAILLM);
+LLMRegistry.registerLLM(GoogleLLM);
 
 async function main() {
 	// Create HTTP request tool
@@ -14,8 +14,9 @@ async function main() {
 	// Create an agent with this tool
 	const agent = new Agent({
 		name: "http_request_demo",
-		model: process.env.LLM_MODEL || "gpt-4-turbo",
-		description: "An agent that demonstrates HTTP request capabilities",
+		model: process.env.LLM_MODEL || "gemini-2.0-flash",
+		description:
+			"An agent that demonstrates HTTP request capabilities using Google Gemini",
 		instructions: `You are a helpful assistant that can make HTTP requests to retrieve information.
     Use the http_request tool to fetch data from APIs and web services.
     Always examine the status code to ensure the request was successful.

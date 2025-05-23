@@ -1,17 +1,18 @@
-import { Agent, ExitLoopTool, LLMRegistry, OpenAILLM } from "@adk";
+import { Agent, ExitLoopTool, GoogleLLM, LLMRegistry } from "@adk";
 import * as dotenv from "dotenv";
 
 dotenv.config();
 
-LLMRegistry.registerLLM(OpenAILLM);
+LLMRegistry.registerLLM(GoogleLLM);
 
 async function main() {
 	const exitLoopTool = new ExitLoopTool();
 
 	const agent = new Agent({
 		name: "exit_loop_demo",
-		model: process.env.LLM_MODEL || "gpt-4o-mini",
-		description: "An agent that demonstrates the exit loop tool",
+		model: process.env.LLM_MODEL || "gemini-2.0-flash",
+		description:
+			"An agent that demonstrates the exit loop tool using Google Gemini",
 		instructions: `You are a helpful assistant that can exit a loop when asked to do so.
     Use the exit_loop tool when the user explicitly asks you to exit the loop.
     Do not use the exit_loop tool unless specifically instructed.

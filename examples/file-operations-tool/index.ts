@@ -1,12 +1,12 @@
 import * as path from "node:path";
-import { Agent, FileOperationsTool, LLMRegistry, OpenAILLM } from "@adk";
+import { Agent, FileOperationsTool, GoogleLLM, LLMRegistry } from "@adk";
 import * as dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
 
 // Register LLM provider
-LLMRegistry.registerLLM(OpenAILLM);
+LLMRegistry.registerLLM(GoogleLLM);
 
 async function main() {
 	// Create a temp directory for examples
@@ -18,8 +18,9 @@ async function main() {
 	// Create an agent with this tool
 	const agent = new Agent({
 		name: "file_operations_demo",
-		model: process.env.LLM_MODEL || "gpt-4o-mini",
-		description: "An agent that demonstrates file operations capabilities",
+		model: process.env.LLM_MODEL || "gemini-2.0-flash",
+		description:
+			"An agent that demonstrates file operations capabilities using Google Gemini",
 		instructions: `You are a helpful assistant that can perform file system operations.
     Use the file_operations tool to read, write, and manage files.
     Always verify operations success by checking the 'success' property in the response.

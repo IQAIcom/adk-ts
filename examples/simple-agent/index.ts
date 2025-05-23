@@ -1,17 +1,17 @@
-import { Agent, LLMRegistry, type MessageRole, OpenAILLM } from "@adk";
+import { Agent, GoogleLLM, LLMRegistry, type MessageRole } from "@adk";
 import * as dotenv from "dotenv";
 
 // Load environment variables from .env file if it exists
 dotenv.config();
 
-// Register the OpenAI LLM
-LLMRegistry.registerLLM(OpenAILLM);
+// Register the Google LLM
+LLMRegistry.registerLLM(GoogleLLM);
 
-// Initialize the agent with OpenAI's gpt-4.1-mini-2025-04-14 model
+// Initialize the agent with Google's Gemini model
 const agent = new Agent({
-	name: "openai_assistant",
-	model: "gpt-4.1-mini-2025-04-14", // This will use the LLMRegistry to get the right provider
-	description: "A simple assistant using OpenAI's gpt-4.1-mini-2025-04-14",
+	name: "gemini_assistant",
+	model: "gemini-2.0-flash", // Use Gemini model through LLMRegistry
+	description: "A simple assistant using Google's Gemini 2.0 Flash model",
 	instructions:
 		"You are a helpful assistant. Answer questions concisely and accurately.",
 });
@@ -19,7 +19,7 @@ const agent = new Agent({
 async function main() {
 	try {
 		console.log(
-			"🤖 Starting a simple agent example with OpenAI's gpt-4.1-mini-2025-04-14...",
+			"🤖 Starting a simple agent example with Google's Gemini 2.0 Flash model...",
 		);
 
 		// Example 1: Basic question answering

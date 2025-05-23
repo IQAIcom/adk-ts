@@ -15,7 +15,6 @@ export * from "./base-llm-connection";
 export * from "./anthropic-llm";
 export * from "./anthropic-llm-connection";
 export * from "./google-llm";
-export * from "./gemini-llm-connection";
 export * from "./lite-llm";
 export * from "./openai-llm";
 export * from "./openai-llm-connection";

@@ -67,29 +67,18 @@ async function main() {
 	console.log(`\nRunning example: ${selectedExample.name}\n`);
 
 	// Get absolute paths to everything
-	const tsNodeBin = path.resolve(
-		projectRoot,
-		"node_modules",
-		".bin",
-		"ts-node",
-	);
-	const tsconfigPath = path.resolve(projectRoot, "tsconfig.json");
+	const tsxBin = path.resolve(projectRoot, "node_modules", ".bin", "tsx");
 	const examplePath = path.resolve(examplesDir, selectedExample.path);
 
-	// Run the selected example with ts-node
-	const exampleProcess = spawn(
-		tsNodeBin,
-		["-r", "tsconfig-paths/register", "--project", tsconfigPath, examplePath],
-		{
-			stdio: "inherit",
-			shell: process.platform === "win32", // Use shell only on Windows
-			cwd: projectRoot,
-			env: {
-				...process.env,
-				TS_NODE_PROJECT: tsconfigPath,
-			},
+	// Run the selected example with tsx
+	const exampleProcess = spawn(tsxBin, [examplePath], {
+		stdio: "inherit",
+		shell: process.platform === "win32", // Use shell only on Windows
+		cwd: projectRoot,
+		env: {
+			...process.env,
 		},
-	);
+	});
 
 	exampleProcess.on("close", (code) => {
 		if (code === 0) {

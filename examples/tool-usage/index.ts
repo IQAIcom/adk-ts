@@ -1,9 +1,9 @@
 import {
 	Agent,
+	GoogleLLM,
 	LLMRegistry,
 	type Message,
 	type MessageRole,
-	OpenAILLM,
 } from "@adk";
 import * as dotenv from "dotenv";
 import { CalculatorTool } from "./calculator";
@@ -11,8 +11,8 @@ import { WeatherTool } from "./weather";
 // Load environment variables from .env file
 dotenv.config();
 
-// Register the OpenAI LLM
-LLMRegistry.registerLLM(OpenAILLM);
+// Register the Google LLM
+LLMRegistry.registerLLM(GoogleLLM);
 
 // Enable debug mode for showing agent loop
 const DEBUG = true;
@@ -25,8 +25,9 @@ async function main() {
 		// Create the agent with custom tools
 		const agent = new Agent({
 			name: "tool_assistant",
-			model: process.env.LLM_MODEL || "gpt-4-turbo",
-			description: "An assistant that demonstrates tool usage",
+			model: process.env.LLM_MODEL || "gemini-2.0-flash",
+			description:
+				"An assistant that demonstrates tool usage with Google Gemini",
 			instructions:
 				"You are a helpful assistant that can perform calculations and check the weather. Use the appropriate tools when asked about math or weather.",
 			tools: [new CalculatorTool(), new WeatherTool()],

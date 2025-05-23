@@ -1,7 +1,7 @@
 import {
 	Agent,
+	GoogleLLM,
 	LLMRegistry,
-	OpenAILLM,
 	RunConfig,
 	UserInteractionTool,
 } from "@adk";
@@ -11,7 +11,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 // Register LLM provider
-LLMRegistry.registerLLM(OpenAILLM);
+LLMRegistry.registerLLM(GoogleLLM);
 
 // Mock implementation of the promptUser function for demonstration purposes
 // In a real application, this would be a UI component or CLI prompt
@@ -64,8 +64,9 @@ async function main() {
 	// Create an agent with this tool
 	const agent = new Agent({
 		name: "user_interaction_demo",
-		model: process.env.LLM_MODEL || "gpt-4o-mini",
-		description: "An agent that demonstrates user interaction capabilities",
+		model: process.env.LLM_MODEL || "gemini-2.0-flash",
+		description:
+			"An agent that demonstrates user interaction capabilities using Google Gemini",
 		instructions: `You are a helpful assistant that can interact with the user to gather information.
     Use the user_interaction tool to ask the user questions or get their input on decisions.
     Always be respectful and clear in your prompts to the user.`,

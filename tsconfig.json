@@ -11,14 +11,30 @@
 		"skipLibCheck": true,
 		"downlevelIteration": true,
 		"sourceMap": true,
-		"types": ["node"],
+		"types": [
+			"node"
+		],
 		"baseUrl": ".",
 		"paths": {
-			"@adk/*": ["src/*"],
-			"@adk": ["src"]
+			"@adk/*": [
+				"src/*"
+			],
+			"@adk": [
+				"src"
+			]
 		},
-		"typeRoots": ["./node_modules/@types", "./src/types"]
+		"typeRoots": [
+			"./node_modules/@types",
+			"./src/types"
+		]
 	},
-	"include": ["src", "test", "examples"],
-	"exclude": ["node_modules", "dist"]
+	"include": [
+		"src",
+		"test",
+		"examples"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }

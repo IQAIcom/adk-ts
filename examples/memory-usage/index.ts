@@ -1,12 +1,17 @@
 import * as path from "node:path";
 import {
 	Agent,
+	GoogleLLM,
 	InMemorySessionService,
+	LLMRegistry,
 	PersistentMemoryService,
 	type Session,
 	SessionState,
 } from "@adk";
 import * as dotenv from "dotenv";
+
+// Register Google LLM
+LLMRegistry.registerLLM(GoogleLLM);
 
 // Load environment variables from .env file if it exists
 dotenv.config();
@@ -31,12 +36,12 @@ async function persistentMemoryExample() {
 	console.log("- Messages are saved to disk in the .memory directory\n");
 
 	// Check for API key
-	if (!process.env.OPENAI_API_KEY) {
+	if (!process.env.GOOGLE_API_KEY) {
 		console.log(
-			"⚠️  Please set the OPENAI_API_KEY environment variable to run this example",
+			"⚠️  Please set the GOOGLE_API_KEY environment variable to run this example",
 		);
 		console.log(
-			"   Example: OPENAI_API_KEY=your-key-here npx ts-node examples/memory-usage/persistent-memory.ts",
+			"   Example: GOOGLE_API_KEY=your-key-here npx ts-node examples/memory-usage/persistent-memory.ts",
 		);
 		return;
 	}
@@ -94,8 +99,8 @@ async function persistentMemoryExample() {
 	// Create the agent with memory capability
 	const agent = new Agent({
 		name: "memory_assistant",
-		description: "An assistant with persistent memory",
-		model: "gpt-4.1-mini-2025-04-14",
+		description: "An assistant with persistent memory using Google Gemini",
+		model: "gemini-2.0-flash",
 		instructions:
 			"You are a helpful assistant with persistence. When the user refers to previous conversations, you can recall what was discussed.",
 		memoryService,

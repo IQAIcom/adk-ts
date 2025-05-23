@@ -26,7 +26,7 @@ GOOGLE_API_KEY=your_google_api_key_here
 # Default model to use - uncomment the one you want to use
 LLM_MODEL=gpt-4-turbo
 # LLM_MODEL=claude-3-opus
-# LLM_MODEL=gemini-1.5-pro
+# LLM_MODEL=gemini-2.5-flash
 ```
 
 ## Running the Example
@@ -47,9 +47,9 @@ npx ts-node examples/simple-agent/index.ts
 
 This example demonstrates:
 
-1. Creating a simple agent with a specified LLM model
-2. Adding a tool to the agent (GoogleSearch)
-3. Running the agent with a question
-4. Using streaming mode to get real-time responses
+1. Creating a simple agent with a specified LLM model (Google's Gemini in this case)
+2. Running the agent with a question about the three laws of robotics
+3. Using conversation history for follow-up questions
+4. Handling more complex reasoning based on the conversation
 
-The example first runs a simple query without streaming, then runs a second query with streaming enabled to show the difference. 
+The example runs three sequential queries, building on the previous responses to demonstrate how the agent maintains context through a conversation.

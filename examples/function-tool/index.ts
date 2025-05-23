@@ -1,11 +1,11 @@
-import { Agent, FunctionTool, LLMRegistry, OpenAILLM } from "@adk";
+import { Agent, FunctionTool, GoogleLLM, LLMRegistry } from "@adk";
 import * as dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
 
 // Register LLM provider
-LLMRegistry.registerLLM(OpenAILLM);
+LLMRegistry.registerLLM(GoogleLLM);
 
 /**
  * Example function to calculate the sum of two numbers.
@@ -79,8 +79,9 @@ async function main() {
 	// Create an agent with these tools
 	const agent = new Agent({
 		name: "function_tool_demo",
-		model: process.env.LLM_MODEL || "gpt-4-turbo",
-		description: "An agent that demonstrates function tools",
+		model: process.env.LLM_MODEL || "gemini-2.0-flash",
+		description:
+			"An agent that demonstrates function tools using Google Gemini",
 		instructions: `You are a helpful assistant that can perform calculations, fetch weather data, and retrieve user information.
     Use the calculator tool to solve math problems.
     Use the weather tool to get weather information for cities.
