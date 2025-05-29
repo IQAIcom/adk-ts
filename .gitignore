@@ -39,6 +39,7 @@ logs/
 
 # Memory storage (from your example code)
 .memory/
+temp-examples/
 
 # TypeScript cache
 *.tsbuildinfo
