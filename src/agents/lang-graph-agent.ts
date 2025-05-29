@@ -341,9 +341,17 @@ export class LangGraphAgent extends BaseAgent {
 
 				// If the result is an LLMResponse, add it to the messages
 				if (this.isLLMResponse(result)) {
+					const extractedContent = this.extractTextContent(result.content);
+
+					// Ensure we don't pass empty content to the next node
+					// Google Gemini throws "empty text parameter" error for empty strings
+					const messageContent =
+						extractedContent.trim() ||
+						`Node "${node.name}" completed successfully.`;
+
 					context.messages.push({
 						role: "assistant",
-						content: this.extractTextContent(result.content),
+						content: messageContent,
 					});
 				}
 
@@ -499,9 +507,17 @@ export class LangGraphAgent extends BaseAgent {
 
 				// If the result is an LLMResponse, add it to the messages
 				if (this.isLLMResponse(result)) {
+					const extractedContent = this.extractTextContent(result.content);
+
+					// Ensure we don't pass empty content to the next node
+					// Google Gemini throws "empty text parameter" error for empty strings
+					const messageContent =
+						extractedContent.trim() ||
+						`Node "${node.name}" completed successfully.`;
+
 					context.messages.push({
 						role: "assistant",
-						content: this.extractTextContent(result.content),
+						content: messageContent,
 					});
 				}
 
