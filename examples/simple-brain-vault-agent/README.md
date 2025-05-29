@@ -2,15 +2,24 @@
 
 A simplified Brain Vault Agent that demonstrates autonomous yield optimization using ADK-TS with Fraxlend and Odos MCP servers.
 
+## ⚠️ **IMPORTANT: This agent executes REAL transactions with your wallet!**
+
+**🚨 Safety Warning:**
+
+- This agent will execute **real swaps** with your actual funds
+- Make sure you understand the risks before running
+- Test with small amounts first
+- Keep your private key secure
+
 ## 🎯 What This Does
 
 This example showcases a **5-node LangGraph workflow** that:
 
 1. **Portfolio Data Collection** - Fetches your current Fraxlend positions and available yields
 2. **Yield Analysis** - Analyzes opportunities and calculates potential improvements  
-3. **Decision Making** - Decides whether rebalancing is worth it (>5% improvement)
-4. **Execution** (if needed) - Uses Odos to execute optimal swaps
-5. **Reporting** - Provides comprehensive portfolio summary
+3. **Decision Making** - Decides whether rebalancing is worth it (>1% improvement)
+4. **Execution** (if needed) - **EXECUTES REAL SWAPS** using Odos to optimize yields
+5. **Reporting** - Provides comprehensive portfolio summary with transaction details
 
 ## 🏗️ Workflow Diagram
 
@@ -74,14 +83,16 @@ npx ts-node examples/simple-brain-vault-agent/index.ts
 - Analyzes the collected portfolio data
 - Calculates potential yield improvements
 - Considers gas costs vs. benefits
-- Ends with: `"REBALANCING_RECOMMENDED"` or `"REBALANCING_NOT_NEEDED"`
+- **Threshold: Recommends rebalancing if improvement > 1%**
+- Ends with: `"REBALANCING_RECOMMENDED"` or analyzes why to skip
 
 ### **RebalancingExecutorAgent** (if recommended)
 
-- Plans optimal token swaps
+- **EXECUTES REAL SWAPS** to optimize yield
 - Uses **Odos MCP tools** for best swap routes
-- Executes transactions with safety checks
-- Ends with: `"REBALANCING_EXECUTED"`
+- Implements safety measures (small amounts, slippage protection)
+- Provides transaction hashes and gas cost reporting
+- Ends with: `"REBALANCING_EXECUTION_COMPLETE"`
 
 ### **SkipRebalancingAgent** (if not needed)
 
@@ -101,6 +112,10 @@ npx ts-node examples/simple-brain-vault-agent/index.ts
 ```
 🧠 Starting Simple Brain Vault Agent Demo
 ==========================================
+⚠️  WARNING: This agent will execute REAL transactions!
+💰 Real swaps will be performed with your wallet funds
+🔐 Using wallet private key from environment variables
+==========================================
 🔄 Connecting to Fraxlend MCP server...
 ✅ Connected to Fraxlend MCP (8 tools available)
 🔄 Connecting to Odos MCP server...
@@ -113,18 +128,19 @@ npx ts-node examples/simple-brain-vault-agent/index.ts
 [Fraxlend] Fetching portfolio for wallet 0x1234...
 [Fraxlend] Found 2 active positions: FRAX/USDC, FXS/ETH
 [Agent] Step 2: Executing node "yield_analysis"
-[Analysis] Current yield: 8.5% APY, Optimal yield: 11.2% APY
-[Analysis] Improvement: 2.7% (31.7% relative) - Exceeds 5% threshold
+[Analysis] Current yield: 8.5% APY, Optimal yield: 9.8% APY
+[Analysis] Improvement: 1.3% - Exceeds 1% threshold
 [Agent] Step 3: Executing node "rebalancing_execution"
-[Odos] Planning swap: 1000 USDC → FRAX for new position
-[Odos] Executing swap via 0x protocol...
-[Odos] Transaction: 0xabcd1234... (Gas: 120,000)
+[Odos] Getting quote for swap: 100 USDC → FRAX (10% of position)
+[Odos] Executing REAL swap via Odos router...
+[Odos] ✅ Transaction: 0xabcd1234... (Gas: 120,000, Cost: $8.50)
 [Agent] Step 4: Executing node "portfolio_report"
 
 🎯 Brain Vault Workflow Complete!
 ==================================
-Final Result: Portfolio successfully rebalanced. Expected APY increased from 8.5% to 11.2%. 
-Transaction: 0xabcd1234... completed with 0.8% slippage.
+Final Result: Portfolio successfully rebalanced. APY increased from 8.5% to 9.8%. 
+✅ Transaction: 0xabcd1234... completed with 1.2% slippage.
+💰 Gas cost: $8.50, Expected annual benefit: $156
 Next review recommended in 7 days.
 ```
 
@@ -152,11 +168,12 @@ Next review recommended in 7 days.
 
 ## 🛡️ Safety Features
 
-- **Dry run mode** - Set `DRY_RUN=true` to simulate without executing
-- **Threshold checks** - Only rebalances if improvement > 5%
-- **Gas cost analysis** - Considers transaction costs
-- **Slippage protection** - Max 2% slippage on swaps
+- **Small position sizes** - Starts with 10-20% of position for safety
+- **Threshold checks** - Only rebalances if improvement > 1%
+- **Gas cost analysis** - Considers transaction costs in decision making
+- **Slippage protection** - Uses 2-3% slippage tolerance on swaps
 - **Wallet validation** - Verifies sufficient balance before execution
+- **Real transaction reporting** - Provides transaction hashes and costs
 
 ## 🧪 Testing Without Real Funds
 

@@ -219,7 +219,7 @@ export class Agent extends BaseAgent {
 			if (process.env.DEBUG === "true") {
 				console.log(`Tool ${name} execution complete`);
 			}
-
+			console.log(`Tool ${name} execution result:`, result);
 			return {
 				name,
 				result: typeof result === "string" ? result : JSON.stringify(result),
@@ -435,7 +435,6 @@ export class Agent extends BaseAgent {
 			if (!response) {
 				throw new Error("No response from LLM");
 			}
-
 			let stepCount = 0;
 			while (stepCount < this.maxToolExecutionSteps) {
 				stepCount++;
@@ -489,6 +488,10 @@ export class Agent extends BaseAgent {
 
 					// Add the results to the context manually
 					for (const result of toolResults) {
+						console.log(
+							`[RESULT(${toolResults.indexOf(result)})] Tool Result:`,
+							result,
+						);
 						context.addMessage({
 							role: "tool",
 							tool_call_id: result.id,
@@ -510,12 +513,12 @@ export class Agent extends BaseAgent {
 
 					// Save to memory if enabled
 					await this.saveToMemory(context);
-
+					console.log("Final Response:", currentResponse);
 					// Return the final response
 					return currentResponse;
 				}
 			}
-
+			console.log("Response:", response);
 			return response;
 		} catch (error) {
 			console.error("Error in agent execution:", error);
