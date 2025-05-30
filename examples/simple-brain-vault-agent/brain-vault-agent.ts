@@ -3,8 +3,8 @@ import {
 	type LangGraphAgentConfig,
 } from "@adk/agents/lang-graph-agent";
 import {
-	PortfolioDataAgent,
 	YieldAnalysisAgent,
+	FraxlendExecutorAgent,
 	QuoteFetcherAgent,
 	SwapExecutorAgent,
 	SkipRebalancingAgent,
@@ -21,19 +21,14 @@ export class SimpleBrainVaultAgent extends LangGraphAgent {
 				"Simplified Brain Vault rebalancing workflow with specialized agents",
 			nodes: [
 				{
-					name: "portfolio_data",
-					agent: new PortfolioDataAgent(fraxlendTools),
-					targets: ["yield_analysis"],
-				},
-				{
 					name: "yield_analysis",
-					agent: new YieldAnalysisAgent(),
+					agent: new YieldAnalysisAgent(fraxlendTools),
 					targets: ["quote_fetcher", "skip_rebalancing"],
 				},
 				{
 					name: "quote_fetcher",
 					agent: new QuoteFetcherAgent(odosTools),
-					targets: ["swap_executor"],
+					targets: ["swap_executor", "fraxlend_executor"],
 					condition: (result) => {
 						const content =
 							typeof result.content === "string"
@@ -56,6 +51,29 @@ export class SimpleBrainVaultAgent extends LangGraphAgent {
 				{
 					name: "swap_executor",
 					agent: new SwapExecutorAgent(odosTools),
+					targets: ["fraxlend_executor"],
+					condition: (result) => {
+						const content =
+							typeof result.content === "string"
+								? result.content
+								: JSON.stringify(result.content);
+
+						// Execute swap only if quote fetcher recommends proceeding with swap
+						const needsSwap = content.includes("PROCEED_WITH_SWAP");
+
+						if (DEBUG) {
+							console.log("[LangGraph] swap_executor condition check:");
+							console.log(`  - Should execute: ${needsSwap}`);
+							console.log('  - Looking for: "PROCEED_WITH_SWAP"');
+							console.log(`  - Content preview: "${content.slice(0, 300)}..."`);
+						}
+
+						return needsSwap;
+					},
+				},
+				{
+					name: "fraxlend_executor",
+					agent: new FraxlendExecutorAgent(fraxlendTools),
 					targets: ["portfolio_report"],
 				},
 				{
@@ -88,7 +106,7 @@ export class SimpleBrainVaultAgent extends LangGraphAgent {
 					agent: new PortfolioReporterAgent(),
 				},
 			],
-			rootNode: "portfolio_data",
+			rootNode: "yield_analysis",
 			maxSteps: 20,
 		};
 

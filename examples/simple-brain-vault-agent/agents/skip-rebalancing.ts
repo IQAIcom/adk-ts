@@ -5,32 +5,60 @@ export class SkipRebalancingAgent extends Agent {
 		super({
 			name: "skip_rebalancing",
 			model: process.env.LLM_MODEL || "gemini-2.0-flash",
-			description: "Handles cases where rebalancing is not needed",
+			description: "Handles scenarios where rebalancing is not beneficial",
 			instructions: `
-				You are handling a scenario where rebalancing is not needed.
+				You are handling a scenario where rebalancing was not recommended by the yield analysis.
 
-				MANDATORY: Provide a detailed explanation of why rebalancing was skipped.
+				Your job is to:
+				1. REVIEW the yield analysis results and reasoning
+				2. SUMMARIZE why rebalancing was skipped
+				3. PROVIDE portfolio optimization recommendations
+				4. SUGGEST next review timeline
 
-				Your response should include:
-				1. Current portfolio status
-				2. Reason for skipping (yield improvement < 1%, gas costs, etc.)
-				3. Next recommended review date
+				REQUIRED RESPONSE FORMAT:
 
-				Example response:
-				"Rebalancing Analysis Complete - SKIPPED
+				🚫 REBALANCING SKIPPED - DETAILED REPORT
+				═══════════════════════════════════════════
 
-				Current Position: 48.32 FRAX at 9.72% APR in fFRAX(sfrxETH)-8
+				CURRENT PORTFOLIO STATUS:
+				- Position: [current pool and token]
+				- Amount: [position amount] [token]
+				- Current APY: [rate]%
+				- Position Value: $[USD value]
+				- Pool Address: [address]
 
-				Decision: Rebalancing was not recommended because the yield improvement would be less than 1% or gas costs would outweigh benefits.
+				ANALYSIS SUMMARY:
+				- Best Alternative APY: [highest rate found]%
+				- Yield Improvement: [difference]%
+				- Decision Threshold: 1.0% minimum improvement
+				- Decision Result: [Below threshold / Gas costs too high / Other reason]
 
-				Current portfolio is already well-optimized.
+				COST-BENEFIT ANALYSIS:
+				- Potential Annual Benefit: $[amount]
+				- Estimated Transaction Costs: $[gas estimate]
+				- Net Benefit: $[negative amount]
+				- ROI Timeline: [not profitable / too long payback]
 
-				Next review recommended in 7 days.
+				REASONING:
+				[Detailed explanation of why rebalancing was not recommended, including specific factors like yield improvement being too small, high gas costs, market conditions, etc.]
 
-				REBALANCING_SKIPPED"
+				CURRENT PORTFOLIO ASSESSMENT:
+				- Portfolio Status: [Well-optimized / Acceptable / Could improve later]
+				- Risk Level: [Low / Medium / High]
+				- Liquidity: [Good / Fair / Poor]
 
-				CRITICAL: Always provide this detailed response. Never return empty content.
-				Always end your response with: "REBALANCING_SKIPPED"
+				RECOMMENDATIONS:
+				- Hold Current Position: [YES/NO with reason]
+				- Monitor Opportunities: [frequency]
+				- Market Conditions to Watch: [specific metrics]
+				- Alternative Strategies: [if any]
+
+				NEXT REVIEW SCHEDULE:
+				- Recommended Check: [timeframe - 1-7 days depending on market volatility]
+				- Trigger Conditions: [yield improvements, market changes]
+				- Monitoring Focus: [specific pools or metrics to watch]
+
+				Always end with: "REBALANCING_SKIPPED"
 			`,
 			tools: [],
 			maxToolExecutionSteps: 1,

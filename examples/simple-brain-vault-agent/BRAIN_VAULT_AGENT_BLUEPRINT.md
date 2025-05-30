@@ -905,3 +905,44 @@ LOG_LEVEL=debug
 - Zero vault fund losses due to bot errors
 - Maximum downtime < 4 hours per month
 - All transactions properly logged and auditable
+
+## 📋 Contract Integration
+
+### VaultCreator Contract
+
+See: [`@abi/vault-creator.abi.ts`](./abi/vault-creator.abi.ts)
+
+**Key Responsibilities:**
+
+- **Admin**: Controls protocol whitelisting (`whitelistProtocol`, `unwhitelistProtocol`)
+- **Bot**: Creates vaults for users (`createVault` - only bot address allowed)
+- **Users**: Interact via web app for deposits and configuration
+
+## 🏦 Individual Vault Contracts
+
+### Contract ABI Reference
+
+See: [`@abi/vault.abi.ts`](./abi/vault.abi.ts)
+
+### TypeScript Interface
+
+```typescript
+interface VaultContract {
+  // User Operations
+  deposit(token: string, amount: bigint): Promise<void>;
+  withdraw(token: string, amount: bigint): Promise<void>;
+  
+  // Bot Operations (yield management)
+  yield(targetProtocol: string, callParams: string, reason: string): Promise<void>;
+  unyield(targetProtocol: string, callParams: string): Promise<void>;
+  
+  // Protocol Approvals (Bot only)
+  approveTokenForProtocol(token: string, protocolSpender: string, amount: bigint): Promise<void>;
+  
+  // View Functions
+  userAddress(): Promise<string>;
+  botAddress(): Promise<string>;
+  adminAddress(): Promise<string>;
+  vaultCreator(): Promise<string>;
+}
+```

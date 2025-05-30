@@ -1,4 +1,10 @@
-import { GoogleLLM, LLMRegistry, type MessageRole } from "@adk";
+import {
+	GoogleLLM,
+	InvocationContext,
+	LLMRegistry,
+	ToolContext,
+	type MessageRole,
+} from "@adk";
 import { McpError, McpToolset } from "@adk/tools/mcp";
 import type { McpConfig } from "@adk/tools/mcp/types";
 import * as dotenv from "dotenv";
@@ -27,12 +33,6 @@ async function main() {
 		process.exit(1);
 	}
 
-	// Safety warning
-	console.log("⚠️  WARNING: This agent will execute REAL transactions!");
-	console.log("💰 Real swaps will be performed with your wallet funds");
-	console.log("🔐 Using wallet private key from environment variables");
-	console.log("==========================================");
-
 	try {
 		// Initialize Fraxlend MCP Toolset
 		console.log("🔄 Connecting to Fraxlend MCP server...");
@@ -58,17 +58,6 @@ async function main() {
 
 		fraxlendToolset = new McpToolset(fraxlendConfig);
 		const fraxlendTools = await fraxlendToolset.getTools();
-		console.log(
-			`✅ Connected to Fraxlend MCP (${fraxlendTools.length} tools available)`,
-		);
-
-		// Log available tools for debugging
-		if (DEBUG) {
-			console.log("📋 Available Fraxlend tools:");
-			fraxlendTools.forEach((tool) => {
-				console.log(`   - ${tool.name}: ${tool.description}`);
-			});
-		}
 
 		// Initialize Odos MCP Toolset
 		console.log("🔄 Connecting to Odos MCP server...");
@@ -95,17 +84,6 @@ async function main() {
 
 		odosToolset = new McpToolset(odosConfig);
 		const odosTools = await odosToolset.getTools();
-		console.log(
-			`✅ Connected to Odos MCP (${odosTools.length} tools available)`,
-		);
-
-		// Log available tools for debugging
-		if (DEBUG) {
-			console.log("📋 Available Odos tools:");
-			odosTools.forEach((tool) => {
-				console.log(`   - ${tool.name}: ${tool.description}`);
-			});
-		}
 
 		// Create the Simple Brain Vault Agent
 		console.log("🤖 Initializing Simple Brain Vault Agent...");
@@ -114,10 +92,40 @@ async function main() {
 		console.log("🚀 Starting Brain Vault rebalancing workflow...");
 		console.log("==============================================");
 
-		// Enable debug mode for LangGraph execution
-		process.env.DEBUG = "true";
+		const invocationContext = new InvocationContext({
+			userId: "123",
+			appName: "brain-vault",
+			sessionId: "123",
+		});
+		const toolContext = new ToolContext({
+			invocationContext,
+		});
+		const fraxlendStats = await fraxlendTools.find(
+			(tool) => tool.name === "FRAXLEND_GET_STATS",
+		);
+		if (!fraxlendStats) {
+			throw new Error("FRAXLEND_GET_STATS tool not found");
+		}
 
-		console.log("📊 Starting workflow execution with debug logging enabled");
+		const fraxlendStatsResult = await fraxlendStats.runAsync({}, toolContext);
+		const fraxlendStatsData =
+			typeof fraxlendStatsResult.content === "string"
+				? fraxlendStatsResult
+				: JSON.stringify(fraxlendStatsResult.content);
+		const fraxlendPositions = await fraxlendTools.find(
+			(tool) => tool.name === "FRAXLEND_GET_POSITIONS",
+		);
+		if (!fraxlendPositions) {
+			throw new Error("FRAXLEND_GET_USER_POSITIONS tool not found");
+		}
+		const fraxlendPositionsResult = await fraxlendPositions.runAsync(
+			{},
+			toolContext,
+		);
+		const fraxlendPositionsData =
+			typeof fraxlendPositionsResult.content === "string"
+				? fraxlendPositionsResult
+				: JSON.stringify(fraxlendPositionsResult.content);
 
 		// Execute the workflow
 		const result = await brainVaultAgent.run({
@@ -126,27 +134,10 @@ async function main() {
 					role: "user" as MessageRole,
 					content: `
 						Execute a complete Brain Vault rebalancing for my wallet.
-
-						INSTRUCTIONS:
-						1. Collect my current Fraxlend portfolio data using the available tools
-						2. Analyze yield opportunities across all available pairs
-						3. Determine if rebalancing would improve yields by >1%
-						4. If beneficial, EXECUTE REAL SWAPS via Odos to rebalance
-						5. Provide a comprehensive final report with transaction details
-
-						EXECUTION PARAMETERS:
-						- Start with small amounts (10-20% of position) for safety
-						- Use 2-3% slippage tolerance
-						- Only rebalance if yield improvement > 1%
-						- Consider gas costs in decision making
-
-						IMPORTANT:
-						- This will execute REAL transactions with your wallet
-						- Each step must provide detailed output and reasoning
-						- Do not provide empty or minimal responses
-						- Report transaction hashes and gas costs
-
-						START IMMEDIATELY - execute the full workflow including real swaps if beneficial.
+						Here is my current fraxlend positions:
+						${fraxlendPositionsData}
+						Here are all the fraxlend pairs available:
+						${fraxlendStatsData}
 					`,
 				},
 			],

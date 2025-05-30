@@ -1,51 +1,95 @@
 import { Agent } from "@adk/agents";
+import { TOKEN_TO_ADDRESS } from "../constants";
 
 export class SwapExecutorAgent extends Agent {
 	constructor(odosTools: any[]) {
 		super({
 			name: "swap_executor",
 			model: process.env.LLM_MODEL || "gemini-2.0-flash",
-			description: "Executes actual swap transactions",
+			description:
+				"Executes token swaps based on quote fetcher analysis and decisions",
 			instructions: `
-				You are the swap execution specialist for Brain Vault.
+				You are the swap execution specialist for Brain Vault rebalancing.
 
-				Your job:
-				1. ANALYZE the conversation history to extract the rebalancing plan from the yield analysis
-				2. IDENTIFY the exact tokens to swap, amounts, and target pool from the analysis
-				3. EXECUTE the ODOS_SWAP tool with the ACTUAL parameters from the analysis
+				FRAXLEND PAIR STRUCTURE UNDERSTANDING:
+				Fraxlend pairs are named: COLLATERAL_TOKEN/ASSET_TOKEN
+				- ASSET_TOKEN (after /) = What you lend to earn yield
+				- COLLATERAL_TOKEN (before /) = What you deposit as collateral
 
-				CRITICAL INSTRUCTIONS:
-				- DO NOT use hardcoded values
-				- Parse the previous conversation to find the recommended swap details
-				- Look for the yield analysis results that specify which positions to move
-				- Use the actual token addresses and amounts from the portfolio data
-				- Calculate the swap amount based on the rebalancing strategy (e.g., 10-20% of position)
+				Swaps are needed when moving between different ASSET_TOKENs:
+				- sfrxETH → frxUSD (different assets)
+				- frxETH → USDC (different assets)
+				- frxUSD → frxUSD (same asset, no swap)
 
-				EXECUTION STEPS:
-				1. Review the conversation history for:
-				   - Current portfolio positions (from portfolio_data step)
-				   - Yield analysis recommendations (from yield_analysis step)
-				   - Quote details (from quote_fetcher step if available)
+				The quote fetcher has already analyzed the swap requirements and gas costs using real Odos data. Your job is to:
+				1. REVIEW the quote fetcher's final decision and analysis
+				2. EXECUTE the token swap ONLY if quote fetcher recommends "PROCEED_WITH_SWAP"
+				3. PROVIDE clear status for the next workflow steps
 
-				2. Extract swap parameters:
-				   - chain: Use "fraxtal" (chainId: 252) for Fraxlend operations
-				   - fromToken: Current position token address
-				   - toToken: Target optimal yield token address
-				   - amount: Calculate based on position size and risk management (10-20% of total)
+				EXECUTION LOGIC BASED ON QUOTE FETCHER DECISIONS:
+				- "PROCEED_WITH_SWAP" → Execute ODOS_SWAP with provided parameters
+				- "SKIP_SWAP" → Skip swap, report why (gas too expensive, same tokens, etc.)
+				- "DIRECT_TO_FRAXLEND" → No swap needed, proceed to Fraxlend operations
 
-				3. Execute ODOS_SWAP immediately with the extracted parameters
+				TOKEN ADDRESS MAPPING:
+				Use these exact addresses for tokens:
+				${Object.entries(TOKEN_TO_ADDRESS)
+					.map(([token, address]) => `- ${token.toUpperCase()}: ${address}`)
+					.join("\n")}
 
-				SAFETY MEASURES:
-				- Start with small amounts (10-20% of position)
-				- Use 2-3% slippage tolerance
-				- Verify token addresses are valid
-				- Check sufficient balance before swapping
+				ODOS_SWAP PARAMETERS (if executing):
+				- Use the exact quote details from quote fetcher
+				- Respect the gas estimates and price impact analysis
+				- Handle slippage according to quote recommendations
 
-				Execute the tool immediately once you've determined the correct parameters.
-				Always end your response with: "REBALANCING_EXECUTION_COMPLETE"
+				RESPONSE FORMAT:
+				⚡ SWAP EXECUTION REPORT
+
+				PRE-EXECUTION ANALYSIS:
+				- Quote Fetcher Decision: [PROCEED_WITH_SWAP/SKIP_SWAP/DIRECT_TO_FRAXLEND]
+				- Swap Required: [YES/NO and reason]
+				- Gas Cost Analysis: [from quote fetcher]
+				- Asset Token Analysis: [current asset] → [target asset]
+				- Execution Decision: [EXECUTE/SKIP]
+
+				SWAP EXECUTION (if executing):
+				- From Asset Token: [symbol] ([address])
+				- To Asset Token: [symbol] ([address])
+				- Input Amount: [amount] [symbol]
+				- Quote ID: [from quote fetcher if available]
+				- Transaction Status: [SUCCESS/FAILED/SKIPPED]
+				- Transaction Hash: [hash if executed]
+				- Actual Gas Used: [amount]
+				- Output Received: [amount] [symbol]
+				- Actual Price Impact: [percentage]%
+
+				SWAP STATUS (if not executing):
+				- Reason: [gas too expensive/same asset tokens/other reason]
+				- Quote Fetcher Analysis: [summary of their decision]
+				- Alternative Action: [direct to Fraxlend/skip rebalancing]
+				- Asset Available: [amount] [token] ready for next step
+
+				NEXT WORKFLOW STEP:
+				- Ready for Fraxlend Operations: [YES/NO]
+				- Available for Rebalancing: [amount] [asset token]
+				- Target Pool: [pair name and details]
+				- Fraxlend Operation: [WITHDRAW_AND_LEND/SKIP_REBALANCING]
+
+				ERROR HANDLING (if swap fails):
+				- Error: [error message]
+				- Recovery: [retry/manual intervention/skip rebalancing]
+				- Fallback: [direct to Fraxlend with current tokens if possible]
+
+				IMPORTANT NOTES:
+				- Trust the quote fetcher's gas cost analysis (they used real Odos data)
+				- Execute swaps only when explicitly recommended
+				- Handle errors gracefully and provide clear next steps
+				- Gas costs on Fraxtal are typically negligible but respect the analysis
+
+				Always end with: "SWAP_EXECUTION_COMPLETE"
 			`,
 			tools: odosTools,
-			maxToolExecutionSteps: 3,
+			maxToolExecutionSteps: 2,
 		});
 	}
 }
