@@ -380,10 +380,55 @@ export class GoogleLLM extends BaseLLM {
 				{
 					name: func.name,
 					description: func.description,
-					parameters: func.parameters,
+					parameters: this.filterGoogleUnsupportedProperties(func.parameters),
 				},
 			],
 		}));
+	}
+
+	/**
+	 * Filters out JSON Schema properties that Google Gemini doesn't support
+	 */
+	private filterGoogleUnsupportedProperties(schema: any): any {
+		if (!schema || typeof schema !== "object") {
+			return schema;
+		}
+
+		// Create a copy without unsupported properties using destructuring
+		const { exclusiveMinimum, exclusiveMaximum, ...filtered } = schema;
+
+		// Recursively filter properties if this is an object schema
+		if (filtered.properties && typeof filtered.properties === "object") {
+			filtered.properties = { ...filtered.properties };
+			for (const [key, value] of Object.entries(filtered.properties)) {
+				filtered.properties[key] =
+					this.filterGoogleUnsupportedProperties(value);
+			}
+		}
+
+		// Recursively filter items if this is an array schema
+		if (filtered.items) {
+			filtered.items = this.filterGoogleUnsupportedProperties(filtered.items);
+		}
+
+		// Handle anyOf, oneOf, allOf
+		if (filtered.anyOf && Array.isArray(filtered.anyOf)) {
+			filtered.anyOf = filtered.anyOf.map((item: any) =>
+				this.filterGoogleUnsupportedProperties(item),
+			);
+		}
+		if (filtered.oneOf && Array.isArray(filtered.oneOf)) {
+			filtered.oneOf = filtered.oneOf.map((item: any) =>
+				this.filterGoogleUnsupportedProperties(item),
+			);
+		}
+		if (filtered.allOf && Array.isArray(filtered.allOf)) {
+			filtered.allOf = filtered.allOf.map((item: any) =>
+				this.filterGoogleUnsupportedProperties(item),
+			);
+		}
+
+		return filtered;
 	}
 
 	/**
