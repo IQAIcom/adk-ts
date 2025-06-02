@@ -84,7 +84,7 @@ export class OpenAILLM extends BaseLLM {
 
 		// Store default parameters
 		this.defaultParams = {
-			temperature: config?.defaultParams?.temperature ?? 0.7,
+			temperature: config?.defaultParams?.temperature ?? 1,
 			top_p: config?.defaultParams?.top_p ?? 1,
 			max_tokens: config?.defaultParams?.max_tokens,
 			frequency_penalty: config?.defaultParams?.frequency_penalty ?? 0,
@@ -103,6 +103,7 @@ export class OpenAILLM extends BaseLLM {
 			"gpt-4.1-.*",
 			// GPT-4o models
 			"gpt-4o-.*",
+			"gpt-4o",
 			// GPT-3.5 models
 			"gpt-3.5-.*",
 			// Future-proofing

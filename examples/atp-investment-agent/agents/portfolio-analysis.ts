@@ -1,23 +1,17 @@
 import { Agent } from "@adk/agents";
 
 export class PortfolioAnalysisAgent extends Agent {
-	constructor(atpTools: any[]) {
+	constructor(atpTools: any[], llmModel: string) {
 		super({
 			name: "portfolio_analyzer",
-			model: process.env.LLM_MODEL || "gemini-2.5-pro",
+			model: llmModel,
 			description:
 				"Analyzes current ATP portfolio and IQ wallet balance for investment planning",
 			instructions: `
-				You analyze the current ATP portfolio and wallet balance.
+				IMPORTANT: You MUST end your response with the exact token PORTFOLIO_ANALYSIS_COMPLETE. Do NOT add any text after this token. If you do not include this, the workflow will break.
 
-				DEBUG: Check available tools first and report them.
+				ONLY output the following fields in this exact format:
 
-				STEPS:
-				1. Call ATP_GET_AGENT_POSITIONS to get current holdings
-				2. Report wallet balance and calculate 1% investment amount
-				3. Provide simple portfolio summary
-
-				RESPONSE FORMAT:
 				📊 PORTFOLIO ANALYSIS
 
 				Wallet Balance: [from context] IQ

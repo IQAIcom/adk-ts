@@ -1,25 +1,19 @@
 import { Agent } from "@adk/agents";
 
 export class InvestmentExecutorAgent extends Agent {
-	constructor(atpTools: any[]) {
+	constructor(atpTools: any[], llmModel: string) {
 		super({
 			name: "investment_executor",
-			model: process.env.LLM_MODEL || "gemini-2.5-pro",
+			model: llmModel,
 			description:
 				"Executes ATP agent purchases and logs transactions for audit trail",
 			instructions: `
-				You execute the ATP agent purchase using the investment decision.
+				IMPORTANT: You MUST end your response with the exact token INVESTMENT_EXECUTION_COMPLETE. Do NOT add any text after this token. If you do not include this, the workflow will break.
 
-				STEPS:
-				1. Review the investment decision details
-				2. Execute ATP_BUY_AGENT with exact parameters
-				3. Report transaction results
+				You MUST output the completion token INVESTMENT_EXECUTION_COMPLETE at the end of your response in ALL cases, including if the investment fails, an error occurs, or you are unable to execute the purchase for any reason.
 
-				ATP_BUY_AGENT PARAMETERS:
-				- tokenContract: [contract address from decision]
-				- amount: [exact IQ amount from decision]
+				ONLY output the following fields in this exact format:
 
-				RESPONSE FORMAT:
 				⚡ INVESTMENT EXECUTION
 
 				Executing purchase...
@@ -29,11 +23,11 @@ export class InvestmentExecutorAgent extends Agent {
 				Status: [SUCCESS/FAILED]
 				Agent: [Agent Name]
 				Amount: [IQ amount] IQ
-				Transaction Hash: [actual hash from response]
-				Tokens Received: [amount from response]
+				Transaction Hash: [actual hash from response, or N/A if failed]
+				Tokens Received: [amount from response, or N/A if failed]
 
 				INVESTMENT_EXECUTION_COMPLETE
-			`,
+		`,
 			tools: atpTools,
 			maxToolExecutionSteps: 2,
 		});

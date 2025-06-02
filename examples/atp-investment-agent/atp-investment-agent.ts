@@ -10,10 +10,8 @@ import {
 	TelegramNotifierAgent,
 } from "./agents";
 
-const DEBUG = process.env.DEBUG === "true" || true;
-
 export class AtpInvestmentAgent extends LangGraphAgent {
-	constructor(atpTools: any[], telegramTools: any[]) {
+	constructor(atpTools: any[], telegramTools: any[], llmModel: string) {
 		const config: LangGraphAgentConfig = {
 			name: "atp_investment_workflow",
 			description:
@@ -21,92 +19,63 @@ export class AtpInvestmentAgent extends LangGraphAgent {
 			nodes: [
 				{
 					name: "portfolio_analysis",
-					agent: new PortfolioAnalysisAgent(atpTools),
+					agent: new PortfolioAnalysisAgent(atpTools, llmModel),
 					targets: ["agent_discovery"],
-				},
-				{
-					name: "agent_discovery",
-					agent: new AgentDiscoveryAgent(atpTools),
-					targets: ["investment_decision"],
-					condition: (result) => {
+					condition: (result, _context) => {
 						const content =
 							typeof result.content === "string"
 								? result.content
 								: JSON.stringify(result.content);
-
-						// Proceed if portfolio analysis completed successfully
-						const hasPortfolioComplete = content.includes(
-							"PORTFOLIO_ANALYSIS_COMPLETE",
-						);
-						const hasAgentComplete = content.includes(
-							"AGENT_DISCOVERY_COMPLETE",
-						);
-						const shouldExecute = hasPortfolioComplete || hasAgentComplete;
-
-						if (DEBUG) {
-							console.log("[LangGraph] agent_discovery condition check:");
-							console.log(`  - Should execute: ${shouldExecute}`);
-							console.log(
-								`  - Has PORTFOLIO_ANALYSIS_COMPLETE: ${hasPortfolioComplete}`,
-							);
-							console.log(
-								`  - Has AGENT_DISCOVERY_COMPLETE: ${hasAgentComplete}`,
-							);
-							console.log(`  - Content preview: "${content.slice(0, 300)}..."`);
-						}
-
-						return shouldExecute;
+						return /portfolio_analysis_complete/i.test(content);
+					},
+				},
+				{
+					name: "agent_discovery",
+					agent: new AgentDiscoveryAgent(atpTools, llmModel),
+					targets: ["investment_decision"],
+					condition: (result, _context) => {
+						const content =
+							typeof result.content === "string"
+								? result.content
+								: JSON.stringify(result.content);
+						return /agent_discovery_complete/i.test(content);
 					},
 				},
 				{
 					name: "investment_decision",
-					agent: new InvestmentDecisionAgent(),
-					targets: ["investment_execution"],
-					condition: (result) => {
+					agent: new InvestmentDecisionAgent(llmModel),
+					targets: ["investment_executor"],
+					condition: (result, _context) => {
 						const content =
 							typeof result.content === "string"
 								? result.content
 								: JSON.stringify(result.content);
-
-						// Proceed if agent discovery completed successfully
-						const shouldExecute = content.includes("AGENT_DISCOVERY_COMPLETE");
-
-						if (DEBUG) {
-							console.log("[LangGraph] investment_decision condition check:");
-							console.log(`  - Should execute: ${shouldExecute}`);
-							console.log('  - Looking for: "AGENT_DISCOVERY_COMPLETE"');
-							console.log(`  - Content preview: "${content.slice(0, 300)}..."`);
-						}
-
-						return shouldExecute;
+						return /investment_decision_ready/i.test(content);
 					},
 				},
 				{
-					name: "investment_execution",
-					agent: new InvestmentExecutorAgent(atpTools),
-					targets: ["telegram_notification"],
-					condition: (result) => {
+					name: "investment_executor",
+					agent: new InvestmentExecutorAgent(atpTools, llmModel),
+					targets: ["telegram_notifier"],
+					condition: (result, _context) => {
 						const content =
 							typeof result.content === "string"
 								? result.content
 								: JSON.stringify(result.content);
-
-						// Proceed if investment decision is ready
-						const shouldExecute = content.includes("INVESTMENT_DECISION_READY");
-
-						if (DEBUG) {
-							console.log("[LangGraph] investment_execution condition check:");
-							console.log(`  - Should execute: ${shouldExecute}`);
-							console.log('  - Looking for: "INVESTMENT_DECISION_READY"');
-							console.log(`  - Content preview: "${content.slice(0, 300)}..."`);
-						}
-
-						return shouldExecute;
+						return /investment_execution_complete/i.test(content);
 					},
 				},
 				{
-					name: "telegram_notification",
-					agent: new TelegramNotifierAgent(telegramTools),
+					name: "telegram_notifier",
+					agent: new TelegramNotifierAgent(telegramTools, llmModel),
+					targets: [],
+					condition: (result, _context) => {
+						const content =
+							typeof result.content === "string"
+								? result.content
+								: JSON.stringify(result.content);
+						return /telegram_notification_complete/i.test(content);
+					},
 				},
 			],
 			rootNode: "portfolio_analysis",

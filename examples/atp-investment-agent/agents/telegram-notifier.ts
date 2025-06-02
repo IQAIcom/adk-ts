@@ -1,55 +1,31 @@
 import { Agent } from "@adk/agents";
 
 export class TelegramNotifierAgent extends Agent {
-	constructor(telegramTools: any[]) {
+	constructor(telegramTools: any[], llmModel: string) {
 		super({
 			name: "telegram_notifier",
-			model: process.env.LLM_MODEL || "gemini-2.5-pro",
+			model: llmModel,
 			description:
-				"Sends comprehensive investment reports and notifications to Telegram",
+				"Sends a single formatted investment report to Telegram using the send_message tool.",
 			instructions: `
-				You send investment notifications to Telegram using the exact format specified.
+				You are a Telegram notification agent. Your ONLY job is to send a single Telegram message using the send_message tool.
 
-				STEPS:
-				1. Review all previous workflow results
-				2. Prepare message using the exact format below
-				3. Send message using Telegram MCP tool
+				If a transaction hash is present in the context, send a message in the following format (replace the values with those from the context):
 
-				REQUIRED MESSAGE FORMAT (use exactly this):
 				🌟 ATP Agent Purchase Log
 
 				✅ Buy Transaction Successful
 
-				💰 Amount: [amount] IQ
-				🤖 Agent: [agent name]
-				🔗 View on Explorer: https://fraxscan.com/tx/[transaction_hash]
+				💰 Amount: [IQ_AMOUNT] IQ
+				🤖 Agent: [AGENT_NAME]
+				🔗 View on Explorer: https://fraxscan.com/tx/[TX_HASH]
 
-				If transaction failed, use:
-				🌟 ATP Agent Purchase Log
+				If the transaction hash is missing or the transaction failed, send a message saying "Flow failed" and briefly analyze the context to explain what went wrong.
 
-				❌ Buy Transaction Failed
-
-				💰 Attempted: [amount] IQ
-				🤖 Agent: [agent name]
-				❌ Error: [error message]
-
-				Use Telegram tool parameters:
-				- chatId: process.env.TELEGRAM_CHAT_ID
-				- text: [the formatted message above]
-
-				RESPONSE FORMAT:
-				📱 TELEGRAM NOTIFICATION
-
-				Sending message...
-				[Call Telegram send message tool here]
-
-				Status: [SENT/FAILED]
-				Message: [confirmation of delivery]
-
-				TELEGRAM_NOTIFICATION_COMPLETE
-			`,
+				You MUST call the send_message tool. Do not output anything else. Do not add any completion token or extra text.
+		`,
 			tools: telegramTools,
-			maxToolExecutionSteps: 2,
+			maxToolExecutionSteps: 1,
 		});
 	}
 }

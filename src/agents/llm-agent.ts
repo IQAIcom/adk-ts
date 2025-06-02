@@ -170,13 +170,28 @@ export class Agent extends BaseAgent {
 
 		// Get the LLM instance
 		this.llm = LLMRegistry.newLLM(this.model);
+
+		// Debug: Log all tools and their declarations
+		if (process.env.DEBUG === "true") {
+			console.log(`[Agent:${this.name}] Registered tools:`);
+			this.tools.forEach((tool, idx) => {
+				console.log(`  [${idx}] ${tool.name}:`, tool.getDeclaration());
+			});
+		}
 	}
 
 	/**
 	 * Finds a tool by name
 	 */
 	private findTool(name: string): BaseTool | undefined {
-		return this.tools.find((tool) => tool.name === name);
+		const found = this.tools.find((tool) => tool.name === name);
+		if (!found && process.env.DEBUG === "true") {
+			console.warn(
+				`[Agent:${this.name}] Tool '${name}' not found. Available tools:`,
+				this.tools.map((t) => t.name),
+			);
+		}
+		return found;
 	}
 
 	/**
@@ -188,13 +203,18 @@ export class Agent extends BaseAgent {
 	): Promise<{ name: string; result: any }> {
 		const { name, arguments: argsString } = toolCall.function;
 		if (process.env.DEBUG === "true") {
-			console.log(`Executing tool: ${name}`);
+			console.log(
+				`[Agent:${this.name}] Executing tool: ${name} with args:`,
+				argsString,
+			);
 		}
 
 		// Find the tool
 		const tool = this.findTool(name);
 		if (!tool) {
-			console.warn(`Tool '${name}' not found`);
+			if (process.env.DEBUG === "true") {
+				console.warn(`[Agent:${this.name}] Tool '${name}' not found`);
+			}
 			return {
 				name,
 				result: `Error: Tool '${name}' not found.`,
@@ -217,15 +237,24 @@ export class Agent extends BaseAgent {
 			// Execute the tool
 			const result = await tool.runAsync(args, toolContext);
 			if (process.env.DEBUG === "true") {
-				console.log(`Tool ${name} execution complete`);
+				console.log(`[Agent:${this.name}] Tool ${name} execution complete`);
+				console.log(
+					`[Agent:${this.name}] Tool ${name} execution result:`,
+					result,
+				);
+				console.log(`Tool ${name} execution result:`, result);
 			}
-			console.log(`Tool ${name} execution result:`, result);
 			return {
 				name,
 				result: typeof result === "string" ? result : JSON.stringify(result),
 			};
 		} catch (error) {
-			console.error(`Error executing tool ${name}:`, error);
+			if (process.env.DEBUG === "true") {
+				console.error(
+					`[Agent:${this.name}] Error executing tool ${name}:`,
+					error,
+				);
+			}
 			return {
 				name,
 				result: `Error executing tool ${name}: ${error instanceof Error ? error.message : String(error)}`,
@@ -416,6 +445,12 @@ export class Agent extends BaseAgent {
 
 			// Add tool declarations if any tools are available
 			const functions = this.tools.map((tool) => tool.getDeclaration());
+			if (process.env.DEBUG === "true") {
+				console.log(
+					`[Agent:${this.name}] Tool declarations sent to LLM:`,
+					functions,
+				);
+			}
 
 			const responseGenerator = await this.llm.generateContentAsync(
 				new LLMRequest({
@@ -429,6 +464,9 @@ export class Agent extends BaseAgent {
 
 			let response: LLMResponse | undefined;
 			for await (const chunk of responseGenerator) {
+				if (process.env.DEBUG === "true") {
+					console.log(`[Agent:${this.name}] LLM response chunk:`, chunk);
+				}
 				response = chunk;
 			}
 
@@ -457,6 +495,9 @@ export class Agent extends BaseAgent {
 				let currentResponse: LLMResponse | undefined;
 
 				for await (const chunk of responseIterator) {
+					if (process.env.DEBUG === "true") {
+						console.log(`[Agent:${this.name}] LLM response chunk:`, chunk);
+					}
 					currentResponse = chunk;
 				}
 

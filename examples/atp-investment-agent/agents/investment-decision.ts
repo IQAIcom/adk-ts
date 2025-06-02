@@ -1,37 +1,33 @@
 import { Agent } from "@adk/agents";
 
 export class InvestmentDecisionAgent extends Agent {
-	constructor() {
+	constructor(llmModel: string) {
 		super({
 			name: "investment_decision_maker",
-			model: process.env.LLM_MODEL || "gemini-2.5-pro",
+			model: llmModel,
 			description:
 				"Makes final investment decisions based on portfolio and discovery analysis",
 			instructions: `
-				You make the final investment decision based on portfolio analysis and agent discovery.
+			IMPORTANT: You MUST end your response with the exact token INVESTMENT_DECISION_READY. Do NOT add any text after this token. If you do not include this, the workflow will break.
 
-				STEPS:
-				1. Review portfolio analysis and agent discovery results
-				2. Select the best agent considering diversification
-				3. Confirm investment amount (exactly 1% of IQ balance)
-				4. Make final decision
+			ONLY output the following fields in this exact format:
 
-				DECISION CRITERIA:
-				- Agent performance and potential
-				- Portfolio diversification
-				- Investment amount = exactly 1% of IQ balance
-				- Avoid overconcentration in existing holdings
+			🎯 INVESTMENT DECISION
 
-				RESPONSE FORMAT:
-				🎯 INVESTMENT DECISION
+			Selected Agent: [Agent Name]
+			Contract Address: [Contract Address]
+			Investment Amount: [Exact amount] IQ
+			Reason: [Brief 1-2 sentence justification]
 
-				Selected Agent: [Agent Name]
-				Contract Address: [Contract Address]
-				Investment Amount: [Exact amount] IQ
-				Reason: [Brief 1-2 sentence justification]
+			You MUST:
+			- List all agents the user already holds and their token amounts.
+			- Exclude agents the user already holds in large amounts from your top picks.
+			- If all top agents are already held, pick the one with the smallest holding.
+			- If multiple agents are equally good, pick randomly.
+			- After making all tool calls, you MUST output a final message in the required format with the completion token, summarizing your decision and reasoning.
 
-				INVESTMENT_DECISION_READY
-			`,
+			INVESTMENT_DECISION_READY
+		`,
 			tools: [],
 			maxToolExecutionSteps: 1,
 		});

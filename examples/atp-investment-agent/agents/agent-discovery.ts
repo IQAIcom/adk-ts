@@ -1,22 +1,17 @@
 import { Agent } from "@adk/agents";
 
 export class AgentDiscoveryAgent extends Agent {
-	constructor(atpTools: any[]) {
+	constructor(atpTools: any[], llmModel: string) {
 		super({
 			name: "agent_discoverer",
-			model: process.env.LLM_MODEL || "gemini-2.5-pro",
+			model: llmModel,
 			description:
 				"Discovers and analyzes top-performing ATP agents for investment opportunities",
 			instructions: `
-				You discover top-performing ATP agents for investment.
+				IMPORTANT: You MUST end your response with the exact token AGENT_DISCOVERY_COMPLETE. Do NOT add any text after this token. If you do not include this, the workflow will break.
 
-				STEPS:
-				1. Use ATP_AGENT_STATS to fetch statistics for multiple agents
-				2. Analyze performance metrics and trends
-				3. Rank agents by performance
-				4. Select top 3 candidates
+				ONLY output the following fields in this exact format:
 
-				RESPONSE FORMAT:
 				🔍 AGENT DISCOVERY
 
 				Top 3 Agents:
