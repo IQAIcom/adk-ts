@@ -23,10 +23,16 @@ export interface WalletValidationResult {
 export class WalletService {
 	private privateKey: string;
 	private minInvestmentAmount: number;
+	private investmentPercentage: number;
 
-	constructor(privateKey: string, minInvestmentAmount = 10) {
+	constructor(
+		privateKey: string,
+		minInvestmentAmount = 10,
+		investmentPercentage = 0.01,
+	) {
 		this.privateKey = privateKey;
 		this.minInvestmentAmount = minInvestmentAmount;
+		this.investmentPercentage = investmentPercentage;
 	}
 
 	/**
@@ -38,11 +44,16 @@ export class WalletService {
 		try {
 			const address = getWalletAddress(this.privateKey);
 			const iqBalance = await getIqBalance(address);
-			const investmentAmount = calculateInvestmentAmount(iqBalance);
+			const investmentAmount = calculateInvestmentAmount(
+				iqBalance,
+				this.investmentPercentage,
+			);
 
 			console.log(`📍 Wallet: ${address}`);
 			console.log(`💎 IQ Balance: ${iqBalance} IQ`);
-			console.log(`📊 Investment Amount: ${investmentAmount} IQ (1%)`);
+			console.log(
+				`📊 Investment Amount: ${investmentAmount} IQ (${this.investmentPercentage * 100}%)`,
+			);
 
 			return {
 				address,
@@ -104,7 +115,7 @@ export class WalletService {
 		console.log(`📍 Wallet Address: ${walletInfo.address}`);
 		console.log(`💰 Current IQ Balance: ${walletInfo.formattedBalance}`);
 		console.log(
-			`📊 Available for Investment: ${walletInfo.formattedInvestment} (1% safety limit)`,
+			`📊 Available for Investment: ${walletInfo.formattedInvestment} (${this.investmentPercentage * 100}% safety limit)`,
 		);
 
 		if (!validation.isValid) {

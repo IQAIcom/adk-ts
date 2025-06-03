@@ -5,11 +5,12 @@ import * as dotenv from "dotenv";
 import { AtpInvestmentAgent } from "./atp-investment-agent";
 import { WalletService } from "./services";
 import * as cron from "node-cron";
+import { env } from "./env";
 
 dotenv.config();
 LLMRegistry.registerLLM(OpenAILLM);
 
-const DEBUG = process.env.DEBUG === "true" || true;
+const DEBUG = env.DEBUG;
 
 // Top-level toolset and agent variables
 let atpToolset: McpToolset | null = null;
@@ -25,14 +26,14 @@ async function setup() {
 	console.log("🤖 Starting ATP Investment Agent Demo");
 	console.log("====================================");
 	console.log(
-		"💰 Real investments will be made with your IQ tokens (1% of balance)",
+		`💰 Real investments will be made with your IQ tokens (${env.ATP_INVESTMENT_PERCENTAGE * 100}% of balance)`,
 	);
 	console.log("🔐 Using wallet private key from environment variables");
 	console.log("====================================");
 
 	// Check required environment variables
-	const walletPrivateKey = process.env.WALLET_PRIVATE_KEY;
-	const llmModel = process.env.LLM_MODEL;
+	const walletPrivateKey = env.WALLET_PRIVATE_KEY;
+	const llmModel = env.LLM_MODEL;
 
 	if (!walletPrivateKey) {
 		console.error("❌ Error: WALLET_PRIVATE_KEY is required in .env file");
@@ -67,8 +68,8 @@ async function setup() {
 				env: {
 					ATP_WALLET_PRIVATE_KEY: walletPrivateKey,
 					WALLET_PRIVATE_KEY: walletPrivateKey,
-					ATP_USE_DEV: "true",
 					PATH: process.env.PATH || "",
+					ATP_USE_DEV: env.ATP_USE_DEV,
 				},
 			},
 		};
@@ -93,9 +94,9 @@ async function setup() {
 
 		let telegramTools: any[] = [];
 		if (
-			process.env.TELEGRAM_BOT_TOKEN &&
-			process.env.TELEGRAM_CHAT_ID &&
-			process.env.TELEGRAM_SERVER_KEY
+			env.TELEGRAM_BOT_TOKEN &&
+			env.TELEGRAM_CHAT_ID &&
+			env.TELEGRAM_SERVER_KEY
 		) {
 			try {
 				const telegramConfig: McpConfig = {
@@ -115,13 +116,13 @@ async function setup() {
 							"run",
 							"@NexusX-MCP/telegram-mcp-server",
 							"--key",
-							process.env.TELEGRAM_SERVER_KEY,
+							env.TELEGRAM_SERVER_KEY,
 							"--profile",
-							"initial-halibut-wgJ0Py", // different profile goes here
+							env.TELEGRAM_PROFILE_ID,
 						],
 						env: {
-							TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
-							TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID,
+							TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN,
+							TELEGRAM_CHAT_ID: env.TELEGRAM_CHAT_ID,
 							PATH: process.env.PATH || "",
 						},
 					},
@@ -148,10 +149,13 @@ async function setup() {
 		}
 
 		// Initialize wallet service and validate conditions
-		const minInvestment = Number.parseFloat(
-			process.env.ATP_MIN_INVESTMENT || "10",
+		const minInvestment = env.ATP_MIN_INVESTMENT;
+		const investmentPercentage = env.ATP_INVESTMENT_PERCENTAGE;
+		const walletService = new WalletService(
+			walletPrivateKey,
+			minInvestment,
+			investmentPercentage,
 		);
-		const walletService = new WalletService(walletPrivateKey, minInvestment);
 		walletInfo = await walletService.displayWalletStatus();
 
 		// Create the ATP Investment Agent
@@ -193,7 +197,7 @@ async function runAgentCycle() {
 						Wallet Information:
 						- Address: ${walletInfo.address}
 						- IQ Balance: ${walletInfo.iqBalance} IQ
-						- Investment Budget: ${walletInfo.investmentAmount} IQ (1% of balance)
+						- Investment Budget: ${walletInfo.investmentAmount} IQ
 					`,
 			},
 		];
@@ -240,7 +244,7 @@ async function cleanup() {
 
 (async () => {
 	await setup();
-	const cronSchedule = process.env.ATP_CRON_SCHEDULE || "*/5 * * * *";
+	const cronSchedule = env.ATP_CRON_SCHEDULE;
 	const runMode = process.argv[2];
 
 	if (runMode === "--once" || runMode === "-1") {

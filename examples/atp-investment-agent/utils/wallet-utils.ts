@@ -1,11 +1,13 @@
 import { createPublicClient, http, erc20Abi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { fraxtal } from "viem/chains";
+import { env } from "../env";
 
 // Wallet utility functions for ATP Investment Agent
 // This file provides helper functions for reading IQ token balance and wallet operations
-
-export const IQ_TOKEN_ADDRESS = "0xCc3023635dF54FC0e43F47bc4BeB90c3d1fbDa9f";// IQT for testing
+const IQT_ADDRESS = "0xCc3023635dF54FC0e43F47bc4BeB90c3d1fbDa9f";
+const IQ_ADDRESS = "0x6EFB84bda519726Fa1c65558e520B92b51712101"
+export const IQ_TOKEN_ADDRESS = env.ATP_USE_DEV == "true" ? IQT_ADDRESS : IQ_ADDRESS;
 
 /**
  * Reads the IQ token balance for a given wallet address
@@ -39,14 +41,15 @@ export async function getIqBalance(walletAddress: string): Promise<string> {
 }
 
 /**
- * Calculates 1% of the available IQ balance for safe investment
+ * Calculates the investment amount based on the investment percentage
  *
  * @param totalBalance - Total IQ balance as string
- * @returns string - 1% of the balance for investment
+ * @param investmentPercentage - Investment percentage as number
+ * @returns string - Investment amount as string
  */
-export function calculateInvestmentAmount(totalBalance: string): string {
+export function calculateInvestmentAmount(totalBalance: string, investmentPercentage: number): string {
 	const balance = Number.parseFloat(totalBalance);
-	const investmentAmount = balance * 0.001; // 1% for safety
+	const investmentAmount = balance * investmentPercentage;
 
 	// Return with reasonable precision (avoid tiny fractions)
 	return investmentAmount.toFixed(2);
