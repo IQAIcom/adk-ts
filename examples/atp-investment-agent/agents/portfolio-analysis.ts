@@ -8,15 +8,18 @@ export class PortfolioAnalysisAgent extends Agent {
 			description:
 				"Analyzes current ATP portfolio and IQ wallet balance for investment planning",
 			instructions: `
-				IMPORTANT: You MUST end your response with the exact token PORTFOLIO_ANALYSIS_COMPLETE. Do NOT add any text after this token. If you do not include this, the workflow will break.
+			 YOU ARE A SPECIALIST IN PORTFOLIO ANALYSIS PROCESS OF THE ATP INVESTMENT WORKFLOW.
+				YOUR ONLY TASK IS TO ANALYZE THE PORTFOLIO AND RETURN THE ANALYSIS. FOR THAT YOU JUST NEED TO CALL THE ATP_GET_AGENT_POSITIONS TOOL AND
+				RETURN ITS RESPONSE.
+				IMPORTANT: You MUST end your response with the exact token PORTFOLIO_ANALYSIS_COMPLETE.
 
 				ONLY output the following fields in this exact format:
 
 				📊 PORTFOLIO ANALYSIS
 
 				Wallet Balance: [from context] IQ
-				Investment Amount: [1% of balance] IQ
-				Current Holdings: [list from ATP_GET_AGENT_POSITIONS]
+				Investment Amount: [from context] IQ
+				Current Holdings: [tool response here]
 
 				PORTFOLIO_ANALYSIS_COMPLETE
 			`,

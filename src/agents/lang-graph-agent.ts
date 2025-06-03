@@ -210,16 +210,20 @@ export class LangGraphAgent extends BaseAgent {
 			// Check condition if exists
 			if (targetNode.condition) {
 				const shouldExecute = await targetNode.condition(result, context);
+				console.log(
+					`[LangGraphAgent] Checking condition for node "${targetName}": result = ${shouldExecute}`,
+				);
 				if (!shouldExecute) {
-					if (process.env.DEBUG === "true") {
-						console.log(
-							`[LangGraphAgent] Skipping node "${targetName}" due to condition`,
-						);
-					}
+					console.log(
+						`[LangGraphAgent] Skipping node "${targetName}" due to condition`,
+					);
 					continue;
 				}
 			}
 
+			console.log(
+				`[LangGraphAgent] Queuing node "${targetName}" for execution.`,
+			);
 			nextNodes.push(targetNode);
 		}
 
@@ -280,11 +284,9 @@ export class LangGraphAgent extends BaseAgent {
 			config: options.config,
 		});
 
-		if (process.env.DEBUG === "true") {
-			console.log(
-				`[LangGraphAgent] Starting graph execution from root node "${this.rootNode}"`,
-			);
-		}
+		console.log(
+			`[LangGraphAgent] Starting graph execution from root node "${this.rootNode}"`,
+		);
 
 		if (this.nodes.size === 0) {
 			return {
@@ -316,11 +318,9 @@ export class LangGraphAgent extends BaseAgent {
 
 			// Get next node to execute
 			const { node, messages } = nodesToExecute.shift()!;
-			if (process.env.DEBUG === "true") {
-				console.log(
-					`[LangGraphAgent] Step ${stepCount}: Executing node "${node.name}"`,
-				);
-			}
+			console.log(
+				`[LangGraphAgent] Step ${stepCount}: Executing node "${node.name}"`,
+			);
 			executedNodes.push(node.name);
 
 			try {
@@ -338,6 +338,7 @@ export class LangGraphAgent extends BaseAgent {
 					node: node.name,
 					result,
 				});
+				console.log("node results", this.results);
 
 				// If the result is an LLMResponse, add it to the messages
 				if (this.isLLMResponse(result)) {
@@ -355,32 +356,17 @@ export class LangGraphAgent extends BaseAgent {
 					});
 				}
 
+				console.log(
+					`[LangGraphAgent] Node "${node.name}" finished. Output:`,
+					this.extractTextContent(result?.content),
+				);
+
 				// Determine the next node(s) to execute
-				let nextNodeName: string | null = null;
-
-				// If there are defined edges from this node, follow them
-				if (node.targets && node.targets.length > 0) {
-					// Find the first edge with a true condition or no condition
-					for (const targetName of node.targets) {
-						// Check target node condition if any
-						const targetNode = this.nodes.get(targetName);
-						if (!targetNode) {
-							throw new Error(`Target node "${targetName}" not found in graph`);
-						}
-
-						const { shouldExecute } = await this.executeConditionalNode(
-							targetNode,
-							targetName,
-							context.messages,
-							context.config,
-						);
-
-						if (shouldExecute) {
-							nextNodeName = targetName;
-							break;
-						}
-					}
-				}
+				const nextNodeName: string | null = await this.getNextNodes(
+					node,
+					result,
+					context,
+				).then((nodes) => nodes[0]?.name || null);
 
 				// Move to the next node or terminate
 				if (!nextNodeName) {
@@ -520,6 +506,11 @@ export class LangGraphAgent extends BaseAgent {
 						content: messageContent,
 					});
 				}
+
+				console.log(
+					`[LangGraphAgent] Node "${node.name}" finished. Output:`,
+					this.extractTextContent(result?.content),
+				);
 
 				// Update with node result
 				yield {

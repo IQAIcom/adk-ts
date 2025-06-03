@@ -5,7 +5,7 @@ import { fraxtal } from "viem/chains";
 // Wallet utility functions for ATP Investment Agent
 // This file provides helper functions for reading IQ token balance and wallet operations
 
-export const IQ_TOKEN_ADDRESS = "0xCc3023635dF54FC0e43F47bc4BeB90c3d1fbDa9f";
+export const IQ_TOKEN_ADDRESS = "0xCc3023635dF54FC0e43F47bc4BeB90c3d1fbDa9f";// IQT for testing
 
 /**
  * Reads the IQ token balance for a given wallet address
@@ -46,7 +46,7 @@ export async function getIqBalance(walletAddress: string): Promise<string> {
  */
 export function calculateInvestmentAmount(totalBalance: string): string {
 	const balance = Number.parseFloat(totalBalance);
-	const investmentAmount = balance * 0.01; // 1% for safety
+	const investmentAmount = balance * 0.001; // 1% for safety
 
 	// Return with reasonable precision (avoid tiny fractions)
 	return investmentAmount.toFixed(2);

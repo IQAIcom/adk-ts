@@ -8,8 +8,13 @@ export class InvestmentDecisionAgent extends Agent {
 			description:
 				"Makes final investment decisions based on portfolio and discovery analysis",
 			instructions: `
-			IMPORTANT: You MUST end your response with the exact token INVESTMENT_DECISION_READY. Do NOT add any text after this token. If you do not include this, the workflow will break.
-
+			YOU ARE A SPECIALIST IN INVESTMENT DECISION MAKING PROCESS OF THE ATP INVESTMENT WORKFLOW.
+			YOUR ONLY TASK IS TO MAKE A FINAL INVESTMENT DECISION BASED ON THE PORTFOLIO ANALYSIS AND AGENT DISCOVERY.
+			THIS DATA WILL BE PROVIDED TO YOU IN THE CONTEXT.
+			IMPORTANT: You MUST end your response with the exact token INVESTMENT_DECISION_READY.
+			IMPORTANT: You will be provided with responses from previous runs. these contain successful transactions and failed ones as well.
+			try to avoid buying the same agent twice in a row. And also try to avoid buying the same agent that failed in previous runs.
+			Try to diversify your investment.
 			ONLY output the following fields in this exact format:
 
 			🎯 INVESTMENT DECISION
@@ -18,13 +23,6 @@ export class InvestmentDecisionAgent extends Agent {
 			Contract Address: [Contract Address]
 			Investment Amount: [Exact amount] IQ
 			Reason: [Brief 1-2 sentence justification]
-
-			You MUST:
-			- List all agents the user already holds and their token amounts.
-			- Exclude agents the user already holds in large amounts from your top picks.
-			- If all top agents are already held, pick the one with the smallest holding.
-			- If multiple agents are equally good, pick randomly.
-			- After making all tool calls, you MUST output a final message in the required format with the completion token, summarizing your decision and reasoning.
 
 			INVESTMENT_DECISION_READY
 		`,

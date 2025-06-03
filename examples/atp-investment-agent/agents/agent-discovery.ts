@@ -8,18 +8,14 @@ export class AgentDiscoveryAgent extends Agent {
 			description:
 				"Discovers and analyzes top-performing ATP agents for investment opportunities",
 			instructions: `
-				IMPORTANT: You MUST end your response with the exact token AGENT_DISCOVERY_COMPLETE. Do NOT add any text after this token. If you do not include this, the workflow will break.
+			  YOU ARE A SPECIALIST IN AGENT DISCOVERY PROCESS OF THE ATP INVESTMENT WORKFLOW.
+				YOUR ONLY TASK IS TO GET AGENTS FROM THE ATP PLATFORM. FOR THAT YOU JUST NEED TO CALL THE ATP_GET_AGENTS_TOOL AND
+				RETURN ITS RESPONSE. ALSO SORT BY MCAP AND GET TOP 10.
+				IMPORTANT: You MUST end your response with the exact token AGENT_DISCOVERY_COMPLETE.
 
 				ONLY output the following fields in this exact format:
 
-				🔍 AGENT DISCOVERY
-
-				Top 3 Agents:
-				1. [Agent Name] - [Contract Address] - [Key metrics]
-				2. [Agent Name] - [Contract Address] - [Key metrics]
-				3. [Agent Name] - [Contract Address] - [Key metrics]
-
-				Recommended: [Top choice with brief reason]
+				[INSERT TOOL RESPONSE HERE]
 
 				AGENT_DISCOVERY_COMPLETE
 			`,

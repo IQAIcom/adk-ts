@@ -1,11 +1,4 @@
-import {
-	type BaseTool,
-	InvocationContext,
-	LLMRegistry,
-	OpenAILLM,
-	ToolContext,
-	type MessageRole,
-} from "@adk";
+import { LLMRegistry, OpenAILLM, type MessageRole } from "@adk";
 import { McpError, McpToolset } from "@adk/tools/mcp";
 import type { McpConfig } from "@adk/tools/mcp/types";
 import * as dotenv from "dotenv";
@@ -24,9 +17,9 @@ let telegramToolset: McpToolset | null = null;
 let atpInvestmentAgent: AtpInvestmentAgent | null = null;
 let walletInfo: any = null;
 
-// In-memory transaction log (last 10 runs)
-const transactionLogs: string[] = [];
-const MAX_LOGS = 10;
+// previous run results
+const runOutputs: string[] = [];
+const MAX_RUN_OUTPUTS = 10;
 
 async function setup() {
 	console.log("🤖 Starting ATP Investment Agent Demo");
@@ -136,27 +129,6 @@ async function setup() {
 
 				telegramToolset = new McpToolset(telegramConfig);
 				telegramTools = await telegramToolset.getTools();
-				const invocationContext = new InvocationContext({
-					userId: "123",
-					appName: "atp-agent",
-					sessionId: "123",
-				});
-				const toolContext = new ToolContext({
-					invocationContext,
-				});
-				const sendMessageTool: BaseTool = await telegramTools.find(
-					(tool) => tool.name === "send_message",
-				);
-				if (!sendMessageTool) {
-					throw new Error("send_message tool not found");
-				}
-				await sendMessageTool.runAsync(
-					{
-						chatId: process.env.TELEGRAM_CHAT_ID,
-						text: "Hello, world!",
-					},
-					toolContext,
-				);
 
 				console.log(
 					`✅ Connected to Telegram MCP (${telegramTools.length} tools available)`,
@@ -203,13 +175,13 @@ async function runAgentCycle() {
 	try {
 		// Prepare context message with last N transaction logs
 		let contextMsg = "";
-		if (transactionLogs.length > 0) {
-			contextMsg = `Previous Transactions (last ${transactionLogs.length}):
-			${transactionLogs.map((log, i) => `${i + 1}. ${log}`).join("\n")}
+		if (runOutputs.length > 0) {
+			contextMsg = `Previous run outputs (last ${runOutputs.length}):
+			${runOutputs.map((log, i) => `${i + 1}. ${log}`).join("\n")}
 			---
 			`;
 		}
-		console.log("prev txns", transactionLogs);
+		console.log("prev run outputs", runOutputs);
 		const messages = [
 			{
 				role: "system" as MessageRole,
@@ -218,26 +190,10 @@ async function runAgentCycle() {
 			{
 				role: "user" as MessageRole,
 				content: `
-						Execute a complete ATP investment analysis and purchase workflow.
-
 						Wallet Information:
 						- Address: ${walletInfo.address}
 						- IQ Balance: ${walletInfo.iqBalance} IQ
 						- Investment Budget: ${walletInfo.investmentAmount} IQ (1% of balance)
-
-						Task:
-						1. Analyze my current ATP portfolio and holdings
-						2. Discover top-performing ATP agents on the platform
-						3. Select the best agent for investment based on performance and diversification
-						4. Execute the purchase using exactly 1% of my IQ balance
-						5. Send a comprehensive report to Telegram with transaction details
-
-						Investment Strategy:
-						- Focus on diversification and risk management
-						- Prioritize agents with strong performance metrics
-						- Avoid over concentration in any single agent
-						- Execute with real transactions
-						- Also try to avoid buying the same agent twice in a row
 					`,
 			},
 		];
@@ -249,14 +205,8 @@ async function runAgentCycle() {
 		console.log("====================================");
 		if (result.content) {
 			console.log(`Final Result: ${result.content}`);
-			// Extract a summary for the log (first line or up to 200 chars)
-			const summary =
-				result.content
-					.split("\n")
-					.find((line) => line.trim())
-					?.slice(0, 200) || result.content.slice(0, 200);
-			transactionLogs.push(summary);
-			if (transactionLogs.length > MAX_LOGS) transactionLogs.shift();
+			runOutputs.push(result.content);
+			if (runOutputs.length > MAX_RUN_OUTPUTS) runOutputs.shift();
 		} else {
 			console.log("❌ Warning: Final result content is empty");
 			console.log("Full result object:", JSON.stringify(result, null, 2));

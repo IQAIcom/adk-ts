@@ -26,7 +26,14 @@ export class AtpInvestmentAgent extends LangGraphAgent {
 							typeof result.content === "string"
 								? result.content
 								: JSON.stringify(result.content);
-						return /portfolio_analysis_complete/i.test(content);
+						const matched = /portfolio_analysis_complete/i.test(content);
+						console.log(
+							"[Condition] portfolio_analysis: checking for PORTFOLIO_ANALYSIS_COMPLETE in:",
+							content,
+							"| result:",
+							matched,
+						);
+						return matched;
 					},
 				},
 				{
@@ -38,7 +45,14 @@ export class AtpInvestmentAgent extends LangGraphAgent {
 							typeof result.content === "string"
 								? result.content
 								: JSON.stringify(result.content);
-						return /agent_discovery_complete/i.test(content);
+						const matched = /portfolio_analysis_complete/i.test(content);
+						console.log(
+							"[Condition] agent_discovery: checking for PORTFOLIO_ANALYSIS_COMPLETE in:",
+							content,
+							"| result:",
+							matched,
+						);
+						return matched;
 					},
 				},
 				{
@@ -50,7 +64,14 @@ export class AtpInvestmentAgent extends LangGraphAgent {
 							typeof result.content === "string"
 								? result.content
 								: JSON.stringify(result.content);
-						return /investment_decision_ready/i.test(content);
+						const matched = /agent_discovery_complete/i.test(content);
+						console.log(
+							"[Condition] investment_decision: checking for AGENT_DISCOVERY_COMPLETE in:",
+							content,
+							"| result:",
+							matched,
+						);
+						return matched;
 					},
 				},
 				{
@@ -62,7 +83,14 @@ export class AtpInvestmentAgent extends LangGraphAgent {
 							typeof result.content === "string"
 								? result.content
 								: JSON.stringify(result.content);
-						return /investment_execution_complete/i.test(content);
+						const matched = /investment_decision_ready/i.test(content);
+						console.log(
+							"[Condition] investment_executor: checking for INVESTMENT_DECISION_READY in:",
+							content,
+							"| result:",
+							matched,
+						);
+						return matched;
 					},
 				},
 				{
@@ -74,7 +102,14 @@ export class AtpInvestmentAgent extends LangGraphAgent {
 							typeof result.content === "string"
 								? result.content
 								: JSON.stringify(result.content);
-						return /telegram_notification_complete/i.test(content);
+						const matched = /investment_execution_complete/i.test(content);
+						console.log(
+							"[Condition] telegram_notifier: checking for INVESTMENT_EXECUTION_COMPLETE in:",
+							content,
+							"| result:",
+							matched,
+						);
+						return matched;
 					},
 				},
 			],
