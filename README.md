@@ -12,7 +12,7 @@
     <a href="https://www.npmjs.com/package/@iqai/adk">
       <img src="https://img.shields.io/npm/dm/@iqai/adk" alt="npm downloads" />
     </a>
-    <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE">
+    <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md">
       <img src="https://img.shields.io/npm/l/@iqai/adk" alt="license" />
     </a>
     <a href="https://github.com/IQAIcom/adk-ts">
