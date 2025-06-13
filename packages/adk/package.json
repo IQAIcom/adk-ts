@@ -28,6 +28,7 @@
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.39.0",
 		"@electric-sql/pglite": "^0.3.2",
+		"@google-cloud/storage": "^7.16.0",
 		"@google-cloud/vertexai": "^0.5.0",
 		"@google/genai": "^1.0.0",
 		"@modelcontextprotocol/sdk": "^1.11.1",
