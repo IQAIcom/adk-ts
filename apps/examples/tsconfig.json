@@ -4,7 +4,8 @@
 	"compilerOptions": {
 		"outDir": "dist",
 		"rootDir": ".",
-		"declaration": true
+		"declaration": true,
+		"types": ["node"]
 	},
 	"include": ["src"]
 }

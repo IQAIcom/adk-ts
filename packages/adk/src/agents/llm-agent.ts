@@ -148,7 +148,7 @@ export class Agent extends BaseAgent {
 	 */
 	private memoryRelevanceThreshold: number;
 
-private logger = new Logger({ name: "LlmAgent" });
+	private logger = new Logger({ name: "LlmAgent" });
 
 	/**
 	 * Constructor for Agent

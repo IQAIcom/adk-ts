@@ -8,6 +8,7 @@ import type { Message } from "./models/llm-request";
 import type { SessionService } from "./sessions/base-session-service";
 import { InMemorySessionService } from "./sessions/in-memory-session-service";
 import type { Session } from "./sessions/session";
+import type { MessageRole } from "./models/llm-request";
 
 /**
  * The Runner class is used to run agents.
@@ -93,6 +94,7 @@ export class Runner {
 
 		// Get responses from agent
 		let lastPartialEvent: Event | null = null;
+		let assistantContent = "";
 
 		try {
 			// Run the agent and yield events
@@ -106,9 +108,12 @@ export class Runner {
 					partial: response.is_partial,
 					raw_response: response.raw_response,
 				});
-
-				// Only save non-partial events to the session
 				if (!event.is_partial && event.content) {
+					session.messages = session.messages || [];
+					session.messages.push({
+						role: "assistant" as MessageRole,
+						content: event.content,
+					});
 					await this.sessionService.appendEvent(session, event);
 				}
 
@@ -117,7 +122,20 @@ export class Runner {
 					lastPartialEvent = event;
 				}
 
+				if (response.role === "assistant" && response.content) {
+					assistantContent += response.content;
+				}
+
 				yield event;
+			}
+
+			if (assistantContent.trim()) {
+				session.messages = session.messages || [];
+				session.messages.push({
+					role: "assistant",
+					content: assistantContent,
+				});
+				await this.sessionService.updateSession(session);
 			}
 		} catch (error) {
 			console.error("Error running agent:", error);
@@ -158,6 +176,13 @@ export class Runner {
 				typeof newMessage.content === "string" ? newMessage.content : null,
 		});
 
+		if (event.author === "user" || event.author === "assistant") {
+			session.messages = session.messages || [];
+			session.messages.push({
+				role: event.author as MessageRole,
+				content: event.content,
+			});
+		}
 		await this.sessionService.appendEvent(session, event);
 	}
 
@@ -175,7 +200,10 @@ export class Runner {
 	}): InvocationContext {
 		return new InvocationContext({
 			sessionId: session.id,
-			messages: session.messages || [],
+			messages: [
+				...(session.messages || []),
+				...(newMessage ? [newMessage] : []),
+			],
 			config: runConfig,
 			userId: session.userId,
 			appName: this.appName,

@@ -2,9 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import {
 	Agent,
-	GoogleLLM,
 	InMemoryMemoryService,
-	LLMRegistry,
 	type MessageRole,
 	RunConfig,
 	Runner,
@@ -14,12 +12,7 @@ import {
 import Database from "better-sqlite3";
 
 import { v4 as uuidv4 } from "uuid";
-
-// Register the Google LLM
-LLMRegistry.registerLLM(GoogleLLM);
-
-// Initialize SQLite database and session service
-// Now users only need to provide a SQLite instance!
+import { env } from "node:process";
 
 const dbPath = path.format({
 	dir: "apps/examples/src/sqlite-runner-example/data/session.db",
@@ -34,7 +27,7 @@ const sessionService = new SqliteSessionService({ sqlite });
 // Initialize the agent with Google's Gemini model
 const agent = new Agent({
 	name: "sqlite_runner_assistant",
-	model: "gemini-2.5-flash-preview-05-20",
+	model: env.LLM_MODEL,
 	description:
 		"A simple assistant demonstrating Runner usage with SQLite session persistence",
 	instructions:
