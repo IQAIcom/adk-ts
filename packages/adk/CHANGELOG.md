@@ -1,5 +1,12 @@
 # @iqai/adk
 
+## 0.0.16
+
+### Patch Changes
+
+- 75309a1: postgres-session-service: new fromConnectionString() factory method. fix minor duplication bug
+- 33b1887: added planners
+
 ## 0.0.15
 
 ### Patch Changes
