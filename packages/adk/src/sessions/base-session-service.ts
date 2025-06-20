@@ -1,55 +1,114 @@
 import type { Event } from "@adk/events/event";
-import type { ListSessionOptions, Session } from "./session";
+import type { Session } from "./session";
+
 /**
- * Service for managing sessions
+ * Configuration for getting a session.
  */
-export interface SessionService {
+export interface GetSessionConfig {
+	/** Number of recent events to include. */
+	numRecentEvents?: number;
+	/** Only include events after this timestamp (seconds since epoch). */
+	afterTimestamp?: number;
+}
+
+/**
+ * Response for listing sessions.
+ * The events and states are not set within each Session object.
+ */
+export interface ListSessionsResponse {
+	/** The list of sessions. */
+	sessions: Session[];
+}
+
+/**
+ * Base class for session services.
+ * The service provides a set of methods for managing sessions and events.
+ */
+export abstract class BaseSessionService {
 	/**
-	 * Creates a new session
-	 * @param userId User identifier
-	 * @param metadata Optional session metadata
-	 * @returns The created session
+	 * Creates a new session.
+	 * @param appName The name of the app.
+	 * @param userId The id of the user.
+	 * @param state The initial state of the session.
+	 * @param sessionId The client-provided id of the session. If not provided, a generated ID will be used.
+	 * @returns The newly created session instance.
 	 */
-	createSession(
+	abstract createSession(
+		appName: string,
 		userId: string,
-		metadata?: Record<string, any>,
+		state?: Record<string, any>,
+		sessionId?: string,
 	): Promise<Session>;
 
 	/**
-	 * Gets a session by ID
-	 * @param sessionId Session identifier
-	 * @returns The session or undefined if not found
+	 * Gets a session.
+	 * @param appName The name of the app.
+	 * @param userId The id of the user.
+	 * @param sessionId The id of the session.
+	 * @param config Optional config for getting the session.
+	 * @returns The session or undefined if not found.
 	 */
-	getSession(sessionId: string): Promise<Session | undefined>;
-
-	/**
-	 * Updates an existing session
-	 * @param session The session to update
-	 */
-	updateSession(session: Session): Promise<void>;
-
-	/**
-	 * Lists sessions for a user
-	 * @param userId User identifier
-	 * @param options Optional filtering options
-	 * @returns Array of matching sessions
-	 */
-	listSessions(
+	abstract getSession(
+		appName: string,
 		userId: string,
-		options?: ListSessionOptions,
-	): Promise<Session[]>;
+		sessionId: string,
+		config?: GetSessionConfig,
+	): Promise<Session | undefined>;
 
 	/**
-	 * Deletes a session
-	 * @param sessionId Session identifier
+	 * Lists all the sessions.
+	 * @param appName The name of the app.
+	 * @param userId The id of the user.
+	 * @returns The response containing the list of sessions.
 	 */
-	deleteSession(sessionId: string): Promise<void>;
+	abstract listSessions(
+		appName: string,
+		userId: string,
+	): Promise<ListSessionsResponse>;
 
 	/**
-	 * Appends an event to a session object
-	 * @param session The session to append the event to
-	 * @param event The event to append
-	 * @returns The appended event
+	 * Deletes a session.
+	 * @param appName The name of the app.
+	 * @param userId The id of the user.
+	 * @param sessionId The id of the session.
 	 */
-	appendEvent(session: Session, event: Event): Promise<Event>;
+	abstract deleteSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Promise<void>;
+
+	/**
+	 * Appends an event to a session object.
+	 * @param session The session to append the event to.
+	 * @param event The event to append.
+	 * @returns The appended event.
+	 */
+	async appendEvent(session: Session, event: Event): Promise<Event> {
+		if (event.partial) {
+			return event;
+		}
+		this.updateSessionState(session, event);
+		session.events.push(event);
+		return event;
+	}
+
+	/**
+	 * Updates the session state based on the event.
+	 * @param session The session to update.
+	 * @param event The event containing state changes.
+	 */
+	protected updateSessionState(session: Session, event: Event): void {
+		if (!event.actions || !event.actions.stateDelta) {
+			return;
+		}
+		for (const key in event.actions.stateDelta) {
+			if (Object.prototype.hasOwnProperty.call(event.actions.stateDelta, key)) {
+				if (key.startsWith("temp_")) {
+					continue;
+				}
+				session.state[key] = event.actions.stateDelta[key];
+			}
+		}
+	}
 }

@@ -1,254 +1,412 @@
-import type { Message } from "../models/llm-request";
-import { tracer } from "../telemetry";
-import type { RunConfig } from "./run-config";
+import type { Content } from "@google/genai";
+import { Event } from "../events/event";
+import { telemetryService } from "../telemetry";
+import { CallbackContext } from "./callback-context";
+import type { InvocationContext } from "./invocation-context";
 
 /**
- * Base class for all agents in the Agent Development Kit
+ * Single agent callback type
+ */
+export type SingleAgentCallback = (
+	callbackContext: CallbackContext,
+) => Promise<Content | undefined> | Content | undefined;
+
+/**
+ * Before agent callback type
+ */
+export type BeforeAgentCallback = SingleAgentCallback | SingleAgentCallback[];
+
+/**
+ * After agent callback type
+ */
+export type AfterAgentCallback = SingleAgentCallback | SingleAgentCallback[];
+
+/**
+ * Base class for all agents in Agent Development Kit.
  */
 export abstract class BaseAgent {
 	/**
-	 * The agent's name
-	 * Agent name must be a unique identifier within the agent tree
+	 * The agent's name.
+	 * Agent name must be a valid identifier and unique within the agent tree.
+	 * Agent name cannot be "user", since it's reserved for end-user's input.
 	 */
 	name: string;
 
 	/**
-	 * Description about the agent's capability
-	 * The LLM uses this to determine wshether to delegate control to the agent
+	 * Description about the agent's capability.
+	 * The model uses this to determine whether to delegate control to the agent.
+	 * One-line description is enough and preferred.
 	 */
-	description: string;
+	description = "";
 
 	/**
-	 * The parent agent of this agent
-	 * Note that an agent can ONLY be added as sub-agent once
+	 * The parent agent of this agent.
+	 * Note that an agent can ONLY be added as sub-agent once.
+	 * If you want to add one agent twice as sub-agent, consider to create two agent
+	 * instances with identical config, but with different name and add them to the
+	 * agent tree.
 	 */
 	parentAgent?: BaseAgent;
 
 	/**
-	 * The sub-agents of this agent
+	 * The sub-agents of this agent.
 	 */
-	subAgents: BaseAgent[];
+	subAgents: BaseAgent[] = [];
 
 	/**
-	 * Constructs a new BaseAgent
+	 * Callback or list of callbacks to be invoked before the agent run.
+	 * When a list of callbacks is provided, the callbacks will be called in the
+	 * order they are listed until a callback does not return undefined.
+	 *
+	 * Args:
+	 *   callbackContext: The callback context.
+	 *
+	 * Returns:
+	 *   Content | undefined: The content to return to the user.
+	 *     When the content is present, the agent run will be skipped and the
+	 *     provided content will be returned to user.
+	 */
+	beforeAgentCallback?: BeforeAgentCallback;
+
+	/**
+	 * Callback or list of callbacks to be invoked after the agent run.
+	 * When a list of callbacks is provided, the callbacks will be called in the
+	 * order they are listed until a callback does not return undefined.
+	 *
+	 * Args:
+	 *   callbackContext: The callback context.
+	 *
+	 * Returns:
+	 *   Content | undefined: The content to return to the user.
+	 *     When the content is present, the provided content will be used as agent
+	 *     response and appended to event history as agent response.
+	 */
+	afterAgentCallback?: AfterAgentCallback;
+
+	/**
+	 * Constructor for BaseAgent
 	 */
 	constructor(config: {
 		name: string;
-		description: string;
+		description?: string;
+		subAgents?: BaseAgent[];
+		beforeAgentCallback?: BeforeAgentCallback;
+		afterAgentCallback?: AfterAgentCallback;
 	}) {
 		this.name = config.name;
-		this.description = config.description;
-		this.subAgents = [];
+		this.description = config.description || "";
+		this.subAgents = config.subAgents || [];
+		this.beforeAgentCallback = config.beforeAgentCallback;
+		this.afterAgentCallback = config.afterAgentCallback;
 
 		// Validate agent name
-		if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(this.name)) {
-			throw new Error(
-				`Invalid agent name: ${this.name}. Agent name must be a valid identifier.`,
-			);
+		this.validateName(this.name);
+
+		// Set parent agent for sub-agents
+		this.setParentAgentForSubAgents();
+	}
+
+	/**
+	 * Entry method to run an agent via text-based conversation.
+	 */
+	async *runAsync(
+		parentContext: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		yield* telemetryService.traceAsyncGenerator(
+			`agent_run [${this.name}]`,
+			this.runAsyncInternal(parentContext),
+		);
+	}
+
+	/**
+	 * Entry method to run an agent via video/audio-based conversation.
+	 */
+	async *runLive(
+		parentContext: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		yield* telemetryService.traceAsyncGenerator(
+			`agent_run_live [${this.name}]`,
+			this.runLiveInternal(parentContext),
+		);
+	}
+
+	/**
+	 * Internal implementation for runAsync
+	 */
+	private async *runAsyncInternal(
+		parentContext: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		const ctx = this.createInvocationContext(parentContext);
+
+		const beforeEvent = await this.handleBeforeAgentCallback(ctx);
+		if (beforeEvent) {
+			yield beforeEvent;
 		}
 
-		if (this.name === "user") {
-			throw new Error(
-				"Agent name cannot be \"user\", since it's reserved for end-user's input.",
-			);
+		if (ctx.endInvocation) {
+			return;
+		}
+
+		for await (const event of this.runAsyncImpl(ctx)) {
+			yield event;
+		}
+
+		if (ctx.endInvocation) {
+			return;
+		}
+
+		const afterEvent = await this.handleAfterAgentCallback(ctx);
+		if (afterEvent) {
+			yield afterEvent;
 		}
 	}
 
 	/**
-	 * Gets the root agent of the agent tree
+	 * Internal implementation for runLive
+	 */
+	private async *runLiveInternal(
+		parentContext: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		const ctx = this.createInvocationContext(parentContext);
+		// TODO: support before/after_agent_callback
+
+		for await (const event of this.runLiveImpl(ctx)) {
+			yield event;
+		}
+	}
+
+	/**
+	 * Core logic to run this agent via text-based conversation.
+	 *
+	 * @param ctx - The invocation context for this agent.
+	 * @yields Event - The events generated by the agent.
+	 */
+
+	// biome-ignore lint/correctness/useYield: This is a abstract method
+	protected async *runAsyncImpl(
+		_ctx: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		throw new Error(
+			`runAsyncImpl for ${this.constructor.name} is not implemented.`,
+		);
+	}
+
+	/**
+	 * Core logic to run this agent via video/audio-based conversation.
+	 *
+	 * @param ctx - The invocation context for this agent.
+	 * @yields Event - The events generated by the agent.
+	 */
+	// biome-ignore lint/correctness/useYield: This is a abstract method
+	protected async *runLiveImpl(
+		_ctx: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		throw new Error(
+			`runLiveImpl for ${this.constructor.name} is not implemented.`,
+		);
+	}
+
+	/**
+	 * Gets the root agent of this agent.
 	 */
 	get rootAgent(): BaseAgent {
-		return this.parentAgent ? this.parentAgent.rootAgent : this;
-	}
-
-	/**
-	 * Adds a sub-agent to this agent
-	 */
-	addSubAgent(agent: BaseAgent): BaseAgent {
-		if (agent.parentAgent) {
-			throw new Error(
-				`Agent ${agent.name} already has a parent agent ${agent.parentAgent.name}. An agent can only be added as a sub-agent once.`,
-			);
+		let rootAgent: BaseAgent = this;
+		while (rootAgent.parentAgent !== undefined) {
+			rootAgent = rootAgent.parentAgent;
 		}
-
-		// Check for duplicate names
-		if (this.findSubAgent(agent.name)) {
-			throw new Error(`Sub-agent with name ${agent.name} already exists.`);
-		}
-
-		this.subAgents.push(agent);
-		agent.parentAgent = this;
-
-		return this;
+		return rootAgent;
 	}
 
 	/**
-	 * Finds a sub-agent by name
-	 */
-	findSubAgent(name: string): BaseAgent | undefined {
-		return this.subAgents.find((agent) => agent.name === name);
-	}
-
-	/**
-	 * Finds an agent in the agent tree by name
+	 * Finds the agent with the given name in this agent and its descendants.
+	 *
+	 * @param name - The name of the agent to find.
+	 * @returns The agent with the matching name, or undefined if no such agent is found.
 	 */
 	findAgent(name: string): BaseAgent | undefined {
 		if (this.name === name) {
 			return this;
 		}
+		return this.findSubAgent(name);
+	}
 
+	/**
+	 * Finds the agent with the given name in this agent's descendants.
+	 *
+	 * @param name - The name of the agent to find.
+	 * @returns The agent with the matching name, or undefined if no such agent is found.
+	 */
+	findSubAgent(name: string): BaseAgent | undefined {
 		for (const subAgent of this.subAgents) {
-			const found = subAgent.findAgent(name);
-			if (found) {
-				return found;
+			const result = subAgent.findAgent(name);
+			if (result) {
+				return result;
 			}
 		}
-
 		return undefined;
 	}
 
 	/**
-	 * Runs the agent with the given messages and configuration
+	 * Creates a new invocation context for this agent.
 	 */
-	async run(options: {
-		messages: Message[];
-		config?: RunConfig;
-		sessionId?: string;
-		userId?: string; // Add userId parameter
-	}): Promise<any> {
-		return await tracer.startActiveSpan(
-			`agent_run [${this.name}]`,
-			async (span) => {
-				try {
-					span.setAttributes({
-						"gen_ai.system.name": "iqai-adk",
-						"gen_ai.operation.name": "agent_run",
-
-						// Session and user tracking (maps to Langfuse)
-						...(options.sessionId && { "session.id": options.sessionId }),
-						...(options.userId && { "user.id": options.userId }),
-
-						// Environment
-						...(process.env.NODE_ENV && {
-							"deployment.environment.name": process.env.NODE_ENV,
-						}),
-
-						// Agent-specific attributes
-						"adk.agent.name": this.name,
-						"adk.session_id": options.sessionId || "unknown",
-						"adk.message_count": options.messages.length,
-					});
-
-					// Add input as event
-					span.addEvent("agent.input", {
-						"input.value": JSON.stringify(
-							options.messages.map((msg) => ({
-								role: msg.role,
-								content:
-									typeof msg.content === "string"
-										? msg.content.substring(0, 200) +
-											(msg.content.length > 200 ? "..." : "")
-										: "[complex_content]",
-							})),
-						),
-					});
-
-					const result = await this.runImpl(options);
-
-					// Add output as event
-					span.addEvent("agent.output", {
-						"output.value":
-							typeof result === "string"
-								? result.substring(0, 500)
-								: JSON.stringify(result).substring(0, 500),
-					});
-
-					return result;
-				} catch (error) {
-					span.recordException(error as Error);
-					span.setStatus({ code: 2, message: (error as Error).message });
-					console.error("❌ ADK Agent Run Failed:", {
-						agentName: this.name,
-						sessionId: options.sessionId,
-						error: (error as Error).message,
-					});
-					throw error;
-				} finally {
-					span.end();
-				}
-			},
-		);
+	private createInvocationContext(
+		parentContext: InvocationContext,
+	): InvocationContext {
+		return parentContext.createChildContext(this);
 	}
 
 	/**
-	 * Implementation method to be overridden by subclasses
+	 * The resolved beforeAgentCallback field as a list of SingleAgentCallback.
+	 * This method is only for use by Agent Development Kit.
 	 */
-	protected abstract runImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-		sessionId?: string;
-	}): Promise<any>;
+	get canonicalBeforeAgentCallbacks(): SingleAgentCallback[] {
+		if (!this.beforeAgentCallback) {
+			return [];
+		}
+		if (Array.isArray(this.beforeAgentCallback)) {
+			return this.beforeAgentCallback;
+		}
+		return [this.beforeAgentCallback];
+	}
 
 	/**
-	 * Runs the agent with streaming support
+	 * The resolved afterAgentCallback field as a list of SingleAgentCallback.
+	 * This method is only for use by Agent Development Kit.
 	 */
-	async *runStreaming(options: {
-		messages: Message[];
-		config?: RunConfig;
-		sessionId?: string;
-	}): AsyncIterable<any> {
-		const span = tracer.startSpan(`agent_run_streaming [${this.name}]`);
+	get canonicalAfterAgentCallbacks(): SingleAgentCallback[] {
+		if (!this.afterAgentCallback) {
+			return [];
+		}
+		if (Array.isArray(this.afterAgentCallback)) {
+			return this.afterAgentCallback;
+		}
+		return [this.afterAgentCallback];
+	}
 
-		try {
-			span.setAttributes({
-				"gen_ai.system.name": "iqai-adk",
-				"gen_ai.operation.name": "agent_run_streaming",
-				"adk.agent.name": this.name,
-				"adk.session_id": options.sessionId || "unknown",
-				"adk.message_count": options.messages.length,
-			});
+	/**
+	 * Runs the beforeAgentCallback if it exists.
+	 *
+	 * @returns An event if callback provides content or changed state.
+	 */
+	private async handleBeforeAgentCallback(
+		ctx: InvocationContext,
+	): Promise<Event | undefined> {
+		let retEvent: Event | undefined;
 
-			console.log("🎯 ADK Agent Streaming Started:", {
-				agentName: this.name,
-				sessionId: options.sessionId,
-				messageCount: options.messages.length,
-			});
+		if (this.canonicalBeforeAgentCallbacks.length === 0) {
+			return retEvent;
+		}
+		const callbackContext = new CallbackContext(ctx);
 
-			let chunkCount = 0;
-			for await (const chunk of this.runStreamingImpl(options)) {
-				chunkCount++;
-				console.log(`📡 ADK Agent Stream Chunk ${chunkCount}:`, {
-					agentName: this.name,
-					chunk:
-						typeof chunk === "string"
-							? chunk.substring(0, 100) + (chunk.length > 100 ? "..." : "")
-							: typeof chunk,
-				});
-				yield chunk;
+		for (const callback of this.canonicalBeforeAgentCallbacks) {
+			let beforeAgentCallbackContent = callback(callbackContext);
+
+			if (beforeAgentCallbackContent instanceof Promise) {
+				beforeAgentCallbackContent = await beforeAgentCallbackContent;
 			}
 
-			span.setAttributes({
-				"adk.stream_chunks": chunkCount,
+			if (beforeAgentCallbackContent) {
+				retEvent = new Event({
+					invocationId: ctx.invocationId,
+					author: this.name,
+					branch: ctx.branch,
+					content: beforeAgentCallbackContent,
+					actions: callbackContext.eventActions,
+				});
+				ctx.endInvocation = true;
+				return retEvent;
+			}
+		}
+		if (callbackContext.state.hasDelta()) {
+			retEvent = new Event({
+				invocationId: ctx.invocationId,
+				author: this.name,
+				branch: ctx.branch,
+				actions: callbackContext.eventActions,
 			});
-		} catch (error) {
-			span.recordException(error as Error);
-			span.setStatus({ code: 2, message: (error as Error).message });
-			console.error("❌ ADK Agent Streaming Failed:", {
-				agentName: this.name,
-				error: (error as Error).message,
+		}
+
+		return retEvent;
+	}
+
+	/**
+	 * Runs the afterAgentCallback if it exists.
+	 *
+	 * @returns An event if callback provides content or changed state.
+	 */
+	private async handleAfterAgentCallback(
+		invocationContext: InvocationContext,
+	): Promise<Event | undefined> {
+		let retEvent: Event | undefined;
+
+		if (this.canonicalAfterAgentCallbacks.length === 0) {
+			return retEvent;
+		}
+
+		const callbackContext = new CallbackContext(invocationContext);
+		let afterAgentCallbackContent: Content | undefined;
+
+		for (const callback of this.canonicalAfterAgentCallbacks) {
+			afterAgentCallbackContent = await callback(callbackContext);
+
+			if (afterAgentCallbackContent instanceof Promise) {
+				afterAgentCallbackContent = await afterAgentCallbackContent;
+			}
+
+			if (afterAgentCallbackContent) {
+				retEvent = new Event({
+					invocationId: invocationContext.invocationId,
+					author: this.name,
+					branch: invocationContext.branch,
+					content: afterAgentCallbackContent,
+					actions: callbackContext.eventActions,
+				});
+				return retEvent;
+			}
+		}
+		if (callbackContext.state.hasDelta()) {
+			retEvent = new Event({
+				invocationId: invocationContext.invocationId,
+				author: this.name,
+				branch: invocationContext.branch,
+				content: afterAgentCallbackContent,
+				actions: callbackContext.eventActions,
 			});
-			throw error;
-		} finally {
-			span.end();
+		}
+
+		return retEvent;
+	}
+
+	/**
+	 * Validates the agent name.
+	 */
+	private validateName(value: string): void {
+		if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) {
+			throw new Error(
+				`Found invalid agent name: \`${value}\`. Agent name must be a valid identifier. It should start with a letter (a-z, A-Z) or an underscore (_), and can only contain letters, digits (0-9), and underscores.`,
+			);
+		}
+
+		if (value === "user") {
+			throw new Error(
+				"Agent name cannot be `user`. `user` is reserved for end-user's input.",
+			);
 		}
 	}
 
 	/**
-	 * Implementation method to be overridden by subclasses
+	 * Sets parent agent for sub-agents.
 	 */
-	protected abstract runStreamingImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-		sessionId?: string;
-	}): AsyncIterable<any>;
+	private setParentAgentForSubAgents(): void {
+		for (const subAgent of this.subAgents) {
+			if (subAgent.parentAgent !== undefined) {
+				throw new Error(
+					`Agent \`${subAgent.name}\` already has a parent agent, current` +
+						` parent: \`${subAgent.parentAgent.name}\`, trying to add:` +
+						` \`${this.name}\``,
+				);
+			}
+			subAgent.parentAgent = this;
+		}
+	}
 }

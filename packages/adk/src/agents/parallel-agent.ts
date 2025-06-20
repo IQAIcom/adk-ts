@@ -1,8 +1,97 @@
-import { Logger } from "@adk/helpers/logger";
-import type { Message } from "../models/llm-request";
-import type { LLMResponse } from "../models/llm-response";
+import type { Event } from "../events/event";
 import { BaseAgent } from "./base-agent";
-import type { RunConfig } from "./run-config";
+import { InvocationContext } from "./invocation-context";
+
+/**
+ * Create isolated branch for every sub-agent.
+ */
+function createBranchContextForSubAgent(
+	agent: BaseAgent,
+	subAgent: BaseAgent,
+	invocationContext: InvocationContext,
+): InvocationContext {
+	const branchSuffix = `${agent.name}.${subAgent.name}`;
+	const branch = invocationContext.branch
+		? `${invocationContext.branch}.${branchSuffix}`
+		: branchSuffix;
+
+	return new InvocationContext({
+		artifactService: invocationContext.artifactService,
+		sessionService: invocationContext.sessionService,
+		memoryService: invocationContext.memoryService,
+		invocationId: invocationContext.invocationId,
+		branch: branch,
+		agent: subAgent,
+		userContent: invocationContext.userContent,
+		session: invocationContext.session,
+		endInvocation: invocationContext.endInvocation,
+		liveRequestQueue: invocationContext.liveRequestQueue,
+		activeStreamingTools: invocationContext.activeStreamingTools,
+		transcriptionCache: invocationContext.transcriptionCache,
+		runConfig: invocationContext.runConfig,
+	});
+}
+
+/**
+ * Merges the agent run event generator.
+ *
+ * This implementation guarantees for each agent, it won't move on until the
+ * generated event is processed by upstream runner.
+ */
+async function* mergeAgentRun(
+	agentRuns: AsyncGenerator<Event, void, unknown>[],
+): AsyncGenerator<Event, void, unknown> {
+	if (agentRuns.length === 0) {
+		return;
+	}
+
+	// Create initial promises for each generator
+	const promises = agentRuns.map(async (generator, index) => {
+		try {
+			const result = await generator.next();
+			return { index, result };
+		} catch (error) {
+			return { index, result: { done: true, value: undefined }, error };
+		}
+	});
+
+	let pendingPromises = [...promises];
+
+	while (pendingPromises.length > 0) {
+		// Wait for the first generator to produce an event
+		const { index, result, error } = await Promise.race(pendingPromises);
+
+		// Remove the completed promise
+		pendingPromises = pendingPromises.filter((_, i) => i !== index);
+
+		if (error) {
+			console.error(`Error in parallel agent ${index}:`, error);
+			continue;
+		}
+
+		if (!result.done) {
+			// Yield the event
+			yield result.value;
+
+			// Create a new promise for the next event from this generator
+			const nextPromise = (async () => {
+				try {
+					const nextResult = await agentRuns[index].next();
+					return { index, result: nextResult };
+				} catch (nextError) {
+					return {
+						index,
+						result: { done: true, value: undefined },
+						error: nextError,
+					};
+				}
+			})();
+
+			pendingPromises.push(nextPromise);
+		}
+		// If result.done is true, this generator is finished and we don't add it back
+	}
+}
 
 /**
  * Configuration for ParallelAgent
@@ -21,16 +110,19 @@ export interface ParallelAgentConfig {
 	/**
 	 * Sub-agents to execute in parallel
 	 */
-	agents?: BaseAgent[];
+	subAgents?: BaseAgent[];
 }
 
 /**
- * Parallel Agent that executes sub-agents in parallel
- * All sub-agents execute independently with the same input
+ * A shell agent that run its sub-agents in parallel in isolated manner.
+ *
+ * This approach is beneficial for scenarios requiring multiple perspectives or
+ * attempts on a single task, such as:
+ *
+ * - Running different algorithms simultaneously.
+ * - Generating multiple responses for review by a subsequent evaluation agent.
  */
 export class ParallelAgent extends BaseAgent {
-	private logger = new Logger({ name: "ParallelAgent" });
-
 	/**
 	 * Constructor for ParallelAgent
 	 */
@@ -38,157 +130,32 @@ export class ParallelAgent extends BaseAgent {
 		super({
 			name: config.name,
 			description: config.description,
+			subAgents: config.subAgents,
 		});
+	}
 
-		// Add sub-agents if provided
-		if (config.agents && config.agents.length > 0) {
-			for (const agent of config.agents) {
-				this.addSubAgent(agent);
-			}
+	/**
+	 * Core logic to run this agent via text-based conversation
+	 */
+	protected async *runAsyncImpl(
+		ctx: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		const agentRuns = this.subAgents.map((subAgent) =>
+			subAgent.runAsync(createBranchContextForSubAgent(this, subAgent, ctx)),
+		);
+
+		for await (const event of mergeAgentRun(agentRuns)) {
+			yield event;
 		}
 	}
 
 	/**
-	 * Runs the agent with the given messages and configuration
-	 * Executes all sub-agents in parallel
+	 * Core logic to run this agent via video/audio-based conversation
 	 */
-	async runImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-	}): Promise<LLMResponse> {
-		this.logger.debug(
-			`Running ${this.subAgents.length} sub-agents in parallel`,
-		);
-
-		if (this.subAgents.length === 0) {
-			return {
-				content: "No sub-agents defined for parallel execution.",
-				role: "assistant",
-			};
-		}
-
-		// Create promise array for parallel execution
-		const agentPromises = this.subAgents.map((agent) => {
-			return agent
-				.run({
-					messages: options.messages,
-					config: options.config,
-				})
-				.catch((error) => {
-					console.error(`Error in sub-agent ${agent.name}:`, error);
-					return {
-						content: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
-						role: "assistant",
-					} as LLMResponse;
-				});
-		});
-
-		// Execute all agents in parallel
-		const results = await Promise.all(agentPromises);
-
-		// Combine results from all agents
-		let combinedContent = "";
-		for (let i = 0; i < results.length; i++) {
-			const agentName = this.subAgents[i].name;
-			const result = results[i];
-
-			// Add agent result to combined content
-			combinedContent += `### ${agentName}\n\n${result.content || "No content"}\n\n`;
-		}
-
-		// Return combined results
-		return {
-			content: combinedContent.trim(),
-			role: "assistant",
-		};
-	}
-
-	/**
-	 * Runs the agent with streaming support
-	 * Collects streaming responses from all sub-agents
-	 */
-	async *runStreamingImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-	}): AsyncIterable<LLMResponse> {
-		this.logger.debug(
-			`Streaming ${this.subAgents.length} sub-agents in parallel`,
-		);
-
-		if (this.subAgents.length === 0) {
-			yield {
-				content: "No sub-agents defined for parallel execution.",
-				role: "assistant",
-			};
-			return;
-		}
-
-		// Since we can't easily stream results from multiple concurrent async generators,
-		// we'll run them in parallel and combine the final results
-		const agentPromises = this.subAgents.map((agent) => {
-			return agent
-				.run({
-					messages: options.messages,
-					config: options.config,
-				})
-				.catch((error) => {
-					console.error(`Error in sub-agent ${agent.name}:`, error);
-					return {
-						content: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
-						role: "assistant",
-					} as LLMResponse;
-				});
-		});
-
-		// First yield a starting message
-		yield {
-			content: `Starting parallel execution of ${this.subAgents.length} agents...`,
-			role: "assistant",
-			is_partial: true,
-		};
-
-		// Execute all agents in parallel and yield updates as they complete
-		const results: Array<{ agent: BaseAgent; response: LLMResponse }> = [];
-		const pendingPromises = [...agentPromises];
-
-		// Process agents as they complete
-		while (pendingPromises.length > 0) {
-			const completedPromise = await Promise.race(
-				pendingPromises.map((promise, index) =>
-					promise.then((result) => ({ index, result })),
-				),
-			);
-
-			// Remove the completed promise
-			const completedAgent = this.subAgents[completedPromise.index];
-			pendingPromises.splice(completedPromise.index, 1);
-			this.subAgents.splice(completedPromise.index, 1);
-
-			// Store result
-			results.push({
-				agent: completedAgent,
-				response: completedPromise.result,
-			});
-
-			// Build the current combined response
-			let combinedContent = "";
-			for (const { agent, response } of results) {
-				combinedContent += `### ${agent.name}\n\n${response.content || "No content"}\n\n`;
-			}
-
-			// Add pending agents
-			if (pendingPromises.length > 0) {
-				combinedContent += `\n### Waiting for ${pendingPromises.length} more agents to complete...\n`;
-			}
-
-			// Yield the current state
-			yield {
-				content: combinedContent.trim(),
-				role: "assistant",
-				is_partial: pendingPromises.length > 0,
-			};
-		}
-
-		// Final combined response should have already been yielded in the loop
+	protected async *runLiveImpl(
+		_ctx: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		throw new Error("This is not supported yet for ParallelAgent.");
+		// biome-ignore lint/correctness/useYield: AsyncGenerator requires having at least one yield statement
 	}
 }

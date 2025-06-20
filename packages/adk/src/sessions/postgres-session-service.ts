@@ -1,45 +1,47 @@
 import type { Event } from "@adk/events/event";
+import type { Session } from "./session";
+import {
+	BaseSessionService,
+	type GetSessionConfig,
+	type ListSessionsResponse,
+} from "./base-session-service";
 import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
-import type { Message } from "../models/llm-request";
-import type { SessionService } from "./base-session-service";
-import type { ListSessionOptions, Session } from "./session";
-import { SessionState } from "./state";
+import {
+	integer,
+	jsonb,
+	pgTable,
+	timestamp,
+	varchar,
+} from "drizzle-orm/pg-core";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 // Define Drizzle schema for sessions
-// Adjust column types based on your specific DB and needs
 export const sessionsSchema = pgTable("sessions", {
 	id: varchar("id", { length: 255 }).primaryKey(),
+	appName: varchar("app_name", { length: 255 }).notNull(),
 	userId: varchar("user_id", { length: 255 }).notNull(),
-	messages: jsonb("messages").default("[]").$type<Message[]>(), // Store Message array as JSONB
-	metadata: jsonb("metadata").default("{}").$type<Record<string, any>>(),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.defaultNow()
 		.notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.notNull(),
-	state: jsonb("state").default("{}").$type<Record<string, any>>(), // Store serialized SessionState as JSONB
+	lastUpdateTime: integer("last_update_time").notNull(),
+	state: jsonb("state").default("{}").$type<Record<string, any>>(),
+	events: jsonb("events").default("[]").$type<Event[]>(),
 });
 
-// Type for the Drizzle schema (optional but good for type safety)
+// Type for the Drizzle schema
 export type SessionsTable = typeof sessionsSchema;
-
-// Infer the type of a row in the sessions table for stricter typing
 export type SessionRow = typeof sessionsSchema.$inferSelect;
 
 /**
- * Configuration for DatabaseSessionService with Drizzle
+ * Configuration for PostgresSessionService
  */
-export interface DatabaseSessionServiceConfig {
+export interface PostgresSessionServiceConfig {
 	/**
 	 * An initialized Drizzle ORM database client instance.
-	 * Example: drizzle(new Pool({ connectionString: '...' }), { schema: { sessions: sessionsSchema } })
 	 */
-	db: NodePgDatabase<{ sessions: SessionsTable }>; // Adjust NodePgDatabase based on your driver
+	db: NodePgDatabase<{ sessions: SessionsTable }>;
 
 	/**
 	 * Optional: Pass the sessions schema table directly if not attached to db client's schema property
@@ -47,11 +49,12 @@ export interface DatabaseSessionServiceConfig {
 	sessionsTable?: SessionsTable;
 }
 
-export class PostgresSessionService implements SessionService {
+export class PostgresSessionService extends BaseSessionService {
 	private db: NodePgDatabase<{ sessions: SessionsTable }>;
 	private sessionsTable: SessionsTable;
 
-	constructor(config: DatabaseSessionServiceConfig) {
+	constructor(config: PostgresSessionServiceConfig) {
+		super();
 		this.db = config.db;
 		this.sessionsTable = config.sessionsTable || sessionsSchema;
 	}
@@ -61,21 +64,23 @@ export class PostgresSessionService implements SessionService {
 	}
 
 	async createSession(
+		appName: string,
 		userId: string,
-		metadata: Record<string, any> = {},
+		state?: Record<string, any>,
+		sessionId?: string,
 	): Promise<Session> {
-		const sessionId = this.generateSessionId();
-		const now = new Date();
-		const sessionState = new SessionState();
+		const id = sessionId?.trim() || this.generateSessionId();
+		const now = Date.now() / 1000;
+		const sessionState = state || {};
 
 		const newSessionData: SessionRow = {
-			id: sessionId,
+			id,
+			appName,
 			userId,
-			messages: [] as Message[],
-			metadata,
-			createdAt: now,
-			updatedAt: now, // Drizzle's defaultNow() on schema handles this, but explicit is fine
-			state: sessionState.toObject(), // Serialize SessionState
+			createdAt: new Date(),
+			lastUpdateTime: Math.floor(now),
+			state: sessionState,
+			events: [],
 		};
 
 		const results = await this.db
@@ -92,19 +97,20 @@ export class PostgresSessionService implements SessionService {
 
 		return {
 			id: result.id,
+			appName: result.appName,
 			userId: result.userId,
-			messages: Array.isArray(result.messages)
-				? (result.messages as Message[])
-				: [],
-			metadata: result.metadata || {},
-			state: SessionState.fromObject(result.state || {}),
-			// Ensure dates are Date objects if Drizzle returns strings for some drivers/configs
-			createdAt: new Date(result.createdAt),
-			updatedAt: new Date(result.updatedAt),
+			state: result.state || {},
+			events: Array.isArray(result.events) ? result.events : [],
+			lastUpdateTime: result.lastUpdateTime,
 		};
 	}
 
-	async getSession(sessionId: string): Promise<Session | undefined> {
+	async getSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+		config?: GetSessionConfig,
+	): Promise<Session | undefined> {
 		const results = await this.db
 			.select()
 			.from(this.sessionsTable)
@@ -112,31 +118,31 @@ export class PostgresSessionService implements SessionService {
 			.limit(1);
 
 		const sessionData = results[0];
-		if (!sessionData) {
+		if (
+			!sessionData ||
+			sessionData.appName !== appName ||
+			sessionData.userId !== userId
+		) {
 			return undefined;
 		}
 
 		return {
 			id: sessionData.id,
+			appName: sessionData.appName,
 			userId: sessionData.userId,
-			messages: Array.isArray(sessionData.messages)
-				? (sessionData.messages as Message[])
-				: [],
-			metadata: sessionData.metadata || {},
-			state: SessionState.fromObject(sessionData.state || {}),
-			createdAt: new Date(sessionData.createdAt),
-			updatedAt: new Date(sessionData.updatedAt),
+			state: sessionData.state || {},
+			events: Array.isArray(sessionData.events) ? sessionData.events : [],
+			lastUpdateTime: sessionData.lastUpdateTime,
 		};
 	}
 
 	async updateSession(session: Session): Promise<void> {
 		const updateData: Partial<SessionRow> = {
+			appName: session.appName,
 			userId: session.userId,
-			messages: session.messages as Message[],
-			metadata: session.metadata,
-			// createdAt should typically not be updated after creation
-			updatedAt: new Date(),
-			state: session.state.toObject(),
+			lastUpdateTime: session.lastUpdateTime,
+			state: session.state,
+			events: session.events || [],
 		};
 
 		await this.db
@@ -146,60 +152,45 @@ export class PostgresSessionService implements SessionService {
 	}
 
 	async listSessions(
+		appName: string,
 		userId: string,
-		options?: ListSessionOptions,
-	): Promise<Session[]> {
-		let query = this.db
+	): Promise<ListSessionsResponse> {
+		const results: SessionRow[] = await this.db
 			.select()
 			.from(this.sessionsTable)
 			.where(eq(this.sessionsTable.userId, userId));
 
-		if (options?.limit !== undefined && options.limit > 0) {
-			query = query.limit(options.limit) as typeof query; // Using 'as' to help TypeScript if inference is tricky
-		}
+		const sessions = results
+			.filter((sessionData) => sessionData.appName === appName)
+			.map((sessionData: SessionRow) => ({
+				id: sessionData.id,
+				appName: sessionData.appName,
+				userId: sessionData.userId,
+				state: sessionData.state || {},
+				events: Array.isArray(sessionData.events) ? sessionData.events : [],
+				lastUpdateTime: sessionData.lastUpdateTime,
+			}));
 
-		const results: SessionRow[] = await query;
-
-		return results.map((sessionData: SessionRow) => ({
-			id: sessionData.id,
-			userId: sessionData.userId,
-			messages: Array.isArray(sessionData.messages)
-				? (sessionData.messages as Message[])
-				: [],
-			metadata: sessionData.metadata || {},
-			state: SessionState.fromObject(sessionData.state || {}),
-			createdAt: new Date(sessionData.createdAt),
-			updatedAt: new Date(sessionData.updatedAt),
-		}));
+		return { sessions };
 	}
 
-	async deleteSession(sessionId: string): Promise<void> {
+	async deleteSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Promise<void> {
 		await this.db
 			.delete(this.sessionsTable)
 			.where(eq(this.sessionsTable.id, sessionId));
 	}
 
-	/**
-	 * Appends an event to a session object
-	 * @param session The session to append the event to
-	 * @param event The event to append
-	 * @returns The appended event
-	 */
 	async appendEvent(session: Session, event: Event): Promise<Event> {
-		if (event.is_partial) {
+		if (event.partial) {
 			return event;
 		}
 
-		// Update session state based on event
-		if (event.actions?.stateDelta) {
-			for (const [key, value] of Object.entries(event.actions.stateDelta)) {
-				if (key.startsWith("_temp_")) {
-					continue;
-				}
-
-				session.state?.set(key, value);
-			}
-		}
+		// Use the base class method which calls our overridden updateSessionState
+		this.updateSessionState(session, event);
 
 		// Add event to session
 		if (!session.events) {
@@ -208,12 +199,30 @@ export class PostgresSessionService implements SessionService {
 		session.events.push(event);
 
 		// Update session timestamp
-		session.updatedAt = new Date();
+		session.lastUpdateTime = Date.now() / 1000;
 
-		// Save the updated session to the database (including messages)
+		// Save the updated session to the database
 		await this.updateSession(session);
 
 		return event;
+	}
+
+	/**
+	 * Updates the session state based on the event.
+	 * Overrides the base class method to work with plain object state.
+	 */
+	protected updateSessionState(session: Session, event: Event): void {
+		if (!event.actions || !event.actions.stateDelta) {
+			return;
+		}
+		for (const key in event.actions.stateDelta) {
+			if (Object.prototype.hasOwnProperty.call(event.actions.stateDelta, key)) {
+				if (key.startsWith("temp_")) {
+					continue;
+				}
+				session.state[key] = event.actions.stateDelta[key];
+			}
+		}
 	}
 
 	static fromConnectionString(

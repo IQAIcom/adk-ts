@@ -1,6 +1,6 @@
 import type { CallbackContext } from "../agents/callback-context";
 import type { ReadonlyContext } from "../agents/readonly-context";
-import type { LLMRequest } from "../models/llm-request";
+import type { LlmRequest } from "../models/llm-request";
 import type { Part } from "../models/part";
 import { BasePlanner } from "./base-planner";
 
@@ -23,7 +23,7 @@ export class PlanReActPlanner extends BasePlanner {
 	 */
 	buildPlanningInstruction(
 		readonlyContext: ReadonlyContext,
-		llmRequest: LLMRequest,
+		llmRequest: LlmRequest,
 	): string {
 		return this._buildNlPlannerInstruction();
 	}

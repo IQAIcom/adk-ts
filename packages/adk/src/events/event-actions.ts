@@ -30,6 +30,11 @@ export class EventActions {
 	escalate?: boolean;
 
 	/**
+	 * Requested authentication configurations.
+	 */
+	requestedAuthConfigs?: Record<string, any>;
+
+	/**
 	 * Constructor for EventActions
 	 */
 	constructor(
@@ -39,6 +44,7 @@ export class EventActions {
 			artifactDelta?: Record<string, number>;
 			transferToAgent?: string;
 			escalate?: boolean;
+			requestedAuthConfigs?: Record<string, any>;
 		} = {},
 	) {
 		this.skipSummarization = options.skipSummarization;
@@ -46,5 +52,6 @@ export class EventActions {
 		this.artifactDelta = options.artifactDelta || {};
 		this.transferToAgent = options.transferToAgent;
 		this.escalate = options.escalate;
+		this.requestedAuthConfigs = options.requestedAuthConfigs;
 	}
 }

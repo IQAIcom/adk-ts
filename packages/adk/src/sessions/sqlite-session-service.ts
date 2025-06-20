@@ -1,8 +1,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Event } from "@adk/events/event";
-import type { ListSessionOptions, Message, Session } from "@adk/models";
-import { type SessionService, SessionState } from "@adk/sessions";
+import type { Session } from "./session";
+import {
+	BaseSessionService,
+	type GetSessionConfig,
+	type ListSessionsResponse,
+} from "./base-session-service";
 import type Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
 import {
@@ -15,16 +19,14 @@ import { sqliteTable } from "drizzle-orm/sqlite-core";
 // Define Drizzle schema for sessions
 const sessionsSchema = sqliteTable("sessions", {
 	id: text("id").primaryKey(),
+	appName: text("app_name").notNull(),
 	userId: text("user_id").notNull(),
-	messages: text("messages", { mode: "json" }).default("[]").$type<Message[]>(),
-	metadata: text("metadata", { mode: "json" })
-		.default("{}")
-		.$type<Record<string, any>>(),
 	createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+	lastUpdateTime: integer("last_update_time").notNull(),
 	state: text("state", { mode: "json" })
 		.default("{}")
 		.$type<Record<string, any>>(),
+	events: text("events", { mode: "json" }).default("[]").$type<Event[]>(),
 });
 
 // Type for the Drizzle schema
@@ -47,13 +49,14 @@ export interface SqliteSessionServiceConfig {
 	skipTableCreation?: boolean;
 }
 
-export class SqliteSessionService implements SessionService {
+export class SqliteSessionService extends BaseSessionService {
 	private db: BetterSQLite3Database<{ sessions: SessionsTable }>;
 	private sessionsTable: SessionsTable;
 	private initialized = false;
 	private sqliteInstance: Database.Database;
 
 	constructor(config: SqliteSessionServiceConfig) {
+		super();
 		this.sqliteInstance = config.sqlite;
 
 		// Ensure the database directory exists
@@ -95,12 +98,12 @@ export class SqliteSessionService implements SessionService {
 			this.sqliteInstance.exec(`
 				CREATE TABLE IF NOT EXISTS sessions (
 					id TEXT PRIMARY KEY,
+					app_name TEXT NOT NULL,
 					user_id TEXT NOT NULL,
-					messages TEXT DEFAULT '[]',
-					metadata TEXT DEFAULT '{}',
 					created_at INTEGER NOT NULL,
-					updated_at INTEGER NOT NULL,
-					state TEXT DEFAULT '{}'
+					last_update_time INTEGER NOT NULL,
+					state TEXT DEFAULT '{}',
+					events TEXT DEFAULT '[]'
 				);
 			`);
 
@@ -130,23 +133,25 @@ export class SqliteSessionService implements SessionService {
 	}
 
 	async createSession(
+		appName: string,
 		userId: string,
-		metadata: Record<string, any> = {},
+		state?: Record<string, any>,
+		sessionId?: string,
 	): Promise<Session> {
 		await this.ensureInitialized();
 
-		const sessionId = this.generateSessionId();
-		const now = new Date();
-		const sessionState = new SessionState();
+		const id = sessionId?.trim() || this.generateSessionId();
+		const now = Date.now() / 1000;
+		const sessionState = state || {};
 
 		const newSessionData: typeof this.sessionsTable.$inferInsert = {
-			id: sessionId,
+			id,
+			appName,
 			userId,
-			messages: [] as Message[],
-			metadata,
-			createdAt: now,
-			updatedAt: now,
-			state: sessionState.toObject(),
+			createdAt: new Date(),
+			lastUpdateTime: Math.floor(now),
+			state: sessionState,
+			events: [],
 		};
 
 		const results = await this.db
@@ -163,18 +168,20 @@ export class SqliteSessionService implements SessionService {
 
 		return {
 			id: result.id,
+			appName: result.appName,
 			userId: result.userId,
-			messages: Array.isArray(result.messages)
-				? (result.messages as Message[])
-				: [],
-			metadata: result.metadata || {},
-			state: SessionState.fromObject(result.state || {}),
-			createdAt: result.createdAt,
-			updatedAt: result.updatedAt,
+			state: result.state || {},
+			events: Array.isArray(result.events) ? result.events : [],
+			lastUpdateTime: result.lastUpdateTime,
 		};
 	}
 
-	async getSession(sessionId: string): Promise<Session | undefined> {
+	async getSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+		config?: GetSessionConfig,
+	): Promise<Session | undefined> {
 		await this.ensureInitialized();
 
 		const results = await this.db
@@ -184,20 +191,21 @@ export class SqliteSessionService implements SessionService {
 			.limit(1);
 
 		const sessionData = results[0];
-		if (!sessionData) {
+		if (
+			!sessionData ||
+			sessionData.appName !== appName ||
+			sessionData.userId !== userId
+		) {
 			return undefined;
 		}
 
 		return {
 			id: sessionData.id,
+			appName: sessionData.appName,
 			userId: sessionData.userId,
-			messages: Array.isArray(sessionData.messages)
-				? (sessionData.messages as Message[])
-				: [],
-			metadata: sessionData.metadata || {},
-			state: SessionState.fromObject(sessionData.state || {}),
-			createdAt: sessionData.createdAt,
-			updatedAt: sessionData.updatedAt,
+			state: sessionData.state || {},
+			events: Array.isArray(sessionData.events) ? sessionData.events : [],
+			lastUpdateTime: sessionData.lastUpdateTime,
 		};
 	}
 
@@ -205,11 +213,11 @@ export class SqliteSessionService implements SessionService {
 		await this.ensureInitialized();
 
 		const updateData: Partial<SessionRow> = {
+			appName: session.appName,
 			userId: session.userId,
-			messages: session.messages as Message[],
-			metadata: session.metadata,
-			updatedAt: new Date(),
-			state: session.state.toObject(),
+			lastUpdateTime: session.lastUpdateTime,
+			state: session.state,
+			events: session.events || [],
 		};
 
 		await this.db
@@ -219,36 +227,35 @@ export class SqliteSessionService implements SessionService {
 	}
 
 	async listSessions(
+		appName: string,
 		userId: string,
-		options?: ListSessionOptions,
-	): Promise<Session[]> {
+	): Promise<ListSessionsResponse> {
 		await this.ensureInitialized();
 
-		let query = this.db
+		const results: SessionRow[] = await this.db
 			.select()
 			.from(this.sessionsTable)
 			.where(eq(this.sessionsTable.userId, userId));
 
-		if (options?.limit !== undefined && options.limit > 0) {
-			query = query.limit(options.limit) as typeof query;
-		}
+		const sessions = results
+			.filter((sessionData) => sessionData.appName === appName)
+			.map((sessionData: SessionRow) => ({
+				id: sessionData.id,
+				appName: sessionData.appName,
+				userId: sessionData.userId,
+				state: sessionData.state || {},
+				events: Array.isArray(sessionData.events) ? sessionData.events : [],
+				lastUpdateTime: sessionData.lastUpdateTime,
+			}));
 
-		const results: SessionRow[] = await query;
-
-		return results.map((sessionData: SessionRow) => ({
-			id: sessionData.id,
-			userId: sessionData.userId,
-			messages: Array.isArray(sessionData.messages)
-				? (sessionData.messages as Message[])
-				: [],
-			metadata: sessionData.metadata || {},
-			state: SessionState.fromObject(sessionData.state || {}),
-			createdAt: sessionData.createdAt,
-			updatedAt: sessionData.updatedAt,
-		}));
+		return { sessions };
 	}
 
-	async deleteSession(sessionId: string): Promise<void> {
+	async deleteSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Promise<void> {
 		await this.ensureInitialized();
 
 		await this.db
@@ -259,20 +266,12 @@ export class SqliteSessionService implements SessionService {
 	async appendEvent(session: Session, event: Event): Promise<Event> {
 		await this.ensureInitialized();
 
-		if (event.is_partial) {
+		if (event.partial) {
 			return event;
 		}
 
-		// Update session state based on event
-		if (event.actions?.stateDelta) {
-			for (const [key, value] of Object.entries(event.actions.stateDelta)) {
-				if (key.startsWith("_temp_")) {
-					continue;
-				}
-
-				session.state?.set(key, value);
-			}
-		}
+		// Use the base class method which calls our overridden updateSessionState
+		this.updateSessionState(session, event);
 
 		// Add event to session
 		if (!session.events) {
@@ -281,11 +280,29 @@ export class SqliteSessionService implements SessionService {
 		session.events.push(event);
 
 		// Update session timestamp
-		session.updatedAt = new Date();
+		session.lastUpdateTime = Date.now() / 1000;
 
 		// Save the updated session to the database
 		await this.updateSession(session);
 
 		return event;
+	}
+
+	/**
+	 * Updates the session state based on the event.
+	 * Overrides the base class method to work with plain object state.
+	 */
+	protected updateSessionState(session: Session, event: Event): void {
+		if (!event.actions || !event.actions.stateDelta) {
+			return;
+		}
+		for (const key in event.actions.stateDelta) {
+			if (Object.prototype.hasOwnProperty.call(event.actions.stateDelta, key)) {
+				if (key.startsWith("temp_")) {
+					continue;
+				}
+				session.state[key] = event.actions.stateDelta[key];
+			}
+		}
 	}
 }

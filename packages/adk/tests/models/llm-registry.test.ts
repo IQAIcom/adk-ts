@@ -1,9 +1,9 @@
-import { BaseLLM } from "@adk/models/base-llm";
+import { BaseLlm } from "@adk/models/base-llm";
 import { LLMRegistry } from "@adk/models/llm-registry";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Create a mock LLM class that extends BaseLLM
-class MockLLM extends BaseLLM {
+class MockLLM extends BaseLlm {
 	static supportedModels(): string[] {
 		return ["mock-model-.*", "exact-mock-model"];
 	}

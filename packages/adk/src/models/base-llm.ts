@@ -1,19 +1,22 @@
+import { Logger } from "@adk/helpers/logger";
 import { tracer } from "../telemetry";
 import type { BaseLLMConnection } from "./base-llm-connection";
-import type { LLMRequest } from "./llm-request";
-import type { LLMResponse } from "./llm-response";
+import type { LlmRequest } from "./llm-request";
+import type { LlmResponse } from "./llm-response";
+
+const logger = new Logger({ name: "BaseLlm" });
 
 /**
- * Base class for all LLM implementations
+ * The BaseLlm class.
  */
-export abstract class BaseLLM {
+export abstract class BaseLlm {
 	/**
-	 * The name of the LLM model
+	 * The name of the LLM, e.g. gemini-1.5-flash or gemini-1.5-flash-001.
 	 */
 	model: string;
 
 	/**
-	 * Constructor for BaseLLM
+	 * Constructor for BaseLlm
 	 */
 	constructor(model: string) {
 		this.model = model;
@@ -27,16 +30,25 @@ export abstract class BaseLLM {
 	}
 
 	/**
-	 * Generates content from the given request
+	 * Generates one content from the given contents and tools.
 	 *
-	 * @param llmRequest The request to send to the LLM
-	 * @param stream Whether to do streaming call
-	 * @returns A generator of LLMResponses
+	 * @param llmRequest LlmRequest, the request to send to the LLM.
+	 * @param stream bool = false, whether to do streaming call.
+	 * @returns a generator of LlmResponse.
+	 *
+	 * For non-streaming call, it will only yield one LlmResponse.
+	 *
+	 * For streaming call, it may yield more than one response, but all yielded
+	 * responses should be treated as one response by merging the
+	 * parts list.
 	 */
 	async *generateContentAsync(
-		llmRequest: LLMRequest,
+		llmRequest: LlmRequest,
 		stream?: boolean,
-	): AsyncGenerator<LLMResponse, void, unknown> {
+	): AsyncGenerator<LlmResponse, void, unknown> {
+		// Apply the maybeAppendUserContent fix before processing
+		this.maybeAppendUserContent(llmRequest);
+
 		yield* tracer.startActiveSpan(
 			`llm_generate [${this.model}]`,
 			async function* (span) {
@@ -45,29 +57,30 @@ export abstract class BaseLLM {
 						"gen_ai.system.name": "iqai-adk",
 						"gen_ai.operation.name": "generate",
 						"gen_ai.request.model": this.model,
-						"gen_ai.request.max_tokens": llmRequest.config.max_tokens || 0,
-						"gen_ai.request.temperature": llmRequest.config.temperature || 0,
-						"gen_ai.request.top_p": llmRequest.config.top_p || 0,
+						"gen_ai.request.max_tokens":
+							llmRequest.config?.maxOutputTokens || 0,
+						"gen_ai.request.temperature": llmRequest.config?.temperature || 0,
+						"gen_ai.request.top_p": llmRequest.config?.topP || 0,
 						"adk.llm_request": JSON.stringify({
-							model: llmRequest.model,
-							messages: llmRequest.messages.map((msg) => ({
-								role: msg.role,
-								content:
-									typeof msg.content === "string"
-										? msg.content
-										: "[complex_content]",
+							model: this.model,
+							contents: llmRequest.contents?.map((content) => ({
+								role: content.role,
+								parts: content.parts?.map((part) => ({
+									text:
+										typeof part.text === "string"
+											? part.text.substring(0, 200) +
+												(part.text.length > 200 ? "..." : "")
+											: "[non_text_content]",
+								})),
 							})),
-							config: {
-								...llmRequest.config,
-								functions: llmRequest.config.functions?.map((f) => f.name),
-							},
+							config: llmRequest.config,
 						}),
 						"adk.streaming": stream || false,
 					});
 
-					console.log("🤖 ADK LLM Request:", {
+					logger.debug("ADK LLM Request:", {
 						model: this.model,
-						messageCount: llmRequest.messages.length,
+						contentCount: llmRequest.contents?.length || 0,
 						streaming: stream || false,
 						config: llmRequest.config,
 					});
@@ -82,13 +95,15 @@ export abstract class BaseLLM {
 						responseCount++;
 
 						// Log each response chunk
-						console.log(`🤖 ADK LLM Response ${responseCount}:`, {
+						logger.debug(`ADK LLM Response ${responseCount}:`, {
 							model: this.model,
-							content:
-								typeof response.content === "string"
-									? response.content.substring(0, 200) +
-										(response.content.length > 200 ? "..." : "")
-									: "[complex_content]",
+							parts: response.parts?.map((part) => ({
+								text:
+									typeof part.text === "string"
+										? part.text.substring(0, 200) +
+											(part.text.length > 200 ? "..." : "")
+										: "[non_text_content]",
+							})),
 							finishReason: response.finish_reason,
 							usage: response.usage,
 						});
@@ -130,37 +145,55 @@ export abstract class BaseLLM {
 	}
 
 	/**
-	 * Implementation method to be overridden by subclasses
-	 * This replaces the abstract generateContentAsync method
+	 * Implementation method to be overridden by subclasses.
+	 * This replaces the abstract generateContentAsync method.
 	 */
 	protected abstract generateContentAsyncImpl(
-		llmRequest: LLMRequest,
+		llmRequest: LlmRequest,
 		stream?: boolean,
-	): AsyncGenerator<LLMResponse, void, unknown>;
+	): AsyncGenerator<LlmResponse, void, unknown>;
 
 	/**
-	 * Creates a live connection to the LLM
+	 * Appends a user content, so that model can continue to output.
 	 *
-	 * @param llmRequest The request to send to the LLM
-	 * @returns BaseLLMConnection, the connection to the LLM
+	 * @param llmRequest LlmRequest, the request to send to the LLM.
 	 */
-	connect(llmRequest: LLMRequest): BaseLLMConnection {
-		return tracer.startActiveSpan(`llm_connect [${this.model}]`, (span) => {
-			try {
-				span.setAttributes({
-					"gen_ai.system.name": "iqai-adk",
-					"gen_ai.operation.name": "connect",
-					"gen_ai.request.model": this.model,
-				});
+	protected maybeAppendUserContent(llmRequest: LlmRequest): void {
+		// If no content is provided, append a user content to hint model response
+		// using system instruction.
+		if (!llmRequest.contents || llmRequest.contents.length === 0) {
+			llmRequest.contents = llmRequest.contents || [];
+			llmRequest.contents.push({
+				role: "user",
+				parts: [
+					{
+						text: "Handle the requests as specified in the System Instruction.",
+					},
+				],
+			});
+			return;
+		}
 
-				throw new Error(`Live connection is not supported for ${this.model}`);
-			} catch (error) {
-				span.recordException(error as Error);
-				span.setStatus({ code: 2, message: (error as Error).message });
-				throw error;
-			} finally {
-				span.end();
-			}
-		});
+		// Insert a user content to preserve user intent and to avoid empty
+		// model response.
+		if (llmRequest.contents[llmRequest.contents.length - 1].role !== "user") {
+			llmRequest.contents.push({
+				role: "user",
+				parts: [
+					{
+						text: "Continue processing previous requests as instructed. Exit or provide a summary if no more outputs are needed.",
+					},
+				],
+			});
+		}
+	}
+	/**
+	 * Creates a live connection to the LLM.
+	 *
+	 * @param llmRequest LlmRequest, the request to send to the LLM.
+	 * @returns BaseLLMConnection, the connection to the LLM.
+	 */
+	connect(llmRequest: LlmRequest): BaseLLMConnection {
+		throw new Error(`Live connection is not supported for ${this.model}.`);
 	}
 }

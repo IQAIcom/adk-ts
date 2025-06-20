@@ -1,5 +1,27 @@
+import type { Content } from "@google/genai";
 import type { Session } from "../models";
-import type { MemoryEntry } from "./memory-entry";
+
+/**
+ * Represent one memory entry
+ */
+export interface MemoryEntry {
+	/**
+	 * The main content of the memory
+	 */
+	content: Content;
+
+	/**
+	 * The author of the memory
+	 */
+	author?: string;
+
+	/**
+	 * The timestamp when the original content of this memory happened.
+	 *
+	 * This string will be forwarded to LLM. Preferred format is ISO 8601 format.
+	 */
+	timestamp?: string;
+}
 
 /**
  * Represents the response from a memory search

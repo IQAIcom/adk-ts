@@ -1,205 +1,133 @@
 /**
- * Represents the state of a session
+ * A state dict that maintain the current value and the pending-commit delta.
  */
-export class SessionState {
-	private state: Map<string, any>;
-	private dirty: Set<string>;
+export class State {
+	static readonly APP_PREFIX = "app:";
+	static readonly USER_PREFIX = "user:";
+	static readonly TEMP_PREFIX = "temp:";
 
-	constructor() {
-		this.state = new Map<string, any>();
-		this.dirty = new Set<string>();
+	private readonly _value: Record<string, any>;
+	private readonly _delta: Record<string, any>;
+
+	/**
+	 * Constructor for State
+	 *
+	 * @param value - The current value of the state dict.
+	 * @param delta - The delta change to the current value that hasn't been committed.
+	 */
+	constructor(value: Record<string, any>, delta: Record<string, any>) {
+		this._value = value;
+		this._delta = delta;
 	}
 
 	/**
-	 * Sets a value in the state
-	 * @param key The key to set
-	 * @param value The value to set
+	 * Returns the value of the state dict for the given key.
+	 */
+	get(key: string, defaultValue?: any): any {
+		if (!this.has(key)) {
+			return defaultValue;
+		}
+		return this[key];
+	}
+
+	/**
+	 * Sets the value of the state dict for the given key.
 	 */
 	set(key: string, value: any): void {
-		this.state.set(key, value);
-		this.dirty.add(key);
+		// TODO: make new change only store in delta, so that this._value is only
+		//   updated at the storage commit time.
+		this._value[key] = value;
+		this._delta[key] = value;
 	}
 
 	/**
-	 * Gets a value from the state
-	 * @param key The key to get
-	 * @returns The value or undefined if not present
-	 */
-	get<T>(key: string): T | undefined {
-		return this.state.get(key) as T | undefined;
-	}
-
-	/**
-	 * Checks if the state has a key
-	 * @param key The key to check
-	 * @returns Whether the key exists
+	 * Whether the state dict contains the given key.
 	 */
 	has(key: string): boolean {
-		return this.state.has(key);
+		return key in this._value || key in this._delta;
 	}
 
 	/**
-	 * Deletes a key from the state
-	 * @param key The key to delete
-	 * @returns Whether the key was deleted
-	 */
-	delete(key: string): boolean {
-		if (this.state.has(key)) {
-			this.state.delete(key);
-			this.dirty.add(key);
-			return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Checks if state has changed since last save
-	 * @returns Whether the state has been modified
+	 * Whether the state has pending delta.
 	 */
 	hasDelta(): boolean {
-		return this.dirty.size > 0;
+		return Object.keys(this._delta).length > 0;
 	}
 
 	/**
-	 * Clears the dirty state
+	 * Updates the state dict with the given delta.
 	 */
-	clearDelta(): void {
-		this.dirty.clear();
+	update(delta: Record<string, any>): void {
+		Object.assign(this._value, delta);
+		Object.assign(this._delta, delta);
 	}
 
 	/**
-	 * Converts the state to a plain object
+	 * Returns the state dict.
 	 */
-	toObject(): Record<string, any> {
+	toDict(): Record<string, any> {
 		const result: Record<string, any> = {};
-		this.state.forEach((value, key) => {
-			result[key] = value;
-		});
+		Object.assign(result, this._value);
+		Object.assign(result, this._delta);
 		return result;
 	}
 
 	/**
-	 * Creates a state from a plain object
-	 * @param obj The object to load
+	 * Array-like access for getting values.
+	 * Returns the value of the state dict for the given key.
 	 */
-	static fromObject(obj: Record<string, any>): SessionState {
-		const state = new SessionState();
-		Object.entries(obj).forEach(([key, value]) => {
-			state.state.set(key, value);
-		});
-		return state;
-	}
-}
-
-/**
- * Delta-aware state that combines session state with event action deltas
- * This is different from SessionState and is used in CallbackContext
- */
-export class State {
-	private baseValue: Record<string, any>;
-	private delta: Record<string, any>;
+	[key: string]: any;
 
 	/**
-	 * Constructor for State
+	 * Proxy handler for array-like access
 	 */
-	constructor(options: {
-		value: Record<string, any>;
-		delta: Record<string, any>;
-	}) {
-		this.baseValue = { ...options.value };
-		this.delta = { ...options.delta };
-	}
-
-	/**
-	 * Gets a value from the combined state (base + delta)
-	 * @param key The key to get
-	 * @returns The value or undefined if not present
-	 */
-	get<T>(key: string): T | undefined {
-		// Delta takes precedence over base value
-		if (key in this.delta) {
-			return this.delta[key] as T;
-		}
-		return this.baseValue[key] as T | undefined;
-	}
-
-	/**
-	 * Sets a value in the delta state
-	 * @param key The key to set
-	 * @param value The value to set
-	 */
-	set(key: string, value: any): void {
-		this.delta[key] = value;
-	}
-
-	/**
-	 * Checks if the state has a key (in either base or delta)
-	 * @param key The key to check
-	 * @returns Whether the key exists
-	 */
-	has(key: string): boolean {
-		return key in this.delta || key in this.baseValue;
-	}
-
-	/**
-	 * Deletes a key from the delta state
-	 * @param key The key to delete
-	 */
-	delete(key: string): void {
-		this.delta[key] = undefined;
-	}
-
-	/**
-	 * Gets all keys from both base and delta
-	 * @returns Array of all keys
-	 */
-	keys(): string[] {
-		const allKeys = new Set([
-			...Object.keys(this.baseValue),
-			...Object.keys(this.delta),
-		]);
-		return Array.from(allKeys);
-	}
-
-	/**
-	 * Converts the combined state to a plain object
-	 * @returns Combined state as object
-	 */
-	toObject(): Record<string, any> {
-		return {
-			...this.baseValue,
-			...this.delta,
-		};
-	}
-
-	/**
-	 * Gets the delta changes
-	 * @returns The delta object
-	 */
-	getDelta(): Record<string, any> {
-		return { ...this.delta };
-	}
-
-	/**
-	 * Clears the delta changes
-	 */
-	clearDelta(): void {
-		this.delta = {};
-	}
-
-	/**
-	 * Support for indexing like a dictionary (Python-style)
-	 */
-	[Symbol.iterator]() {
-		const entries = Object.entries(this.toObject());
-		let index = 0;
-		return {
-			next(): IteratorResult<[string, any]> {
-				if (index < entries.length) {
-					return { value: entries[index++], done: false };
+	private static createProxy(state: State): State {
+		return new Proxy(state, {
+			get(target: State, prop: string | symbol): any {
+				if (
+					typeof prop === "string" &&
+					!prop.startsWith("_") &&
+					!(prop in target)
+				) {
+					// Handle array-like access for getting values
+					if (prop in target._delta) {
+						return target._delta[prop];
+					}
+					return target._value[prop];
 				}
-				return { done: true, value: undefined };
+				return (target as any)[prop];
 			},
-		};
+			set(target: State, prop: string | symbol, value: any): boolean {
+				if (
+					typeof prop === "string" &&
+					!prop.startsWith("_") &&
+					!(prop in target)
+				) {
+					// Handle array-like access for setting values
+					target.set(prop, value);
+					return true;
+				}
+				(target as any)[prop] = value;
+				return true;
+			},
+			has(target: State, prop: string | symbol): boolean {
+				if (
+					typeof prop === "string" &&
+					!prop.startsWith("_") &&
+					!(prop in target)
+				) {
+					return target.has(prop);
+				}
+				return prop in target;
+			},
+		});
+	}
+
+	/**
+	 * Factory method to create a proxied State instance
+	 */
+	static create(value: Record<string, any>, delta: Record<string, any>): State {
+		const state = new State(value, delta);
+		return State.createProxy(state);
 	}
 }

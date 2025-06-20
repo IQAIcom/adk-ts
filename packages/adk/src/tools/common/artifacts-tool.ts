@@ -1,7 +1,7 @@
+import type { Part } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
-import type { Part } from "@google/genai";
 
 interface ArtifactOperationResult {
 	success: boolean;

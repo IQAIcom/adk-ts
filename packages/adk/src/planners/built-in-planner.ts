@@ -1,6 +1,6 @@
 import type { CallbackContext } from "../agents/callback-context";
 import type { ReadonlyContext } from "../agents/readonly-context";
-import type { LLMRequest } from "../models/llm-request";
+import type { LlmRequest } from "../models/llm-request";
 import type { Part } from "../models/part";
 import type { ThinkingConfig } from "../models/thinking-config";
 import { BasePlanner } from "./base-planner";
@@ -30,7 +30,7 @@ export class BuiltInPlanner extends BasePlanner {
 	 *
 	 * @param llmRequest The LLM request to apply the thinking config to
 	 */
-	applyThinkingConfig(llmRequest: LLMRequest): void {
+	applyThinkingConfig(llmRequest: LlmRequest): void {
 		if (this.thinkingConfig) {
 			// Initialize config if it doesn't exist
 			llmRequest.config = llmRequest.config || {};
@@ -46,7 +46,7 @@ export class BuiltInPlanner extends BasePlanner {
 	 */
 	buildPlanningInstruction(
 		readonlyContext: ReadonlyContext,
-		llmRequest: LLMRequest,
+		llmRequest: LlmRequest,
 	): string | undefined {
 		// Built-in planner doesn't provide custom instructions
 		// It relies on the model's built-in thinking capabilities

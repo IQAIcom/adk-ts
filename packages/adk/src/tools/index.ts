@@ -8,7 +8,6 @@ export type { ToolConfig } from "./base/base-tool";
 
 // Tool context
 export { ToolContext } from "./tool-context";
-export type { IToolContext } from "./tool-context";
 
 // Function tools
 export { FunctionTool } from "./function/function-tool";

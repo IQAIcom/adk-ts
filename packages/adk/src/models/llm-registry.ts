@@ -1,11 +1,11 @@
 import { Logger } from "@adk/helpers/logger";
-import type { BaseLLM } from "./base-llm";
+import type { BaseLlm } from "./base-llm";
 
 /**
  * Type for LLM constructor with static methods
  */
 interface LLMClass {
-	new (model: string): BaseLLM;
+	new (model: string): BaseLlm;
 	supportedModels(): string[];
 }
 
@@ -26,7 +26,7 @@ export class LLMRegistry {
 	 * @param model The model name
 	 * @returns The LLM instance
 	 */
-	static newLLM(model: string): BaseLLM {
+	static newLLM(model: string): BaseLlm {
 		const llmClass = LLMRegistry.resolve(model);
 		if (!llmClass) {
 			throw new Error(`No LLM found for model: ${model}`);

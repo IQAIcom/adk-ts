@@ -1,13 +1,10 @@
 import { Logger } from "@adk/helpers/logger";
-import type { LLMResponse } from "@adk/models";
+import { LlmRequest, type LlmResponse } from "@adk/models";
+import type { Content, Part } from "@google/genai";
 import {
 	CreateMessageRequestSchema,
 	CreateMessageResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import type {
-	Message as ADKMessage,
-	LLMRequest,
-} from "../../models/llm-request";
 import {
 	McpError,
 	McpErrorType,
@@ -80,20 +77,20 @@ export class McpSamplingHandler {
 			this.logger.debug("Converting MCP request to ADK format");
 
 			// Convert MCP messages to ADK format
-			const adkMessages = this.convertMcpMessagesToADK(
+			const adkContents = this.convertMcpMessagesToADK(
 				mcpParams.messages,
 				mcpParams.systemPrompt,
 			);
 
-			// Prepare ADK request
-			const adkRequest: LLMRequest = {
-				model: "", //TODO: Implement model passing from context
-				messages: adkMessages,
+			// Prepare ADK request - create a proper LlmRequest instance
+			const adkRequest = new LlmRequest({
+				model: "", // TODO: Implement model passing from context
+				contents: adkContents,
 				config: {
 					temperature: mcpParams.temperature,
-					max_tokens: mcpParams.maxTokens,
+					maxOutputTokens: mcpParams.maxTokens,
 				},
-			};
+			});
 
 			this.logger.debug("Calling ADK sampling handler");
 
@@ -137,110 +134,134 @@ export class McpSamplingHandler {
 	}
 
 	/**
-	 * Convert MCP messages to ADK message format
+	 * Convert MCP messages to ADK Content format
 	 */
 	private convertMcpMessagesToADK(
 		mcpMessages: McpSamplingRequest["params"]["messages"],
-		systemPrompt: string,
-	): ADKMessage[] {
+		systemPrompt?: string,
+	): Content[] {
+		const contents: Content[] = [];
+
+		// Add system prompt at the beginning if provided
+		if (systemPrompt) {
+			contents.push({
+				role: "user", // System messages are typically sent as user role in content
+				parts: [{ text: systemPrompt }],
+			});
+		}
+
+		// Convert each MCP message to ADK Content format
 		const transformedMessages = mcpMessages.map((mcpMessage) =>
 			this.convertSingleMcpMessageToADK(mcpMessage),
 		);
 
-		// Add system prompt at the beginning
-		transformedMessages.unshift({
-			role: "system",
-			content: systemPrompt,
-		});
+		contents.push(...transformedMessages);
 
-		return transformedMessages;
+		return contents;
 	}
 
 	/**
-	 * Convert a single MCP message to ADK message format
+	 * Convert a single MCP message to ADK Content format
 	 */
 	private convertSingleMcpMessageToADK(
 		mcpMessage: McpSamplingRequest["params"]["messages"][0],
-	): ADKMessage {
+	): Content {
 		// Map MCP role to ADK role - MCP only supports "user" and "assistant"
-		const adkRole = mcpMessage.role === "assistant" ? "assistant" : "user";
+		const adkRole = mcpMessage.role === "assistant" ? "model" : "user";
 
 		// Convert content based on type
-		const adkContent = this.convertMcpContentToADK(mcpMessage.content);
+		const adkParts = this.convertMcpContentToADKParts(mcpMessage.content);
 
-		const adkMessage: ADKMessage = {
+		const adkContent: Content = {
 			role: adkRole,
-			content: adkContent,
+			parts: adkParts,
 		};
 
 		this.logger.debug(
 			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${mcpMessage.content.type}`,
 		);
 
-		return adkMessage;
+		return adkContent;
 	}
 
 	/**
-	 * Convert MCP message content to ADK content format
+	 * Convert MCP message content to ADK parts format
 	 */
-	private convertMcpContentToADK(
+	private convertMcpContentToADKParts(
 		mcpContent: McpSamplingRequest["params"]["messages"][0]["content"],
-	): string | Array<any> {
+	): Part[] {
 		if (mcpContent.type === "text") {
-			// Simple text content
-			return mcpContent.text || "";
+			// Simple text content - ensure text is a string
+			const textContent = mcpContent.text || "";
+			return [{ text: textContent }];
 		}
 
 		if (mcpContent.type === "image") {
 			// Multimodal content with image
-			const contentParts: Array<any> = [];
+			const parts: Part[] = [];
 
-			// Add text part if present
-			if (mcpContent.text) {
-				contentParts.push({
-					type: "text",
-					text: mcpContent.text,
-				});
+			// Add text part if present - ensure text is a string
+			if (mcpContent.text && typeof mcpContent.text === "string") {
+				parts.push({ text: mcpContent.text });
 			}
 
 			// Add image part
-			if (mcpContent.data) {
-				// Convert base64 data to data URL format expected by ADK
+			if (mcpContent.data && typeof mcpContent.data === "string") {
+				// Convert base64 data to inline data format expected by ADK
 				const mimeType = mcpContent.mimeType || "image/jpeg";
-				const dataUrl = `data:${mimeType};base64,${mcpContent.data}`;
 
-				contentParts.push({
-					type: "image",
-					image_url: {
-						url: dataUrl,
+				parts.push({
+					inlineData: {
+						data: mcpContent.data,
+						mimeType,
 					},
 				});
 			}
 
-			return contentParts.length > 0 ? contentParts : "";
+			return parts.length > 0 ? parts : [{ text: "" }];
 		}
 
 		// Fallback for unknown content types
 		this.logger.warn(`Unknown MCP content type: ${mcpContent.type}`);
-		return mcpContent.data || "";
+		const fallbackText =
+			typeof mcpContent.data === "string" ? mcpContent.data : "";
+		return [{ text: fallbackText }];
 	}
 
 	/**
 	 * Convert ADK response to MCP response format
 	 */
 	private convertADKResponseToMcp(
-		adkResponse: LLMResponse,
+		adkResponse: LlmResponse,
 	): McpSamplingResponse {
+		// Extract text content from the response
+		let responseText = "";
+
+		if (adkResponse.content) {
+			if (typeof adkResponse.content === "string") {
+				// If content is somehow a string (shouldn't happen with new structure)
+				responseText = adkResponse.content;
+			} else if (adkResponse.content.parts) {
+				// Extract text from all parts, ensuring we handle the text property safely
+				responseText = adkResponse.content.parts
+					.map((part) => {
+						// Ensure part.text is a string
+						return typeof part.text === "string" ? part.text : "";
+					})
+					.join("");
+			}
+		}
+
 		// Create MCP response
 		const mcpResponse: McpSamplingResponse = {
 			role: "assistant", // ADK responses are always from assistant
 			content: {
 				type: "text",
-				text: adkResponse.content || "",
+				text: responseText,
 			},
 		};
 
-		this.logger.debug(`Received content: ${adkResponse.content}`);
+		this.logger.debug(`Received content: ${responseText}`);
 
 		return mcpResponse;
 	}
@@ -262,30 +283,18 @@ export class McpSamplingHandler {
  *
  * @example
  * ```typescript
- * import { createSamplingHandler, GoogleLLM, LLMRequest } from "@iqai/adk";
+ * import { createSamplingHandler, Gemini } from "@iqai/adk";
  *
- * const llm = new GoogleLLM("gemini-2.5-flash-preview-05-20");
+ * const llm = new Gemini("gemini-2.0-flash-exp");
  *
  * const samplingHandler = createSamplingHandler(async (request) => {
  *   // request is properly typed with all the fields
- *   const llmRequest = new LLMRequest({
- *     messages: request.messages,
- *     config: {
- *       temperature: request.temperature || 0.7,
- *       max_tokens: request.maxTokens,
- *     }
- *   });
- *
  *   const responses = [];
- *   for await (const response of llm.generateContentAsync(llmRequest)) {
+ *   for await (const response of llm.generateContentAsync(request)) {
  *     responses.push(response);
  *   }
  *
- *   return {
- *     model: llm.model,
- *     content: responses[responses.length - 1].content,
- *     stopReason: "endTurn"
- *   };
+ *   return responses[responses.length - 1];
  * });
  * ```
  */

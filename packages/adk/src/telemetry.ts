@@ -15,13 +15,8 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import type { InvocationContext } from "./agents/invocation-context";
 import type { Event } from "./events/event";
-import type {
-	ImageContent,
-	LLMRequest,
-	MessageContent,
-	TextContent,
-} from "./models/llm-request";
-import type { LLMResponse } from "./models/llm-response";
+import type { LlmRequest } from "./models/llm-request";
+import type { LlmResponse } from "./models/llm-response";
 import type { BaseTool } from "./tools";
 
 export interface TelemetryConfig {
@@ -153,15 +148,28 @@ export class TelemetryService {
 		tool: BaseTool,
 		args: Record<string, any>,
 		functionResponseEvent: Event,
-		llmRequest?: LLMRequest,
+		llmRequest?: LlmRequest,
 		invocationContext?: InvocationContext,
 	): void {
 		const span = trace.getActiveSpan();
 		if (!span) return;
 
-		const toolCallId =
-			functionResponseEvent.tool_calls?.[0]?.id ?? "<not specified>";
-		const toolResponse = functionResponseEvent.content ?? "<not specified>";
+		let toolCallId = "<not specified>";
+		let toolResponse = "<not specified>";
+
+		// Follow Python logic: check if content.parts exists and has function_response
+		if (
+			functionResponseEvent.content?.parts &&
+			functionResponseEvent.content.parts.length > 0
+		) {
+			const functionResponse =
+				functionResponseEvent.content.parts[0].functionResponse;
+			if (functionResponse) {
+				toolCallId = functionResponse.id || "<not specified>";
+				toolResponse =
+					JSON.stringify(functionResponse.response) || "<not specified>";
+			}
+		}
 
 		span.setAttributes({
 			"gen_ai.system.name": "iqai-adk",
@@ -172,7 +180,7 @@ export class TelemetryService {
 
 			// Session and user tracking
 			...(invocationContext && {
-				"session.id": invocationContext.sessionId,
+				"session.id": invocationContext.session.id,
 				"user.id": invocationContext.userId,
 			}),
 
@@ -198,8 +206,8 @@ export class TelemetryService {
 	traceLlmCall(
 		invocationContext: InvocationContext,
 		eventId: string,
-		llmRequest: LLMRequest,
-		llmResponse: LLMResponse,
+		llmRequest: LlmRequest,
+		llmResponse: LlmResponse,
 	): void {
 		const span = trace.getActiveSpan();
 		if (!span) return;
@@ -213,7 +221,7 @@ export class TelemetryService {
 			"gen_ai.request.model": llmRequest.model,
 
 			// Session and user tracking (maps to Langfuse sessionId, userId)
-			"session.id": invocationContext.sessionId,
+			"session.id": invocationContext.session.id,
 			"user.id": invocationContext.userId,
 
 			// Environment (maps to Langfuse environment)
@@ -222,15 +230,15 @@ export class TelemetryService {
 			}),
 
 			// Model parameters (maps to Langfuse modelParameters)
-			"gen_ai.request.max_tokens": llmRequest.config.max_tokens || 0,
+			"gen_ai.request.max_tokens": llmRequest.config.maxOutputTokens || 0,
 			"gen_ai.request.temperature": llmRequest.config.temperature || 0,
-			"gen_ai.request.top_p": llmRequest.config.top_p || 0,
+			"gen_ai.request.top_p": llmRequest.config.topP || 0,
 
 			// Legacy ADK attributes (keep for backward compatibility)
 			"adk.system_name": "iqai-adk",
 			"adk.request_model": llmRequest.model,
-			"adk.invocation_id": invocationContext.sessionId,
-			"adk.session_id": invocationContext.sessionId,
+			"adk.invocation_id": invocationContext.session.id,
+			"adk.session_id": invocationContext.session.id,
 			"adk.event_id": eventId,
 			"adk.llm_request": this._safeJsonStringify(requestData),
 			"adk.llm_response": this._safeJsonStringify(llmResponse),
@@ -246,6 +254,28 @@ export class TelemetryService {
 		});
 	}
 
+	/**
+	 * Wraps an async generator with tracing
+	 */
+	async *traceAsyncGenerator<T>(
+		spanName: string,
+		generator: AsyncGenerator<T, void, unknown>,
+	): AsyncGenerator<T, void, unknown> {
+		const span = this.tracer.startSpan(spanName);
+
+		try {
+			for await (const item of generator) {
+				yield item;
+			}
+		} catch (error) {
+			span.recordException(error as Error);
+			span.setStatus({ code: 2, message: (error as Error).message });
+			throw error;
+		} finally {
+			span.end();
+		}
+	}
+
 	// --- Private Helper Methods ---
 
 	private _safeJsonStringify(obj: any): string {
@@ -258,99 +288,65 @@ export class TelemetryService {
 
 	/**
 	 * Builds a dictionary representation of the LLM request for tracing.
+	 *
+	 * This function prepares a dictionary representation of the LlmRequest
+	 * object, suitable for inclusion in a trace. It excludes fields that cannot
+	 * be serialized (e.g., function pointers) and avoids sending bytes data.
 	 */
 	private _buildLlmRequestForTrace(
-		llmRequest: LLMRequest,
+		llmRequest: LlmRequest,
 	): Record<string, any> {
+		// Some fields in LlmRequest are function pointers and can not be serialized.
 		const result: Record<string, any> = {
 			model: llmRequest.model,
-			config: {
-				...llmRequest.config,
-				functions: llmRequest.config.functions?.map((func) => ({
-					name: func.name,
-					description: func.description,
-					parameters: func.parameters,
-				})),
-			},
-			messages: [],
+			config: this._excludeNonSerializableFromConfig(llmRequest.config),
+			contents: [],
 		};
 
-		// Filter out binary data and non-serializable content from messages
-		for (const message of llmRequest.messages) {
-			const filteredMessage: Record<string, any> = {
-				role: message.role,
-				content: this._filterMessageContent(message.content),
-			};
-
-			// Include optional fields if they exist
-			if (message.name) {
-				filteredMessage.name = message.name;
-			}
-			if (message.function_call) {
-				filteredMessage.function_call = message.function_call;
-			}
-			if (message.tool_calls) {
-				filteredMessage.tool_calls = message.tool_calls;
-			}
-			if (message.tool_call_id) {
-				filteredMessage.tool_call_id = message.tool_call_id;
-			}
-
-			result.messages.push(filteredMessage);
+		// We do not want to send bytes data to the trace.
+		for (const content of llmRequest.contents || []) {
+			// Filter out parts with inline_data (bytes data)
+			const parts = content.parts?.filter((part) => !part.inlineData) || [];
+			result.contents.push({
+				role: content.role,
+				parts,
+			});
 		}
 
 		return result;
 	}
 
 	/**
-	 * Filters message content to exclude binary data and non-serializable content.
+	 * Excludes non-serializable fields from config, similar to Python's exclude logic
 	 */
-	private _filterMessageContent(content: MessageContent): any {
-		if (typeof content === "string") {
-			return content;
+	private _excludeNonSerializableFromConfig(config: any): Record<string, any> {
+		const result: Record<string, any> = {};
+
+		for (const [key, value] of Object.entries(config)) {
+			// Exclude response_schema and other non-serializable fields
+			if (key === "response_schema") {
+				continue;
+			}
+
+			// Exclude undefined/null values (similar to exclude_none=True)
+			if (value === undefined || value === null) {
+				continue;
+			}
+
+			// Handle functions array specially
+			if (key === "functions" && Array.isArray(value)) {
+				result[key] = value.map((func) => ({
+					name: func.name,
+					description: func.description,
+					parameters: func.parameters,
+					// Exclude actual function pointers
+				}));
+			} else {
+				result[key] = value;
+			}
 		}
 
-		if (Array.isArray(content)) {
-			return content
-				.filter((item) => this._isSerializableContent(item))
-				.map((item) => this._sanitizeContentItem(item));
-		}
-
-		if (this._isSerializableContent(content)) {
-			return this._sanitizeContentItem(content);
-		}
-
-		return "<filtered content>";
-	}
-
-	/**
-	 * Checks if a content item is serializable (not binary data).
-	 */
-	private _isSerializableContent(content: TextContent | ImageContent): boolean {
-		return content.type === "text" || content.type === "image";
-	}
-
-	/**
-	 * Sanitizes a content item for safe serialization.
-	 */
-	private _sanitizeContentItem(content: TextContent | ImageContent): any {
-		if (content.type === "text") {
-			return {
-				type: content.type,
-				text: content.text,
-			};
-		}
-
-		if (content.type === "image") {
-			return {
-				type: content.type,
-				image_url: {
-					url: content.image_url.url,
-				},
-			};
-		}
-
-		return content;
+		return result;
 	}
 }
 
@@ -367,7 +363,7 @@ export const traceToolCall = (
 	tool: BaseTool,
 	args: Record<string, any>,
 	functionResponseEvent: Event,
-	llmRequest?: LLMRequest,
+	llmRequest?: LlmRequest,
 	invocationContext?: InvocationContext,
 ) =>
 	telemetryService.traceToolCall(
@@ -380,8 +376,8 @@ export const traceToolCall = (
 export const traceLlmCall = (
 	invocationContext: InvocationContext,
 	eventId: string,
-	llmRequest: LLMRequest,
-	llmResponse: LLMResponse,
+	llmRequest: LlmRequest,
+	llmResponse: LlmResponse,
 ) =>
 	telemetryService.traceLlmCall(
 		invocationContext,

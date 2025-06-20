@@ -1,73 +1,37 @@
 import type { Event } from "@adk/events/event";
-import type { Message } from "../models/llm-request";
-import type { SessionState } from "./state";
 
 /**
- * Represents a conversation session
+ * Represents a series of interactions between a user and agents.
  */
 export interface Session {
 	/**
-	 * Unique session identifier
+	 * The unique identifier of the session.
 	 */
 	id: string;
 
 	/**
-	 * User identifier associated with the session
+	 * The name of the app.
+	 */
+	appName: string;
+
+	/**
+	 * The id of the user.
 	 */
 	userId: string;
 
 	/**
-	 * Conversation history
+	 * The state of the session.
 	 */
-	messages: Message[];
+	state: Record<string, any>;
 
 	/**
-	 * Additional session metadata
+	 * The events of the session, e.g. user input, model response, function
+	 * call/response, etc.
 	 */
-	metadata: Record<string, any>;
+	events: Event[];
 
 	/**
-	 * Session creation timestamp
+	 * The last update time of the session.
 	 */
-	createdAt: Date;
-
-	/**
-	 * Last update timestamp
-	 */
-	updatedAt: Date;
-
-	/**
-	 * Session state for storing arbitrary data
-	 */
-	state: SessionState;
-
-	/**
-	 * Session events
-	 */
-	events?: Event[];
-}
-
-/**
- * Options for listing sessions
- */
-export interface ListSessionOptions {
-	/**
-	 * Maximum number of sessions to return
-	 */
-	limit?: number;
-
-	/**
-	 * Only include sessions created after this time
-	 */
-	createdAfter?: Date;
-
-	/**
-	 * Only include sessions updated after this time
-	 */
-	updatedAfter?: Date;
-
-	/**
-	 * Filter sessions by metadata
-	 */
-	metadataFilter?: Record<string, any>;
+	lastUpdateTime: number;
 }
