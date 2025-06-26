@@ -90,10 +90,12 @@ async function main() {
 		console.log("-----------------------------------");
 
 		// Example 1: Get Swap Quote
-		const tokensToSell = 10; // Example number of tokens to sell
+		const tokensToSell = 1000000000000000000; // Example number of tokens to sell
+		const fromToken = "0x4dBcC239b265295500D2Fe2d0900629BDcBBD0fB"; // Example token to sell
+		const toToken = "0x6EFB84bda519726Fa1c65558e520B92b51712101"; // Example token to buy
 		console.log(`
-🌟 Example 2: Get me a quote for swapping ${tokensToSell} wfrxEth to FRAX on Fraxtal`);
-		const quoteQuery = `Get me a quote for swapping ${tokensToSell} wfrxEth to FRAX on Fraxtal.`;
+🌟 Example 1: Get me a quote for swapping ${tokensToSell} from ${fromToken} to ${toToken} on Fraxtal`);
+		const quoteQuery = `Get me a quote for swapping ${tokensToSell} from ${fromToken} to ${toToken} on Fraxtal.`;
 		console.log(`💬 User Query: ${quoteQuery}`);
 		console.log("-----------------------------------");
 
@@ -110,8 +112,8 @@ async function main() {
 
 		// Example 2: Swap Tokens
 		console.log(`
-🌟 Example 2: Swap ${tokensToSell} wfrxEth to FRAX on Fraxtal`);
-		const swapQuery = `Swap ${tokensToSell} wfrxEth to FRAX on Fraxtal.`;
+🌟 Example 2: Swap ${tokensToSell} from ${fromToken} to ${toToken} on Fraxtal`);
+		const swapQuery = `Swap ${tokensToSell} from ${fromToken} to ${toToken} on Fraxtal.`;
 		console.log(`💬 User Query: ${swapQuery}`);
 		console.log("-----------------------------------");
 
