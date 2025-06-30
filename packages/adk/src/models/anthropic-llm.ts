@@ -1,464 +1,284 @@
 import { Logger } from "@adk/helpers/logger";
-import axios from "axios";
-import { AnthropicLLMConnection } from "./anthropic-llm-connection";
-import { BaseLLM } from "./base-llm";
+import Anthropic from "@anthropic-ai/sdk";
+import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
-import type { LLMRequest, Message } from "./llm-request";
-import { LLMResponse, type ToolCall } from "./llm-response";
+import type { LlmRequest } from "./llm-request";
+import { LlmResponse } from "./llm-response";
+
+const logger = new Logger({ name: "AnthropicLlm" });
+
+type AnthropicRole = "user" | "assistant";
+
+const MAX_TOKENS = 1024;
 
 /**
- * Configuration for Anthropic LLM
+ * Anthropic LLM implementation using Claude models
  */
-export interface AnthropicLLMConfig {
-	/**
-	 * Anthropic API key (can be provided via process.env.ANTHROPIC_API_KEY)
-	 */
-	apiKey?: string;
+export class AnthropicLlm extends BaseLlm {
+	private _client?: Anthropic;
 
 	/**
-	 * Anthropic base URL override
+	 * Constructor for Anthropic LLM
 	 */
-	baseURL?: string;
-
-	/**
-	 * Default model parameters
-	 */
-	defaultParams?: {
-		/**
-		 * Temperature for generation
-		 */
-		temperature?: number;
-
-		/**
-		 * Top-p for generation
-		 */
-		top_p?: number;
-
-		/**
-		 * Maximum tokens to generate
-		 */
-		max_tokens?: number;
-	};
-}
-
-// Helper types for the Anthropic API
-interface AnthropicApiMessage {
-	role: "user" | "assistant";
-	content: string | AnthropicContentBlock[];
-}
-
-type AnthropicContentBlockType = "text" | "image" | "tool_use" | "tool_result";
-
-interface AnthropicContentBlock {
-	type: AnthropicContentBlockType;
-	text?: string;
-	source?: {
-		type: "base64" | "url";
-		media_type: string;
-		data?: string;
-		url?: string;
-	};
-	tool_use?: AnthropicToolUse;
-	tool_result?: {
-		content: string;
-		tool_use_id: string;
-	};
-	// Direct properties for tool_use blocks
-	id?: string;
-	name?: string;
-	input?: any;
-}
-
-interface AnthropicTool {
-	name: string;
-	description: string;
-	input_schema: any;
-}
-
-interface AnthropicToolUse {
-	id: string;
-	name: string;
-	input: any;
-}
-
-interface AnthropicApiResponse {
-	id: string;
-	type: string;
-	role: string;
-	model: string;
-	content: AnthropicContentBlock[];
-	stop_reason: string;
-	stop_sequence: string | null;
-	usage: {
-		input_tokens: number;
-		output_tokens: number;
-	};
-}
-
-/**
- * Anthropic LLM implementation for Claude models
- * Uses direct API calls instead of the SDK for better control
- */
-export class AnthropicLLM extends BaseLLM {
-	/**
-	 * Anthropic API key
-	 */
-	private apiKey: string;
-
-	/**
-	 * Anthropic API base URL
-	 */
-	private baseURL: string;
-
-	/**
-	 * Default parameters for requests
-	 */
-	private defaultParams: Record<string, any>;
-
-	private logger = new Logger({ name: "AnthropicLLM" });
-
-	/**
-	 * Constructor for AnthropicLLM
-	 */
-	constructor(model: string, config?: AnthropicLLMConfig) {
+	constructor(model = "claude-3-5-sonnet-20241022") {
 		super(model);
+	}
 
-		// Set up API configuration
-		this.apiKey = config?.apiKey || process.env.ANTHROPIC_API_KEY || "";
-		this.baseURL = config?.baseURL || "https://api.anthropic.com/v1";
+	/**
+	 * Provides the list of supported models
+	 */
+	static override supportedModels(): string[] {
+		return ["claude-3-.*", "claude-.*-4.*"];
+	}
 
-		if (!this.apiKey) {
-			throw new Error(
-				"Anthropic API key is required. Provide it in config or set ANTHROPIC_API_KEY environment variable.",
+	/**
+	 * Main content generation method - handles both streaming and non-streaming
+	 */
+	protected async *generateContentAsyncImpl(
+		llmRequest: LlmRequest,
+		stream = false,
+	): AsyncGenerator<LlmResponse, void, unknown> {
+		logger.debug(
+			`Sending Anthropic request, model: ${llmRequest.model || this.model}, stream: ${stream}`,
+		);
+
+		const model = llmRequest.model || this.model;
+		const messages = (llmRequest.contents || []).map((content) =>
+			this.contentToAnthropicMessage(content),
+		);
+
+		let tools: Anthropic.Tool[] | undefined;
+		if ((llmRequest.config?.tools?.[0] as any)?.functionDeclarations) {
+			tools = (llmRequest.config.tools[0] as any).functionDeclarations.map(
+				(decl: any) => this.functionDeclarationToAnthropicTool(decl),
 			);
 		}
 
-		// Store default parameters
-		this.defaultParams = {
-			temperature: config?.defaultParams?.temperature ?? 0.7,
-			top_p: config?.defaultParams?.top_p ?? 1,
-			max_tokens: config?.defaultParams?.max_tokens ?? 1024,
+		const systemInstruction = llmRequest.getSystemInstructionText();
+
+		if (stream) {
+			// TODO: Implement streaming support for Anthropic
+			throw new Error("Streaming is not yet supported for Anthropic models");
+		}
+
+		const anthropicMessages: Anthropic.MessageParam[] = messages.map((msg) => {
+			const content = Array.isArray(msg.content)
+				? msg.content.map((block) => this.partToAnthropicBlock(block))
+				: msg.content;
+
+			return {
+				role: msg.role as "user" | "assistant",
+				content: content as Anthropic.MessageParam["content"],
+			};
+		});
+
+		const message = await this.client.messages.create({
+			model,
+			system: systemInstruction,
+			messages: anthropicMessages,
+			tools,
+			tool_choice: tools ? { type: "auto" } : undefined,
+			max_tokens: llmRequest.config?.maxOutputTokens || MAX_TOKENS,
+			temperature: llmRequest.config?.temperature,
+			top_p: llmRequest.config?.topP,
+		});
+
+		yield this.anthropicMessageToLlmResponse(message);
+	}
+
+	/**
+	 * Live connection is not supported for Anthropic models
+	 */
+	override connect(_llmRequest: LlmRequest): BaseLLMConnection {
+		throw new Error(`Live connection is not supported for ${this.model}.`);
+	}
+
+	/**
+	 * Convert Anthropic Message to ADK LlmResponse
+	 */
+	private anthropicMessageToLlmResponse(
+		message: Anthropic.Message,
+	): LlmResponse {
+		logger.debug("Anthropic response:", JSON.stringify(message, null, 2));
+
+		return new LlmResponse({
+			content: {
+				role: "model",
+				parts: message.content.map((block) => this.anthropicBlockToPart(block)),
+			},
+			usageMetadata: {
+				promptTokenCount: message.usage.input_tokens,
+				candidatesTokenCount: message.usage.output_tokens,
+				totalTokenCount:
+					message.usage.input_tokens + message.usage.output_tokens,
+			},
+			finishReason: this.toAdkFinishReason(message.stop_reason),
+		});
+	}
+
+	/**
+	 * Convert ADK Content to Anthropic MessageParam
+	 */
+	private contentToAnthropicMessage(content: any): Anthropic.MessageParam {
+		return {
+			role: this.toAnthropicRole(content.role),
+			content: (content.parts || []).map((part: any) =>
+				this.partToAnthropicBlock(part),
+			),
 		};
 	}
 
 	/**
-	 * Returns a list of supported models in regex for LLMRegistry
+	 * Convert ADK Part to Anthropic content block
 	 */
-	static supportedModels(): string[] {
-		return [
-			// Claude 3 models
-			"claude-3-.*",
-			// Claude 2 models
-			"claude-2.*",
-			// Claude Instant models
-			"claude-instant.*",
-		];
-	}
-
-	/**
-	 * Convert ADK messages to Anthropic message format
-	 */
-	private convertMessages(messages: Message[]): AnthropicApiMessage[] {
-		return messages.map((message) => {
-			let role: "user" | "assistant";
-
-			switch (message.role) {
-				case "user":
-					role = "user";
-					break;
-
-				case "assistant":
-					role = "assistant";
-					break;
-
-				case "system":
-					// System messages are handled separately in the API
-					throw new Error("System messages should be handled separately");
-
-				case "function":
-				case "tool":
-					// Convert function/tool responses to user messages
-					return {
-						role: "user",
-						content: `Function/Tool response: ${message.name || "unknown"}\n${
-							typeof message.content === "string"
-								? message.content
-								: JSON.stringify(message.content)
-						}`,
-					};
-
-				default:
-					role = "user";
-			}
-
-			// Handle message content
-			if (typeof message.content === "string") {
-				// Simple text content
-				return { role, content: message.content };
-			}
-			if (Array.isArray(message.content)) {
-				// Convert multimodal content
-				const content: AnthropicContentBlock[] = message.content.map((item) => {
-					if (item.type === "text") {
-						return {
-							type: "text" as const,
-							text: item.text,
-						};
-					}
-					if (item.type === "image") {
-						return {
-							type: "image" as const,
-							source: {
-								type: "url",
-								media_type: "image/jpeg",
-								url: item.image_url.url,
-							},
-						};
-					}
-					throw new Error(`Unsupported content type: ${(item as any).type}`);
-				});
-
-				return { role, content };
-			}
-			// Default to string for complex objects
-			return { role, content: JSON.stringify(message.content) };
-		});
-	}
-
-	/**
-	 * Extract the system message from messages array
-	 */
-	private extractSystemMessage(messages: Message[]): string | undefined {
-		const systemMessage = messages.find((m) => m.role === "system");
-		return systemMessage
-			? typeof systemMessage.content === "string"
-				? systemMessage.content
-				: JSON.stringify(systemMessage.content)
-			: undefined;
-	}
-
-	/**
-	 * Filter out system messages as they are handled separately
-	 */
-	private filterSystemMessages(messages: Message[]): Message[] {
-		return messages.filter((m) => m.role !== "system");
-	}
-
-	/**
-	 * Convert ADK function declarations to Anthropic tool format
-	 */
-	private convertFunctionsToTools(functions: any[]): AnthropicTool[] {
-		if (!functions?.length) {
-			return [];
-		}
-
-		return functions.map((func) => ({
-			name: func.name,
-			description: func.description || "",
-			input_schema: func.parameters,
-		}));
-	}
-
-	/**
-	 * Convert Anthropic tool calls to ADK tool calls
-	 */
-	private convertToolUses(toolUses: AnthropicToolUse[]): ToolCall[] {
-		if (!toolUses?.length) {
-			return [];
-		}
-
-		return toolUses.map((toolUse) => ({
-			id: toolUse.id,
-			function: {
-				name: toolUse.name,
-				arguments: JSON.stringify(toolUse.input),
-			},
-		}));
-	}
-
-	/**
-	 * Extract tool uses from response content
-	 */
-	private extractToolUses(
-		content: AnthropicContentBlock[],
-	): AnthropicToolUse[] {
-		if (!content?.length) return [];
-
-		const toolUses: AnthropicToolUse[] = [];
-
-		for (const block of content) {
-			this.logger.debug(`Processing content block of type: ${block.type}`);
-
-			if (block.type === "tool_use") {
-				this.logger.debug(
-					`Found tool_use block: ${JSON.stringify(block, null, 2)}`,
-				);
-
-				// Extract tool use directly from the block
-				toolUses.push({
-					id: block.id || "unknown-id",
-					name: block.name || "unknown-name",
-					input: block.input || {},
-				});
-			}
-		}
-
-		this.logger.debug(
-			`Found ${toolUses.length} tool uses in content`,
-			toolUses,
-		);
-
-		return toolUses;
-	}
-
-	/**
-	 * Make a direct API call to Anthropic
-	 */
-	private async callAnthropicAPI(params: any, stream = false): Promise<any> {
-		try {
-			const response = await axios({
-				method: "POST",
-				url: `${this.baseURL}/messages`,
-				headers: {
-					"Content-Type": "application/json",
-					"x-api-key": this.apiKey,
-					"anthropic-version": "2023-06-01",
-				},
-				data: {
-					...params,
-					stream,
-				},
-				responseType: stream ? "stream" : "json",
-			});
-
-			this.logger.debug(
-				`API Response done with ${response.status}:`,
-				response.data,
-			);
-			this.logger.debug(
-				"API Response content:",
-				response.data.content.map((block: any) => ({ type: block.type })),
-			);
-
-			return response.data;
-		} catch (error) {
-			console.error("Error calling Anthropic API:", error);
-			throw error;
-		}
-	}
-
-	/**
-	 * Generates content from the given request
-	 */
-	async *generateContentAsyncImpl(
-		llmRequest: LLMRequest,
-		stream = false,
-	): AsyncGenerator<LLMResponse, void, unknown> {
-		try {
-			// Extract system message
-			const systemMessage = this.extractSystemMessage(llmRequest.messages);
-
-			// Convert messages to Anthropic format, without system message
-			const messages = this.convertMessages(
-				this.filterSystemMessages(llmRequest.messages),
-			);
-
-			// Convert tools if provided
-			const tools = llmRequest.config.functions
-				? this.convertFunctionsToTools(llmRequest.config.functions)
-				: undefined;
-
-			// Prepare request parameters
-			const params = {
-				model: this.model,
-				messages,
-				system: systemMessage,
-				temperature:
-					llmRequest.config.temperature ?? this.defaultParams.temperature,
-				max_tokens:
-					llmRequest.config.max_tokens ?? this.defaultParams.max_tokens,
-				top_p: llmRequest.config.top_p ?? this.defaultParams.top_p,
-				tools: tools?.length ? tools : undefined,
+	private partToAnthropicBlock(
+		part: any,
+	): Anthropic.MessageParam["content"][0] {
+		if (part.text) {
+			return {
+				type: "text",
+				text: part.text,
 			};
+		}
 
-			this.logger.debug("API Request:", {
-				model: params.model,
-				messageCount: params.messages.length,
-				systemMessage: params.system ? "present" : "none",
-				tools: params.tools ? params.tools.map((t) => t.name) : "none",
-			});
+		if (part.function_call) {
+			return {
+				type: "tool_use",
+				id: part.function_call.id || "",
+				name: part.function_call.name,
+				input: part.function_call.args || {},
+			};
+		}
 
-			if (stream) {
-				// TODO: Implement streaming if needed
-				throw new Error("Streaming is not supported in this implementation");
-			}
-			// Make direct API call
-			const response = await this.callAnthropicAPI(params);
-
-			this.logger.debug("Full Response Content:", response.content);
-
-			// Extract text content
+		if (part.function_response) {
 			let content = "";
-			for (const block of response.content) {
-				if (block.type === "text") {
-					content += block.text;
+			if (part.function_response.response?.result) {
+				content = String(part.function_response.response.result);
+			}
+			return {
+				type: "tool_result",
+				tool_use_id: part.function_response.id || "",
+				content,
+				is_error: false,
+			};
+		}
+
+		throw new Error("Unsupported part type for Anthropic conversion");
+	}
+
+	/**
+	 * Convert Anthropic content block to ADK Part
+	 */
+	private anthropicBlockToPart(block: any): any {
+		if (block.type === "text") {
+			return { text: block.text };
+		}
+
+		if (block.type === "tool_use") {
+			return {
+				function_call: {
+					id: block.id,
+					name: block.name,
+					args: block.input,
+				},
+			};
+		}
+
+		throw new Error("Unsupported Anthropic content block type");
+	}
+
+	/**
+	 * Convert ADK function declaration to Anthropic tool param
+	 */
+	private functionDeclarationToAnthropicTool(
+		functionDeclaration: any,
+	): Anthropic.Tool {
+		const properties: Record<string, any> = {};
+
+		if (functionDeclaration.parameters?.properties) {
+			for (const [key, value] of Object.entries(
+				functionDeclaration.parameters.properties,
+			)) {
+				const valueDict = { ...(value as any) };
+				this.updateTypeString(valueDict);
+				properties[key] = valueDict;
+			}
+		}
+
+		return {
+			name: functionDeclaration.name,
+			description: functionDeclaration.description || "",
+			input_schema: {
+				type: "object",
+				properties,
+			},
+		};
+	}
+
+	/**
+	 * Convert ADK role to Anthropic role format
+	 */
+	private toAnthropicRole(role?: string): AnthropicRole {
+		if (role === "model" || role === "assistant") {
+			return "assistant";
+		}
+		return "user";
+	}
+
+	/**
+	 * Convert Anthropic stop reason to ADK finish reason
+	 */
+	private toAdkFinishReason(
+		anthropicStopReason?: string,
+	): "STOP" | "MAX_TOKENS" | "FINISH_REASON_UNSPECIFIED" {
+		if (
+			["end_turn", "stop_sequence", "tool_use"].includes(
+				anthropicStopReason || "",
+			)
+		) {
+			return "STOP";
+		}
+		if (anthropicStopReason === "max_tokens") {
+			return "MAX_TOKENS";
+		}
+		return "FINISH_REASON_UNSPECIFIED";
+	}
+
+	/**
+	 * Update type strings in schema to lowercase for Anthropic compatibility
+	 */
+	private updateTypeString(valueDict: Record<string, any>): void {
+		if ("type" in valueDict) {
+			valueDict.type = valueDict.type.toLowerCase();
+		}
+
+		if ("items" in valueDict) {
+			this.updateTypeString(valueDict.items);
+			if ("properties" in valueDict.items) {
+				for (const value of Object.values(valueDict.items.properties)) {
+					this.updateTypeString(value as Record<string, any>);
 				}
 			}
-
-			// Extract tool uses
-			const toolUses = this.extractToolUses(response.content);
-			const toolCalls = this.convertToolUses(toolUses);
-
-			this.logger.debug("Extracted Tool Uses:", toolUses);
-			this.logger.debug("Converted Tool Calls:", toolCalls);
-
-			// Only yield a response with tool_calls if there are any
-			const llmResponse = new LLMResponse({
-				role: "assistant",
-				content,
-				tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-				raw_response: response,
-			});
-
-			const logObject = {
-				role: llmResponse.role,
-				content:
-					llmResponse.content?.substring(0, 50) +
-					(llmResponse.content && llmResponse.content.length > 50 ? "..." : ""),
-				tool_calls: llmResponse.tool_calls
-					? `[${llmResponse.tool_calls.length} calls]`
-					: "undefined",
-			};
-
-			this.logger.debug(
-				"Final LLMResponse object:",
-				JSON.stringify(logObject, null, 2),
-			);
-
-			yield llmResponse;
-		} catch (error) {
-			this.logger.debug("Error:", error);
-			throw error;
 		}
 	}
 
 	/**
-	 * Creates a live connection to the LLM
+	 * Gets the Anthropic client
 	 */
-	connect(llmRequest: LLMRequest): BaseLLMConnection {
-		const axiosInstance = axios.create({
-			baseURL: this.baseURL,
-			headers: {
-				"Content-Type": "application/json",
-				"x-api-key": this.apiKey,
-				"anthropic-version": "2023-06-01",
-			},
-		});
-		return new AnthropicLLMConnection(
-			axiosInstance,
-			this.model,
-			llmRequest,
-			this.defaultParams,
-		);
+	private get client(): Anthropic {
+		if (!this._client) {
+			const apiKey = process.env.ANTHROPIC_API_KEY;
+
+			if (!apiKey) {
+				throw new Error(
+					"ANTHROPIC_API_KEY environment variable is required for Anthropic models",
+				);
+			}
+
+			this._client = new Anthropic({
+				apiKey,
+			});
+		}
+		return this._client;
 	}
 }

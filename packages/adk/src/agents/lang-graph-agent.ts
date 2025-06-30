@@ -1,13 +1,7 @@
 import { Logger } from "@adk/helpers/logger";
-import type {
-	Message,
-	MessageContent,
-	TextContent,
-} from "../models/llm-request";
-import type { LLMResponse } from "../models/llm-response";
+import { Event } from "../events/event";
 import { BaseAgent } from "./base-agent";
-import { InvocationContext } from "./invocation-context";
-import type { RunConfig } from "./run-config";
+import type { InvocationContext } from "./invocation-context";
 
 /**
  * Represents a node in a LangGraph workflow
@@ -32,7 +26,7 @@ export interface LangGraphNode {
 	 * Condition function to determine if this node should execute
 	 */
 	condition?: (
-		result: LLMResponse,
+		lastEvent: Event,
 		context: InvocationContext,
 	) => boolean | Promise<boolean>;
 }
@@ -90,7 +84,7 @@ export class LangGraphAgent extends BaseAgent {
 	/**
 	 * Results from node executions
 	 */
-	private results: Array<{ node: string; result: any }> = [];
+	private results: Array<{ node: string; events: Event[] }> = [];
 
 	private logger = new Logger({ name: "LangGraphAgent" });
 
@@ -112,7 +106,7 @@ export class LangGraphAgent extends BaseAgent {
 				throw new Error(`Duplicate node name in graph: ${node.name}`);
 			}
 			this.nodes.set(node.name, node);
-			this.addSubAgent(node.agent);
+			this.subAgents.push(node.agent);
 		}
 
 		// Set root node
@@ -149,51 +143,13 @@ export class LangGraphAgent extends BaseAgent {
 
 		// TODO: Add cycle detection if needed
 	}
-	/**
-	 * Check if a value is an LLMResponse
-	 */
-	private isLLMResponse(value: any): value is LLMResponse {
-		return (
-			value &&
-			typeof value === "object" &&
-			"role" in value &&
-			typeof value.role === "string" &&
-			(value.role === "assistant" ||
-				value.role === "system" ||
-				value.role === "user")
-		);
-	}
-
-	/**
-	 * Extracts text from MessageContent
-	 */
-	private extractTextContent(
-		content: MessageContent | null | undefined,
-	): string {
-		if (!content) return "";
-
-		if (typeof content === "string") {
-			return content;
-		}
-		if (Array.isArray(content)) {
-			return content
-				.filter((item) => item.type === "text")
-				.map((item) => (item as TextContent).text)
-				.join(" ");
-		}
-		if (content.type === "text") {
-			return content.text;
-		}
-
-		return "";
-	}
 
 	/**
 	 * Gets the next nodes to execute based on the current node and its result
 	 */
 	private async getNextNodes(
 		currentNode: LangGraphNode,
-		result: LLMResponse,
+		lastEvent: Event,
 		context: InvocationContext,
 	): Promise<LangGraphNode[]> {
 		if (!currentNode.targets || currentNode.targets.length === 0) {
@@ -206,13 +162,13 @@ export class LangGraphAgent extends BaseAgent {
 		for (const targetName of currentNode.targets) {
 			const targetNode = this.nodes.get(targetName);
 			if (!targetNode) {
-				console.error(`Target node "${targetName}" not found`);
+				this.logger.error(`Target node "${targetName}" not found`);
 				continue;
 			}
 
 			// Check condition if exists
 			if (targetNode.condition) {
-				const shouldExecute = await targetNode.condition(result, context);
+				const shouldExecute = await targetNode.condition(lastEvent, context);
 				if (!shouldExecute) {
 					this.logger.debug(`Skipping node "${targetName}" due to condition`);
 					continue;
@@ -226,347 +182,187 @@ export class LangGraphAgent extends BaseAgent {
 	}
 
 	/**
-	 * Conditionally execute the next node if the condition is met
+	 * Core logic to run this agent via text-based conversation.
 	 */
-	private async executeConditionalNode(
-		node: LangGraphNode,
-		targetName: string,
-		messages: Message[],
-		config?: RunConfig,
-	): Promise<{ shouldExecute: boolean; result?: any }> {
-		if (!node.condition) {
-			return { shouldExecute: true };
-		}
-
-		// Create a mock context for the condition check
-		const mockContext = new InvocationContext({
-			messages,
-			config,
-		});
-
-		// Create a mock LLMResponse for the condition check
-		const mockResponse: LLMResponse = {
-			role: "assistant",
-			content:
-				messages.length > 0
-					? this.extractTextContent(messages[messages.length - 1].content)
-					: "",
-		};
-
-		const shouldExecute = await node.condition(mockResponse, mockContext);
-		if (!shouldExecute) {
-			this.logger.debug(`Skipping node "${targetName}" due to condition`);
-		}
-
-		return { shouldExecute };
-	}
-
-	/**
-	 * Runs the agent with the given messages and configuration
-	 * Executes the graph by traversing nodes based on conditions
-	 */
-	async runImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-	}): Promise<LLMResponse> {
-		// Create invocation context
-		const context = new InvocationContext({
-			messages: options.messages,
-			config: options.config,
-		});
-
+	protected async *runAsyncImpl(
+		context: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
 		this.logger.debug(
 			`Starting graph execution from root node "${this.rootNode}"`,
 		);
 
 		if (this.nodes.size === 0) {
-			return {
-				content: "No nodes defined in the graph.",
-				role: "assistant",
-			};
+			yield new Event({
+				author: this.name,
+				content: { parts: [{ text: "No nodes defined in the graph." }] },
+			});
+			return;
 		}
 
 		// Start with the root node
 		const rootNode = this.nodes.get(this.rootNode);
 		if (!rootNode) {
-			return {
-				content: `Root node "${this.rootNode}" not found.`,
-				role: "assistant",
-			};
+			yield new Event({
+				author: this.name,
+				content: {
+					parts: [{ text: `Root node "${this.rootNode}" not found.` }],
+				},
+			});
+			return;
 		}
 
 		// Initialize execution
 		let stepCount = 0;
-		const nodesToExecute: Array<{ node: LangGraphNode; messages: Message[] }> =
-			[{ node: rootNode, messages: [...options.messages] }];
+		const nodesToExecute: Array<{
+			node: LangGraphNode;
+			context: InvocationContext;
+		}> = [{ node: rootNode, context }];
 
 		// Track executed nodes for logging
 		const executedNodes: string[] = [];
+		let lastEvent: Event | null = null;
 
 		// Execute the graph
 		while (nodesToExecute.length > 0 && stepCount < this.maxSteps) {
 			stepCount++;
 
 			// Get next node to execute
-			const { node, messages } = nodesToExecute.shift()!;
+			const { node } = nodesToExecute.shift()!;
 			this.logger.debug(`Step ${stepCount}: Executing node "${node.name}"`);
 			executedNodes.push(node.name);
 
-			try {
-				// Execute node function
-				const result = await node.agent.run({
-					messages: messages,
-					config: context.config,
-				});
+			// Create child context for the sub-agent
+			const childContext = context.createChildContext(node.agent);
 
-				// Store result in memory
-				context.memory.set(node.name, result);
+			try {
+				// Execute node agent
+				const nodeEvents: Event[] = [];
+				for await (const event of node.agent.runAsync(childContext)) {
+					nodeEvents.push(event);
+					lastEvent = event;
+					yield event;
+				}
 
 				// Record in result history
 				this.results.push({
 					node: node.name,
-					result,
+					events: nodeEvents,
 				});
-
-				// If the result is an LLMResponse, add it to the messages
-				if (this.isLLMResponse(result)) {
-					context.messages.push({
-						role: "assistant",
-						content: this.extractTextContent(result.content),
-					});
-				}
 
 				// Determine the next node(s) to execute
-				let nextNodeName: string | null = null;
+				if (lastEvent) {
+					const nextNodes = await this.getNextNodes(node, lastEvent, context);
 
-				// If there are defined edges from this node, follow them
-				if (node.targets && node.targets.length > 0) {
-					// Find the first edge with a true condition or no condition
-					for (const targetName of node.targets) {
-						// Check target node condition if any
-						const targetNode = this.nodes.get(targetName);
-						if (!targetNode) {
-							throw new Error(`Target node "${targetName}" not found in graph`);
-						}
-
-						const { shouldExecute } = await this.executeConditionalNode(
-							targetNode,
-							targetName,
-							context.messages,
-							context.config,
-						);
-
-						if (shouldExecute) {
-							nextNodeName = targetName;
-							break;
-						}
+					// Add all valid next nodes to execution queue for parallel execution
+					for (const nextNode of nextNodes) {
+						nodesToExecute.push({
+							node: nextNode,
+							context: childContext,
+						});
 					}
 				}
-
-				// Move to the next node or terminate
-				if (!nextNodeName) {
-					// No more nodes to execute
-					break;
-				}
-
-				// Add next node to execution queue
-				const nextNode = this.nodes.get(nextNodeName);
-				if (nextNode) {
-					nodesToExecute.push({
-						node: nextNode,
-						messages: [...context.messages],
-					});
-				}
 			} catch (error) {
-				console.error(`Error in node "${node.name}":`, error);
-				return {
-					content: `Error in node "${node.name}": ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
-				};
-			}
-		}
-
-		// Get the final result from the last executed node
-		const lastNodeResult = this.results[this.results.length - 1]?.result;
-
-		// If the final result is an LLMResponse, return it directly
-		if (this.isLLMResponse(lastNodeResult)) {
-			return lastNodeResult;
-		}
-
-		// Otherwise, create a response with the final result information
-		return {
-			content: `Graph execution complete. Final result from node "${this.results[this.results.length - 1]?.node}": ${
-				typeof lastNodeResult === "string"
-					? lastNodeResult
-					: JSON.stringify(lastNodeResult, null, 2)
-			}`,
-			role: "assistant",
-		};
-	}
-
-	/**
-	 * Runs the agent with streaming support
-	 */
-	async *runStreamingImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-	}): AsyncIterable<LLMResponse> {
-		// Create invocation context
-		const context = new InvocationContext({
-			messages: options.messages,
-			config: options.config,
-		});
-
-		this.logger.debug(
-			`Starting graph execution from root node "${this.rootNode}" (streaming)`,
-		);
-
-		if (this.nodes.size === 0) {
-			yield {
-				content: "No nodes defined in the graph.",
-				role: "assistant",
-			};
-			return;
-		}
-
-		// Start with the root node
-		const rootNode = this.nodes.get(this.rootNode);
-		if (!rootNode) {
-			yield {
-				content: `Root node "${this.rootNode}" not found.`,
-				role: "assistant",
-			};
-			return;
-		}
-
-		// Initial status message
-		yield {
-			content: `Starting graph execution from root node "${this.rootNode}"...`,
-			role: "assistant",
-			is_partial: true,
-		};
-
-		// Initialize execution
-		let stepCount = 0;
-		const nodesToExecute: Array<{ node: LangGraphNode; messages: Message[] }> =
-			[{ node: rootNode, messages: [...options.messages] }];
-
-		// Track executed nodes for logging
-		const executedNodes: string[] = [];
-
-		// Execute the graph
-		while (nodesToExecute.length > 0 && stepCount < this.maxSteps) {
-			stepCount++;
-
-			// Get next node to execute
-			const { node, messages } = nodesToExecute.shift()!;
-			this.logger.debug(
-				`Step ${stepCount}: Executing node "${node.name}" (streaming)`,
-			);
-			executedNodes.push(node.name);
-
-			try {
-				// Execute node function
-				const result = await node.agent.run({
-					messages: messages,
-					config: context.config,
+				this.logger.error(`Error in node "${node.name}":`, error);
+				const errorEvent = new Event({
+					author: this.name,
+					content: {
+						parts: [
+							{
+								text: `Error in node "${node.name}": ${error instanceof Error ? error.message : String(error)}`,
+							},
+						],
+					},
 				});
 
-				// Store result in memory
-				context.memory.set(node.name, result);
+				// Set error properties directly since they're inherited from LlmResponse
+				errorEvent.errorCode = "NODE_EXECUTION_ERROR";
+				errorEvent.errorMessage =
+					error instanceof Error ? error.message : String(error);
 
-				// Record in result history
-				this.results.push({
-					node: node.name,
-					result,
-				});
-
-				// If the result is an LLMResponse, add it to the messages
-				if (this.isLLMResponse(result)) {
-					context.messages.push({
-						role: "assistant",
-						content: this.extractTextContent(result.content),
-					});
-				}
-
-				// Update with node result
-				yield {
-					content: `Completed node "${node.name}". ${
-						this.isLLMResponse(result)
-							? `\nNode output: ${this.extractTextContent(result.content)}`
-							: ""
-					}`,
-					role: "assistant",
-					is_partial: true,
-				};
-
-				// Determine the next node(s) to execute
-				let nextNodeName: string | null = null;
-
-				// If there are defined edges from this node, follow them
-				if (node.targets && node.targets.length > 0) {
-					// Find the first edge with a true condition or no condition
-					for (const targetName of node.targets) {
-						// Check target node condition if any
-						const targetNode = this.nodes.get(targetName);
-						if (!targetNode) {
-							throw new Error(`Target node "${targetName}" not found in graph`);
-						}
-
-						const { shouldExecute } = await this.executeConditionalNode(
-							targetNode,
-							targetName,
-							context.messages,
-							context.config,
-						);
-
-						if (shouldExecute) {
-							nextNodeName = targetName;
-							break;
-						}
-					}
-				}
-
-				// Move to the next node or terminate
-				if (!nextNodeName) {
-					// No more nodes to execute
-					break;
-				}
-
-				// Add next node to execution queue
-				const nextNode = this.nodes.get(nextNodeName);
-				if (nextNode) {
-					nodesToExecute.push({
-						node: nextNode,
-						messages: [...context.messages],
-					});
-				}
-			} catch (error) {
-				console.error(`Error in node "${node.name}":`, error);
-				yield {
-					content: `Error in node "${node.name}": ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
-				};
+				yield errorEvent;
 				return;
 			}
 		}
 
-		// Get the final result from the last executed node
-		const lastNodeResult = this.results[this.results.length - 1]?.result;
+		// Final completion event
+		const completionEvent = new Event({
+			author: this.name,
+			content: {
+				parts: [
+					{
+						text: `Graph execution complete. Executed nodes: ${executedNodes.join(" → ")}`,
+					},
+				],
+			},
+		});
 
-		// Final update
-		if (this.isLLMResponse(lastNodeResult)) {
-			yield lastNodeResult;
-		} else {
-			yield {
-				content: `Graph execution complete. Final result from node "${this.results[this.results.length - 1]?.node}": ${
-					typeof lastNodeResult === "string"
-						? lastNodeResult
-						: JSON.stringify(lastNodeResult, null, 2)
-				}`,
-				role: "assistant",
-			};
+		// Set turnComplete property since it's inherited from LlmResponse
+		completionEvent.turnComplete = true;
+
+		yield completionEvent;
+	}
+
+	/**
+	 * Core logic to run this agent via video/audio-based conversation.
+	 * For LangGraph, this follows the same execution pattern as text-based.
+	 */
+	protected async *runLiveImpl(
+		context: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		// For LangGraph agents, live execution follows the same pattern as async
+		// The individual node agents will handle their own live vs async differences
+		yield* this.runAsyncImpl(context);
+	}
+
+	/**
+	 * Gets the execution results from the last run
+	 */
+	getExecutionResults(): Array<{ node: string; events: Event[] }> {
+		return [...this.results];
+	}
+
+	/**
+	 * Clears the execution history
+	 */
+	clearExecutionHistory(): void {
+		this.results = [];
+	}
+
+	/**
+	 * Gets all nodes in the graph
+	 */
+	getNodes(): LangGraphNode[] {
+		return Array.from(this.nodes.values());
+	}
+
+	/**
+	 * Gets a specific node by name
+	 */
+	getNode(name: string): LangGraphNode | undefined {
+		return this.nodes.get(name);
+	}
+
+	/**
+	 * Gets the root node name
+	 */
+	getRootNodeName(): string {
+		return this.rootNode;
+	}
+
+	/**
+	 * Gets the maximum steps configuration
+	 */
+	getMaxSteps(): number {
+		return this.maxSteps;
+	}
+
+	/**
+	 * Updates the maximum steps configuration
+	 */
+	setMaxSteps(maxSteps: number): void {
+		if (maxSteps <= 0) {
+			throw new Error("maxSteps must be greater than 0");
 		}
+		this.maxSteps = maxSteps;
 	}
 }

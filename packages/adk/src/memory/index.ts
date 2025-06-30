@@ -4,4 +4,3 @@
 
 // Export memory service implementations
 export { InMemoryMemoryService } from "./in-memory-memory-service";
-export { PersistentMemoryService } from "./persistent-memory-service";

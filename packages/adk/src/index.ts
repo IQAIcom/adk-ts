@@ -11,6 +11,9 @@ export * from "./memory";
 export * from "./auth";
 export * from "./sessions";
 export * from "./artifacts";
+export * from "./flows";
+export * from "./utils";
+export * from "./events";
 
 export * from "./planners";
 
@@ -32,3 +35,5 @@ export * as Tools from "./tools";
 export * as Models from "./models";
 export * as Memory from "./memory";
 export * as Sessions from "./sessions";
+export * as Flows from "./flows";
+export * as Events from "./events";

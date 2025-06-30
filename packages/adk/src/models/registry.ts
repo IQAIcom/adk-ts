@@ -1,20 +1,16 @@
-import { AnthropicLLM } from "./anthropic-llm";
-import { GoogleLLM } from "./google-llm";
+import { AnthropicLlm } from "./anthropic-llm";
+import { GoogleLlm } from "./google-llm";
+import { OpenAiLlm } from "./openai-llm";
 import { LLMRegistry } from "./llm-registry";
-import { OpenAILLM } from "./openai-llm";
 
 /**
  * Register all LLM providers
  */
 export function registerProviders(): void {
-	// Register OpenAI models
-	LLMRegistry.registerLLM(OpenAILLM);
-
-	// Register Anthropic models
-	LLMRegistry.registerLLM(AnthropicLLM);
-
 	// Register Google models
-	LLMRegistry.registerLLM(GoogleLLM);
+	LLMRegistry.registerLLM(GoogleLlm);
+	LLMRegistry.registerLLM(AnthropicLlm);
+	LLMRegistry.registerLLM(OpenAiLlm);
 }
 
 // Auto-register all providers

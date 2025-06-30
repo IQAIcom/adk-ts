@@ -1,28 +1,35 @@
 import { Logger } from "@adk/helpers/logger";
+import type { GenerateContentConfig } from "@google/genai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
-import type {
-	BaseMemoryService,
-	SearchMemoryOptions,
-} from "../memory/base-memory-service";
-import type { BaseLLM } from "../models/base-llm";
+import { Event } from "../events/event";
+import { AutoFlow, type BaseLlmFlow, SingleFlow } from "../flows/llm-flows";
+import type { BaseMemoryService } from "../memory/base-memory-service";
+import type { BaseLlm } from "../models/base-llm";
 import { LLMRegistry } from "../models/llm-registry";
-import { LLMRequest, type Message } from "../models/llm-request";
-import type { LLMResponse, ToolCall } from "../models/llm-response";
 import type { BasePlanner } from "../planners/base-planner";
-import { BuiltInPlanner } from "../planners/built-in-planner";
-import type { SessionService } from "../sessions/base-session-service";
+import type { BaseSessionService } from "../sessions/base-session-service";
 import type { BaseTool } from "../tools/base/base-tool";
-import { ToolContext } from "../tools/tool-context";
+import { FunctionTool } from "../tools/function/function-tool";
 import { BaseAgent } from "./base-agent";
-import { CallbackContext } from "./callback-context";
-import { InvocationContext } from "./invocation-context";
-import { ReadonlyContext } from "./readonly-context";
-import type { RunConfig } from "./run-config";
+import type { InvocationContext } from "./invocation-context";
+import type { ReadonlyContext } from "./readonly-context";
 
 /**
- * Configuration for Agent
+ * Type for instruction providers that can be functions
  */
-export interface AgentConfig {
+export type InstructionProvider = (
+	ctx: ReadonlyContext,
+) => string | Promise<string>;
+
+/**
+ * Union type for tools (supporting functions, tools, and toolsets)
+ */
+export type ToolUnion = BaseTool | ((...args: any[]) => any);
+
+/**
+ * Configuration for LlmAgent
+ */
+export interface LlmAgentConfig {
 	/**
 	 * Name of the agent
 	 */
@@ -35,23 +42,50 @@ export interface AgentConfig {
 
 	/**
 	 * The LLM model to use
+	 * When not set, the agent will inherit the model from its ancestor
 	 */
-	model: string;
+	model?: string | BaseLlm;
 
 	/**
-	 * Instructions for the agent
+	 * Instructions for the LLM model, guiding the agent's behavior
 	 */
-	instructions?: string;
+	instruction?: string | InstructionProvider;
 
 	/**
-	 * Tools available to the agent
+	 * Instructions for all the agents in the entire agent tree
+	 * ONLY the global_instruction in root agent will take effect
 	 */
-	tools?: BaseTool[];
+	globalInstruction?: string | InstructionProvider;
 
 	/**
-	 * Maximum number of tool execution steps
+	 * Tools available to this agent
 	 */
-	maxToolExecutionSteps?: number;
+	tools?: ToolUnion[];
+
+	/**
+	 * Disallows LLM-controlled transferring to the parent agent
+	 */
+	disallowTransferToParent?: boolean;
+
+	/**
+	 * Disallows LLM-controlled transferring to the peer agents
+	 */
+	disallowTransferToPeers?: boolean;
+
+	/**
+	 * Whether to include contents in the model request
+	 */
+	includeContents?: "default" | "none";
+
+	/**
+	 * The output key in session state to store the output of the agent
+	 */
+	outputKey?: string;
+
+	/**
+	 * Instructs the agent to make a plan and execute it step by step
+	 */
+	planner?: BasePlanner;
 
 	/**
 	 * Memory service for long-term storage and retrieval
@@ -61,7 +95,7 @@ export interface AgentConfig {
 	/**
 	 * Session service for managing conversations
 	 */
-	sessionService?: SessionService;
+	sessionService?: BaseSessionService;
 
 	/**
 	 * Artifact service for file storage and management
@@ -69,64 +103,84 @@ export interface AgentConfig {
 	artifactService?: BaseArtifactService;
 
 	/**
-	 * User ID for the session (required for session persistence)
+	 * User ID for the session
 	 */
 	userId?: string;
 
 	/**
-	 * Application name (for multi-app environments)
+	 * Application name
 	 */
 	appName?: string;
 
 	/**
-	 * Whether to automatically augment prompts with relevant memory
+	 * Additional content generation configurations
+	 * NOTE: not all fields are usable, e.g. tools must be configured via `tools`,
+	 * thinking_config must be configured via `planner` in LlmAgent.
 	 */
-	useMemoryAugmentation?: boolean;
+	generateContentConfig?: GenerateContentConfig;
 
 	/**
-	 * The maximum number of memory items to include in augmentation
+	 * The input schema when agent is used as a tool
 	 */
-	maxMemoryItems?: number;
+	inputSchema?: any; // Schema type - depends on specific implementation
 
 	/**
-	 * The minimum relevance score for memory augmentation (0-1)
+	 * The output schema when agent replies
+	 * NOTE: when this is set, agent can ONLY reply and CANNOT use any tools
 	 */
-	memoryRelevanceThreshold?: number;
-
-	/**
-	 * Planner to guide the agent's reasoning and action planning
-	 */
-	planner?: BasePlanner;
+	outputSchema?: any; // Schema type - depends on specific implementation
 }
 
 /**
- * Standard Agent implementation that uses an LLM
+ * LLM-based Agent
  */
-export class Agent extends BaseAgent {
+export class LlmAgent extends BaseAgent {
 	/**
-	 * The LLM model to use
+	 * The model to use for the agent
+	 * When not set, the agent will inherit the model from its ancestor
 	 */
-	private model: string;
+	public model: string | BaseLlm;
 
 	/**
-	 * The LLM instance
+	 * Instructions for the LLM model, guiding the agent's behavior
 	 */
-	private llm: BaseLLM;
+	public instruction: string | InstructionProvider;
 
 	/**
-	 * Instructions for the agent
+	 * Instructions for all the agents in the entire agent tree
+	 * ONLY the global_instruction in root agent will take effect
 	 */
-	private instructions?: string;
+	public globalInstruction: string | InstructionProvider;
 
 	/**
-	 * Tools available to the agent
+	 * Tools available to this agent
 	 */
-	private tools: BaseTool[];
+	public tools: ToolUnion[];
 
 	/**
-	 * Maximum number of tool execution steps to prevent infinite loops
+	 * Disallows LLM-controlled transferring to the parent agent
 	 */
-	private maxToolExecutionSteps: number;
+	public disallowTransferToParent: boolean;
+
+	/**
+	 * Disallows LLM-controlled transferring to the peer agents
+	 */
+	public disallowTransferToPeers: boolean;
+
+	/**
+	 * Whether to include contents in the model request
+	 */
+	public includeContents: "default" | "none";
+
+	/**
+	 * The output key in session state to store the output of the agent
+	 */
+	public outputKey?: string;
+
+	/**
+	 * Instructs the agent to make a plan and execute it step by step
+	 */
+	public planner?: BasePlanner;
 
 	/**
 	 * Memory service for long-term storage and retrieval
@@ -136,10 +190,10 @@ export class Agent extends BaseAgent {
 	/**
 	 * Session service for managing conversations
 	 */
-	private sessionService?: SessionService;
+	private sessionService?: BaseSessionService;
 
 	/**
-	 * Artifact service for binary data storage and management
+	 * Artifact service for file storage and management
 	 */
 	private artifactService?: BaseArtifactService;
 
@@ -154,663 +208,202 @@ export class Agent extends BaseAgent {
 	private appName?: string;
 
 	/**
-	 * Whether to automatically augment prompts with relevant memory
+	 * Additional content generation configurations
 	 */
-	private useMemoryAugmentation: boolean;
+	public generateContentConfig?: GenerateContentConfig;
 
 	/**
-	 * The maximum number of memory items to include in augmentation
+	 * The input schema when agent is used as a tool
 	 */
-	private maxMemoryItems: number;
+	public inputSchema?: any; // Schema type - depends on specific implementation
 
 	/**
-	 * The minimum relevance score for memory augmentation (0-1)
+	 * The output schema when agent replies
 	 */
-	private memoryRelevanceThreshold: number;
-
-	/**
-	 * Planner to guide the agent's reasoning and action planning
-	 */
-	private planner?: BasePlanner;
+	public outputSchema?: any; // Schema type - depends on specific implementation
 
 	private logger = new Logger({ name: "LlmAgent" });
 
 	/**
-	 * Constructor for Agent
+	 * Constructor for LlmAgent
 	 */
-	constructor(config: AgentConfig) {
+	constructor(config: LlmAgentConfig) {
 		super({
 			name: config.name,
 			description: config.description,
 		});
 
-		this.model = config.model;
-		this.instructions = config.instructions;
+		this.model = config.model || "";
+		this.instruction = config.instruction || "";
+		this.globalInstruction = config.globalInstruction || "";
 		this.tools = config.tools || [];
-		this.maxToolExecutionSteps = config.maxToolExecutionSteps || 10;
+		this.disallowTransferToParent = config.disallowTransferToParent || false;
+		this.disallowTransferToPeers = config.disallowTransferToPeers || false;
+		this.includeContents = config.includeContents || "default";
+		this.outputKey = config.outputKey;
+		this.planner = config.planner;
 		this.memoryService = config.memoryService;
 		this.sessionService = config.sessionService;
 		this.artifactService = config.artifactService;
 		this.userId = config.userId;
 		this.appName = config.appName;
-		this.useMemoryAugmentation = config.useMemoryAugmentation ?? false;
-		this.maxMemoryItems = config.maxMemoryItems ?? 5;
-		this.memoryRelevanceThreshold = config.memoryRelevanceThreshold ?? 0.3;
-		this.planner = config.planner;
-
-		// Get the LLM instance
-		this.llm = LLMRegistry.newLLM(this.model);
+		this.generateContentConfig = config.generateContentConfig;
+		this.inputSchema = config.inputSchema;
+		this.outputSchema = config.outputSchema;
 	}
 
 	/**
-	 * Finds a tool by name
+	 * The resolved model field as BaseLLM
+	 * This method is only for use by Agent Development Kit
 	 */
-	private findTool(name: string): BaseTool | undefined {
-		return this.tools.find((tool) => tool.name === name);
-	}
-
-	/**
-	 * Executes a tool call and returns the result
-	 */
-	private async executeTool(
-		toolCall: ToolCall,
-		context: InvocationContext,
-	): Promise<{ name: string; result: any }> {
-		const { name, arguments: argsString } = toolCall.function;
-
-		this.logger.debug(`Executing tool: ${name}`);
-
-		// Find the tool
-		const tool = this.findTool(name);
-		if (!tool) {
-			console.warn(`Tool '${name}' not found`);
-			return {
-				name,
-				result: `Error: Tool '${name}' not found.`,
-			};
+	get canonicalModel(): BaseLlm {
+		if (typeof this.model !== "string") {
+			return this.model;
 		}
 
-		try {
-			// Parse arguments
-			const args = JSON.parse(argsString);
-
-			// Create a tool execution context
-			const toolContext = new ToolContext({
-				invocationContext: context,
-				parameters: args,
-			});
-
-			toolContext.toolName = name;
-			toolContext.toolId = toolCall.id;
-
-			// Execute the tool
-			const result = await tool.runAsync(args, toolContext);
-
-			this.logger.debug(`Tool ${name} execution complete`);
-
-			return {
-				name,
-				result: typeof result === "string" ? result : JSON.stringify(result),
-			};
-		} catch (error) {
-			console.error(`Error executing tool ${name}:`, error);
-			return {
-				name,
-				result: `Error executing tool ${name}: ${error instanceof Error ? error.message : String(error)}`,
-			};
-		}
-	}
-
-	/**
-	 * Execute multiple tools in parallel
-	 */
-	private async executeTools(
-		toolCalls: ToolCall[],
-		context: InvocationContext,
-	): Promise<{ name: string; result: any; id: string }[]> {
-		// Execute all tools in parallel and include the original tool call ID with the result
-		const results = await Promise.all(
-			toolCalls.map(async (toolCall) => {
-				const result = await this.executeTool(toolCall, context);
-				return {
-					...result,
-					id: toolCall.id, // Include the original tool call ID
-				};
-			}),
-		);
-		return results;
-	}
-
-	/**
-	 * Augments context with relevant memory
-	 */
-	private async augmentWithMemory(context: InvocationContext): Promise<void> {
-		// Skip if memory augmentation is disabled or no memory service
-		if (!this.useMemoryAugmentation || !context.memoryService) {
-			return;
+		if (this.model) {
+			// model is non-empty str
+			return LLMRegistry.newLLM(this.model);
 		}
 
-		try {
-			// Extract query from the last user message
-			const lastUserMsg = [...context.messages]
-				.reverse()
-				.find((msg) => msg.role === "user");
-			if (!lastUserMsg || !lastUserMsg.content) {
-				return;
+		// find model from ancestors
+		let ancestorAgent = this.parentAgent;
+		while (ancestorAgent !== null) {
+			if (ancestorAgent instanceof LlmAgent) {
+				return ancestorAgent.canonicalModel;
 			}
+			ancestorAgent = ancestorAgent.parentAgent;
+		}
 
-			// Get the query text
-			let query = "";
-			if (typeof lastUserMsg.content === "string") {
-				query = lastUserMsg.content;
-			} else if (Array.isArray(lastUserMsg.content)) {
-				// Extract text from content array
-				for (const part of lastUserMsg.content) {
-					if (part.type === "text") {
-						query += `${part.text} `;
-					}
+		throw new Error(`No model found for ${this.name}.`);
+	}
+
+	/**
+	 * The resolved instruction field to construct instruction for this agent
+	 * This method is only for use by Agent Development Kit
+	 */
+	async canonicalInstruction(ctx: ReadonlyContext): Promise<[string, boolean]> {
+		if (typeof this.instruction === "string") {
+			return [this.instruction, false];
+		}
+
+		const instruction = await this.instruction(ctx);
+		return [instruction, true];
+	}
+
+	/**
+	 * The resolved global_instruction field to construct global instruction
+	 * This method is only for use by Agent Development Kit
+	 */
+	async canonicalGlobalInstruction(
+		ctx: ReadonlyContext,
+	): Promise<[string, boolean]> {
+		if (typeof this.globalInstruction === "string") {
+			return [this.globalInstruction, false];
+		}
+
+		const globalInstruction = await this.globalInstruction(ctx);
+		return [globalInstruction, true];
+	}
+
+	/**
+	 * The resolved tools field as a list of BaseTool based on the context
+	 * This method is only for use by Agent Development Kit
+	 */
+	async canonicalTools(ctx?: ReadonlyContext): Promise<BaseTool[]> {
+		const resolvedTools: BaseTool[] = [];
+
+		for (const toolUnion of this.tools) {
+			if (typeof toolUnion === "function") {
+				// Convert function to FunctionTool
+				const functionTool = new FunctionTool(toolUnion);
+				resolvedTools.push(functionTool);
+			} else {
+				// Assume it's a BaseTool
+				resolvedTools.push(toolUnion as BaseTool);
+			}
+		}
+
+		return resolvedTools;
+	}
+
+	/**
+	 * Gets the appropriate LLM flow for this agent
+	 * This matches the Python implementation's _llm_flow property
+	 */
+	private get llmFlow(): BaseLlmFlow {
+		if (
+			this.disallowTransferToParent &&
+			this.disallowTransferToPeers &&
+			!this.subAgents?.length
+		) {
+			return new SingleFlow();
+		}
+
+		return new AutoFlow();
+	}
+
+	/**
+	 * Saves the model output to state if needed
+	 * This matches the Python implementation's __maybe_save_output_to_state
+	 */
+	private maybeSaveOutputToState(event: Event): void {
+		if (this.outputKey && event.isFinalResponse() && event.content?.parts) {
+			const result = event.content.parts
+				.map((part) => part.text || "")
+				.join("");
+
+			if (result) {
+				// Set state delta - this would need proper EventActions handling
+				if (!event.actions.stateDelta) {
+					event.actions.stateDelta = {};
 				}
-			} else if (lastUserMsg.content.type === "text") {
-				query = lastUserMsg.content.text;
+				event.actions.stateDelta[this.outputKey] = result;
 			}
-
-			if (!query.trim()) {
-				return;
-			}
-
-			// Search memory with the query
-			const searchOptions: SearchMemoryOptions = {
-				threshold: this.memoryRelevanceThreshold,
-				limit: this.maxMemoryItems,
-			};
-
-			const memories = await context.searchMemory(query, searchOptions);
-
-			// Skip if no relevant memories found
-			if (!memories.memories.length) {
-				return;
-			}
-
-			// Generate a summary of relevant memories to add as system message
-			const relevantInfo: string[] = [];
-
-			for (const memory of memories.memories) {
-				const sessionId = memory.sessionId;
-				const events = memory.events as Message[];
-
-				// Format each memory
-				const formattedEvents = events.map((event) => {
-					const role = event.role === "user" ? "User" : "Assistant";
-					let content = "";
-
-					if (typeof event.content === "string") {
-						content = event.content;
-					} else if (Array.isArray(event.content)) {
-						// Extract text from content array
-						for (const part of event.content) {
-							if (part.type === "text") {
-								content += `${part.text} `;
-							}
-						}
-					} else if (event.content && event.content.type === "text") {
-						content = event.content.text;
-					}
-
-					return `${role}: ${content}`;
-				});
-
-				relevantInfo.push(
-					`Session ${sessionId.substring(0, 8)}:\n${formattedEvents.join("\n")}`,
-				);
-			}
-
-			// Add memory information as a system message at the beginning
-			if (relevantInfo.length > 0) {
-				const memoryMessage: Message = {
-					role: "system",
-					content: `Relevant information from previous conversations:\n\n${relevantInfo.join("\n\n")}`,
-				};
-
-				// Insert after existing system messages
-				const lastSystemIndex = context.messages.findIndex(
-					(m) => m.role !== "system",
-				);
-				if (lastSystemIndex > 0) {
-					context.messages.splice(lastSystemIndex, 0, memoryMessage);
-				} else {
-					context.messages.unshift(memoryMessage);
-				}
-			}
-		} catch (error) {
-			console.error("Error augmenting with memory:", error);
-			// Continue without memory augmentation on error
 		}
 	}
 
 	/**
-	 * Saves the session to memory
+	 * Core logic to run this agent via text-based conversation
+	 * This matches the Python implementation's _run_async_impl
 	 */
-	private async saveToMemory(context: InvocationContext): Promise<void> {
-		try {
-			if (context.sessionService && this.userId) {
-				// Ensure we have the user ID set
-				context.userId = context.userId || this.userId;
-
-				// Save the session
-				await context.saveSession();
-			}
-		} catch (error) {
-			console.error("Error saving to memory:", error);
-			// Continue without saving to memory on error
-		}
-	}
-
-	/**
-	 * Generates a unique session ID
-	 */
-	private generateSessionId(): string {
-		return `${this.name}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-	}
-
-	/**
-	 * Applies planner preprocessing to the LLM request
-	 */
-	private applyPlannerPreprocessing(
+	protected async *runAsyncImpl(
 		context: InvocationContext,
-		request: LLMRequest,
-	): void {
-		if (!this.planner) {
-			return;
-		}
+	): AsyncGenerator<Event, void, unknown> {
+		this.logger.debug(`Starting LlmAgent execution for "${this.name}"`);
 
 		try {
-			const readonlyContext = new ReadonlyContext(context);
-
-			// For BuiltInPlanner, apply thinking config
-			if (this.planner instanceof BuiltInPlanner) {
-				this.planner.applyThinkingConfig(request);
-			}
-
-			// Get planning instruction and add to request
-			const planningInstruction = this.planner.buildPlanningInstruction(
-				readonlyContext,
-				request,
-			);
-
-			if (planningInstruction) {
-				// Add planning instruction as a system message
-				const planningMessage: Message = {
-					role: "system",
-					content: planningInstruction,
-				};
-
-				// Insert planning instruction after other system messages
-				const lastSystemIndex = context.messages.findIndex(
-					(m) => m.role !== "system",
-				);
-				if (lastSystemIndex > 0) {
-					context.messages.splice(lastSystemIndex, 0, planningMessage);
-				} else {
-					context.messages.unshift(planningMessage);
-				}
+			// Delegate to the LLM flow (matching Python implementation)
+			for await (const event of this.llmFlow.runAsync(context)) {
+				this.maybeSaveOutputToState(event);
+				yield event;
 			}
 		} catch (error) {
-			this.logger.debug("Error in planner preprocessing:", error);
-			// Continue without planner preprocessing on error
-		}
-	}
+			this.logger.error("Error in LlmAgent execution:", error);
 
-	/**
-	 * Applies planner postprocessing to the LLM response
-	 */
-	private applyPlannerPostprocessing(
-		context: InvocationContext,
-		response: LLMResponse,
-	): LLMResponse {
-		if (!this.planner || !response.content) {
-			return response;
-		}
-
-		try {
-			const callbackContext = new CallbackContext(context);
-
-			// Convert response content to Part format for planner
-			const responseParts = [{ text: response.content }];
-
-			// Process the response with the planner
-			const processedParts = this.planner.processPlanningResponse(
-				callbackContext,
-				responseParts,
-			);
-
-			// Update the response if processing returned modified parts
-			if (processedParts && processedParts.length > 0) {
-				// Extract text from processed parts
-				const processedContent = processedParts
-					.map((part) => part.text || "")
-					.join("");
-
-				if (processedContent.trim()) {
-					response.content = processedContent;
-				}
-			}
-		} catch (error) {
-			this.logger.debug("Error in planner postprocessing:", error);
-			// Continue with original response on error
-		}
-
-		return response;
-	}
-
-	/**
-	 * Runs the agent with the given messages and configuration
-	 */
-	async runImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-		sessionId?: string;
-	}): Promise<LLMResponse> {
-		// Generate session ID if not provided
-		const sessionId = options.sessionId || this.generateSessionId();
-
-		const context = new InvocationContext({
-			sessionId,
-			messages: [...options.messages],
-			config: options.config,
-			userId: this.userId,
-			appName: this.appName,
-			memoryService: this.memoryService,
-			sessionService: this.sessionService,
-			artifactService: this.artifactService,
-		});
-
-		try {
-			// Add system message with instructions if provided
-			if (this.instructions) {
-				context.messages.unshift({
-					role: "system",
-					content: this.instructions,
-				});
-			}
-
-			// Add tool declarations if any tools are available
-			const functions = this.tools.map((tool) => tool.getDeclaration());
-
-			// Create the initial LLM request
-			const llmRequest = new LLMRequest({
-				messages: context.messages,
-				config: {
-					...options.config,
-					functions: functions.length > 0 ? functions : undefined,
+			const errorEvent = new Event({
+				invocationId: context.invocationId,
+				author: this.name,
+				branch: context.branch,
+				content: {
+					parts: [
+						{
+							text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+						},
+					],
 				},
 			});
 
-			// Apply planner preprocessing
-			this.applyPlannerPreprocessing(context, llmRequest);
+			errorEvent.errorCode = "AGENT_EXECUTION_ERROR";
+			errorEvent.errorMessage =
+				error instanceof Error ? error.message : String(error);
 
-			const responseGenerator = await this.llm.generateContentAsync(llmRequest);
-
-			let response: LLMResponse | undefined;
-			for await (const chunk of responseGenerator) {
-				response = chunk;
-			}
-
-			if (!response) {
-				throw new Error("No response from LLM");
-			}
-
-			let stepCount = 0;
-			while (stepCount < this.maxToolExecutionSteps) {
-				stepCount++;
-
-				this.logger.debug(`Step ${stepCount}: Thinking...`);
-
-				// Request a response from the LLM
-				const llmRequest = new LLMRequest({
-					messages: context.messages,
-					config: {
-						...options.config,
-						functions: functions.length > 0 ? functions : undefined,
-					},
-				});
-
-				// Apply planner preprocessing to ALL requests (not just initial)
-				this.applyPlannerPreprocessing(context, llmRequest);
-
-				// Use generateContentAsync instead of generateContent
-				const responseIterator = this.llm.generateContentAsync(llmRequest);
-				let currentResponse: LLMResponse | undefined;
-
-				for await (const chunk of responseIterator) {
-					currentResponse = chunk;
-				}
-
-				if (!currentResponse) {
-					throw new Error("No response from LLM");
-				}
-
-				// Apply planner postprocessing
-				currentResponse = this.applyPlannerPostprocessing(
-					context,
-					currentResponse,
-				);
-
-				if (
-					currentResponse.tool_calls &&
-					currentResponse.tool_calls.length > 0
-				) {
-					// The LLM wants to use tools
-					this.logger.debug(
-						`Tool calls: ${JSON.stringify(currentResponse.tool_calls)}`,
-					);
-
-					// Add the assistant message with tool_calls to the conversation first
-					context.addMessage({
-						role: "assistant",
-						content: currentResponse.content || "",
-						tool_calls: currentResponse.tool_calls,
-					});
-
-					// Execute the tools
-					const toolResults = await this.executeTools(
-						currentResponse.tool_calls,
-						context,
-					);
-
-					// Add the results to the context manually
-					for (const result of toolResults) {
-						context.addMessage({
-							role: "tool",
-							tool_call_id: result.id,
-							content: result.result,
-							name: result.name,
-						});
-					}
-				} else {
-					// This is a final response without tool calls
-					this.logger.debug("No tool calls, finishing...");
-
-					// Add the final assistant message to the conversation
-					context.addMessage({
-						role: "assistant",
-						content: currentResponse.content || "",
-					});
-
-					// Save to memory if enabled
-					await this.saveToMemory(context);
-
-					// Return the final response
-					return currentResponse;
-				}
-			}
-
-			return response;
-		} catch (error) {
-			console.error("Error in agent execution:", error);
-			throw error;
+			yield errorEvent;
 		}
-	}
-
-	/**
-	 * Runs the agent with streaming support
-	 */
-	async *runStreamingImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-		sessionId?: string;
-	}): AsyncGenerator<LLMResponse> {
-		const context = new InvocationContext({
-			sessionId: options.sessionId,
-			messages: options.messages,
-			config: options.config,
-			userId: this.userId,
-			appName: this.appName,
-			memoryService: this.memoryService,
-			sessionService: this.sessionService,
-			artifactService: this.artifactService,
-		});
-
-		// Add system instructions if provided
-		if (this.instructions) {
-			context.messages.unshift({
-				role: "system",
-				content: this.instructions,
-			});
-		}
-
-		// Augment with memory if enabled
-		await this.augmentWithMemory(context);
-
-		// Execute agent loop (thinking and tool execution)
-		let stepCount = 0;
-		let hadToolCalls = false;
-
-		while (stepCount < this.maxToolExecutionSteps) {
-			this.logger.debug(`Step ${stepCount}: Thinking...`);
-
-			// Get tool declarations
-			const toolDeclarations = this.tools
-				.map((tool) => tool.getDeclaration())
-				.filter((declaration) => declaration !== null);
-
-			// Create the request
-			const request = new LLMRequest({
-				messages: context.messages,
-				config: {
-					functions: toolDeclarations as any[],
-					// Pass through all the runtime config settings
-					...context.config,
-					// Ensure streaming is enabled
-					stream: true,
-				},
-			});
-
-			// Apply planner preprocessing
-			this.applyPlannerPreprocessing(context, request);
-
-			// Stream response from LLM
-			const responseGenerator = this.llm.generateContentAsync(request, true);
-
-			// Capture the final response for tool execution
-			let finalResponse: LLMResponse | null = null;
-			hadToolCalls = false;
-
-			// Stream response chunks
-			for await (const responseChunk of responseGenerator) {
-				// Update current full response
-				finalResponse = responseChunk;
-
-				// Yield the chunk
-				yield responseChunk;
-
-				// Check if there are tool calls to execute
-				hadToolCalls =
-					Boolean(responseChunk.function_call) ||
-					(responseChunk.tool_calls !== undefined &&
-						responseChunk.tool_calls.length > 0);
-			}
-
-			if (!finalResponse) {
-				throw new Error("No response received from LLM");
-			}
-
-			// Apply planner postprocessing
-			finalResponse = this.applyPlannerPostprocessing(context, finalResponse);
-
-			// Add assistant response to conversation history
-			context.addMessage({
-				role: "assistant",
-				content: finalResponse.content || "",
-				function_call: finalResponse.function_call,
-			});
-
-			// If no tool calls, we're done
-			if (!hadToolCalls) {
-				this.logger.debug("No tool calls, finishing...");
-				break;
-			}
-
-			this.logger.debug(`Step ${stepCount + 1}: Executing tools...`);
-			stepCount++;
-
-			// Execute function_call for backward compatibility
-			if (finalResponse.function_call) {
-				const toolCall = {
-					id: "function-call",
-					function: {
-						name: finalResponse.function_call.name,
-						arguments: finalResponse.function_call.arguments,
-					},
-				};
-
-				// For function_call, we don't modify the assistant message that was already added
-
-				const [result] = await this.executeTools([toolCall], context);
-
-				// Add function response to conversation history
-				context.addMessage({
-					role: "function",
-					name: result.name,
-					content: JSON.stringify(result.result),
-				});
-			}
-			// Execute tool_calls
-			else if (
-				finalResponse.tool_calls &&
-				finalResponse.tool_calls.length > 0
-			) {
-				this.logger.debug(
-					`Step ${stepCount + 1}: Executing ${finalResponse.tool_calls.length} tool(s)...`,
-				);
-
-				// Replace the assistant message with one that includes tool_calls
-				// First, remove the last message (which should be the assistant message we just added)
-				context.messages.pop();
-
-				// Add the assistant message with tool_calls
-				context.addMessage({
-					role: "assistant",
-					content: finalResponse.content || "",
-					tool_calls: finalResponse.tool_calls,
-				});
-
-				const results = await this.executeTools(
-					finalResponse.tool_calls,
-					context,
-				);
-
-				// Add tool responses to conversation history
-				for (const result of results) {
-					context.addMessage({
-						role: "tool",
-						tool_call_id: result.id,
-						content: result.result,
-					});
-				}
-			}
-		}
-
-		// Save to memory if enabled
-		await this.saveToMemory(context);
 	}
 }
+
+/**
+ * Type alias to match Python's Agent = LlmAgent
+ */
+export { LlmAgent as Agent };

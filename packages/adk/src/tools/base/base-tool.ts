@@ -19,7 +19,8 @@ export interface ToolConfig {
 	description: string;
 
 	/**
-	 * Whether the tool is a long running operation
+	 * Whether the tool is a long running operation, which typically returns a
+	 * resource id first and finishes the operation later.
 	 */
 	isLongRunning?: boolean;
 
@@ -33,6 +34,23 @@ export interface ToolConfig {
 	 */
 	maxRetryAttempts?: number;
 }
+
+/**
+ * LLM request interface for processing outgoing requests
+ */
+export interface LlmRequest {
+	toolsDict: Record<string, BaseTool>;
+	config?: {
+		tools?: Array<{
+			functionDeclarations?: FunctionDeclaration[];
+		}>;
+	};
+}
+
+/**
+ * API variant types
+ */
+export type ApiVariant = "google" | "openai" | "anthropic";
 
 /**
  * The base class for all tools
@@ -49,7 +67,8 @@ export abstract class BaseTool {
 	description: string;
 
 	/**
-	 * Whether the tool is a long running operation
+	 * Whether the tool is a long running operation, which typically returns a
+	 * resource id first and finishes the operation later.
 	 */
 	isLongRunning: boolean;
 
@@ -100,8 +119,18 @@ export abstract class BaseTool {
 
 	/**
 	 * Gets the OpenAPI specification of this tool in the form of a FunctionDeclaration
+	 *
+	 * NOTE:
+	 * - Required if subclass uses the default implementation of processLlmRequest
+	 *   to add function declaration to LLM request.
+	 * - Otherwise, can return null, e.g. for a built-in GoogleSearch tool.
+	 *
+	 * @returns The FunctionDeclaration of this tool, or null if it doesn't need to be
+	 *          added to LlmRequest.config.
 	 */
-	abstract getDeclaration(): FunctionDeclaration;
+	getDeclaration(): FunctionDeclaration | null {
+		return null;
+	}
 
 	/**
 	 * Validates the arguments against the schema in the function declaration
@@ -132,16 +161,77 @@ export abstract class BaseTool {
 
 	/**
 	 * Runs the tool with the given arguments and context
-	 * This method must be implemented by subclasses
 	 *
-	 * @param args Arguments for the tool
-	 * @param context Tool execution context
-	 * @returns Result of the tool execution
+	 * NOTE:
+	 * - Required if this tool needs to run at the client side.
+	 * - Otherwise, can be skipped, e.g. for a built-in GoogleSearch tool.
+	 *
+	 * @param args The LLM-filled arguments
+	 * @param context The context of the tool
+	 * @returns The result of running the tool
 	 */
-	abstract runAsync(
+	async runAsync(
 		args: Record<string, any>,
 		context: ToolContext,
-	): Promise<any>;
+	): Promise<any> {
+		throw new Error(`${this.constructor.name} runAsync is not implemented`);
+	}
+
+	/**
+	 * Processes the outgoing LLM request for this tool.
+	 *
+	 * Use cases:
+	 * - Most common use case is adding this tool to the LLM request.
+	 * - Some tools may just preprocess the LLM request before it's sent out.
+	 *
+	 * @param toolContext The context of the tool
+	 * @param llmRequest The outgoing LLM request, mutable by this method
+	 */
+	async processLlmRequest(
+		_toolContext: ToolContext,
+		llmRequest: LlmRequest,
+	): Promise<void> {
+		const functionDeclaration = this.getDeclaration();
+		if (!functionDeclaration) {
+			return;
+		}
+
+		// Add this tool to the tools dictionary
+		llmRequest.toolsDict[this.name] = this;
+
+		// Find existing tool with function declarations
+		const toolWithFunctionDeclarations =
+			this.findToolWithFunctionDeclarations(llmRequest);
+
+		if (toolWithFunctionDeclarations) {
+			// Add to existing tool
+			if (!toolWithFunctionDeclarations.functionDeclarations) {
+				toolWithFunctionDeclarations.functionDeclarations = [];
+			}
+			toolWithFunctionDeclarations.functionDeclarations.push(
+				functionDeclaration,
+			);
+		} else {
+			// Create new tool configuration
+			if (!llmRequest.config) {
+				llmRequest.config = {};
+			}
+			if (!llmRequest.config.tools) {
+				llmRequest.config.tools = [];
+			}
+			llmRequest.config.tools.push({
+				functionDeclarations: [functionDeclaration],
+			});
+		}
+	}
+
+	/**
+	 * Gets the API variant for this tool
+	 */
+	protected get apiVariant(): ApiVariant {
+		// Default implementation - can be overridden by subclasses
+		return "google";
+	}
 
 	/**
 	 * Executes the tool with error handling and retries
@@ -181,10 +271,10 @@ export abstract class BaseTool {
 					);
 
 					await new Promise((resolve) => setTimeout(resolve, delay));
-
-					const result = await this.runAsync(args, context);
-					return { result };
 				}
+
+				const result = await this.runAsync(args, context);
+				return { result };
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
 				console.error(`Error executing tool ${this.name}:`, lastError.message);
@@ -198,5 +288,23 @@ export abstract class BaseTool {
 			message: lastError?.message || "Unknown error occurred",
 			tool: this.name,
 		};
+	}
+
+	/**
+	 * Helper method to find a tool with function declarations in the LLM request
+	 */
+	private findToolWithFunctionDeclarations(
+		llmRequest: LlmRequest,
+	): { functionDeclarations?: FunctionDeclaration[] } | null {
+		if (!llmRequest.config || !llmRequest.config.tools) {
+			return null;
+		}
+
+		return (
+			llmRequest.config.tools.find(
+				(tool) =>
+					tool.functionDeclarations && tool.functionDeclarations.length > 0,
+			) || null
+		);
 	}
 }

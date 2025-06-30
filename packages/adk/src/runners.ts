@@ -1,23 +1,63 @@
+import type { Content } from "@google/genai";
 import { SpanStatusCode } from "@opentelemetry/api";
 import type { BaseAgent } from "./agents/base-agent";
 import { InvocationContext } from "./agents/invocation-context";
+import { newInvocationContextId } from "./agents/invocation-context";
+import { LlmAgent } from "./agents/llm-agent";
 import { RunConfig } from "./agents/run-config";
 import type { BaseArtifactService } from "./artifacts/base-artifact-service";
 import { InMemoryArtifactService } from "./artifacts/in-memory-artifact-service";
 import { Event } from "./events/event";
+import { Logger } from "./helpers/logger";
 import type { BaseMemoryService } from "./memory/base-memory-service";
 import { InMemoryMemoryService } from "./memory/in-memory-memory-service";
-import type { Message } from "./models/llm-request";
-import type { MessageRole } from "./models/llm-request";
-import type { SessionService } from "./sessions/base-session-service";
+import type { BaseSessionService } from "./sessions/base-session-service";
 import { InMemorySessionService } from "./sessions/in-memory-session-service";
 import type { Session } from "./sessions/session";
 import { tracer } from "./telemetry";
 
+const logger = new Logger({ name: "Runner" });
+
+/**
+ * Find function call event if last event is function response.
+ */
+function _findFunctionCallEventIfLastEventIsFunctionResponse(
+	session: Session,
+): Event | null {
+	const events = session.events;
+	if (!events || events.length === 0) {
+		return null;
+	}
+
+	const lastEvent = events[events.length - 1];
+	if (lastEvent.content?.parts?.some((part) => part.functionResponse)) {
+		const functionCallId = lastEvent.content.parts.find(
+			(part) => part.functionResponse,
+		)?.functionResponse?.id;
+
+		if (!functionCallId) return null;
+
+		// Look backwards for the corresponding function call
+		for (let i = events.length - 2; i >= 0; i--) {
+			const event = events[i];
+			const functionCalls = event.getFunctionCalls?.() || [];
+
+			for (const functionCall of functionCalls) {
+				if (functionCall.id === functionCallId) {
+					return event;
+				}
+			}
+		}
+	}
+
+	return null;
+}
+
 /**
  * The Runner class is used to run agents.
  * It manages the execution of an agent within a session, handling message
- * processing, event generation, and interaction with various services.
+ * processing, event generation, and interaction with various services like
+ * artifact storage, session management, and memory.
  */
 export class Runner {
 	/**
@@ -31,9 +71,14 @@ export class Runner {
 	agent: BaseAgent;
 
 	/**
+	 * The artifact service for the runner.
+	 */
+	artifactService?: BaseArtifactService;
+
+	/**
 	 * The session service for the runner.
 	 */
-	sessionService: SessionService;
+	sessionService: BaseSessionService;
 
 	/**
 	 * The memory service for the runner.
@@ -41,31 +86,87 @@ export class Runner {
 	memoryService?: BaseMemoryService;
 
 	/**
-	 * The artifact service for the runner.
-	 */
-	artifactService?: BaseArtifactService;
-
-	/**
 	 * Initializes the Runner.
 	 */
 	constructor({
 		appName,
 		agent,
+		artifactService,
 		sessionService,
 		memoryService,
-		artifactService,
 	}: {
 		appName: string;
 		agent: BaseAgent;
-		sessionService: SessionService;
-		memoryService?: BaseMemoryService;
 		artifactService?: BaseArtifactService;
+		sessionService: BaseSessionService;
+		memoryService?: BaseMemoryService;
 	}) {
 		this.appName = appName;
 		this.agent = agent;
+		this.artifactService = artifactService;
 		this.sessionService = sessionService;
 		this.memoryService = memoryService;
-		this.artifactService = artifactService;
+	}
+
+	/**
+	 * Runs the agent synchronously.
+	 * NOTE: This sync interface is only for local testing and convenience purpose.
+	 * Consider using `runAsync` for production usage.
+	 */
+	run({
+		userId,
+		sessionId,
+		newMessage,
+		runConfig = new RunConfig(),
+	}: {
+		userId: string;
+		sessionId: string;
+		newMessage: Content;
+		runConfig?: RunConfig;
+	}): Generator<Event, void, unknown> {
+		const eventQueue: (Event | null)[] = [];
+		let queueIndex = 0;
+		let asyncCompleted = false;
+
+		const invokeRunAsync = async () => {
+			try {
+				for await (const event of this.runAsync({
+					userId,
+					sessionId,
+					newMessage,
+					runConfig,
+				})) {
+					eventQueue.push(event);
+				}
+			} finally {
+				eventQueue.push(null);
+				asyncCompleted = true;
+			}
+		};
+
+		// Start the async operation
+		invokeRunAsync();
+
+		// Synchronously yield events as they become available
+		return (function* () {
+			while (true) {
+				// Wait for next event to be available
+				while (queueIndex >= eventQueue.length && !asyncCompleted) {
+					// Simple busy wait - in a real implementation you might want
+					// to use a more sophisticated synchronization mechanism
+				}
+
+				if (queueIndex >= eventQueue.length && asyncCompleted) {
+					break;
+				}
+
+				const event = eventQueue[queueIndex++];
+				if (event === null) {
+					break;
+				}
+				yield event;
+			}
+		})();
 	}
 
 	/**
@@ -79,92 +180,52 @@ export class Runner {
 	}: {
 		userId: string;
 		sessionId: string;
-		newMessage: Message;
+		newMessage: Content;
 		runConfig?: RunConfig;
 	}): AsyncGenerator<Event, void, unknown> {
 		const span = tracer.startSpan("invocation");
 
-		// Get the session
-		const session = await this.sessionService.getSession(sessionId);
-		if (!session) {
-			throw new Error(`Session not found: ${sessionId}`);
-		}
-
-		// Create invocation context
-		const invocationContext = this._newInvocationContext({
-			session,
-			newMessage,
-			runConfig,
-		});
-
-		// Append new message to session if provided
-		if (newMessage) {
-			await this._appendNewMessageToSession({
-				session,
-				newMessage,
-				invocationContext,
-			});
-		}
-
-		// Get responses from agent
-		let lastPartialEvent: Event | null = null;
-		let assistantContent = "";
-
 		try {
-			// Run the agent and yield events
-			for await (const response of this.agent.runStreaming(invocationContext)) {
-				const event = new Event({
-					invocationId: invocationContext.sessionId,
-					author: "assistant",
-					content: response.content || "",
-					function_call: response.function_call,
-					tool_calls: response.tool_calls,
-					partial: response.is_partial,
-					raw_response: response.raw_response,
-				});
-				await this.sessionService.appendEvent(session, event);
+			const session = await this.sessionService.getSession(
+				this.appName,
+				userId,
+				sessionId,
+			);
+			if (!session) {
+				throw new Error(`Session not found: ${sessionId}`);
+			}
 
-				// Track partial events for debugging
-				if (event.is_partial) {
-					lastPartialEvent = event;
+			const invocationContext = this._newInvocationContext(session, {
+				newMessage,
+				runConfig,
+			});
+
+			if (newMessage) {
+				await this._appendNewMessageToSession(
+					session,
+					newMessage,
+					invocationContext,
+					runConfig.saveInputBlobsAsArtifacts || false,
+				);
+			}
+
+			invocationContext.agent = this._findAgentToRun(session, this.agent);
+
+			for await (const event of invocationContext.agent.runAsync(
+				invocationContext,
+			)) {
+				if (!event.partial) {
+					await this.sessionService.appendEvent(session, event);
 				}
-
-				if (response.role === "assistant" && response.content) {
-					assistantContent += response.content;
-				}
-
 				yield event;
 			}
-
-			if (assistantContent.trim()) {
-				session.messages = session.messages || [];
-				session.messages.push({
-					role: "assistant",
-					content: assistantContent,
-				});
-				await this.sessionService.updateSession(session);
-			}
 		} catch (error) {
-			console.error("Error running agent:", error);
-
-			// If we had partial events but no final event, create a final event
-			if (lastPartialEvent && session.events && session.events.length === 0) {
-				const finalEvent = new Event({
-					invocationId: invocationContext.sessionId,
-					author: "assistant",
-					content: "Sorry, there was an error processing your request.",
-					partial: false,
-				});
-				await this.sessionService.appendEvent(session, finalEvent);
-				yield finalEvent;
-			}
-
+			logger.debug("Error running agent:", error);
 			span.recordException(error as Error);
 			span.setStatus({
 				code: SpanStatusCode.ERROR,
 				message: error instanceof Error ? error.message : "Unknown error",
 			});
-
 			throw error;
 		} finally {
 			span.end();
@@ -174,58 +235,143 @@ export class Runner {
 	/**
 	 * Appends a new message to the session.
 	 */
-	private async _appendNewMessageToSession({
-		session,
-		newMessage,
-		invocationContext,
-	}: {
-		session: Session;
-		newMessage: Message;
-		invocationContext: InvocationContext;
-	}): Promise<void> {
-		// Create and append the event
+	private async _appendNewMessageToSession(
+		session: Session,
+		newMessage: Content,
+		invocationContext: InvocationContext,
+		saveInputBlobsAsArtifacts = false,
+	): Promise<void> {
+		if (!newMessage.parts) {
+			throw new Error("No parts in the new_message.");
+		}
+
+		if (this.artifactService && saveInputBlobsAsArtifacts) {
+			// The runner directly saves the artifacts (if applicable) in the
+			// user message and replaces the artifact data with a file name
+			// placeholder.
+			for (let i = 0; i < newMessage.parts.length; i++) {
+				const part = newMessage.parts[i];
+				if (!part.inlineData) {
+					continue;
+				}
+				const fileName = `artifact_${invocationContext.invocationId}_${i}`;
+				await this.artifactService.saveArtifact({
+					appName: this.appName,
+					userId: session.userId,
+					sessionId: session.id,
+					filename: fileName,
+					artifact: part,
+				});
+				newMessage.parts[i] = {
+					text: `Uploaded file: ${fileName}. It is saved into artifacts`,
+				};
+			}
+		}
+
+		// Ensure the newMessage has the correct role for content filtering
+		const userContent = {
+			...newMessage,
+			role: "user", // Ensure role is set for content filtering
+		};
+
+		// Appends only. We do not yield the event because it's not from the model.
 		const event = new Event({
-			invocationId: invocationContext.sessionId, // Using sessionId as invocationId for now
+			invocationId: invocationContext.invocationId,
 			author: "user",
-			content:
-				typeof newMessage.content === "string" ? newMessage.content : null,
+			content: userContent,
 		});
 
-		if (event.author === "user" || event.author === "assistant") {
-			session.messages = session.messages || [];
-			session.messages.push({
-				role: event.author as MessageRole,
-				content: event.content,
-			});
-		}
 		await this.sessionService.appendEvent(session, event);
+	}
+
+	/**
+	 * Finds the agent to run to continue the session.
+	 */
+	private _findAgentToRun(session: Session, rootAgent: BaseAgent): BaseAgent {
+		// If the last event is a function response, should send this response to
+		// the agent that returned the corresponding function call regardless the
+		// type of the agent. e.g. a remote a2a agent may surface a credential
+		// request as a special long running function tool call.
+		const event = _findFunctionCallEventIfLastEventIsFunctionResponse(session);
+		if (event?.author) {
+			return rootAgent.findAgent(event.author);
+		}
+
+		// Look through events in reverse order to find the last non-user event
+		const nonUserEvents =
+			session.events?.filter((e) => e.author !== "user").reverse() || [];
+
+		for (const event of nonUserEvents) {
+			if (event.author === rootAgent.name) {
+				// Found root agent
+				return rootAgent;
+			}
+
+			const agent = rootAgent.findSubAgent?.(event.author);
+			if (!agent) {
+				// Agent not found, continue looking
+				logger.debug(
+					`Event from an unknown agent: ${event.author}, event id: ${event.id}`,
+				);
+				continue;
+			}
+
+			if (this._isTransferableAcrossAgentTree(agent)) {
+				return agent;
+			}
+		}
+
+		// Falls back to root agent if no suitable agents are found in the session
+		return rootAgent;
+	}
+
+	/**
+	 * Whether the agent to run can transfer to any other agent in the agent tree.
+	 */
+	private _isTransferableAcrossAgentTree(agentToRun: BaseAgent): boolean {
+		let agent: BaseAgent | null = agentToRun;
+
+		while (agent) {
+			if (!(agent instanceof LlmAgent)) {
+				// Only LLM-based Agent can provide agent transfer capability
+				return false;
+			}
+
+			if (agent.disallowTransferToParent) {
+				return false;
+			}
+
+			agent = agent.parentAgent || null;
+		}
+
+		return true;
 	}
 
 	/**
 	 * Creates a new invocation context.
 	 */
-	private _newInvocationContext({
-		session,
-		newMessage,
-		runConfig = new RunConfig(),
-	}: {
-		session: Session;
-		newMessage?: Message;
-		runConfig?: RunConfig;
-	}): InvocationContext {
+	private _newInvocationContext(
+		session: Session,
+		{
+			newMessage,
+			runConfig = new RunConfig(),
+		}: {
+			newMessage?: Content;
+			runConfig?: RunConfig;
+		},
+	): InvocationContext {
+		const invocationId = newInvocationContextId();
+
 		return new InvocationContext({
-			sessionId: session.id,
-			messages: [
-				...(session.messages || []),
-				...(newMessage ? [newMessage] : []),
-			],
-			config: runConfig,
-			userId: session.userId,
-			appName: this.appName,
+			artifactService: this.artifactService,
 			sessionService: this.sessionService,
 			memoryService: this.memoryService,
-			artifactService: this.artifactService,
-			metadata: session.metadata || {},
+			invocationId,
+			agent: this.agent,
+			session,
+			userContent: newMessage || null,
+			liveRequestQueue: null,
+			runConfig,
 		});
 	}
 }
@@ -235,6 +381,11 @@ export class Runner {
  */
 export class InMemoryRunner extends Runner {
 	/**
+	 * Deprecated. Please don't use. The in-memory session service for the runner.
+	 */
+	private _inMemorySessionService: InMemorySessionService;
+
+	/**
 	 * Initializes the InMemoryRunner.
 	 */
 	constructor(
@@ -242,14 +393,15 @@ export class InMemoryRunner extends Runner {
 		{ appName = "InMemoryRunner" }: { appName?: string } = {},
 	) {
 		const inMemorySessionService = new InMemorySessionService();
-		const inMemoryArtifactService = new InMemoryArtifactService();
 
 		super({
 			appName,
 			agent,
+			artifactService: new InMemoryArtifactService(),
 			sessionService: inMemorySessionService,
 			memoryService: new InMemoryMemoryService(),
-			artifactService: inMemoryArtifactService,
 		});
+
+		this._inMemorySessionService = inMemorySessionService;
 	}
 }

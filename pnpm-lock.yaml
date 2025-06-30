@@ -29,24 +29,12 @@ importers:
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
-      '@electric-sql/pglite':
-        specifier: ^0.3.2
-        version: 0.3.2
       '@iqai/adk':
         specifier: workspace:*
         version: link:../../packages/adk
-      '@types/better-sqlite3':
-        specifier: ^7.6.13
-        version: 7.6.13
-      better-sqlite3:
-        specifier: ^11.10.0
-        version: 11.10.0
       dotenv:
         specifier: ^16.5.0
         version: 16.5.0
-      drizzle-orm:
-        specifier: ^0.43.1
-        version: 0.43.1(@electric-sql/pglite@0.3.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.1)(better-sqlite3@11.10.0)(pg@8.16.0)(sql.js@1.13.0)
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -79,8 +67,8 @@ importers:
         specifier: ^0.5.0
         version: 0.5.0
       '@google/genai':
-        specifier: ^1.0.0
-        version: 1.3.0(@modelcontextprotocol/sdk@1.11.3)
+        specifier: ^1.6.0
+        version: 1.6.0(@modelcontextprotocol/sdk@1.11.3)
       '@modelcontextprotocol/sdk':
         specifier: ^1.11.1
         version: 1.11.3
@@ -111,21 +99,21 @@ importers:
       axios:
         specifier: ^1.6.2
         version: 1.9.0
-      better-sqlite3:
-        specifier: ^11.10.0
-        version: 11.10.0
+      dedent:
+        specifier: ^1.6.0
+        version: 1.6.0
       dotenv:
         specifier: ^16.4.7
         version: 16.5.0
       drizzle-orm:
         specifier: ^0.43.1
-        version: 0.43.1(@electric-sql/pglite@0.3.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.1)(better-sqlite3@11.10.0)(pg@8.16.0)(sql.js@1.13.0)
+        version: 0.43.1(@electric-sql/pglite@0.3.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.1)(better-sqlite3@11.10.0)(kysely@0.28.2)(mysql2@3.14.1)(pg@8.16.0)(sql.js@1.13.0)
+      kysely:
+        specifier: ^0.28.2
+        version: 0.28.2
       openai:
         specifier: ^4.93.0
         version: 4.104.0(ws@8.18.2)(zod@3.24.4)
-      pg:
-        specifier: ^8.16.0
-        version: 8.16.0
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -142,6 +130,15 @@ importers:
       '@types/node':
         specifier: ^20.17.30
         version: 20.17.57
+      better-sqlite3:
+        specifier: ^11.10.0
+        version: 11.10.0
+      mysql2:
+        specifier: ^3.14.1
+        version: 3.14.1
+      pg:
+        specifier: ^8.16.0
+        version: 8.16.0
       tsup:
         specifier: ^8.4.0
         version: 8.5.0(@swc/core@1.11.24(@swc/helpers@0.5.17))(jiti@1.21.7)(postcss@8.5.3)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0)
@@ -450,11 +447,14 @@ packages:
     resolution: {integrity: sha512-qIFHYTXA5UCLdm9JG+Xf1suomCXxRqa1PKdYjqXuhZsCm8mn37Rb0Tf8djlhDzuRVWyWoQTmsWpsk28ZTmbqJg==}
     engines: {node: '>=18.0.0'}
 
-  '@google/genai@1.3.0':
-    resolution: {integrity: sha512-rrMzAELX4P902FUpuWy/W3NcQ7L3q/qtCzfCmGVqIce8yWpptTF9hkKsw744tvZpwqhuzD0URibcJA95wd8QFA==}
+  '@google/genai@1.6.0':
+    resolution: {integrity: sha512-0vn8wMGesjiEsHeFsl10T8+SFqLj7q+RSE6mml66sE+jwI7U9wW2LQ3qYtwUEaI+P8ZYeEYE5IpYmNLcRQUBPQ==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.11.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
 
   '@grpc/grpc-js@1.13.4':
     resolution: {integrity: sha512-GsFaMXCkMqkKIvwCQjCrwH+GHbPKBjhwo/8ZuUkWHqbI73Kky9I+pQltrlT0+MWpedCoosda53lgjYfyEPgxBg==}
@@ -1356,6 +1356,10 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
+  aws-ssl-profiles@1.1.2:
+    resolution: {integrity: sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g==}
+    engines: {node: '>= 6.0.0'}
+
   axios@1.9.0:
     resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
 
@@ -1527,6 +1531,14 @@ packages:
     resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
     engines: {node: '>=10'}
 
+  dedent@1.6.0:
+    resolution: {integrity: sha512-F1Z+5UCFpmQUzJa11agbyPVMbpgT/qA3/SKyJ1jyBgm7dUcUEa8v9JwDkerSQXfakBwFljIxhOJqGkjUwZ9FSA==}
+    peerDependencies:
+      babel-plugin-macros: ^3.1.0
+    peerDependenciesMeta:
+      babel-plugin-macros:
+        optional: true
+
   deep-eql@5.0.2:
     resolution: {integrity: sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==}
     engines: {node: '>=6'}
@@ -1538,6 +1550,10 @@ packages:
   delayed-stream@1.0.0:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
     engines: {node: '>=0.4.0'}
+
+  denque@2.1.0:
+    resolution: {integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==}
+    engines: {node: '>=0.10'}
 
   depd@2.0.0:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
@@ -1881,6 +1897,9 @@ packages:
     resolution: {integrity: sha512-a4tiq7E0/5fTjxPAaH4jpjkSv/uCaU2p5KC6HVGrvl0cDjA8iBZv4vv1gyzlmK0ZUKqwpOyQMKzZQe3lTit77A==}
     engines: {node: '>=14'}
 
+  generate-function@2.3.1:
+    resolution: {integrity: sha512-eeB5GfMNeevm/GRYq20ShmsaGcmI81kIX2K9XQx5miC8KdHaC6Jm0qQ8ZNeGOi7wYB8OsdxKs+Y2oVuTFuVwKQ==}
+
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
@@ -2044,6 +2063,9 @@ packages:
   is-promise@4.0.0:
     resolution: {integrity: sha512-hvpoI6korhJMnej285dSg6nu1+e6uxs7zG3BYAm5byqDsgJNWwxzM6z6iZiAgQR4TJ30JmBTOwqZUw3WlyH3AQ==}
 
+  is-property@1.0.2:
+    resolution: {integrity: sha512-Ks/IoX00TtClbGQr4TWXemAnktAQvYB7HzcCxDGqEZU6oCmb2INHuOoKxbtR+HFkmYWBKv/dOZtGRiAjDhj92g==}
+
   is-stream@2.0.1:
     resolution: {integrity: sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg==}
     engines: {node: '>=8'}
@@ -2090,6 +2112,10 @@ packages:
   jws@4.0.0:
     resolution: {integrity: sha512-KDncfTmOZoOMTFG4mBlG0qUIOlc03fmzH+ru6RgYVZhPkyiy/92Owlt/8UEN+a4TXR1FQetfIpJE8ApdvdVxTg==}
 
+  kysely@0.28.2:
+    resolution: {integrity: sha512-4YAVLoF0Sf0UTqlhgQMFU9iQECdah7n+13ANkiuVfRvlK+uI0Etbgd7bVP36dKlG+NXWbhGua8vnGt+sdhvT7A==}
+    engines: {node: '>=18.0.0'}
+
   lilconfig@3.1.3:
     resolution: {integrity: sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==}
     engines: {node: '>=14'}
@@ -2135,6 +2161,14 @@ packages:
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
+
+  lru-cache@7.18.3:
+    resolution: {integrity: sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==}
+    engines: {node: '>=12'}
+
+  lru.min@1.1.2:
+    resolution: {integrity: sha512-Nv9KddBcQSlQopmBHXSsZVY5xsdlZkdH/Iey0BlcBYggMd4two7cZnKOK9vmy3nY0O5RGH99z1PCeTpPqszUYg==}
+    engines: {bun: '>=1.0.0', deno: '>=1.30.0', node: '>=8.0.0'}
 
   magic-string@0.30.17:
     resolution: {integrity: sha512-sNPKHvyjVf7gyjwS4xGTaW/mCnF8wnjtifKBEhxfZ7E/S8tQ0rssrwGNn6q8JH/ohItJfSQp9mBtQYuTlH5QnA==}
@@ -2222,8 +2256,16 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
+  mysql2@3.14.1:
+    resolution: {integrity: sha512-7ytuPQJjQB8TNAYX/H2yhL+iQOnIBjAMam361R7UAL0lOVXWjtdrmoL9HYKqKoLp/8UUTRcvo1QPvK9KL7wA8w==}
+    engines: {node: '>= 8.0'}
+
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
+
+  named-placeholders@1.1.3:
+    resolution: {integrity: sha512-eLoBxg6wE/rZkJPhU/xRX1WTpkFEwDJEN96oxFrTsqBdbT5ec295Q+CoHrL9IT0DipqKhmGcaZmwOt8OON5x1w==}
+    engines: {node: '>=12.0.0'}
 
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
@@ -2630,6 +2672,9 @@ packages:
     resolution: {integrity: sha512-uaW0WwXKpL9blXE2o0bRhoL2EGXIrZxQ2ZQ4mgcfoBxdFmQold+qWsD2jLrfZ0trjKL6vOw0j//eAwcALFjKSw==}
     engines: {node: '>= 18'}
 
+  seq-queue@0.0.5:
+    resolution: {integrity: sha512-hr3Wtp/GZIc/6DAGPDcV4/9WoZhjrkXsi5B/07QgX8tsdc6ilr7BFM6PM6rbdAX1kFSDYeZGLipIZZKyQP0O5Q==}
+
   serve-static@2.2.0:
     resolution: {integrity: sha512-61g9pCh0Vnh7IutZjtLGGpTA355+OPn2TyDv/6ivP2h/AdAVX9azsoxmg2/M6nZeQZNYBEwIcsne1mJd9oQItQ==}
     engines: {node: '>= 18'}
@@ -2709,6 +2754,10 @@ packages:
 
   sql.js@1.13.0:
     resolution: {integrity: sha512-RJbVP1HRDlUUXahJ7VMTcu9Rm1Nzw+EBpoPr94vnbD4LwR715F3CcxE2G2k45PewcaZ57pjetYa+LoSJLAASgA==}
+
+  sqlstring@2.3.3:
+    resolution: {integrity: sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg==}
+    engines: {node: '>= 0.6'}
 
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
@@ -3435,13 +3484,14 @@ snapshots:
       - encoding
       - supports-color
 
-  '@google/genai@1.3.0(@modelcontextprotocol/sdk@1.11.3)':
+  '@google/genai@1.6.0(@modelcontextprotocol/sdk@1.11.3)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.11.3
       google-auth-library: 9.15.1
       ws: 8.18.2
       zod: 3.24.4
       zod-to-json-schema: 3.24.5(zod@3.24.4)
+    optionalDependencies:
+      '@modelcontextprotocol/sdk': 1.11.3
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -4541,6 +4591,8 @@ snapshots:
 
   asynckit@0.4.0: {}
 
+  aws-ssl-profiles@1.1.2: {}
+
   axios@1.9.0:
     dependencies:
       follow-redirects: 1.15.9
@@ -4710,11 +4762,15 @@ snapshots:
     dependencies:
       mimic-response: 3.1.0
 
+  dedent@1.6.0: {}
+
   deep-eql@5.0.2: {}
 
   deep-extend@0.6.0: {}
 
   delayed-stream@1.0.0: {}
+
+  denque@2.1.0: {}
 
   depd@2.0.0: {}
 
@@ -4728,13 +4784,15 @@ snapshots:
 
   dotenv@16.5.0: {}
 
-  drizzle-orm@0.43.1(@electric-sql/pglite@0.3.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.1)(better-sqlite3@11.10.0)(pg@8.16.0)(sql.js@1.13.0):
+  drizzle-orm@0.43.1(@electric-sql/pglite@0.3.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.1)(better-sqlite3@11.10.0)(kysely@0.28.2)(mysql2@3.14.1)(pg@8.16.0)(sql.js@1.13.0):
     optionalDependencies:
       '@electric-sql/pglite': 0.3.2
       '@opentelemetry/api': 1.9.0
       '@types/better-sqlite3': 7.6.13
       '@types/pg': 8.15.1
       better-sqlite3: 11.10.0
+      kysely: 0.28.2
+      mysql2: 3.14.1
       pg: 8.16.0
       sql.js: 1.13.0
 
@@ -5029,6 +5087,10 @@ snapshots:
       - encoding
       - supports-color
 
+  generate-function@2.3.1:
+    dependencies:
+      is-property: 1.0.2
+
   get-caller-file@2.0.5: {}
 
   get-east-asian-width@1.3.0: {}
@@ -5206,6 +5268,8 @@ snapshots:
 
   is-promise@4.0.0: {}
 
+  is-property@1.0.2: {}
+
   is-stream@2.0.1: {}
 
   is-stream@3.0.0: {}
@@ -5252,6 +5316,8 @@ snapshots:
     dependencies:
       jwa: 2.0.1
       safe-buffer: 5.2.1
+
+  kysely@0.28.2: {}
 
   lilconfig@3.1.3: {}
 
@@ -5306,6 +5372,10 @@ snapshots:
   loupe@3.1.3: {}
 
   lru-cache@10.4.3: {}
+
+  lru-cache@7.18.3: {}
+
+  lru.min@1.1.2: {}
 
   magic-string@0.30.17:
     dependencies:
@@ -5369,11 +5439,27 @@ snapshots:
 
   ms@2.1.3: {}
 
+  mysql2@3.14.1:
+    dependencies:
+      aws-ssl-profiles: 1.1.2
+      denque: 2.1.0
+      generate-function: 2.3.1
+      iconv-lite: 0.6.3
+      long: 5.3.2
+      lru.min: 1.1.2
+      named-placeholders: 1.1.3
+      seq-queue: 0.0.5
+      sqlstring: 2.3.3
+
   mz@2.7.0:
     dependencies:
       any-promise: 1.3.0
       object-assign: 4.1.1
       thenify-all: 1.6.0
+
+  named-placeholders@1.1.3:
+    dependencies:
+      lru-cache: 7.18.3
 
   nanoid@3.3.11: {}
 
@@ -5776,6 +5862,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  seq-queue@0.0.5: {}
+
   serve-static@2.2.0:
     dependencies:
       encodeurl: 2.0.0
@@ -5864,6 +5952,8 @@ snapshots:
 
   sql.js@1.13.0:
     optional: true
+
+  sqlstring@2.3.3: {}
 
   stackback@0.0.2: {}
 

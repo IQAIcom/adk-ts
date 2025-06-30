@@ -1,312 +1,250 @@
-import type {
-	BaseMemoryService,
-	SearchMemoryOptions,
-	SearchMemoryResponse,
-} from "../memory/base-memory-service";
-import type { Message } from "../models/llm-request";
-import type { SessionService } from "../sessions/base-session-service";
-import type { Session } from "../sessions/session";
+import type { Content } from "@google/genai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
-import type { Part } from "@google/genai";
-import { RunConfig } from "./run-config";
+import type { BaseMemoryService } from "../memory/base-memory-service";
+import type { BaseSessionService } from "../sessions/base-session-service";
+import type { Session } from "../sessions/session";
+import type { ActiveStreamingTool } from "./active-streaming-tool";
+import type { BaseAgent } from "./base-agent";
+import type { LiveRequestQueue } from "./live-request-queue";
+import type { RunConfig } from "./run-config";
+import type { TranscriptionEntry } from "./transcription-entry";
 
 /**
- * Contextual data for a specific agent invocation
+ * Error thrown when the number of LLM calls exceed the limit.
+ */
+export class LlmCallsLimitExceededError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "LlmCallsLimitExceededError";
+	}
+}
+
+/**
+ * A container to keep track of the cost of invocation.
+ *
+ * While we don't expect the metrics captured here to be a direct
+ * representative of monetary cost incurred in executing the current
+ * invocation, they in some ways have an indirect effect.
+ */
+class InvocationCostManager {
+	/**
+	 * A counter that keeps track of number of llm calls made.
+	 */
+	private _numberOfLlmCalls = 0;
+
+	/**
+	 * Increments _numberOfLlmCalls and enforces the limit.
+	 */
+	incrementAndEnforceLlmCallsLimit(runConfig?: RunConfig): void {
+		// We first increment the counter and then check the conditions.
+		this._numberOfLlmCalls += 1;
+
+		if (
+			runConfig &&
+			runConfig.maxLlmCalls > 0 &&
+			this._numberOfLlmCalls > runConfig.maxLlmCalls
+		) {
+			// We only enforce the limit if the limit is a positive number.
+			throw new LlmCallsLimitExceededError(
+				`Max number of llm calls limit of \`${runConfig.maxLlmCalls}\` exceeded`,
+			);
+		}
+	}
+}
+
+/**
+ * Generates a new invocation context ID
+ */
+export function newInvocationContextId(): string {
+	return `e-${crypto.randomUUID()}`;
+}
+
+/**
+ * An invocation context represents the data of a single invocation of an agent.
+ *
+ * An invocation:
+ *   1. Starts with a user message and ends with a final response.
+ *   2. Can contain one or multiple agent calls.
+ *   3. Is handled by runner.run_async().
+ *
+ * An invocation runs an agent until it does not request to transfer to another
+ * agent.
+ *
+ * An agent call:
+ *   1. Is handled by agent.run().
+ *   2. Ends when agent.run() ends.
+ *
+ * An LLM agent call is an agent with a BaseLLMFlow.
+ * An LLM agent call can contain one or multiple steps.
+ *
+ * An LLM agent runs steps in a loop until:
+ *   1. A final response is generated.
+ *   2. The agent transfers to another agent.
+ *   3. The end_invocation is set to true by any callbacks or tools.
+ *
+ * A step:
+ *   1. Calls the LLM only once and yields its response.
+ *   2. Calls the tools and yields their responses if requested.
+ *
+ * The summarization of the function response is considered another step, since
+ * it is another llm call.
+ *
+ * A step ends when it's done calling llm and tools, or if the end_invocation
+ * is set to true at any time.
+ *
+ *
+ *     ┌─────────────────────── invocation ──────────────────────────┐
+ *     ┌──────────── llm_agent_call_1 ────────────┐ ┌─ agent_call_2 ─┐
+ *     ┌──── step_1 ────────┐ ┌───── step_2 ──────┐
+ *     [call_llm] [call_tool] [call_llm] [transfer]
+ *
  */
 export class InvocationContext {
-	/**
-	 * Unique session ID for the current conversation
-	 */
-	sessionId: string;
+	readonly artifactService?: BaseArtifactService;
+	readonly sessionService: BaseSessionService;
+	readonly memoryService?: BaseMemoryService;
 
 	/**
-	 * Current conversation history
+	 * The id of this invocation context. Readonly.
 	 */
-	messages: Message[];
+	readonly invocationId: string;
 
 	/**
-	 * Run configuration
+	 * The branch of the invocation context.
+	 *
+	 * The format is like agent_1.agent_2.agent_3, where agent_1 is the parent of
+	 * agent_2, and agent_2 is the parent of agent_3.
+	 *
+	 * Branch is used when multiple sub-agents shouldn't see their peer agents'
+	 * conversation history.
 	 */
-	config: RunConfig;
+	readonly branch?: string;
 
 	/**
-	 * User identifier associated with the session
+	 * The current agent of this invocation context. Readonly.
 	 */
-	userId?: string;
+	agent: BaseAgent;
 
 	/**
-	 * Application name (for multi-app environments)
+	 * The user content that started this invocation. Readonly.
 	 */
-	appName?: string;
+	readonly userContent?: Content;
 
 	/**
-	 * Memory service for long-term storage
+	 * The current session of this invocation context. Readonly.
 	 */
-	memoryService?: BaseMemoryService;
+	readonly session: Session;
 
 	/**
-	 * Session service for session management
+	 * Whether to end this invocation.
+	 *
+	 * Set to True in callbacks or tools to terminate this invocation.
 	 */
-	sessionService?: SessionService;
+	endInvocation = false;
 
 	/**
-	 * Artifact service for file storage
+	 * The queue to receive live requests.
 	 */
-	artifactService?: BaseArtifactService;
+	liveRequestQueue?: LiveRequestQueue;
 
 	/**
-	 * Additional context metadata
+	 * The running streaming tools of this invocation.
 	 */
-	metadata: Record<string, any>;
+	activeStreamingTools?: Record<string, ActiveStreamingTool>;
 
 	/**
-	 * Variables stored in the context
+	 * Caches necessary, data audio or contents, that are needed by transcription.
 	 */
-	private variables: Map<string, any>;
+	transcriptionCache?: TranscriptionEntry[];
 
 	/**
-	 * In-memory storage for node execution results
+	 * Configurations for live agents under this invocation.
 	 */
-	memory: Map<string, any> = new Map<string, any>();
+	runConfig?: RunConfig;
+
+	/**
+	 * A container to keep track of different kinds of costs incurred as a part
+	 * of this invocation.
+	 */
+	private readonly _invocationCostManager: InvocationCostManager =
+		new InvocationCostManager();
 
 	/**
 	 * Constructor for InvocationContext
 	 */
-	constructor(
-		options: {
-			sessionId?: string;
-			messages?: Message[];
-			config?: RunConfig;
-			userId?: string;
-			appName?: string;
-			memoryService?: BaseMemoryService;
-			sessionService?: SessionService;
-			artifactService?: BaseArtifactService;
-			metadata?: Record<string, any>;
-		} = {},
-	) {
-		this.sessionId = options.sessionId || this.generateSessionId();
-		this.messages = options.messages || [];
-		this.config = options.config || new RunConfig();
-		this.userId = options.userId;
-		this.appName = options.appName;
-		this.memoryService = options.memoryService;
-		this.sessionService = options.sessionService;
+	constructor(options: {
+		artifactService?: BaseArtifactService;
+		sessionService: BaseSessionService;
+		memoryService?: BaseMemoryService;
+		invocationId?: string;
+		branch?: string;
+		agent: BaseAgent;
+		userContent?: Content;
+		session: Session;
+		endInvocation?: boolean;
+		liveRequestQueue?: LiveRequestQueue;
+		activeStreamingTools?: Record<string, ActiveStreamingTool>;
+		transcriptionCache?: TranscriptionEntry[];
+		runConfig?: RunConfig;
+	}) {
 		this.artifactService = options.artifactService;
-		this.metadata = options.metadata || {};
-		this.variables = new Map<string, any>();
+		this.sessionService = options.sessionService;
+		this.memoryService = options.memoryService;
+		this.invocationId = options.invocationId || newInvocationContextId();
+		this.branch = options.branch;
+		this.agent = options.agent;
+		this.userContent = options.userContent;
+		this.session = options.session;
+		this.endInvocation = options.endInvocation || false;
+		this.liveRequestQueue = options.liveRequestQueue;
+		this.activeStreamingTools = options.activeStreamingTools;
+		this.transcriptionCache = options.transcriptionCache;
+		this.runConfig = options.runConfig;
 	}
 
 	/**
-	 * Generates a unique session ID
+	 * App name from the session
 	 */
-	private generateSessionId(): string {
-		return `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+	get appName(): string {
+		return this.session.appName;
 	}
 
 	/**
-	 * Sets a variable in the context
+	 * User ID from the session
 	 */
-	setVariable(name: string, value: any): void {
-		this.variables.set(name, value);
+	get userId(): string {
+		return this.session.userId;
 	}
 
 	/**
-	 * Gets a variable from the context
+	 * Tracks number of llm calls made.
+	 *
+	 * @throws {LlmCallsLimitExceededError} If number of llm calls made exceed the set threshold.
 	 */
-	getVariable<T>(name: string, defaultValue?: T): T | undefined {
-		return (
-			this.variables.has(name) ? this.variables.get(name) : defaultValue
-		) as T | undefined;
+	incrementLlmCallCount(): void {
+		this._invocationCostManager.incrementAndEnforceLlmCallsLimit(
+			this.runConfig,
+		);
 	}
 
 	/**
-	 * Adds a message to the conversation history
+	 * Creates a child invocation context for a sub-agent
 	 */
-	addMessage(message: Message): void {
-		this.messages.push(message);
-	}
-
-	/**
-	 * Creates a new context with the same configuration but empty message history
-	 */
-	createChildContext(): InvocationContext {
+	createChildContext(agent: BaseAgent): InvocationContext {
 		return new InvocationContext({
-			sessionId: this.sessionId,
-			config: this.config,
-			userId: this.userId,
-			appName: this.appName,
-			memoryService: this.memoryService,
-			sessionService: this.sessionService,
 			artifactService: this.artifactService,
-			metadata: { ...this.metadata },
+			sessionService: this.sessionService,
+			memoryService: this.memoryService,
+			invocationId: this.invocationId, // Keep same invocation ID
+			branch: this.branch ? `${this.branch}.${agent.name}` : agent.name, // Update branch
+			agent: agent, // Update to the new agent
+			userContent: this.userContent,
+			session: this.session,
+			endInvocation: this.endInvocation,
+			liveRequestQueue: this.liveRequestQueue,
+			activeStreamingTools: this.activeStreamingTools,
+			transcriptionCache: this.transcriptionCache,
+			runConfig: this.runConfig,
 		});
-	}
-
-	/**
-	 * Creates a tool context that provides artifact methods to function tools
-	 */
-	createToolContext(): any {
-		return {
-			// Artifact methods
-			saveArtifact: async (
-				filename: string,
-				artifact: Part,
-			): Promise<number> => {
-				if (!this.artifactService) {
-					throw new Error("Artifact service not available");
-				}
-				if (!this.userId || !this.appName) {
-					throw new Error("User ID and app name required for artifacts");
-				}
-				return await this.artifactService.saveArtifact({
-					appName: this.appName,
-					userId: this.userId,
-					sessionId: this.sessionId,
-					filename,
-					artifact,
-				});
-			},
-
-			loadArtifact: async (
-				filename: string,
-				version?: number,
-			): Promise<Part | null> => {
-				if (!this.artifactService) {
-					throw new Error("Artifact service not available");
-				}
-				if (!this.userId || !this.appName) {
-					throw new Error("User ID and app name required for artifacts");
-				}
-				return await this.artifactService.loadArtifact({
-					appName: this.appName,
-					userId: this.userId,
-					sessionId: this.sessionId,
-					filename,
-					version,
-				});
-			},
-
-			listArtifacts: async (): Promise<string[]> => {
-				if (!this.artifactService) {
-					throw new Error("Artifact service not available");
-				}
-				if (!this.userId || !this.appName) {
-					throw new Error("User ID and app name required for artifacts");
-				}
-				return await this.artifactService.listArtifactKeys({
-					appName: this.appName,
-					userId: this.userId,
-					sessionId: this.sessionId,
-				});
-			},
-
-			deleteArtifact: async (filename: string): Promise<void> => {
-				if (!this.artifactService) {
-					throw new Error("Artifact service not available");
-				}
-				if (!this.userId || !this.appName) {
-					throw new Error("User ID and app name required for artifacts");
-				}
-				return await this.artifactService.deleteArtifact({
-					appName: this.appName,
-					userId: this.userId,
-					sessionId: this.sessionId,
-					filename,
-				});
-			},
-
-			listArtifactVersions: async (filename: string): Promise<number[]> => {
-				if (!this.artifactService) {
-					throw new Error("Artifact service not available");
-				}
-				if (!this.userId || !this.appName) {
-					throw new Error("User ID and app name required for artifacts");
-				}
-				return await this.artifactService.listVersions({
-					appName: this.appName,
-					userId: this.userId,
-					sessionId: this.sessionId,
-					filename,
-				});
-			},
-		};
-	}
-
-	/**
-	 * Loads a session from the session service
-	 * @returns The loaded session or undefined if not found
-	 */
-	async loadSession(): Promise<Session | undefined> {
-		if (!this.sessionService) {
-			return undefined;
-		}
-
-		return await this.sessionService.getSession(this.sessionId);
-	}
-
-	/**
-	 * Saves the current conversation to a session
-	 * @returns The saved session
-	 */
-	async saveSession(): Promise<Session | undefined> {
-		if (!this.sessionService || !this.userId) {
-			return undefined;
-		}
-
-		// Get existing session or create a new one
-		let session = await this.sessionService.getSession(this.sessionId);
-
-		if (!session) {
-			// Create a new session
-			session = await this.sessionService.createSession(
-				this.userId,
-				this.metadata,
-			);
-			this.sessionId = session.id;
-		}
-
-		// Update session with current messages
-		session.messages = [...this.messages];
-		session.metadata = { ...this.metadata };
-		session.updatedAt = new Date();
-
-		// Save state variables
-		Object.entries(this.variables).forEach(([key, value]) => {
-			session?.state.set(key, value);
-		});
-
-		// Update the session
-		await this.sessionService.updateSession(session);
-
-		// If we have a memory service, add to memory
-		if (this.memoryService) {
-			await this.memoryService.addSessionToMemory(session);
-		}
-
-		return session;
-	}
-
-	/**
-	 * Searches memory for relevant information
-	 * @param query The search query
-	 * @param options Search options
-	 * @returns Search results or empty response if no memory service
-	 */
-	async searchMemory(
-		query: string,
-		options?: SearchMemoryOptions,
-	): Promise<SearchMemoryResponse> {
-		if (!this.memoryService) {
-			return { memories: [] };
-		}
-
-		// If no session ID provided in options, use the current session ID
-		const searchOptions = {
-			...options,
-			sessionId: options?.sessionId || this.sessionId,
-		};
-
-		return await this.memoryService.searchMemory(query, searchOptions);
 	}
 }

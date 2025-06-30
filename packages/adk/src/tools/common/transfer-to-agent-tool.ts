@@ -1,8 +1,6 @@
 import { Logger } from "@adk/helpers/logger";
-import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
-import "../tool-context-extensions";
 
 /**
  * Tool that allows an agent to transfer control to another agent
@@ -21,26 +19,6 @@ export class TransferToAgentTool extends BaseTool {
 	}
 
 	/**
-	 * Get the function declaration for the tool
-	 */
-	getDeclaration(): FunctionDeclaration {
-		return {
-			name: this.name,
-			description: this.description,
-			parameters: {
-				type: "object",
-				properties: {
-					agent_name: {
-						type: "string",
-						description: "Name of the agent to transfer to",
-					},
-				},
-				required: ["agent_name"],
-			},
-		};
-	}
-
-	/**
 	 * Execute the transfer to agent action
 	 */
 	async runAsync(
@@ -50,19 +28,6 @@ export class TransferToAgentTool extends BaseTool {
 		context: ToolContext,
 	): Promise<any> {
 		this.logger.debug(`Executing transfer to agent: ${args.agent_name}`);
-
-		// Set the transfer_to_agent flag with the agent name
-		if (context.actions) {
-			context.actions.transfer_to_agent = args.agent_name;
-		} else {
-			// Initialize the actions object if it doesn't exist
-			context.actions = {
-				transfer_to_agent: args.agent_name,
-			};
-		}
-
-		return {
-			message: `Transferred to agent: ${args.agent_name}`,
-		};
+		context.actions.transferToAgent = args.agent_name;
 	}
 }

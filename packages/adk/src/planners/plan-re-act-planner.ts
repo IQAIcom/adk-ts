@@ -1,7 +1,7 @@
+import type { Part } from "@google/genai";
 import type { CallbackContext } from "../agents/callback-context";
 import type { ReadonlyContext } from "../agents/readonly-context";
-import type { LLMRequest } from "../models/llm-request";
-import type { Part } from "../models/part";
+import type { LlmRequest } from "../models/llm-request";
 import { BasePlanner } from "./base-planner";
 
 // Planning tags used for structured responses
@@ -23,7 +23,7 @@ export class PlanReActPlanner extends BasePlanner {
 	 */
 	buildPlanningInstruction(
 		readonlyContext: ReadonlyContext,
-		llmRequest: LLMRequest,
+		llmRequest: LlmRequest,
 	): string {
 		return this._buildNlPlannerInstruction();
 	}
@@ -44,9 +44,9 @@ export class PlanReActPlanner extends BasePlanner {
 
 		for (let i = 0; i < responseParts.length; i++) {
 			// Stop at the first (group of) function calls
-			if (responseParts[i].function_call) {
+			if (responseParts[i].functionCall) {
 				// Ignore and filter out function calls with empty names
-				if (!responseParts[i].function_call?.name) {
+				if (!responseParts[i].functionCall?.name) {
 					continue;
 				}
 				preservedParts.push(responseParts[i]);
@@ -61,7 +61,7 @@ export class PlanReActPlanner extends BasePlanner {
 		if (firstFcPartIndex > 0) {
 			let j = firstFcPartIndex + 1;
 			while (j < responseParts.length) {
-				if (responseParts[j].function_call) {
+				if (responseParts[j].functionCall) {
 					preservedParts.push(responseParts[j]);
 					j++;
 				} else {

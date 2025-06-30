@@ -1,31 +1,21 @@
-import {
-	Agent,
-	GoogleLLM,
-	InMemoryRunner,
-	LLMRegistry,
-	type MessageRole,
-	RunConfig,
-	StreamingMode,
-} from "@iqai/adk";
-
+import { env } from "node:process";
+import { InMemoryRunner, LlmAgent, RunConfig, StreamingMode } from "@iqai/adk";
 import { v4 as uuidv4 } from "uuid";
-// Load environment variables from .env file if it exists
 
-// Register the Google LLM
-LLMRegistry.registerLLM(GoogleLLM);
+const APP_NAME = "RunnerDemo";
 
 // Initialize the agent with Google's Gemini model
-const agent = new Agent({
+const agent = new LlmAgent({
 	name: "runner_assistant",
-	model: "gemini-2.5-flash-preview-05-20", // This will use the LLMRegistry to get the right provider
+	model: env.LLM_MODEL || "gemini-2.5-flash", // This will use the LLMRegistry to get the right provider
 	description:
 		"A simple assistant demonstrating Runner usage with Google Gemini",
-	instructions:
+	instruction:
 		"You are a helpful assistant. Answer questions directly and accurately. When asked about the three laws of robotics, explain that they were created by Isaac Asimov and describe them in detail.",
 });
 
 // Create an in-memory runner with our agent
-const runner = new InMemoryRunner(agent, { appName: "RunnerDemo" });
+const runner = new InMemoryRunner(agent, { appName: APP_NAME });
 
 // Generate unique ID for user
 const userId = uuidv4();
@@ -35,7 +25,7 @@ async function runConversation() {
 
 	// Create a session using the InMemorySessionService from the runner
 	console.log("📝 Creating a new session...");
-	const session = await runner.sessionService.createSession(userId);
+	const session = await runner.sessionService.createSession(APP_NAME, userId);
 	const sessionId = session.id;
 
 	console.log(`🔑 Session ID: ${sessionId}`);
@@ -73,8 +63,11 @@ async function processMessage(messageContent: string, sessionId: string) {
 
 		// Create a new message
 		const newMessage = {
-			role: "user" as MessageRole,
-			content: messageContent,
+			parts: [
+				{
+					text: messageContent,
+				},
+			],
 		};
 
 		// Track streaming state
@@ -89,23 +82,28 @@ async function processMessage(messageContent: string, sessionId: string) {
 			runConfig,
 		})) {
 			// Skip events without content
-			if (!event.content) continue;
+			if (!event.content?.parts) continue;
 
 			// Only process assistant messages
-			if (event.author === "assistant") {
-				if (event.is_partial) {
+			if (event.author === agent.name) {
+				// Extract text content from parts
+				const textContent = event.content.parts
+					.map((part) => part.text || "")
+					.join("");
+
+				if (event.partial) {
 					// Handle streaming chunks
 					isStreaming = true;
-					process.stdout.write(event.content);
-					streamedContent += event.content;
+					process.stdout.write(textContent);
+					streamedContent += textContent;
 				} else {
 					// Handle complete response
 					if (!isStreaming) {
 						// If we haven't streamed anything yet, print the full response
-						console.log(event.content);
-					} else if (streamedContent.trim() !== event.content.trim()) {
+						console.log(textContent);
+					} else if (streamedContent.trim() !== textContent.trim()) {
 						// If the final content is different from what we've streamed, print it
-						console.log("\nFull response:", event.content);
+						console.log("\nFull response:", textContent);
 					} else {
 						// We've already streamed the content, just add a newline
 						console.log();

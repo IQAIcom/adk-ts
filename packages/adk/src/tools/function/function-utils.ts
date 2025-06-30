@@ -78,6 +78,7 @@ function extractParametersSchema(
 
 	// Extract JSDoc param annotations if available
 	const jsDocParams = extractJSDocParams(funcStr);
+	const jsDocTypes = extractJSDocTypes(funcStr);
 
 	// Build properties object
 	const properties: Record<string, JSONSchema> = {};
@@ -102,8 +103,10 @@ function extractParametersSchema(
 			// Check if parameter has a default value (optional)
 			isOptional = param.includes("=");
 
-			// Try to detect the parameter type
-			if (param.includes(":")) {
+			// Try to detect the parameter type from JSDoc first, then TypeScript annotations
+			if (jsDocTypes[paramName]) {
+				paramType = jsDocTypes[paramName];
+			} else if (param.includes(":")) {
 				const typeMatch = param.match(/:\s*(\w+)/);
 				if (typeMatch) {
 					paramType = mapTypescriptTypeToJsonSchemaType(typeMatch[1]);
@@ -194,4 +197,27 @@ function extractJSDocParams(funcStr: string): Record<string, string> {
 	}
 
 	return paramDocs;
+}
+
+/**
+ * Extracts JSDoc type annotations from function string
+ */
+function extractJSDocTypes(funcStr: string): Record<string, string> {
+	const typeDocs: Record<string, string> = {};
+
+	// Find all @param {type} annotations in JSDoc
+	const typeRegex = /@param\s+\{([^}]+)\}\s+(\w+)/gs;
+
+	let match: RegExpExecArray | null;
+	while (true) {
+		match = typeRegex.exec(funcStr);
+		if (!match) {
+			break;
+		}
+		const typeName = match[1].trim();
+		const paramName = match[2];
+		typeDocs[paramName] = mapTypescriptTypeToJsonSchemaType(typeName);
+	}
+
+	return typeDocs;
 }

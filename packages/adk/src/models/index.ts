@@ -12,12 +12,9 @@ export * from "./base-llm";
 export * from "./base-llm-connection";
 
 // LLM implementations
-export * from "./anthropic-llm";
-export * from "./anthropic-llm-connection";
 export * from "./google-llm";
-export * from "./lite-llm";
+export * from "./anthropic-llm";
 export * from "./openai-llm";
-export * from "./openai-llm-connection";
 
 // LLM registry
 export * from "./llm-registry";
@@ -25,9 +22,6 @@ export * from "./registry";
 
 // LLM configuration types
 export * from "./thinking-config";
-
-// Shared types
-export * from "./part";
 
 // Auth re-exports for backward compatibility
 export * from "../auth/auth-credential";

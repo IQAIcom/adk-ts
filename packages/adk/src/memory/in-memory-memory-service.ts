@@ -1,26 +1,42 @@
-import type { Message } from "../models/llm-request";
+import type { Event } from "../events/event";
 import type { Session } from "../sessions/session";
+import { formatTimestamp } from "./_utils";
 import type {
 	BaseMemoryService,
-	SearchMemoryOptions,
 	SearchMemoryResponse,
 } from "./base-memory-service";
+import type { MemoryEntry } from "./memory-entry";
 
 /**
- * An in-memory memory service for development and testing
- * Stores sessions and conversations in memory without persistence
+ * Creates a user key from app name and user ID
+ */
+function _userKey(appName: string, userId: string): string {
+	return `${appName}/${userId}`;
+}
+
+/**
+ * Extracts words from a string and converts them to lowercase
+ */
+function _extractWordsLower(text: string): Set<string> {
+	const words = text.match(/[A-Za-z]+/g) || [];
+	return new Set(words.map((word) => word.toLowerCase()));
+}
+
+/**
+ * An in-memory memory service for prototyping purpose only.
+ * Uses keyword matching instead of semantic search.
  */
 export class InMemoryMemoryService implements BaseMemoryService {
 	/**
-	 * Map of sessions by ID
+	 * Keys are app_name/user_id, session_id. Values are session event lists.
 	 */
-	private sessions: Map<string, Session>;
+	private _sessionEvents: Map<string, Map<string, Event[]>> = new Map();
 
 	/**
 	 * Constructor for InMemoryMemoryService
 	 */
 	constructor() {
-		this.sessions = new Map<string, Session>();
+		this._sessionEvents = new Map();
 	}
 
 	/**
@@ -28,132 +44,112 @@ export class InMemoryMemoryService implements BaseMemoryService {
 	 * @param session The session to add
 	 */
 	async addSessionToMemory(session: Session): Promise<void> {
-		this.sessions.set(session.id, { ...session });
+		const userKey = _userKey(session.appName, session.userId);
+
+		if (!this._sessionEvents.has(userKey)) {
+			this._sessionEvents.set(userKey, new Map());
+		}
+
+		const userSessions = this._sessionEvents.get(userKey)!;
+
+		// Filter events that have content and parts
+		const filteredEvents = session.events.filter(
+			(event) => event.content?.parts,
+		);
+
+		userSessions.set(session.id, filteredEvents);
 	}
 
 	/**
 	 * Searches memory for relevant information
-	 * @param query The search query
-	 * @param options Search options
+	 * @param options Search options containing app_name, user_id, and query
 	 * @returns Search results
 	 */
-	async searchMemory(
-		query: string,
-		options?: SearchMemoryOptions,
-	): Promise<SearchMemoryResponse> {
-		const response: SearchMemoryResponse = {
-			memories: [],
-		};
+	async searchMemory(options: {
+		appName: string;
+		userId: string;
+		query: string;
+	}): Promise<SearchMemoryResponse> {
+		const { appName, userId, query } = options;
+		const userKey = _userKey(appName, userId);
 
-		// Normalize query for search
-		const normalizedQuery = query.toLowerCase().trim();
-		const queryTerms = normalizedQuery.split(/\s+/);
+		if (!this._sessionEvents.has(userKey)) {
+			return { memories: [] };
+		}
 
-		// Filter by session ID if provided
-		const sessionsToSearch = options?.sessionId
-			? this.sessions.has(options.sessionId)
-				? [this.sessions.get(options.sessionId)!]
-				: []
-			: Array.from(this.sessions.values());
+		const wordsInQuery = new Set(query.toLowerCase().split(" "));
+		const response: SearchMemoryResponse = { memories: [] };
 
-		// Search each session
-		for (const session of sessionsToSearch) {
-			const matchedEvents: Message[] = [];
-			const scores: number[] = [];
+		const userSessions = this._sessionEvents.get(userKey)!;
 
-			// Check each message in the session
-			for (const message of session.messages) {
-				// Skip non-text content for now
-				let content = "";
-				if (typeof message.content === "string") {
-					content = message.content;
-				} else if (Array.isArray(message.content)) {
-					// Extract text from content array
-					for (const part of message.content) {
-						if (part.type === "text") {
-							content += `${part.text} `;
-						}
-					}
-				} else if (message.content && message.content.type === "text") {
-					content = message.content.text;
-				}
-
-				// Skip empty content
-				if (!content) continue;
-
-				// Calculate relevance score based on term matches
-				const normalizedContent = content.toLowerCase();
-				let termMatches = 0;
-
-				for (const term of queryTerms) {
-					if (normalizedContent.includes(term)) {
-						termMatches++;
-					}
-				}
-
-				const score =
-					queryTerms.length > 0 ? termMatches / queryTerms.length : 0;
-
-				// Apply threshold if provided
-				if (options?.threshold !== undefined && score < options.threshold) {
+		for (const sessionEvents of userSessions.values()) {
+			for (const event of sessionEvents) {
+				if (!event.content || !event.content.parts) {
 					continue;
 				}
 
-				// If the message is relevant, add it to matched events
-				if (score > 0) {
-					matchedEvents.push(message);
-					scores.push(score);
+				// Extract text from all parts that have text
+				const textParts = event.content.parts
+					.filter((part) => part.text)
+					.map((part) => part.text!)
+					.join(" ");
+
+				const wordsInEvent = _extractWordsLower(textParts);
+
+				if (wordsInEvent.size === 0) {
+					continue;
+				}
+
+				// Check if any query word is in the event words
+				const hasMatch = Array.from(wordsInQuery).some((queryWord) =>
+					wordsInEvent.has(queryWord),
+				);
+
+				if (hasMatch) {
+					const memoryEntry: MemoryEntry = {
+						content: event.content,
+						author: event.author,
+						timestamp: formatTimestamp(event.timestamp),
+					};
+
+					response.memories.push(memoryEntry);
 				}
 			}
-
-			// If there are matched events, add to results
-			if (matchedEvents.length > 0) {
-				// Calculate average relevance score
-				const avgScore =
-					scores.reduce((sum, score) => sum + score, 0) / scores.length;
-
-				response.memories.push({
-					sessionId: session.id,
-					events: matchedEvents,
-					relevanceScore: avgScore,
-				});
-			}
-		}
-
-		// Sort by relevance score (highest first)
-		response.memories.sort(
-			(a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0),
-		);
-
-		// Apply limit if provided
-		if (options?.limit !== undefined && options.limit > 0) {
-			response.memories = response.memories.slice(0, options.limit);
 		}
 
 		return response;
 	}
 
 	/**
-	 * Gets all sessions in the memory service
-	 * @returns All sessions
+	 * Gets all sessions in the memory service (for backward compatibility)
+	 * @returns All sessions - Note: This method may not be fully compatible with the new structure
 	 */
 	getAllSessions(): Session[] {
-		return Array.from(this.sessions.values());
+		// This method doesn't exist in Python version, keeping for backward compatibility
+		// but it won't work properly with the new structure
+		console.warn(
+			"getAllSessions() is deprecated and may not work correctly with the new memory structure",
+		);
+		return [];
 	}
 
 	/**
-	 * Gets a session by ID
+	 * Gets a session by ID (for backward compatibility)
 	 * @param sessionId The session ID
 	 * @returns The session or undefined if not found
 	 */
 	getSession(sessionId: string): Session | undefined {
-		return this.sessions.get(sessionId);
+		// This method doesn't exist in Python version, keeping for backward compatibility
+		console.warn(
+			"getSession() is deprecated and may not work correctly with the new memory structure",
+		);
+		return undefined;
 	}
 
 	/**
 	 * Clears all sessions from memory
 	 */
 	clear(): void {
-		this.sessions.clear();
+		this._sessionEvents.clear();
 	}
 }

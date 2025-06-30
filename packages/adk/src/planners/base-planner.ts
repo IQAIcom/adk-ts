@@ -1,7 +1,7 @@
+import type { Part } from "@google/genai";
 import type { CallbackContext } from "../agents/callback-context";
 import type { ReadonlyContext } from "../agents/readonly-context";
-import type { LLMRequest } from "../models/llm-request";
-import type { Part } from "../models/part";
+import type { LlmRequest } from "../models/llm-request";
 
 /**
  * Abstract base class for all planners.
@@ -18,7 +18,7 @@ export abstract class BasePlanner {
 	 */
 	abstract buildPlanningInstruction(
 		readonlyContext: ReadonlyContext,
-		llmRequest: LLMRequest,
+		llmRequest: LlmRequest,
 	): string | undefined;
 
 	/**

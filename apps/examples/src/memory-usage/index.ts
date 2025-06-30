@@ -1,220 +1,339 @@
-import * as path from "node:path";
+import { env } from "node:process";
 import {
-	Agent,
-	GoogleLLM,
+	InMemoryMemoryService,
 	InMemorySessionService,
-	LLMRegistry,
-	PersistentMemoryService,
-	type Session,
-	SessionState,
+	LlmAgent,
+	Runner,
 } from "@iqai/adk";
-
-// Register Google LLM
-LLMRegistry.registerLLM(GoogleLLM);
-// Load environment variables from .env file if it exists
+import { v4 as uuidv4 } from "uuid";
 
 /**
- * Maximum number of messages to keep in conversation history
+ * Application configuration constants
  */
-const MAX_MESSAGES = 6;
+const APP_NAME = "memory-demo";
+const USER_ID = uuidv4();
+const MAX_EVENTS = 12; // 6 pairs of user/assistant interactions
 
 /**
- * Persistent Memory Example
+ * Memory Usage Example
  *
- * Demonstrates file-based persistent memory across application restarts
+ * This example demonstrates how to integrate memory services with ADK agents
+ * to enable conversation context persistence and retrieval across interactions.
+ *
+ * The example:
+ * 1. Creates an agent with memory service integration
+ * 2. Builds conversation history with personal information
+ * 3. Demonstrates memory recall capabilities
+ * 4. Shows memory search functionality
+ * 5. Illustrates context persistence across interactions
+ *
+ * Expected Output:
+ * - Conversation building with information storage
+ * - Agent responses that reference previous conversation
+ * - Memory search results showing stored information
+ * - Context-aware responses based on conversation history
+ *
+ * Prerequisites:
+ * - Node.js environment
+ * - GOOGLE_API_KEY environment variable (optional if LLM_MODEL is set)
+ * - LLM_MODEL environment variable (optional, defaults to gemini-2.5-flash)
  */
-async function persistentMemoryExample() {
-	console.log("Persistent Memory Example");
-	console.log("=========================\n");
-	console.log(
-		"This example demonstrates persistent memory that survives application restarts",
-	);
-	console.log("- Each run continues the conversation from previous runs");
-	console.log("- Messages are saved to disk in the .memory directory\n");
 
-	// Check for API key
-	if (!process.env.GOOGLE_API_KEY) {
+/**
+ * Validates required environment configuration
+ * @returns True if configuration is valid, false otherwise
+ */
+function validateEnvironment(): boolean {
+	if (!env.GOOGLE_API_KEY && !env.LLM_MODEL) {
 		console.log(
 			"⚠️  Please set the GOOGLE_API_KEY environment variable to run this example",
 		);
 		console.log(
-			"   Example: GOOGLE_API_KEY=your-key-here npx ts-node examples/memory-usage/persistent-memory.ts",
+			"   Example: GOOGLE_API_KEY=your-key-here npm run dev src/memory-usage",
 		);
-		return;
+		return false;
 	}
-
-	// Create a persistent memory service
-	const memoryService = new PersistentMemoryService({
-		storageDir: path.join(__dirname, ".memory"),
-		createDir: true,
-		filePrefix: "memory",
-	});
-
-	// Use a consistent session ID across runs
-	const SESSION_ID = "persistent-demo-session";
-
-	// Load or create session
-	console.log("Loading saved conversation...");
-	let session = memoryService.getSession(SESSION_ID);
-
-	if (!session) {
-		// Create a new session
-		session = {
-			id: SESSION_ID,
-			userId: "user-123",
-			messages: [],
-			metadata: { created: new Date().toISOString() },
-			createdAt: new Date(),
-			updatedAt: new Date(),
-			state: new SessionState(),
-		};
-		console.log("No previous conversation found. Starting new conversation.");
-	} else {
-		console.log(
-			`Found existing conversation with ${session.messages.length} messages.`,
-		);
-
-		// Trim conversation if it's too long
-		if (session.messages.length > MAX_MESSAGES * 2) {
-			// Keep only the system message and most recent exchanges
-			const systemMessage = session.messages.find(
-				(msg) => msg.role === "system",
-			);
-			const recentMessages = session.messages
-				.filter((msg) => msg.role !== "system")
-				.slice(-MAX_MESSAGES);
-
-			session.messages = systemMessage
-				? [systemMessage, ...recentMessages]
-				: recentMessages;
-			console.log(
-				`Trimmed conversation to ${session.messages.length} messages.`,
-			);
-		}
-	}
-
-	// Create the agent with memory capability
-	const agent = new Agent({
-		name: "memory_assistant",
-		description: "An assistant with persistent memory using Google Gemini",
-		model: "gemini-2.5-flash-preview-05-20",
-		instructions:
-			"You are a helpful assistant with persistence. When the user refers to previous conversations, you can recall what was discussed.",
-		memoryService,
-		sessionService: new InMemorySessionService(),
-		userId: "user-123",
-	});
-
-	// Add a system message if this is a new conversation
-	if (session.messages.length === 0) {
-		session.messages.push({
-			role: "system",
-			content:
-				"You are a helpful assistant with persistent memory across conversations.",
-		});
-
-		// First message to start the conversation
-		await sendMessage(
-			session,
-			agent,
-			"Hello! This is my first time using this demo.",
-			memoryService,
-		);
-	} else {
-		// Display the last few messages
-		console.log("\nLast few messages from previous conversation:");
-		const lastMessages = session.messages
-			.filter((msg) => msg.role !== "system")
-			.slice(-3);
-
-		for (const msg of lastMessages) {
-			console.log(`${msg.role.toUpperCase()}: ${msg.content}`);
-		}
-
-		// Continue the conversation
-		await sendMessage(
-			session,
-			agent,
-			"Hello again! Can you remember what we talked about before?",
-			memoryService,
-		);
-	}
-
-	// Example questions to demo memory capabilities
-	await sendMessage(session, agent, "What's your purpose?", memoryService);
-	await sendMessage(
-		session,
-		agent,
-		"Can you remember what I said when I first greeted you?",
-		memoryService,
-	);
-	await sendMessage(
-		session,
-		agent,
-		"Tell me something about memory systems in AI.",
-		memoryService,
-	);
-
-	console.log("\n=========================");
-	console.log(
-		"Conversation saved to disk. Run this example again to continue the conversation.",
-	);
-	console.log(`Storage location: ${path.join(__dirname, ".memory")}`);
+	return true;
 }
 
 /**
- * Helper function to send a message and get a response
+ * Creates and configures the LLM agent with memory capabilities
+ * @returns Configured LlmAgent
+ */
+function createMemoryAgent(): LlmAgent {
+	return new LlmAgent({
+		name: "memory_assistant",
+		description: "An assistant with memory capabilities using Google Gemini",
+		model: env.LLM_MODEL || "gemini-2.5-flash",
+		instruction:
+			"You are a helpful assistant with memory. You can remember previous conversations " +
+			"and refer back to them when relevant. Be conversational and helpful. " +
+			"When asked about previous conversations, try to recall specific details mentioned earlier.",
+	});
+}
+
+/**
+ * Sends a message to the agent and handles the response
+ * @param runner The Runner instance for executing agent tasks
+ * @param sessionService Session service for conversation tracking
+ * @param memoryService Memory service for storing conversation context
+ * @param sessionId Current session identifier
+ * @param message User message to send
+ * @returns Agent's response string
  */
 async function sendMessage(
-	session: Session,
-	agent: Agent,
+	runner: Runner,
+	sessionService: InMemorySessionService,
+	memoryService: InMemoryMemoryService,
+	sessionId: string,
 	message: string,
-	memoryService: PersistentMemoryService,
-): Promise<void> {
-	console.log(`\nUSER: ${message}`);
+): Promise<string> {
+	console.log(`\n💬 USER: ${message}`);
+
+	const newMessage = {
+		parts: [{ text: message }],
+	};
+
+	let agentResponse = "";
 
 	try {
-		// Add user message to session
-		session.messages.push({ role: "user", content: message });
-
-		// Trim conversation to prevent context overflow
-		if (session.messages.length > MAX_MESSAGES + 1) {
-			// +1 for system message
-			const systemMessage = session.messages.find(
-				(msg) => msg.role === "system",
-			);
-			const recentMessages = session.messages
-				.filter((msg) => msg.role !== "system")
-				.slice(-MAX_MESSAGES);
-
-			session.messages = [];
-			if (systemMessage) session.messages.push(systemMessage);
-			session.messages.push(...recentMessages);
+		/**
+		 * Process the message through the agent
+		 * The runner handles memory integration automatically
+		 */
+		for await (const event of runner.runAsync({
+			userId: USER_ID,
+			sessionId,
+			newMessage,
+		})) {
+			if (event.author === "memory_assistant" && event.content?.parts) {
+				const content = event.content.parts
+					.map((part) => part.text || "")
+					.join("");
+				if (content) {
+					agentResponse += content;
+				}
+			}
 		}
 
-		// Get response from agent
-		const response = await agent.run({
-			messages: session.messages,
-			sessionId: session.id,
-		});
+		console.log(`🤖 ASSISTANT: ${agentResponse}`);
 
-		// Add response to session
-		session.messages.push({
-			role: "assistant",
-			content: response.content || "",
-		});
+		/**
+		 * Store current session in memory for future reference
+		 * Trim events if conversation gets too long
+		 */
+		const currentSession = await sessionService.getSession(
+			APP_NAME,
+			USER_ID,
+			sessionId,
+		);
+		if (currentSession) {
+			if (currentSession.events.length > MAX_EVENTS) {
+				currentSession.events = currentSession.events.slice(-MAX_EVENTS);
+			}
 
-		// Save session to disk
-		await memoryService.addSessionToMemory(session);
+			await memoryService.addSessionToMemory(currentSession);
+		}
 
-		console.log(`ASSISTANT: ${response.content}`);
-	} catch (error: any) {
-		console.error("Error:", error.message || String(error));
-		console.log("ASSISTANT: Sorry, I had trouble processing that request.");
+		return agentResponse;
+	} catch (error) {
+		const errorMsg = `Error: ${error instanceof Error ? error.message : String(error)}`;
+		console.error(errorMsg);
+		console.log("🤖 ASSISTANT: Sorry, I had trouble processing that request.");
+		return errorMsg;
 	}
 }
 
-// Run the example
-persistentMemoryExample().catch((error) => {
-	console.error("Error:", error);
+/**
+ * Builds initial conversation history with personal information
+ * @param runner The Runner instance for executing agent tasks
+ * @param sessionService Session service for conversation tracking
+ * @param memoryService Memory service for storing conversation context
+ * @param sessionId Current session identifier
+ */
+async function buildConversationHistory(
+	runner: Runner,
+	sessionService: InMemorySessionService,
+	memoryService: InMemoryMemoryService,
+	sessionId: string,
+): Promise<void> {
+	console.log("📚 Building conversation history...");
+
+	await sendMessage(
+		runner,
+		sessionService,
+		memoryService,
+		sessionId,
+		"Hello! My name is Alice and I'm a software engineer.",
+	);
+
+	await sendMessage(
+		runner,
+		sessionService,
+		memoryService,
+		sessionId,
+		"I'm working on a TypeScript project using React.",
+	);
+
+	await sendMessage(
+		runner,
+		sessionService,
+		memoryService,
+		sessionId,
+		"What's your purpose and how can you help me?",
+	);
+}
+
+/**
+ * Demonstrates memory recall capabilities
+ * @param runner The Runner instance for executing agent tasks
+ * @param sessionService Session service for conversation tracking
+ * @param memoryService Memory service for storing conversation context
+ * @param sessionId Current session identifier
+ */
+async function demonstrateMemoryRecall(
+	runner: Runner,
+	sessionService: InMemorySessionService,
+	memoryService: InMemoryMemoryService,
+	sessionId: string,
+): Promise<void> {
+	console.log(`\n${"=".repeat(50)}`);
+	console.log("🧠 DEMONSTRATING MEMORY RECALL");
+	console.log("=".repeat(50));
+
+	await sendMessage(
+		runner,
+		sessionService,
+		memoryService,
+		sessionId,
+		"Can you remember my name and what I do for work?",
+	);
+
+	await sendMessage(
+		runner,
+		sessionService,
+		memoryService,
+		sessionId,
+		"What programming language did I mention I was using?",
+	);
+
+	await sendMessage(
+		runner,
+		sessionService,
+		memoryService,
+		sessionId,
+		"Can you summarize what we've talked about so far?",
+	);
+}
+
+/**
+ * Demonstrates memory search functionality
+ * @param memoryService Memory service for searching stored conversations
+ */
+async function demonstrateMemorySearch(
+	memoryService: InMemoryMemoryService,
+): Promise<void> {
+	console.log(`\n${"=".repeat(50)}`);
+	console.log("🔍 TESTING MEMORY SEARCH");
+	console.log("=".repeat(50));
+
+	/**
+	 * Search memory directly to show what's stored
+	 * This demonstrates the underlying memory search capabilities
+	 */
+	const memoryResults = await memoryService.searchMemory({
+		appName: APP_NAME,
+		userId: USER_ID,
+		query: "TypeScript React software engineer",
+	});
+
+	console.log(
+		`\n📊 Memory search results for "TypeScript React software engineer":`,
+	);
+	console.log(`Found ${memoryResults.memories.length} relevant memories:`);
+
+	for (const memory of memoryResults.memories) {
+		console.log(`- Author: ${memory.author}, Time: ${memory.timestamp}`);
+		if (memory.content?.parts) {
+			const text = memory.content.parts
+				.map((part) => part.text || "")
+				.join("")
+				.substring(0, 100);
+			console.log(`  Content: ${text}${text.length >= 100 ? "..." : ""}`);
+		}
+	}
+}
+
+async function main() {
+	console.log("🧠 Starting Memory Usage example...");
+
+	/**
+	 * Validate environment configuration
+	 * Ensure required API keys are available
+	 */
+	if (!validateEnvironment()) {
+		process.exit(1);
+	}
+
+	try {
+		/**
+		 * Set up memory and session services
+		 * Memory service stores conversation context for future retrieval
+		 */
+		const memoryService = new InMemoryMemoryService();
+		const sessionService = new InMemorySessionService();
+		const session = await sessionService.createSession(APP_NAME, USER_ID);
+
+		console.log(`📋 Created session: ${session.id}`);
+
+		/**
+		 * Create agent with memory capabilities
+		 * The agent can reference previous conversations
+		 */
+		const agent = createMemoryAgent();
+
+		/**
+		 * Set up runner with memory service integration
+		 * The runner coordinates memory storage and retrieval
+		 */
+		const runner = new Runner({
+			appName: APP_NAME,
+			agent,
+			sessionService,
+			memoryService,
+		});
+
+		/**
+		 * Run comprehensive memory demonstrations
+		 * Shows conversation building, recall, and search capabilities
+		 */
+		await buildConversationHistory(
+			runner,
+			sessionService,
+			memoryService,
+			session.id,
+		);
+
+		await demonstrateMemoryRecall(
+			runner,
+			sessionService,
+			memoryService,
+			session.id,
+		);
+
+		await demonstrateMemorySearch(memoryService);
+
+		console.log("\n✅ Memory usage example completed!");
+	} catch (error) {
+		console.error("❌ Error in memory usage example:", error);
+		process.exit(1);
+	}
+}
+
+/**
+ * Execute the main function and handle any errors
+ */
+main().catch((error) => {
+	console.error("💥 Fatal error:", error);
+	process.exit(1);
 });

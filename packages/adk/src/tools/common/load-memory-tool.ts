@@ -2,7 +2,6 @@ import { Logger } from "@adk/helpers/logger";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
-import "../tool-context-extensions";
 
 /**
  * Tool that allows an agent to load memories relevant to a query
@@ -50,14 +49,6 @@ export class LoadMemoryTool extends BaseTool {
 		context: ToolContext,
 	): Promise<any> {
 		this.logger.debug(`Executing load_memory with query: ${args.query}`);
-
-		// Check if memory service is available
-		if (!context.memoryService) {
-			return {
-				error: "Memory service is not available",
-				message: "The memory service has not been configured for this agent.",
-			};
-		}
 
 		try {
 			// Search memory using the provided query

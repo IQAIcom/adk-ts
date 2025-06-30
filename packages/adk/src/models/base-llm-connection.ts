@@ -1,53 +1,54 @@
-import type { LLMResponse } from "./llm-response";
+import type { Blob, Content } from "@google/genai";
+import type { LlmResponse } from "./llm-response";
+
+// Re-export types for convenience
+export type { Blob, Content };
 
 /**
- * Base class for LLM connections
+ * The base class for a live model connection.
  */
 export abstract class BaseLLMConnection {
 	/**
-	 * Whether the connection is active
-	 */
-	private _isActive = true;
-
-	/**
-	 * Gets whether the connection is active
-	 */
-	get isActive(): boolean {
-		return this._isActive;
-	}
-
-	/**
-	 * Sends a message to the LLM
+	 * Sends the conversation history to the model.
 	 *
-	 * @param message The message to send
-	 */
-	abstract send(message: string): void;
-
-	/**
-	 * Handles responses from the LLM
+	 * You call this method right after setting up the model connection.
+	 * The model will respond if the last content is from user, otherwise it will
+	 * wait for new user input before responding.
 	 *
-	 * @param callback The callback to handle responses
+	 * @param history The conversation history to send to the model.
 	 */
-	abstract onResponse(callback: (response: LLMResponse) => void): void;
+	abstract sendHistory(history: Content[]): Promise<void>;
 
 	/**
-	 * Handles errors from the LLM
+	 * Sends a user content to the model.
 	 *
-	 * @param callback The callback to handle errors
-	 */
-	abstract onError(callback: (error: Error) => void): void;
-
-	/**
-	 * Handles the end of the connection
+	 * The model will respond immediately upon receiving the content.
+	 * If you send function responses, all parts in the content should be function
+	 * responses.
 	 *
-	 * @param callback The callback to handle the end
+	 * @param content The content to send to the model.
 	 */
-	abstract onEnd(callback: () => void): void;
+	abstract sendContent(content: Content): Promise<void>;
 
 	/**
-	 * Closes the connection
+	 * Sends a chunk of audio or a frame of video to the model in realtime.
+	 *
+	 * The model may not respond immediately upon receiving the blob. It will do
+	 * voice activity detection and decide when to respond.
+	 *
+	 * @param blob The blob to send to the model.
 	 */
-	close(): void {
-		this._isActive = false;
-	}
+	abstract sendRealtime(blob: Blob): Promise<void>;
+
+	/**
+	 * Receives the model response using the llm server connection.
+	 *
+	 * @returns LlmResponse: The model response.
+	 */
+	abstract receive(): AsyncGenerator<LlmResponse, void, unknown>;
+
+	/**
+	 * Closes the llm server connection.
+	 */
+	abstract close(): Promise<void>;
 }

@@ -1,8 +1,7 @@
-import { Logger } from "@adk/helpers/logger";
-import type { Message } from "../models/llm-request";
-import type { LLMResponse } from "../models/llm-response";
+import type { Event } from "../events/event";
 import { BaseAgent } from "./base-agent";
-import type { RunConfig } from "./run-config";
+import type { InvocationContext } from "./invocation-context";
+import { LlmAgent } from "./llm-agent";
 
 /**
  * Configuration for SequentialAgent
@@ -21,23 +20,13 @@ export interface SequentialAgentConfig {
 	/**
 	 * Sub-agents to execute in sequence
 	 */
-	agents?: BaseAgent[];
+	subAgents?: BaseAgent[];
 }
 
 /**
- * Extended LLMResponse interface that includes metadata
- */
-interface EnhancedLLMResponse extends LLMResponse {
-	metadata?: Record<string, any>;
-}
-
-/**
- * Sequential Agent that executes sub-agents in sequence
- * Each sub-agent's output becomes input to the next agent
+ * A shell agent that runs its sub-agents in sequence.
  */
 export class SequentialAgent extends BaseAgent {
-	private logger = new Logger({ name: "SequentialAgent" });
-
 	/**
 	 * Constructor for SequentialAgent
 	 */
@@ -45,195 +34,65 @@ export class SequentialAgent extends BaseAgent {
 		super({
 			name: config.name,
 			description: config.description,
+			subAgents: config.subAgents,
 		});
+	}
 
-		// Add sub-agents if provided
-		if (config.agents && config.agents.length > 0) {
-			for (const agent of config.agents) {
-				this.addSubAgent(agent);
+	/**
+	 * Core logic to run this agent via text-based conversation
+	 */
+	protected async *runAsyncImpl(
+		ctx: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		for (const subAgent of this.subAgents) {
+			for await (const event of subAgent.runAsync(ctx)) {
+				yield event;
 			}
 		}
 	}
 
 	/**
-	 * Runs the agent with the given messages and configuration
-	 * Executes sub-agents sequentially, passing output from one to the next
+	 * Core logic to run this agent via video/audio-based conversation
+	 *
+	 * Compared to the non-live case, live agents process a continuous stream of audio
+	 * or video, so there is no way to tell if it's finished and should pass
+	 * to the next agent or not. So we introduce a task_completed() function so the
+	 * model can call this function to signal that it's finished the task and we
+	 * can move on to the next agent.
 	 */
-	async runImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-	}): Promise<EnhancedLLMResponse> {
-		this.logger.debug(
-			`Running ${this.subAgents.length} sub-agents in sequence`,
-		);
+	protected async *runLiveImpl(
+		ctx: InvocationContext,
+	): AsyncGenerator<Event, void, unknown> {
+		// There is no way to know if it's using live during init phase so we have to init it here
+		for (const subAgent of this.subAgents) {
+			// add tool
+			function taskCompleted(): string {
+				/**
+				 * Signals that the model has successfully completed the user's question
+				 * or task.
+				 */
+				return "Task completion signaled.";
+			}
 
-		if (this.subAgents.length === 0) {
-			return {
-				content: "No sub-agents defined for sequential execution.",
-				role: "assistant",
-				metadata: {
-					agent_name: this.name,
-					agent_type: "sequential",
-					status: "empty",
-				},
-			};
-		}
+			if (subAgent instanceof LlmAgent) {
+				// Use function name to dedupe.
+				const toolNames = subAgent.tools.map((tool) =>
+					typeof tool === "function" ? tool.name : tool.name,
+				);
 
-		const currentMessages = [...options.messages];
-		let finalResponse: EnhancedLLMResponse | null = null;
-
-		// Execute agents in sequence
-		for (let i = 0; i < this.subAgents.length; i++) {
-			const agent = this.subAgents[i];
-
-			this.logger.debug(
-				`Running sub-agent ${i + 1}/${this.subAgents.length}: ${agent.name}`,
-			);
-
-			try {
-				// Run the current agent with the messages
-				const response = (await agent.run({
-					messages: currentMessages,
-					config: options.config,
-				})) as EnhancedLLMResponse;
-
-				// Store response
-				finalResponse = response;
-
-				// Prepare input for the next agent by adding the response as a message
-				if (i < this.subAgents.length - 1) {
-					currentMessages.push({
-						role: "assistant",
-						content: response.content || "",
-						function_call: response.function_call,
-					});
+				if (!toolNames.includes(taskCompleted.name)) {
+					subAgent.tools.push(taskCompleted);
+					subAgent.instruction += `If you finished the user's request
+according to its description, call the ${taskCompleted.name} function
+to exit so the next agents can take over. When calling this function,
+do not generate any text other than the function call.`;
 				}
-			} catch (error) {
-				console.error(`Error in sub-agent ${agent.name}:`, error);
-				return {
-					content: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
-					metadata: {
-						agent_name: this.name,
-						agent_type: "sequential",
-						error: true,
-						sub_agent: agent.name,
-					},
-				};
 			}
 		}
 
-		// Return the final response with metadata
-		if (!finalResponse) {
-			return {
-				content: "No response generated from sequential execution.",
-				role: "assistant",
-				metadata: {
-					agent_name: this.name,
-					agent_type: "sequential",
-					status: "no_response",
-				},
-			};
-		}
-
-		// Add metadata about the sequential execution
-		return {
-			...finalResponse,
-			metadata: {
-				...(finalResponse.metadata || {}),
-				agent_name: this.name,
-				agent_type: "sequential",
-			},
-		};
-	}
-
-	/**
-	 * Runs the agent with streaming support
-	 * Streams responses from each sub-agent in sequence
-	 */
-	async *runStreamingImpl(options: {
-		messages: Message[];
-		config?: RunConfig;
-	}): AsyncIterable<EnhancedLLMResponse> {
-		this.logger.debug(
-			`Streaming ${this.subAgents.length} sub-agents in sequence`,
-		);
-
-		if (this.subAgents.length === 0) {
-			yield {
-				content: "No sub-agents defined for sequential execution.",
-				role: "assistant",
-				metadata: {
-					agent_name: this.name,
-					agent_type: "sequential",
-					status: "empty",
-				},
-			};
-			return;
-		}
-
-		const currentMessages = [...options.messages];
-
-		// Execute agents in sequence with streaming
-		for (let i = 0; i < this.subAgents.length; i++) {
-			const agent = this.subAgents[i];
-
-			this.logger.debug(
-				`Streaming sub-agent ${i + 1}/${this.subAgents.length}: ${agent.name}`,
-			);
-
-			try {
-				// Run the current agent with streaming
-				const streamGenerator = agent.runStreaming({
-					messages: currentMessages,
-					config: options.config,
-				});
-
-				// Collect all chunks to build the complete response for the next agent
-				const chunks: EnhancedLLMResponse[] = [];
-				let lastChunk: EnhancedLLMResponse | null = null;
-
-				// Stream each chunk from the current agent
-				for await (const chunk of streamGenerator) {
-					// Add metadata about the sequential execution
-					const enhancedChunk = {
-						...chunk,
-						metadata: {
-							...((chunk as EnhancedLLMResponse).metadata || {}),
-							agent_name: this.name,
-							agent_type: "sequential",
-							sub_agent: agent.name,
-							sub_agent_index: i,
-							sub_agent_count: this.subAgents.length,
-						},
-					} as EnhancedLLMResponse;
-
-					yield enhancedChunk;
-					chunks.push(chunk as EnhancedLLMResponse);
-					lastChunk = chunk as EnhancedLLMResponse;
-				}
-
-				// Prepare input for the next agent
-				if (i < this.subAgents.length - 1 && lastChunk) {
-					currentMessages.push({
-						role: "assistant",
-						content: lastChunk.content || "",
-						function_call: lastChunk.function_call,
-					});
-				}
-			} catch (error) {
-				console.error(`Error in streaming sub-agent ${agent.name}:`, error);
-				yield {
-					content: `Error in sub-agent ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
-					role: "assistant",
-					metadata: {
-						agent_name: this.name,
-						agent_type: "sequential",
-						error: true,
-						sub_agent: agent.name,
-					},
-				};
-				return;
+		for (const subAgent of this.subAgents) {
+			for await (const event of subAgent.runLive(ctx)) {
+				yield event;
 			}
 		}
 	}

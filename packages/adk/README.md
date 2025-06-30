@@ -68,7 +68,7 @@ dotenv.config();
 // Instantiate the agent
 const myAgent = new Agent({
   name: "simple_query_assistant",
-  model: "gemini-2.5-flash-preview-05-20", // Or "gpt-4-turbo", "claude-3-opus"
+  model: "gemini-2.5-flash", // Or "gpt-4-turbo", "claude-3-opus"
   description: "A basic assistant to answer questions.",
   instructions: "You are a helpful AI. Respond clearly and concisely."
 });
