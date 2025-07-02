@@ -13,6 +13,7 @@
 		"@iqai/adk": "workspace:*",
 		"@modelcontextprotocol/sdk": "^1.11.1",
 		"dedent": "^1.6.0",
+		"@google/genai": "^1.6.0",
 		"dotenv": "^16.5.0",
 		"fastmcp": "^3.8.2",
 		"uuid": "^11.1.0",

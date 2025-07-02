@@ -1,15 +1,29 @@
+import type { Content, Part } from "@google/genai";
 import type { InvocationContext } from "../../agents/invocation-context";
-import type { Event } from "../../events/event";
 import type { LlmRequest } from "../../models/llm-request";
 import type { LlmResponse } from "../../models/llm-response";
 import {
 	BaseLlmRequestProcessor,
 	BaseLlmResponseProcessor,
 } from "./base-llm-processor";
+import { CodeExecutorContext } from "../../code-executors/code-executor-context";
+import {
+	CodeExecutionUtils,
+	type File,
+	type CodeExecutionInput,
+	type CodeExecutionResult,
+} from "../../code-executors/code-execution-utils";
+import { BaseCodeExecutor } from "../../code-executors/base-code-executor";
+import { BuiltInCodeExecutor } from "../../code-executors/built-in-code-executor";
+import { EventActions } from "../../events/event-actions";
+import { Event } from "../../events/event";
+import { Logger } from "@adk/helpers/logger";
+import { LlmAgent } from "@adk/agents";
+
+const logger = new Logger({ name: "CodeExecutionProcessor" });
 
 /**
  * Data file utility structure for code execution
- * TODO: Expand this when code-executors module is ready
  */
 interface DataFileUtil {
 	extension: string;
@@ -18,7 +32,6 @@ interface DataFileUtil {
 
 /**
  * Map of MIME types to data file utilities
- * TODO: Populate this when code execution is fully implemented
  */
 const DATA_FILE_UTIL_MAP: Record<string, DataFileUtil> = {
 	"text/csv": {
@@ -29,41 +42,41 @@ const DATA_FILE_UTIL_MAP: Record<string, DataFileUtil> = {
 
 /**
  * Helper library code for data file exploration (Python code)
- * TODO: This will be used by code executors when implemented
  */
-const DATA_FILE_HELPER_LIB = `import pandas as pd
+const DATA_FILE_HELPER_LIB = `
+import pandas as pd
 
 def explore_df(df: pd.DataFrame) -> None:
-    """Prints some information about a pandas DataFrame."""
+  """Prints some information about a pandas DataFrame."""
 
-    with pd.option_context(
-        'display.max_columns', None, 'display.expand_frame_repr', False
-    ):
-        # Print the column names to never encounter KeyError when selecting one.
-        df_dtypes = df.dtypes
+  with pd.option_context(
+      'display.max_columns', None, 'display.expand_frame_repr', False
+  ):
+    # Print the column names to never encounter KeyError when selecting one.
+    df_dtypes = df.dtypes
 
-        # Obtain information about data types and missing values.
-        df_nulls = (len(df) - df.isnull().sum()).apply(
-            lambda x: f'{x} / {df.shape[0]} non-null'
-        )
+    # Obtain information about data types and missing values.
+    df_nulls = (len(df) - df.isnull().sum()).apply(
+        lambda x: f'{x} / {df.shape[0]} non-null'
+    )
 
-        # Explore unique total values in columns using .unique().
-        df_unique_count = df.apply(lambda x: len(x.unique()))
+    # Explore unique total values in columns using \`.unique()\`.
+    df_unique_count = df.apply(lambda x: len(x.unique()))
 
-        # Explore unique values in columns using .unique().
-        df_unique = df.apply(lambda x: crop(str(list(x.unique()))))
+    # Explore unique values in columns using \`.unique()\`.
+    df_unique = df.apply(lambda x: crop(str(list(x.unique()))))
 
-        df_info = pd.concat(
-            (
-                df_dtypes.rename('Dtype'),
-                df_nulls.rename('Non-Null Count'),
-                df_unique_count.rename('Unique Values Count'),
-                df_unique.rename('Unique Values'),
-            ),
-            axis=1,
-        )
-        df_info.index.name = 'Columns'
-        print(f"""Total rows: {df.shape[0]}
+    df_info = pd.concat(
+        (
+            df_dtypes.rename('Dtype'),
+            df_nulls.rename('Non-Null Count'),
+            df_unique_count.rename('Unique Values Count'),
+            df_unique.rename('Unique Values'),
+        ),
+        axis=1,
+    )
+    df_info.index.name = 'Columns'
+    print(f"""Total rows: {df.shape[0]}
 Total columns: {df.shape[1]}
 
 {df_info}""")
@@ -74,75 +87,56 @@ def crop(text: str, max_length: int = 100) -> str:
 `;
 
 /**
+ * Helper function to check if agent has code executor
+ */
+function hasCodeExecutor(agent: any): agent is {
+	codeExecutor?: BaseCodeExecutor;
+	name: string;
+} {
+	return agent && typeof agent === "object" && "codeExecutor" in agent;
+}
+
+/**
  * Request processor for code execution
- * This is a placeholder implementation that will be enhanced when code-executors are ready
  */
 class CodeExecutionRequestProcessor extends BaseLlmRequestProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
 		llmRequest: LlmRequest,
 	): AsyncGenerator<Event> {
+		// Use type assertion to access codeExecutor
 		const agent = invocationContext.agent;
 
-		// Check if agent has code executor capability (duck typing)
-		if (!("codeExecutor" in agent) || !agent.codeExecutor) {
+		// Check if agent has code executor capability
+		if (!hasCodeExecutor(agent)) {
 			return;
 		}
 
-		console.log(
-			"Code execution request processing - TODO: Implement when code-executors module is ready",
-		);
-
-		// TODO: When code-executors are ready, implement:
-		// 1. Run pre-processor logic
-		// 2. Extract and replace inline files
-		// 3. Optimize data files if enabled
-		// 4. Convert code execution parts to text parts
-		// 5. Add data file preprocessing code
-
-		// Placeholder: For now, just pass through without processing
-		// await this.runPreProcessor(invocationContext, llmRequest);
-
-		// This will be expanded to handle:
-		// - BaseCodeExecutor integration
-		// - BuiltInCodeExecutor processing
-		// - Code block delimiter handling
-		// - Execution result delimiter handling
-		// - Data file optimization
-		// - Error retry logic
-
-		// This processor doesn't yield any events, just configures the request
-		// Empty async generator - no events to yield
-		for await (const _ of []) {
-			yield _;
+		// Use instanceof for type-safe check
+		if (!(agent instanceof LlmAgent) || !agent.codeExecutor) {
+			return;
 		}
-	}
 
-	/**
-	 * Placeholder for pre-processor logic
-	 * TODO: Implement when code-executors are ready
-	 */
-	private async *runPreProcessor(
-		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
-	): AsyncGenerator<Event> {
-		// TODO: Implement pre-processing logic:
-		// - Extract data files from session history
-		// - Store files in memory
-		// - Mutate inline data files to text parts
-		// - Add data file helper library
-		// - Handle code executor context
-		console.log("Code execution pre-processor - placeholder");
-		// Empty async generator - no events to yield
-		for await (const _ of []) {
-			yield _;
+		// Run preprocessing
+		yield* runPreProcessor(invocationContext, llmRequest);
+
+		// Convert code execution parts to text parts
+		if (!(agent.codeExecutor instanceof BaseCodeExecutor)) {
+			return;
+		}
+
+		for (const content of llmRequest.contents || []) {
+			CodeExecutionUtils.convertCodeExecutionParts(
+				content,
+				agent.codeExecutor.codeBlockDelimiters[0] || ["", ""],
+				agent.codeExecutor.executionResultDelimiters,
+			);
 		}
 	}
 }
 
 /**
  * Response processor for code execution
- * This is a placeholder implementation that will be enhanced when code-executors are ready
  */
 class CodeExecutionResponseProcessor extends BaseLlmResponseProcessor {
 	async *runAsync(
@@ -154,143 +148,393 @@ class CodeExecutionResponseProcessor extends BaseLlmResponseProcessor {
 			return;
 		}
 
-		const agent = invocationContext.agent;
-
-		// Check if agent has code executor capability
-		if (!("codeExecutor" in agent) || !agent.codeExecutor) {
-			return;
-		}
-
-		console.log(
-			"Code execution response processing - TODO: Implement when code-executors module is ready",
-		);
-
-		// TODO: When code-executors are ready, implement:
-		// 1. Extract code from model response
-		// 2. Execute code using code executor
-		// 3. Handle execution results and errors
-		// 4. Generate execution result events
-		// 5. Update code executor context
-		// 6. Handle output files and artifacts
-
-		// Placeholder: For now, just pass through without processing
-		// await this.runPostProcessor(invocationContext, llmResponse);
-
-		// This will be expanded to handle:
-		// - Code extraction and content truncation
-		// - Code execution with proper input/output handling
-		// - Error retry logic and counting
-		// - Artifact service integration
-		// - State delta management
-		// - File processing and optimization
-
-		// This processor doesn't yield any events, just configures the request
-		// Empty async generator - no events to yield
-		for await (const _ of []) {
-			yield _;
-		}
-	}
-
-	/**
-	 * Placeholder for post-processor logic
-	 * TODO: Implement when code-executors are ready
-	 */
-	private async *runPostProcessor(
-		invocationContext: InvocationContext,
-		llmResponse: LlmResponse,
-	): AsyncGenerator<Event> {
-		// TODO: Implement post-processing logic:
-		// - Extract code from response and truncate content
-		// - Execute code using code executor
-		// - Generate code execution events
-		// - Handle execution results, stdout, stderr
-		// - Process output files and artifacts
-		// - Update session state with execution context
-		// - Handle error retry logic
-		console.log("Code execution post-processor - placeholder");
-		// Empty async generator - no events to yield
-		for await (const _ of []) {
-			yield _;
-		}
+		yield* runPostProcessor(invocationContext, llmResponse);
 	}
 }
 
 /**
- * Placeholder utility functions for code execution
- * TODO: These will be implemented when code-executors module is ready
+ * Pre-process the user message by adding data file processing
  */
-class CodeExecutionUtils {
-	/**
-	 * Extracts and replaces inline files with file names in the LLM request
-	 * TODO: Implement when File and CodeExecutorContext are available
-	 */
-	static extractAndReplaceInlineFiles(llmRequest: LlmRequest): any[] {
-		console.log(
-			"CodeExecutionUtils.extractAndReplaceInlineFiles - placeholder",
+async function* runPreProcessor(
+	invocationContext: InvocationContext,
+	llmRequest: LlmRequest,
+): AsyncGenerator<Event> {
+	const agent = invocationContext.agent as any; // Type assertion for codeExecutor
+
+	if (!hasCodeExecutor(agent)) {
+		return;
+	}
+
+	const codeExecutor = agent.codeExecutor as BaseCodeExecutor;
+
+	if (!codeExecutor || !(codeExecutor instanceof BaseCodeExecutor)) {
+		return;
+	}
+
+	// Handle BuiltInCodeExecutor specially
+	if (codeExecutor instanceof BuiltInCodeExecutor) {
+		codeExecutor.processLlmRequest(llmRequest);
+		return;
+	}
+
+	// Skip if data file optimization is disabled
+	if (!codeExecutor.optimizeDataFile) {
+		return;
+	}
+
+	const codeExecutorContext = new CodeExecutorContext(
+		invocationContext.session.state as any, // Type assertion for State compatibility
+	);
+
+	// Skip if error count exceeds max retry attempts
+	if (
+		codeExecutorContext.getErrorCount(invocationContext.invocationId) >=
+		codeExecutor.errorRetryAttempts
+	) {
+		return;
+	}
+
+	// [Step 1] Extract data files from the session history and store them in memory
+	const allInputFiles = extractAndReplaceInlineFiles(
+		codeExecutorContext,
+		llmRequest,
+	);
+
+	// [Step 2] Run explore_df code on new data files
+	const processedFileNames = new Set(
+		codeExecutorContext.getProcessedFileNames(),
+	);
+	const filesToProcess = allInputFiles.filter(
+		(f) => !processedFileNames.has(f.name),
+	);
+
+	for (const file of filesToProcess) {
+		const codeStr = getDataFilePreprocessingCode(file);
+		if (!codeStr) {
+			continue;
+		}
+
+		// Emit the code to execute and add it to the LLM request
+		const codeContent: Content = {
+			role: "model",
+			parts: [
+				{ text: `Processing input file: \`${file.name}\`` },
+				CodeExecutionUtils.buildExecutableCodePart(codeStr),
+			],
+		};
+
+		llmRequest.contents = llmRequest.contents || [];
+		llmRequest.contents.push(structuredClone(codeContent));
+
+		yield new Event({
+			invocationId: invocationContext.invocationId,
+			author: agent.name,
+			branch: invocationContext.branch,
+			content: codeContent,
+		});
+
+		// Execute the code
+		const codeExecutionResult = await codeExecutor.executeCode(
+			invocationContext,
+			{
+				code: codeStr,
+				inputFiles: [file],
+				executionId: getOrSetExecutionId(
+					invocationContext,
+					codeExecutorContext,
+				),
+			},
 		);
-		return [];
-	}
 
-	/**
-	 * Extracts code from response and truncates content
-	 * TODO: Implement when code execution utilities are ready
-	 */
-	static extractCodeAndTruncateContent(
-		content: any,
-		delimiters: any,
-	): string | null {
-		console.log(
-			"CodeExecutionUtils.extractCodeAndTruncateContent - placeholder",
+		// Update processing results
+		codeExecutorContext.updateCodeExecutionResult(
+			invocationContext.invocationId,
+			codeStr,
+			codeExecutionResult.stdout,
+			codeExecutionResult.stderr,
 		);
-		return null;
-	}
+		codeExecutorContext.addProcessedFileNames([file.name]);
 
-	/**
-	 * Converts code execution parts to text parts
-	 * TODO: Implement when code execution utilities are ready
-	 */
-	static convertCodeExecutionParts(
-		content: any,
-		blockDelimiters: any,
-		resultDelimiters: any,
-	): void {
-		console.log("CodeExecutionUtils.convertCodeExecutionParts - placeholder");
-	}
-
-	/**
-	 * Builds code execution result part
-	 * TODO: Implement when CodeExecutionResult is available
-	 */
-	static buildCodeExecutionResultPart(result: any): any {
-		console.log(
-			"CodeExecutionUtils.buildCodeExecutionResultPart - placeholder",
+		// Emit execution result
+		const executionResultEvent = await postProcessCodeExecutionResult(
+			invocationContext,
+			codeExecutorContext,
+			codeExecutionResult,
 		);
-		return { text: "Code execution result placeholder" };
-	}
-
-	/**
-	 * Gets encoded file content
-	 * TODO: Implement when file utilities are ready
-	 */
-	static getEncodedFileContent(data: any): any {
-		console.log("CodeExecutionUtils.getEncodedFileContent - placeholder");
-		return { decode: () => "placeholder content" };
+		yield executionResultEvent;
+		llmRequest.contents.push(structuredClone(executionResultEvent.content!));
 	}
 }
 
 /**
- * Exported request processor instance for use in flow configurations
- * Ready to be connected when code-executors module is implemented
+ * Post-process the model response by extracting and executing code
+ */
+async function* runPostProcessor(
+	invocationContext: InvocationContext,
+	llmResponse: LlmResponse,
+): AsyncGenerator<Event> {
+	const agent = invocationContext.agent as any; // Type assertion for codeExecutor
+
+	if (!hasCodeExecutor(agent)) {
+		return;
+	}
+
+	const codeExecutor = agent.codeExecutor as BaseCodeExecutor;
+
+	if (!(codeExecutor instanceof BaseCodeExecutor)) {
+		return;
+	}
+
+	if (!llmResponse || !llmResponse.content) {
+		return;
+	}
+
+	// Skip BuiltInCodeExecutor
+	if (codeExecutor instanceof BuiltInCodeExecutor) {
+		return;
+	}
+
+	const codeExecutorContext = new CodeExecutorContext(
+		invocationContext.session.state as any, // Type assertion for State compatibility
+	);
+
+	// Skip if error count exceeds max retry attempts
+	if (
+		codeExecutorContext.getErrorCount(invocationContext.invocationId) >=
+		codeExecutor.errorRetryAttempts
+	) {
+		return;
+	}
+
+	// [Step 1] Extract code from model response
+	const responseContent = llmResponse.content;
+	const codeStr = CodeExecutionUtils.extractCodeAndTruncateContent(
+		responseContent,
+		codeExecutor.codeBlockDelimiters,
+	);
+
+	// Terminal state: no code to execute
+	if (!codeStr) {
+		return;
+	}
+
+	// [Step 2] Execute code and emit events
+	yield new Event({
+		invocationId: invocationContext.invocationId,
+		author: agent.name,
+		branch: invocationContext.branch,
+		content: responseContent,
+		actions: new EventActions(),
+	});
+
+	const codeExecutionResult = await codeExecutor.executeCode(
+		invocationContext,
+		{
+			code: codeStr,
+			inputFiles: codeExecutorContext.getInputFiles(),
+			executionId: getOrSetExecutionId(invocationContext, codeExecutorContext),
+		},
+	);
+
+	codeExecutorContext.updateCodeExecutionResult(
+		invocationContext.invocationId,
+		codeStr,
+		codeExecutionResult.stdout,
+		codeExecutionResult.stderr,
+	);
+
+	yield await postProcessCodeExecutionResult(
+		invocationContext,
+		codeExecutorContext,
+		codeExecutionResult,
+	);
+
+	// [Step 3] Skip processing original model response to continue code generation
+	llmResponse.content = undefined;
+}
+
+/**
+ * Extracts and replaces inline files with file names in the LLM request
+ */
+function extractAndReplaceInlineFiles(
+	codeExecutorContext: CodeExecutorContext,
+	llmRequest: LlmRequest,
+): File[] {
+	const allInputFiles = codeExecutorContext.getInputFiles();
+	const savedFileNames = new Set(allInputFiles.map((f) => f.name));
+
+	// Process input files from LlmRequest and cache them
+	for (let i = 0; i < (llmRequest.contents?.length || 0); i++) {
+		const content = llmRequest.contents![i];
+
+		// Only process user messages
+		if (content.role !== "user" || !content.parts) {
+			continue;
+		}
+
+		for (let j = 0; j < content.parts.length; j++) {
+			const part = content.parts[j];
+
+			// Skip if inline data is not supported
+			if (
+				!part.inlineData ||
+				!(part.inlineData.mimeType in DATA_FILE_UTIL_MAP)
+			) {
+				continue;
+			}
+
+			// Replace inline data with file name placeholder
+			const mimeType = part.inlineData.mimeType;
+			const fileName = `data_${i + 1}_${j + 1}${DATA_FILE_UTIL_MAP[mimeType].extension}`;
+
+			llmRequest.contents![i].parts![j] = {
+				text: `\nAvailable file: \`${fileName}\`\n`,
+			};
+
+			// Add inline data as input file
+			const file: File = {
+				name: fileName,
+				content: CodeExecutionUtils.getEncodedFileContent(part.inlineData.data),
+				mimeType: mimeType,
+			};
+
+			if (!savedFileNames.has(fileName)) {
+				codeExecutorContext.addInputFiles([file]);
+				allInputFiles.push(file);
+			}
+		}
+	}
+
+	return allInputFiles;
+}
+
+/**
+ * Returns execution ID for stateful code execution or undefined if not stateful
+ */
+function getOrSetExecutionId(
+	invocationContext: InvocationContext,
+	codeExecutorContext: CodeExecutorContext,
+): string | undefined {
+	const agent = invocationContext.agent as any;
+	if (!hasCodeExecutor(agent) || !agent.codeExecutor?.stateful) {
+		return undefined;
+	}
+
+	let executionId = codeExecutorContext.getExecutionId();
+	if (!executionId) {
+		executionId = invocationContext.session.id;
+		codeExecutorContext.setExecutionId(executionId);
+	}
+	return executionId;
+}
+
+/**
+ * Post-process code execution result and emit an Event
+ */
+async function postProcessCodeExecutionResult(
+	invocationContext: InvocationContext,
+	codeExecutorContext: CodeExecutorContext,
+	codeExecutionResult: CodeExecutionResult,
+): Promise<Event> {
+	if (!invocationContext.artifactService) {
+		throw new Error("Artifact service is not initialized.");
+	}
+
+	const resultContent: Content = {
+		role: "model",
+		parts: [
+			CodeExecutionUtils.buildCodeExecutionResultPart(codeExecutionResult),
+		],
+	};
+
+	const eventActions = new EventActions({
+		stateDelta: codeExecutorContext.getStateDelta(),
+	});
+
+	// Handle code execution error retry
+	if (codeExecutionResult.stderr) {
+		codeExecutorContext.incrementErrorCount(invocationContext.invocationId);
+	} else {
+		codeExecutorContext.resetErrorCount(invocationContext.invocationId);
+	}
+
+	// Handle output files
+	for (const outputFile of codeExecutionResult.outputFiles) {
+		const version = await invocationContext.artifactService.saveArtifact({
+			appName: invocationContext.appName,
+			userId: invocationContext.userId,
+			sessionId: invocationContext.session.id,
+			filename: outputFile.name,
+			artifact: {
+				inlineData: {
+					data: atob(outputFile.content), // Convert from base64
+					mimeType: outputFile.mimeType,
+				},
+			},
+		});
+		eventActions.artifactDelta[outputFile.name] = version;
+	}
+
+	return new Event({
+		invocationId: invocationContext.invocationId,
+		author: invocationContext.agent.name,
+		branch: invocationContext.branch,
+		content: resultContent,
+		actions: eventActions,
+	});
+}
+
+/**
+ * Returns the code to explore a data file
+ */
+function getDataFilePreprocessingCode(file: File): string | undefined {
+	function getNormalizedFileName(fileName: string): string {
+		const baseName = fileName.split(".")[0];
+		// Replace non-alphanumeric characters with underscores
+		let varName = baseName.replace(/[^a-zA-Z0-9_]/g, "_");
+
+		// If filename starts with digit, prepend underscore
+		if (/^\d/.test(varName)) {
+			varName = `_${varName}`;
+		}
+		return varName;
+	}
+
+	if (!(file.mimeType in DATA_FILE_UTIL_MAP)) {
+		return undefined;
+	}
+
+	const varName = getNormalizedFileName(file.name);
+	const loaderCode = DATA_FILE_UTIL_MAP[
+		file.mimeType
+	].loaderCodeTemplate.replace("{filename}", file.name);
+
+	return `
+${DATA_FILE_HELPER_LIB}
+
+# Load the dataframe.
+${varName} = ${loaderCode}
+
+# Use \`explore_df\` to guide my analysis.
+explore_df(${varName})
+`;
+}
+
+/**
+ * Exported processor instances
  */
 export const requestProcessor = new CodeExecutionRequestProcessor();
-
-/**
- * Exported response processor instance for use in flow configurations
- * Ready to be connected when code-executors module is implemented
- */
 export const responseProcessor = new CodeExecutionResponseProcessor();
 
 /**
- * Export utility classes for future use
+ * Export utility functions for testing
  */
-export { CodeExecutionUtils, DATA_FILE_UTIL_MAP, DATA_FILE_HELPER_LIB };
+export {
+	extractAndReplaceInlineFiles,
+	getDataFilePreprocessingCode,
+	getOrSetExecutionId,
+	postProcessCodeExecutionResult,
+	hasCodeExecutor,
+	DATA_FILE_UTIL_MAP,
+	DATA_FILE_HELPER_LIB,
+};

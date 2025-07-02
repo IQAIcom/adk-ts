@@ -1,0 +1,206 @@
+import { type Part, type Content, Language, Outcome } from "@google/genai";
+
+export interface File {
+	/** The name of the file with file extension (e.g., "file.csv") */
+	name: string;
+	/** The base64-encoded bytes of the file content */
+	content: string;
+	/** The mime type of the file (e.g., "image/png") */
+	mimeType: string;
+}
+
+export interface CodeExecutionInput {
+	/** The code to execute */
+	code: string;
+	/** The input files available to the code */
+	inputFiles: File[];
+	/** The execution ID for the stateful code execution */
+	executionId?: string;
+}
+
+export interface CodeExecutionResult {
+	/** The standard output of the code execution */
+	stdout: string;
+	/** The standard error of the code execution */
+	stderr: string;
+	/** The output files from the code execution */
+	outputFiles: File[];
+}
+
+export class CodeExecutionUtils {
+	/**
+	 * Gets the file content as a base64-encoded string
+	 */
+	static getEncodedFileContent(data: string | ArrayBuffer): string {
+		// Convert ArrayBuffer to string if needed
+		let decodedData: string;
+		if (data instanceof ArrayBuffer) {
+			decodedData = new TextDecoder().decode(data);
+		}
+
+		// Check if already base64 encoded
+		if (CodeExecutionUtils.isBase64Encoded(decodedData)) {
+			return decodedData;
+		}
+
+		// Encode to base64
+		return btoa(decodedData);
+	}
+
+	private static isBase64Encoded(str: string): boolean {
+		try {
+			return btoa(atob(str)) === str;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Extracts the first code block from the content and truncates everything after it
+	 */
+	static extractCodeAndTruncateContent(
+		content: Content,
+		codeBlockDelimiters: Array<[string, string]>,
+	): string | null {
+		if (!content?.parts?.length) {
+			return null;
+		}
+
+		// Extract code from executable code parts if no associated result parts
+		for (let idx = 0; idx < content.parts.length; idx++) {
+			const part = content.parts[idx];
+			if (
+				part.executableCode &&
+				(idx === content.parts.length - 1 ||
+					!content.parts[idx + 1].codeExecutionResult)
+			) {
+				content.parts = content.parts.slice(0, idx + 1);
+				return part.executableCode.code;
+			}
+		}
+
+		// Extract code from text parts
+		const textParts = content.parts.filter((p) => p.text);
+		if (!textParts.length) {
+			return null;
+		}
+
+		const responseText = textParts.map((p) => p.text).join("\n");
+
+		// Find the first code block
+		const leadingDelimiterPattern = codeBlockDelimiters
+			.map(([start]) => CodeExecutionUtils.escapeRegex(start))
+			.join("|");
+		const trailingDelimiterPattern = codeBlockDelimiters
+			.map(([, end]) => CodeExecutionUtils.escapeRegex(end))
+			.join("|");
+
+		const pattern = new RegExp(
+			`(.*?)(${leadingDelimiterPattern})(.*?)(${trailingDelimiterPattern})(.*?)$`,
+			"s",
+		);
+
+		const match = responseText.match(pattern);
+		if (!match) {
+			return null;
+		}
+
+		const [, prefix, , code, , suffix] = match;
+		if (!code) {
+			return null;
+		}
+
+		// Update content parts
+		content.parts = [];
+		if (prefix) {
+			content.parts.push({ text: prefix });
+		}
+		content.parts.push(CodeExecutionUtils.buildExecutableCodePart(code));
+
+		return code;
+	}
+
+	private static escapeRegex(str: string): string {
+		return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	}
+
+	/**
+	 * Builds an executable code part with code string
+	 */
+	static buildExecutableCodePart(code: string): Part {
+		return {
+			executableCode: {
+				code,
+				language: Language.PYTHON,
+			},
+		};
+	}
+
+	/**
+	 * Builds the code execution result part from the code execution result
+	 */
+	static buildCodeExecutionResultPart(
+		codeExecutionResult: CodeExecutionResult,
+	): Part {
+		if (codeExecutionResult.stderr) {
+			return {
+				codeExecutionResult: {
+					outcome: Outcome.OUTCOME_FAILED,
+					output: codeExecutionResult.stderr,
+				},
+			};
+		}
+
+		const finalResult: string[] = [];
+
+		if (codeExecutionResult.stdout || !codeExecutionResult.outputFiles.length) {
+			finalResult.push(
+				`Code execution result:\n${codeExecutionResult.stdout}\n`,
+			);
+		}
+
+		if (codeExecutionResult.outputFiles.length) {
+			const fileNames = codeExecutionResult.outputFiles
+				.map((f) => `\`${f.name}\``)
+				.join(",");
+			finalResult.push(`Saved artifacts:\n${fileNames}`);
+		}
+
+		return {
+			codeExecutionResult: {
+				outcome: Outcome.OUTCOME_OK,
+				output: finalResult.join("\n\n"),
+			},
+		};
+	}
+
+	/**
+	 * Converts the code execution parts to text parts in a Content
+	 */
+	static convertCodeExecutionParts(
+		content: Content,
+		codeBlockDelimiter: [string, string],
+		executionResultDelimiters: [string, string],
+	): void {
+		if (!content.parts?.length) {
+			return;
+		}
+
+		const lastPart = content.parts[content.parts.length - 1];
+
+		// Handle trailing executable code parts
+		if (lastPart.executableCode) {
+			content.parts[content.parts.length - 1] = {
+				text: `${codeBlockDelimiter[0]}${lastPart.executableCode.code}${codeBlockDelimiter[1]}`,
+			};
+		}
+		// Handle trailing code execution result parts
+		// Skip if content has multiple parts (likely generated by model)
+		else if (content.parts.length === 1 && lastPart.codeExecutionResult) {
+			content.parts[content.parts.length - 1] = {
+				text: `${executionResultDelimiters[0]}${lastPart.codeExecutionResult.output}${executionResultDelimiters[1]}`,
+			};
+			content.role = "user";
+		}
+	}
+}

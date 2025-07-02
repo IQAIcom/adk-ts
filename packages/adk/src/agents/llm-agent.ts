@@ -1,6 +1,7 @@
 import { Logger } from "@adk/helpers/logger";
 import type { GenerateContentConfig } from "@google/genai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
+import type { BaseCodeExecutor } from "../code-executors/base-code-executor";
 import { Event } from "../events/event";
 import { AutoFlow, type BaseLlmFlow, SingleFlow } from "../flows/llm-flows";
 import type { BaseMemoryService } from "../memory/base-memory-service";
@@ -61,6 +62,11 @@ export interface LlmAgentConfig {
 	 * Tools available to this agent
 	 */
 	tools?: ToolUnion[];
+
+	/**
+	 * Code executor for this agent
+	 */
+	codeExecutor?: BaseCodeExecutor;
 
 	/**
 	 * Disallows LLM-controlled transferring to the parent agent
@@ -158,6 +164,11 @@ export class LlmAgent extends BaseAgent {
 	public tools: ToolUnion[];
 
 	/**
+	 * Code executor for this agent
+	 */
+	public codeExecutor?: BaseCodeExecutor;
+
+	/**
 	 * Disallows LLM-controlled transferring to the parent agent
 	 */
 	public disallowTransferToParent: boolean;
@@ -237,6 +248,7 @@ export class LlmAgent extends BaseAgent {
 		this.instruction = config.instruction || "";
 		this.globalInstruction = config.globalInstruction || "";
 		this.tools = config.tools || [];
+		this.codeExecutor = config.codeExecutor;
 		this.disallowTransferToParent = config.disallowTransferToParent || false;
 		this.disallowTransferToPeers = config.disallowTransferToPeers || false;
 		this.includeContents = config.includeContents || "default";
