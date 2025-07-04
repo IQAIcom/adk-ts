@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.1.2
+
+### Patch Changes
+
+- 17a5d3f: Fix MCP sampling
+
 ## 0.1.1
 
 ### Patch Changes
