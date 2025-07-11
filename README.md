@@ -349,18 +349,16 @@ The `apps/examples` directory contains comprehensive examples demonstrating ADK'
 3. **Run examples**:
    ```bash
    cd apps/examples
+   pnpm install
    
    # Interactive menu to select examples
    pnpm dev
    
-   # Or run specific examples directly
-   pnpm dev agent-builder-example    # AgentBuilder patterns (recommended first)
-   pnpm dev simple-agent
-   pnpm dev tool-usage
-   pnpm dev memory-usage
+   # Or
+   pnpm --filter @iqai/examples dev
    ```
 
-The examples demonstrate production-ready patterns and can serve as templates for your own implementations.
+The examples demonstrate production-ready patterns and can serve as templates for your implementations.
 
 ## 📈 Project Status and Roadmap
 
