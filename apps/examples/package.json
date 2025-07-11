@@ -3,7 +3,8 @@
 	"version": "0.0.4",
 	"description": "Agent Development Kit for TypeScript with multi-provider LLM support",
 	"scripts": {
-		"start": "tsx ./src/index.ts"
+    "start": "tsx ./src/index.ts",
+		"dev": "tsx ./src/index.ts"
 	},
 	"private": true,
 	"author": "IQAI",
