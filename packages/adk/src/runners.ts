@@ -59,7 +59,7 @@ function _findFunctionCallEventIfLastEventIsFunctionResponse(
  * processing, event generation, and interaction with various services like
  * artifact storage, session management, and memory.
  */
-export class Runner {
+export class Runner<T extends BaseAgent = BaseAgent> {
 	/**
 	 * The app name of the runner.
 	 */
@@ -68,7 +68,7 @@ export class Runner {
 	/**
 	 * The root agent to run.
 	 */
-	agent: BaseAgent;
+	agent: T;
 
 	/**
 	 * The artifact service for the runner.
@@ -96,7 +96,7 @@ export class Runner {
 		memoryService,
 	}: {
 		appName: string;
-		agent: BaseAgent;
+		agent: T;
 		artifactService?: BaseArtifactService;
 		sessionService: BaseSessionService;
 		memoryService?: BaseMemoryService;
@@ -379,7 +379,7 @@ export class Runner {
 /**
  * An in-memory Runner for testing and development.
  */
-export class InMemoryRunner extends Runner {
+export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
 	/**
 	 * Deprecated. Please don't use. The in-memory session service for the runner.
 	 */
@@ -389,7 +389,7 @@ export class InMemoryRunner extends Runner {
 	 * Initializes the InMemoryRunner.
 	 */
 	constructor(
-		agent: BaseAgent,
+		agent: T,
 		{ appName = "InMemoryRunner" }: { appName?: string } = {},
 	) {
 		const inMemorySessionService = new InMemorySessionService();
