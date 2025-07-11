@@ -5,7 +5,7 @@ import { InvocationContext } from "./invocation-context";
 /**
  * Create isolated branch for every sub-agent.
  */
-function createBranchContextForSubAgent(
+export function createBranchContextForSubAgent(
 	agent: BaseAgent,
 	subAgent: BaseAgent,
 	invocationContext: InvocationContext,
@@ -38,7 +38,7 @@ function createBranchContextForSubAgent(
  * This implementation guarantees for each agent, it won't move on until the
  * generated event is processed by upstream runner.
  */
-async function* mergeAgentRun(
+export async function* mergeAgentRun(
 	agentRuns: AsyncGenerator<Event, void, unknown>[],
 ): AsyncGenerator<Event, void, unknown> {
 	if (agentRuns.length === 0) {
