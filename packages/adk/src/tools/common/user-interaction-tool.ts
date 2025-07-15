@@ -72,7 +72,7 @@ export class UserInteractionTool extends BaseTool {
 			options?: string[];
 			defaultValue?: string;
 		},
-		context: ToolContext,
+		context: ToolContext
 	): Promise<UserInteractionResult> {
 		try {
 			// Get the actions from context - typecasting as we know this might be available
@@ -81,7 +81,7 @@ export class UserInteractionTool extends BaseTool {
 				| undefined;
 
 			// If no actions interface is available, return an error
-			if (!actions || !actions.promptUser) {
+			if (!(actions && actions.promptUser)) {
 				return {
 					success: false,
 					error: "User interaction is not supported in the current environment",

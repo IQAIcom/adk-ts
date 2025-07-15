@@ -35,17 +35,17 @@ export class AnthropicLlm extends BaseLlm {
 	 */
 	protected async *generateContentAsyncImpl(
 		llmRequest: LlmRequest,
-		stream = false,
+		stream = false
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		const model = llmRequest.model || this.model;
 		const messages = (llmRequest.contents || []).map((content) =>
-			this.contentToAnthropicMessage(content),
+			this.contentToAnthropicMessage(content)
 		);
 
 		let tools: Anthropic.Tool[] | undefined;
 		if ((llmRequest.config?.tools?.[0] as any)?.functionDeclarations) {
 			tools = (llmRequest.config.tools[0] as any).functionDeclarations.map(
-				(decl: any) => this.functionDeclarationToAnthropicTool(decl),
+				(decl: any) => this.functionDeclarationToAnthropicTool(decl)
 			);
 		}
 
@@ -92,10 +92,10 @@ export class AnthropicLlm extends BaseLlm {
 	 * Convert Anthropic Message to ADK LlmResponse
 	 */
 	private anthropicMessageToLlmResponse(
-		message: Anthropic.Message,
+		message: Anthropic.Message
 	): LlmResponse {
 		this.logger.debug(
-			`Anthropic response: ${message.usage.output_tokens} tokens, ${message.stop_reason}`,
+			`Anthropic response: ${message.usage.output_tokens} tokens, ${message.stop_reason}`
 		);
 
 		return new LlmResponse({
@@ -120,7 +120,7 @@ export class AnthropicLlm extends BaseLlm {
 		return {
 			role: this.toAnthropicRole(content.role),
 			content: (content.parts || []).map((part: any) =>
-				this.partToAnthropicBlock(part),
+				this.partToAnthropicBlock(part)
 			),
 		};
 	}
@@ -129,7 +129,7 @@ export class AnthropicLlm extends BaseLlm {
 	 * Convert ADK Part to Anthropic content block
 	 */
 	private partToAnthropicBlock(
-		part: any,
+		part: any
 	): Anthropic.MessageParam["content"][0] {
 		if (part.text) {
 			return {
@@ -188,13 +188,13 @@ export class AnthropicLlm extends BaseLlm {
 	 * Convert ADK function declaration to Anthropic tool param
 	 */
 	private functionDeclarationToAnthropicTool(
-		functionDeclaration: any,
+		functionDeclaration: any
 	): Anthropic.Tool {
 		const properties: Record<string, any> = {};
 
 		if (functionDeclaration.parameters?.properties) {
 			for (const [key, value] of Object.entries(
-				functionDeclaration.parameters.properties,
+				functionDeclaration.parameters.properties
 			)) {
 				const valueDict = { ...(value as any) };
 				this.updateTypeString(valueDict);
@@ -226,11 +226,11 @@ export class AnthropicLlm extends BaseLlm {
 	 * Convert Anthropic stop reason to ADK finish reason
 	 */
 	private toAdkFinishReason(
-		anthropicStopReason?: string,
+		anthropicStopReason?: string
 	): "STOP" | "MAX_TOKENS" | "FINISH_REASON_UNSPECIFIED" {
 		if (
 			["end_turn", "stop_sequence", "tool_use"].includes(
-				anthropicStopReason || "",
+				anthropicStopReason || ""
 			)
 		) {
 			return "STOP";
@@ -268,7 +268,7 @@ export class AnthropicLlm extends BaseLlm {
 
 			if (!apiKey) {
 				throw new Error(
-					"ANTHROPIC_API_KEY environment variable is required for Anthropic models",
+					"ANTHROPIC_API_KEY environment variable is required for Anthropic models"
 				);
 			}
 

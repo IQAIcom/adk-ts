@@ -1,9 +1,9 @@
+import type { Part } from "@google/genai";
 import {
 	type Bucket,
 	Storage,
 	type StorageOptions,
 } from "@google-cloud/storage";
-import type { Part } from "@google/genai";
 import type { BaseArtifactService } from "./base-artifact-service";
 
 export class GcsArtifactService implements BaseArtifactService {
@@ -26,7 +26,7 @@ export class GcsArtifactService implements BaseArtifactService {
 		userId: string,
 		sessionId: string,
 		filename: string,
-		version: number | string,
+		version: number | string
 	): string {
 		if (this.fileHasUserNamespace(filename)) {
 			return `${appName}/${userId}/user/${filename}/${version}`;
@@ -57,7 +57,7 @@ export class GcsArtifactService implements BaseArtifactService {
 			userId,
 			sessionId,
 			filename,
-			version,
+			version
 		);
 
 		const blob = this.bucket.file(blobName);
@@ -98,7 +98,7 @@ export class GcsArtifactService implements BaseArtifactService {
 			userId,
 			sessionId,
 			filename,
-			version,
+			version
 		);
 		const blob = this.bucket.file(blobName);
 
@@ -176,7 +176,7 @@ export class GcsArtifactService implements BaseArtifactService {
 				userId,
 				sessionId,
 				filename,
-				version,
+				version
 			);
 			return this.bucket.file(blobName).delete();
 		});

@@ -54,7 +54,7 @@ export class InMemoryMemoryService implements BaseMemoryService {
 
 		// Filter events that have content and parts
 		const filteredEvents = session.events.filter(
-			(event) => event.content?.parts,
+			(event) => event.content?.parts
 		);
 
 		userSessions.set(session.id, filteredEvents);
@@ -84,7 +84,7 @@ export class InMemoryMemoryService implements BaseMemoryService {
 
 		for (const sessionEvents of userSessions.values()) {
 			for (const event of sessionEvents) {
-				if (!event.content || !event.content.parts) {
+				if (!(event.content && event.content.parts)) {
 					continue;
 				}
 
@@ -102,7 +102,7 @@ export class InMemoryMemoryService implements BaseMemoryService {
 
 				// Check if any query word is in the event words
 				const hasMatch = Array.from(wordsInQuery).some((queryWord) =>
-					wordsInEvent.has(queryWord),
+					wordsInEvent.has(queryWord)
 				);
 
 				if (hasMatch) {
@@ -128,7 +128,7 @@ export class InMemoryMemoryService implements BaseMemoryService {
 		// This method doesn't exist in Python version, keeping for backward compatibility
 		// but it won't work properly with the new structure
 		console.warn(
-			"getAllSessions() is deprecated and may not work correctly with the new memory structure",
+			"getAllSessions() is deprecated and may not work correctly with the new memory structure"
 		);
 		return [];
 	}
@@ -141,9 +141,9 @@ export class InMemoryMemoryService implements BaseMemoryService {
 	getSession(sessionId: string): Session | undefined {
 		// This method doesn't exist in Python version, keeping for backward compatibility
 		console.warn(
-			"getSession() is deprecated and may not work correctly with the new memory structure",
+			"getSession() is deprecated and may not work correctly with the new memory structure"
 		);
-		return undefined;
+		return;
 	}
 
 	/**

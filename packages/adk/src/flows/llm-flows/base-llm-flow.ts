@@ -34,17 +34,17 @@ export abstract class BaseLlmFlow {
 
 			if (!lastEvent || lastEvent.isFinalResponse()) {
 				this.logger.info(
-					`Agent '${invocationContext.agent.name}' finished after ${stepCount} steps.`,
+					`Agent '${invocationContext.agent.name}' finished after ${stepCount} steps.`
 				);
 				break;
 			}
 
 			if (lastEvent.partial) {
 				this.logger.error(
-					"Partial event encountered. LLM max output limit may be reached.",
+					"Partial event encountered. LLM max output limit may be reached."
 				);
 				throw new Error(
-					"Last event shouldn't be partial. LLM max output limit may be reached.",
+					"Last event shouldn't be partial. LLM max output limit may be reached."
 				);
 			}
 		}
@@ -56,7 +56,7 @@ export abstract class BaseLlmFlow {
 	}
 
 	async *_runOneStepAsync(
-		invocationContext: InvocationContext,
+		invocationContext: InvocationContext
 	): AsyncGenerator<Event> {
 		const llmRequest = new LlmRequest();
 
@@ -64,7 +64,7 @@ export abstract class BaseLlmFlow {
 		let preprocessEventCount = 0;
 		for await (const event of this._preprocessAsync(
 			invocationContext,
-			llmRequest,
+			llmRequest
 		)) {
 			preprocessEventCount++;
 			yield event;
@@ -87,7 +87,7 @@ export abstract class BaseLlmFlow {
 		for await (const llmResponse of this._callLlmAsync(
 			invocationContext,
 			llmRequest,
-			modelResponseEvent,
+			modelResponseEvent
 		)) {
 			llmResponseCount++;
 
@@ -95,7 +95,7 @@ export abstract class BaseLlmFlow {
 				invocationContext,
 				llmRequest,
 				llmResponse,
-				modelResponseEvent,
+				modelResponseEvent
 			)) {
 				modelResponseEvent.id = Event.newId();
 				yield event;
@@ -105,7 +105,7 @@ export abstract class BaseLlmFlow {
 
 	async *_preprocessAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event> {
 		const agent = invocationContext.agent;
 		if (
@@ -119,7 +119,7 @@ export abstract class BaseLlmFlow {
 		for (const processor of this.requestProcessors) {
 			for await (const event of processor.runAsync(
 				invocationContext,
-				llmRequest,
+				llmRequest
 			)) {
 				yield event;
 			}
@@ -127,7 +127,7 @@ export abstract class BaseLlmFlow {
 
 		// Process canonical tools
 		const tools = await agent.canonicalTools(
-			new ReadonlyContext(invocationContext),
+			new ReadonlyContext(invocationContext)
 		);
 
 		for (const tool of tools) {
@@ -153,20 +153,18 @@ export abstract class BaseLlmFlow {
 		invocationContext: InvocationContext,
 		llmRequest: LlmRequest,
 		llmResponse: LlmResponse,
-		modelResponseEvent: Event,
+		modelResponseEvent: Event
 	): AsyncGenerator<Event> {
 		// Run response processors
 		for await (const event of this._postprocessRunProcessorsAsync(
 			invocationContext,
-			llmResponse,
+			llmResponse
 		)) {
 			yield event;
 		}
 
 		if (
-			!llmResponse.content &&
-			!llmResponse.errorCode &&
-			!llmResponse.interrupted
+			!(llmResponse.content || llmResponse.errorCode || llmResponse.interrupted)
 		) {
 			return;
 		}
@@ -175,7 +173,7 @@ export abstract class BaseLlmFlow {
 		const finalizedEvent = this._finalizeModelResponseEvent(
 			llmRequest,
 			llmResponse,
-			modelResponseEvent,
+			modelResponseEvent
 		);
 
 		yield finalizedEvent;
@@ -197,7 +195,7 @@ export abstract class BaseLlmFlow {
 			for await (const event of this._postprocessHandleFunctionCallsAsync(
 				invocationContext,
 				finalizedEvent,
-				llmRequest,
+				llmRequest
 			)) {
 				yield event;
 			}
@@ -208,12 +206,12 @@ export abstract class BaseLlmFlow {
 		invocationContext: InvocationContext,
 		llmRequest: LlmRequest,
 		llmResponse: LlmResponse,
-		modelResponseEvent: Event,
+		modelResponseEvent: Event
 	): AsyncGenerator<Event> {
 		// Run processors
 		for await (const event of this._postprocessRunProcessorsAsync(
 			invocationContext,
-			llmResponse,
+			llmResponse
 		)) {
 			yield event;
 		}
@@ -221,10 +219,12 @@ export abstract class BaseLlmFlow {
 		// Skip model response event if no content, error, or turn completion
 		// This handles live-specific cases like turn_complete
 		if (
-			!llmResponse.content &&
-			!llmResponse.errorCode &&
-			!llmResponse.interrupted &&
-			!(llmResponse as any).turnComplete
+			!(
+				llmResponse.content ||
+				llmResponse.errorCode ||
+				llmResponse.interrupted ||
+				(llmResponse as any).turnComplete
+			)
 		) {
 			return;
 		}
@@ -233,7 +233,7 @@ export abstract class BaseLlmFlow {
 		const finalizedEvent = this._finalizeModelResponseEvent(
 			llmRequest,
 			llmResponse,
-			modelResponseEvent,
+			modelResponseEvent
 		);
 
 		yield finalizedEvent;
@@ -244,7 +244,7 @@ export abstract class BaseLlmFlow {
 			const functionResponseEvent = await functions.handleFunctionCallsAsync(
 				invocationContext,
 				finalizedEvent,
-				(llmRequest as any).toolsDict || {},
+				(llmRequest as any).toolsDict || {}
 			);
 
 			if (functionResponseEvent) {
@@ -256,7 +256,7 @@ export abstract class BaseLlmFlow {
 
 					const agentToRun = this._getAgentToRun(
 						invocationContext,
-						transferToAgent,
+						transferToAgent
 					);
 
 					for await (const event of agentToRun.runLive?.(invocationContext) ||
@@ -270,12 +270,12 @@ export abstract class BaseLlmFlow {
 
 	async *_postprocessRunProcessorsAsync(
 		invocationContext: InvocationContext,
-		llmResponse: LlmResponse,
+		llmResponse: LlmResponse
 	): AsyncGenerator<Event> {
 		for (const processor of this.responseProcessors) {
 			for await (const event of processor.runAsync(
 				invocationContext,
-				llmResponse,
+				llmResponse
 			)) {
 				yield event;
 			}
@@ -285,18 +285,18 @@ export abstract class BaseLlmFlow {
 	async *_postprocessHandleFunctionCallsAsync(
 		invocationContext: InvocationContext,
 		functionCallEvent: Event,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event> {
 		const functionResponseEvent = await functions.handleFunctionCallsAsync(
 			invocationContext,
 			functionCallEvent,
-			(llmRequest as any).toolsDict || {},
+			(llmRequest as any).toolsDict || {}
 		);
 
 		if (functionResponseEvent) {
 			const authEvent = functions.generateAuthEvent(
 				invocationContext,
-				functionResponseEvent,
+				functionResponseEvent
 			);
 
 			if (authEvent) {
@@ -311,7 +311,7 @@ export abstract class BaseLlmFlow {
 
 				const agentToRun = this._getAgentToRun(
 					invocationContext,
-					transferToAgent,
+					transferToAgent
 				);
 
 				for await (const event of agentToRun.runAsync(invocationContext)) {
@@ -323,7 +323,7 @@ export abstract class BaseLlmFlow {
 
 	_getAgentToRun(
 		invocationContext: InvocationContext,
-		agentName: string,
+		agentName: string
 	): BaseAgent {
 		const rootAgent = invocationContext.agent.rootAgent;
 		const agentToRun = rootAgent.findAgent(agentName);
@@ -339,13 +339,13 @@ export abstract class BaseLlmFlow {
 	async *_callLlmAsync(
 		invocationContext: InvocationContext,
 		llmRequest: LlmRequest,
-		modelResponseEvent: Event,
+		modelResponseEvent: Event
 	): AsyncGenerator<LlmResponse> {
 		// Before model callback
 		const beforeModelCallbackContent = await this._handleBeforeModelCallback(
 			invocationContext,
 			llmRequest,
-			modelResponseEvent,
+			modelResponseEvent
 		);
 
 		if (beforeModelCallbackContent) {
@@ -369,7 +369,7 @@ export abstract class BaseLlmFlow {
 		const runConfig = invocationContext.runConfig;
 		if ((runConfig as any).supportCfc) {
 			this.logger.warn(
-				"CFC (supportCfc) not fully implemented, using standard flow.",
+				"CFC (supportCfc) not fully implemented, using standard flow."
 			);
 		}
 
@@ -426,7 +426,7 @@ export abstract class BaseLlmFlow {
 		let responseCount = 0;
 		for await (const llmResponse of llm.generateContentAsync(
 			llmRequest,
-			isStreaming,
+			isStreaming
 		)) {
 			responseCount++;
 
@@ -435,7 +435,7 @@ export abstract class BaseLlmFlow {
 				invocationContext,
 				modelResponseEvent.id,
 				llmRequest,
-				llmResponse,
+				llmResponse
 			);
 
 			// Log LLM response in a clean format
@@ -463,7 +463,7 @@ export abstract class BaseLlmFlow {
 			const alteredLlmResponse = await this._handleAfterModelCallback(
 				invocationContext,
 				llmResponse,
-				modelResponseEvent,
+				modelResponseEvent
 			);
 
 			yield alteredLlmResponse || llmResponse;
@@ -473,7 +473,7 @@ export abstract class BaseLlmFlow {
 	async _handleBeforeModelCallback(
 		invocationContext: InvocationContext,
 		llmRequest: LlmRequest,
-		modelResponseEvent: Event,
+		modelResponseEvent: Event
 	): Promise<LlmResponse | undefined> {
 		const agent = invocationContext.agent;
 
@@ -510,7 +510,7 @@ export abstract class BaseLlmFlow {
 	async _handleAfterModelCallback(
 		invocationContext: InvocationContext,
 		llmResponse: LlmResponse,
-		modelResponseEvent: Event,
+		modelResponseEvent: Event
 	): Promise<LlmResponse | undefined> {
 		const agent = invocationContext.agent;
 
@@ -547,7 +547,7 @@ export abstract class BaseLlmFlow {
 	_finalizeModelResponseEvent(
 		llmRequest: LlmRequest,
 		llmResponse: LlmResponse,
-		modelResponseEvent: Event,
+		modelResponseEvent: Event
 	): Event {
 		// Python uses Pydantic model_validate with model_dump - we'll use object spreading
 		const eventData = { ...modelResponseEvent } as any;
@@ -568,7 +568,7 @@ export abstract class BaseLlmFlow {
 				functions.populateClientFunctionCallId(event);
 				event.longRunningToolIds = functions.getLongRunningFunctionCalls(
 					functionCalls,
-					(llmRequest as any).toolsDict || {},
+					(llmRequest as any).toolsDict || {}
 				);
 			}
 		}

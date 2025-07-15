@@ -62,7 +62,7 @@ export class HttpRequestTool extends BaseTool {
 					timeout: {
 						type: "integer",
 						description: "Request timeout in milliseconds",
-						default: 10000,
+						default: 10_000,
 					},
 				},
 				required: ["url"],
@@ -82,7 +82,7 @@ export class HttpRequestTool extends BaseTool {
 			params?: Record<string, string>;
 			timeout?: number;
 		},
-		_context: ToolContext,
+		_context: ToolContext
 	): Promise<HttpRequestResult> {
 		try {
 			const {
@@ -91,7 +91,7 @@ export class HttpRequestTool extends BaseTool {
 				headers = {},
 				body,
 				params,
-				timeout = 10000,
+				timeout = 10_000,
 			} = args;
 
 			// Prepare URL with query parameters
@@ -112,7 +112,7 @@ export class HttpRequestTool extends BaseTool {
 			const options: RequestInit = {
 				method,
 				headers: requestHeaders,
-				body: body,
+				body,
 				signal: AbortSignal.timeout(timeout),
 			};
 

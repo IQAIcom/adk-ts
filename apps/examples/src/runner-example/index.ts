@@ -41,11 +41,11 @@ async function runConversation() {
 
 	// Run another follow-up question
 	console.log(
-		"\n📝 Third question: 'Can you suggest three practical applications of these laws in modern AI systems?'",
+		"\n📝 Third question: 'Can you suggest three practical applications of these laws in modern AI systems?'"
 	);
 	await processMessage(
 		"Can you suggest three practical applications of these laws in modern AI systems?",
-		sessionId,
+		sessionId
 	);
 
 	console.log("\n✅ Example completed successfully!");

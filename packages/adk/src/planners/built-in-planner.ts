@@ -46,11 +46,11 @@ export class BuiltInPlanner extends BasePlanner {
 	 */
 	buildPlanningInstruction(
 		readonlyContext: ReadonlyContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): string | undefined {
 		// Built-in planner doesn't provide custom instructions
 		// It relies on the model's built-in thinking capabilities
-		return undefined;
+		return;
 	}
 
 	/**
@@ -58,10 +58,10 @@ export class BuiltInPlanner extends BasePlanner {
 	 */
 	processPlanningResponse(
 		callbackContext: CallbackContext,
-		responseParts: Part[],
+		responseParts: Part[]
 	): Part[] | undefined {
 		// Built-in planner doesn't process the response
 		// It relies on the model's built-in thinking capabilities
-		return undefined;
+		return;
 	}
 }

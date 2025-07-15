@@ -133,7 +133,7 @@ function explainRealWorldImplementation(): void {
 
 	console.log("\n⚠️  Important Notes:");
 	console.log(
-		"• This example shows the API, not actual transfer functionality",
+		"• This example shows the API, not actual transfer functionality"
 	);
 	console.log("• Production use requires agent framework integration");
 	console.log("• Consider conversation state preservation during transfers");

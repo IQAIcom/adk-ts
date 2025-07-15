@@ -23,7 +23,7 @@ export class PlanReActPlanner extends BasePlanner {
 	 */
 	buildPlanningInstruction(
 		readonlyContext: ReadonlyContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): string {
 		return this._buildNlPlannerInstruction();
 	}
@@ -33,10 +33,10 @@ export class PlanReActPlanner extends BasePlanner {
 	 */
 	processPlanningResponse(
 		callbackContext: CallbackContext,
-		responseParts: Part[],
+		responseParts: Part[]
 	): Part[] | undefined {
 		if (!responseParts || responseParts.length === 0) {
-			return undefined;
+			return;
 		}
 
 		const preservedParts: Part[] = [];
@@ -78,7 +78,7 @@ export class PlanReActPlanner extends BasePlanner {
 	 */
 	private _splitByLastPattern(
 		text: string,
-		separator: string,
+		separator: string
 	): [string, string] {
 		const index = text.lastIndexOf(separator);
 		if (index === -1) {
@@ -95,12 +95,12 @@ export class PlanReActPlanner extends BasePlanner {
 	 */
 	private _handleNonFunctionCallParts(
 		responsePart: Part,
-		preservedParts: Part[],
+		preservedParts: Part[]
 	): void {
 		if (responsePart.text?.includes(FINAL_ANSWER_TAG)) {
 			const [reasoningText, finalAnswerText] = this._splitByLastPattern(
 				responsePart.text,
-				FINAL_ANSWER_TAG,
+				FINAL_ANSWER_TAG
 			);
 
 			if (reasoningText) {

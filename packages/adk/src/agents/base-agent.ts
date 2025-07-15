@@ -8,7 +8,7 @@ import type { InvocationContext } from "./invocation-context";
  * Single agent callback type
  */
 export type SingleAgentCallback = (
-	callbackContext: CallbackContext,
+	callbackContext: CallbackContext
 ) => Promise<Content | undefined> | Content | undefined;
 
 /**
@@ -110,11 +110,11 @@ export abstract class BaseAgent {
 	 * Entry method to run an agent via text-based conversation.
 	 */
 	async *runAsync(
-		parentContext: InvocationContext,
+		parentContext: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		yield* telemetryService.traceAsyncGenerator(
 			`agent_run [${this.name}]`,
-			this.runAsyncInternal(parentContext),
+			this.runAsyncInternal(parentContext)
 		);
 	}
 
@@ -122,11 +122,11 @@ export abstract class BaseAgent {
 	 * Entry method to run an agent via video/audio-based conversation.
 	 */
 	async *runLive(
-		parentContext: InvocationContext,
+		parentContext: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		yield* telemetryService.traceAsyncGenerator(
 			`agent_run_live [${this.name}]`,
-			this.runLiveInternal(parentContext),
+			this.runLiveInternal(parentContext)
 		);
 	}
 
@@ -134,7 +134,7 @@ export abstract class BaseAgent {
 	 * Internal implementation for runAsync
 	 */
 	private async *runAsyncInternal(
-		parentContext: InvocationContext,
+		parentContext: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		const ctx = this.createInvocationContext(parentContext);
 
@@ -165,7 +165,7 @@ export abstract class BaseAgent {
 	 * Internal implementation for runLive
 	 */
 	private async *runLiveInternal(
-		parentContext: InvocationContext,
+		parentContext: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		const ctx = this.createInvocationContext(parentContext);
 		// TODO: support before/after_agent_callback
@@ -184,10 +184,10 @@ export abstract class BaseAgent {
 
 	// biome-ignore lint/correctness/useYield: This is a abstract method
 	protected async *runAsyncImpl(
-		_ctx: InvocationContext,
+		_ctx: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		throw new Error(
-			`runAsyncImpl for ${this.constructor.name} is not implemented.`,
+			`runAsyncImpl for ${this.constructor.name} is not implemented.`
 		);
 	}
 
@@ -199,10 +199,10 @@ export abstract class BaseAgent {
 	 */
 	// biome-ignore lint/correctness/useYield: This is a abstract method
 	protected async *runLiveImpl(
-		_ctx: InvocationContext,
+		_ctx: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		throw new Error(
-			`runLiveImpl for ${this.constructor.name} is not implemented.`,
+			`runLiveImpl for ${this.constructor.name} is not implemented.`
 		);
 	}
 
@@ -243,14 +243,14 @@ export abstract class BaseAgent {
 				return result;
 			}
 		}
-		return undefined;
+		return;
 	}
 
 	/**
 	 * Creates a new invocation context for this agent.
 	 */
 	private createInvocationContext(
-		parentContext: InvocationContext,
+		parentContext: InvocationContext
 	): InvocationContext {
 		return parentContext.createChildContext(this);
 	}
@@ -289,7 +289,7 @@ export abstract class BaseAgent {
 	 * @returns An event if callback provides content or changed state.
 	 */
 	private async handleBeforeAgentCallback(
-		ctx: InvocationContext,
+		ctx: InvocationContext
 	): Promise<Event | undefined> {
 		let retEvent: Event | undefined;
 
@@ -335,7 +335,7 @@ export abstract class BaseAgent {
 	 * @returns An event if callback provides content or changed state.
 	 */
 	private async handleAfterAgentCallback(
-		invocationContext: InvocationContext,
+		invocationContext: InvocationContext
 	): Promise<Event | undefined> {
 		let retEvent: Event | undefined;
 
@@ -383,13 +383,13 @@ export abstract class BaseAgent {
 	private validateName(value: string): void {
 		if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) {
 			throw new Error(
-				`Found invalid agent name: \`${value}\`. Agent name must be a valid identifier. It should start with a letter (a-z, A-Z) or an underscore (_), and can only contain letters, digits (0-9), and underscores.`,
+				`Found invalid agent name: \`${value}\`. Agent name must be a valid identifier. It should start with a letter (a-z, A-Z) or an underscore (_), and can only contain letters, digits (0-9), and underscores.`
 			);
 		}
 
 		if (value === "user") {
 			throw new Error(
-				"Agent name cannot be `user`. `user` is reserved for end-user's input.",
+				"Agent name cannot be `user`. `user` is reserved for end-user's input."
 			);
 		}
 	}
@@ -403,7 +403,7 @@ export abstract class BaseAgent {
 				throw new Error(
 					`Agent \`${subAgent.name}\` already has a parent agent, current` +
 						` parent: \`${subAgent.parentAgent.name}\`, trying to add:` +
-						` \`${this.name}\``,
+						` \`${this.name}\``
 				);
 			}
 			subAgent.parentAgent = this;

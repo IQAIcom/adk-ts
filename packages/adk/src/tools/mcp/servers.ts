@@ -129,7 +129,7 @@ export interface McpServerConfig {
 function createMcpConfig(
 	name: string,
 	packageName: string,
-	config: McpServerConfig = {},
+	config: McpServerConfig = {}
 ): McpConfig {
 	const {
 		debug,
@@ -155,7 +155,7 @@ function createMcpConfig(
 	return {
 		name,
 		description: description || `Client for ${name}`,
-		debug: debug || false,
+		debug,
 		retryOptions: retryOptions || { maxRetries: 2, initialDelay: 200 },
 		transport: {
 			mode: "stdio",
@@ -197,7 +197,7 @@ export function McpBamm(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"BAMM MCP Client",
 		"@iqai/mcp-bamm",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -211,7 +211,7 @@ export function McpFraxlend(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Fraxlend MCP Client",
 		"@iqai/mcp-fraxlend",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -225,7 +225,7 @@ export function McpIqWiki(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"IQWiki MCP Client",
 		"@iqai/mcp-iqwiki",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -240,7 +240,7 @@ export function McpNearAgent(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"NEAR Agent MCP Client",
 		"@iqai/mcp-near-agent",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -255,7 +255,7 @@ export function McpNearIntentSwaps(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Near Intents Swaps MCP Client",
 		"@iqai/mcp-near-intent-swaps",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -269,7 +269,7 @@ export function McpOdos(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"ODOS MCP Client",
 		"@iqai/mcp-odos",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -283,7 +283,7 @@ export function McpTelegram(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Telegram MCP Client",
 		"@iqai/mcp-telegram",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -302,7 +302,7 @@ export function McpFilesystem(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Filesystem MCP Client",
 		"@modelcontextprotocol/server-filesystem",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -316,7 +316,7 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Memory MCP Client",
 		"@modelcontextprotocol/server-memory",
-		config,
+		config
 	);
 	return new McpToolset(mcpConfig);
 }
@@ -331,7 +331,7 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 export function McpGeneric(
 	packageName: string,
 	config: McpServerConfig = {},
-	name?: string,
+	name?: string
 ): McpToolset {
 	const clientName = name || `${packageName} Client`;
 	const mcpConfig = createMcpConfig(clientName, packageName, config);

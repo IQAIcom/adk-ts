@@ -46,7 +46,7 @@ class InvocationCostManager {
 		) {
 			// We only enforce the limit if the limit is a positive number.
 			throw new LlmCallsLimitExceededError(
-				`Max number of llm calls limit of \`${runConfig.maxLlmCalls}\` exceeded`,
+				`Max number of llm calls limit of \`${runConfig.maxLlmCalls}\` exceeded`
 			);
 		}
 	}
@@ -195,7 +195,7 @@ export class InvocationContext {
 		this.agent = options.agent;
 		this.userContent = options.userContent;
 		this.session = options.session;
-		this.endInvocation = options.endInvocation || false;
+		this.endInvocation = options.endInvocation;
 		this.liveRequestQueue = options.liveRequestQueue;
 		this.activeStreamingTools = options.activeStreamingTools;
 		this.transcriptionCache = options.transcriptionCache;
@@ -223,7 +223,7 @@ export class InvocationContext {
 	 */
 	incrementLlmCallCount(): void {
 		this._invocationCostManager.incrementAndEnforceLlmCallsLimit(
-			this.runConfig,
+			this.runConfig
 		);
 	}
 
@@ -237,7 +237,7 @@ export class InvocationContext {
 			memoryService: this.memoryService,
 			invocationId: this.invocationId, // Keep same invocation ID
 			branch: this.branch ? `${this.branch}.${agent.name}` : agent.name, // Update branch
-			agent: agent, // Update to the new agent
+			agent, // Update to the new agent
 			userContent: this.userContent,
 			session: this.session,
 			endInvocation: this.endInvocation,

@@ -12,7 +12,7 @@ export class InMemoryArtifactService implements BaseArtifactService {
 		appName: string,
 		userId: string,
 		sessionId: string,
-		filename: string,
+		filename: string
 	): string {
 		if (this.fileHasUserNamespace(filename)) {
 			return `${appName}/${userId}/user/${filename}`;

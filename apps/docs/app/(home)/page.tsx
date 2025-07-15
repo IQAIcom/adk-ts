@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { Hero } from './_components/hero';
-import { Features } from './_components/features';
-import { CodeExample } from './_components/code-example';
-import { CTA } from './_components/cta';
-import { Footer } from './_components/footer';
+import { CodeExample } from "./_components/code-example";
+import { CTA } from "./_components/cta";
+import { Features } from "./_components/features";
+import { Footer } from "./_components/footer";
+import { Hero } from "./_components/hero";
 
 export default function HomePage() {
-  return (
-    <div className="flex flex-col min-h-screen w-screen">
-      <Hero />
-      <Features />
-      <CodeExample />
-      <CTA />
-      <Footer />
-    </div>
-  );
+	return (
+		<div className="flex min-h-screen w-screen flex-col">
+			<Hero />
+			<Features />
+			<CodeExample />
+			<CTA />
+			<Footer />
+		</div>
+	);
 }

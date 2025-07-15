@@ -35,7 +35,7 @@ export class McpClientService {
 		if (this.isClosing) {
 			throw new McpError(
 				"Cannot initialize a client that is being closed",
-				McpErrorType.RESOURCE_CLOSED_ERROR,
+				McpErrorType.RESOURCE_CLOSED_ERROR
 			);
 		}
 
@@ -60,7 +60,7 @@ export class McpClientService {
 						tools: {},
 						sampling: {}, // Enable sampling capability
 					},
-				},
+				}
 			);
 
 			// Set up timeout for client connection if provided
@@ -73,8 +73,8 @@ export class McpClientService {
 						reject(
 							new McpError(
 								`MCP client connection timed out after ${this.config.timeout}ms`,
-								McpErrorType.TIMEOUT_ERROR,
-							),
+								McpErrorType.TIMEOUT_ERROR
+							)
 						);
 					}, this.config.timeout);
 				});
@@ -102,7 +102,7 @@ export class McpClientService {
 				throw new McpError(
 					`Failed to initialize MCP client: ${error instanceof Error ? error.message : String(error)}`,
 					McpErrorType.CONNECTION_ERROR,
-					error instanceof Error ? error : undefined,
+					error instanceof Error ? error : undefined
 				);
 			}
 			throw error;
@@ -118,7 +118,7 @@ export class McpClientService {
 			if (this.config.transport.mode === "sse") {
 				this.logger.debug(
 					"🚀 Initializing MCP client in SSE mode",
-					this.config.transport.serverUrl,
+					this.config.transport.serverUrl
 				);
 
 				const headers = {
@@ -133,14 +133,14 @@ export class McpClientService {
 							headers,
 							...(this.config.timeout ? { timeout: this.config.timeout } : {}),
 						},
-					},
+					}
 				);
 			}
 
 			// STDIO mode
 			this.logger.debug(
 				"🚀 Initializing MCP client in STDIO mode",
-				this.config.transport.command,
+				this.config.transport.command
 			);
 
 			return new StdioClientTransport({
@@ -152,7 +152,7 @@ export class McpClientService {
 			throw new McpError(
 				`Failed to create transport: ${error instanceof Error ? error.message : String(error)}`,
 				McpErrorType.CONNECTION_ERROR,
-				error instanceof Error ? error : undefined,
+				error instanceof Error ? error : undefined
 			);
 		}
 	}
@@ -223,7 +223,7 @@ export class McpClientService {
 				},
 				this,
 				async (instance) => await instance.reinitialize(),
-				this.config.retryOptions?.maxRetries || 2,
+				this.config.retryOptions?.maxRetries || 2
 			);
 
 			return await wrappedCall();
@@ -233,7 +233,7 @@ export class McpClientService {
 				throw new McpError(
 					`Error calling tool "${name}": ${error instanceof Error ? error.message : String(error)}`,
 					McpErrorType.TOOL_EXECUTION_ERROR,
-					error instanceof Error ? error : undefined,
+					error instanceof Error ? error : undefined
 				);
 			}
 			throw error;
@@ -260,7 +260,7 @@ export class McpClientService {
 	private async setupSamplingHandler(client: Client): Promise<void> {
 		if (!this.mcpSamplingHandler) {
 			this.logger.debug(
-				"⚠️ No sampling handler provided - sampling requests will be rejected",
+				"⚠️ No sampling handler provided - sampling requests will be rejected"
 			);
 			return;
 		}
@@ -289,17 +289,17 @@ export class McpClientService {
 						throw new McpError(
 							`Sampling request failed: ${error instanceof Error ? error.message : String(error)}`,
 							McpErrorType.SAMPLING_ERROR,
-							error instanceof Error ? error : undefined,
+							error instanceof Error ? error : undefined
 						);
 					}
-				},
+				}
 			);
 
 			this.logger.debug("🎯 Sampling handler registered successfully");
 		} catch (error) {
 			this.logger.error("Failed to setup sampling handler:", error);
 			this.logger.debug(
-				"⚠️ Sampling handler registration failed, continuing without sampling support",
+				"⚠️ Sampling handler registration failed, continuing without sampling support"
 			);
 		}
 	}

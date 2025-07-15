@@ -29,17 +29,17 @@ export class McpSamplingHandler {
 	 * Handle MCP sampling request and convert between formats
 	 */
 	async handleSamplingRequest(
-		request: McpSamplingRequest,
+		request: McpSamplingRequest
 	): Promise<McpSamplingResponse> {
 		try {
 			// Ensure we're only processing sampling/createMessage requests
 			if (request.method !== "sampling/createMessage") {
 				this.logger.error(
-					`Invalid method for sampling handler: ${request.method}. Expected: sampling/createMessage`,
+					`Invalid method for sampling handler: ${request.method}. Expected: sampling/createMessage`
 				);
 				throw new McpError(
 					`Invalid method: ${request.method}. This handler only processes sampling/createMessage requests.`,
-					McpErrorType.INVALID_REQUEST_ERROR,
+					McpErrorType.INVALID_REQUEST_ERROR
 				);
 			}
 
@@ -49,28 +49,28 @@ export class McpSamplingHandler {
 			if (!validationResult.success) {
 				this.logger.error(
 					"Invalid MCP sampling request:",
-					validationResult.error,
+					validationResult.error
 				);
 				throw new McpError(
 					`Invalid sampling request: ${validationResult.error.message}`,
-					McpErrorType.INVALID_REQUEST_ERROR,
+					McpErrorType.INVALID_REQUEST_ERROR
 				);
 			}
 
 			const mcpParams = request.params;
 
 			// Validate required fields
-			if (!mcpParams.messages || !Array.isArray(mcpParams.messages)) {
+			if (!(mcpParams.messages && Array.isArray(mcpParams.messages))) {
 				throw new McpError(
 					"Invalid sampling request: messages array is required",
-					McpErrorType.INVALID_REQUEST_ERROR,
+					McpErrorType.INVALID_REQUEST_ERROR
 				);
 			}
 
 			if (!mcpParams.maxTokens || mcpParams.maxTokens <= 0) {
 				throw new McpError(
 					"Invalid sampling request: maxTokens must be a positive number",
-					McpErrorType.INVALID_REQUEST_ERROR,
+					McpErrorType.INVALID_REQUEST_ERROR
 				);
 			}
 
@@ -79,7 +79,7 @@ export class McpSamplingHandler {
 			// Convert MCP messages to ADK format
 			const adkContents = this.convertMcpMessagesToADK(
 				mcpParams.messages,
-				mcpParams.systemPrompt,
+				mcpParams.systemPrompt
 			);
 
 			// Extract model from request if available, otherwise use default
@@ -105,7 +105,7 @@ export class McpSamplingHandler {
 			// Convert ADK response to MCP format - pass model information
 			const mcpResponse = this.convertADKResponseToMcp(
 				adkResponse,
-				requestModel,
+				requestModel
 			);
 
 			// Validate the response using MCP schema
@@ -115,11 +115,11 @@ export class McpSamplingHandler {
 			if (!responseValidation.success) {
 				this.logger.error(
 					"Invalid MCP response generated:",
-					responseValidation.error,
+					responseValidation.error
 				);
 				throw new McpError(
 					`Invalid response generated: ${responseValidation.error.message}`,
-					McpErrorType.SAMPLING_ERROR,
+					McpErrorType.SAMPLING_ERROR
 				);
 			}
 
@@ -134,7 +134,7 @@ export class McpSamplingHandler {
 			throw new McpError(
 				`Sampling request failed: ${error instanceof Error ? error.message : String(error)}`,
 				McpErrorType.SAMPLING_ERROR,
-				error instanceof Error ? error : undefined,
+				error instanceof Error ? error : undefined
 			);
 		}
 	}
@@ -144,7 +144,7 @@ export class McpSamplingHandler {
 	 */
 	private convertMcpMessagesToADK(
 		mcpMessages: McpSamplingRequest["params"]["messages"],
-		systemPrompt?: string,
+		systemPrompt?: string
 	): Content[] {
 		const contents: Content[] = [];
 
@@ -158,7 +158,7 @@ export class McpSamplingHandler {
 
 		// Convert each MCP message to ADK Content format
 		const transformedMessages = mcpMessages.map((mcpMessage) =>
-			this.convertSingleMcpMessageToADK(mcpMessage),
+			this.convertSingleMcpMessageToADK(mcpMessage)
 		);
 
 		contents.push(...transformedMessages);
@@ -170,7 +170,7 @@ export class McpSamplingHandler {
 	 * Convert a single MCP message to ADK Content format
 	 */
 	private convertSingleMcpMessageToADK(
-		mcpMessage: McpSamplingRequest["params"]["messages"][0],
+		mcpMessage: McpSamplingRequest["params"]["messages"][0]
 	): Content {
 		// Map MCP role to ADK role - MCP only supports "user" and "assistant"
 		const adkRole = mcpMessage.role === "assistant" ? "model" : "user";
@@ -184,7 +184,7 @@ export class McpSamplingHandler {
 		};
 
 		this.logger.debug(
-			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${mcpMessage.content.type}`,
+			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${mcpMessage.content.type}`
 		);
 
 		return adkContent;
@@ -194,7 +194,7 @@ export class McpSamplingHandler {
 	 * Convert MCP message content to ADK parts format
 	 */
 	private convertMcpContentToADKParts(
-		mcpContent: McpSamplingRequest["params"]["messages"][0]["content"],
+		mcpContent: McpSamplingRequest["params"]["messages"][0]["content"]
 	): Part[] {
 		if (mcpContent.type === "text") {
 			// Simple text content - ensure text is a string
@@ -239,7 +239,7 @@ export class McpSamplingHandler {
 	 */
 	private convertADKResponseToMcp(
 		adkResponse: LlmResponse,
-		model: string,
+		model: string
 	): McpSamplingResponse {
 		// Extract text content from the response
 		let responseText = "";
@@ -261,7 +261,7 @@ export class McpSamplingHandler {
 
 		// Create MCP response - include required model field
 		const mcpResponse: McpSamplingResponse = {
-			model: model, // Use the model from the request
+			model, // Use the model from the request
 			role: "assistant", // ADK responses are always from assistant
 			content: {
 				type: "text",

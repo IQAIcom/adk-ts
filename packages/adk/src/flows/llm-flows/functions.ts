@@ -1,10 +1,10 @@
 import type { Content, FunctionCall, Part } from "@google/genai";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
-import { Event } from "../../events/event";
-import { EventActions } from "../../events/event-actions";
 import type { AuthConfig } from "../../auth/auth-config";
 import type { AuthToolArguments } from "../../auth/auth-tool";
+import { Event } from "../../events/event";
+import { EventActions } from "../../events/event-actions";
 import type { BaseTool } from "../../tools/base/base-tool";
 import { ToolContext } from "../../tools/tool-context";
 
@@ -55,7 +55,7 @@ export function removeClientFunctionCallId(content: Content): void {
  */
 export function getLongRunningFunctionCalls(
 	functionCalls: FunctionCall[],
-	toolsDict: Record<string, BaseTool>,
+	toolsDict: Record<string, BaseTool>
 ): Set<string> {
 	const longRunningToolIds = new Set<string>();
 
@@ -77,7 +77,7 @@ export function getLongRunningFunctionCalls(
  */
 export function generateAuthEvent(
 	invocationContext: InvocationContext,
-	functionResponseEvent: Event,
+	functionResponseEvent: Event
 ): Event | null {
 	if (!functionResponseEvent.actions.requestedAuthConfigs) {
 		return null;
@@ -87,7 +87,7 @@ export function generateAuthEvent(
 	const longRunningToolIds = new Set<string>();
 
 	for (const [functionCallId, authConfig] of Object.entries(
-		functionResponseEvent.actions.requestedAuthConfigs,
+		functionResponseEvent.actions.requestedAuthConfigs
 	)) {
 		const requestEucFunctionCall: FunctionCall = {
 			name: REQUEST_EUC_FUNCTION_CALL_NAME,
@@ -121,7 +121,7 @@ export async function handleFunctionCallsAsync(
 	invocationContext: InvocationContext,
 	functionCallEvent: Event,
 	toolsDict: Record<string, BaseTool>,
-	filters?: Set<string>,
+	filters?: Set<string>
 ): Promise<Event | null> {
 	const agent = invocationContext.agent;
 
@@ -146,7 +146,7 @@ export async function handleFunctionCallsAsync(
 			invocationContext,
 			functionCallEvent,
 			functionCall,
-			toolsDict,
+			toolsDict
 		);
 
 		// Execute tool
@@ -156,7 +156,7 @@ export async function handleFunctionCallsAsync(
 		const functionResponse = await callToolAsync(
 			tool,
 			functionArgs,
-			toolContext,
+			toolContext
 		);
 
 		// Handle long running tools
@@ -172,7 +172,7 @@ export async function handleFunctionCallsAsync(
 			tool,
 			functionResponse,
 			toolContext,
-			invocationContext,
+			invocationContext
 		);
 
 		functionResponseEvents.push(functionResponseEvent);
@@ -191,14 +191,14 @@ export async function handleFunctionCallsAsync(
 export async function handleFunctionCallsLive(
 	invocationContext: InvocationContext,
 	functionCallEvent: Event,
-	toolsDict: Record<string, BaseTool>,
+	toolsDict: Record<string, BaseTool>
 ): Promise<Event | null> {
 	// For now, use the same logic as async handling
 	// Complex streaming functionality can be added later
 	return handleFunctionCallsAsync(
 		invocationContext,
 		functionCallEvent,
-		toolsDict,
+		toolsDict
 	);
 }
 
@@ -209,11 +209,11 @@ function getToolAndContext(
 	invocationContext: InvocationContext,
 	functionCallEvent: Event,
 	functionCall: FunctionCall,
-	toolsDict: Record<string, BaseTool>,
+	toolsDict: Record<string, BaseTool>
 ): { tool: BaseTool; toolContext: ToolContext } {
 	if (!(functionCall.name in toolsDict)) {
 		throw new Error(
-			`Function ${functionCall.name} is not found in the tools_dict.`,
+			`Function ${functionCall.name} is not found in the tools_dict.`
 		);
 	}
 
@@ -232,7 +232,7 @@ function getToolAndContext(
 async function callToolAsync(
 	tool: BaseTool,
 	args: Record<string, any>,
-	toolContext: ToolContext,
+	toolContext: ToolContext
 ): Promise<any> {
 	return await tool.runAsync(args, toolContext);
 }
@@ -244,7 +244,7 @@ function buildResponseEvent(
 	tool: BaseTool,
 	functionResult: any,
 	toolContext: ToolContext,
-	invocationContext: InvocationContext,
+	invocationContext: InvocationContext
 ): Event {
 	// Specs requires the result to be a dict
 	let result = functionResult;
@@ -278,7 +278,7 @@ function buildResponseEvent(
  * Merges parallel function response events
  */
 export function mergeParallelFunctionResponseEvents(
-	functionResponseEvents: Event[],
+	functionResponseEvents: Event[]
 ): Event {
 	if (!functionResponseEvents.length) {
 		throw new Error("No function response events provided.");
@@ -307,7 +307,7 @@ export function mergeParallelFunctionResponseEvents(
 	for (const event of functionResponseEvents) {
 		Object.assign(
 			mergedRequestedAuthConfigs,
-			event.actions.requestedAuthConfigs,
+			event.actions.requestedAuthConfigs
 		);
 		// Copy actions properties
 		Object.assign(mergedActions, event.actions);

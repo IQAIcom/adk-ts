@@ -37,7 +37,7 @@ export abstract class BaseSessionService {
 		appName: string,
 		userId: string,
 		state?: Record<string, any>,
-		sessionId?: string,
+		sessionId?: string
 	): Promise<Session>;
 
 	/**
@@ -52,7 +52,7 @@ export abstract class BaseSessionService {
 		appName: string,
 		userId: string,
 		sessionId: string,
-		config?: GetSessionConfig,
+		config?: GetSessionConfig
 	): Promise<Session | undefined>;
 
 	/**
@@ -63,7 +63,7 @@ export abstract class BaseSessionService {
 	 */
 	abstract listSessions(
 		appName: string,
-		userId: string,
+		userId: string
 	): Promise<ListSessionsResponse>;
 
 	/**
@@ -75,7 +75,7 @@ export abstract class BaseSessionService {
 	abstract deleteSession(
 		appName: string,
 		userId: string,
-		sessionId: string,
+		sessionId: string
 	): Promise<void>;
 
 	/**
@@ -99,11 +99,11 @@ export abstract class BaseSessionService {
 	 * @param event The event containing state changes.
 	 */
 	protected updateSessionState(session: Session, event: Event): void {
-		if (!event.actions || !event.actions.stateDelta) {
+		if (!(event.actions && event.actions.stateDelta)) {
 			return;
 		}
 		for (const key in event.actions.stateDelta) {
-			if (Object.prototype.hasOwnProperty.call(event.actions.stateDelta, key)) {
+			if (Object.hasOwn(event.actions.stateDelta, key)) {
 				if (key.startsWith("temp_")) {
 					continue;
 				}

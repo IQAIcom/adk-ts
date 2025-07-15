@@ -29,7 +29,7 @@ export class FunctionTool<T extends Record<string, any>> extends BaseTool {
 			shouldRetryOnFailure?: boolean;
 			maxRetryAttempts?: number;
 			parameterTypes?: Record<string, string>;
-		},
+		}
 	) {
 		const name = options?.name || func.name;
 		const description =
@@ -40,8 +40,8 @@ export class FunctionTool<T extends Record<string, any>> extends BaseTool {
 		super({
 			name,
 			description,
-			isLongRunning: options?.isLongRunning || false,
-			shouldRetryOnFailure: options?.shouldRetryOnFailure || false,
+			isLongRunning: options?.isLongRunning,
+			shouldRetryOnFailure: options?.shouldRetryOnFailure,
 			maxRetryAttempts: options?.maxRetryAttempts || 3,
 		});
 
@@ -84,7 +84,7 @@ You could retry calling this tool, but it is IMPORTANT for you to provide all th
 					// Convert the argument to the proper type based on function signature
 					const convertedValue = this.convertArgumentType(
 						argsToCall[paramName],
-						paramName,
+						paramName
 					);
 					argValues.push(convertedValue);
 				} else {
@@ -122,7 +122,7 @@ You could retry calling this tool, but it is IMPORTANT for you to provide all th
 			declaration.parameters?.properties
 		) {
 			for (const [paramName, paramType] of Object.entries(
-				this.parameterTypes,
+				this.parameterTypes
 			)) {
 				if (declaration.parameters.properties[paramName]) {
 					declaration.parameters.properties[paramName].type = paramType;

@@ -44,12 +44,12 @@ const MAX_EVENTS = 12; // 6 pairs of user/assistant interactions
  * @returns True if configuration is valid, false otherwise
  */
 function validateEnvironment(): boolean {
-	if (!env.GOOGLE_API_KEY && !env.LLM_MODEL) {
+	if (!(env.GOOGLE_API_KEY || env.LLM_MODEL)) {
 		console.log(
-			"⚠️  Please set the GOOGLE_API_KEY environment variable to run this example",
+			"⚠️  Please set the GOOGLE_API_KEY environment variable to run this example"
 		);
 		console.log(
-			"   Example: GOOGLE_API_KEY=your-key-here npm run dev src/memory-usage",
+			"   Example: GOOGLE_API_KEY=your-key-here npm run dev src/memory-usage"
 		);
 		return false;
 	}
@@ -86,7 +86,7 @@ async function sendMessage(
 	sessionService: InMemorySessionService,
 	memoryService: InMemoryMemoryService,
 	sessionId: string,
-	message: string,
+	message: string
 ): Promise<string> {
 	console.log(`\n💬 USER: ${message}`);
 
@@ -125,7 +125,7 @@ async function sendMessage(
 		const currentSession = await sessionService.getSession(
 			APP_NAME,
 			USER_ID,
-			sessionId,
+			sessionId
 		);
 		if (currentSession) {
 			if (currentSession.events.length > MAX_EVENTS) {
@@ -155,7 +155,7 @@ async function buildConversationHistory(
 	runner: Runner,
 	sessionService: InMemorySessionService,
 	memoryService: InMemoryMemoryService,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	console.log("📚 Building conversation history...");
 
@@ -164,7 +164,7 @@ async function buildConversationHistory(
 		sessionService,
 		memoryService,
 		sessionId,
-		"Hello! My name is Alice and I'm a software engineer.",
+		"Hello! My name is Alice and I'm a software engineer."
 	);
 
 	await sendMessage(
@@ -172,7 +172,7 @@ async function buildConversationHistory(
 		sessionService,
 		memoryService,
 		sessionId,
-		"I'm working on a TypeScript project using React.",
+		"I'm working on a TypeScript project using React."
 	);
 
 	await sendMessage(
@@ -180,7 +180,7 @@ async function buildConversationHistory(
 		sessionService,
 		memoryService,
 		sessionId,
-		"What's your purpose and how can you help me?",
+		"What's your purpose and how can you help me?"
 	);
 }
 
@@ -195,7 +195,7 @@ async function demonstrateMemoryRecall(
 	runner: Runner,
 	sessionService: InMemorySessionService,
 	memoryService: InMemoryMemoryService,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	console.log(`\n${"=".repeat(50)}`);
 	console.log("🧠 DEMONSTRATING MEMORY RECALL");
@@ -206,7 +206,7 @@ async function demonstrateMemoryRecall(
 		sessionService,
 		memoryService,
 		sessionId,
-		"Can you remember my name and what I do for work?",
+		"Can you remember my name and what I do for work?"
 	);
 
 	await sendMessage(
@@ -214,7 +214,7 @@ async function demonstrateMemoryRecall(
 		sessionService,
 		memoryService,
 		sessionId,
-		"What programming language did I mention I was using?",
+		"What programming language did I mention I was using?"
 	);
 
 	await sendMessage(
@@ -222,7 +222,7 @@ async function demonstrateMemoryRecall(
 		sessionService,
 		memoryService,
 		sessionId,
-		"Can you summarize what we've talked about so far?",
+		"Can you summarize what we've talked about so far?"
 	);
 }
 
@@ -231,7 +231,7 @@ async function demonstrateMemoryRecall(
  * @param memoryService Memory service for searching stored conversations
  */
 async function demonstrateMemorySearch(
-	memoryService: InMemoryMemoryService,
+	memoryService: InMemoryMemoryService
 ): Promise<void> {
 	console.log(`\n${"=".repeat(50)}`);
 	console.log("🔍 TESTING MEMORY SEARCH");
@@ -248,7 +248,7 @@ async function demonstrateMemorySearch(
 	});
 
 	console.log(
-		`\n📊 Memory search results for "TypeScript React software engineer":`,
+		`\n📊 Memory search results for "TypeScript React software engineer":`
 	);
 	console.log(`Found ${memoryResults.memories.length} relevant memories:`);
 
@@ -311,14 +311,14 @@ async function main() {
 			runner,
 			sessionService,
 			memoryService,
-			session.id,
+			session.id
 		);
 
 		await demonstrateMemoryRecall(
 			runner,
 			sessionService,
 			memoryService,
-			session.id,
+			session.id
 		);
 
 		await demonstrateMemorySearch(memoryService);

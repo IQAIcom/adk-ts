@@ -46,7 +46,7 @@ export class LoadMemoryTool extends BaseTool {
 		args: {
 			query: string;
 		},
-		context: ToolContext,
+		context: ToolContext
 	): Promise<any> {
 		this.logger.debug(`Executing load_memory with query: ${args.query}`);
 

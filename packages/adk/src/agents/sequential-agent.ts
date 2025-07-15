@@ -42,7 +42,7 @@ export class SequentialAgent extends BaseAgent {
 	 * Core logic to run this agent via text-based conversation
 	 */
 	protected async *runAsyncImpl(
-		ctx: InvocationContext,
+		ctx: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		for (const subAgent of this.subAgents) {
 			for await (const event of subAgent.runAsync(ctx)) {
@@ -61,7 +61,7 @@ export class SequentialAgent extends BaseAgent {
 	 * can move on to the next agent.
 	 */
 	protected async *runLiveImpl(
-		ctx: InvocationContext,
+		ctx: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		// There is no way to know if it's using live during init phase so we have to init it here
 		for (const subAgent of this.subAgents) {
@@ -77,7 +77,7 @@ export class SequentialAgent extends BaseAgent {
 			if (subAgent instanceof LlmAgent) {
 				// Use function name to dedupe.
 				const toolNames = subAgent.tools.map((tool) =>
-					typeof tool === "function" ? tool.name : tool.name,
+					typeof tool === "function" ? tool.name : tool.name
 				);
 
 				if (!toolNames.includes(taskCompleted.name)) {

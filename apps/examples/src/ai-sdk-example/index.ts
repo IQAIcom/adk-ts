@@ -1,6 +1,6 @@
 import { env } from "node:process";
-import { LlmAgent, InMemoryRunner, FunctionTool } from "@iqai/adk";
 import { google } from "@ai-sdk/google";
+import { FunctionTool, InMemoryRunner, LlmAgent } from "@iqai/adk";
 
 function getWeather(location: string): string {
 	console.log(`🌤️ Getting weather for ${location}...`);
@@ -19,7 +19,7 @@ async function demonstrateWeatherAgent() {
 	if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
 		console.error("❌ GOOGLE_GENERATIVE_AI_API_KEY required for this example");
 		console.log(
-			"💡 Users can use any provider they want - just change the import!",
+			"💡 Users can use any provider they want - just change the import!"
 		);
 		process.exit(1);
 	}
@@ -64,11 +64,11 @@ async function demonstrateWeatherAgent() {
 
 async function processQuery(
 	runner: InMemoryRunner,
-	query: string,
+	query: string
 ): Promise<string> {
 	const session = await runner.sessionService.createSession(
 		"WeatherDemo",
-		"user",
+		"user"
 	);
 	let response = "";
 

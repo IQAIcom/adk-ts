@@ -14,14 +14,14 @@ function createDependencyError(packageName: string, dbType: string): Error {
 			# or
 			pnpm add ${packageName}
 			# or
-			yarn add ${packageName}`,
+			yarn add ${packageName}`
 	);
 }
 
 // For PostgreSQL
 export function createPostgresSessionService(
 	connectionString: string,
-	options?: any,
+	options?: any
 ): DatabaseSessionService {
 	let Pool: any;
 
@@ -46,7 +46,7 @@ export function createPostgresSessionService(
 // For MySQL
 export function createMysqlSessionService(
 	connectionString: string,
-	options?: any,
+	options?: any
 ): DatabaseSessionService {
 	let createPool: any;
 
@@ -71,7 +71,7 @@ export function createMysqlSessionService(
 // For SQLite
 export function createSqliteSessionService(
 	filename: string,
-	options?: any,
+	options?: any
 ): DatabaseSessionService {
 	let Database: any;
 
@@ -93,7 +93,7 @@ export function createSqliteSessionService(
 // Generic factory that auto-detects database type from URL (like SQLAlchemy)
 export function createDatabaseSessionService(
 	databaseUrl: string,
-	options?: any,
+	options?: any
 ): DatabaseSessionService {
 	if (
 		databaseUrl.startsWith("postgres://") ||

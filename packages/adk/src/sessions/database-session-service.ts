@@ -106,10 +106,10 @@ export class DatabaseSessionService extends BaseSessionService {
 				.addColumn("user_id", "varchar(128)", (col) => col.notNull())
 				.addColumn("state", "text", (col) => col.defaultTo("{}"))
 				.addColumn("create_time", "timestamp", (col) =>
-					col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull(),
+					col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull()
 				)
 				.addColumn("update_time", "timestamp", (col) =>
-					col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull(),
+					col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull()
 				)
 				.addPrimaryKeyConstraint("sessions_pk", ["app_name", "user_id", "id"])
 				.execute();
@@ -126,7 +126,7 @@ export class DatabaseSessionService extends BaseSessionService {
 				.addColumn("author", "varchar(256)")
 				.addColumn("branch", "varchar(256)")
 				.addColumn("timestamp", "timestamp", (col) =>
-					col.defaultTo(sql`CURRENT_TIMESTAMP`),
+					col.defaultTo(sql`CURRENT_TIMESTAMP`)
 				)
 				.addColumn("content", "text")
 				.addColumn("actions", "text")
@@ -147,7 +147,7 @@ export class DatabaseSessionService extends BaseSessionService {
 					"events_session_fk",
 					["app_name", "user_id", "session_id"],
 					"sessions",
-					["app_name", "user_id", "id"],
+					["app_name", "user_id", "id"]
 				)
 				.execute();
 
@@ -158,7 +158,7 @@ export class DatabaseSessionService extends BaseSessionService {
 				.addColumn("app_name", "varchar(128)", (col) => col.primaryKey())
 				.addColumn("state", "text", (col) => col.defaultTo("{}"))
 				.addColumn("update_time", "timestamp", (col) =>
-					col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull(),
+					col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull()
 				)
 				.execute();
 
@@ -170,7 +170,7 @@ export class DatabaseSessionService extends BaseSessionService {
 				.addColumn("user_id", "varchar(128)", (col) => col.notNull())
 				.addColumn("state", "text", (col) => col.defaultTo("{}"))
 				.addColumn("update_time", "timestamp", (col) =>
-					col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull(),
+					col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull()
 				)
 				.addPrimaryKeyConstraint("user_states_pk", ["app_name", "user_id"])
 				.execute();
@@ -228,7 +228,7 @@ export class DatabaseSessionService extends BaseSessionService {
 		}
 		if (typeof timestamp === "number") {
 			// Assume it's already Unix timestamp in seconds or milliseconds
-			return timestamp > 10000000000 ? timestamp / 1000 : timestamp;
+			return timestamp > 10_000_000_000 ? timestamp / 1000 : timestamp;
 		}
 		// Fallback to current time
 		return Date.now() / 1000;
@@ -238,7 +238,7 @@ export class DatabaseSessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		state?: Record<string, any>,
-		sessionId?: string,
+		sessionId?: string
 	): Promise<Session> {
 		await this.ensureInitialized();
 
@@ -332,7 +332,7 @@ export class DatabaseSessionService extends BaseSessionService {
 			const mergedState = this.mergeState(
 				currentAppState,
 				currentUserState,
-				sessionStateDelta,
+				sessionStateDelta
 			);
 
 			return {
@@ -350,7 +350,7 @@ export class DatabaseSessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		sessionId: string,
-		config?: GetSessionConfig,
+		config?: GetSessionConfig
 	): Promise<Session | undefined> {
 		await this.ensureInitialized();
 
@@ -365,7 +365,7 @@ export class DatabaseSessionService extends BaseSessionService {
 				.executeTakeFirst();
 
 			if (!storageSession) {
-				return undefined;
+				return;
 			}
 
 			// Build event query with filters
@@ -379,7 +379,7 @@ export class DatabaseSessionService extends BaseSessionService {
 				eventQuery = eventQuery.where(
 					"timestamp",
 					">=",
-					new Date(config.afterTimestamp * 1000),
+					new Date(config.afterTimestamp * 1000)
 				);
 			}
 
@@ -411,7 +411,7 @@ export class DatabaseSessionService extends BaseSessionService {
 			const mergedState = this.mergeState(
 				currentAppState,
 				currentUserState,
-				sessionState,
+				sessionState
 			);
 
 			// Convert storage events to events - Fixed typing
@@ -447,7 +447,7 @@ export class DatabaseSessionService extends BaseSessionService {
 
 	async listSessions(
 		appName: string,
-		userId: string,
+		userId: string
 	): Promise<ListSessionsResponse> {
 		await this.ensureInitialized();
 
@@ -473,7 +473,7 @@ export class DatabaseSessionService extends BaseSessionService {
 	async deleteSession(
 		appName: string,
 		userId: string,
-		sessionId: string,
+		sessionId: string
 	): Promise<void> {
 		await this.ensureInitialized();
 
@@ -508,7 +508,7 @@ export class DatabaseSessionService extends BaseSessionService {
 			) {
 				// Fixed Generated<Date> access
 				throw new Error(
-					`The last_update_time provided in the session object ${new Date(session.lastUpdateTime * 1000).toISOString()} is earlier than the update_time in the storage_session ${(storageSession.update_time as Date).toISOString()}. Please check if it is a stale session.`,
+					`The last_update_time provided in the session object ${new Date(session.lastUpdateTime * 1000).toISOString()} is earlier than the update_time in the storage_session ${(storageSession.update_time as Date).toISOString()}. Please check if it is a stale session.`
 				);
 			}
 
@@ -602,7 +602,7 @@ export class DatabaseSessionService extends BaseSessionService {
 
 			// Update session timestamp
 			session.lastUpdateTime = this.timestampToUnixSeconds(
-				updatedSession.update_time,
+				updatedSession.update_time
 			);
 
 			// Also update the in-memory session
@@ -645,7 +645,7 @@ export class DatabaseSessionService extends BaseSessionService {
 	private mergeState(
 		appState: Record<string, any>,
 		userState: Record<string, any>,
-		sessionState: Record<string, any>,
+		sessionState: Record<string, any>
 	): Record<string, any> {
 		const mergedState = { ...sessionState };
 
@@ -667,7 +667,7 @@ export class DatabaseSessionService extends BaseSessionService {
 	 */
 	private eventToStorageEvent(
 		session: Session,
-		event: Event,
+		event: Event
 	): Omit<EventsTable, "timestamp"> {
 		return {
 			id: event.id,
@@ -699,7 +699,7 @@ export class DatabaseSessionService extends BaseSessionService {
 	private storageEventToEvent(
 		storageEvent: Omit<EventsTable, "timestamp"> & {
 			timestamp: Date;
-		},
+		}
 	): Event {
 		const baseEvent = {
 			id: storageEvent.id,
@@ -715,7 +715,7 @@ export class DatabaseSessionService extends BaseSessionService {
 				: undefined,
 			longRunningToolIds: storageEvent.long_running_tool_ids_json
 				? new Set(
-						this.parseJsonSafely(storageEvent.long_running_tool_ids_json, []),
+						this.parseJsonSafely(storageEvent.long_running_tool_ids_json, [])
 					)
 				: undefined,
 			groundingMetadata: storageEvent.grounding_metadata
@@ -762,10 +762,7 @@ export class DatabaseSessionService extends BaseSessionService {
 					typeof baseEvent.actions === "object" &&
 					"hasTrailingCodeExecutionResult" in baseEvent.actions
 				) {
-					return (
-						(baseEvent.actions.hasTrailingCodeExecutionResult as boolean) ||
-						false
-					);
+					return baseEvent.actions.hasTrailingCodeExecutionResult as boolean;
 				}
 				return false;
 			},

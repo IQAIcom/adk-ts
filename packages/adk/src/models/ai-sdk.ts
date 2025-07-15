@@ -2,11 +2,11 @@ import { Logger } from "@adk/helpers/logger";
 import type { Content, Part } from "@google/genai";
 import {
 	type CoreMessage,
-	type LanguageModel,
-	type Tool,
 	generateText,
 	jsonSchema,
+	type LanguageModel,
 	streamText,
+	type Tool,
 } from "ai";
 import { BaseLlm } from "./base-llm";
 import type { LlmRequest } from "./llm-request";
@@ -38,7 +38,7 @@ export class AiSdkLlm extends BaseLlm {
 
 	protected async *generateContentAsyncImpl(
 		request: LlmRequest,
-		stream = false,
+		stream = false
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		try {
 			const messages = this.convertToAiSdkMessages(request);
@@ -253,7 +253,7 @@ export class AiSdkLlm extends BaseLlm {
 
 		if (content.parts?.some((part) => part.functionResponse)) {
 			const functionResponses = content.parts.filter(
-				(part) => part.functionResponse,
+				(part) => part.functionResponse
 			);
 
 			const contentParts = functionResponses.map((part) => ({
@@ -324,7 +324,7 @@ export class AiSdkLlm extends BaseLlm {
 	 * Map AI SDK finish reason to ADK finish reason
 	 */
 	private mapFinishReason(
-		finishReason?: string,
+		finishReason?: string
 	): "STOP" | "MAX_TOKENS" | "FINISH_REASON_UNSPECIFIED" {
 		switch (finishReason) {
 			case "stop":

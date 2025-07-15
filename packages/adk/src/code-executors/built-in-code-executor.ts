@@ -3,6 +3,8 @@ import type {
 	Tool,
 	ToolCodeExecution,
 } from "@google/genai";
+import type { InvocationContext } from "../agents/invocation-context";
+import type { LlmRequest } from "../models";
 import {
 	BaseCodeExecutor,
 	type BaseCodeExecutorConfig,
@@ -11,8 +13,6 @@ import type {
 	CodeExecutionInput,
 	CodeExecutionResult,
 } from "./code-execution-utils";
-import type { InvocationContext } from "../agents/invocation-context";
-import type { LlmRequest } from "../models";
 
 /**
  * A code executor that uses the Model's built-in code executor.
@@ -27,13 +27,13 @@ export class BuiltInCodeExecutor extends BaseCodeExecutor {
 
 	async executeCode(
 		invocationContext: InvocationContext,
-		codeExecutionInput: CodeExecutionInput,
+		codeExecutionInput: CodeExecutionInput
 	): Promise<CodeExecutionResult> {
 		// This method is intentionally not implemented as the built-in
 		// code executor relies on the model's native code execution capabilities
 		// The actual execution happens within the model during generation
 		throw new Error(
-			"BuiltInCodeExecutor.executeCode should not be called directly",
+			"BuiltInCodeExecutor.executeCode should not be called directly"
 		);
 	}
 
@@ -43,7 +43,7 @@ export class BuiltInCodeExecutor extends BaseCodeExecutor {
 	processLlmRequest(llmRequest: LlmRequest): void {
 		if (!llmRequest.model?.startsWith("gemini-2")) {
 			throw new Error(
-				`Gemini code execution tool is not supported for model ${llmRequest.model}`,
+				`Gemini code execution tool is not supported for model ${llmRequest.model}`
 			);
 		}
 

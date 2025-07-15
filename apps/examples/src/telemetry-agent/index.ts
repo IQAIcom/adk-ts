@@ -74,7 +74,7 @@ async function main() {
 		await runTracedConversation(runner, session.id);
 
 		console.log(
-			"\n✅ Example completed! Check your Langfuse dashboard for traces.",
+			"\n✅ Example completed! Check your Langfuse dashboard for traces."
 		);
 		console.log(`🔗 Dashboard URL: ${langfuseHost}`);
 	} catch (error) {
@@ -93,7 +93,7 @@ function initializeTelemetryService(): TelemetryService {
 	const telemetryService = new TelemetryService();
 
 	const authString = Buffer.from(
-		`${env.LANGFUSE_PUBLIC_KEY}:${env.LANGFUSE_SECRET_KEY}`,
+		`${env.LANGFUSE_PUBLIC_KEY}:${env.LANGFUSE_SECRET_KEY}`
 	).toString("base64");
 
 	telemetryService.initialize({
@@ -156,7 +156,7 @@ async function setupSessionAndRunner(agent: LlmAgent): Promise<{
  */
 async function runTracedConversation(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	console.log("\n👤 User: Explain what observability means in AI systems");
 	console.log("🤖 Assistant: ");
@@ -205,7 +205,7 @@ async function runTracedConversation(
  * @param telemetryService The telemetry service to shutdown
  */
 async function shutdownTelemetry(
-	telemetryService: TelemetryService | null,
+	telemetryService: TelemetryService | null
 ): Promise<void> {
 	if (telemetryService) {
 		try {

@@ -37,7 +37,7 @@ export function adkToMcpToolType(tool: BaseTool): McpTool {
  * Converts a FunctionDeclaration's parameters to a JSON Schema
  */
 export function declarationToJsonSchema(
-	declaration: FunctionDeclaration,
+	declaration: FunctionDeclaration
 ): Record<string, any> {
 	if (!declaration.parameters) {
 		return {};
@@ -58,7 +58,7 @@ export function declarationToJsonSchema(
 export function jsonSchemaToDeclaration(
 	name: string,
 	description: string,
-	schema: Record<string, any> | undefined,
+	schema: Record<string, any> | undefined
 ): FunctionDeclaration {
 	let parameters: JSONSchema;
 
@@ -185,7 +185,7 @@ function normalizeObjectSchema(schema: Record<string, any>): JSONSchema {
 
 		for (const [key, value] of Object.entries(schema.properties)) {
 			normalizedSchema.properties[key] = normalizeJsonSchema(
-				value as Record<string, any>,
+				value as Record<string, any>
 			);
 		}
 	}
@@ -209,7 +209,7 @@ function normalizeArraySchema(schema: Record<string, any>): JSONSchema {
 
 	if (schema.items) {
 		normalizedSchema.items = normalizeJsonSchema(
-			schema.items as Record<string, any>,
+			schema.items as Record<string, any>
 		);
 	}
 

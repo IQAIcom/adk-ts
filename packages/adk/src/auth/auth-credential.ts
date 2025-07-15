@@ -249,7 +249,7 @@ export class OAuth2Credential extends AuthCredential {
 		}
 
 		// Consider it expired if it's less than 30 seconds from expiration
-		return this.expiresAt.getTime() - 30000 < Date.now();
+		return this.expiresAt.getTime() - 30_000 < Date.now();
 	}
 
 	/**
@@ -258,7 +258,7 @@ export class OAuth2Credential extends AuthCredential {
 	async refresh(): Promise<void> {
 		if (!this.canRefresh()) {
 			throw new Error(
-				"Cannot refresh token: no refresh token or refresh function",
+				"Cannot refresh token: no refresh token or refresh function"
 			);
 		}
 

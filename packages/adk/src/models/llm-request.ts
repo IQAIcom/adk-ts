@@ -108,7 +108,7 @@ export class LlmRequest {
 	 */
 	getSystemInstructionText(): string | undefined {
 		if (!this.config?.systemInstruction) {
-			return undefined;
+			return;
 		}
 
 		const systemInstruction = this.config.systemInstruction;

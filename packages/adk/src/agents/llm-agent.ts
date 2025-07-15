@@ -21,7 +21,7 @@ import type { ReadonlyContext } from "./readonly-context";
  * Type for instruction providers that can be functions
  */
 export type InstructionProvider = (
-	ctx: ReadonlyContext,
+	ctx: ReadonlyContext
 ) => string | Promise<string>;
 
 /**
@@ -251,8 +251,8 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 		this.globalInstruction = config.globalInstruction || "";
 		this.tools = config.tools || [];
 		this.codeExecutor = config.codeExecutor;
-		this.disallowTransferToParent = config.disallowTransferToParent || false;
-		this.disallowTransferToPeers = config.disallowTransferToPeers || false;
+		this.disallowTransferToParent = config.disallowTransferToParent;
+		this.disallowTransferToPeers = config.disallowTransferToPeers;
 		this.includeContents = config.includeContents || "default";
 		this.outputKey = config.outputKey;
 		this.planner = config.planner;
@@ -314,7 +314,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	 * This method is only for use by Agent Development Kit
 	 */
 	async canonicalGlobalInstruction(
-		ctx: ReadonlyContext,
+		ctx: ReadonlyContext
 	): Promise<[string, boolean]> {
 		if (typeof this.globalInstruction === "string") {
 			return [this.globalInstruction, false];
@@ -386,7 +386,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	 * This matches the Python implementation's _run_async_impl
 	 */
 	protected async *runAsyncImpl(
-		context: InvocationContext,
+		context: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		this.logger.debug(`Starting LlmAgent execution for "${this.name}"`);
 

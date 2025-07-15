@@ -83,7 +83,7 @@ function getUserInfo(userName: string, toolContext: any): Record<string, any> {
 	// In a real application, this might query a database using context credentials
 	return {
 		name: userName,
-		id: Math.floor(Math.random() * 10000),
+		id: Math.floor(Math.random() * 10_000),
 		membership: "premium",
 		accessLevel: 3,
 	};
@@ -147,7 +147,7 @@ Be clear and informative in your responses about the operations you perform.`,
 async function runAgentTask(
 	runner: Runner,
 	sessionId: string,
-	userMessage: string,
+	userMessage: string
 ): Promise<string> {
 	const newMessage = {
 		parts: [{ text: userMessage }],
@@ -184,7 +184,7 @@ async function runAgentTask(
  */
 async function runFunctionToolExamples(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	/**
 	 * Example 1: Calculator Tool Usage
@@ -202,7 +202,7 @@ async function runFunctionToolExamples(
 	const weatherResult = await runAgentTask(
 		runner,
 		sessionId,
-		"What's the weather like in New York today?",
+		"What's the weather like in New York today?"
 	);
 	console.log("Agent response:", weatherResult);
 
@@ -214,7 +214,7 @@ async function runFunctionToolExamples(
 	const userResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Get information about user Sarah",
+		"Get information about user Sarah"
 	);
 	console.log("Agent response:", userResult);
 
@@ -226,7 +226,7 @@ async function runFunctionToolExamples(
 	const complexCalcResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Calculate 15 + 25, then tell me what that result plus 10 would be",
+		"Calculate 15 + 25, then tell me what that result plus 10 would be"
 	);
 	console.log("Agent response:", complexCalcResult);
 
@@ -238,7 +238,7 @@ async function runFunctionToolExamples(
 	const weatherCompareResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Compare the weather between London and Tokyo",
+		"Compare the weather between London and Tokyo"
 	);
 	console.log("Agent response:", weatherCompareResult);
 
@@ -250,7 +250,7 @@ async function runFunctionToolExamples(
 	const mixedResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Get info for user John and calculate what his access level plus 5 would be",
+		"Get info for user John and calculate what his access level plus 5 would be"
 	);
 	console.log("Agent response:", mixedResult);
 }

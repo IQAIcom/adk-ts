@@ -83,7 +83,7 @@ async function demonstrateSequentialAgent(): Promise<void> {
 
 	const response = await runAgentWithQuery(
 		sequentialAgent,
-		"Tell me about artificial intelligence.",
+		"Tell me about artificial intelligence."
 	);
 
 	console.log("\nSequential Agent Response:");
@@ -111,7 +111,7 @@ async function demonstrateParallelAgent(): Promise<void> {
 
 	const response = await runAgentWithQuery(
 		parallelAgent,
-		"How might climate change affect agriculture?",
+		"How might climate change affect agriculture?"
 	);
 
 	console.log("\nParallel Agent Response:");
@@ -139,7 +139,7 @@ async function demonstrateLoopAgent(): Promise<void> {
 
 	const response = await runAgentWithQuery(
 		loopAgent,
-		"Draft a short blog post about machine learning.",
+		"Draft a short blog post about machine learning."
 	);
 
 	console.log("\nLoop Agent Response:");
@@ -197,7 +197,7 @@ async function demonstrateLangGraphAgent(): Promise<void> {
 
 	const response = await runAgentWithQuery(
 		graphAgent,
-		"Explain the concept of reinforcement learning.",
+		"Explain the concept of reinforcement learning."
 	);
 
 	console.log("\nLangGraph Agent Response:");
@@ -212,7 +212,7 @@ async function demonstrateLangGraphAgent(): Promise<void> {
  */
 async function runAgentWithQuery(
 	agent: BaseAgent,
-	userMessage: string,
+	userMessage: string
 ): Promise<string> {
 	const sessionService = new InMemorySessionService();
 	const session = await sessionService.createSession(APP_NAME, USER_ID);

@@ -111,23 +111,23 @@ function validateEnvironmentVariables(): {
 
 	if (!exampleTokenContract) {
 		console.error(
-			"❌ Error: EXAMPLE_ATP_TOKEN_CONTRACT is not set in the .env file.",
+			"❌ Error: EXAMPLE_ATP_TOKEN_CONTRACT is not set in the .env file."
 		);
 		console.log(
-			"Please add EXAMPLE_ATP_TOKEN_CONTRACT to your .env file to run this example.",
+			"Please add EXAMPLE_ATP_TOKEN_CONTRACT to your .env file to run this example."
 		);
 		return { isValid: false, exampleTokenContract: undefined };
 	}
 
 	if (!walletPrivateKey) {
 		console.warn(
-			"⚠️ Warning: WALLET_PRIVATE_KEY is not set. Some ATP tools requiring a wallet will fail.",
+			"⚠️ Warning: WALLET_PRIVATE_KEY is not set. Some ATP tools requiring a wallet will fail."
 		);
 	}
 
 	if (!atpApiKey) {
 		console.warn(
-			"⚠️ Warning: ATP_API_KEY is not set. Some ATP tools requiring an API key might fail.",
+			"⚠️ Warning: ATP_API_KEY is not set. Some ATP tools requiring an API key might fail."
 		);
 	}
 
@@ -179,13 +179,13 @@ async function initializeMcpToolset(): Promise<McpToolset> {
 function displayAvailableTools(mcpTools: any[]): void {
 	if (mcpTools.length === 0) {
 		console.warn(
-			"⚠️ No tools retrieved from the MCP server. Ensure the server is running correctly and accessible.",
+			"⚠️ No tools retrieved from the MCP server. Ensure the server is running correctly and accessible."
 		);
 		return;
 	}
 
 	console.log(
-		`✅ Retrieved ${mcpTools.length} tools from the @iqai/mcp-atp server:`,
+		`✅ Retrieved ${mcpTools.length} tools from the @iqai/mcp-atp server:`
 	);
 	mcpTools.forEach((tool) => {
 		console.log(`   - ${tool.name}: ${tool.description}`);
@@ -244,7 +244,7 @@ async function setupSessionAndRunner(agent: LlmAgent): Promise<{
 async function runAgentTask(
 	runner: Runner,
 	sessionId: string,
-	userMessage: string,
+	userMessage: string
 ): Promise<string> {
 	const newMessage = {
 		parts: [{ text: userMessage }],
@@ -283,7 +283,7 @@ async function runAgentTask(
 async function runAtpExamples(
 	runner: Runner,
 	sessionId: string,
-	exampleTokenContract: string,
+	exampleTokenContract: string
 ): Promise<void> {
 	console.log("-----------------------------------");
 
@@ -391,7 +391,7 @@ function handleError(error: unknown): void {
 				error.originalError.message.includes("spawn npx ENOENT")
 			) {
 				console.error(
-					"   Hint: This often means 'npx' was not found. Ensure Node.js and npm are correctly installed and their bin directory is in your system's PATH.",
+					"   Hint: This often means 'npx' was not found. Ensure Node.js and npm are correctly installed and their bin directory is in your system's PATH."
 				);
 			}
 		}

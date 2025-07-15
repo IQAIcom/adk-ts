@@ -64,7 +64,7 @@ async function main() {
 		 */
 		const currentSession = await sessionService.createSession(
 			APP_NAME,
-			USER_ID,
+			USER_ID
 		);
 
 		/**
@@ -114,7 +114,7 @@ async function main() {
  * @param memoryService The memory service to populate with sample data
  */
 async function createSampleMemories(
-	memoryService: InMemoryMemoryService,
+	memoryService: InMemoryMemoryService
 ): Promise<void> {
 	/**
 	 * Create sample session about geography
@@ -256,7 +256,7 @@ async function demonstrateDirectToolUsage(): Promise<void> {
  * @param memoryService The memory service to search
  */
 async function demonstrateDirectMemorySearches(
-	memoryService: InMemoryMemoryService,
+	memoryService: InMemoryMemoryService
 ): Promise<void> {
 	console.log("\n=== Direct Memory Searches ===");
 
@@ -290,7 +290,7 @@ async function demonstrateDirectMemorySearches(
  */
 async function demonstrateAgentMemoryUsage(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	console.log("\n=== Agent-Based Memory Usage ===");
 
@@ -301,7 +301,7 @@ async function demonstrateAgentMemoryUsage(
 	const result1 = await runAgentTask(
 		runner,
 		sessionId,
-		"Search my memory for information about European capitals",
+		"Search my memory for information about European capitals"
 	);
 	console.log("Agent response:", result1);
 
@@ -312,7 +312,7 @@ async function demonstrateAgentMemoryUsage(
 	const result2 = await runAgentTask(
 		runner,
 		sessionId,
-		"What do I know about artificial intelligence and machine learning?",
+		"What do I know about artificial intelligence and machine learning?"
 	);
 	console.log("Agent response:", result2);
 
@@ -323,7 +323,7 @@ async function demonstrateAgentMemoryUsage(
 	const result3 = await runAgentTask(
 		runner,
 		sessionId,
-		"What do I know about quantum physics?",
+		"What do I know about quantum physics?"
 	);
 	console.log("Agent response:", result3);
 
@@ -334,7 +334,7 @@ async function demonstrateAgentMemoryUsage(
 	const result4 = await runAgentTask(
 		runner,
 		sessionId,
-		"Search my memory for any conversations about learning",
+		"Search my memory for any conversations about learning"
 	);
 	console.log("Agent response:", result4);
 }
@@ -349,7 +349,7 @@ async function demonstrateAgentMemoryUsage(
 async function runAgentTask(
 	runner: Runner,
 	sessionId: string,
-	userMessage: string,
+	userMessage: string
 ): Promise<string> {
 	const newMessage = {
 		parts: [{ text: userMessage }],

@@ -88,7 +88,7 @@ export abstract class BaseTool {
 	/**
 	 * Maximum delay for retry in ms
 	 */
-	maxRetryDelay = 10000;
+	maxRetryDelay = 10_000;
 
 	protected logger = new Logger({ name: "BaseTool" });
 
@@ -98,21 +98,21 @@ export abstract class BaseTool {
 	constructor(config: ToolConfig) {
 		this.name = config.name;
 		this.description = config.description;
-		this.isLongRunning = config.isLongRunning || false;
-		this.shouldRetryOnFailure = config.shouldRetryOnFailure || false;
+		this.isLongRunning = config.isLongRunning;
+		this.shouldRetryOnFailure = config.shouldRetryOnFailure;
 		this.maxRetryAttempts = config.maxRetryAttempts || 3;
 
 		// Validate tool name format
 		if (!/^[a-zA-Z0-9_]+$/.test(this.name)) {
 			throw new Error(
-				`Invalid tool name: "${this.name}". Tool names must contain only alphanumeric characters and underscores.`,
+				`Invalid tool name: "${this.name}". Tool names must contain only alphanumeric characters and underscores.`
 			);
 		}
 
 		// Validate description
 		if (!this.description || this.description.length < 3) {
 			throw new Error(
-				`Tool description for "${this.name}" is too short. Provide a meaningful description.`,
+				`Tool description for "${this.name}" is too short. Provide a meaningful description.`
 			);
 		}
 	}
@@ -140,7 +140,7 @@ export abstract class BaseTool {
 	validateArguments(args: Record<string, any>): boolean {
 		// Get the function declaration
 		const declaration = this.getDeclaration();
-		if (!declaration || !declaration.parameters) {
+		if (!(declaration && declaration.parameters)) {
 			return true; // No validation possible
 		}
 
@@ -149,7 +149,7 @@ export abstract class BaseTool {
 		for (const param of required) {
 			if (!(param in args)) {
 				console.error(
-					`Missing required parameter "${param}" for tool "${this.name}"`,
+					`Missing required parameter "${param}" for tool "${this.name}"`
 				);
 				return false;
 			}
@@ -172,7 +172,7 @@ export abstract class BaseTool {
 	 */
 	async runAsync(
 		args: Record<string, any>,
-		context: ToolContext,
+		context: ToolContext
 	): Promise<any> {
 		throw new Error(`${this.constructor.name} runAsync is not implemented`);
 	}
@@ -189,7 +189,7 @@ export abstract class BaseTool {
 	 */
 	async processLlmRequest(
 		_toolContext: ToolContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): Promise<void> {
 		const functionDeclaration = this.getDeclaration();
 		if (!functionDeclaration) {
@@ -209,7 +209,7 @@ export abstract class BaseTool {
 				toolWithFunctionDeclarations.functionDeclarations = [];
 			}
 			toolWithFunctionDeclarations.functionDeclarations.push(
-				functionDeclaration,
+				functionDeclaration
 			);
 		} else {
 			// Create new tool configuration
@@ -242,7 +242,7 @@ export abstract class BaseTool {
 	 */
 	async safeExecute(
 		args: Record<string, any>,
-		context: ToolContext,
+		context: ToolContext
 	): Promise<any> {
 		// Validate arguments
 		if (!this.validateArguments(args)) {
@@ -262,12 +262,12 @@ export abstract class BaseTool {
 			try {
 				if (attempts > 0) {
 					this.logger.debug(
-						`Retrying tool ${this.name} (attempt ${attempts} of ${this.maxRetryAttempts})...`,
+						`Retrying tool ${this.name} (attempt ${attempts} of ${this.maxRetryAttempts})...`
 					);
 
 					const delay = Math.min(
 						this.baseRetryDelay * 2 ** (attempts - 1) + Math.random() * 1000,
-						this.maxRetryDelay,
+						this.maxRetryDelay
 					);
 
 					await new Promise((resolve) => setTimeout(resolve, delay));
@@ -294,16 +294,16 @@ export abstract class BaseTool {
 	 * Helper method to find a tool with function declarations in the LLM request
 	 */
 	private findToolWithFunctionDeclarations(
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): { functionDeclarations?: FunctionDeclaration[] } | null {
-		if (!llmRequest.config || !llmRequest.config.tools) {
+		if (!(llmRequest.config && llmRequest.config.tools)) {
 			return null;
 		}
 
 		return (
 			llmRequest.config.tools.find(
 				(tool) =>
-					tool.functionDeclarations && tool.functionDeclarations.length > 0,
+					tool.functionDeclarations && tool.functionDeclarations.length > 0
 			) || null
 		);
 	}

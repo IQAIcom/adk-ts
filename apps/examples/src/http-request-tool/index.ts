@@ -68,7 +68,7 @@ Be clear about the HTTP method and URL you're using.`,
 async function runAgentTask(
 	runner: Runner,
 	sessionId: string,
-	userMessage: string,
+	userMessage: string
 ): Promise<string> {
 	const newMessage = {
 		parts: [{ text: userMessage }],
@@ -105,7 +105,7 @@ async function runAgentTask(
  */
 async function runHttpRequestExamples(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	/**
 	 * Example 1: Simple GET Request
@@ -115,7 +115,7 @@ async function runHttpRequestExamples(
 	const postsResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Get a list of posts from https://jsonplaceholder.typicode.com/posts and show me the first 3 posts",
+		"Get a list of posts from https://jsonplaceholder.typicode.com/posts and show me the first 3 posts"
 	);
 	console.log("Agent response:", postsResult);
 
@@ -127,7 +127,7 @@ async function runHttpRequestExamples(
 	const postResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Send a POST request to https://jsonplaceholder.typicode.com/posts with a JSON body containing title: 'Agent Test' and body: 'This is a test post created by an AI agent'",
+		"Send a POST request to https://jsonplaceholder.typicode.com/posts with a JSON body containing title: 'Agent Test' and body: 'This is a test post created by an AI agent'"
 	);
 	console.log("Agent response:", postResult);
 
@@ -139,7 +139,7 @@ async function runHttpRequestExamples(
 	const userResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Get user information for user ID 1 from https://jsonplaceholder.typicode.com/users/1",
+		"Get user information for user ID 1 from https://jsonplaceholder.typicode.com/users/1"
 	);
 	console.log("Agent response:", userResult);
 
@@ -151,7 +151,7 @@ async function runHttpRequestExamples(
 	const statusResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Make a GET request to https://httpstat.us/200 and tell me what the status code is",
+		"Make a GET request to https://httpstat.us/200 and tell me what the status code is"
 	);
 	console.log("Agent response:", statusResult);
 
@@ -163,7 +163,7 @@ async function runHttpRequestExamples(
 	const putResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Send a PUT request to https://jsonplaceholder.typicode.com/posts/1 to update the post with title: 'Updated Post' and body: 'This post has been updated'",
+		"Send a PUT request to https://jsonplaceholder.typicode.com/posts/1 to update the post with title: 'Updated Post' and body: 'This post has been updated'"
 	);
 	console.log("Agent response:", putResult);
 
@@ -175,7 +175,7 @@ async function runHttpRequestExamples(
 	const headersResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Make a GET request to https://httpbin.org/headers with a custom header 'X-Custom-Header: ADK-Demo'",
+		"Make a GET request to https://httpbin.org/headers with a custom header 'X-Custom-Header: ADK-Demo'"
 	);
 	console.log("Agent response:", headersResult);
 }

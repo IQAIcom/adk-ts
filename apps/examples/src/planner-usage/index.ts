@@ -73,7 +73,7 @@ async function demonstrateNoPlannerBaseline(): Promise<void> {
 
 	const response = await runAgentWithQuery(
 		agent,
-		"What's the capital of France?",
+		"What's the capital of France?"
 	);
 
 	console.log("📝 No Planner Response (baseline):");
@@ -101,7 +101,7 @@ async function demonstrateBuiltInPlanner(): Promise<void> {
 
 	const response = await runAgentWithQuery(
 		agent,
-		"What's 2 + 2? Please explain your reasoning.",
+		"What's 2 + 2? Please explain your reasoning."
 	);
 
 	console.log("📝 BuiltInPlanner Response:");
@@ -124,7 +124,7 @@ async function demonstratePlanReActPlanner(): Promise<void> {
 
 	const response = await runAgentWithQuery(
 		agent,
-		"I need to plan a birthday party for 20 people. Help me organize this.",
+		"I need to plan a birthday party for 20 people. Help me organize this."
 	);
 
 	console.log("📝 PlanReActPlanner Response:");
@@ -140,7 +140,7 @@ async function demonstratePlanReActPlanner(): Promise<void> {
  */
 async function runAgentWithQuery(
 	agent: LlmAgent,
-	userMessage: string,
+	userMessage: string
 ): Promise<string> {
 	console.log(`👤 User: ${userMessage}`);
 

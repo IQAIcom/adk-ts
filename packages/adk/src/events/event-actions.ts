@@ -45,7 +45,7 @@ export class EventActions {
 			transferToAgent?: string;
 			escalate?: boolean;
 			requestedAuthConfigs?: Record<string, any>;
-		} = {},
+		} = {}
 	) {
 		this.skipSummarization = options.skipSummarization;
 		this.stateDelta = options.stateDelta || {};

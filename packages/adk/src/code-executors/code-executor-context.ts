@@ -81,7 +81,7 @@ export class CodeExecutorContext {
 			return [];
 		}
 		return (this.sessionState[INPUT_FILE_KEY] as any[]).map(
-			(file) => file as File,
+			(file) => file as File
 		);
 	}
 
@@ -166,7 +166,7 @@ export class CodeExecutorContext {
 		invocationId: string,
 		code: string,
 		resultStdout: string,
-		resultStderr: string,
+		resultStderr: string
 	): void {
 		if (!(CODE_EXECUTION_RESULTS_KEY in this.sessionState)) {
 			this.sessionState[CODE_EXECUTION_RESULTS_KEY] = {};

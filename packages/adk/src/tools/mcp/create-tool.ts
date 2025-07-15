@@ -24,7 +24,7 @@ interface McpToolMetadata {
  */
 export async function createTool(
 	mcpTool: McpTool,
-	client: Client,
+	client: Client
 ): Promise<BaseTool> {
 	try {
 		return new McpToolAdapter(mcpTool, client);
@@ -33,7 +33,7 @@ export async function createTool(
 			throw new McpError(
 				`Failed to create tool from MCP tool: ${error instanceof Error ? error.message : String(error)}`,
 				McpErrorType.INVALID_SCHEMA_ERROR,
-				error instanceof Error ? error : undefined,
+				error instanceof Error ? error : undefined
 			);
 		}
 		throw error;
@@ -84,14 +84,14 @@ class McpToolAdapter extends BaseTool {
 			throw new McpError(
 				`Failed to convert schema for tool ${this.name}: ${error instanceof Error ? error.message : String(error)}`,
 				McpErrorType.INVALID_SCHEMA_ERROR,
-				error instanceof Error ? error : undefined,
+				error instanceof Error ? error : undefined
 			);
 		}
 	}
 
 	async runAsync(
 		args: Record<string, any>,
-		_context: ToolContext,
+		_context: ToolContext
 	): Promise<any> {
 		this.logger.debug(`Executing MCP tool ${this.name} with args:`, args);
 
@@ -116,10 +116,10 @@ class McpToolAdapter extends BaseTool {
 						this,
 						async () => {
 							console.warn(
-								`MCP tool ${this.name} encountered a closed resource, but cannot reinitialize client.`,
+								`MCP tool ${this.name} encountered a closed resource, but cannot reinitialize client.`
 							);
 						},
-						this.maxRetryAttempts,
+						this.maxRetryAttempts
 					);
 					return await executeWithRetry();
 				}
@@ -133,7 +133,7 @@ class McpToolAdapter extends BaseTool {
 
 			throw new McpError(
 				`Cannot execute MCP tool ${this.name}: No execution method found`,
-				McpErrorType.TOOL_EXECUTION_ERROR,
+				McpErrorType.TOOL_EXECUTION_ERROR
 			);
 		} catch (error) {
 			if (!(error instanceof McpError)) {
@@ -141,7 +141,7 @@ class McpToolAdapter extends BaseTool {
 				throw new McpError(
 					`Error executing MCP tool ${this.name}: ${error instanceof Error ? error.message : String(error)}`,
 					McpErrorType.TOOL_EXECUTION_ERROR,
-					error instanceof Error ? error : undefined,
+					error instanceof Error ? error : undefined
 				);
 			}
 			throw error;

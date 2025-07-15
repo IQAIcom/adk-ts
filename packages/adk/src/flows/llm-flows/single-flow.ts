@@ -41,13 +41,13 @@ export class SingleFlow extends BaseLlmFlow {
 			nlPlanningRequestProcessor, // Phase 5: NL Planning
 			// Code execution should be after the contents as it mutates the contents
 			// to optimize data files.
-			codeExecutionRequestProcessor, // Phase 5: Code Execution (placeholder)
+			codeExecutionRequestProcessor // Phase 5: Code Execution (placeholder)
 		);
 
 		// Add response processors
 		this.responseProcessors.push(
 			nlPlanningResponseProcessor, // Phase 5: NL Planning
-			codeExecutionResponseProcessor, // Phase 5: Code Execution (placeholder)
+			codeExecutionResponseProcessor // Phase 5: Code Execution (placeholder)
 		);
 
 		this.logger.debug("SingleFlow initialized with processors");

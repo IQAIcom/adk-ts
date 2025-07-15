@@ -21,9 +21,9 @@ export {
 	McpError,
 	McpErrorType,
 };
-export * from "./types";
 export * from "./sampling-handler";
 export * from "./servers";
+export * from "./types";
 
 /**
  * A class for managing MCP tools similar to Python's MCPToolset.
@@ -44,7 +44,7 @@ export class McpToolset {
 		toolFilter:
 			| string[]
 			| ((tool: any, context?: ToolContext) => boolean)
-			| null = null,
+			| null = null
 	) {
 		this.config = config;
 		this.toolFilter = toolFilter;
@@ -78,7 +78,7 @@ export class McpToolset {
 		if (this.isClosing) {
 			throw new McpError(
 				"Cannot initialize a toolset that is being closed",
-				McpErrorType.RESOURCE_CLOSED_ERROR,
+				McpErrorType.RESOURCE_CLOSED_ERROR
 			);
 		}
 
@@ -129,7 +129,7 @@ export class McpToolset {
 			if (this.isClosing) {
 				throw new McpError(
 					"Cannot get tools from a toolset that is being closed",
-					McpErrorType.RESOURCE_CLOSED_ERROR,
+					McpErrorType.RESOURCE_CLOSED_ERROR
 				);
 			}
 
@@ -148,7 +148,7 @@ export class McpToolset {
 
 			const toolsResponse = (await client.listTools()) as ListToolsResult;
 
-			if (!toolsResponse.tools || !Array.isArray(toolsResponse.tools)) {
+			if (!(toolsResponse.tools && Array.isArray(toolsResponse.tools))) {
 				console.warn("MCP server returned no tools or invalid tools array");
 				return [];
 			}
@@ -162,7 +162,7 @@ export class McpToolset {
 					} catch (toolError) {
 						console.error(
 							`Failed to create tool from MCP tool "${mcpTool.name}":`,
-							toolError,
+							toolError
 						);
 					}
 				}
@@ -179,7 +179,7 @@ export class McpToolset {
 				throw new McpError(
 					`Error retrieving MCP tools: ${error instanceof Error ? error.message : String(error)}`,
 					McpErrorType.CONNECTION_ERROR,
-					error instanceof Error ? error : undefined,
+					error instanceof Error ? error : undefined
 				);
 			}
 			throw error;
@@ -250,7 +250,7 @@ export class McpToolset {
  */
 export async function getMcpTools(
 	config: McpConfig,
-	toolFilter?: string[] | ((tool: any, context?: ToolContext) => boolean),
+	toolFilter?: string[] | ((tool: any, context?: ToolContext) => boolean)
 ): Promise<BaseTool[]> {
 	const toolset = new McpToolset(config, toolFilter);
 	try {

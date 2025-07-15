@@ -32,7 +32,7 @@ export default defineConfig({
       */
 		},
 		setupFiles: ["dotenv/config"],
-		testTimeout: 10000,
+		testTimeout: 10_000,
 		clearMocks: true,
 		restoreMocks: true,
 		exclude: ["**/dist/**"],

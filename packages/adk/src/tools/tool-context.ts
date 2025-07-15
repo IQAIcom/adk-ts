@@ -28,7 +28,7 @@ export class ToolContext extends CallbackContext {
 		options: {
 			functionCallId?: string;
 			eventActions?: EventActions;
-		} = {},
+		} = {}
 	) {
 		super(invocationContext, { eventActions: options.eventActions });
 		this.functionCallId = options.functionCallId;

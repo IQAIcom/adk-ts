@@ -18,7 +18,7 @@ export abstract class BasePlanner {
 	 */
 	abstract buildPlanningInstruction(
 		readonlyContext: ReadonlyContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): string | undefined;
 
 	/**
@@ -30,6 +30,6 @@ export abstract class BasePlanner {
 	 */
 	abstract processPlanningResponse(
 		callbackContext: CallbackContext,
-		responseParts: Part[],
+		responseParts: Part[]
 	): Part[] | undefined;
 }

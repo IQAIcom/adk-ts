@@ -126,7 +126,7 @@ export class VertexAiRagMemoryService implements BaseMemoryService {
 	constructor(
 		ragCorpus?: string,
 		similarityTopK?: number,
-		vectorDistanceThreshold = 10,
+		vectorDistanceThreshold = 10
 	) {
 		this._vertexRagStore = {
 			rag_resources: ragCorpus ? [{ rag_corpus: ragCorpus }] : [],
@@ -147,7 +147,7 @@ export class VertexAiRagMemoryService implements BaseMemoryService {
 			const outputLines: string[] = [];
 
 			for (const event of session.events) {
-				if (!event.content || !event.content.parts) {
+				if (!(event.content && event.content.parts)) {
 					continue;
 				}
 
@@ -161,7 +161,7 @@ export class VertexAiRagMemoryService implements BaseMemoryService {
 							author: event.author,
 							timestamp: event.timestamp,
 							text: textParts.join("."),
-						}),
+						})
 					);
 				}
 			}
@@ -281,7 +281,7 @@ export class VertexAiRagMemoryService implements BaseMemoryService {
 						author: event.author,
 						content: event.content!,
 						timestamp: formatTimestamp(event.timestamp),
-					})),
+					}))
 				);
 			}
 		}

@@ -61,9 +61,9 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 
 	constructor(config: ContainerCodeExecutorConfig = {}) {
 		// Validate configuration
-		if (!config.image && !config.dockerPath) {
+		if (!(config.image || config.dockerPath)) {
 			throw new Error(
-				"Either image or dockerPath must be set for ContainerCodeExecutor.",
+				"Either image or dockerPath must be set for ContainerCodeExecutor."
 			);
 		}
 
@@ -73,7 +73,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 
 		if (config.optimizeDataFile) {
 			throw new Error(
-				"Cannot set `optimizeDataFile=true` in ContainerCodeExecutor.",
+				"Cannot set `optimizeDataFile=true` in ContainerCodeExecutor."
 			);
 		}
 
@@ -91,7 +91,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 		this.dockerPath = config.dockerPath
 			? path.resolve(config.dockerPath)
 			: undefined;
-		this.executionTimeout = config.executionTimeout ?? 30000;
+		this.executionTimeout = config.executionTimeout ?? 30_000;
 
 		// Initialize Docker client
 		this.client = this.baseUrl
@@ -104,7 +104,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 
 	async executeCode(
 		invocationContext: InvocationContext,
-		codeExecutionInput: CodeExecutionInput,
+		codeExecutionInput: CodeExecutionInput
 	): Promise<CodeExecutionResult> {
 		await this.ensureInitialized();
 
@@ -168,7 +168,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 	 */
 	private async collectOutput(
 		stream: NodeJS.ReadableStream,
-		exec: Docker.Exec,
+		exec: Docker.Exec
 	): Promise<{ stdout: string; stderr: string; exitCode: number }> {
 		return new Promise((resolve, reject) => {
 			let stdout = "";
@@ -214,9 +214,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 		return new Promise((_, reject) => {
 			setTimeout(() => {
 				reject(
-					new Error(
-						`Code execution timed out after ${this.executionTimeout}ms`,
-					),
+					new Error(`Code execution timed out after ${this.executionTimeout}ms`)
 				);
 			}, this.executionTimeout);
 		});
@@ -264,7 +262,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 				{
 					t: this.image,
 					rm: true,
-				},
+				}
 			);
 
 			// Wait for build to complete
@@ -282,7 +280,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 						if (event.stream) {
 							this.logger.debug("Build output:", event.stream.trim());
 						}
-					},
+					}
 				);
 			});
 

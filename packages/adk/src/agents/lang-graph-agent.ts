@@ -27,7 +27,7 @@ export interface LangGraphNode {
 	 */
 	condition?: (
 		lastEvent: Event,
-		context: InvocationContext,
+		context: InvocationContext
 	) => boolean | Promise<boolean>;
 }
 
@@ -112,7 +112,7 @@ export class LangGraphAgent extends BaseAgent {
 		// Set root node
 		if (!this.nodes.has(config.rootNode)) {
 			throw new Error(
-				`Root node "${config.rootNode}" not found in graph nodes`,
+				`Root node "${config.rootNode}" not found in graph nodes`
 			);
 		}
 		this.rootNode = config.rootNode;
@@ -134,7 +134,7 @@ export class LangGraphAgent extends BaseAgent {
 				for (const target of node.targets) {
 					if (!this.nodes.has(target)) {
 						throw new Error(
-							`Node "${nodeName}" targets non-existent node "${target}"`,
+							`Node "${nodeName}" targets non-existent node "${target}"`
 						);
 					}
 				}
@@ -150,7 +150,7 @@ export class LangGraphAgent extends BaseAgent {
 	private async getNextNodes(
 		currentNode: LangGraphNode,
 		lastEvent: Event,
-		context: InvocationContext,
+		context: InvocationContext
 	): Promise<LangGraphNode[]> {
 		if (!currentNode.targets || currentNode.targets.length === 0) {
 			// Terminal node
@@ -185,10 +185,10 @@ export class LangGraphAgent extends BaseAgent {
 	 * Core logic to run this agent via text-based conversation.
 	 */
 	protected async *runAsyncImpl(
-		context: InvocationContext,
+		context: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		this.logger.debug(
-			`Starting graph execution from root node "${this.rootNode}"`,
+			`Starting graph execution from root node "${this.rootNode}"`
 		);
 
 		if (this.nodes.size === 0) {
@@ -307,7 +307,7 @@ export class LangGraphAgent extends BaseAgent {
 	 * For LangGraph, this follows the same execution pattern as text-based.
 	 */
 	protected async *runLiveImpl(
-		context: InvocationContext,
+		context: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		// For LangGraph agents, live execution follows the same pattern as async
 		// The individual node agents will handle their own live vs async differences

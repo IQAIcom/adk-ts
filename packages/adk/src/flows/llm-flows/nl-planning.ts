@@ -19,7 +19,7 @@ import {
 class NlPlanningRequestProcessor extends BaseLlmRequestProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event> {
 		const planner = getPlanner(invocationContext);
 		if (!planner) {
@@ -34,7 +34,7 @@ class NlPlanningRequestProcessor extends BaseLlmRequestProcessor {
 		// Build and append planning instructions
 		const planningInstruction = planner.buildPlanningInstruction(
 			new ReadonlyContext(invocationContext),
-			llmRequest,
+			llmRequest
 		);
 		if (planningInstruction) {
 			if (llmRequest.appendInstructions) {
@@ -65,13 +65,11 @@ class NlPlanningRequestProcessor extends BaseLlmRequestProcessor {
 class NlPlanningResponseProcessor extends BaseLlmResponseProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmResponse: LlmResponse,
+		llmResponse: LlmResponse
 	): AsyncGenerator<Event> {
 		// Check if response has content to process
 		if (
-			!llmResponse ||
-			!llmResponse.content ||
-			!llmResponse.content.parts ||
+			!(llmResponse && llmResponse.content && llmResponse.content.parts) ||
 			llmResponse.content.parts.length === 0
 		) {
 			return;
@@ -86,7 +84,7 @@ class NlPlanningResponseProcessor extends BaseLlmResponseProcessor {
 		const callbackContext = new CallbackContext(invocationContext);
 		const processedParts = planner.processPlanningResponse(
 			callbackContext,
-			llmResponse.content.parts,
+			llmResponse.content.parts
 		);
 
 		// Update response parts if processing returned new parts
@@ -116,7 +114,7 @@ function getPlanner(invocationContext: InvocationContext): BasePlanner | null {
 	const agent = invocationContext.agent;
 
 	// Check if agent has planner property (duck typing)
-	if (!("planner" in agent) || !agent.planner) {
+	if (!("planner" in agent && agent.planner)) {
 		return null;
 	}
 

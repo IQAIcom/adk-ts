@@ -11,7 +11,7 @@ import { BaseLlmRequestProcessor } from "./base-llm-processor";
 class BasicLlmRequestProcessor extends BaseLlmRequestProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event, void, unknown> {
 		const agent = invocationContext.agent;
 
@@ -29,7 +29,7 @@ class BasicLlmRequestProcessor extends BaseLlmRequestProcessor {
 		// Set the generation config (deep copy if it exists)
 		if (agent.generateContentConfig) {
 			llmRequest.config = JSON.parse(
-				JSON.stringify(agent.generateContentConfig),
+				JSON.stringify(agent.generateContentConfig)
 			);
 		} else {
 			llmRequest.config = {};

@@ -1,4 +1,4 @@
-import { type Part, type Content, Language, Outcome } from "@google/genai";
+import { type Content, Language, Outcome, type Part } from "@google/genai";
 
 export interface File {
 	/** The name of the file with file extension (e.g., "file.csv") */
@@ -60,7 +60,7 @@ export class CodeExecutionUtils {
 	 */
 	static extractCodeAndTruncateContent(
 		content: Content,
-		codeBlockDelimiters: Array<[string, string]>,
+		codeBlockDelimiters: Array<[string, string]>
 	): string | null {
 		if (!content?.parts?.length) {
 			return null;
@@ -97,7 +97,7 @@ export class CodeExecutionUtils {
 
 		const pattern = new RegExp(
 			`(.*?)(${leadingDelimiterPattern})(.*?)(${trailingDelimiterPattern})(.*?)$`,
-			"s",
+			"s"
 		);
 
 		const match = responseText.match(pattern);
@@ -140,7 +140,7 @@ export class CodeExecutionUtils {
 	 * Builds the code execution result part from the code execution result
 	 */
 	static buildCodeExecutionResultPart(
-		codeExecutionResult: CodeExecutionResult,
+		codeExecutionResult: CodeExecutionResult
 	): Part {
 		if (codeExecutionResult.stderr) {
 			return {
@@ -155,7 +155,7 @@ export class CodeExecutionUtils {
 
 		if (codeExecutionResult.stdout || !codeExecutionResult.outputFiles.length) {
 			finalResult.push(
-				`Code execution result:\n${codeExecutionResult.stdout}\n`,
+				`Code execution result:\n${codeExecutionResult.stdout}\n`
 			);
 		}
 
@@ -180,7 +180,7 @@ export class CodeExecutionUtils {
 	static convertCodeExecutionParts(
 		content: Content,
 		codeBlockDelimiter: [string, string],
-		executionResultDelimiters: [string, string],
+		executionResultDelimiters: [string, string]
 	): void {
 		if (!content.parts?.length) {
 			return;

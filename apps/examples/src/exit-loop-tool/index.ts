@@ -79,7 +79,7 @@ function generateUserMessage(iteration: number): string {
 async function processLoopIteration(
 	runner: Runner,
 	sessionId: string,
-	iteration: number,
+	iteration: number
 ): Promise<boolean> {
 	console.log(`\n--- Loop iteration ${iteration} of ${MAX_ITERATIONS} ---`);
 
@@ -149,7 +149,7 @@ async function processLoopIteration(
  */
 async function runLoopDemo(runner: Runner, sessionId: string): Promise<void> {
 	console.log(
-		`Starting the loop example with ${MAX_ITERATIONS} iterations. The agent will exit early on iteration 3.`,
+		`Starting the loop example with ${MAX_ITERATIONS} iterations. The agent will exit early on iteration 3.`
 	);
 
 	let loopCount = 0;
@@ -172,7 +172,7 @@ async function runLoopDemo(runner: Runner, sessionId: string): Promise<void> {
 	console.log(
 		exitLoop
 			? "Loop exited early via exit_loop tool."
-			: "Loop completed all iterations.",
+			: "Loop completed all iterations."
 	);
 }
 

@@ -1,3 +1,17 @@
 {
-  "pages": ["index", "get-started", "agents", "tools", "mcp-servers", "sessions", "runtime", "evaluation", "artifacts", "callbacks", "context", "deploy", "events"]
+  "pages": [
+    "index",
+    "get-started",
+    "agents",
+    "tools",
+    "mcp-servers",
+    "sessions",
+    "runtime",
+    "evaluation",
+    "artifacts",
+    "callbacks",
+    "context",
+    "deploy",
+    "events"
+  ]
 }

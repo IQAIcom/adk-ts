@@ -87,8 +87,8 @@ export class RunConfig {
 	constructor(config?: Partial<RunConfig>) {
 		this.speechConfig = config?.speechConfig;
 		this.responseModalities = config?.responseModalities;
-		this.saveInputBlobsAsArtifacts = config?.saveInputBlobsAsArtifacts || false;
-		this.supportCFC = config?.supportCFC || false;
+		this.saveInputBlobsAsArtifacts = config?.saveInputBlobsAsArtifacts;
+		this.supportCFC = config?.supportCFC;
 		this.streamingMode = config?.streamingMode || StreamingMode.NONE;
 		this.outputAudioTranscription = config?.outputAudioTranscription;
 		this.inputAudioTranscription = config?.inputAudioTranscription;
@@ -107,7 +107,7 @@ export class RunConfig {
 	private validateMaxLlmCalls(): void {
 		if (this.maxLlmCalls === Number.MAX_SAFE_INTEGER) {
 			throw new Error(
-				`maxLlmCalls should be less than ${Number.MAX_SAFE_INTEGER}.`,
+				`maxLlmCalls should be less than ${Number.MAX_SAFE_INTEGER}.`
 			);
 		}
 		if (this.maxLlmCalls <= 0) {
@@ -116,7 +116,7 @@ export class RunConfig {
 					" no enforcement on total number of llm calls that will be made for a" +
 					" run. This may not be ideal, as this could result in a never" +
 					" ending communication between the model and the agent in certain" +
-					" cases.",
+					" cases."
 			);
 		}
 	}

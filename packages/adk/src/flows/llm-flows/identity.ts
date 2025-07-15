@@ -10,7 +10,7 @@ import { BaseLlmRequestProcessor } from "./base-llm-processor";
 class IdentityLlmRequestProcessor extends BaseLlmRequestProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event, void, unknown> {
 		const agent = invocationContext.agent;
 

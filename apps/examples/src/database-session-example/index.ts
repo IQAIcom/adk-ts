@@ -2,10 +2,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { env } from "node:process";
 import {
+	createDatabaseSessionService,
 	InMemoryMemoryService,
 	LlmAgent,
 	Runner,
-	createDatabaseSessionService,
 } from "@iqai/adk";
 
 /**
@@ -82,7 +82,7 @@ function createRunnerWithPersistence(): Runner {
 				"You are a counter. Increment the count each time when I tell you so. Start with 1",
 		}),
 		sessionService: createDatabaseSessionService(
-			getSqliteConnectionString("counter"),
+			getSqliteConnectionString("counter")
 		),
 		memoryService: new InMemoryMemoryService(),
 	});
@@ -96,7 +96,7 @@ function createRunnerWithPersistence(): Runner {
 async function getOrCreateSession(runner: Runner): Promise<string> {
 	const { sessions } = await runner.sessionService.listSessions(
 		APP_NAME,
-		USER_ID,
+		USER_ID
 	);
 
 	if (sessions.length > 0) {
@@ -107,7 +107,7 @@ async function getOrCreateSession(runner: Runner): Promise<string> {
 	console.log("🆕 Creating new session...");
 	const newSession = await runner.sessionService.createSession(
 		APP_NAME,
-		USER_ID,
+		USER_ID
 	);
 	return newSession.id;
 }
@@ -119,7 +119,7 @@ async function getOrCreateSession(runner: Runner): Promise<string> {
  */
 async function runCounterInteraction(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	console.log("🔢 Incrementing counter...");
 

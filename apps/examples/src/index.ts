@@ -100,7 +100,7 @@ async function main() {
 	// If --name argument is provided, try to find and run the example directly
 	if (name) {
 		const matchedExample = examples.find(
-			(example) => example.name.toLowerCase() === name.toLowerCase(),
+			(example) => example.name.toLowerCase() === name.toLowerCase()
 		);
 
 		if (matchedExample) {

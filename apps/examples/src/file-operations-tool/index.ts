@@ -81,7 +81,7 @@ async function main() {
 
 		console.log("\n✅ File operations example completed!");
 		console.log(
-			`📁 Check the '${tempDir}' directory to see the created files.`,
+			`📁 Check the '${tempDir}' directory to see the created files.`
 		);
 	} catch (error) {
 		console.error("❌ Error in file operations example:", error);
@@ -118,7 +118,7 @@ Provide clear feedback about what operations were performed.`,
  */
 async function demonstrateFileOperations(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	/**
 	 * Example 1: Write a simple file
@@ -128,7 +128,7 @@ async function demonstrateFileOperations(
 	const writeResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Write 'Hello, world!' to a file named 'hello.txt'",
+		"Write 'Hello, world!' to a file named 'hello.txt'"
 	);
 	console.log("Agent response:", writeResult);
 
@@ -140,7 +140,7 @@ async function demonstrateFileOperations(
 	const readResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Read the contents of the file 'hello.txt'",
+		"Read the contents of the file 'hello.txt'"
 	);
 	console.log("Agent response:", readResult);
 
@@ -152,7 +152,7 @@ async function demonstrateFileOperations(
 	const listResult = await runAgentTask(
 		runner,
 		sessionId,
-		"List all files in the current directory",
+		"List all files in the current directory"
 	);
 	console.log("Agent response:", listResult);
 
@@ -164,7 +164,7 @@ async function demonstrateFileOperations(
 	const existsResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Check if a file named 'non-existent.txt' exists",
+		"Check if a file named 'non-existent.txt' exists"
 	);
 	console.log("Agent response:", existsResult);
 
@@ -176,7 +176,7 @@ async function demonstrateFileOperations(
 	const mkdirResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Create a new directory called 'test-dir'",
+		"Create a new directory called 'test-dir'"
 	);
 	console.log("Agent response:", mkdirResult);
 
@@ -188,7 +188,7 @@ async function demonstrateFileOperations(
 	const subDirWriteResult = await runAgentTask(
 		runner,
 		sessionId,
-		"Write 'Hello from subdirectory!' to 'test-dir/sub-hello.txt'",
+		"Write 'Hello from subdirectory!' to 'test-dir/sub-hello.txt'"
 	);
 	console.log("Agent response:", subDirWriteResult);
 
@@ -200,7 +200,7 @@ async function demonstrateFileOperations(
 	const subDirListResult = await runAgentTask(
 		runner,
 		sessionId,
-		"List all files in the 'test-dir' directory",
+		"List all files in the 'test-dir' directory"
 	);
 	console.log("Agent response:", subDirListResult);
 }
@@ -215,7 +215,7 @@ async function demonstrateFileOperations(
 async function runAgentTask(
 	runner: Runner,
 	sessionId: string,
-	userMessage: string,
+	userMessage: string
 ): Promise<string> {
 	const newMessage = {
 		parts: [{ text: userMessage }],

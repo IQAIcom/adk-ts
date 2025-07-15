@@ -59,7 +59,7 @@ export class GoogleLlm extends BaseLlm {
 	 */
 	protected async *generateContentAsyncImpl(
 		llmRequest: LlmRequest,
-		stream = false,
+		stream = false
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		this.preprocessRequest(llmRequest);
 
@@ -94,9 +94,11 @@ export class GoogleLlm extends BaseLlm {
 					llmResponse.partial = true;
 				} else if (
 					(thoughtText || text) &&
-					(!llmResponse.content ||
-						!llmResponse.content.parts ||
-						!this.hasInlineData(resp))
+					!(
+						llmResponse.content &&
+						llmResponse.content.parts &&
+						this.hasInlineData(resp)
+					)
 				) {
 					// Yield merged content - equivalent to Python's types.ModelContent(parts=parts)
 					const parts: Part[] = [];
@@ -151,7 +153,7 @@ export class GoogleLlm extends BaseLlm {
 			});
 			const llmResponse = LlmResponse.create(response);
 			this.logger.debug(
-				`Google response: ${llmResponse.usageMetadata?.candidatesTokenCount || 0} tokens`,
+				`Google response: ${llmResponse.usageMetadata?.candidatesTokenCount || 0} tokens`
 			);
 			yield llmResponse;
 		}
@@ -171,7 +173,7 @@ export class GoogleLlm extends BaseLlm {
 	 */
 	private hasInlineData(response: GenerateContentResponse): boolean {
 		const parts = response.candidates?.[0]?.content?.parts;
-		return parts?.some((part) => (part as any)?.inlineData) || false;
+		return parts?.some((part) => (part as any)?.inlineData);
 	}
 
 	/**
@@ -266,7 +268,7 @@ export class GoogleLlm extends BaseLlm {
 			} else {
 				throw new Error(
 					"Google API Key or Vertex AI configuration is required. " +
-						"Set GOOGLE_API_KEY or GOOGLE_GENAI_USE_VERTEXAI=true with GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION.",
+						"Set GOOGLE_API_KEY or GOOGLE_GENAI_USE_VERTEXAI=true with GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION."
 				);
 			}
 		}

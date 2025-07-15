@@ -56,7 +56,7 @@ server.registerTool(
 				},
 			],
 		};
-	},
+	}
 );
 
 // 3. Start the server using the connect method with a specific transport

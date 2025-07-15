@@ -133,7 +133,7 @@ Always confirm operations and provide helpful feedback about what was accomplish
  */
 async function demonstrateFileOperations(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	/**
 	 * Example 1: Save a greeting file
@@ -143,7 +143,7 @@ async function demonstrateFileOperations(
 	await runAgentTask(
 		runner,
 		sessionId,
-		'Save "Hello World!" as "greeting.txt"',
+		'Save "Hello World!" as "greeting.txt"'
 	);
 
 	/**
@@ -154,7 +154,7 @@ async function demonstrateFileOperations(
 	await runAgentTask(
 		runner,
 		sessionId,
-		'Save my preferences as "user_settings.json": {"theme": "dark", "language": "en"}',
+		'Save my preferences as "user_settings.json": {"theme": "dark", "language": "en"}'
 	);
 
 	/**
@@ -179,7 +179,7 @@ async function demonstrateFileOperations(
 	await runAgentTask(
 		runner,
 		sessionId,
-		'Update "greeting.txt" with "Hello Updated World!"',
+		'Update "greeting.txt" with "Hello Updated World!"'
 	);
 }
 
@@ -190,7 +190,7 @@ async function demonstrateFileOperations(
  */
 async function demonstrateCrossSessionPersistence(
 	runner: Runner,
-	sessionService: InMemorySessionService,
+	sessionService: InMemorySessionService
 ): Promise<void> {
 	console.log("\n🔄 Testing cross-session persistence...");
 
@@ -203,7 +203,7 @@ async function demonstrateCrossSessionPersistence(
 	await runAgentTask(
 		runner,
 		newSession.id,
-		'Load my user settings from "user_settings.json"',
+		'Load my user settings from "user_settings.json"'
 	);
 }
 
@@ -216,7 +216,7 @@ async function demonstrateCrossSessionPersistence(
 async function runAgentTask(
 	runner: Runner,
 	sessionId: string,
-	message: string,
+	message: string
 ): Promise<void> {
 	try {
 		const userMessage = {
@@ -252,7 +252,7 @@ async function runAgentTask(
 async function saveArtifact(
 	filename: string,
 	content: string,
-	toolContext: any,
+	toolContext: any
 ): Promise<string> {
 	try {
 		const part = {
@@ -293,7 +293,7 @@ async function listArtifacts(toolContext: any): Promise<string> {
  */
 async function deleteArtifact(
 	filename: string,
-	toolContext: any,
+	toolContext: any
 ): Promise<string> {
 	try {
 		if (!toolContext._invocationContext.artifactService) {

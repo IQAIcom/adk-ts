@@ -88,7 +88,7 @@ export class FileOperationsTool extends BaseTool {
 			content?: string;
 			encoding?: BufferEncoding;
 		},
-		_context: ToolContext,
+		_context: ToolContext
 	): Promise<FileOperationResult> {
 		try {
 			// Resolve the full file path, ensuring it's within the base path
@@ -108,14 +108,14 @@ export class FileOperationsTool extends BaseTool {
 					return await this.writeFile(
 						resolvedPath,
 						args.content || "",
-						encoding,
+						encoding
 					);
 
 				case "append":
 					return await this.appendFile(
 						resolvedPath,
 						args.content || "",
-						encoding,
+						encoding
 					);
 
 				case "delete":
@@ -161,7 +161,7 @@ export class FileOperationsTool extends BaseTool {
 		// Check if the path is outside the base path
 		if (!normalizedPath.startsWith(normalizedBasePath)) {
 			throw new Error(
-				`Access denied: Can't access paths outside the base directory`,
+				`Access denied: Can't access paths outside the base directory`
 			);
 		}
 	}
@@ -171,7 +171,7 @@ export class FileOperationsTool extends BaseTool {
 	 */
 	private async readFile(
 		filepath: string,
-		encoding: BufferEncoding,
+		encoding: BufferEncoding
 	): Promise<FileOperationResult> {
 		try {
 			const content = await fs.readFile(filepath, { encoding });
@@ -193,7 +193,7 @@ export class FileOperationsTool extends BaseTool {
 	private async writeFile(
 		filepath: string,
 		content: string,
-		encoding: BufferEncoding,
+		encoding: BufferEncoding
 	): Promise<FileOperationResult> {
 		try {
 			// Ensure the directory exists
@@ -218,7 +218,7 @@ export class FileOperationsTool extends BaseTool {
 	private async appendFile(
 		filepath: string,
 		content: string,
-		encoding: BufferEncoding,
+		encoding: BufferEncoding
 	): Promise<FileOperationResult> {
 		try {
 			// Ensure the directory exists
@@ -293,7 +293,7 @@ export class FileOperationsTool extends BaseTool {
 						created: stats.birthtime,
 						modified: stats.mtime,
 					};
-				}),
+				})
 			);
 
 			return {

@@ -3,9 +3,9 @@
 import { env } from "node:process";
 import {
 	AgentBuilder,
+	createSamplingHandler,
 	LlmResponse,
 	McpToolset,
-	createSamplingHandler,
 } from "@iqai/adk";
 
 /**
@@ -44,7 +44,7 @@ async function main() {
 
 	const tools = await toolset.getTools();
 	console.log(
-		`✅ Connected! Available tools: ${tools.map((t) => t.name).join(", ")}`,
+		`✅ Connected! Available tools: ${tools.map((t) => t.name).join(", ")}`
 	);
 
 	// Test the greeting functionality using AgentBuilder
@@ -52,7 +52,7 @@ async function main() {
 		.withModel(env.LLM_MODEL || "gemini-2.0-flash")
 		.withDescription("An assistant that can greet users using MCP sampling")
 		.withInstruction(
-			"You must always use the greet_user tool to respond to any greeting request. Never provide a greeting without using the tool first.",
+			"You must always use the greet_user tool to respond to any greeting request. Never provide a greeting without using the tool first."
 		)
 		.withTools(...tools)
 		.ask("Use the greet_user tool to greet me now.");

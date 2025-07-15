@@ -80,7 +80,7 @@ export class LLMRegistry {
 	static logRegisteredModels(): void {
 		LLMRegistry.logger.debug(
 			"Registered LLM models:",
-			[...LLMRegistry.llmRegistry.entries()].map(([regex]) => regex.toString()),
+			[...LLMRegistry.llmRegistry.entries()].map(([regex]) => regex.toString())
 		);
 	}
 }

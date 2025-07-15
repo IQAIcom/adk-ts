@@ -1,8 +1,10 @@
 import type { Content } from "@google/genai";
 import { SpanStatusCode } from "@opentelemetry/api";
 import type { BaseAgent } from "./agents/base-agent";
-import { InvocationContext } from "./agents/invocation-context";
-import { newInvocationContextId } from "./agents/invocation-context";
+import {
+	InvocationContext,
+	newInvocationContextId,
+} from "./agents/invocation-context";
 import { LlmAgent } from "./agents/llm-agent";
 import { RunConfig } from "./agents/run-config";
 import type { BaseArtifactService } from "./artifacts/base-artifact-service";
@@ -20,7 +22,7 @@ import { tracer } from "./telemetry";
  * Find function call event if last event is function response.
  */
 function _findFunctionCallEventIfLastEventIsFunctionResponse(
-	session: Session,
+	session: Session
 ): Event | null {
 	const events = session.events;
 	if (!events || events.length === 0) {
@@ -30,7 +32,7 @@ function _findFunctionCallEventIfLastEventIsFunctionResponse(
 	const lastEvent = events[events.length - 1];
 	if (lastEvent.content?.parts?.some((part) => part.functionResponse)) {
 		const functionCallId = lastEvent.content.parts.find(
-			(part) => part.functionResponse,
+			(part) => part.functionResponse
 		)?.functionResponse?.id;
 
 		if (!functionCallId) return null;
@@ -189,7 +191,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			const session = await this.sessionService.getSession(
 				this.appName,
 				userId,
-				sessionId,
+				sessionId
 			);
 			if (!session) {
 				throw new Error(`Session not found: ${sessionId}`);
@@ -205,14 +207,14 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 					session,
 					newMessage,
 					invocationContext,
-					runConfig.saveInputBlobsAsArtifacts || false,
+					runConfig.saveInputBlobsAsArtifacts
 				);
 			}
 
 			invocationContext.agent = this._findAgentToRun(session, this.agent);
 
 			for await (const event of invocationContext.agent.runAsync(
-				invocationContext,
+				invocationContext
 			)) {
 				if (!event.partial) {
 					await this.sessionService.appendEvent(session, event);
@@ -239,7 +241,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		session: Session,
 		newMessage: Content,
 		invocationContext: InvocationContext,
-		saveInputBlobsAsArtifacts = false,
+		saveInputBlobsAsArtifacts = false
 	): Promise<void> {
 		if (!newMessage.parts) {
 			throw new Error("No parts in the new_message.");
@@ -311,7 +313,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			if (!agent) {
 				// Agent not found, continue looking
 				this.logger.debug(
-					`Event from an unknown agent: ${event.author}, event id: ${event.id}`,
+					`Event from an unknown agent: ${event.author}, event id: ${event.id}`
 				);
 				continue;
 			}
@@ -358,7 +360,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		}: {
 			newMessage?: Content;
 			runConfig?: RunConfig;
-		},
+		}
 	): InvocationContext {
 		const invocationId = newInvocationContextId();
 
@@ -390,7 +392,7 @@ export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
 	 */
 	constructor(
 		agent: T,
-		{ appName = "InMemoryRunner" }: { appName?: string } = {},
+		{ appName = "InMemoryRunner" }: { appName?: string } = {}
 	) {
 		const inMemorySessionService = new InMemorySessionService();
 

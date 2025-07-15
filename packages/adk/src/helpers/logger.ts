@@ -21,7 +21,7 @@ export class Logger {
 			const time = new Date().toLocaleTimeString();
 			console.log(
 				this.colorize(`[${time}] 🐛 [${this.name}] ${message}`),
-				...args,
+				...args
 			);
 		}
 	}
@@ -30,7 +30,7 @@ export class Logger {
 		const time = new Date().toLocaleTimeString();
 		console.info(
 			this.colorize(`[${time}] ℹ️ [${this.name}] ${message}`),
-			...args,
+			...args
 		);
 	}
 
@@ -38,7 +38,7 @@ export class Logger {
 		const time = new Date().toLocaleTimeString();
 		console.warn(
 			this.colorize(`[${time}] 🚧 [${this.name}] ${message}`),
-			...args,
+			...args
 		);
 	}
 
@@ -46,7 +46,7 @@ export class Logger {
 		const time = new Date().toLocaleTimeString();
 		console.error(
 			this.colorize(`[${time}] ❌ [${this.name}] ${message}`),
-			...args,
+			...args
 		);
 	}
 

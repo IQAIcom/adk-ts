@@ -12,7 +12,7 @@ async function main() {
 
 	// The simplest possible usage - just model and ask!
 	const response = await AgentBuilder.withModel(
-		env.LLM_MODEL || "gemini-2.5-flash",
+		env.LLM_MODEL || "gemini-2.5-flash"
 	).ask(question);
 
 	console.log(dedent`

@@ -1,9 +1,9 @@
+import type { BaseAgent } from "../../agents/base-agent";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
-import type { BaseAgent } from "../../agents/base-agent";
+import { ReadonlyContext } from "../../agents/readonly-context";
 import type { Event } from "../../events/event";
 import type { LlmRequest } from "../../models/llm-request";
-import { ReadonlyContext } from "../../agents/readonly-context";
 import { injectSessionState } from "../../utils/instructions-utils";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
@@ -14,7 +14,7 @@ import { BaseLlmRequestProcessor } from "./base-llm-processor";
 class InstructionsLlmRequestProcessor extends BaseLlmRequestProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event, void, unknown> {
 		const agent = invocationContext.agent;
 
@@ -29,14 +29,14 @@ class InstructionsLlmRequestProcessor extends BaseLlmRequestProcessor {
 		if (this.isLlmAgent(rootAgent) && rootAgent.globalInstruction) {
 			const [rawInstruction, bypassStateInjection] =
 				await rootAgent.canonicalGlobalInstruction(
-					new ReadonlyContext(invocationContext),
+					new ReadonlyContext(invocationContext)
 				);
 
 			let instruction = rawInstruction;
 			if (!bypassStateInjection) {
 				instruction = await injectSessionState(
 					rawInstruction,
-					new ReadonlyContext(invocationContext),
+					new ReadonlyContext(invocationContext)
 				);
 			}
 
@@ -47,14 +47,14 @@ class InstructionsLlmRequestProcessor extends BaseLlmRequestProcessor {
 		if (agent.instruction) {
 			const [rawInstruction, bypassStateInjection] =
 				await agent.canonicalInstruction(
-					new ReadonlyContext(invocationContext),
+					new ReadonlyContext(invocationContext)
 				);
 
 			let instruction = rawInstruction;
 			if (!bypassStateInjection) {
 				instruction = await injectSessionState(
 					rawInstruction,
-					new ReadonlyContext(invocationContext),
+					new ReadonlyContext(invocationContext)
 				);
 			}
 

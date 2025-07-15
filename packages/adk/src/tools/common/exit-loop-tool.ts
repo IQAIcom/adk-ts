@@ -24,7 +24,7 @@ export class ExitLoopTool extends BaseTool {
 	 */
 	async runAsync(
 		_args: Record<string, any>,
-		context: ToolContext,
+		context: ToolContext
 	): Promise<any> {
 		this.logger.debug("Executing exit loop tool");
 		context.actions.escalate = true;

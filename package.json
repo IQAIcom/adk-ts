@@ -1,35 +1,39 @@
 {
-	"name": "adk-ts",
-	"private": true,
-	"scripts": {
-		"build": "turbo build --concurrency 50",
-		"build:docs": "turbo build --filter=docs",
-		"start:docs": "turbo start --filter=docs",
-		"dev": "turbo dev --concurrency 50",
-		"clean": "turbo clean && rm -rf node_modules",
-		"clean-modules": "echo '🧹 Cleaning all node_modules directories...' && find . -name 'node_modules' -type d -exec rm -rf {} + && echo '✨ All node_modules directories have been removed!'",
-		"clean-dist": "echo '🧹 Cleaning all dist directories...' && find . -name 'dist' -type d -exec rm -rf {} + && echo '✨ All dist directories have been removed!'",
-		"format": "biome format . --write",
-		"lint": "lint-staged --allow-empty",
-		"changeset": "changeset",
-		"version-packages": "changeset version",
-		"publish-packages": "turbo run build lint && changeset version && changeset publish",
-		"prepare": "husky"
-	},
-	"devDependencies": {
-		"@changesets/cli": "^2.27.1",
-		"@biomejs/biome": "1.9.4",
-		"husky": "9.1.7",
-		"lint-staged": "^15.4.3",
-		"turbo": "^2.3.3"
-	},
-	"packageManager": "pnpm@9.0.0",
-	"engines": {
-		"node": ">=22.0"
-	},
-	"lint-staged": {
-		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-			"biome check --write --organize-imports-enabled=false --no-errors-on-unmatched"
-		]
-	}
+  "name": "adk-ts",
+  "private": true,
+  "scripts": {
+    "build": "turbo build --concurrency 50",
+    "build:docs": "turbo build --filter=docs",
+    "start:docs": "turbo start --filter=docs",
+    "dev": "turbo dev --concurrency 50",
+    "clean": "turbo clean && rm -rf node_modules",
+    "clean-modules": "echo '🧹 Cleaning all node_modules directories...' && find . -name 'node_modules' -type d -exec rm -rf {} + && echo '✨ All node_modules directories have been removed!'",
+    "clean-dist": "echo '🧹 Cleaning all dist directories...' && find . -name 'dist' -type d -exec rm -rf {} + && echo '✨ All dist directories have been removed!'",
+    "format": "biome format . --write",
+    "lint": "lint-staged --allow-empty",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "publish-packages": "turbo run build lint && changeset version && changeset publish",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.1.1",
+    "@changesets/cli": "^2.27.1",
+    "husky": "9.1.7",
+    "lint-staged": "^15.5.2",
+    "turbo": "^2.3.3",
+    "ultracite": "5.0.36"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=22.0"
+  },
+  "lint-staged": {
+    "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+      "biome check --write --organize-imports-enabled=false --no-errors-on-unmatched"
+    ],
+    "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": [
+      "npx ultracite format"
+    ]
+  }
 }

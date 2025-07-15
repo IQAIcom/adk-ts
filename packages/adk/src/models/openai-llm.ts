@@ -36,20 +36,20 @@ export class OpenAiLlm extends BaseLlm {
 	 */
 	protected async *generateContentAsyncImpl(
 		llmRequest: LlmRequest,
-		stream = false,
+		stream = false
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		// Preprocess request
 		this.preprocessRequest(llmRequest);
 
 		const model = llmRequest.model || this.model;
 		const messages = (llmRequest.contents || []).map((content) =>
-			this.contentToOpenAiMessage(content),
+			this.contentToOpenAiMessage(content)
 		);
 
 		let tools: OpenAI.ChatCompletionTool[] | undefined;
 		if ((llmRequest.config?.tools?.[0] as any)?.functionDeclarations) {
 			tools = (llmRequest.config.tools[0] as any).functionDeclarations.map(
-				(funcDecl) => this.functionDeclarationToOpenAiTool(funcDecl),
+				(funcDecl) => this.functionDeclarationToOpenAiTool(funcDecl)
 			);
 		}
 
@@ -113,9 +113,11 @@ export class OpenAiLlm extends BaseLlm {
 					llmResponse.partial = true;
 				} else if (
 					(thoughtText || text) &&
-					(!llmResponse.content ||
-						!llmResponse.content.parts ||
-						!this.hasInlineData(llmResponse))
+					!(
+						llmResponse.content &&
+						llmResponse.content.parts &&
+						this.hasInlineData(llmResponse)
+					)
 				) {
 					// Yield merged content - equivalent to Google's pattern
 					const parts: any[] = [];
@@ -248,10 +250,10 @@ export class OpenAiLlm extends BaseLlm {
 			if (choice) {
 				const llmResponse = this.openAiMessageToLlmResponse(
 					choice,
-					response.usage,
+					response.usage
 				);
 				this.logger.debug(
-					`OpenAI response: ${response.usage?.completion_tokens || 0} tokens`,
+					`OpenAI response: ${response.usage?.completion_tokens || 0} tokens`
 				);
 				yield llmResponse;
 			}
@@ -270,7 +272,7 @@ export class OpenAiLlm extends BaseLlm {
 	 */
 	private createChunkResponse(
 		delta: OpenAI.ChatCompletionChunk.Choice.Delta,
-		usage?: OpenAI.CompletionUsage,
+		usage?: OpenAI.CompletionUsage
 	): LlmResponse {
 		const parts: any[] = [];
 
@@ -322,7 +324,7 @@ export class OpenAiLlm extends BaseLlm {
 	 */
 	private openAiMessageToLlmResponse(
 		choice: OpenAI.ChatCompletion.Choice,
-		usage?: OpenAI.CompletionUsage,
+		usage?: OpenAI.CompletionUsage
 	): LlmResponse {
 		const message = choice.message;
 
@@ -368,7 +370,7 @@ export class OpenAiLlm extends BaseLlm {
 	 * Convert ADK Content to OpenAI ChatCompletionMessage
 	 */
 	private contentToOpenAiMessage(
-		content: any,
+		content: any
 	): OpenAI.ChatCompletionMessageParam {
 		const role = this.toOpenAiRole(content.role);
 
@@ -382,7 +384,7 @@ export class OpenAiLlm extends BaseLlm {
 		// Handle function calls
 		if (content.parts?.some((part: any) => part.functionCall)) {
 			const functionCallPart = content.parts.find(
-				(part: any) => part.functionCall,
+				(part: any) => part.functionCall
 			);
 			return {
 				role: "assistant",
@@ -393,7 +395,7 @@ export class OpenAiLlm extends BaseLlm {
 						function: {
 							name: functionCallPart.functionCall.name,
 							arguments: JSON.stringify(
-								functionCallPart.functionCall.args || {},
+								functionCallPart.functionCall.args || {}
 							),
 						},
 					},
@@ -404,13 +406,13 @@ export class OpenAiLlm extends BaseLlm {
 		// Handle function responses
 		if (content.parts?.some((part: any) => part.functionResponse)) {
 			const functionResponsePart = content.parts.find(
-				(part: any) => part.functionResponse,
+				(part: any) => part.functionResponse
 			);
 			return {
 				role: "tool",
 				tool_call_id: functionResponsePart.functionResponse.id || "",
 				content: JSON.stringify(
-					functionResponsePart.functionResponse.response || {},
+					functionResponsePart.functionResponse.response || {}
 				),
 			};
 		}
@@ -427,7 +429,7 @@ export class OpenAiLlm extends BaseLlm {
 		return {
 			role,
 			content: (content.parts || []).map((part) =>
-				this.partToOpenAiContent(part),
+				this.partToOpenAiContent(part)
 			),
 		};
 	}
@@ -459,7 +461,7 @@ export class OpenAiLlm extends BaseLlm {
 	 * Convert ADK function declaration to OpenAI tool
 	 */
 	private functionDeclarationToOpenAiTool(
-		functionDeclaration: any,
+		functionDeclaration: any
 	): OpenAI.ChatCompletionTool {
 		return {
 			type: "function",
@@ -488,7 +490,7 @@ export class OpenAiLlm extends BaseLlm {
 	 * Convert OpenAI finish reason to ADK finish reason
 	 */
 	private toAdkFinishReason(
-		openaiFinishReason?: string,
+		openaiFinishReason?: string
 	): "STOP" | "MAX_TOKENS" | "FINISH_REASON_UNSPECIFIED" {
 		switch (openaiFinishReason) {
 			case "stop":
@@ -535,7 +537,7 @@ export class OpenAiLlm extends BaseLlm {
 
 		if (part.inline_data) {
 			// Ensure inline data is in the correct format for OpenAI
-			if (!part.inline_data.mime_type || !part.inline_data.data) {
+			if (!(part.inline_data.mime_type && part.inline_data.data)) {
 				// biome-ignore lint/performance/noDelete: Remove invalid inline data
 				delete part.inline_data;
 			}
@@ -566,7 +568,7 @@ export class OpenAiLlm extends BaseLlm {
 		// OpenAI doesn't typically return inline data in the same way as Google
 		// but this method is here for consistency with the flow control pattern
 		const parts = response.content?.parts;
-		return parts?.some((part: any) => part.inlineData) || false;
+		return parts?.some((part: any) => part.inlineData);
 	}
 
 	/**
@@ -578,7 +580,7 @@ export class OpenAiLlm extends BaseLlm {
 
 			if (!apiKey) {
 				throw new Error(
-					"OPENAI_API_KEY environment variable is required for OpenAI models",
+					"OPENAI_API_KEY environment variable is required for OpenAI models"
 				);
 			}
 

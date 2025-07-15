@@ -1,12 +1,12 @@
 import type { InvocationContext } from "../agents/invocation-context";
 import { ReadonlyContext } from "../agents/readonly-context";
 import type { Event } from "../events/event";
-import type { LlmRequest } from "../models/llm-request";
 import { BaseLlmRequestProcessor } from "../flows/llm-flows/base-llm-processor";
 import {
-	REQUEST_EUC_FUNCTION_CALL_NAME,
 	handleFunctionCallsAsync,
+	REQUEST_EUC_FUNCTION_CALL_NAME,
 } from "../flows/llm-flows/functions";
+import type { LlmRequest } from "../models/llm-request";
 import { AuthHandler } from "./auth-handler";
 import type { AuthToolArguments } from "./auth-tool";
 import { EnhancedAuthConfig } from "./auth-tool";
@@ -22,7 +22,7 @@ class AuthLlmRequestProcessor extends BaseLlmRequestProcessor {
 	 */
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event> {
 		const agent = invocationContext.agent;
 
@@ -64,10 +64,10 @@ class AuthLlmRequestProcessor extends BaseLlmRequestProcessor {
 				try {
 					// Parse and store auth response
 					const authConfig = EnhancedAuthConfig.prototype.constructor(
-						JSON.parse(functionCallResponse.response),
+						JSON.parse(functionCallResponse.response)
 					);
 					const authHandler = new AuthHandler({
-						authConfig: authConfig,
+						authConfig,
 					});
 
 					// Store auth response in session state
@@ -121,19 +121,19 @@ class AuthLlmRequestProcessor extends BaseLlmRequestProcessor {
 
 				// Check if any function calls match the tools to resume
 				const hasMatchingCall = originalFunctionCalls.some((functionCall) =>
-					toolsToResume.has(functionCall.id),
+					toolsToResume.has(functionCall.id)
 				);
 
 				if (hasMatchingCall) {
 					// Get canonical tools for the agent
 					const readonlyContext = new ReadonlyContext(invocationContext);
 					const canonicalTools = await (agent as any).canonicalTools(
-						readonlyContext,
+						readonlyContext
 					);
 
 					// Create tools map
 					const toolsMap = Object.fromEntries(
-						canonicalTools.map((tool: any) => [tool.name, tool]),
+						canonicalTools.map((tool: any) => [tool.name, tool])
 					);
 
 					// Handle function calls that needed authentication
@@ -141,7 +141,7 @@ class AuthLlmRequestProcessor extends BaseLlmRequestProcessor {
 						invocationContext,
 						originalEvent,
 						toolsMap,
-						toolsToResume,
+						toolsToResume
 					);
 
 					if (functionResponseEvent) {
@@ -159,7 +159,7 @@ class AuthLlmRequestProcessor extends BaseLlmRequestProcessor {
 	 */
 	private parseAndStoreAuthResponse(
 		authHandler: AuthHandler,
-		invocationContext: InvocationContext,
+		invocationContext: InvocationContext
 	): void {
 		try {
 			// Get credential key for storage

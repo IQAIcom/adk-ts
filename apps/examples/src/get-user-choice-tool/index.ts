@@ -84,13 +84,13 @@ function explainRealWorldBehavior(): void {
 	console.log("\n🌍 In a real agent implementation:");
 	console.log("1. The tool would return null initially");
 	console.log(
-		"2. The framework would pause execution and present options to the user",
+		"2. The framework would pause execution and present options to the user"
 	);
 	console.log(
-		"3. When the user makes a choice, the framework would resume execution",
+		"3. When the user makes a choice, the framework would resume execution"
 	);
 	console.log(
-		"4. The agent would receive the user's choice and continue processing",
+		"4. The agent would receive the user's choice and continue processing"
 	);
 	console.log("5. This enables interactive decision-making in conversations");
 }
@@ -98,7 +98,7 @@ function explainRealWorldBehavior(): void {
 async function main() {
 	console.log("🎯 Starting Get User Choice Tool example...");
 	console.log(
-		"📌 Note: This demonstrates the tool API, not functional user interaction",
+		"📌 Note: This demonstrates the tool API, not functional user interaction"
 	);
 
 	try {

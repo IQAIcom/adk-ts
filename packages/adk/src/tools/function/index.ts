@@ -1,7 +1,7 @@
 export { FunctionTool } from "./function-tool";
 export {
-	buildFunctionDeclaration,
 	type BuildFunctionDeclarationOptions,
+	buildFunctionDeclaration,
 } from "./function-utils";
 
 /**
@@ -20,7 +20,7 @@ export function createFunctionTool(
 		isLongRunning?: boolean;
 		shouldRetryOnFailure?: boolean;
 		maxRetryAttempts?: number;
-	},
+	}
 ) {
 	// Import FunctionTool directly to avoid dynamic imports
 	const { FunctionTool } = require("./function-tool");

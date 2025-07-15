@@ -159,7 +159,7 @@ export class LlmResponse {
 	 */
 	static fromError(
 		error: unknown,
-		options: { errorCode?: string; model?: string } = {},
+		options: { errorCode?: string; model?: string } = {}
 	): LlmResponse {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		const errorCode = options.errorCode || "UNKNOWN_ERROR";

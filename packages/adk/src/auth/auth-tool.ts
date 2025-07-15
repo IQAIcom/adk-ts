@@ -116,7 +116,7 @@ export class AuthTool {
 			return {
 				status: "auth_request_processed",
 				authConfig: auth_config,
-				credentialKey: credentialKey,
+				credentialKey,
 			};
 		} catch (error) {
 			return {
@@ -143,7 +143,7 @@ export class AuthTool {
  */
 export function createAuthToolArguments(
 	functionCallId: string,
-	authConfig: AuthConfig | EnhancedAuthConfig,
+	authConfig: AuthConfig | EnhancedAuthConfig
 ): AuthToolArguments {
 	return {
 		function_call_id: functionCallId,
@@ -155,7 +155,7 @@ export function createAuthToolArguments(
  * Type guard to check if an auth config is enhanced
  */
 export function isEnhancedAuthConfig(
-	config: AuthConfig | EnhancedAuthConfig,
+	config: AuthConfig | EnhancedAuthConfig
 ): config is EnhancedAuthConfig {
 	return config instanceof EnhancedAuthConfig;
 }

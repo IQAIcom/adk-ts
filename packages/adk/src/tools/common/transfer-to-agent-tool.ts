@@ -25,7 +25,7 @@ export class TransferToAgentTool extends BaseTool {
 		args: {
 			agent_name: string;
 		},
-		context: ToolContext,
+		context: ToolContext
 	): Promise<any> {
 		this.logger.debug(`Executing transfer to agent: ${args.agent_name}`);
 		context.actions.transferToAgent = args.agent_name;

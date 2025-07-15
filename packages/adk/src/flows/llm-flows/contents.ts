@@ -16,7 +16,7 @@ import {
 class ContentLlmRequestProcessor extends BaseLlmRequestProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event, void, unknown> {
 		const agent = invocationContext.agent;
 
@@ -30,14 +30,14 @@ class ContentLlmRequestProcessor extends BaseLlmRequestProcessor {
 			llmRequest.contents = getContents(
 				invocationContext.branch,
 				invocationContext.session.events,
-				agent.name,
+				agent.name
 			);
 		} else if (agent.includeContents !== "none") {
 			// Include current turn context only (no conversation history)
 			llmRequest.contents = getCurrentTurnContents(
 				invocationContext.branch,
 				invocationContext.session.events,
-				agent.name,
+				agent.name
 			);
 		}
 
@@ -65,7 +65,7 @@ export const requestProcessor = new ContentLlmRequestProcessor();
  * Rearranges the async function_response events in the history.
  */
 function rearrangeEventsForAsyncFunctionResponsesInHistory(
-	events: Event[],
+	events: Event[]
 ): Event[] {
 	const functionCallIdToResponseEventsIndex: Record<string, number> = {};
 
@@ -117,7 +117,7 @@ function rearrangeEventsForAsyncFunctionResponsesInHistory(
 					functionCallId in functionCallIdToResponseEventsIndex
 				) {
 					functionResponseEventsIndices.add(
-						functionCallIdToResponseEventsIndex[functionCallId],
+						functionCallIdToResponseEventsIndex[functionCallId]
 					);
 				}
 			}
@@ -262,7 +262,7 @@ function rearrangeEventsForLatestFunctionResponse(events: Event[]): Event[] {
 function getContents(
 	currentBranch: string | undefined,
 	events: Event[],
-	agentName = "",
+	agentName = ""
 ): Content[] {
 	const filteredEvents: Event[] = [];
 
@@ -270,9 +270,7 @@ function getContents(
 	// responses from the current agent.
 	for (const event of events) {
 		if (
-			!event.content ||
-			!event.content.role ||
-			!event.content.parts ||
+			!(event.content && event.content.role && event.content.parts) ||
 			event.content.parts.length === 0
 		) {
 			// Skip events without content, or generated neither by user nor by model
@@ -283,7 +281,7 @@ function getContents(
 
 		// Skip events that have no meaningful content (no text, function calls, or function responses)
 		const hasAnyContent = event.content.parts.some(
-			(part) => part.text || part.functionCall || part.functionResponse,
+			(part) => part.text || part.functionCall || part.functionResponse
 		);
 		if (!hasAnyContent) {
 			continue;
@@ -300,7 +298,7 @@ function getContents(
 		}
 
 		filteredEvents.push(
-			isOtherAgentReply(agentName, event) ? convertForeignEvent(event) : event,
+			isOtherAgentReply(agentName, event) ? convertForeignEvent(event) : event
 		);
 	}
 
@@ -333,7 +331,7 @@ function getContents(
 function getCurrentTurnContents(
 	currentBranch: string | undefined,
 	events: Event[],
-	agentName = "",
+	agentName = ""
 ): Content[] {
 	// Find the latest event that starts the current turn and process from there
 	for (let i = events.length - 1; i >= 0; i--) {
@@ -352,7 +350,7 @@ function isOtherAgentReply(currentAgentName: string, event: Event): boolean {
 	return Boolean(
 		currentAgentName &&
 			event.author !== currentAgentName &&
-			event.author !== "user",
+			event.author !== "user"
 	);
 }
 
@@ -364,7 +362,7 @@ function isOtherAgentReply(currentAgentName: string, event: Event): boolean {
  * agent's reply, etc.
  */
 function convertForeignEvent(event: Event): Event {
-	if (!event.content || !event.content.parts) {
+	if (!(event.content && event.content.parts)) {
 		return event;
 	}
 
@@ -395,7 +393,7 @@ function convertForeignEvent(event: Event): Event {
 	return new Event({
 		timestamp: event.timestamp,
 		author: "user",
-		content: content,
+		content,
 		branch: event.branch,
 	});
 }
@@ -457,9 +455,9 @@ function mergeFunctionResponseEvents(functionResponseEvents: Event[]): Event {
  */
 function isEventBelongsToBranch(
 	invocationBranch: string | undefined,
-	event: Event,
+	event: Event
 ): boolean {
-	if (!invocationBranch || !event.branch) {
+	if (!(invocationBranch && event.branch)) {
 		return true;
 	}
 	return invocationBranch.startsWith(event.branch);

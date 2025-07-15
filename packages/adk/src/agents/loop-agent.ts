@@ -58,7 +58,7 @@ export class LoopAgent extends BaseAgent {
 	 * Core logic to run this agent via text-based conversation
 	 */
 	protected async *runAsyncImpl(
-		ctx: InvocationContext,
+		ctx: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		let timesLooped = 0;
 
@@ -79,7 +79,7 @@ export class LoopAgent extends BaseAgent {
 	 * Core logic to run this agent via video/audio-based conversation
 	 */
 	protected async *runLiveImpl(
-		_ctx: InvocationContext,
+		_ctx: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		throw new Error("This is not supported yet for LoopAgent.");
 		// biome-ignore lint/correctness/useYield: AsyncGenerator requires having at least one yield statement

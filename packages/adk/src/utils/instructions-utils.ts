@@ -31,7 +31,7 @@ import type { ReadonlyContext } from "../agents/readonly-context";
  */
 export async function injectSessionState(
 	template: string,
-	readonlyContext: ReadonlyContext,
+	readonlyContext: ReadonlyContext
 ): Promise<string> {
 	const invocationContext = (readonlyContext as any)._invocationContext;
 
@@ -41,7 +41,7 @@ export async function injectSessionState(
 	async function asyncReplace(
 		pattern: RegExp,
 		replaceAsyncFn: (match: RegExpMatchArray) => Promise<string>,
-		string: string,
+		string: string
 	): Promise<string> {
 		const result: string[] = [];
 		let lastEnd = 0;

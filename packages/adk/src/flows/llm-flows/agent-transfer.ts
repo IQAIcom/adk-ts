@@ -1,8 +1,8 @@
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { Event } from "../../events/event";
 import type { LlmRequest } from "../../models/llm-request";
-import { ToolContext } from "../../tools/tool-context";
 import { TransferToAgentTool } from "../../tools/common/transfer-to-agent-tool";
+import { ToolContext } from "../../tools/tool-context";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
 /**
@@ -17,7 +17,7 @@ class AgentTransferLlmRequestProcessor extends BaseLlmRequestProcessor {
 	// eslint-disable-next-line @typescript-eslint/require-yield
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event> {
 		const agent = invocationContext.agent;
 
@@ -34,7 +34,7 @@ class AgentTransferLlmRequestProcessor extends BaseLlmRequestProcessor {
 		// Add transfer instructions to the LLM request
 		const transferInstructions = buildTargetAgentsInstructions(
 			agent as any,
-			transferTargets,
+			transferTargets
 		);
 
 		if (llmRequest.appendInstructions) {
@@ -76,7 +76,7 @@ Agent description: ${targetAgent.description}
  */
 function buildTargetAgentsInstructions(
 	agent: any,
-	targetAgents: any[],
+	targetAgents: any[]
 ): string {
 	const lineBreak = "\n";
 	const transferFunctionName = "transfer_to_agent";
@@ -120,7 +120,7 @@ function getTransferTargets(agent: any): any[] {
 	}
 
 	// If no parent agent, return just sub-agents
-	if (!agent.parentAgent || !("subAgents" in agent.parentAgent)) {
+	if (!(agent.parentAgent && "subAgents" in agent.parentAgent)) {
 		return result;
 	}
 
@@ -132,7 +132,7 @@ function getTransferTargets(agent: any): any[] {
 	// Add peer agents if transfer to peers is allowed
 	if (!agent.disallowTransferToPeers && agent.parentAgent.subAgents) {
 		const peerAgents = agent.parentAgent.subAgents.filter(
-			(peerAgent: any) => peerAgent.name !== agent.name,
+			(peerAgent: any) => peerAgent.name !== agent.name
 		);
 		result.push(...peerAgents);
 	}

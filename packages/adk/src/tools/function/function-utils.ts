@@ -24,7 +24,7 @@ export interface BuildFunctionDeclarationOptions {
  */
 export function buildFunctionDeclaration(
 	func: (...args: any[]) => any,
-	options: BuildFunctionDeclarationOptions = {},
+	options: BuildFunctionDeclarationOptions = {}
 ): FunctionDeclaration {
 	const funcStr = func.toString();
 	const name = options.name || func.name;
@@ -56,7 +56,7 @@ export function buildFunctionDeclaration(
  */
 function extractParametersSchema(
 	func: (...args: any[]) => any,
-	ignoreParams: string[] = [],
+	ignoreParams: string[] = []
 ): JSONSchema {
 	const funcStr = func.toString();
 

@@ -1,33 +1,33 @@
 {
-	"$schema": "https://turbo.build/schema.json",
-	"globalEnv": ["NODE_ENV"],
-	"ui": "tui",
-	"tasks": {
-		"build": {
-			"inputs": ["$TURBO_DEFAULT$", ".env*"],
-			"outputs": ["dist/**", ".next/**", "!.next/cache/**", ".vercel/output/**"]
-		},
-		"test": {
-			"outputs": ["coverage/**"],
-			"dependsOn": []
-		},
-		"format": {},
-		"lint": {},
-		"lint:fix": {
-			"cache": false
-		},
-		"dev": {
-			"cache": false,
-			"persistent": true,
-			"dependsOn": ["^build"]
-		},
-		"start": {
-			"cache": false,
-			"persistent": true,
-			"dependsOn": ["build"]
-		},
-		"clean": {
-			"cache": false
-		}
-	}
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["NODE_ENV"],
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".vercel/output/**"]
+    },
+    "test": {
+      "outputs": ["coverage/**"],
+      "dependsOn": []
+    },
+    "format": {},
+    "lint": {},
+    "lint:fix": {
+      "cache": false
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "start": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["build"]
+    },
+    "clean": {
+      "cache": false
+    }
+  }
 }

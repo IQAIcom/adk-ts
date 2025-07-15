@@ -3,10 +3,10 @@ import * as path from "node:path";
 import { env } from "node:process";
 import {
 	AgentBuilder,
+	createDatabaseSessionService,
 	GoogleSearch,
 	HttpRequestTool,
 	InMemoryMemoryService,
-	createDatabaseSessionService,
 } from "@iqai/adk";
 import dedent from "dedent";
 
@@ -74,7 +74,7 @@ async function demonstrateSimpleUsage(): Promise<void> {
 	console.log(`📝 Question: ${question}`);
 
 	const response = await AgentBuilder.withModel(
-		env.LLM_MODEL || "gemini-2.5-flash",
+		env.LLM_MODEL || "gemini-2.5-flash"
 	).ask(question);
 
 	console.log(`🤖 Response: ${response}\n`);
@@ -114,7 +114,7 @@ async function demonstrateSessionManagement(): Promise<void> {
 
 	// Create agent with persistent session
 	const { agent, runner, session } = await AgentBuilder.create(
-		"persistent_agent",
+		"persistent_agent"
 	)
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.withDescription("An agent that remembers our conversation")
@@ -127,11 +127,11 @@ async function demonstrateSessionManagement(): Promise<void> {
 			createDatabaseSessionService(getSqliteConnectionString("agentbuilder")),
 			USER_ID,
 			APP_NAME,
-			new InMemoryMemoryService(),
+			new InMemoryMemoryService()
 		)
 		.build();
 
-	if (!runner || !session) {
+	if (!(runner && session)) {
 		throw new Error("Failed to create runner and session");
 	}
 
@@ -140,7 +140,7 @@ async function demonstrateSessionManagement(): Promise<void> {
 	await runConversation(
 		runner,
 		session.id,
-		"My name is Alice. Remember this for our conversation.",
+		"My name is Alice. Remember this for our conversation."
 	);
 
 	// Second interaction - testing memory
@@ -148,11 +148,11 @@ async function demonstrateSessionManagement(): Promise<void> {
 	await runConversation(
 		runner,
 		session.id,
-		"What was my name that I told you earlier?",
+		"What was my name that I told you earlier?"
 	);
 
 	console.log(
-		"💡 Run this example multiple times to see session persistence!\n",
+		"💡 Run this example multiple times to see session persistence!\n"
 	);
 }
 
@@ -196,7 +196,7 @@ async function demonstrateMultiAgentWorkflows(): Promise<void> {
 			.withQuickSession(APP_NAME, USER_ID)
 			.build();
 
-	if (!sequentialRunner || !sequentialSession) {
+	if (!(sequentialRunner && sequentialSession)) {
 		throw new Error("Failed to create sequential workflow runner and session");
 	}
 
@@ -205,7 +205,7 @@ async function demonstrateMultiAgentWorkflows(): Promise<void> {
 	await runConversation(
 		sequentialRunner,
 		sequentialSession.id,
-		"Research the latest developments in TypeScript 5.0 and provide a summary of the key features",
+		"Research the latest developments in TypeScript 5.0 and provide a summary of the key features"
 	);
 
 	// Demonstrate parallel workflow execution
@@ -285,7 +285,7 @@ async function demonstrateMultiAgentWorkflows(): Promise<void> {
 async function runConversation(
 	runner: any,
 	sessionId: string,
-	message: string,
+	message: string
 ): Promise<void> {
 	console.log(`👤 User: ${message}`);
 

@@ -98,7 +98,7 @@ function hasCodeExecutor(agent: any): agent is {
 class CodeExecutionRequestProcessor extends BaseLlmRequestProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): AsyncGenerator<Event> {
 		// Use type assertion to access codeExecutor
 		const agent = invocationContext.agent;
@@ -109,7 +109,7 @@ class CodeExecutionRequestProcessor extends BaseLlmRequestProcessor {
 		}
 
 		// Use instanceof for type-safe check
-		if (!(agent instanceof LlmAgent) || !agent.codeExecutor) {
+		if (!(agent instanceof LlmAgent && agent.codeExecutor)) {
 			return;
 		}
 
@@ -125,7 +125,7 @@ class CodeExecutionRequestProcessor extends BaseLlmRequestProcessor {
 			CodeExecutionUtils.convertCodeExecutionParts(
 				content,
 				agent.codeExecutor.codeBlockDelimiters[0] || ["", ""],
-				agent.codeExecutor.executionResultDelimiters,
+				agent.codeExecutor.executionResultDelimiters
 			);
 		}
 	}
@@ -137,7 +137,7 @@ class CodeExecutionRequestProcessor extends BaseLlmRequestProcessor {
 class CodeExecutionResponseProcessor extends BaseLlmResponseProcessor {
 	async *runAsync(
 		invocationContext: InvocationContext,
-		llmResponse: LlmResponse,
+		llmResponse: LlmResponse
 	): AsyncGenerator<Event> {
 		// Skip if the response is partial (streaming)
 		if (llmResponse.partial) {
@@ -153,7 +153,7 @@ class CodeExecutionResponseProcessor extends BaseLlmResponseProcessor {
  */
 async function* runPreProcessor(
 	invocationContext: InvocationContext,
-	llmRequest: LlmRequest,
+	llmRequest: LlmRequest
 ): AsyncGenerator<Event> {
 	const agent = invocationContext.agent as any; // Type assertion for codeExecutor
 
@@ -163,7 +163,7 @@ async function* runPreProcessor(
 
 	const codeExecutor = agent.codeExecutor as BaseCodeExecutor;
 
-	if (!codeExecutor || !(codeExecutor instanceof BaseCodeExecutor)) {
+	if (!(codeExecutor && codeExecutor instanceof BaseCodeExecutor)) {
 		return;
 	}
 
@@ -179,7 +179,7 @@ async function* runPreProcessor(
 	}
 
 	const codeExecutorContext = new CodeExecutorContext(
-		invocationContext.session.state as any, // Type assertion for State compatibility
+		invocationContext.session.state as any // Type assertion for State compatibility
 	);
 
 	// Skip if error count exceeds max retry attempts
@@ -193,15 +193,15 @@ async function* runPreProcessor(
 	// [Step 1] Extract data files from the session history and store them in memory
 	const allInputFiles = extractAndReplaceInlineFiles(
 		codeExecutorContext,
-		llmRequest,
+		llmRequest
 	);
 
 	// [Step 2] Run explore_df code on new data files
 	const processedFileNames = new Set(
-		codeExecutorContext.getProcessedFileNames(),
+		codeExecutorContext.getProcessedFileNames()
 	);
 	const filesToProcess = allInputFiles.filter(
-		(f) => !processedFileNames.has(f.name),
+		(f) => !processedFileNames.has(f.name)
 	);
 
 	for (const file of filesToProcess) {
@@ -237,9 +237,9 @@ async function* runPreProcessor(
 				inputFiles: [file],
 				executionId: getOrSetExecutionId(
 					invocationContext,
-					codeExecutorContext,
+					codeExecutorContext
 				),
-			},
+			}
 		);
 
 		// Update processing results
@@ -247,7 +247,7 @@ async function* runPreProcessor(
 			invocationContext.invocationId,
 			codeStr,
 			codeExecutionResult.stdout,
-			codeExecutionResult.stderr,
+			codeExecutionResult.stderr
 		);
 		codeExecutorContext.addProcessedFileNames([file.name]);
 
@@ -255,7 +255,7 @@ async function* runPreProcessor(
 		const executionResultEvent = await postProcessCodeExecutionResult(
 			invocationContext,
 			codeExecutorContext,
-			codeExecutionResult,
+			codeExecutionResult
 		);
 		yield executionResultEvent;
 		llmRequest.contents.push(structuredClone(executionResultEvent.content!));
@@ -267,7 +267,7 @@ async function* runPreProcessor(
  */
 async function* runPostProcessor(
 	invocationContext: InvocationContext,
-	llmResponse: LlmResponse,
+	llmResponse: LlmResponse
 ): AsyncGenerator<Event> {
 	const agent = invocationContext.agent as any; // Type assertion for codeExecutor
 
@@ -281,7 +281,7 @@ async function* runPostProcessor(
 		return;
 	}
 
-	if (!llmResponse || !llmResponse.content) {
+	if (!(llmResponse && llmResponse.content)) {
 		return;
 	}
 
@@ -291,7 +291,7 @@ async function* runPostProcessor(
 	}
 
 	const codeExecutorContext = new CodeExecutorContext(
-		invocationContext.session.state as any, // Type assertion for State compatibility
+		invocationContext.session.state as any // Type assertion for State compatibility
 	);
 
 	// Skip if error count exceeds max retry attempts
@@ -306,7 +306,7 @@ async function* runPostProcessor(
 	const responseContent = llmResponse.content;
 	const codeStr = CodeExecutionUtils.extractCodeAndTruncateContent(
 		responseContent,
-		codeExecutor.codeBlockDelimiters,
+		codeExecutor.codeBlockDelimiters
 	);
 
 	// Terminal state: no code to execute
@@ -329,20 +329,20 @@ async function* runPostProcessor(
 			code: codeStr,
 			inputFiles: codeExecutorContext.getInputFiles(),
 			executionId: getOrSetExecutionId(invocationContext, codeExecutorContext),
-		},
+		}
 	);
 
 	codeExecutorContext.updateCodeExecutionResult(
 		invocationContext.invocationId,
 		codeStr,
 		codeExecutionResult.stdout,
-		codeExecutionResult.stderr,
+		codeExecutionResult.stderr
 	);
 
 	yield await postProcessCodeExecutionResult(
 		invocationContext,
 		codeExecutorContext,
-		codeExecutionResult,
+		codeExecutionResult
 	);
 
 	// [Step 3] Skip processing original model response to continue code generation
@@ -354,7 +354,7 @@ async function* runPostProcessor(
  */
 function extractAndReplaceInlineFiles(
 	codeExecutorContext: CodeExecutorContext,
-	llmRequest: LlmRequest,
+	llmRequest: LlmRequest
 ): File[] {
 	const allInputFiles = codeExecutorContext.getInputFiles();
 	const savedFileNames = new Set(allInputFiles.map((f) => f.name));
@@ -373,8 +373,7 @@ function extractAndReplaceInlineFiles(
 
 			// Skip if inline data is not supported
 			if (
-				!part.inlineData ||
-				!(part.inlineData.mimeType in DATA_FILE_UTIL_MAP)
+				!(part.inlineData && part.inlineData.mimeType in DATA_FILE_UTIL_MAP)
 			) {
 				continue;
 			}
@@ -391,7 +390,7 @@ function extractAndReplaceInlineFiles(
 			const file: File = {
 				name: fileName,
 				content: CodeExecutionUtils.getEncodedFileContent(part.inlineData.data),
-				mimeType: mimeType,
+				mimeType,
 			};
 
 			if (!savedFileNames.has(fileName)) {
@@ -409,11 +408,11 @@ function extractAndReplaceInlineFiles(
  */
 function getOrSetExecutionId(
 	invocationContext: InvocationContext,
-	codeExecutorContext: CodeExecutorContext,
+	codeExecutorContext: CodeExecutorContext
 ): string | undefined {
 	const agent = invocationContext.agent as any;
-	if (!hasCodeExecutor(agent) || !agent.codeExecutor?.stateful) {
-		return undefined;
+	if (!(hasCodeExecutor(agent) && agent.codeExecutor?.stateful)) {
+		return;
 	}
 
 	let executionId = codeExecutorContext.getExecutionId();
@@ -430,7 +429,7 @@ function getOrSetExecutionId(
 async function postProcessCodeExecutionResult(
 	invocationContext: InvocationContext,
 	codeExecutorContext: CodeExecutorContext,
-	codeExecutionResult: CodeExecutionResult,
+	codeExecutionResult: CodeExecutionResult
 ): Promise<Event> {
 	if (!invocationContext.artifactService) {
 		throw new Error("Artifact service is not initialized.");
@@ -497,7 +496,7 @@ function getDataFilePreprocessingCode(file: File): string | undefined {
 	}
 
 	if (!(file.mimeType in DATA_FILE_UTIL_MAP)) {
-		return undefined;
+		return;
 	}
 
 	const varName = getNormalizedFileName(file.name);

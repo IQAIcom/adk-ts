@@ -53,10 +53,10 @@ export class GoogleSearch extends BaseTool {
 			query: string;
 			num_results?: number;
 		},
-		_context: ToolContext,
+		_context: ToolContext
 	): Promise<any> {
 		this.logger.debug(
-			`[GoogleSearch] Executing Google search for: ${args.query}`,
+			`[GoogleSearch] Executing Google search for: ${args.query}`
 		);
 
 		// This would be replaced with an actual API call to Google Search API

@@ -48,7 +48,7 @@ export class CalculatorTool extends BaseTool {
 			a: number;
 			b: number;
 		},
-		_context: ToolContext,
+		_context: ToolContext
 	): Promise<any> {
 		console.log(`Calculating: ${args.a} ${args.operation} ${args.b}`);
 

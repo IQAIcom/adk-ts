@@ -63,7 +63,7 @@ Always use the tools available to you and be clear about the operations you perf
  */
 async function demonstrateBasicFlow(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	console.log("🔄 Demonstrating SingleFlow with tool execution");
 	console.log("-----------------------------------");

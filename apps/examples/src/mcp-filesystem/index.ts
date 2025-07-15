@@ -55,7 +55,7 @@ async function main() {
 	const tools = await toolset.getTools();
 
 	console.log(
-		`Connected! Available tools: ${tools.map((t) => t.name).join(", ")}`,
+		`Connected! Available tools: ${tools.map((t) => t.name).join(", ")}`
 	);
 
 	/**

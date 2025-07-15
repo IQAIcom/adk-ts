@@ -34,7 +34,7 @@ export class InMemorySessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		state?: Record<string, any>,
-		sessionId?: string,
+		sessionId?: string
 	): Promise<Session> {
 		return this.createSessionImpl(appName, userId, state, sessionId);
 	}
@@ -46,7 +46,7 @@ export class InMemorySessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		state?: Record<string, any>,
-		sessionId?: string,
+		sessionId?: string
 	): Session {
 		console.warn("Deprecated. Please migrate to the async method.");
 		return this.createSessionImpl(appName, userId, state, sessionId);
@@ -56,7 +56,7 @@ export class InMemorySessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		state?: Record<string, any>,
-		sessionId?: string,
+		sessionId?: string
 	): Session {
 		const finalSessionId = sessionId?.trim() || randomUUID();
 
@@ -88,7 +88,7 @@ export class InMemorySessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		sessionId: string,
-		config?: GetSessionConfig,
+		config?: GetSessionConfig
 	): Promise<Session | undefined> {
 		return this.getSessionImpl(appName, userId, sessionId, config);
 	}
@@ -100,7 +100,7 @@ export class InMemorySessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		sessionId: string,
-		config?: GetSessionConfig,
+		config?: GetSessionConfig
 	): Session | undefined {
 		console.warn("Deprecated. Please migrate to the async method.");
 		return this.getSessionImpl(appName, userId, sessionId, config);
@@ -110,21 +110,21 @@ export class InMemorySessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		sessionId: string,
-		config?: GetSessionConfig,
+		config?: GetSessionConfig
 	): Session | undefined {
 		if (!this.sessions.has(appName)) {
-			return undefined;
+			return;
 		}
 		if (!this.sessions.get(appName)!.has(userId)) {
-			return undefined;
+			return;
 		}
 		if (!this.sessions.get(appName)!.get(userId)!.has(sessionId)) {
-			return undefined;
+			return;
 		}
 
 		const session = this.sessions.get(appName)!.get(userId)!.get(sessionId);
 		if (!session) {
-			return undefined;
+			return;
 		}
 
 		const copiedSession = structuredClone(session);
@@ -132,7 +132,7 @@ export class InMemorySessionService extends BaseSessionService {
 		if (config) {
 			if (config.numRecentEvents) {
 				copiedSession.events = copiedSession.events.slice(
-					-config.numRecentEvents,
+					-config.numRecentEvents
 				);
 			}
 			if (config.afterTimestamp) {
@@ -155,7 +155,7 @@ export class InMemorySessionService extends BaseSessionService {
 	private mergeState(
 		appName: string,
 		userId: string,
-		copiedSession: Session,
+		copiedSession: Session
 	): Session {
 		// Merge app state
 		if (this.appState.has(appName)) {
@@ -165,8 +165,7 @@ export class InMemorySessionService extends BaseSessionService {
 		}
 
 		if (
-			!this.userState.has(appName) ||
-			!this.userState.get(appName)!.has(userId)
+			!(this.userState.has(appName) && this.userState.get(appName)!.has(userId))
 		) {
 			return copiedSession;
 		}
@@ -187,7 +186,7 @@ export class InMemorySessionService extends BaseSessionService {
 	 */
 	async listSessions(
 		appName: string,
-		userId: string,
+		userId: string
 	): Promise<ListSessionsResponse> {
 		return this.listSessionsImpl(appName, userId);
 	}
@@ -202,7 +201,7 @@ export class InMemorySessionService extends BaseSessionService {
 
 	private listSessionsImpl(
 		appName: string,
-		userId: string,
+		userId: string
 	): ListSessionsResponse {
 		const emptyResponse: ListSessionsResponse = { sessions: [] };
 
@@ -230,7 +229,7 @@ export class InMemorySessionService extends BaseSessionService {
 	async deleteSession(
 		appName: string,
 		userId: string,
-		sessionId: string,
+		sessionId: string
 	): Promise<void> {
 		this.deleteSessionImpl(appName, userId, sessionId);
 	}
@@ -246,7 +245,7 @@ export class InMemorySessionService extends BaseSessionService {
 	private deleteSessionImpl(
 		appName: string,
 		userId: string,
-		sessionId: string,
+		sessionId: string
 	): void {
 		if (this.getSessionImpl(appName, userId, sessionId) === undefined) {
 			return;
@@ -270,7 +269,7 @@ export class InMemorySessionService extends BaseSessionService {
 
 		const warning = (message: string): void => {
 			console.warn(
-				`Failed to append event to session ${sessionId}: ${message}`,
+				`Failed to append event to session ${sessionId}: ${message}`
 			);
 		};
 

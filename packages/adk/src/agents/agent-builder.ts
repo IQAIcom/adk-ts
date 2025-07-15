@@ -1,5 +1,7 @@
+import type { LanguageModel } from "ai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service.js";
 import type { BaseMemoryService } from "../memory/base-memory-service.js";
+import type { BaseLlm } from "../models/base-llm.js";
 import type { BasePlanner } from "../planners/base-planner.js";
 import { Runner } from "../runners.js";
 import type { BaseSessionService } from "../sessions/base-session-service.js";
@@ -12,8 +14,6 @@ import { LlmAgent } from "./llm-agent.js";
 import { LoopAgent } from "./loop-agent.js";
 import { ParallelAgent } from "./parallel-agent.js";
 import { SequentialAgent } from "./sequential-agent.js";
-import type { LanguageModel } from "ai";
-import type { BaseLlm } from "../models/base-llm.js";
 
 /**
  * Configuration options for the AgentBuilder
@@ -236,7 +236,7 @@ export class AgentBuilder {
 		userId: string,
 		appName: string,
 		memoryService?: BaseMemoryService,
-		artifactService?: BaseArtifactService,
+		artifactService?: BaseArtifactService
 	): this {
 		this.sessionConfig = {
 			service,
@@ -270,7 +270,7 @@ export class AgentBuilder {
 		if (this.sessionConfig) {
 			session = await this.sessionConfig.service.createSession(
 				this.sessionConfig.appName,
-				this.sessionConfig.userId,
+				this.sessionConfig.userId
 			);
 
 			const runnerConfig: any = {
@@ -308,7 +308,7 @@ export class AgentBuilder {
 
 		const { runner, session } = await this.build();
 
-		if (!runner || !session) {
+		if (!(runner && session)) {
 			throw new Error("Failed to create runner and session");
 		}
 
@@ -349,7 +349,7 @@ export class AgentBuilder {
 
 				return new LlmAgent({
 					name: this.config.name,
-					model: model,
+					model,
 					description: this.config.description,
 					instruction: this.config.instruction,
 					tools: this.config.tools,
@@ -388,7 +388,7 @@ export class AgentBuilder {
 				});
 
 			case "langgraph":
-				if (!this.config.nodes || !this.config.rootNode) {
+				if (!(this.config.nodes && this.config.rootNode)) {
 					throw new Error("Nodes and root node required for LangGraph agent");
 				}
 				return new LangGraphAgent({

@@ -1,8 +1,8 @@
 import {
 	DiagConsoleLogger,
 	DiagLogLevel,
-	type Tracer,
 	diag,
+	type Tracer,
 	trace,
 } from "@opentelemetry/api";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
@@ -107,7 +107,7 @@ export class TelemetryService {
 	 * Shutdown telemetry with optional timeout
 	 */
 	async shutdown(timeoutMs = 5000): Promise<void> {
-		if (!this.sdk || !this.isInitialized) {
+		if (!(this.sdk && this.isInitialized)) {
 			diag.warn("Telemetry is not initialized or already shut down.");
 			return;
 		}
@@ -118,9 +118,9 @@ export class TelemetryService {
 				setTimeout(
 					() =>
 						reject(
-							new Error(`Telemetry shutdown timeout after ${timeoutMs}ms`),
+							new Error(`Telemetry shutdown timeout after ${timeoutMs}ms`)
 						),
-					timeoutMs,
+					timeoutMs
 				);
 			});
 
@@ -149,7 +149,7 @@ export class TelemetryService {
 		args: Record<string, any>,
 		functionResponseEvent: Event,
 		llmRequest?: LlmRequest,
-		invocationContext?: InvocationContext,
+		invocationContext?: InvocationContext
 	): void {
 		const span = trace.getActiveSpan();
 		if (!span) return;
@@ -207,7 +207,7 @@ export class TelemetryService {
 		invocationContext: InvocationContext,
 		eventId: string,
 		llmRequest: LlmRequest,
-		llmResponse: LlmResponse,
+		llmResponse: LlmResponse
 	): void {
 		const span = trace.getActiveSpan();
 		if (!span) return;
@@ -259,7 +259,7 @@ export class TelemetryService {
 	 */
 	async *traceAsyncGenerator<T>(
 		spanName: string,
-		generator: AsyncGenerator<T, void, unknown>,
+		generator: AsyncGenerator<T, void, unknown>
 	): AsyncGenerator<T, void, unknown> {
 		const span = this.tracer.startSpan(spanName);
 
@@ -294,7 +294,7 @@ export class TelemetryService {
 	 * be serialized (e.g., function pointers) and avoids sending bytes data.
 	 */
 	private _buildLlmRequestForTrace(
-		llmRequest: LlmRequest,
+		llmRequest: LlmRequest
 	): Record<string, any> {
 		// Some fields in LlmRequest are function pointers and can not be serialized.
 		const result: Record<string, any> = {
@@ -364,24 +364,24 @@ export const traceToolCall = (
 	args: Record<string, any>,
 	functionResponseEvent: Event,
 	llmRequest?: LlmRequest,
-	invocationContext?: InvocationContext,
+	invocationContext?: InvocationContext
 ) =>
 	telemetryService.traceToolCall(
 		tool,
 		args,
 		functionResponseEvent,
 		llmRequest,
-		invocationContext,
+		invocationContext
 	);
 export const traceLlmCall = (
 	invocationContext: InvocationContext,
 	eventId: string,
 	llmRequest: LlmRequest,
-	llmResponse: LlmResponse,
+	llmResponse: LlmResponse
 ) =>
 	telemetryService.traceLlmCall(
 		invocationContext,
 		eventId,
 		llmRequest,
-		llmResponse,
+		llmResponse
 	);

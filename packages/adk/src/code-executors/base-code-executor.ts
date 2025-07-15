@@ -1,8 +1,8 @@
+import type { InvocationContext } from "../agents/invocation-context";
 import type {
 	CodeExecutionInput,
 	CodeExecutionResult,
 } from "./code-execution-utils";
-import type { InvocationContext } from "../agents/invocation-context";
 
 export interface BaseCodeExecutorConfig {
 	/**
@@ -65,7 +65,7 @@ export abstract class BaseCodeExecutor {
 	 */
 	abstract executeCode(
 		invocationContext: InvocationContext,
-		codeExecutionInput: CodeExecutionInput,
+		codeExecutionInput: CodeExecutionInput
 	): Promise<CodeExecutionResult>;
 
 	// Getters for configuration

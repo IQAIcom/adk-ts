@@ -63,7 +63,7 @@ function createToolAgent(): LlmAgent {
 async function runAgentQuery(
 	runner: Runner,
 	query: string,
-	sessionId?: string,
+	sessionId?: string
 ): Promise<string> {
 	const currentSessionId =
 		sessionId ||
@@ -105,7 +105,7 @@ async function demonstrateSingleToolUsage(runner: Runner): Promise<void> {
 
 	const calcResponse = await runAgentQuery(
 		runner,
-		"What is 24 multiplied by 7?",
+		"What is 24 multiplied by 7?"
 	);
 	console.log("Final Response:", calcResponse);
 	console.log("-----------------------------------");
@@ -120,7 +120,7 @@ async function demonstrateSingleToolUsage(runner: Runner): Promise<void> {
 
 	const weatherResponse = await runAgentQuery(
 		runner,
-		"What's the weather like in Stockholm today?",
+		"What's the weather like in Stockholm today?"
 	);
 	console.log("Final Response:", weatherResponse);
 	console.log("-----------------------------------");
@@ -133,13 +133,13 @@ async function demonstrateSingleToolUsage(runner: Runner): Promise<void> {
 async function demonstrateMultiToolUsage(runner: Runner): Promise<void> {
 	console.log("\nExample 3: Multi-tool coordination");
 	console.log(
-		"Question: I need to know the weather in Paris and then calculate how many euros I need if I spend 25 euros per day for 7 days.",
+		"Question: I need to know the weather in Paris and then calculate how many euros I need if I spend 25 euros per day for 7 days."
 	);
 	console.log("-----------------------------------");
 
 	const multiToolResponse = await runAgentQuery(
 		runner,
-		"I need to know the weather in Paris and then calculate how many euros I need if I spend 25 euros per day for 7 days.",
+		"I need to know the weather in Paris and then calculate how many euros I need if I spend 25 euros per day for 7 days."
 	);
 	console.log("Final Response:", multiToolResponse);
 	console.log("-----------------------------------");
@@ -152,7 +152,7 @@ async function demonstrateMultiToolUsage(runner: Runner): Promise<void> {
  */
 async function demonstrateMultiTurnConversation(
 	runner: Runner,
-	sessionService: InMemorySessionService,
+	sessionService: InMemorySessionService
 ): Promise<void> {
 	console.log("\nExample 4: Multi-turn conversation");
 	console.log("-----------------------------------");
@@ -160,39 +160,39 @@ async function demonstrateMultiTurnConversation(
 	// Create a persistent session for multi-turn conversation
 	const conversationSession = await sessionService.createSession(
 		APP_NAME,
-		USER_ID,
+		USER_ID
 	);
 
 	// First turn: Weather inquiry
 	console.log(
-		"User: Hi, I'm planning a trip to New York. What's the weather like there?",
+		"User: Hi, I'm planning a trip to New York. What's the weather like there?"
 	);
 	let response = await runAgentQuery(
 		runner,
 		"Hi, I'm planning a trip to New York. What's the weather like there?",
-		conversationSession.id,
+		conversationSession.id
 	);
 	console.log("Assistant:", response);
 
 	// Second turn: Accommodation cost calculation
 	console.log(
-		"\nUser: Great! If I stay for 5 days and hotels cost $200 per night, how much will I spend on accommodation?",
+		"\nUser: Great! If I stay for 5 days and hotels cost $200 per night, how much will I spend on accommodation?"
 	);
 	response = await runAgentQuery(
 		runner,
 		"Great! If I stay for 5 days and hotels cost $200 per night, how much will I spend on accommodation?",
-		conversationSession.id,
+		conversationSession.id
 	);
 	console.log("Assistant:", response);
 
 	// Third turn: Total cost calculation
 	console.log(
-		"\nUser: And what will the total be if I also spend $100 per day on food and activities?",
+		"\nUser: And what will the total be if I also spend $100 per day on food and activities?"
 	);
 	response = await runAgentQuery(
 		runner,
 		"And what will the total be if I also spend $100 per day on food and activities?",
-		conversationSession.id,
+		conversationSession.id
 	);
 	console.log("Assistant:", response);
 }

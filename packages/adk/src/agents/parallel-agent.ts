@@ -8,7 +8,7 @@ import { InvocationContext } from "./invocation-context";
 function createBranchContextForSubAgent(
 	agent: BaseAgent,
 	subAgent: BaseAgent,
-	invocationContext: InvocationContext,
+	invocationContext: InvocationContext
 ): InvocationContext {
 	const branchSuffix = `${agent.name}.${subAgent.name}`;
 	const branch = invocationContext.branch
@@ -20,7 +20,7 @@ function createBranchContextForSubAgent(
 		sessionService: invocationContext.sessionService,
 		memoryService: invocationContext.memoryService,
 		invocationId: invocationContext.invocationId,
-		branch: branch,
+		branch,
 		agent: subAgent,
 		userContent: invocationContext.userContent,
 		session: invocationContext.session,
@@ -39,7 +39,7 @@ function createBranchContextForSubAgent(
  * generated event is processed by upstream runner.
  */
 async function* mergeAgentRun(
-	agentRuns: AsyncGenerator<Event, void, unknown>[],
+	agentRuns: AsyncGenerator<Event, void, unknown>[]
 ): AsyncGenerator<Event, void, unknown> {
 	if (agentRuns.length === 0) {
 		return;
@@ -138,10 +138,10 @@ export class ParallelAgent extends BaseAgent {
 	 * Core logic to run this agent via text-based conversation
 	 */
 	protected async *runAsyncImpl(
-		ctx: InvocationContext,
+		ctx: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		const agentRuns = this.subAgents.map((subAgent) =>
-			subAgent.runAsync(createBranchContextForSubAgent(this, subAgent, ctx)),
+			subAgent.runAsync(createBranchContextForSubAgent(this, subAgent, ctx))
 		);
 
 		for await (const event of mergeAgentRun(agentRuns)) {
@@ -153,7 +153,7 @@ export class ParallelAgent extends BaseAgent {
 	 * Core logic to run this agent via video/audio-based conversation
 	 */
 	protected async *runLiveImpl(
-		_ctx: InvocationContext,
+		_ctx: InvocationContext
 	): AsyncGenerator<Event, void, unknown> {
 		throw new Error("This is not supported yet for ParallelAgent.");
 		// biome-ignore lint/correctness/useYield: AsyncGenerator requires having at least one yield statement

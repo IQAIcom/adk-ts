@@ -36,7 +36,7 @@ export class WeatherTool extends BaseTool {
 		args: {
 			location: string;
 		},
-		_context: ToolContext,
+		_context: ToolContext
 	): Promise<any> {
 		console.log(`Getting weather for: ${args.location}`);
 

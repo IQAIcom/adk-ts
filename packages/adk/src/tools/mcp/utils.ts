@@ -8,12 +8,12 @@
  */
 export function retryOnClosedResource<T>(
 	reinitMethod: (instance: T) => Promise<void>,
-	maxRetries = 1,
+	maxRetries = 1
 ) {
 	return (
 		_target: unknown,
 		_propertyKey: string | symbol,
-		descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<any>>,
+		descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<any>>
 	) => {
 		const originalMethod = descriptor.value;
 		if (!originalMethod) return descriptor;
@@ -38,7 +38,7 @@ export function retryOnClosedResource<T>(
 					}
 
 					console.warn(
-						`Resource closed, reinitializing (attempt ${attempt + 1}/${maxRetries + 1})...`,
+						`Resource closed, reinitializing (attempt ${attempt + 1}/${maxRetries + 1})...`
 					);
 
 					try {
@@ -71,7 +71,7 @@ export function withRetry<T, Args extends any[], Return>(
 	fn: (this: T, ...args: Args) => Promise<Return>,
 	instance: T,
 	reinitMethod: (instance: T) => Promise<void>,
-	maxRetries = 1,
+	maxRetries = 1
 ): (...args: Args) => Promise<Return> {
 	return async (...args: Args): Promise<Return> => {
 		let attempt = 0;
@@ -92,7 +92,7 @@ export function withRetry<T, Args extends any[], Return>(
 				}
 
 				console.warn(
-					`Resource closed, reinitializing (attempt ${attempt + 1}/${maxRetries + 1})...`,
+					`Resource closed, reinitializing (attempt ${attempt + 1}/${maxRetries + 1})...`
 				);
 
 				try {

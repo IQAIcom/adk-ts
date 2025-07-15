@@ -66,7 +66,7 @@ export class LoadArtifactsTool extends BaseTool {
 	 */
 	async runAsync(
 		args: { artifact_names?: string[] },
-		context: ToolContext,
+		context: ToolContext
 	): Promise<{ artifact_names: string[] }> {
 		const artifactNames: string[] = args.artifact_names || [];
 		return { artifact_names: artifactNames };
@@ -77,7 +77,7 @@ export class LoadArtifactsTool extends BaseTool {
 	 */
 	async processLlmRequest(
 		toolContext: ToolContext,
-		llmRequest: ExtendedLlmRequest,
+		llmRequest: ExtendedLlmRequest
 	): Promise<void> {
 		await super.processLlmRequest(toolContext, llmRequest);
 		await this.appendArtifactsToLlmRequest(toolContext, llmRequest);
@@ -88,7 +88,7 @@ export class LoadArtifactsTool extends BaseTool {
 	 */
 	private async appendArtifactsToLlmRequest(
 		toolContext: ToolContext,
-		llmRequest: ExtendedLlmRequest,
+		llmRequest: ExtendedLlmRequest
 	): Promise<void> {
 		try {
 			const artifactNames = await toolContext.listArtifacts();
@@ -140,7 +140,7 @@ than the function call.
 							} catch (error) {
 								console.error(
 									`Failed to load artifact ${artifactName}:`,
-									error,
+									error
 								);
 							}
 						}

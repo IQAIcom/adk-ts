@@ -26,7 +26,7 @@ export class LiveRequest {
 	}) {
 		this.content = options?.content;
 		this.blob = options?.blob;
-		this.close = options?.close || false;
+		this.close = options?.close;
 	}
 }
 

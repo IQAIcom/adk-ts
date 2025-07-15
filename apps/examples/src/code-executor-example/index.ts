@@ -1,6 +1,10 @@
 import { env } from "node:process";
-import { InMemorySessionService, LlmAgent, Runner } from "@iqai/adk";
-import { BuiltInCodeExecutor } from "@iqai/adk";
+import {
+	BuiltInCodeExecutor,
+	InMemorySessionService,
+	LlmAgent,
+	Runner,
+} from "@iqai/adk";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -33,7 +37,7 @@ write and execute Python code to solve it. Always show your work with code.`,
  */
 async function demonstrateCodeExecution(
 	runner: Runner,
-	sessionId: string,
+	sessionId: string
 ): Promise<void> {
 	console.log("🧮 Demonstrating Code Execution");
 	console.log("-----------------------------------");

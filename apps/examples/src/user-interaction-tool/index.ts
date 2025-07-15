@@ -118,13 +118,13 @@ function setupRunnerAndSession(agent: LlmAgent): {
  */
 async function demonstrateSimpleUserInput(
 	runner: Runner,
-	sessionService: InMemorySessionService,
+	sessionService: InMemorySessionService
 ): Promise<void> {
 	console.log("\n--- Example 1: Simple user input ---");
 	const result = await runAgentQuery(
 		runner,
 		sessionService,
-		"Ask me for my favorite color",
+		"Ask me for my favorite color"
 	);
 	console.log("Agent response:", result);
 }
@@ -136,13 +136,13 @@ async function demonstrateSimpleUserInput(
  */
 async function demonstrateUserChoices(
 	runner: Runner,
-	sessionService: InMemorySessionService,
+	sessionService: InMemorySessionService
 ): Promise<void> {
 	console.log("\n--- Example 2: User choice from options ---");
 	const result = await runAgentQuery(
 		runner,
 		sessionService,
-		"Ask me to choose my preferred programming language from Python, JavaScript, and TypeScript",
+		"Ask me to choose my preferred programming language from Python, JavaScript, and TypeScript"
 	);
 	console.log("Agent response:", result);
 }
@@ -154,13 +154,13 @@ async function demonstrateUserChoices(
  */
 async function demonstrateDefaultValues(
 	runner: Runner,
-	sessionService: InMemorySessionService,
+	sessionService: InMemorySessionService
 ): Promise<void> {
 	console.log("\n--- Example 3: User input with default value ---");
 	const result = await runAgentQuery(
 		runner,
 		sessionService,
-		"Ask me for my age with a default value of 30",
+		"Ask me for my age with a default value of 30"
 	);
 	console.log("Agent response:", result);
 }
@@ -175,7 +175,7 @@ async function demonstrateDefaultValues(
 async function runAgentQuery(
 	runner: Runner,
 	sessionService: InMemorySessionService,
-	query: string,
+	query: string
 ): Promise<string> {
 	const session = await sessionService.createSession(APP_NAME, USER_ID);
 

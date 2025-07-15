@@ -45,7 +45,7 @@ export class VertexAiSessionService extends BaseSessionService {
 			project?: string;
 			location?: string;
 			agentEngineId?: string;
-		} = {},
+		} = {}
 	) {
 		super();
 		this.project = options.project;
@@ -57,11 +57,11 @@ export class VertexAiSessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		state?: Record<string, any>,
-		sessionId?: string,
+		sessionId?: string
 	): Promise<Session> {
 		if (sessionId) {
 			throw new Error(
-				"User-provided Session id is not supported for VertexAISessionService.",
+				"User-provided Session id is not supported for VertexAISessionService."
 			);
 		}
 
@@ -102,9 +102,9 @@ export class VertexAiSessionService extends BaseSessionService {
 			maxRetryAttempt--;
 		}
 
-		if (!lroResponse || !lroResponse.done) {
+		if (!(lroResponse && lroResponse.done)) {
 			throw new Error(
-				`Timeout waiting for operation ${operationId} to complete.`,
+				`Timeout waiting for operation ${operationId} to complete.`
 			);
 		}
 
@@ -132,7 +132,7 @@ export class VertexAiSessionService extends BaseSessionService {
 		appName: string,
 		userId: string,
 		sessionId: string,
-		config?: GetSessionConfig,
+		config?: GetSessionConfig
 	): Promise<Session | undefined> {
 		const reasoningEngineId = this.getReasoningEngineId(appName);
 		const apiClient = this.getApiClient();
@@ -172,7 +172,7 @@ export class VertexAiSessionService extends BaseSessionService {
 
 			if (listEventsApiResponse.sessionEvents) {
 				session.events.push(
-					...listEventsApiResponse.sessionEvents.map(this.fromApiEvent),
+					...listEventsApiResponse.sessionEvents.map(this.fromApiEvent)
 				);
 			}
 
@@ -187,14 +187,14 @@ export class VertexAiSessionService extends BaseSessionService {
 
 				if (listEventsApiResponse.sessionEvents) {
 					session.events.push(
-						...listEventsApiResponse.sessionEvents.map(this.fromApiEvent),
+						...listEventsApiResponse.sessionEvents.map(this.fromApiEvent)
 					);
 				}
 			}
 
 			// Filter events by timestamp
 			session.events = session.events.filter(
-				(event) => event.timestamp <= updateTimestamp,
+				(event) => event.timestamp <= updateTimestamp
 			);
 			session.events.sort((a, b) => a.timestamp - b.timestamp);
 
@@ -219,13 +219,13 @@ export class VertexAiSessionService extends BaseSessionService {
 			return session;
 		} catch (error) {
 			console.error(`Error getting session ${sessionId}:`, error);
-			return undefined;
+			return;
 		}
 	}
 
 	async listSessions(
 		appName: string,
-		userId: string,
+		userId: string
 	): Promise<ListSessionsResponse> {
 		const reasoningEngineId = this.getReasoningEngineId(appName);
 		const apiClient = this.getApiClient();
@@ -268,7 +268,7 @@ export class VertexAiSessionService extends BaseSessionService {
 	async deleteSession(
 		appName: string,
 		userId: string,
-		sessionId: string,
+		sessionId: string
 	): Promise<void> {
 		const reasoningEngineId = this.getReasoningEngineId(appName);
 		const apiClient = this.getApiClient();
@@ -316,7 +316,7 @@ export class VertexAiSessionService extends BaseSessionService {
 
 		if (!match) {
 			throw new Error(
-				`App name ${appName} is not valid. It should either be the full ReasoningEngine resource name, or the reasoning engine id.`,
+				`App name ${appName} is not valid. It should either be the full ReasoningEngine resource name, or the reasoning engine id.`
 			);
 		}
 
@@ -358,7 +358,7 @@ export class VertexAiSessionService extends BaseSessionService {
 			timestamp: {
 				seconds: Math.floor(event.timestamp),
 				nanos: Math.floor(
-					(event.timestamp - Math.floor(event.timestamp)) * 1_000_000_000,
+					(event.timestamp - Math.floor(event.timestamp)) * 1_000_000_000
 				),
 			},
 			error_code: event.errorCode,
@@ -422,7 +422,7 @@ export class VertexAiSessionService extends BaseSessionService {
 			event.interrupted = apiEvent.eventMetadata.interrupted;
 			event.branch = apiEvent.eventMetadata.branch;
 			event.groundingMetadata = this.decodeGroundingMetadata(
-				apiEvent.eventMetadata.groundingMetadata,
+				apiEvent.eventMetadata.groundingMetadata
 			);
 			event.longRunningToolIds = longRunningToolIdsList
 				? new Set(longRunningToolIdsList)
@@ -433,15 +433,15 @@ export class VertexAiSessionService extends BaseSessionService {
 	}
 
 	private decodeContent(content: any): Content | undefined {
-		if (!content) return undefined;
+		if (!content) return;
 		// Content is already in the correct format from the API
 		return content as Content;
 	}
 
 	private decodeGroundingMetadata(
-		groundingMetadata: any,
+		groundingMetadata: any
 	): GroundingMetadata | undefined {
-		if (!groundingMetadata) return undefined;
+		if (!groundingMetadata) return;
 		// GroundingMetadata is already in the correct format from the API
 		return groundingMetadata as GroundingMetadata;
 	}

@@ -44,7 +44,7 @@ export abstract class BaseLlm {
 	 */
 	async *generateContentAsync(
 		llmRequest: LlmRequest,
-		stream?: boolean,
+		stream?: boolean
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		// Apply the maybeAppendUserContent fix before processing
 		this.maybeAppendUserContent(llmRequest);
@@ -75,7 +75,7 @@ export abstract class BaseLlm {
 							})),
 							config: llmRequest.config,
 						}),
-						"adk.streaming": stream || false,
+						"adk.streaming": stream,
 					});
 
 					let responseCount = 0;
@@ -83,7 +83,7 @@ export abstract class BaseLlm {
 
 					for await (const response of this.generateContentAsyncImpl(
 						llmRequest,
-						stream,
+						stream
 					)) {
 						responseCount++;
 
@@ -119,7 +119,7 @@ export abstract class BaseLlm {
 				} finally {
 					span.end();
 				}
-			}.bind(this),
+			}.bind(this)
 		);
 	}
 
@@ -129,7 +129,7 @@ export abstract class BaseLlm {
 	 */
 	protected abstract generateContentAsyncImpl(
 		llmRequest: LlmRequest,
-		stream?: boolean,
+		stream?: boolean
 	): AsyncGenerator<LlmResponse, void, unknown>;
 
 	/**
