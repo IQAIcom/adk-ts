@@ -1,4 +1,6 @@
-// CLI module for ADK
-// Port from Python's cli/ module
+import { runAdkCli } from "./cli";
 
-export {};
+runAdkCli().catch((error) => {
+	console.error("CLI Error:", error);
+	process.exit(1);
+});

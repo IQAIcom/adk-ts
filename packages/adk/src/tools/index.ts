@@ -27,4 +27,6 @@ export { GetUserChoiceTool } from "./common/get-user-choice-tool";
 export { TransferToAgentTool } from "./common/transfer-to-agent-tool";
 export { LoadMemoryTool } from "./common/load-memory-tool";
 export { LoadArtifactsTool } from "./common/load-artifacts-tool";
+export { AgentTool } from "./common/agent-tool";
+export type { AgentToolConfig, BaseAgentType } from "./common/agent-tool";
 export * from "./mcp";
