@@ -165,6 +165,56 @@ describe("LangGraphAgent", () => {
 					}),
 			).toThrow('Node "NodeA" targets non-existent node "NonExistentNode"');
 		});
+
+		it("should throw if graph contains cycles", () => {
+			// Create a simple cycle: CycleA -> CycleB -> CycleA
+			const cycleNodeA = { name: "CycleA", agent: agentA, targets: ["CycleB"] };
+			const cycleNodeB = { name: "CycleB", agent: agentB, targets: ["CycleA"] };
+
+			expect(
+				() =>
+					new LangGraphAgent({
+						name: "CyclicGraph",
+						description: "Graph with cycles should be rejected",
+						nodes: [cycleNodeA, cycleNodeB],
+						rootNode: "CycleA",
+					}),
+			).toThrow("Graph contains a cycle, which is not allowed");
+		});
+
+		it("should throw if graph contains self-referencing cycle", () => {
+			// Create a self-referencing node: SelfRef -> SelfRef
+			const selfRefNode = { name: "SelfRef", agent: agentA, targets: ["SelfRef"] };
+
+			expect(
+				() =>
+					new LangGraphAgent({
+						name: "SelfRefGraph",
+						description: "Graph with self-reference should be rejected",
+						nodes: [selfRefNode],
+						rootNode: "SelfRef",
+					}),
+			).toThrow("Graph contains a cycle, which is not allowed");
+		});
+
+		it("should throw if graph contains complex cycles", () => {
+			// Create a more complex cycle: A -> B -> C -> D -> B
+			const complexNodeA = { name: "ComplexA", agent: agentA, targets: ["ComplexB"] };
+			const complexNodeB = { name: "ComplexB", agent: agentB, targets: ["ComplexC"] };
+			const complexNodeC = { name: "ComplexC", agent: agentC, targets: ["ComplexD"] };
+			const agentD = new MockAgent("AgentD");
+			const complexNodeD = { name: "ComplexD", agent: agentD, targets: ["ComplexB"] }; // Creates cycle back to B
+
+			expect(
+				() =>
+					new LangGraphAgent({
+						name: "ComplexCyclicGraph",
+						description: "Graph with complex cycle should be rejected",
+						nodes: [complexNodeA, complexNodeB, complexNodeC, complexNodeD],
+						rootNode: "ComplexA",
+					}),
+			).toThrow("Graph contains a cycle, which is not allowed");
+		});
 	});
 
 	describe("Graph Execution", () => {
@@ -238,25 +288,37 @@ describe("LangGraphAgent", () => {
 			expect(completionEvent.content?.parts[0].text).not.toContain("BranchC");
 		});
 
-		it("should stop at maxSteps to prevent infinite loops", async () => {
-			const cycleNodeA = { name: "CycleA", agent: agentA, targets: ["CycleB"] };
-			const cycleNodeB = { name: "CycleB", agent: agentB, targets: ["CycleA"] };
+		it("should stop at maxSteps to limit execution length", async () => {
+			// Create a deep linear chain to test maxSteps limiting
+			const agentD = new MockAgent("AgentD");
+			const agentE = new MockAgent("AgentE");
+			const agentF = new MockAgent("AgentF");
+			
+			const nodeD = { name: "NodeD", agent: agentD, targets: ["NodeE"] };
+			const nodeE = { name: "NodeE", agent: agentE, targets: ["NodeF"] };
+			const nodeF = { name: "NodeF", agent: agentF, targets: [] };
 
-			const graph = new LangGraphAgent({
-				name: "CyclicGraph",
-				description: "Cyclic graph test",
-				nodes: [cycleNodeA, cycleNodeB],
-				rootNode: "CycleA",
-				maxSteps: 5,
+			const longChainGraph = new LangGraphAgent({
+				name: "LongChainGraph",
+				description: "Long chain graph test",
+				nodes: [nodeA, nodeB, nodeC, nodeD, nodeE, nodeF],
+				rootNode: "NodeA",
+				maxSteps: 3, // Limit to 3 steps
 			});
 
-			const events = await executeGraphAndGetEvents(graph, mockContext);
+			const events = await executeGraphAndGetEvents(longChainGraph, mockContext);
 
-			expect(agentA.executionCount + agentB.executionCount).toBe(5);
+			// Should execute exactly 3 agents due to maxSteps limit
+			expect(agentA.executionCount).toBe(1);
+			expect(agentB.executionCount).toBe(1);
+			expect(agentC.executionCount).toBe(1);
+			expect(agentD.executionCount).toBe(0); // Should not reach this due to maxSteps
+			expect(agentE.executionCount).toBe(0);
+			expect(agentF.executionCount).toBe(0);
 
 			const completionEvent = events[events.length - 1];
 			expect(completionEvent.content?.parts[0].text).toContain(
-				"CycleA → CycleB → CycleA → CycleB → CycleA",
+				"NodeA → NodeB → NodeC",
 			);
 		});
 
