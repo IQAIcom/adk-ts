@@ -1,3 +1,4 @@
+import type { LlmRequest } from "@adk/models";
 import type { Content, Part } from "@google/genai";
 import { type LanguageModel, generateId } from "ai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service.js";
@@ -16,7 +17,6 @@ import { LlmAgent } from "./llm-agent.js";
 import { LoopAgent } from "./loop-agent.js";
 import { ParallelAgent } from "./parallel-agent.js";
 import { SequentialAgent } from "./sequential-agent.js";
-import type { LlmRequest } from "@adk/models";
 
 /**
  * Configuration options for the AgentBuilder

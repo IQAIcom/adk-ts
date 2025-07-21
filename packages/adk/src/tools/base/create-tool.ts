@@ -1,0 +1,144 @@
+import * as z from "zod/v4";
+import type {
+	FunctionDeclaration,
+	JSONSchema,
+} from "../../models/function-declaration";
+import type { ToolContext } from "../tool-context";
+import { BaseTool } from "./base-tool";
+
+/**
+ * Configuration for creating a tool
+ */
+export interface CreateToolConfig<T extends Record<string, any>> {
+	/** The name of the tool */
+	name: string;
+	/** A description of what the tool does */
+	description: string;
+	/** Zod schema for validating tool arguments */
+	schema: z.ZodSchema<T>;
+	/** The function to execute (can be sync or async) */
+	fn: (args: T, context?: ToolContext) => any;
+	/** Whether the tool is a long running operation */
+	isLongRunning?: boolean;
+	/** Whether the tool execution should be retried on failure */
+	shouldRetryOnFailure?: boolean;
+	/** Maximum retry attempts */
+	maxRetryAttempts?: number;
+}
+
+/**
+ * A tool implementation created by createTool
+ */
+class CreatedTool<T extends Record<string, any>> extends BaseTool {
+	private func: (args: T, context?: ToolContext) => any;
+	private schema: z.ZodSchema<T>;
+	private functionDeclaration: FunctionDeclaration;
+
+	constructor(config: CreateToolConfig<T>) {
+		super({
+			name: config.name,
+			description: config.description,
+			isLongRunning: config.isLongRunning ?? false,
+			shouldRetryOnFailure: config.shouldRetryOnFailure ?? false,
+			maxRetryAttempts: config.maxRetryAttempts ?? 3,
+		});
+
+		this.func = config.fn;
+		this.schema = config.schema;
+		this.functionDeclaration = this.buildDeclaration();
+	}
+
+	/**
+	 * Executes the tool function with validation
+	 */
+	async runAsync(args: any, context: ToolContext): Promise<any> {
+		try {
+			// Validate arguments using Zod schema
+			const validatedArgs = this.schema.parse(args);
+
+			// Call the function with validated arguments.
+			// `Promise.resolve` handles both sync and async functions gracefully.
+			const result = await Promise.resolve(
+				this.func.length > 1
+					? this.func(validatedArgs, context)
+					: this.func(validatedArgs),
+			);
+
+			// Ensure we return an object, but preserve falsy values like 0, false, ""
+			return result ?? {};
+		} catch (error) {
+			if (error instanceof z.ZodError) {
+				return {
+					error: `Invalid arguments for ${this.name}: ${z.prettifyError(error)}`,
+				};
+			}
+			return {
+				error: `Error executing ${this.name}: ${error instanceof Error ? error.message : String(error)}`,
+			};
+		}
+	}
+
+	/**
+	 * Returns the function declaration for this tool
+	 */
+	getDeclaration(): FunctionDeclaration {
+		return this.functionDeclaration;
+	}
+
+	/**
+	 * Builds the function declaration from the Zod schema
+	 */
+	private buildDeclaration(): FunctionDeclaration {
+		const parameters = z.toJSONSchema(this.schema) as JSONSchema;
+
+		return {
+			name: this.name,
+			description: this.description,
+			parameters,
+		};
+	}
+}
+
+/**
+ * Creates a tool from a configuration object.
+ *
+ * This is a more user-friendly alternative to FunctionTool that provides:
+ * - Automatic argument validation using Zod schemas
+ * - Clear error messages for invalid inputs
+ * - Automatic JSON Schema generation for LLM function declarations
+ * - Support for both sync and async functions
+ * - Optional ToolContext parameter support
+ *
+ * @param config The tool configuration object
+ * @returns A BaseTool instance ready for use with agents
+ *
+ * @example
+ * ```typescript
+ * import { createTool } from '@iqai/adk';
+ * import { z } from 'zod';
+ *
+ * const calculatorTool = createTool({
+ *   name: 'calculator',
+ *   description: 'Performs basic arithmetic operations',
+ *   schema: z.object({
+ *     operation: z.enum(['add', 'subtract', 'multiply', 'divide']),
+ *     a: z.number().describe('First number'),
+ *     b: z.number().describe('Second number')
+ *   }),
+ *   fn: ({ operation, a, b }) => {
+ *     switch (operation) {
+ *       case 'add': return { result: a + b };
+ *       case 'subtract': return { result: a - b };
+ *       case 'multiply': return { result: a * b };
+ *       case 'divide': return { result: b !== 0 ? a / b : 'Cannot divide by zero' };
+ *       default: return { error: 'Unknown operation' };
+ *     }
+ *   }
+ * });
+ * ```
+ */
+export function createTool<T extends Record<string, any>>(
+	config: CreateToolConfig<T>,
+): BaseTool {
+	return new CreatedTool(config);
+}

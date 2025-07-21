@@ -65,7 +65,6 @@ async function main() {
 			.withInstruction(`You are a helpful assistant with automatic telemetry tracking enabled.
 Provide detailed and informative responses to user questions.
 Your interactions are being monitored for performance and quality automatically.`)
-			.withQuickSession()
 			.build();
 
 		/**

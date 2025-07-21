@@ -20,7 +20,6 @@ Always examine the status code to ensure the request was successful.
 For JSON responses, try to extract and present the most relevant information.
 Be clear about the HTTP method and URL you're using.`)
 			.withTools(new HttpRequestTool())
-			.withQuickSession()
 			.build();
 
 		/**

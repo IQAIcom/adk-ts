@@ -178,7 +178,6 @@ async function demonstrateMultiAgentWorkflows(): Promise<void> {
 	)
 		.withDescription("A workflow that researches and then summarizes")
 		.asSequential([(await researchAgent).agent, (await summaryAgent).agent])
-		.withQuickSession()
 		.build();
 
 	// Execute the actual sequential workflow using simplified API

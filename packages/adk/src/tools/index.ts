@@ -5,6 +5,7 @@
 // Base tool classes
 export { BaseTool } from "./base/base-tool";
 export type { ToolConfig } from "./base/base-tool";
+export { createTool, type CreateToolConfig } from "./base/create-tool";
 
 // Tool context
 export { ToolContext } from "./tool-context";

@@ -1,6 +1,6 @@
 import { env } from "node:process";
-import { AgentBuilder, FunctionTool } from "@iqai/adk";
 import { google } from "@ai-sdk/google";
+import { AgentBuilder, FunctionTool } from "@iqai/adk";
 
 function getWeather(location: string): string {
 	console.log(`🌤️ Getting weather for ${location}...`);
@@ -41,7 +41,6 @@ async function demonstrateWeatherAgent() {
 2. Provide a friendly, conversational response that includes the weather data
 3. Format the response naturally and include helpful context`)
 			.withTools(weatherTool)
-			.withQuickSession()
 			.build();
 
 		const queries = [
