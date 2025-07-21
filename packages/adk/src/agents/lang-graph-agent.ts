@@ -141,7 +141,37 @@ export class LangGraphAgent extends BaseAgent {
 			}
 		}
 
-		// TODO: Add cycle detection if needed
+		// Check for cycles using a simple DFS
+		const visited = new Set<string>();
+		const stack = new Set<string>();
+
+		const hasCycle = (nodeName: string): boolean => {
+			if (stack.has(nodeName)) {
+				return true; // Cycle detected
+			}
+			if (visited.has(nodeName)) {
+				return false; // Already visited this node
+			}
+
+			visited.add(nodeName);
+			stack.add(nodeName);
+
+			const node = this.nodes.get(nodeName);
+			if (node?.targets) {
+				for (const target of node.targets) {
+					if (hasCycle(target)) {
+						return true;
+					}
+				}
+			}
+
+			stack.delete(nodeName);
+			return false;
+		};
+
+		if (hasCycle(this.rootNode)) {
+			throw new Error("Graph contains a cycle, which is not allowed");
+		}
 	}
 
 	/**
