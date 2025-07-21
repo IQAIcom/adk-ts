@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BaseAgent } from "../../agents/base-agent";
+import type { InvocationContext } from "../../agents/invocation-context";
 import {
 	LangGraphAgent,
 	type LangGraphNode,
 } from "../../agents/lang-graph-agent";
-import { BaseAgent } from "../../agents/base-agent";
 import { Event } from "../../events/event";
-import type { InvocationContext } from "../../agents/invocation-context";
 
 vi.mock("@adk/helpers/logger", () => ({
 	Logger: vi.fn(() => ({
@@ -184,7 +184,11 @@ describe("LangGraphAgent", () => {
 
 		it("should throw if graph contains self-referencing cycle", () => {
 			// Create a self-referencing node: SelfRef -> SelfRef
-			const selfRefNode = { name: "SelfRef", agent: agentA, targets: ["SelfRef"] };
+			const selfRefNode = {
+				name: "SelfRef",
+				agent: agentA,
+				targets: ["SelfRef"],
+			};
 
 			expect(
 				() =>
@@ -199,11 +203,27 @@ describe("LangGraphAgent", () => {
 
 		it("should throw if graph contains complex cycles", () => {
 			// Create a more complex cycle: A -> B -> C -> D -> B
-			const complexNodeA = { name: "ComplexA", agent: agentA, targets: ["ComplexB"] };
-			const complexNodeB = { name: "ComplexB", agent: agentB, targets: ["ComplexC"] };
-			const complexNodeC = { name: "ComplexC", agent: agentC, targets: ["ComplexD"] };
+			const complexNodeA = {
+				name: "ComplexA",
+				agent: agentA,
+				targets: ["ComplexB"],
+			};
+			const complexNodeB = {
+				name: "ComplexB",
+				agent: agentB,
+				targets: ["ComplexC"],
+			};
+			const complexNodeC = {
+				name: "ComplexC",
+				agent: agentC,
+				targets: ["ComplexD"],
+			};
 			const agentD = new MockAgent("AgentD");
-			const complexNodeD = { name: "ComplexD", agent: agentD, targets: ["ComplexB"] }; // Creates cycle back to B
+			const complexNodeD = {
+				name: "ComplexD",
+				agent: agentD,
+				targets: ["ComplexB"],
+			}; // Creates cycle back to B
 
 			expect(
 				() =>
@@ -293,7 +313,7 @@ describe("LangGraphAgent", () => {
 			const agentD = new MockAgent("AgentD");
 			const agentE = new MockAgent("AgentE");
 			const agentF = new MockAgent("AgentF");
-			
+
 			const nodeD = { name: "NodeD", agent: agentD, targets: ["NodeE"] };
 			const nodeE = { name: "NodeE", agent: agentE, targets: ["NodeF"] };
 			const nodeF = { name: "NodeF", agent: agentF, targets: [] };
@@ -306,7 +326,10 @@ describe("LangGraphAgent", () => {
 				maxSteps: 3, // Limit to 3 steps
 			});
 
-			const events = await executeGraphAndGetEvents(longChainGraph, mockContext);
+			const events = await executeGraphAndGetEvents(
+				longChainGraph,
+				mockContext,
+			);
 
 			// Should execute exactly 3 agents due to maxSteps limit
 			expect(agentA.executionCount).toBe(1);
