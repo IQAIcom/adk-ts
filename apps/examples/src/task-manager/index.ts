@@ -249,53 +249,14 @@ function updateTaskListFromResponse(
  * @param sessionId Current session identifier
  */
 
-async function runTaskManagerDemo(
+async function runTaskManagerInteractive(
   runner: Runner,
   sessionService: InMemorySessionService,
   memoryService: InMemoryMemoryService,
   sessionId: string
 ): Promise<void> {
-  console.log("🗒️ Starting Task Manager Demo...");
-
-  // Introduction
-  await sendMessage(
-    runner,
-    sessionService,
-    memoryService,
-    sessionId,
-    "Hello! Can you help me manage my tasks today?"
-  );
-
-  // Adding tasks
-  await sendMessage(
-    runner,
-    sessionService,
-    memoryService,
-    sessionId,
-    "I need to go shopping for a new handbag today."
-  );
-
-  await sendMessage(
-    runner,
-    sessionService,
-    memoryService,
-    sessionId,
-    "Also remember I need to call mom this evening."
-  );
-
-  // Showing current tasks
-
-  await sendMessage(
-    runner,
-    sessionService,
-    memoryService,
-    sessionId,
-    "What's on my list so far?"
-  );
-
-  // Interactive mode
   console.log("\n" + "=".repeat(50));
-  console.log("🔄 ENTERING INTERACTIVE MODE");
+  console.log("🗒️ Task Manager Interactive Mode");
   console.log("Type your tasks or questions. Type 'exit' to quit.");
   console.log("=".repeat(50) + "\n");
 
@@ -364,9 +325,14 @@ async function main() {
     });
 
     /**
-     * Run the task manager demo
+     * Start interactive mode only
      */
-    await runTaskManagerDemo(runner, sessionService, memoryService, session.id);
+    await runTaskManagerInteractive(
+      runner,
+      sessionService,
+      memoryService,
+      session.id
+    );
   } catch (error) {
     console.error("❌ Error in task manager example:", error);
     process.exit(1);
