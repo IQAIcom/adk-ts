@@ -33,6 +33,7 @@ export interface AgentBuilderConfig {
 	maxIterations?: number;
 	nodes?: LangGraphNode[];
 	rootNode?: string;
+	outputKey?: string;
 }
 
 /**
@@ -227,13 +228,23 @@ export class AgentBuilder {
 	}
 
 	/**
+	 * Set the output key for storing agent results in session state
+	 * @param outputKey The key to store the agent's output in session state
+	 * @returns This builder instance for chaining
+	 */
+	withOutputKey(outputKey: string): this {
+		this.config.outputKey = outputKey;
+		return this;
+	}
+
+	/**
 	 * Configure as a sequential agent
 	 * @param subAgents Sub-agents to execute in sequence
 	 * @returns This builder instance for chaining
 	 */
 	asSequential(subAgents: BaseAgent[]): this {
 		this.agentType = "sequential";
-		this.config.subAgents = subAgents;
+		this.config.subAgents = this.autoGenerateOutputKeys(subAgents);
 		return this;
 	}
 
@@ -244,7 +255,7 @@ export class AgentBuilder {
 	 */
 	asParallel(subAgents: BaseAgent[]): this {
 		this.agentType = "parallel";
-		this.config.subAgents = subAgents;
+		this.config.subAgents = this.autoGenerateOutputKeys(subAgents);
 		return this;
 	}
 
@@ -256,7 +267,7 @@ export class AgentBuilder {
 	 */
 	asLoop(subAgents: BaseAgent[], maxIterations = 3): this {
 		this.agentType = "loop";
-		this.config.subAgents = subAgents;
+		this.config.subAgents = this.autoGenerateOutputKeys(subAgents);
 		this.config.maxIterations = maxIterations;
 		return this;
 	}
@@ -269,7 +280,11 @@ export class AgentBuilder {
 	 */
 	asLangGraph(nodes: LangGraphNode[], rootNode: string): this {
 		this.agentType = "langgraph";
-		this.config.nodes = nodes;
+		// Auto-generate output keys for LangGraph node agents
+		this.config.nodes = nodes.map((node) => ({
+			...node,
+			agent: this.autoGenerateOutputKeys([node.agent])[0],
+		}));
 		this.config.rootNode = rootNode;
 		return this;
 	}
@@ -427,6 +442,7 @@ export class AgentBuilder {
 					instruction: this.config.instruction,
 					tools: this.config.tools,
 					planner: this.config.planner,
+					outputKey: this.config.outputKey,
 				});
 			}
 			case "sequential":
@@ -506,6 +522,41 @@ export class AgentBuilder {
 	 */
 	private generateDefaultAppName(): string {
 		return `app-${this.config.name}`;
+	}
+
+	/**
+	 * Auto-generate output keys for sub-agents in workflow patterns
+	 * Only generates keys for LlmAgents that don't already have an outputKey
+	 * @param subAgents Array of sub-agents to process
+	 * @returns Array of sub-agents with auto-generated output keys where needed
+	 */
+	private autoGenerateOutputKeys(subAgents: BaseAgent[]): BaseAgent[] {
+		return subAgents.map((agent, index) => {
+			// Only auto-generate for LlmAgents that don't already have an outputKey
+			if (agent instanceof LlmAgent && !agent.outputKey) {
+				// Create a new LlmAgent with auto-generated outputKey
+				return new LlmAgent({
+					name: agent.name,
+					model: agent.model,
+					description: agent.description,
+					instruction: agent.instruction,
+					tools: agent.tools,
+					planner: agent.planner,
+					outputKey: `step_${index + 1}_result`, // Auto-generated key
+					// Copy other public properties that might exist
+					globalInstruction: agent.globalInstruction,
+					generateContentConfig: agent.generateContentConfig,
+					inputSchema: agent.inputSchema,
+					outputSchema: agent.outputSchema,
+					includeContents: agent.includeContents,
+					disallowTransferToParent: agent.disallowTransferToParent,
+					disallowTransferToPeers: agent.disallowTransferToPeers,
+					codeExecutor: agent.codeExecutor,
+				});
+			}
+			// Return agent unchanged if it's not an LlmAgent or already has outputKey
+			return agent;
+		});
 	}
 
 	/**

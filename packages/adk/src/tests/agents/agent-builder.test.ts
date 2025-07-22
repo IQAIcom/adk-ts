@@ -95,7 +95,7 @@ describe("AgentBuilder", () => {
 		});
 
 		it("should configure session with service and options", () => {
-			const result = builder.withSession(sessionService, {
+			const result = builder.withSessionService(sessionService, {
 				userId: "user123",
 				appName: "testapp",
 			});
@@ -103,12 +103,12 @@ describe("AgentBuilder", () => {
 		});
 
 		it("should configure session with service only", () => {
-			const result = builder.withSession(sessionService);
+			const result = builder.withSessionService(sessionService);
 			expect(result).toBe(builder);
 		});
 
 		it("should configure session with empty options", () => {
-			const result = builder.withSession(sessionService, {});
+			const result = builder.withSessionService(sessionService, {});
 			expect(result).toBe(builder);
 		});
 
@@ -290,7 +290,10 @@ describe("AgentBuilder", () => {
 		it("should use provided session service", async () => {
 			const { session } = await AgentBuilder.create("test_agent")
 				.withModel("gemini-2.5-flash")
-				.withSession(sessionService, { userId: "user123", appName: "testapp" })
+				.withSessionService(sessionService, {
+					userId: "user123",
+					appName: "testapp",
+				})
 				.build();
 
 			expect(session).toBeDefined();
@@ -368,7 +371,7 @@ describe("AgentBuilder", () => {
 				.withTools(tool)
 				.withMemory(memoryService)
 				.withArtifactService(artifactService)
-				.withSession(sessionService, {
+				.withSessionService(sessionService, {
 					userId: "test-user",
 					appName: "test-app",
 				})
@@ -383,7 +386,10 @@ describe("AgentBuilder", () => {
 
 		it("should work with methods called in different order", async () => {
 			const { agent, runner } = await AgentBuilder.create("order_test")
-				.withSession(sessionService, { userId: "user1", appName: "app1" })
+				.withSessionService(sessionService, {
+					userId: "user1",
+					appName: "app1",
+				})
 				.withArtifactService(artifactService)
 				.withModel("gemini-2.5-flash")
 				.withMemory(memoryService)
@@ -437,7 +443,7 @@ describe("AgentBuilder", () => {
 		it("should generate default userId when not provided", async () => {
 			const { session } = await AgentBuilder.create("default_user_test")
 				.withModel("gemini-2.5-flash")
-				.withSession(sessionService)
+				.withSessionService(sessionService)
 				.build();
 
 			expect(session.userId).toBeDefined();
@@ -447,7 +453,7 @@ describe("AgentBuilder", () => {
 		it("should generate default appName when not provided", async () => {
 			const { session } = await AgentBuilder.create("default_app_test")
 				.withModel("gemini-2.5-flash")
-				.withSession(sessionService)
+				.withSessionService(sessionService)
 				.build();
 
 			expect(session.appName).toBeDefined();
