@@ -1,10 +1,5 @@
 import { env } from "node:process";
-import {
-  InMemoryMemoryService,
-  InMemorySessionService,
-  LlmAgent,
-  Runner,
-} from "@iqai/adk";
+import { InMemorySessionService, LlmAgent, Runner } from "@iqai/adk";
 import { v4 as uuidv4 } from "uuid";
 import dedent from "dedent";
 
@@ -90,7 +85,6 @@ function createTaskManagerAgent(): LlmAgent {
 async function sendMessage(
   runner: Runner,
   sessionService: InMemorySessionService,
-  memoryService: InMemoryMemoryService,
   sessionId: string,
   message: string
 ): Promise<string> {
@@ -134,7 +128,6 @@ async function sendMessage(
     updateTaskListFromResponse(message, agentResponse);
 
     /**
-     * Store current session in memory for future reference
      * Trim events if conversation gets too long
      */
     const currentSession = await sessionService.getSession(
@@ -142,12 +135,8 @@ async function sendMessage(
       USER_ID,
       sessionId
     );
-
-    if (currentSession) {
-      if (currentSession.events.length > MAX_EVENTS) {
-        currentSession.events = currentSession.events.slice(-MAX_EVENTS);
-      }
-      await memoryService.addSessionToMemory(currentSession);
+    if (currentSession && currentSession.events.length > MAX_EVENTS) {
+      currentSession.events = currentSession.events.slice(-MAX_EVENTS);
     }
     return agentResponse;
   } catch (error) {
@@ -252,7 +241,6 @@ function updateTaskListFromResponse(
 async function runTaskManagerInteractive(
   runner: Runner,
   sessionService: InMemorySessionService,
-  memoryService: InMemoryMemoryService,
   sessionId: string
 ): Promise<void> {
   console.log("\n" + "=".repeat(50));
@@ -273,13 +261,7 @@ async function runTaskManagerInteractive(
         return;
       }
 
-      await sendMessage(
-        runner,
-        sessionService,
-        memoryService,
-        sessionId,
-        input
-      );
+      await sendMessage(runner, sessionService, sessionId, input);
 
       askQuestion();
     });
@@ -304,7 +286,6 @@ async function main() {
      * Set up memory and session services
      * Memory service stores conversation context for future retrieval
      */
-    const memoryService = new InMemoryMemoryService();
     const sessionService = new InMemorySessionService();
     const session = await sessionService.createSession(APP_NAME, USER_ID);
     console.log(`📋 Created session: ${session.id}`);
@@ -315,24 +296,18 @@ async function main() {
     const agent = createTaskManagerAgent();
 
     /**
-     * Set up runner with memory service integration
+     * Set up runner with session service only
      */
     const runner = new Runner({
       appName: APP_NAME,
       agent,
       sessionService,
-      memoryService,
     });
 
     /**
      * Start interactive mode only
      */
-    await runTaskManagerInteractive(
-      runner,
-      sessionService,
-      memoryService,
-      session.id
-    );
+    await runTaskManagerInteractive(runner, sessionService, session.id);
   } catch (error) {
     console.error("❌ Error in task manager example:", error);
     process.exit(1);
