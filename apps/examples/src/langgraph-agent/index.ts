@@ -1,8 +1,4 @@
-import {
-	AgentBuilder,
-	createDatabaseSessionService,
-	createTool,
-} from "@iqai/adk";
+import { AgentBuilder, createTool } from "@iqai/adk";
 import * as z from "zod/v4";
 
 const main = async () => {
@@ -67,9 +63,6 @@ const main = async () => {
 		.withDescription("Agent that uses LangGraph to combine passwords")
 		.withInstruction(
 			"You will be asked to provide passwords from different agents. Combine them to form the full password.",
-		)
-		.withSessionService(
-			createDatabaseSessionService("sqlite://langgraph_agent.db"),
 		)
 		.asLangGraph(
 			[
