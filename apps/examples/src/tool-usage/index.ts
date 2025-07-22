@@ -1,248 +1,169 @@
 import { env } from "node:process";
-import { InMemorySessionService, LlmAgent, Runner } from "@iqai/adk";
-import { v4 as uuidv4 } from "uuid";
-
-import { CalculatorTool } from "./calculator";
-import { WeatherTool } from "./weather";
-
-/**
- * Application configuration constants
- */
-const APP_NAME = "tool-usage-demo";
-const USER_ID = uuidv4();
-const DEBUG = true; // Enable debug mode for showing agent loop
-
-/**
- * Tool Usage Example
- *
- * This example demonstrates how to use custom tools with an LLM agent to extend
- * its capabilities beyond text generation. The agent can perform calculations
- * and retrieve weather information through tool integration.
- *
- * The example:
- * 1. Creates an agent with custom Calculator and Weather tools
- * 2. Demonstrates single-tool usage scenarios
- * 3. Shows multi-tool coordination in complex queries
- * 4. Illustrates multi-turn conversations with session persistence
- *
- * Expected Output:
- * - Mathematical calculations using CalculatorTool
- * - Weather information retrieval using WeatherTool
- * - Multi-tool coordination for complex requests
- * - Multi-turn conversation examples
- *
- * Prerequisites:
- * - Node.js environment
- * - LLM_MODEL environment variable (optional, defaults to gemini-2.5-flash)
- * - CalculatorTool and WeatherTool implementations in respective files
- */
-
-/**
- * Creates and configures the LLM agent with custom tools
- * @returns Configured LlmAgent with Calculator and Weather tools
- */
-function createToolAgent(): LlmAgent {
-	return new LlmAgent({
-		name: "tool_assistant",
-		model: env.LLM_MODEL || "gemini-2.5-flash",
-		description: "An assistant that demonstrates tool usage with Google Gemini",
-		instruction:
-			"You are a helpful assistant that can perform calculations and check the weather. " +
-			"Use the appropriate tools when asked about math or weather. " +
-			"Be clear about which tools you're using and provide informative responses.",
-		tools: [new CalculatorTool(), new WeatherTool()],
-	});
-}
-
-/**
- * Executes a user query through the agent and returns the response
- * @param runner The Runner instance for executing agent tasks
- * @param query The user's question or request
- * @param sessionId Optional session ID for maintaining context
- * @returns The agent's response as a string
- */
-async function runAgentQuery(
-	runner: Runner,
-	query: string,
-	sessionId?: string,
-): Promise<string> {
-	const currentSessionId =
-		sessionId ||
-		(await runner.sessionService.createSession(APP_NAME, USER_ID)).id;
-
-	if (DEBUG) {
-		console.log(`\n[DEBUG] Starting agent loop with query: ${query}`);
-	}
-
-	let response = "";
-	for await (const event of runner.runAsync({
-		userId: USER_ID,
-		sessionId: currentSessionId,
-		newMessage: {
-			parts: [{ text: query }],
-		},
-	})) {
-		if (event.author === "tool_assistant" && event.content?.parts) {
-			const content = event.content.parts
-				.map((part) => part.text || "")
-				.join("");
-			if (content && !event.partial) {
-				response = content;
-			}
-		}
-	}
-
-	if (DEBUG) {
-		console.log("[DEBUG] Agent loop completed");
-	}
-
-	return response;
-}
-
-/**
- * Demonstrates single-tool usage scenarios
- * @param runner The Runner instance for executing agent tasks
- */
-async function demonstrateSingleToolUsage(runner: Runner): Promise<void> {
-	/**
-	 * Example 1: Calculator Tool Usage
-	 * Shows basic mathematical operations
-	 */
-	console.log("\nExample 1: Calculator Tool");
-	console.log("Question: What is 24 multiplied by 7?");
-	console.log("-----------------------------------");
-
-	const calcResponse = await runAgentQuery(
-		runner,
-		"What is 24 multiplied by 7?",
-	);
-	console.log("Final Response:", calcResponse);
-	console.log("-----------------------------------");
-
-	/**
-	 * Example 2: Weather Tool Usage
-	 * Demonstrates API-style tool integration
-	 */
-	console.log("\nExample 2: Weather Tool");
-	console.log("Question: What's the weather like in Stockholm today?");
-	console.log("-----------------------------------");
-
-	const weatherResponse = await runAgentQuery(
-		runner,
-		"What's the weather like in Stockholm today?",
-	);
-	console.log("Final Response:", weatherResponse);
-	console.log("-----------------------------------");
-}
-
-/**
- * Demonstrates multi-tool coordination in a single query
- * @param runner The Runner instance for executing agent tasks
- */
-async function demonstrateMultiToolUsage(runner: Runner): Promise<void> {
-	console.log("\nExample 3: Multi-tool coordination");
-	console.log(
-		"Question: I need to know the weather in Paris and then calculate how many euros I need if I spend 25 euros per day for 7 days.",
-	);
-	console.log("-----------------------------------");
-
-	const multiToolResponse = await runAgentQuery(
-		runner,
-		"I need to know the weather in Paris and then calculate how many euros I need if I spend 25 euros per day for 7 days.",
-	);
-	console.log("Final Response:", multiToolResponse);
-	console.log("-----------------------------------");
-}
-
-/**
- * Demonstrates multi-turn conversation with persistent session
- * @param runner The Runner instance for executing agent tasks
- * @param sessionService The session service for creating persistent sessions
- */
-async function demonstrateMultiTurnConversation(
-	runner: Runner,
-	sessionService: InMemorySessionService,
-): Promise<void> {
-	console.log("\nExample 4: Multi-turn conversation");
-	console.log("-----------------------------------");
-
-	// Create a persistent session for multi-turn conversation
-	const conversationSession = await sessionService.createSession(
-		APP_NAME,
-		USER_ID,
-	);
-
-	// First turn: Weather inquiry
-	console.log(
-		"User: Hi, I'm planning a trip to New York. What's the weather like there?",
-	);
-	let response = await runAgentQuery(
-		runner,
-		"Hi, I'm planning a trip to New York. What's the weather like there?",
-		conversationSession.id,
-	);
-	console.log("Assistant:", response);
-
-	// Second turn: Accommodation cost calculation
-	console.log(
-		"\nUser: Great! If I stay for 5 days and hotels cost $200 per night, how much will I spend on accommodation?",
-	);
-	response = await runAgentQuery(
-		runner,
-		"Great! If I stay for 5 days and hotels cost $200 per night, how much will I spend on accommodation?",
-		conversationSession.id,
-	);
-	console.log("Assistant:", response);
-
-	// Third turn: Total cost calculation
-	console.log(
-		"\nUser: And what will the total be if I also spend $100 per day on food and activities?",
-	);
-	response = await runAgentQuery(
-		runner,
-		"And what will the total be if I also spend $100 per day on food and activities?",
-		conversationSession.id,
-	);
-	console.log("Assistant:", response);
-}
+import { AgentBuilder, type EnhancedRunner } from "@iqai/adk";
+import { CalculatorTool } from "./calculator.js";
+import { WeatherTool } from "./weather.js";
 
 async function main() {
-	console.log("🛠️ Starting Tool Usage demonstration...");
+	console.log("🛠️ Starting Tool Usage example...");
 
 	try {
 		/**
-		 * Create agent with custom tools
-		 * The agent gains Calculator and Weather capabilities
+		 * Create tools from imported tool classes
+		 * These tools provide calculator and weather capabilities to the agent
 		 */
-		const agent = createToolAgent();
+		const calculatorTool = new CalculatorTool();
+		const weatherTool = new WeatherTool();
 
 		/**
-		 * Set up session management and runner
-		 * Provides conversation context and execution environment
+		 * Create agent with multiple tools using AgentBuilder
+		 * The agent can use all provided tools as needed
 		 */
-		const sessionService = new InMemorySessionService();
-		const runner = new Runner({
-			appName: APP_NAME,
-			agent,
-			sessionService,
-		});
-
-		console.log("Agent initialized with custom tools");
-		console.log("-----------------------------------");
+		const { runner } = await AgentBuilder.create("tool_specialist")
+			.withModel(env.LLM_MODEL || "gemini-2.5-flash")
+			.withDescription(
+				"A specialist agent that demonstrates comprehensive tool usage",
+			)
+			.withInstruction(`
+				You are a helpful assistant with access to multiple tools.
+				Use the calculator tool for mathematical operations.
+				Use the weather tool to get weather information for cities.
+				Be clear about which tools you're using and why.
+				Provide comprehensive responses that utilize your tools effectively.
+			`)
+			.withTools(calculatorTool, weatherTool)
+			.build();
 
 		/**
-		 * Run comprehensive tool usage demonstrations
-		 * Shows various scenarios from simple to complex tool interactions
+		 * Demonstrate comprehensive tool usage patterns
+		 * Shows various ways tools can be used individually and together
 		 */
-		await demonstrateSingleToolUsage(runner);
-		await demonstrateMultiToolUsage(runner);
-		await demonstrateMultiTurnConversation(runner, sessionService);
+		await demonstrateBasicToolUsage(runner);
+		await demonstrateComplexToolInteractions(runner);
+		await demonstrateToolChaining(runner);
 
-		console.log("\n✅ Tool usage examples complete!");
+		console.log("\n✅ Tool Usage example completed!");
 	} catch (error) {
 		console.error("❌ Error in tool usage example:", error);
 		process.exit(1);
 	}
+}
+
+/**
+ * Demonstrates basic individual tool usage
+ * @param runner The AgentBuilder runner for executing agent tasks
+ */
+async function demonstrateBasicToolUsage(
+	runner: EnhancedRunner,
+): Promise<void> {
+	console.log("\n=== Basic Tool Usage ===");
+
+	/**
+	 * Calculator Tool Demo
+	 */
+	console.log("\n--- Calculator Tool ---");
+	const mathResult = await runner.ask("What is 25 + 17?");
+	console.log("👤 User: What is 25 + 17?");
+	console.log("🧮 Calculator Result:", mathResult);
+
+	/**
+	 * Weather Tool Demo
+	 */
+	console.log("\n--- Weather Tool ---");
+	const weatherResult = await runner.ask(
+		"What's the weather like in San Francisco?",
+	);
+	console.log("👤 User: What's the weather like in San Francisco?");
+	console.log("🌤️ Weather Result:", weatherResult);
+
+	/**
+	 * Multiple Simple Operations
+	 */
+	console.log("\n--- Multiple Operations ---");
+	const multipleOps = await runner.ask(
+		"Calculate 100 + 50, then tell me the weather in New York",
+	);
+	console.log(
+		"👤 User: Calculate 100 + 50, then tell me the weather in New York",
+	);
+	console.log("🔧 Multiple Tools Result:", multipleOps);
+}
+
+/**
+ * Demonstrates complex tool interactions and coordination
+ * @param runner The AgentBuilder runner for executing agent tasks
+ */
+async function demonstrateComplexToolInteractions(
+	runner: EnhancedRunner,
+): Promise<void> {
+	console.log("\n=== Complex Tool Interactions ===");
+
+	/**
+	 * Context-Aware Tool Usage
+	 */
+	console.log("\n--- Context-Aware Usage ---");
+	const contextResult = await runner.ask(
+		"I'm planning a trip to Tokyo and Paris. I need to budget $50 per day for each city, and I'll be in Tokyo for 5 days and Paris for 7 days. Calculate my total budget and tell me the weather in both cities.",
+	);
+	console.log(
+		"👤 User: I'm planning a trip to Tokyo and Paris. I need to budget $50 per day for each city, and I'll be in Tokyo for 5 days and Paris for 7 days. Calculate my total budget and tell me the weather in both cities.",
+	);
+	console.log("🌍 Complex Planning Result:", contextResult);
+
+	/**
+	 * Decision-Making with Tools
+	 */
+	console.log("\n--- Decision-Making with Tools ---");
+	const decisionResult = await runner.ask(
+		"I have two options: spend 3 days in London or 5 days in Berlin. Each day costs $80. Calculate the cost for each option and check the weather in both cities to help me decide.",
+	);
+	console.log(
+		"👤 User: I have two options: spend 3 days in London or 5 days in Berlin. Each day costs $80. Calculate the cost for each option and check the weather in both cities to help me decide.",
+	);
+	console.log("🤔 Decision Support Result:", decisionResult);
+}
+
+/**
+ * Demonstrates tool chaining and workflow patterns
+ * @param runner The AgentBuilder runner for executing agent tasks
+ */
+async function demonstrateToolChaining(runner: EnhancedRunner): Promise<void> {
+	console.log("\n=== Tool Chaining and Workflows ===");
+
+	/**
+	 * Sequential Tool Chain
+	 */
+	console.log("\n--- Sequential Tool Chain ---");
+	const sequentialResult = await runner.ask(
+		"First, calculate how much 15 people would pay if they each contribute $25. Then, use that total amount to determine if it's enough for a group dinner budget where each person needs $35 worth of food.",
+	);
+	console.log(
+		"👤 User: First, calculate how much 15 people would pay if they each contribute $25. Then, use that total amount to determine if it's enough for a group dinner budget where each person needs $35 worth of food.",
+	);
+	console.log("🔗 Sequential Chain Result:", sequentialResult);
+
+	/**
+	 * Conditional Tool Usage
+	 */
+	console.log("\n--- Conditional Tool Usage ---");
+	const conditionalResult = await runner.ask(
+		"Calculate 120 + 45. If the result is greater than 150, check the weather in Miami. If it's less than 150, check the weather in Seattle instead.",
+	);
+	console.log(
+		"👤 User: Calculate 120 + 45. If the result is greater than 150, check the weather in Miami. If it's less than 150, check the weather in Seattle instead.",
+	);
+	console.log("🔀 Conditional Logic Result:", conditionalResult);
+
+	/**
+	 * Iterative Tool Usage
+	 */
+	console.log("\n--- Iterative Tool Usage ---");
+	const iterativeResult = await runner.ask(
+		"I'm comparing weather in 3 cities for a business trip. Check weather in Chicago, Boston, and Denver. Then calculate the total cost if flights are $200, $180, and $220 respectively, and help me choose the best option.",
+	);
+	console.log(
+		"👤 User: I'm comparing weather in 3 cities for a business trip. Check weather in Chicago, Boston, and Denver. Then calculate the total cost if flights are $200, $180, and $220 respectively, and help me choose the best option.",
+	);
+	console.log("🔄 Iterative Analysis Result:", iterativeResult);
 }
 
 /**

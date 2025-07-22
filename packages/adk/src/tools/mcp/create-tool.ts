@@ -1,4 +1,4 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
 import type { FunctionDeclaration } from "../../models/function-declaration";
@@ -48,7 +48,7 @@ class McpToolAdapter extends BaseTool {
 	private client: Client;
 	private clientService: McpClientService | null = null;
 
-	private logger = new Logger({ name: "McpToolAdapter" });
+	protected logger = new Logger({ name: "McpToolAdapter" });
 
 	constructor(mcpTool: McpTool, client: Client) {
 		const metadata = (mcpTool.metadata || {}) as McpToolMetadata;

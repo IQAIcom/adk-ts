@@ -1,0 +1,102 @@
+---
+title: Agent Evaluation
+description: Comprehensive framework for testing and validating agent performance across scenarios
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Agent evaluation provides systematic approaches to testing and validating agent performance, moving beyond prototype to production-ready AI systems.
+
+<Callout type="info" title="Coming Soon">
+The comprehensive evaluation framework is being actively developed for `@iqai/adk`. Core evaluation classes and automated testing tools will be available in upcoming releases.
+</Callout>
+
+## Overview
+
+Unlike traditional software testing, agent evaluation must account for the probabilistic nature of LLM responses and the complexity of multi-step reasoning processes. Effective evaluation encompasses multiple dimensions from tool usage patterns to response quality.
+
+## Current Capabilities
+
+While the full evaluation framework is in development, you can currently:
+
+- **Manual Testing**: Use the examples to test agent behavior manually
+- **Session Analysis**: Review agent interactions through session management
+- **Response Validation**: Manually verify agent outputs and tool usage
+- **Performance Observation**: Monitor agent behavior through logging and events
+
+## Documentation Structure
+
+<Cards>
+  <Card
+    title="📋 Evaluation Concepts"
+    description="Core principles and challenges in agent evaluation"
+    href="/docs/framework/evaluation/evaluation-concepts"
+  />
+
+  <Card
+    title="🧪 Testing Agents"
+    description="Current approaches and future automated testing methods"
+    href="/docs/framework/evaluation/testing-agents"
+  />
+
+  <Card
+    title="📊 Metrics and Scoring"
+    description="Measurement approaches for trajectory and response quality"
+    href="/docs/framework/evaluation/metrics-and-scoring"
+  />
+
+  <Card
+    title="🎯 Evaluation Patterns"
+    description="Domain-specific evaluation strategies and best practices"
+    href="/docs/framework/evaluation/evaluation-patterns"
+  />
+</Cards>
+
+## Coming Features
+
+The upcoming evaluation framework will include:
+
+- **AgentEvaluator**: Comprehensive agent performance assessment
+- **TrajectoryEvaluator**: Tool usage and decision path analysis
+- **ResponseEvaluator**: Output quality and semantic similarity scoring
+- **EvalSet Management**: Batch evaluation of complex scenarios
+- **Automated Test Runners**: Continuous integration with development workflows
+- **Performance Analytics**: Trend analysis and regression detection
+
+## Getting Started
+
+For immediate testing needs:
+
+1. **Review Examples**: Explore the [examples directory](https://github.com/iqai/adk-ts/tree/main/apps/examples) for agent testing patterns
+2. **Session Monitoring**: Use session services to track agent interactions
+3. **Manual Validation**: Create custom test scripts using the Runner class
+4. **Event Analysis**: Monitor agent events for behavior analysis
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🤖 Agents"
+    description="Learn about different agent types and their capabilities"
+    href="/docs/framework/agents"
+  />
+
+  <Card
+    title="🔧 Tools"
+    description="Understand tool integration and usage patterns"
+    href="/docs/framework/tools"
+  />
+
+  <Card
+    title="💬 Sessions"
+    description="Session management for conversation tracking"
+    href="/docs/framework/sessions"
+  />
+
+  <Card
+    title="📋 Callbacks"
+    description="Event handling and agent lifecycle management"
+    href="/docs/framework/callbacks"
+  />
+</Cards>

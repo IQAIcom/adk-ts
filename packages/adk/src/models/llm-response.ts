@@ -96,6 +96,11 @@ export class LlmResponse {
 	finishReason?: string;
 
 	/**
+	 * Error object if the response is an error.
+	 */
+	error?: Error;
+
+	/**
 	 * Creates a new LlmResponse.
 	 */
 	constructor(data: Partial<LlmResponse> = {}) {
@@ -140,6 +145,36 @@ export class LlmResponse {
 			errorCode: "UNKNOWN_ERROR",
 			errorMessage: "Unknown error.",
 			usageMetadata,
+		});
+	}
+
+	/**
+	 * Creates an LlmResponse from an error.
+	 *
+	 * @param error The error object or message.
+	 * @param options Additional options for the error response.
+	 * @param options.errorCode A specific error code for the response.
+	 * @param options.model The model that was being used when the error occurred.
+	 * @returns The LlmResponse.
+	 */
+	static fromError(
+		error: unknown,
+		options: { errorCode?: string; model?: string } = {},
+	): LlmResponse {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		const errorCode = options.errorCode || "UNKNOWN_ERROR";
+
+		return new LlmResponse({
+			errorCode,
+			errorMessage: `LLM call failed for model ${
+				options.model || "unknown"
+			}: ${errorMessage}`,
+			content: {
+				role: "model",
+				parts: [{ text: `Error: ${errorMessage}` }],
+			},
+			finishReason: "STOP",
+			error: error instanceof Error ? error : new Error(errorMessage),
 		});
 	}
 }

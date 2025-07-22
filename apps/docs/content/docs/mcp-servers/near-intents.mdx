@@ -1,0 +1,242 @@
+---
+title: MCP Near Intents
+description: MCP server for Near Intents-based cross-chain swaps
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+- **Package**: [`@iqai/mcp-near-intents`](https://www.npmjs.com/package/@iqai/mcp-near-intents)
+- **Purpose**: An MCP server for Near Intents swaps using the [Defuse Protocol one-click SDK](https://github.com/defuse-protocol/one-click-sdk-typescript). This server provides tools for cross-chain token swaps through NEAR's intent-based architecture.
+- **Example**: 🚀 [Near Intents Swaps Example](https://github.com/IQAIcom/near-intent-swap-agent)
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    McpNearIntents({
+      env: {
+        NEAR_SWAP_JWT_TOKEN: process.env.NEAR_SWAP_JWT_TOKEN,
+      },
+    })
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Near Intents Swaps MCP Client",
+      description: "Client for Near Intents cross-chain swaps",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-near-intents"],
+        env: {
+          NEAR_SWAP_JWT_TOKEN: process.env.NEAR_SWAP_JWT_TOKEN,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "near-intents-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-near-intents"],
+          "env": {
+            "NEAR_SWAP_JWT_TOKEN": "your-jwt-token-here"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+:
+
+## Features
+
+- **GET_NEAR_SWAP_TOKENS**: Discover available tokens for swaps
+- **GET_NEAR_SWAP_SIMPLE_QUOTE**: Get basic swap quotes without addresses
+- **GET_NEAR_SWAP_FULL_QUOTE**: Get complete quotes with deposit addresses
+- **EXECUTE_NEAR_SWAP**: Execute swaps by submitting deposit transactions
+- **CHECK_NEAR_SWAP_STATUS**: Check the status of swap executions
+
+## User Flow
+
+This server supports a complete 5-step user flow:
+
+1. **[DISCOVERY]** Use `GET_NEAR_SWAP_TOKENS` to discover available tokens
+2. **[STEP 1]** Use `GET_NEAR_SWAP_SIMPLE_QUOTE` to check swap rates without addresses
+3. **[STEP 2]** Use `GET_NEAR_SWAP_FULL_QUOTE` to get deposit address when ready to swap
+4. **[STEP 3]** User sends funds to the deposit address (external action)
+5. **[STEP 4]** Use `EXECUTE_NEAR_SWAP` to submit deposit transaction hash
+6. **[STEP 5]** Use `CHECK_NEAR_SWAP_STATUS` to monitor swap progress until completion
+
+## Prerequisites
+
+- Node.js >= 16
+- pnpm >= 8
+- A JWT token from the Defuse Protocol (for authentication)
+
+## Configuration
+
+Set the following environment variables:
+
+```bash
+# Optional: Custom API endpoint (defaults to https://1click.chaindefuser.com)
+export NEAR_SWAP_API_URL="https://1click.chaindefuser.com"
+
+# Required: JWT token for authentication
+export NEAR_SWAP_JWT_TOKEN="your-jwt-token-here"
+```
+
+## Usage
+
+### Running the Server
+
+```bash
+# Start the MCP server
+pnpm start
+
+# Or run directly
+node dist/index.js
+```
+
+### Available Tools
+
+#### 1. GET_NEAR_SWAP_TOKENS
+
+Discover available tokens for swaps. Returns token metadata including blockchain, contract address, current USD price, symbol, decimals, and price update timestamp.
+
+**Parameters:** None
+
+#### 2. GET_NEAR_SWAP_SIMPLE_QUOTE
+
+Get a basic quote for a cross-chain token swap without requiring addresses. Perfect for checking swap rates and fees before committing.
+
+**Parameters:**
+- `originAsset`: string - Origin asset identifier (e.g., 'nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near')
+- `destinationAsset`: string - Destination asset identifier
+- `amount`: string - Amount to swap (in base units)
+- `swapType?`: "EXACT_INPUT" | "EXACT_OUTPUT" - Type of swap (default: "EXACT_INPUT")
+- `slippageTolerance?`: number - Slippage tolerance in basis points (default: 100 = 1%)
+- `quoteWaitingTimeMs?`: number - Time to wait for quote in milliseconds (default: 3000)
+
+#### 3. GET_NEAR_SWAP_FULL_QUOTE
+
+Get a complete quote with deposit address for a cross-chain token swap. Requires recipient and refund addresses.
+
+**Parameters:**
+- `originAsset`: string - Origin asset identifier
+- `destinationAsset`: string - Destination asset identifier
+- `amount`: string - Amount to swap (in base units)
+- `recipient`: string - Recipient address
+- `swapType?`: "EXACT_INPUT" | "EXACT_OUTPUT" - Type of swap (default: "EXACT_INPUT")
+- `recipientType?`: "DESTINATION_CHAIN" | "INTENTS" - Recipient address type (default: "DESTINATION_CHAIN")
+- `refundTo?`: string - Refund address (optional)
+- `refundType?`: "ORIGIN_CHAIN" | "INTENTS" - Refund address type (default: "ORIGIN_CHAIN")
+- `slippageTolerance?`: number - Slippage tolerance in basis points (default: 100 = 1%)
+- `dry?`: boolean - Whether this is a dry run (default: false)
+- `depositType?`: "ORIGIN_CHAIN" | "INTENTS" - Deposit type (default: "ORIGIN_CHAIN")
+- `deadline?`: string - Deadline in ISO format (default: 1 hour from now)
+- `referral?`: string - Referral identifier (optional)
+- `quoteWaitingTimeMs?`: number - Time to wait for quote in milliseconds (default: 3000)
+
+#### 4. EXECUTE_NEAR_SWAP
+
+Execute a swap by submitting a deposit transaction hash after sending funds to the deposit address.
+
+**Parameters:**
+- `txHash`: string - Transaction hash of the deposit transaction
+- `depositAddress`: string - Deposit address for the swap
+
+#### 5. CHECK_NEAR_SWAP_STATUS
+
+Check the execution status of a swap. Returns swap state and detailed transaction information.
+
+**Parameters:**
+- `depositAddress`: string - Deposit address to check status for
+
+## Example Usage
+
+### 1. Discovering Available Tokens
+
+```json
+{}
+```
+
+### 2. Getting a Simple Quote
+
+```json
+{
+  "originAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+  "destinationAsset": "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
+  "amount": "1000000000000000000",
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100
+}
+```
+
+### 3. Getting a Full Quote with Deposit Address
+
+```json
+{
+  "originAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+  "destinationAsset": "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
+  "amount": "1000000000000000000",
+  "recipient": "13QkxhNMrTPxoCkRdYdJ65tFuwXPhL5gLS2Z5Nr6gjRK",
+  "recipientType": "DESTINATION_CHAIN",
+  "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+  "refundType": "ORIGIN_CHAIN",
+  "slippageTolerance": 100,
+  "dry": false
+}
+```
+
+### 4. Executing a Swap
+
+```json
+{
+  "txHash": "0x1234567890abcdef...",
+  "depositAddress": "0xabcdef1234567890..."
+}
+```
+
+### 5. Checking Status
+
+```json
+{
+  "depositAddress": "0xabcdef1234567890..."
+}
+```
+
+## Token Names vs Token IDs
+
+When users provide simple token names (e.g., 'ETH', 'USDC'), use `GET_NEAR_SWAP_TOKENS` first to discover the exact token IDs required by the API. The API expects full token identifiers like `'nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near'`.
+
+## Authentication
+
+This server requires a JWT token for authentication with the Defuse Protocol API. Make sure to set the `NEAR_SWAP_JWT_TOKEN` environment variable before running the server.
+
+## Error Handling
+
+The server provides detailed error messages for common issues:
+- Missing JWT token
+- Invalid request parameters
+- API connection errors
+- Invalid asset identifiers
+
+## Related Resources
+
+- [Defuse Protocol one-click SDK](https://github.com/defuse-protocol/one-click-sdk-typescript)
+- [MCP Specification](https://modelcontextprotocol.io)
+- [FastMCP Documentation](https://github.com/jlowin/fastmcp)

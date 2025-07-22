@@ -1,0 +1,560 @@
+---
+title: Authentication
+description: Authentication patterns and secure API access for ADK TypeScript tools
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Tool authentication enables secure access to protected resources and APIs. While ADK TypeScript doesn't currently include built-in authentication classes, you can implement secure authentication patterns using existing tools and standard libraries.
+
+## Authentication Approach
+
+Authentication in ADK TypeScript focuses on practical patterns and integration with existing authentication libraries rather than custom authentication frameworks.
+
+### Current Implementation Strategy
+
+<Cards>
+  <Card
+    title="🔑 Environment Variables"
+    description="Secure credential storage using environment variables"
+  />
+
+  <Card
+    title="📦 Standard Libraries"
+    description="Integration with established authentication libraries"
+  />
+
+  <Card
+    title="🔧 Custom Integration"
+    description="Manual authentication implementation in custom tools"
+  />
+</Cards>
+
+<Callout type="info" title="Development Status">
+Comprehensive authentication classes (AuthScheme, AuthCredential) are planned for future releases. Current approach uses standard libraries and patterns.
+</Callout>
+
+## Authentication Patterns
+
+### API Key Authentication
+
+The most common pattern for API access using keys or tokens.
+
+#### Environment Variable Pattern
+
+```typescript
+import { FunctionTool } from '@iqai/adk';
+
+async function authenticatedApiCall(endpoint: string, data?: any) {
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
+    return { error: 'API key not configured' };
+  }
+
+  const response = await fetch(endpoint, {
+    method: data ? 'POST' : 'GET',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: data ? JSON.stringify(data) : undefined
+  });
+
+  if (!response.ok) {
+    return { error: `API call failed: ${response.statusText}` };
+  }
+
+  return await response.json();
+}
+
+const apiTool = new FunctionTool(authenticatedApiCall, {
+  name: 'api_call',
+  description: 'Make authenticated API calls'
+});
+```
+
+#### Header-based API Keys
+
+```typescript
+async function headerApiKeyCall(endpoint: string, params: Record<string, any>) {
+  const headers: Record<string, string> = {
+    'X-API-Key': process.env.SERVICE_API_KEY!,
+    'Content-Type': 'application/json'
+  };
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params)
+  });
+
+  return response.json();
+}
+```
+
+#### Query Parameter API Keys
+
+```typescript
+async function queryApiKeyCall(endpoint: string, query: string) {
+  const url = new URL(endpoint);
+  url.searchParams.append('api_key', process.env.SERVICE_API_KEY!);
+  url.searchParams.append('q', query);
+
+  const response = await fetch(url.toString());
+  return response.json();
+}
+```
+
+### OAuth 2.0 Integration
+
+Using standard OAuth libraries for secure authentication flows.
+
+#### Google OAuth Example
+
+```typescript
+import { OAuth2Client } from 'google-auth-library';
+import { BaseTool } from '@iqai/adk';
+
+class GoogleOAuthTool extends BaseTool {
+  private oauth2Client: OAuth2Client;
+
+  constructor() {
+    super({
+      name: 'google_oauth_tool',
+      description: 'Tool with Google OAuth authentication'
+    });
+
+    this.oauth2Client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+  }
+
+  async runAsync(args: { operation: string; accessToken?: string }) {
+    try {
+      if (!args.accessToken) {
+        return { error: 'Access token required' };
+      }
+
+      this.oauth2Client.setCredentials({ access_token: args.accessToken });
+
+      // Make authenticated request
+      const response = await this.oauth2Client.request({
+        url: `https://www.googleapis.com/oauth2/v2/userinfo`,
+        method: 'GET'
+      });
+
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: `OAuth request failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  async generateAuthUrl() {
+    return this.oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/userinfo.profile']
+    });
+  }
+
+  getDeclaration() {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: 'object',
+        properties: {
+          operation: {
+            type: 'string',
+            description: 'Operation to perform'
+          },
+          accessToken: {
+            type: 'string',
+            description: 'OAuth access token'
+          }
+        },
+        required: ['operation']
+      }
+    };
+  }
+}
+```
+
+#### Generic OAuth 2.0 Pattern
+
+```typescript
+interface OAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  tokenUrl: string;
+  scope?: string;
+}
+
+class OAuthAuthenticator {
+  constructor(private config: OAuthConfig) {}
+
+  async getAccessToken(authCode: string): Promise<string> {
+    const response = await fetch(this.config.tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        code: authCode,
+        scope: this.config.scope || ''
+      })
+    });
+
+    const data = await response.json();
+    return data.access_token;
+  }
+
+  async refreshToken(refreshToken: string): Promise<string> {
+    const response = await fetch(this.config.tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        refresh_token: refreshToken
+      })
+    });
+
+    const data = await response.json();
+    return data.access_token;
+  }
+}
+```
+
+### Service Account Authentication
+
+For Google Cloud and other service account patterns.
+
+#### Google Service Account
+
+```typescript
+import { GoogleAuth } from 'google-auth-library';
+import { BaseTool } from '@iqai/adk';
+
+class ServiceAccountTool extends BaseTool {
+  private auth: GoogleAuth;
+
+  constructor() {
+    super({
+      name: 'service_account_tool',
+      description: 'Tool using Google service account authentication'
+    });
+
+    this.auth = new GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/cloud-platform']
+    });
+  }
+
+  async runAsync(args: { endpoint: string; data?: any }) {
+    try {
+      const authClient = await this.auth.getClient();
+
+      const response = await authClient.request({
+        url: args.endpoint,
+        method: args.data ? 'POST' : 'GET',
+        data: args.data
+      });
+
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Service account request failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  getDeclaration() {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: 'object',
+        properties: {
+          endpoint: {
+            type: 'string',
+            description: 'API endpoint URL'
+          },
+          data: {
+            type: 'object',
+            description: 'Optional request data'
+          }
+        },
+        required: ['endpoint']
+      }
+    };
+  }
+}
+```
+
+#### JWT-based Service Authentication
+
+```typescript
+import jwt from 'jsonwebtoken';
+
+async function createJWTToken(payload: any, secret: string, expiresIn: string = '1h') {
+  return jwt.sign(payload, secret, { expiresIn });
+}
+
+async function authenticatedServiceCall(endpoint: string, payload: any) {
+  const token = await createJWTToken(
+    { service: 'adk-agent', ...payload },
+    process.env.JWT_SECRET!
+  );
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return response.json();
+}
+```
+
+## Secure Credential Management
+
+### Environment Variables
+
+Best practices for credential storage:
+
+```typescript
+// Required environment variables
+const requiredEnvVars = [
+  'API_KEY',
+  'CLIENT_SECRET',
+  'DATABASE_URL'
+];
+
+function validateEnvironment() {
+  const missing = requiredEnvVars.filter(key => !process.env[key]);
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
+// Call during application startup
+validateEnvironment();
+```
+
+### Credential Rotation
+
+```typescript
+interface CredentialManager {
+  getCredential(key: string): Promise<string>;
+  refreshCredential(key: string): Promise<string>;
+  isExpired(key: string): Promise<boolean>;
+}
+
+class SimpleCredentialManager implements CredentialManager {
+  private credentials = new Map<string, { value: string; expires: Date }>();
+
+  async getCredential(key: string): Promise<string> {
+    const cred = this.credentials.get(key);
+
+    if (!cred || await this.isExpired(key)) {
+      return await this.refreshCredential(key);
+    }
+
+    return cred.value;
+  }
+
+  async refreshCredential(key: string): Promise<string> {
+    // Implement credential refresh logic
+    const newCredential = await this.fetchFreshCredential(key);
+
+    this.credentials.set(key, {
+      value: newCredential,
+      expires: new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+    });
+
+    return newCredential;
+  }
+
+  async isExpired(key: string): Promise<boolean> {
+    const cred = this.credentials.get(key);
+    return !cred || cred.expires < new Date();
+  }
+
+  private async fetchFreshCredential(key: string): Promise<string> {
+    // Implement actual credential refresh
+    return 'fresh-credential';
+  }
+}
+```
+
+## Error Handling and Security
+
+### Secure Error Handling
+
+```typescript
+async function secureApiCall(endpoint: string, credentials: any) {
+  try {
+    const response = await fetch(endpoint, {
+      headers: {
+        'Authorization': `Bearer ${credentials.token}`
+      }
+    });
+
+    if (!response.ok) {
+      // Don't expose sensitive credential information
+      return {
+        error: `API request failed with status ${response.status}`,
+        retryable: response.status >= 500
+      };
+    }
+
+    return { success: true, data: await response.json() };
+  } catch (error) {
+    // Log detailed error internally, return safe error externally
+    console.error('API call failed:', error);
+
+    return {
+      error: 'Service temporarily unavailable',
+      retryable: true
+    };
+  }
+}
+```
+
+### Rate Limiting and Retry Logic
+
+```typescript
+async function authenticatedCallWithRetry(
+  endpoint: string,
+  credentials: any,
+  maxRetries: number = 3
+) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${credentials.token}`,
+          'User-Agent': 'ADK-Agent/1.0'
+        }
+      });
+
+      if (response.ok) {
+        return await response.json();
+      }
+
+      if (response.status === 401) {
+        // Credential issue - don't retry
+        throw new Error('Authentication failed');
+      }
+
+      if (response.status === 429) {
+        // Rate limited - wait and retry
+        const retryAfter = response.headers.get('Retry-After');
+        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 1000 * attempt;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      if (response.status >= 500 && attempt < maxRetries) {
+        // Server error - retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        continue;
+      }
+
+      throw new Error(`API call failed: ${response.statusText}`);
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+    }
+  }
+}
+```
+
+## Future Authentication Features
+
+<Callout type="info" title="Planned Features">
+Future versions of ADK TypeScript will include:
+- Built-in AuthScheme and AuthCredential classes
+- Automatic token management and refresh
+- OAuth flow helpers and utilities
+- Integration with secret management services
+- Enhanced security and compliance features
+</Callout>
+
+### Expected Features
+
+- **AuthScheme Class**: Define authentication requirements for tools
+- **AuthCredential Class**: Secure credential storage and management
+- **OAuth Helpers**: Built-in OAuth 2.0 and OpenID Connect support
+- **Token Management**: Automatic token refresh and rotation
+- **Secret Integration**: Integration with AWS Secrets Manager, Azure Key Vault, etc.
+
+## Best Practices
+
+### Security Guidelines
+
+- **Environment Variables**: Store sensitive credentials as environment variables
+- **Credential Validation**: Validate credentials during application startup
+- **Secure Transmission**: Always use HTTPS for credential exchanges
+- **Access Logging**: Log authentication attempts for security monitoring
+- **Credential Rotation**: Implement regular credential rotation where possible
+
+### Development Practices
+
+- **Separate Environments**: Use different credentials for dev/staging/production
+- **Testing**: Use mock credentials for testing, not production credentials
+- **Documentation**: Document authentication requirements clearly
+- **Error Handling**: Implement secure error handling that doesn't expose credentials
+
+### Production Considerations
+
+- **Monitoring**: Monitor authentication success/failure rates
+- **Alerting**: Set up alerts for authentication failures
+- **Backup Credentials**: Have backup authentication methods where possible
+- **Compliance**: Ensure authentication meets regulatory requirements
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🔧 Function Tools"
+    description="Implement authentication in custom tools"
+    href="/docs/framework/tools/function-tools"
+  />
+
+  <Card
+    title="🌐 Built-in Tools"
+    description="Authentication patterns for built-in tools"
+    href="/docs/framework/tools/built-in-tools"
+  />
+
+  <Card
+    title="☁️ Google Cloud Tools"
+    description="Google Cloud authentication and service accounts"
+    href="/docs/framework/tools/google-cloud-tools"
+  />
+
+  <Card
+    title="🌐 Third-Party Tools"
+    description="Authentication for external tool integrations"
+    href="/docs/framework/tools/third-party-tools"
+  />
+</Cards>

@@ -1,0 +1,497 @@
+---
+title: State Management
+description: Handle session-specific data and cross-session information with flexible state scoping
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+State management provides agents with flexible storage for dynamic information during conversations. While session events hold the complete interaction history, state manages key-value data needed to personalize interactions, track progress, and share information across different scopes.
+
+## What is Session State?
+
+Session state acts as the agent's structured memory system, organizing information by scope and persistence requirements to make interactions effective and context-aware.
+
+### Core Purposes
+
+- **Personalization**: Remember user preferences and settings across sessions
+- **Progress Tracking**: Monitor steps in multi-turn processes and workflows
+- **Information Sharing**: Share data between sessions, users, and application components
+- **Temporary Storage**: Handle intermediate calculations and processing data
+
+<Callout type="info" title="Scoped Memory">
+Think of session state as organized filing cabinets - session-specific drawers, user-specific drawers, application-wide drawers, and temporary scratch paper that gets discarded.
+</Callout>
+
+## State Structure and Characteristics
+
+### Key-Value Organization
+
+State is organized as serializable key-value pairs with scope-based prefixes:
+
+- **Keys**: Always strings with descriptive names and optional scope prefixes
+- **Values**: Must be JSON-serializable (strings, numbers, booleans, simple arrays/objects)
+- **Mutability**: Content changes as conversations evolve
+- **Persistence**: Depends on SessionService implementation and scope prefix
+
+### Serialization Requirements
+
+<Callout type="warn" title="Serialization Constraints">
+Store only JSON-serializable data in state. Avoid complex objects, class instances, functions, or connections. Use simple identifiers to reference complex objects stored elsewhere.
+</Callout>
+
+**Supported Types:**
+- Primitive types (string, number, boolean)
+- Simple arrays and objects
+- JSON-serializable data structures
+- Basic nested objects with primitive values
+
+**Avoid:**
+- Custom class instances
+- Functions and closures
+- Database connections
+- Complex object references
+
+## State Scoping with Prefixes
+
+State keys use prefixes to define scope and persistence behavior, enabling different levels of data sharing across the application hierarchy.
+
+<Cards>
+  <Card
+    title="📝 Session State"
+    description="No prefix - specific to current conversation"
+  />
+
+  <Card
+    title="👤 User State"
+    description="user: prefix - shared across all user sessions"
+  />
+
+  <Card
+    title="🌐 App State"
+    description="app: prefix - global application data"
+  />
+
+  <Card
+    title="⏱️ Temporary State"
+    description="temp: prefix - transient data that never persists"
+  />
+</Cards>
+
+### Session State (No Prefix)
+
+Data specific to the current conversation thread:
+
+**Characteristics:**
+- **Scope**: Current session only
+- **Persistence**: Follows SessionService implementation (in-memory vs database vs cloud)
+- **Use Cases**: Task progress, conversation flags, temporary preferences
+
+**Examples:**
+```typescript
+session.state['current_booking_step'] = 'confirmation';
+session.state['needs_clarification'] = true;
+session.state['conversation_topic'] = 'travel_planning';
+```
+
+### User State (user: prefix)
+
+Data shared across all sessions for a specific user:
+
+**Characteristics:**
+- **Scope**: All sessions for the same userId within appName
+- **Persistence**: Always persistent with database/cloud implementations
+- **Use Cases**: User preferences, profile information, cross-session data
+
+**Examples:**
+```typescript
+session.state['user:preferred_language'] = 'es';
+session.state['user:theme_setting'] = 'dark';
+session.state['user:notification_preferences'] = {
+  email: true,
+  sms: false,
+  push: true
+};
+```
+
+### App State (app: prefix)
+
+Global data shared across all users and sessions:
+
+**Characteristics:**
+- **Scope**: All users and sessions within the application
+- **Persistence**: Always persistent with database/cloud implementations
+- **Use Cases**: Global settings, shared templates, system-wide configuration
+
+**Examples:**
+```typescript
+session.state['app:api_endpoint'] = 'https://api.example.com/v2';
+session.state['app:feature_flags'] = {
+  new_ui: true,
+  beta_features: false
+};
+session.state['app:global_discount_code'] = 'WELCOME2024';
+```
+
+### Temporary State (temp: prefix)
+
+Transient data that never persists across restarts:
+
+**Characteristics:**
+- **Scope**: Current session processing only
+- **Persistence**: Never persisted, always discarded after processing
+- **Use Cases**: Intermediate calculations, temporary API responses, processing flags
+
+**Examples:**
+```typescript
+session.state['temp:api_response'] = { status: 'success', data: {...} };
+session.state['temp:calculation_result'] = 42.5;
+session.state['temp:validation_status'] = 'pending';
+```
+
+## State Access Methods
+
+### Direct Property Access
+
+Simple dictionary-style access for basic operations:
+
+```typescript
+// Get values
+const theme = session.state['user:theme'];
+const step = session.state['current_step'];
+
+// Set values (direct modification - see warnings below)
+session.state['current_step'] = 'confirmation';
+session.state['user:preference'] = 'dark_mode';
+```
+
+### Session State Object Methods
+
+The actual implementation provides additional convenience methods:
+
+```typescript
+// Get with default values
+const theme = session.state.get?.('user:theme', 'light') || session.state['user:theme'] || 'light';
+
+// Check existence
+const hasPreferences = session.state.hasOwnProperty('user:preferences');
+
+// Bulk operations via state delta (recommended)
+const stateDelta = {
+  'current_step': 'payment',
+  'user:last_action': 'checkout',
+  'temp:processing': true
+};
+```
+
+## State Update Patterns
+
+### Event-Driven Updates (Recommended)
+
+State should be updated through the event system for proper tracking and persistence:
+
+```typescript
+import { Event, EventActions } from '@iqai/adk';
+
+// Create state changes through event actions
+const stateDelta = {
+  'user:preferred_language': 'es',
+  'current_step': 'payment',
+  'temp:processing_time': Date.now()
+};
+
+const event = new Event({
+  author: 'user',
+  actions: new EventActions({
+    stateDelta: stateDelta
+  }),
+  content: { parts: [{ text: 'User updated preferences' }] },
+  timestamp: Date.now() / 1000
+});
+
+// Apply through session service for proper persistence
+await sessionService.appendEvent(session, event);
+```
+
+**Benefits:**
+- **Auditability**: Changes recorded in event history
+- **Thread Safety**: Atomic updates prevent race conditions
+- **Persistence**: Guaranteed storage with persistent services
+- **Consistency**: Proper timestamp and metadata tracking
+- **Prefix Handling**: Automatic scope separation in database implementations
+
+### Direct Modification Limitations
+
+While possible, direct state modification has significant drawbacks:
+
+```typescript
+// ❌ Direct modification (not recommended for production)
+session.state['user:preference'] = 'new_value';
+```
+
+**Limitations:**
+- **No Event History**: Changes not recorded for audit trails
+- **Persistence Issues**: May not save properly with persistent services
+- **Thread Safety**: Risk of race conditions in concurrent scenarios
+- **Missing Metadata**: No timestamp or context tracking
+- **Prefix Processing**: Database services may not handle scope prefixes correctly
+
+<Callout type="warn" title="Recommended Update Method">
+For persistent, traceable state changes, use EventActions.stateDelta within the appendEvent flow rather than direct modification.
+</Callout>
+
+## State Persistence Behavior
+
+### In-Memory Implementation
+
+```typescript
+import { InMemorySessionService } from '@iqai/adk';
+
+const sessionService = new InMemorySessionService();
+```
+
+- **Storage**: Application memory only
+- **Persistence**: None - lost on restart
+- **Prefix Handling**: All prefixes maintained in memory with proper scoping
+- **Performance**: Fastest access and updates
+- **Use Cases**: Development, testing, temporary sessions
+
+### Database Implementation
+
+```typescript
+import { DatabaseSessionService } from '@iqai/adk';
+import { Kysely } from 'kysely';
+
+const sessionService = new DatabaseSessionService({
+  db: database, // Your configured Kysely instance
+  skipTableCreation: false // Let service create tables automatically
+});
+```
+
+- **Storage**: SQLite, PostgreSQL, MySQL, or other supported databases
+- **Persistence**: Survives application restarts
+- **Prefix Handling**: Automatic separation into app_states, user_states, and sessions tables
+- **Transactions**: ACID compliance for data consistency
+- **Backup**: Standard database backup and recovery
+
+### Cloud Implementation
+
+```typescript
+import { VertexAiSessionService } from '@iqai/adk';
+
+const sessionService = new VertexAiSessionService({
+  project: 'your-project',
+  location: 'us-central1',
+  agentEngineId: 'your-agent-engine-id'
+});
+```
+
+- **Storage**: Google Cloud Vertex AI Agent Engine infrastructure
+- **Persistence**: Enterprise-grade reliability and backup
+- **Prefix Handling**: Managed by Google Cloud services
+- **Scalability**: Automatic scaling and distribution
+- **Integration**: Native integration with other Google Cloud services
+
+## Prefix Processing Internals
+
+### Database Service Prefix Handling
+
+The DatabaseSessionService automatically separates state by prefixes:
+
+```typescript
+// Input state with prefixes
+const stateDelta = {
+  'app:feature_enabled': true,        // → app_states table
+  'user:theme': 'dark',              // → user_states table
+  'current_step': 'payment',         // → sessions table
+  'temp:api_call': 'in_progress'     // → discarded (not persisted)
+};
+
+// Automatic separation:
+// app_states.state: { "feature_enabled": true }
+// user_states.state: { "theme": "dark" }
+// sessions.state: { "current_step": "payment" }
+```
+
+### State Merging on Retrieval
+
+When retrieving sessions, all state scopes are merged back together:
+
+```typescript
+const session = await sessionService.getSession(appName, userId, sessionId);
+
+// Merged state contains all scopes with prefixes restored:
+console.log(session.state);
+// {
+//   "current_step": "payment",           // session scope
+//   "app:feature_enabled": true,         // app scope
+//   "user:theme": "dark"                 // user scope
+// }
+```
+
+## Performance Optimization
+
+### Access Patterns
+
+- **Batch Operations**: Group multiple state changes in single event
+- **Prefix Organization**: Use consistent prefix patterns for efficient queries
+- **Scope Awareness**: Place data in appropriate scope to minimize retrieval overhead
+- **Lazy Loading**: Load only necessary state data when possible
+
+### Storage Efficiency
+
+- **Data Minimization**: Store only essential information in each scope
+- **Compression**: Use compact data representations for large objects
+- **Cleanup Policies**: Remove obsolete temporary and session data regularly
+- **Indexing**: Database services automatically optimize queries with proper indexing
+
+### Monitoring
+
+- **State Size Tracking**: Monitor total state data volume per scope
+- **Access Frequency**: Track read/write patterns across prefixes
+- **Performance Metrics**: Measure state operation latency by scope
+- **Error Rates**: Track state operation failures and prefix-related issues
+
+## Security and Privacy
+
+### Data Protection
+
+- **Encryption**: All persistent state encrypted at rest and in transit
+- **Access Control**: Scope-based access restrictions (users can only access their user: data)
+- **Audit Logging**: Track state access and modifications through event system
+- **Data Classification**: Separate sensitive data by appropriate scope prefixes
+
+### Privacy Compliance
+
+- **Data Minimization**: Store only necessary user information in user: scope
+- **Retention Policies**: Implement appropriate data retention periods per scope
+- **User Rights**: Provide mechanisms for user: scope data access and deletion
+- **Cross-Border Compliance**: Handle international data transfer requirements
+
+### Best Practices
+
+- **Sensitive Data**: Never store passwords or tokens in any state scope
+- **User Consent**: Obtain proper consent for persistent user: scope data
+- **Regular Cleanup**: Remove expired temp: and obsolete session data
+- **Secure Defaults**: Use secure configurations by default across all scopes
+
+## Common Patterns and Use Cases
+
+### E-commerce Application
+
+**Shopping Cart Management:**
+```typescript
+// Session-specific items
+session.state['cart_items'] = [
+  { id: 'item1', quantity: 2 },
+  { id: 'item2', quantity: 1 }
+];
+
+// User preferences across sessions
+session.state['user:saved_items'] = ['item3', 'item7', 'item12'];
+session.state['user:shipping_address'] = {
+  street: '123 Main St',
+  city: 'Anytown',
+  country: 'US'
+};
+
+// App-wide settings
+session.state['app:shipping_rates'] = {
+  standard: 5.99,
+  express: 12.99
+};
+
+// Temporary calculations
+session.state['temp:cart_total'] = 89.47;
+```
+
+### Multi-Step Workflow
+
+**Form Processing:**
+```typescript
+// Progress tracking
+session.state['current_step'] = 'personal_info';
+session.state['completed_steps'] = ['intro', 'terms'];
+session.state['form_data'] = {
+  email: 'user@example.com',
+  phone: '+1234567890'
+};
+
+// User workflow preferences
+session.state['user:preferred_flow'] = 'express';
+session.state['user:save_progress'] = true;
+
+// Temporary validation
+session.state['temp:validation_errors'] = ['phone_format'];
+```
+
+### Personalization System
+
+**User Experience Customization:**
+```typescript
+// User-specific preferences
+session.state['user:ui_preferences'] = {
+  theme: 'dark',
+  language: 'es',
+  timezone: 'America/Los_Angeles'
+};
+
+// User interaction history
+session.state['user:recent_searches'] = ['hotels paris', 'flights tokyo'];
+session.state['user:interaction_count'] = 47;
+
+// App-wide personalization settings
+session.state['app:personalization_enabled'] = true;
+session.state['app:supported_languages'] = ['en', 'es', 'fr', 'de'];
+```
+
+## Best Practices
+
+### Design Principles
+
+- **Clear Scope Assignment**: Choose appropriate prefixes based on data lifecycle
+- **Consistent Naming**: Use descriptive, consistent key naming conventions
+- **Minimal Storage**: Store only essential, dynamic information
+- **Type Consistency**: Maintain consistent data types for similar keys across scopes
+
+### Implementation Guidelines
+
+- **Event-Driven Updates**: Always use EventActions.stateDelta for state changes
+- **Error Handling**: Implement robust error handling for all state operations
+- **Testing Strategy**: Test state behavior across different SessionService implementations
+- **Documentation**: Document state schema and usage patterns for your application
+
+### Production Considerations
+
+- **Monitoring**: Implement comprehensive state monitoring across all scopes
+- **Backup Strategy**: Ensure proper backup strategies for persistent state scopes
+- **Migration Planning**: Plan for state schema evolution and data migration
+- **Performance Optimization**: Optimize state operations for production load patterns
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="💬 Session Management"
+    description="Learn how sessions coordinate with state management"
+    href="/docs/framework/sessions/session"
+  />
+
+  <Card
+    title="🧠 Memory Systems"
+    description="Understand long-term memory beyond session state"
+    href="/docs/framework/sessions/memory"
+  />
+
+  <Card
+    title="🔧 Tools"
+    description="How tools interact with and modify session state"
+    href="/docs/framework/tools"
+  />
+
+  <Card
+    title="📋 Callbacks"
+    description="Handle state changes with event callbacks"
+    href="/docs/framework/callbacks"
+  />
+</Cards>

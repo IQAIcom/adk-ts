@@ -1,0 +1,632 @@
+---
+title: Third-Party Tools
+description: Integrate tools from popular external libraries and frameworks
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+ADK TypeScript is designed for extensibility, allowing integration with tools from other AI agent frameworks. While ADK doesn't currently include built-in wrappers for third-party frameworks, you can manually integrate external tools using the existing BaseTool and FunctionTool components.
+
+## Integration Approach
+
+Third-party tool integration provides several key benefits:
+
+- **Faster Development**: Leverage existing tools instead of building from scratch
+- **Ecosystem Access**: Tap into established tool libraries and communities
+- **Best Practices**: Use proven tools with established patterns
+- **Interoperability**: Connect different AI frameworks and platforms
+
+<Callout type="info" title="Manual Integration">
+ADK TypeScript currently requires manual integration of third-party tools. Built-in wrapper classes for popular frameworks are planned for future releases.
+</Callout>
+
+## Integration Methods
+
+<Cards>
+  <Card
+    title="🔧 Function Wrappers"
+    description="Wrap external functions as ADK tools"
+  />
+
+  <Card
+    title="🛠️ Custom Tool Classes"
+    description="Create custom tool classes that extend BaseTool"
+  />
+
+  <Card
+    title="📦 Library Integration"
+    description="Integrate entire libraries with multiple tools"
+  />
+</Cards>
+
+## Function Wrapper Pattern
+
+The simplest approach for integrating external tools is to wrap their functions using FunctionTool.
+
+### Basic Function Wrapping
+
+```typescript
+import { FunctionTool } from '@iqai/adk';
+
+// Example: Integrating a hypothetical search library
+import { searchWeb } from 'some-search-library';
+
+async function wrappedSearch(query: string, maxResults: number = 10) {
+  try {
+    const results = await searchWeb({
+      query,
+      limit: maxResults
+    });
+
+    return {
+      success: true,
+      results: results.map(r => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.description
+      }))
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Search failed'
+    };
+  }
+}
+
+const searchTool = new FunctionTool(wrappedSearch, {
+  name: 'web_search',
+  description: 'Search the web for information on any topic'
+});
+```
+
+### Advanced Function Integration
+
+For more complex external tools with multiple configuration options:
+
+```typescript
+import { FunctionTool } from '@iqai/adk';
+import { DatabaseClient } from 'some-database-library';
+
+// Configure the external library
+const dbClient = new DatabaseClient({
+  host: process.env.DB_HOST,
+  apiKey: process.env.DB_API_KEY
+});
+
+async function queryDatabase(
+  query: string,
+  table: string,
+  limit: number = 100
+) {
+  try {
+    const result = await dbClient.query({
+      sql: query,
+      table,
+      maxRows: limit
+    });
+
+    return {
+      success: true,
+      data: result.rows,
+      count: result.count
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Database query failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
+}
+
+const dbTool = new FunctionTool(queryDatabase, {
+  name: 'query_database',
+  description: 'Execute SQL queries against the database'
+});
+```
+
+## Custom Tool Class Pattern
+
+For more sophisticated integrations, create custom tool classes that extend BaseTool.
+
+### Basic Custom Tool
+
+```typescript
+import { BaseTool } from '@iqai/adk';
+import { ExternalService } from 'external-library';
+
+interface ExternalToolConfig {
+  apiKey: string;
+  baseUrl?: string;
+  timeout?: number;
+}
+
+class ExternalTool extends BaseTool {
+  private client: ExternalService;
+
+  constructor(config: ExternalToolConfig) {
+    super({
+      name: 'external_tool',
+      description: 'Integration with external service'
+    });
+
+    this.client = new ExternalService({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl || 'https://api.example.com',
+      timeout: config.timeout || 30000
+    });
+  }
+
+  async runAsync(args: {
+    operation: string;
+    parameters: Record<string, any>;
+  }) {
+    try {
+      switch (args.operation) {
+        case 'search':
+          return await this.client.search(args.parameters);
+        case 'create':
+          return await this.client.create(args.parameters);
+        case 'update':
+          return await this.client.update(args.parameters);
+        default:
+          return { error: `Unknown operation: ${args.operation}` };
+      }
+    } catch (error) {
+      return {
+        error: `External service error: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  getDeclaration() {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: 'object',
+        properties: {
+          operation: {
+            type: 'string',
+            description: 'Operation to perform',
+            enum: ['search', 'create', 'update']
+          },
+          parameters: {
+            type: 'object',
+            description: 'Parameters for the operation'
+          }
+        },
+        required: ['operation', 'parameters']
+      }
+    };
+  }
+}
+```
+
+### Multi-Operation Tool
+
+For libraries with multiple related functions:
+
+```typescript
+import { BaseTool } from '@iqai/adk';
+
+class MultiOperationTool extends BaseTool {
+  constructor() {
+    super({
+      name: 'multi_tool',
+      description: 'Tool that can perform multiple operations'
+    });
+  }
+
+  async runAsync(args: {
+    operation: 'analyze' | 'process' | 'transform';
+    data: any;
+    options?: Record<string, any>;
+  }) {
+    const { operation, data, options = {} } = args;
+
+    try {
+      switch (operation) {
+        case 'analyze':
+          return await this.analyzeData(data, options);
+        case 'process':
+          return await this.processData(data, options);
+        case 'transform':
+          return await this.transformData(data, options);
+        default:
+          return { error: `Unknown operation: ${operation}` };
+      }
+    } catch (error) {
+      return {
+        error: `Operation failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  private async analyzeData(data: any, options: Record<string, any>) {
+    // Integration with external analysis library
+    // Return analysis results
+    return { analysis: 'result' };
+  }
+
+  private async processData(data: any, options: Record<string, any>) {
+    // Integration with external processing library
+    // Return processed data
+    return { processed: data };
+  }
+
+  private async transformData(data: any, options: Record<string, any>) {
+    // Integration with external transformation library
+    // Return transformed data
+    return { transformed: data };
+  }
+
+  getDeclaration() {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: 'object',
+        properties: {
+          operation: {
+            type: 'string',
+            description: 'Operation to perform',
+            enum: ['analyze', 'process', 'transform']
+          },
+          data: {
+            type: 'any',
+            description: 'Data to operate on'
+          },
+          options: {
+            type: 'object',
+            description: 'Optional parameters for the operation'
+          }
+        },
+        required: ['operation', 'data']
+      }
+    };
+  }
+}
+```
+
+## Integration Examples
+
+### LangChain-style Tools
+
+If you want to integrate tools similar to LangChain's approach:
+
+```typescript
+import { FunctionTool } from '@iqai/adk';
+
+// Example: Creating a search tool similar to LangChain patterns
+async function tavilySearch(query: string) {
+  // Integration with Tavily search API
+  const response = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.TAVILY_API_KEY}`
+    },
+    body: JSON.stringify({ query })
+  });
+
+  if (!response.ok) {
+    return { error: 'Search failed' };
+  }
+
+  const data = await response.json();
+  return {
+    results: data.results.map((r: any) => ({
+      title: r.title,
+      url: r.url,
+      content: r.content
+    }))
+  };
+}
+
+const tavilyTool = new FunctionTool(tavilySearch, {
+  name: 'tavily_search',
+  description: 'Search the internet using Tavily search engine'
+});
+```
+
+### CrewAI-style Tools
+
+For tools similar to CrewAI's approach:
+
+```typescript
+import { BaseTool } from '@iqai/adk';
+
+class SerperSearchTool extends BaseTool {
+  private apiKey: string;
+
+  constructor(apiKey: string) {
+    super({
+      name: 'serper_search',
+      description: 'Search Google using Serper API for real-time results'
+    });
+    this.apiKey = apiKey;
+  }
+
+  async runAsync(args: { query: string; type?: string; num?: number }) {
+    try {
+      const response = await fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': this.apiKey
+        },
+        body: JSON.stringify({
+          q: args.query,
+          type: args.type || 'search',
+          num: args.num || 10
+        })
+      });
+
+      if (!response.ok) {
+        return { error: `Search failed: ${response.statusText}` };
+      }
+
+      const data = await response.json();
+      return {
+        organic: data.organic || [],
+        answerBox: data.answerBox,
+        knowledgeGraph: data.knowledgeGraph
+      };
+    } catch (error) {
+      return {
+        error: `Serper search failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  getDeclaration() {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Search query'
+          },
+          type: {
+            type: 'string',
+            description: 'Type of search (search, images, news)',
+            enum: ['search', 'images', 'news']
+          },
+          num: {
+            type: 'number',
+            description: 'Number of results to return (max 100)'
+          }
+        },
+        required: ['query']
+      }
+    };
+  }
+}
+```
+
+## Authentication and Configuration
+
+### Environment-based Configuration
+
+```typescript
+interface ToolConfig {
+  apiKey?: string;
+  baseUrl?: string;
+  timeout?: number;
+  retries?: number;
+}
+
+class ConfigurableTool extends BaseTool {
+  private config: ToolConfig;
+
+  constructor(config: ToolConfig = {}) {
+    super({
+      name: 'configurable_tool',
+      description: 'Tool with flexible configuration'
+    });
+
+    this.config = {
+      apiKey: config.apiKey || process.env.TOOL_API_KEY,
+      baseUrl: config.baseUrl || process.env.TOOL_BASE_URL || 'https://api.example.com',
+      timeout: config.timeout || 30000,
+      retries: config.retries || 3
+    };
+
+    if (!this.config.apiKey) {
+      throw new Error('API key is required');
+    }
+  }
+
+  async runAsync(args: any) {
+    // Implementation using this.config
+    return { success: true };
+  }
+
+  getDeclaration() {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: 'object',
+        properties: {
+          // Define parameters
+        }
+      }
+    };
+  }
+}
+```
+
+## Error Handling and Reliability
+
+### Robust Error Handling
+
+```typescript
+async function resilientToolWrapper(externalFunction: Function, ...args: any[]) {
+  const maxRetries = 3;
+  const backoffMs = 1000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await externalFunction(...args);
+      return { success: true, data: result };
+    } catch (error) {
+      if (attempt === maxRetries) {
+        return {
+          success: false,
+          error: `Failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : String(error)}`
+        };
+      }
+
+      // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, backoffMs * Math.pow(2, attempt - 1)));
+    }
+  }
+}
+```
+
+### Circuit Breaker Pattern
+
+```typescript
+class CircuitBreakerTool extends BaseTool {
+  private failures = 0;
+  private lastFailureTime = 0;
+  private isOpen = false;
+  private readonly failureThreshold = 5;
+  private readonly resetTimeoutMs = 60000; // 1 minute
+
+  constructor() {
+    super({
+      name: 'circuit_breaker_tool',
+      description: 'Tool with circuit breaker for reliability'
+    });
+  }
+
+  async runAsync(args: any) {
+    if (this.isCircuitOpen()) {
+      return { error: 'Circuit breaker is open - service unavailable' };
+    }
+
+    try {
+      const result = await this.callExternalService(args);
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+
+  private isCircuitOpen(): boolean {
+    if (this.isOpen && Date.now() - this.lastFailureTime > this.resetTimeoutMs) {
+      this.isOpen = false;
+      this.failures = 0;
+    }
+    return this.isOpen;
+  }
+
+  private onSuccess() {
+    this.failures = 0;
+    this.isOpen = false;
+  }
+
+  private onFailure() {
+    this.failures++;
+    this.lastFailureTime = Date.now();
+
+    if (this.failures >= this.failureThreshold) {
+      this.isOpen = true;
+    }
+  }
+
+  private async callExternalService(args: any) {
+    // Call external service
+    return { success: true };
+  }
+
+  getDeclaration() {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: 'object',
+        properties: {}
+      }
+    };
+  }
+}
+```
+
+## Future Development
+
+<Callout type="info" title="Planned Features">
+Future versions of ADK TypeScript will include:
+- Built-in wrapper classes for popular frameworks
+- Automatic tool discovery and registration
+- Enhanced type safety for third-party integrations
+- Plugin architecture for easier extensibility
+</Callout>
+
+### Expected Enhancements
+
+- **LangChainTool Class**: Automatic wrapper for LangChain tools
+- **CrewAITool Class**: Native integration with CrewAI tools
+- **Plugin System**: Simplified plugin architecture
+- **Type Generation**: Automatic TypeScript types from external schemas
+- **Tool Discovery**: Automatic discovery of compatible tools
+
+## Best Practices
+
+### Integration Guidelines
+
+- **Clear Abstractions**: Create clean interfaces between ADK and external tools
+- **Error Handling**: Implement comprehensive error handling and recovery
+- **Type Safety**: Maintain TypeScript type safety across integrations
+- **Documentation**: Provide clear descriptions for LLM understanding
+
+### Performance Considerations
+
+- **Async Operations**: Use non-blocking operations where possible
+- **Connection Pooling**: Reuse connections for external services
+- **Caching**: Cache results from expensive operations
+- **Timeout Management**: Set appropriate timeouts for external calls
+
+### Security Practices
+
+- **Credential Management**: Store credentials securely
+- **Input Validation**: Validate all inputs before external calls
+- **Access Controls**: Implement proper permission checks
+- **Audit Logging**: Track usage and access patterns
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🔧 Function Tools"
+    description="Create custom tools for specialized needs"
+    href="/docs/framework/tools/function-tools"
+  />
+
+  <Card
+    title="⚡ Built-in Tools"
+    description="Explore ADK's native tool capabilities"
+    href="/docs/framework/tools/built-in-tools"
+  />
+
+  <Card
+    title="🔐 Authentication"
+    description="Secure tool integrations and API access"
+    href="/docs/framework/tools/authentication"
+  />
+
+  <Card
+    title="🤖 Agents"
+    description="Learn how agents coordinate tools from different frameworks"
+    href="/docs/framework/agents"
+  />
+</Cards>

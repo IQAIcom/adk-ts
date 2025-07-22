@@ -1,0 +1,160 @@
+---
+title: LLM Agents
+description: Use language models for reasoning, decision-making, and tool usage
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+LLM Agents are the most common agent type in ADK TypeScript. They use Large Language Models for reasoning, understanding natural language, making decisions, and interacting with tools.
+
+Unlike deterministic workflow agents that follow predefined paths, LLM agents are dynamic. They interpret instructions and context, deciding how to proceed, which tools to use, or whether to transfer control to another agent.
+
+## Core Concepts
+
+### Agent Identity
+
+Every LLM agent needs a clear identity:
+
+- **Name**: Unique identifier for the agent (required)
+- **Description**: Summary of capabilities for other agents to understand
+- **Model**: The LLM that powers the agent's reasoning
+
+### Instructions
+
+The instruction parameter shapes how your agent behaves:
+
+- Core task or goal definition
+- Personality or persona
+- Behavioral constraints
+- Tool usage guidance
+- Output format requirements
+
+<Callout type="info" title="Effective Instructions">
+Be clear and specific, use examples for complex tasks, and explicitly guide when and why to use tools.
+</Callout>
+
+### Tools Integration
+
+LLM agents can use tools to extend their capabilities beyond text generation:
+
+- Function tools for calculations and processing
+- Built-in tools for web search, file operations, etc.
+- Agent tools for delegation to other agents
+- Custom tools for specific integrations
+
+## Configuration Options
+
+<Cards>
+  <Card
+    title="🎛️ Generation Control"
+    description="Adjust temperature, output length, and safety settings"
+  />
+
+  <Card
+    title="📊 Structured Data"
+    description="Use input/output schemas for JSON-based communication"
+  />
+
+  <Card
+    title="🧠 Context Management"
+    description="Control conversation history and memory inclusion"
+  />
+
+  <Card
+    title="⚙️ Advanced Features"
+    description="Planning, code execution, and callback integration"
+  />
+</Cards>
+
+## When to Use LLM Agents
+
+LLM agents are ideal for:
+
+- **Conversational interfaces** - Chat bots, assistants, Q&A systems
+- **Tool coordination** - Agents that need to use multiple tools intelligently
+- **Dynamic decision making** - When responses depend on context and reasoning
+- **Natural language processing** - Understanding and generating human language
+
+## Key Features
+
+### Dynamic Behavior
+LLM agents adapt their responses based on context, instructions, and available tools.
+
+### Tool Integration
+Seamlessly combine multiple tools and capabilities within a single agent.
+
+### Multi-Agent Coordination
+Can delegate tasks to other agents or be used as tools by other agents.
+
+### Flexible Configuration
+Extensive options for customizing behavior, output format, and capabilities.
+
+## Working with LLM Agents
+
+### Basic Setup
+Start with a simple agent that has a clear purpose and model configuration.
+
+### Add Instructions
+Provide clear, specific instructions that guide the agent's behavior.
+
+### Integrate Tools
+Add relevant tools that extend the agent's capabilities.
+
+### Fine-tune Configuration
+Adjust generation parameters, schemas, and advanced options as needed.
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🛠️ Tools"
+    description="Learn about available tools and creating custom ones"
+    href="/docs/framework/tools"
+  />
+
+  <Card
+    title="🧠 Models"
+    description="Configure and choose between different LLM models"
+    href="/docs/framework/agents/models"
+  />
+
+  <Card
+    title="👥 Multi-Agent Systems"
+    description="Coordinate multiple LLM agents for complex tasks"
+    href="/docs/framework/agents/multi-agents"
+  />
+
+  <Card
+    title="📞 Callbacks"
+    description="Hook into agent execution for monitoring and control"
+    href="/docs/framework/callbacks"
+  />
+</Cards>
+
+## Best Practices
+
+<Callout type="warn" title="Common Pitfalls">
+- Avoid vague instructions that lead to inconsistent behavior
+- Don't overload agents with too many tools or responsibilities
+- Test instructions thoroughly with different inputs
+- Consider structured output for data processing tasks
+</Callout>
+
+### Instruction Design
+- Be specific about the agent's role and responsibilities
+- Provide examples for complex output formats
+- Clearly define when and how to use tools
+- Set appropriate boundaries and constraints
+
+### Tool Selection
+- Choose tools that match the agent's purpose
+- Avoid redundant or conflicting tool capabilities
+- Document tool usage in instructions
+- Test tool interactions thoroughly
+
+### Performance Optimization
+- Use appropriate models for your use case
+- Configure generation parameters for consistency
+- Implement proper error handling
+- Monitor and log agent behavior

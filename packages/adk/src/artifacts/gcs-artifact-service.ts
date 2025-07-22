@@ -5,9 +5,6 @@ import {
 } from "@google-cloud/storage";
 import type { Part } from "@google/genai";
 import type { BaseArtifactService } from "./base-artifact-service";
-import { Logger } from "@adk/helpers/logger";
-
-const logger = new Logger({ name: "GcsArtifactService" });
 
 export class GcsArtifactService implements BaseArtifactService {
 	private readonly bucketName: string;

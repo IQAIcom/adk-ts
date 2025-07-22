@@ -1,10 +1,61 @@
 ---
-title: MCP IQWiki
+title: MCP IQ Wiki
 description: Model Context Protocol Server for IQ.wiki
 ---
 
-**Package**: [`@iqai/mcp-iqwiki`](https://www.npmjs.com/package/@iqai/mcp-iqwiki)
-**Purpose**: Interacting with IQ.wiki data using the Model Context Protocol.
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+- **Package**: [`@iqai/mcp-iqwiki`](https://www.npmjs.com/package/@iqai/mcp-iqwiki)
+- **Purpose**: Interacting with IQ.wiki data using the Model Context Protocol.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpIqWiki} from "@iqai/adk";
+
+    const toolset = McpIqWiki()
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "IQWiki MCP Client",
+      description: "Client for IQ.wiki data access",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-iqwiki"],
+        env: {
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "iq-wiki-mcp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-iqwiki"]
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
 
 ## Features
 
@@ -42,34 +93,6 @@ Get detailed wiki activities (creations or edits) for a user on IQ.wiki.
 ## Environment Variables
 
 N/A - This server does not require environment variables.
-
-## Configuration Example
-
-```json
-{
-  "mcpServers": {
-    "iq-wiki-mcp-server": {
-      "command": "pnpm",
-      "args": ["dlx", "@iqai/mcp-iqwiki"]
-    }
-  }
-}
-```
-
-**Alternative if Globally Installed:**
-
-If you have installed `@iqai/mcp-iqwiki` globally, you can simplify the command:
-
-```json
-{
-  "mcpServers": {
-    "iq-wiki-mcp-server": {
-      "command": "mcp-iqwiki",
-      "args": []
-    }
-  }
-}
-```
 
 ## Usage Examples
 

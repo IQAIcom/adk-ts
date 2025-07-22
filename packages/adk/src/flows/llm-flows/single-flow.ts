@@ -1,20 +1,17 @@
-import { Logger } from "@adk/helpers/logger";
+import { requestProcessor as authRequestProcessor } from "../../auth/auth-preprocessor";
 import { BaseLlmFlow } from "./base-llm-flow";
 import { requestProcessor as basicRequestProcessor } from "./basic";
-import { requestProcessor as authRequestProcessor } from "../../auth/auth-preprocessor";
-import { requestProcessor as identityRequestProcessor } from "./identity";
-import { requestProcessor as instructionsRequestProcessor } from "./instructions";
-import { requestProcessor as contentRequestProcessor } from "./contents";
-import {
-	requestProcessor as nlPlanningRequestProcessor,
-	responseProcessor as nlPlanningResponseProcessor,
-} from "./nl-planning";
 import {
 	requestProcessor as codeExecutionRequestProcessor,
 	responseProcessor as codeExecutionResponseProcessor,
 } from "./code-execution";
-
-const logger = new Logger({ name: "SingleFlow" });
+import { requestProcessor as contentRequestProcessor } from "./contents";
+import { requestProcessor as identityRequestProcessor } from "./identity";
+import { requestProcessor as instructionsRequestProcessor } from "./instructions";
+import {
+	requestProcessor as nlPlanningRequestProcessor,
+	responseProcessor as nlPlanningResponseProcessor,
+} from "./nl-planning";
 
 /**
  * SingleFlow is the LLM flow that handles tool calls.
@@ -53,6 +50,6 @@ export class SingleFlow extends BaseLlmFlow {
 			codeExecutionResponseProcessor, // Phase 5: Code Execution (placeholder)
 		);
 
-		logger.debug("SingleFlow initialized with processors");
+		this.logger.debug("SingleFlow initialized with processors");
 	}
 }

@@ -1,4 +1,4 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import { LlmRequest, type LlmResponse } from "@adk/models";
 import type { Content, Part } from "@google/genai";
 import {
@@ -18,7 +18,7 @@ import {
  * between MCP format and ADK format
  */
 export class McpSamplingHandler {
-	private logger = new Logger({ name: "McpSamplingHandler" });
+	protected logger = new Logger({ name: "McpSamplingHandler" });
 	private samplingHandler: SamplingHandler;
 
 	constructor(samplingHandler: SamplingHandler) {
@@ -238,24 +238,27 @@ export class McpSamplingHandler {
 	 * Convert ADK response to MCP response format
 	 */
 	private convertADKResponseToMcp(
-		adkResponse: LlmResponse,
+		adkResponse: string | LlmResponse,
 		model: string,
 	): McpSamplingResponse {
 		// Extract text content from the response
 		let responseText = "";
 
-		if (adkResponse.content) {
-			if (typeof adkResponse.content === "string") {
-				// If content is somehow a string (shouldn't happen with new structure)
-				responseText = adkResponse.content;
-			} else if (adkResponse.content.parts) {
-				// Extract text from all parts, ensuring we handle the text property safely
-				responseText = adkResponse.content.parts
-					.map((part) => {
-						// Ensure part.text is a string
-						return typeof part.text === "string" ? part.text : "";
-					})
-					.join("");
+		if (typeof adkResponse === "string") {
+			// Direct string response
+			responseText = adkResponse;
+		} else {
+			// LlmResponse type
+			if (adkResponse.content) {
+				if (typeof adkResponse.content === "string") {
+					responseText = adkResponse.content;
+				} else if (adkResponse.content.parts) {
+					responseText = adkResponse.content.parts
+						.map((part) => {
+							return typeof part.text === "string" ? part.text : "";
+						})
+						.join("");
+				}
 			}
 		}
 
@@ -295,15 +298,23 @@ export class McpSamplingHandler {
  *
  * const llm = new Gemini("gemini-2.0-flash-exp");
  *
- * const samplingHandler = createSamplingHandler(async (request) => {
- *   // request is properly typed with all the fields
+ * // Example 1: Return full LlmResponse
+ * const samplingHandler1 = createSamplingHandler(async (request) => {
  *   const responses = [];
  *   for await (const response of llm.generateContentAsync(request)) {
  *     responses.push(response);
  *   }
- *
  *   return responses[responses.length - 1];
  * });
+ *
+ * // Example 2: Return simple string
+ * const samplingHandler2 = createSamplingHandler(async (request) => {
+ *   const lastMessage = request.contents[request.contents.length - 1].parts[0].text;
+ *   return await runner.ask(lastMessage);
+ * });
+ *
+ * // Example 3: Direct function reference
+ * const samplingHandler3 = createSamplingHandler(runner.ask);
  * ```
  */
 export function createSamplingHandler(handler: SamplingHandler) {

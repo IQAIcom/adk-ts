@@ -1,4 +1,4 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -16,7 +16,7 @@ export class McpClientService {
 	private isClosing = false;
 	private mcpSamplingHandler: McpSamplingHandler | null = null;
 
-	private logger = new Logger({ name: "McpClientService" });
+	protected logger = new Logger({ name: "McpClientService" });
 
 	constructor(config: McpConfig) {
 		this.config = config;
@@ -88,9 +88,7 @@ export class McpClientService {
 
 			await this.setupSamplingHandler(client);
 
-			if (this.config.debug) {
-				console.log("✅ MCP client connected successfully");
-			}
+			this.logger.debug("✅ MCP client connected successfully");
 
 			this.client = client;
 			return client;
@@ -100,7 +98,7 @@ export class McpClientService {
 
 			// Convert to McpError if it's not already
 			if (!(error instanceof McpError)) {
-				console.error("Failed to initialize MCP client:", error);
+				this.logger.error("Failed to initialize MCP client:", error);
 				throw new McpError(
 					`Failed to initialize MCP client: ${error instanceof Error ? error.message : String(error)}`,
 					McpErrorType.CONNECTION_ERROR,
@@ -118,12 +116,10 @@ export class McpClientService {
 		try {
 			// Configure transport based on mode
 			if (this.config.transport.mode === "sse") {
-				if (this.config.debug) {
-					console.log(
-						"🚀 Initializing MCP client in SSE mode",
-						this.config.transport.serverUrl,
-					);
-				}
+				this.logger.debug(
+					"🚀 Initializing MCP client in SSE mode",
+					this.config.transport.serverUrl,
+				);
 
 				const headers = {
 					...(this.config.transport.headers || {}),
@@ -142,12 +138,10 @@ export class McpClientService {
 			}
 
 			// STDIO mode
-			if (this.config.debug) {
-				console.log(
-					"🚀 Initializing MCP client in STDIO mode",
-					this.config.transport.command,
-				);
-			}
+			this.logger.debug(
+				"🚀 Initializing MCP client in STDIO mode",
+				this.config.transport.command,
+			);
 
 			return new StdioClientTransport({
 				command: this.config.transport.command,
@@ -168,9 +162,7 @@ export class McpClientService {
 	 * Used by the retry mechanism.
 	 */
 	async reinitialize(): Promise<void> {
-		if (this.config.debug) {
-			console.log("🔄 Reinitializing MCP client after closed connection");
-		}
+		this.logger.debug("🔄 Reinitializing MCP client after closed connection");
 
 		await this.cleanupResources();
 
@@ -206,11 +198,9 @@ export class McpClientService {
 				await (this.transport as any).close();
 			}
 
-			if (this.config.debug) {
-				console.log("🧹 Cleaned up MCP client resources");
-			}
+			this.logger.debug("🧹 Cleaned up MCP client resources");
 		} catch (error) {
-			console.error("Error cleaning up MCP resources:", error);
+			this.logger.error("Error cleaning up MCP resources:", error);
 		} finally {
 			this.client = null;
 			this.transport = null;
@@ -256,9 +246,7 @@ export class McpClientService {
 	 * Similar to Python's close() method.
 	 */
 	async close(): Promise<void> {
-		if (this.config.debug) {
-			console.log("🔚 Closing MCP client service");
-		}
+		this.logger.debug("🔚 Closing MCP client service");
 		await this.cleanupResources();
 	}
 
@@ -271,11 +259,9 @@ export class McpClientService {
 
 	private async setupSamplingHandler(client: Client): Promise<void> {
 		if (!this.mcpSamplingHandler) {
-			if (this.config.debug) {
-				console.log(
-					"⚠️ No sampling handler provided - sampling requests will be rejected",
-				);
-			}
+			this.logger.debug(
+				"⚠️ No sampling handler provided - sampling requests will be rejected",
+			);
 			return;
 		}
 
@@ -290,13 +276,11 @@ export class McpClientService {
 						const response =
 							await this.mcpSamplingHandler!.handleSamplingRequest(request);
 
-						if (this.config.debug) {
-							console.log("✅ Sampling request completed successfully");
-						}
+						this.logger.debug("✅ Sampling request completed successfully");
 
 						return response;
 					} catch (error) {
-						console.error("❌ Error handling sampling request:", error);
+						this.logger.error("❌ Error handling sampling request:", error);
 
 						if (error instanceof McpError) {
 							throw error;
@@ -311,16 +295,12 @@ export class McpClientService {
 				},
 			);
 
-			if (this.config.debug) {
-				console.log("🎯 Sampling handler registered successfully");
-			}
+			this.logger.debug("🎯 Sampling handler registered successfully");
 		} catch (error) {
-			console.error("Failed to setup sampling handler:", error);
-			if (this.config.debug) {
-				console.log(
-					"⚠️ Sampling handler registration failed, continuing without sampling support",
-				);
-			}
+			this.logger.error("Failed to setup sampling handler:", error);
+			this.logger.debug(
+				"⚠️ Sampling handler registration failed, continuing without sampling support",
+			);
 		}
 	}
 
@@ -332,7 +312,7 @@ export class McpClientService {
 
 		if (this.client) {
 			this.setupSamplingHandler(this.client).catch((error) => {
-				console.error("Failed to update ADK sampling handler:", error);
+				this.logger.error("Failed to update ADK sampling handler:", error);
 			});
 		}
 	}
@@ -347,7 +327,7 @@ export class McpClientService {
 			try {
 				this.client.removeRequestHandler?.("sampling/createMessage");
 			} catch (error) {
-				console.error("Failed to remove sampling handler:", error);
+				this.logger.error("Failed to remove sampling handler:", error);
 			}
 		}
 	}

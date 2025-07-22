@@ -1,252 +1,211 @@
 import { env } from "node:process";
-import {
-	InMemorySessionService,
-	LlmAgent,
-	Runner,
-	TelemetryService,
-} from "@iqai/adk";
-import { v4 as uuidv4 } from "uuid";
+import { AgentBuilder, type EnhancedRunner, TelemetryService } from "@iqai/adk";
+
+const APP_NAME = "telemetry-example";
+
+function validateTelemetryEnvironment(): boolean {
+	const hasLangfuseKeys = env.LANGFUSE_PUBLIC_KEY && env.LANGFUSE_SECRET_KEY;
+
+	if (!hasLangfuseKeys) {
+		console.log("⚠️  Note: LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY not set");
+		console.log("   Telemetry will use default configuration");
+		return false;
+	}
+
+	return true;
+}
 
 /**
- * Application configuration constants
+ * Initializes the global telemetry service if external configuration is available
  */
-const APP_NAME = "telemetry-agent-example";
-const USER_ID = uuidv4();
+function initializeTelemetryService(): void {
+	const hasExternalTelemetry = validateTelemetryEnvironment();
 
-/**
- * Telemetry Agent Example
- *
- * This example demonstrates how to integrate telemetry and observability
- * into agent interactions using the ADK TelemetryService. It shows how
- * to track, trace, and monitor agent conversations for debugging and
- * performance analysis.
- *
- * The example:
- * 1. Initializes telemetry with Langfuse integration
- * 2. Creates an agent with telemetry tracking enabled
- * 3. Demonstrates traced conversation interactions
- * 4. Shows proper telemetry shutdown and cleanup
- * 5. Handles graceful process termination
- *
- * Expected Output:
- * - Telemetry initialization confirmation
- * - Traced conversation with observability data
- * - Performance and interaction metrics
- * - Links to observability dashboard
- *
- * Prerequisites:
- * - Node.js environment
- * - LANGFUSE_PUBLIC_KEY environment variable
- * - LANGFUSE_SECRET_KEY environment variable
- * - LANGFUSE_HOST environment variable (optional)
- * - LLM_MODEL environment variable (optional, defaults to gemini-2.5-flash)
- */
+	if (hasExternalTelemetry) {
+		console.log("📊 Configuring external telemetry with Langfuse...");
+		const telemetryService = new TelemetryService();
 
-const langfuseHost = env.LANGFUSE_HOST || "https://cloud.langfuse.com";
+		const authString = Buffer.from(
+			`${env.LANGFUSE_PUBLIC_KEY}:${env.LANGFUSE_SECRET_KEY}`,
+		).toString("base64");
+
+		telemetryService.initialize({
+			appName: APP_NAME,
+			appVersion: "1.0.0",
+			otlpEndpoint: `${env.LANGFUSE_BASE_URL || "https://cloud.langfuse.com"}/api/public/otel/v1/traces`,
+			otlpHeaders: {
+				Authorization: `Basic ${authString}`,
+			},
+		});
+
+		console.log("✅ Telemetry initialized with Langfuse");
+	} else {
+		console.log("📊 Using default telemetry configuration...");
+		console.log("✅ Telemetry ready (automatic tracing enabled)");
+	}
+}
+
 async function main() {
-	let telemetryService: TelemetryService | null = null;
+	console.log("📈 Starting Telemetry Agent example...");
 
 	try {
-		console.log("📊 Starting Telemetry Agent example...");
+		/**
+		 * Initialize telemetry service for monitoring
+		 * This enables automatic tracing for all agent interactions
+		 */
+		initializeTelemetryService();
 
 		/**
-		 * Initialize telemetry service with Langfuse configuration
-		 * This enables tracing and observability for all agent interactions
+		 * Create agent using AgentBuilder
+		 * All agent interactions will be automatically traced by the framework
 		 */
-		telemetryService = initializeTelemetryService();
+		const { runner } = await AgentBuilder.create("telemetry_assistant")
+			.withModel(env.LLM_MODEL || "gemini-2.5-flash")
+			.withDescription("An assistant with automatic telemetry tracking")
+			.withInstruction(`You are a helpful assistant with automatic telemetry tracking enabled.
+Provide detailed and informative responses to user questions.
+Your interactions are being monitored for performance and quality automatically.`)
+			.build();
 
 		/**
-		 * Create agent with telemetry tracking
-		 * All interactions with this agent will be automatically traced
+		 * Demonstrate telemetry-enabled agent interactions
+		 * Each interaction will be automatically tracked and measured by the framework
 		 */
-		const agent = createTelemetryAgent();
+		await demonstrateTrackedInteractions(runner);
+		await demonstratePerformanceMonitoring(runner);
 
-		/**
-		 * Set up session and runner
-		 * The runner coordinates telemetry with agent execution
-		 */
-		const { runner, session } = await setupSessionAndRunner(agent);
-
-		/**
-		 * Execute traced conversation
-		 * This interaction will be captured in telemetry data
-		 */
-		await runTracedConversation(runner, session.id);
-
-		console.log(
-			"\n✅ Example completed! Check your Langfuse dashboard for traces.",
-		);
-		console.log(`🔗 Dashboard URL: ${langfuseHost}`);
+		console.log("\n✅ Telemetry Agent example completed!");
 	} catch (error) {
 		console.error("❌ Error in telemetry agent example:", error);
 		process.exit(1);
-	} finally {
-		await shutdownTelemetry(telemetryService);
 	}
 }
 
 /**
- * Initializes the telemetry service with Langfuse configuration
- * @returns Configured TelemetryService instance
+ * Demonstrates tracked agent interactions with automatic telemetry
+ * @param runner The AgentBuilder runner for executing agent tasks
  */
-function initializeTelemetryService(): TelemetryService {
-	const telemetryService = new TelemetryService();
-
-	const authString = Buffer.from(
-		`${env.LANGFUSE_PUBLIC_KEY}:${env.LANGFUSE_SECRET_KEY}`,
-	).toString("base64");
-
-	telemetryService.initialize({
-		appName: APP_NAME,
-		appVersion: "1.0.0",
-		otlpEndpoint: `${langfuseHost}/api/public/otel/v1/traces`,
-		otlpHeaders: {
-			Authorization: `Basic ${authString}`,
-		},
-	});
-
-	console.log("🔍 All interactions will be traced and sent to Langfuse");
-	console.log(`🔧 Telemetry initialized: ${telemetryService.initialized}`);
-	console.log(`🏷️  App: ${telemetryService.getConfig()?.appName}`);
-
-	return telemetryService;
-}
-
-/**
- * Creates and configures the LLM agent with telemetry tracking
- * @returns Configured LlmAgent instance
- */
-function createTelemetryAgent(): LlmAgent {
-	return new LlmAgent({
-		name: "telemetry_assistant",
-		model: env.LLM_MODEL || "gemini-2.5-flash",
-		description: "An assistant with telemetry tracking enabled",
-		instruction:
-			"You are a helpful assistant. Answer questions concisely and accurately.",
-	});
-}
-
-/**
- * Sets up session management and runner for telemetry tracking
- * @param agent The configured LlmAgent instance
- * @returns Object containing runner and session
- */
-async function setupSessionAndRunner(agent: LlmAgent): Promise<{
-	runner: Runner;
-	session: any;
-}> {
-	const sessionService = new InMemorySessionService();
-	const session = await sessionService.createSession(APP_NAME, USER_ID);
-
-	const runner = new Runner({
-		appName: APP_NAME,
-		agent,
-		sessionService,
-	});
-
-	console.log(`📝 Created session: ${session.id}`);
-
-	return { runner, session };
-}
-
-/**
- * Executes a traced conversation to demonstrate telemetry capabilities
- * @param runner The Runner instance for executing agent tasks
- * @param sessionId The current session identifier
- */
-async function runTracedConversation(
-	runner: Runner,
-	sessionId: string,
+async function demonstrateTrackedInteractions(
+	runner: EnhancedRunner,
 ): Promise<void> {
-	console.log("\n👤 User: Explain what observability means in AI systems");
-	console.log("🤖 Assistant: ");
+	console.log("\n=== Tracked Interactions ===");
 
-	let assistantResponse = "";
+	/**
+	 * Interaction 1: Simple question
+	 */
+	console.log("\n--- Tracked Interaction 1 ---");
+	const startTime1 = Date.now();
 
-	for await (const event of runner.runAsync({
-		userId: USER_ID,
-		sessionId,
-		newMessage: {
-			parts: [{ text: "Explain what observability means in AI systems" }],
-		},
-	})) {
-		if (event.author === "telemetry_assistant" && event.content?.parts) {
-			const content = event.content.parts
-				.map((part) => part.text || "")
-				.join("");
+	const response1 = await runner.ask("What is machine learning?");
 
-			if (content) {
-				if (event.partial) {
-					// Handle streaming chunks
-					process.stdout.write(content);
-					assistantResponse += content;
-				} else {
-					// Handle complete response
-					if (!assistantResponse) {
-						console.log(content);
-						assistantResponse = content;
-					} else if (assistantResponse !== content) {
-						console.log("\nFinal response:", content);
-						assistantResponse = content;
-					}
-				}
-			}
-		}
-	}
+	const duration1 = Date.now() - startTime1;
+	console.log("👤 User: What is machine learning?");
+	console.log("🤖 Agent:", response1);
+	console.log(`⏱️  Response time: ${duration1}ms`);
 
-	// Ensure newline after response
-	if (assistantResponse && !assistantResponse.endsWith("\n")) {
-		console.log();
-	}
+	/**
+	 * Interaction 2: Complex question
+	 */
+	console.log("\n--- Tracked Interaction 2 ---");
+	const startTime2 = Date.now();
+
+	const response2 = await runner.ask(
+		"Explain the differences between supervised and unsupervised learning, with examples",
+	);
+
+	const duration2 = Date.now() - startTime2;
+	console.log(
+		"👤 User: Explain the differences between supervised and unsupervised learning, with examples",
+	);
+	console.log("🤖 Agent:", response2);
+	console.log(`⏱️  Response time: ${duration2}ms`);
+
+	/**
+	 * Interaction 3: Follow-up question
+	 */
+	console.log("\n--- Tracked Interaction 3 ---");
+	const startTime3 = Date.now();
+
+	const response3 = await runner.ask(
+		"Can you give me a practical example of how I could use machine learning in my business?",
+	);
+
+	const duration3 = Date.now() - startTime3;
+	console.log(
+		"👤 User: Can you give me a practical example of how I could use machine learning in my business?",
+	);
+	console.log("🤖 Agent:", response3);
+	console.log(`⏱️  Response time: ${duration3}ms`);
 }
 
 /**
- * Gracefully shuts down telemetry service
- * @param telemetryService The telemetry service to shutdown
+ * Demonstrates performance monitoring capabilities
+ * @param runner The AgentBuilder runner for executing agent tasks
  */
-async function shutdownTelemetry(
-	telemetryService: TelemetryService | null,
+async function demonstratePerformanceMonitoring(
+	runner: EnhancedRunner,
 ): Promise<void> {
-	if (telemetryService) {
-		try {
-			console.log("\n🔄 Shutting down telemetry...");
-			await telemetryService.shutdown();
-			console.log("✅ Telemetry shutdown complete");
-		} catch (shutdownError) {
-			console.error("⚠️  Error during telemetry shutdown:", shutdownError);
-		}
+	console.log("\n=== Performance Monitoring ===");
+
+	/**
+	 * Run multiple interactions to gather performance data
+	 */
+	const interactions = [
+		"What is artificial intelligence?",
+		"How does neural networks work?",
+		"What are the applications of AI in healthcare?",
+	];
+
+	const performanceData: Array<{ query: string; duration: number }> = [];
+
+	for (const [index, query] of interactions.entries()) {
+		console.log(`\n--- Performance Test ${index + 1} ---`);
+
+		const startTime = Date.now();
+		const response = await runner.ask(query);
+		const duration = Date.now() - startTime;
+
+		performanceData.push({ query, duration });
+
+		console.log(`👤 User: ${query}`);
+		console.log("🤖 Agent:", `${response.substring(0, 100)}...`);
+		console.log(`⏱️  Duration: ${duration}ms`);
+	}
+
+	/**
+	 * Display performance summary
+	 */
+	console.log("\n📊 Performance Summary:");
+	const avgDuration =
+		performanceData.reduce((sum, data) => sum + data.duration, 0) /
+		performanceData.length;
+	const minDuration = Math.min(...performanceData.map((data) => data.duration));
+	const maxDuration = Math.max(...performanceData.map((data) => data.duration));
+
+	console.log(`Average response time: ${avgDuration.toFixed(2)}ms`);
+	console.log(`Fastest response: ${minDuration}ms`);
+	console.log(`Slowest response: ${maxDuration}ms`);
+
+	/**
+	 * Log telemetry insights
+	 */
+	console.log("\n📈 Telemetry Insights:");
+	console.log("- All interactions automatically tracked by the ADK framework");
+	console.log("- Performance metrics collected at the framework level");
+	console.log(
+		"- Ready for analysis and optimization in observability platforms",
+	);
+	if (validateTelemetryEnvironment()) {
+		console.log("- Traces sent to Langfuse for detailed analysis");
+		console.log(
+			`- Dashboard URL: ${env.LANGFUSE_BASE_URL || "https://cloud.langfuse.com"}`,
+		);
+	} else {
+		console.log(
+			"- Set LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY for external telemetry",
+		);
 	}
 }
-
-/**
- * Handle process termination gracefully for SIGINT
- */
-process.on("SIGINT", async () => {
-	console.log("\n🛑 Received SIGINT, shutting down gracefully...");
-	try {
-		const telemetryService = new TelemetryService();
-		await telemetryService.shutdown();
-		process.exit(0);
-	} catch (error) {
-		console.error("Error during graceful shutdown:", error);
-		process.exit(1);
-	}
-});
-
-/**
- * Handle process termination gracefully for SIGTERM
- */
-process.on("SIGTERM", async () => {
-	console.log("\n🛑 Received SIGTERM, shutting down gracefully...");
-	try {
-		const telemetryService = new TelemetryService();
-		await telemetryService.shutdown();
-		process.exit(0);
-	} catch (error) {
-		console.error("Error during graceful shutdown:", error);
-		process.exit(1);
-	}
-});
 
 /**
  * Execute the main function and handle any errors

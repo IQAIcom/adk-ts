@@ -4,9 +4,82 @@ description: Smart contract ABI interactions for Ethereum-compatible blockchains
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-**Package**: [`@iqai/mcp-abi`](https://www.npmjs.com/package/@iqai/mcp-abi)
-**Purpose**: Smart contract ABI interactions for Ethereum-compatible blockchains
+- **Package**: [`@iqai/mcp-abi`](https://www.npmjs.com/package/@iqai/mcp-abi)
+- **Purpose**: Smart contract ABI interactions for Ethereum-compatible blockchains
+
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpAbi} from "@iqai/adk";
+
+    const toolset = McpAbi({
+      env: {
+        WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+        CONTRACT_ABI: process.env.CONTRACT_ABI,
+        CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
+        CONTRACT_NAME: "ERC20",
+        CHAIN_ID: "252",
+        RPC_URL: "https://rpc.frax.com"
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "ABI MCP Client",
+      description: "Client for smart contract ABI interactions",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-abi"],
+        env: {
+          WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+          CONTRACT_ABI: process.env.CONTRACT_ABI,
+          CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
+          CONTRACT_NAME: "ERC20",
+          CHAIN_ID: "252",
+          RPC_URL: "https://rpc.frax.com",
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "smart-contract-abi": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-abi"],
+          "env": {
+            "WALLET_PRIVATE_KEY": "your_wallet_private_key_here",
+            "CONTRACT_ABI": "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+            "CONTRACT_ADDRESS": "0xaB195B090Cc60C1EFd4d1cEE94Bf441F5931C01b",
+            "CONTRACT_NAME": "ERC20",
+            "CHAIN_ID": "252",
+            "RPC_URL": "https://rpc.frax.com"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
 
 ## Features
 
@@ -35,27 +108,6 @@ The server automatically creates tools for each function in the provided ABI:
 | `CONTRACT_NAME`      | Friendly name for tool prefixes     | Optional (defaults to "CONTRACT")    |
 | `CHAIN_ID`           | Blockchain network chain ID         | Optional (defaults to Fraxtal - 252) |
 | `RPC_URL`            | Custom RPC endpoint URL             | Optional                             |
-
-## Configuration Example
-
-```json
-{
-  "mcpServers": {
-    "smart-contract-abi": {
-      "command": "pnpm",
-      "args": ["dlx", "@iqai/mcp-abi"],
-      "env": {
-        "WALLET_PRIVATE_KEY": "your_wallet_private_key_here",
-        "CONTRACT_ABI": "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-        "CONTRACT_ADDRESS": "0xaB195B090Cc60C1EFd4d1cEE94Bf441F5931C01b",
-        "CONTRACT_NAME": "ERC20",
-        "CHAIN_ID": "252",
-        "RPC_URL": "https://rpc.frax.com"
-      }
-    }
-  }
-}
-```
 
 ## Usage Examples
 

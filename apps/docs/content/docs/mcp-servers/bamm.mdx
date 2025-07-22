@@ -4,9 +4,67 @@ description: Model Context Protocol Server for Borrow Automated Market Maker
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-**Package**: [`@iqai/mcp-bamm`](https://www.npmjs.com/package/@iqai/mcp-bamm)
-**Purpose**: Interacting with Borrow Automated Market Maker (BAMM) contracts on the Fraxtal blockchain.
+- **Package**: [`@iqai/mcp-bamm`](https://www.npmjs.com/package/@iqai/mcp-bamm)
+- **Purpose**: Interacting with Borrow Automated Market Maker (BAMM) contracts on the Fraxtal blockchain.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpBamm} from "@iqai/adk";
+
+    const toolset = McpBamm({
+      env: {
+        WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+      },
+      })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "BAMM MCP Client",
+      description: "Client for BAMM DeFi operations",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-bamm"],
+        env: {
+          WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "bamm-mcp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-bamm"],
+          "env": {
+            "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
 
 ## Features
 
@@ -72,39 +130,6 @@ Handle the private key with extreme care. Ensure it is stored securely and only 
 - `WALLET_PRIVATE_KEY`: (Required for all blockchain operations)
   - The private key of the wallet to be used for interacting with BAMM contracts (signing transactions for lending, borrowing, etc.).
 
-## Configuration Example
-
-```json
-{
-  "mcpServers": {
-    "bamm-mcp-server": {
-      "command": "pnpm",
-      "args": ["dlx", "@iqai/mcp-bamm"],
-      "env": {
-        "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
-      }
-    }
-  }
-}
-```
-
-**Alternative if Globally Installed:**
-
-If you have installed `@iqai/mcp-bamm` globally (`pnpm add -g @iqai/mcp-bamm`), you can simplify the `command` and `args`:
-
-```json
-{
-  "mcpServers": {
-    "bamm-mcp-server": {
-      "command": "mcp-bamm",
-      "args": [],
-      "env": {
-        "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
-      }
-    }
-  }
-}
-```
 
 ## Usage Examples
 

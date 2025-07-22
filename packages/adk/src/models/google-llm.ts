@@ -1,4 +1,4 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import {
 	type Content,
 	FinishReason,
@@ -34,8 +34,6 @@ export class GoogleLlm extends BaseLlm {
 	private _apiBackend?: GoogleLLMVariant;
 	private _trackingHeaders?: Record<string, string>;
 
-	private logger = new Logger({ name: "GoogleLlm" });
-
 	/**
 	 * Constructor for Gemini
 	 */
@@ -65,11 +63,6 @@ export class GoogleLlm extends BaseLlm {
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		this.preprocessRequest(llmRequest);
 
-		this.logger.debug(
-			`Sending out request, model: ${llmRequest.model || this.model}, backend: ${this.apiBackend}, stream: ${stream}`,
-		);
-		this.logger.debug(this.buildRequestLog(llmRequest));
-
 		const model = llmRequest.model || this.model;
 		const contents = this.convertContents(llmRequest.contents || []);
 		const config = this.convertConfig(llmRequest.config);
@@ -88,7 +81,6 @@ export class GoogleLlm extends BaseLlm {
 
 			for await (const resp of responses) {
 				response = resp; // Track the latest response
-				this.logger.debug(this.buildResponseLog(resp));
 				const llmResponse = LlmResponse.create(resp);
 				usageMetadata = llmResponse.usageMetadata;
 
@@ -157,8 +149,11 @@ export class GoogleLlm extends BaseLlm {
 				contents,
 				config,
 			});
-			this.logger.debug(this.buildResponseLog(response));
-			yield LlmResponse.create(response);
+			const llmResponse = LlmResponse.create(response);
+			this.logger.debug(
+				`Google response: ${llmResponse.usageMetadata?.candidatesTokenCount || 0} tokens`,
+			);
+			yield llmResponse;
 		}
 	}
 
@@ -245,76 +240,6 @@ export class GoogleLlm extends BaseLlm {
 		}
 
 		return `${funcDecl.name}: ${paramStr}`;
-	}
-
-	/**
-	 * Builds request log string.
-	 */
-	private buildRequestLog(req: LlmRequest): string {
-		const functionDecls: FunctionDeclaration[] =
-			(req.config?.tools?.[0] as any)?.functionDeclarations || [];
-
-		const functionLogs =
-			functionDecls.length > 0
-				? functionDecls.map((funcDecl) =>
-						this.buildFunctionDeclarationLog(funcDecl),
-					)
-				: [];
-
-		const contentsLogs =
-			req.contents?.map((content) =>
-				JSON.stringify(content, (key, value) => {
-					// Exclude large data fields
-					if (
-						key === "data" &&
-						typeof value === "string" &&
-						value.length > 100
-					) {
-						return "[EXCLUDED]";
-					}
-					return value;
-				}),
-			) || [];
-
-		return dedent`
-		LLM Request:
-		-----------------------------------------------------------
-		System Instruction:
-		${(req.config as any)?.systemInstruction || ""}
-		-----------------------------------------------------------
-		Contents:
-		${contentsLogs.join(NEW_LINE)}
-		-----------------------------------------------------------
-		Functions:
-		${functionLogs.join(NEW_LINE)}
-		-----------------------------------------------------------`;
-	}
-
-	/**
-	 * Builds response log string.
-	 */
-	private buildResponseLog(resp: GenerateContentResponse): string {
-		const functionCallsText: string[] = [];
-		if (resp.functionCalls) {
-			for (const funcCall of resp.functionCalls) {
-				functionCallsText.push(
-					`name: ${funcCall.name}, args: ${JSON.stringify(funcCall.args)}`,
-				);
-			}
-		}
-
-		return dedent`
-		LLM Response:
-		-----------------------------------------------------------
-		Text:
-		${resp.text || ""}
-		-----------------------------------------------------------
-		Function calls:
-		${functionCallsText.join(NEW_LINE)}
-		-----------------------------------------------------------
-		Raw response:
-		${JSON.stringify(resp, null, 2)}
-		-----------------------------------------------------------`;
 	}
 
 	/**

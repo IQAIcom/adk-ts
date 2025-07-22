@@ -1,0 +1,603 @@
+---
+title: Memory Systems
+description: Long-term knowledge storage and retrieval for intelligent agent conversations
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Memory systems provide agents with long-term knowledge storage and retrieval capabilities, extending beyond single conversation sessions. While sessions manage immediate conversation context, memory services create searchable archives of past interactions and external knowledge that can be referenced across conversations.
+
+## Memory vs Session Context
+
+Understanding the distinction between session context and long-term memory is crucial for building intelligent agents that can learn and reference past interactions.
+
+### Session Context: Short-Term Memory
+
+- **Scope**: Current conversation thread only
+- **Duration**: Temporary, conversation-specific
+- **Content**: Recent interactions, current state, immediate context
+- **Use Cases**: Maintaining conversation flow, tracking current tasks, managing session state
+
+### Long-Term Memory: Knowledge Archive
+
+- **Scope**: Cross-session, historical information searchable across conversations
+- **Duration**: Persistent, long-term storage with configurable retention
+- **Content**: Past conversations, learned information, external knowledge, user patterns
+- **Use Cases**: Recalling previous discussions, building on past interactions, knowledge base queries
+
+<Callout type="info" title="Memory Analogy">
+Think of session context as your working memory during a meeting, while long-term memory is like your searchable archive of all past meetings, documents, and accumulated knowledge.
+</Callout>
+
+## MemoryService Architecture
+
+The MemoryService provides a unified interface for managing long-term knowledge storage and retrieval across different storage backends, from simple keyword matching to advanced semantic search.
+
+### Core Responsibilities
+
+<Cards>
+  <Card
+    title="📥 Session Ingestion"
+    description="Store completed session information in searchable knowledge base"
+  />
+
+  <Card
+    title="🔍 Knowledge Search"
+    description="Query stored information with keyword or semantic search"
+  />
+
+  <Card
+    title="🏗️ Memory Organization"
+    description="Structure and filter information for efficient retrieval"
+  />
+
+  <Card
+    title="🔄 Content Processing"
+    description="Extract and index meaningful content from conversation events"
+  />
+</Cards>
+
+### Service Interface
+
+All MemoryService implementations provide consistent methods:
+
+```typescript
+interface BaseMemoryService {
+  // Store session information in memory
+  addSessionToMemory(session: Session): Promise<void>;
+
+  // Search stored knowledge for relevant information
+  searchMemory(params: {
+    appName: string;
+    userId: string;
+    query: string;
+  }): Promise<SearchMemoryResponse>;
+}
+
+// Search response structure
+interface SearchMemoryResponse {
+  memories: MemoryEntry[];
+}
+
+interface MemoryEntry {
+  content: Content;      // Content from events with parts (text, data, etc.)
+  author?: string;       // Event author (user, assistant, system)
+  timestamp?: string;    // ISO 8601 formatted timestamp
+}
+```
+
+## Memory Workflow
+
+### Typical Memory Lifecycle
+
+1. **Session Interaction**: User interacts with agent through active sessions
+2. **Content Filtering**: System identifies valuable content worth storing
+3. **Memory Ingestion**: Completed or significant sessions added to long-term storage
+4. **Content Indexing**: Information processed and indexed for efficient search
+5. **Knowledge Query**: Future sessions search memory for relevant context
+6. **Context Retrieval**: Relevant past information retrieved and provided to agents
+7. **Enhanced Responses**: Agents use retrieved knowledge for better, context-aware answers
+
+### Integration Patterns
+
+**Automatic Ingestion:**
+- Sessions automatically archived when marked complete
+- Configurable rules for what information to store
+- Background processing to avoid blocking current interactions
+- Filtering of valuable vs. routine conversations
+
+**On-Demand Search:**
+- Agents use memory search when context is needed
+- Query optimization for relevant information retrieval
+- Context-aware search to improve relevance
+- Integration with agent reasoning and response generation
+
+**Hybrid Approaches:**
+- Combination of automatic and manual memory management
+- Selective ingestion based on conversation importance
+- Intelligent caching and pre-loading strategies
+- User-controlled memory management options
+
+## Implementation Options
+
+### In-Memory Memory Service
+
+Fast, simple memory for development and testing with keyword-based search:
+
+```typescript
+import { InMemoryMemoryService } from '@iqai/adk';
+
+const memoryService = new InMemoryMemoryService();
+
+// Add session to memory
+await memoryService.addSessionToMemory(completedSession);
+
+// Search memory
+const results = await memoryService.searchMemory({
+  appName: 'travel-app',
+  userId: 'user123',
+  query: 'hotel preferences paris'
+});
+
+console.log(`Found ${results.memories.length} relevant memories`);
+```
+
+**Characteristics:**
+- **Storage**: Application memory with basic data structures
+- **Persistence**: None - knowledge lost on restart
+- **Search**: Simple keyword matching using text extraction
+- **Performance**: Fast for small datasets, limited scalability
+- **Use Cases**: Prototyping, testing, temporary knowledge needs
+
+**Search Algorithm:**
+- **Text Extraction**: Extracts text from all event content parts
+- **Word Matching**: Checks for query word presence in content
+- **Simple Filtering**: Basic boolean matching without ranking
+- **Event Focus**: Only processes events with content and parts
+
+**Best For:**
+- Development and experimentation
+- Simple keyword-based recall scenarios
+- Scenarios where persistence isn't required
+- Quick prototyping of memory-enabled agents
+
+### Cloud RAG Memory Service
+
+Advanced semantic search with cloud-scale storage using Google Cloud Vertex AI:
+
+```typescript
+import { VertexAiRagMemoryService } from '@iqai/adk';
+
+const memoryService = new VertexAiRagMemoryService(
+  'projects/your-project/locations/us-central1/ragCorpora/your-corpus-id', // RAG corpus
+  10,  // similarity_top_k - number of results to return
+  0.5  // vector_distance_threshold - similarity threshold
+);
+
+// Add session to memory
+await memoryService.addSessionToMemory(completedSession);
+
+// Search with semantic understanding
+const results = await memoryService.searchMemory({
+  appName: 'travel-app',
+  userId: 'user123',
+  query: 'luxury accommodations in romantic European cities'
+});
+
+// Results ranked by semantic similarity
+results.memories.forEach((memory, index) => {
+  console.log(`Result ${index + 1}: ${memory.content.parts[0]?.text}`);
+  console.log(`Author: ${memory.author}, Time: ${memory.timestamp}`);
+});
+```
+
+**Characteristics:**
+- **Storage**: Google Cloud Vertex AI RAG infrastructure with vector databases
+- **Persistence**: Enterprise-grade cloud storage with automatic backup
+- **Search**: Advanced semantic search with vector embeddings and similarity matching
+- **Scalability**: Handle massive knowledge bases with optimized performance
+- **Integration**: Native Google Cloud ecosystem integration
+
+**Advanced Features:**
+- **Semantic Understanding**: Find conceptually similar information beyond keyword matching
+- **Vector Search**: Advanced similarity matching using machine learning embeddings
+- **Contextual Ranking**: Results ranked by relevance and semantic similarity
+- **Multi-Modal Support**: Support for text, structured data, and metadata search
+- **Session Deduplication**: Automatic handling of overlapping conversation content
+
+**Configuration Options:**
+- **RAG Corpus**: Specify Google Cloud RAG corpus for storage
+- **Similarity Threshold**: Control quality vs. quantity of search results
+- **Top-K Results**: Limit number of results returned for performance
+- **Vector Distance**: Fine-tune semantic similarity requirements
+
+**Benefits:**
+- **Intelligence**: Understand meaning and context, not just keywords
+- **Performance**: Optimized for large-scale search operations with sub-second response
+- **Reliability**: Enterprise-grade availability and disaster recovery
+- **Maintenance-Free**: Fully managed infrastructure with automatic scaling
+
+<Callout type="warn" title="Implementation Choice">
+Choose memory implementation based on your search sophistication needs, scale requirements, persistence requirements, and cloud integration preferences.
+</Callout>
+
+## Search Capabilities
+
+### Keyword Search (InMemoryMemoryService)
+
+Traditional text-based search functionality with simple matching:
+
+```typescript
+// Simple keyword search
+const results = await memoryService.searchMemory({
+  appName: 'support-app',
+  userId: 'user456',
+  query: 'password reset email'
+});
+
+// Searches for presence of words: "password", "reset", "email"
+// Returns memories containing any of these terms
+```
+
+**Characteristics:**
+- **Exact Word Matching**: Finds specific terms and phrases
+- **Boolean Logic**: Implicit OR logic between query words
+- **Case Insensitive**: Automatically handles case variations
+- **Fast Performance**: Quick results for simple queries
+- **Limited Context**: No understanding of synonyms or related concepts
+
+### Semantic Search (VertexAiRagMemoryService)
+
+Advanced meaning-based search capabilities with AI-powered understanding:
+
+```typescript
+// Semantic search with context understanding
+const results = await memoryService.searchMemory({
+  appName: 'support-app',
+  userId: 'user456',
+  query: 'help with account access issues'
+});
+
+// Finds memories about:
+// - Password problems
+// - Login difficulties
+// - Authentication errors
+// - Account recovery
+// - Related support topics
+```
+
+**Advanced Capabilities:**
+- **Conceptual Understanding**: Find related concepts and ideas beyond exact words
+- **Context Awareness**: Consider conversation context and user patterns in search
+- **Similarity Matching**: Identify semantically similar content using vector embeddings
+- **Intent Recognition**: Understand user intent behind queries
+- **Cross-Language Support**: Find relevant content regardless of exact language used
+
+### Search Optimization
+
+Both implementations provide optimization features:
+
+- **Relevance Ranking**: Results ordered by relevance and recency
+- **Result Filtering**: Configurable thresholds and limits for quality control
+- **User Scoping**: Results filtered to specific user/app combinations
+- **Performance Tuning**: Optimized for query speed and accuracy within implementation limits
+
+## Memory Storage Patterns
+
+### Session Archival
+
+Systematic storage of completed conversations with intelligent content selection:
+
+```typescript
+// Archive a completed session
+const session = await sessionService.getSession('app', 'user', 'session123');
+
+// Add to memory - automatically filters for valuable content
+await memoryService.addSessionToMemory(session);
+```
+
+**Content Selection Criteria:**
+- **Event Filtering**: Only events with content and parts are stored
+- **Meaningful Interactions**: Focus on substantive exchanges vs. routine confirmations
+- **User Contributions**: Prioritize user inputs and preferences
+- **Successful Outcomes**: Weight conversations that led to successful task completion
+
+**Metadata Enhancement:**
+- **Timestamps**: ISO 8601 formatted timestamps for temporal context
+- **Participants**: Track who contributed what information (user, assistant, system)
+- **Session Context**: Preserve session identifiers and relationships
+- **Content Structure**: Maintain original content parts and formatting
+
+### External Knowledge Integration
+
+Incorporating external information sources into memory systems:
+
+**Data Sources:**
+- **Documentation**: Product manuals, FAQ databases, knowledge repositories
+- **Knowledge Bases**: Company wikis, support documentation, training materials
+- **External APIs**: Real-time information feeds and dynamic data sources
+- **File Systems**: Document collections, archives, and structured data
+
+**Integration Methods:**
+- **Batch Import**: Periodic ingestion of external data sources
+- **Real-Time Sync**: Live updates from external systems and APIs
+- **On-Demand Fetch**: Retrieve and cache information when needed
+- **Hybrid Storage**: Combination of cached, indexed, and live data
+
+### Knowledge Organization
+
+Structuring stored information for efficient retrieval and meaningful results:
+
+- **User Isolation**: Separate memories by user to prevent cross-contamination
+- **App Scoping**: Organize by application context for relevant results
+- **Content Categorization**: Automatic categorization of conversation types and topics
+- **Temporal Organization**: Time-based organization for recent vs. historical information
+- **Quality Scoring**: Rank content by usefulness and relevance for future retrieval
+
+## Memory Tools Integration
+
+### Built-in Memory Tools
+
+ADK TypeScript provides tools for memory interaction that agents can use:
+
+**Load Memory Tool:**
+```typescript
+// Agents can search memory using built-in tools
+const memoryTool = new LoadMemoryTool(memoryService);
+
+// Tool automatically searches memory based on user queries
+// and presents results in agent-friendly format
+```
+
+**Features:**
+- **Query Processing**: Intelligent query extraction from user inputs
+- **Result Formatting**: Format search results for agent consumption
+- **Relevance Filtering**: Filter results by relevance and recency
+- **Context Integration**: Integrate memory results with current session context
+
+### Custom Memory Tools
+
+Building specialized memory interactions for specific use cases:
+
+```typescript
+// Custom memory search tool
+class CustomMemoryTool extends BaseTool {
+  async runAsyncImpl(context: ToolContext): Promise<ToolResponse> {
+    const query = context.getParameter('query');
+
+    const results = await this.memoryService.searchMemory({
+      appName: context.session.appName,
+      userId: context.session.userId,
+      query: query
+    });
+
+    // Custom processing and formatting
+    const formattedResults = this.formatResults(results.memories);
+
+    return new ToolResponse(formattedResults);
+  }
+}
+```
+
+**Custom Tool Capabilities:**
+- **Domain-Specific Search**: Tailored for specific knowledge domains or use cases
+- **Advanced Filtering**: Complex query and filtering capabilities
+- **Result Processing**: Custom formatting and relevance scoring
+- **Analytics Integration**: Memory usage and effectiveness analysis
+
+## Performance and Scalability
+
+### Storage Efficiency
+
+Optimize memory systems for efficient storage and retrieval:
+
+- **Content Compression**: Minimize storage requirements for large knowledge bases
+- **Deduplication**: Avoid storing duplicate information across sessions
+- **Intelligent Archival**: Move old information to cold storage tiers
+- **Cleanup Policies**: Automatically remove obsolete or low-value data
+
+### Search Performance
+
+Optimize search operations for responsive user experience:
+
+- **Indexing**: Create efficient search indexes for fast queries (automatic in cloud services)
+- **Caching**: Cache frequently accessed information for faster retrieval
+- **Query Optimization**: Optimize search algorithms and patterns for common queries
+- **Result Streaming**: Handle large result sets efficiently without blocking
+
+### Monitoring and Analytics
+
+Track memory system performance and usage patterns:
+
+```typescript
+// Example monitoring integration
+class MemoryMetrics {
+  private metrics = {
+    totalMemories: 0,
+    searchLatency: [],
+    hitRate: 0,
+    storageGrowth: 0
+  };
+
+  async trackSearch(query: string, results: number, latency: number) {
+    this.metrics.searchLatency.push(latency);
+    // Track search patterns and performance
+  }
+
+  async trackStorage(sessionId: string, contentSize: number) {
+    this.metrics.totalMemories++;
+    this.metrics.storageGrowth += contentSize;
+    // Monitor storage growth and usage
+  }
+}
+```
+
+**Key Metrics:**
+- **Usage Metrics**: Track memory storage and search patterns
+- **Performance Monitoring**: Monitor search latency and throughput
+- **Quality Metrics**: Measure search relevance and accuracy
+- **Storage Analytics**: Analyze storage growth and optimization opportunities
+
+## Privacy and Security
+
+### Data Protection
+
+Ensure secure handling of sensitive information in memory systems:
+
+- **Encryption**: Encrypt stored knowledge at rest and in transit
+- **Access Control**: Restrict memory access to authorized users and applications only
+- **Audit Logging**: Track memory access, modifications, and search activities
+- **Data Classification**: Identify and protect sensitive information with appropriate controls
+
+### Privacy Compliance
+
+Meet regulatory and privacy requirements:
+
+- **Data Retention**: Implement appropriate retention policies for different types of memories
+- **User Rights**: Provide mechanisms for memory data access, correction, and deletion
+- **Consent Management**: Obtain proper consent for memory storage and cross-session usage
+- **Cross-Border Compliance**: Handle international data requirements and transfer restrictions
+
+### Security Best Practices
+
+Implement security measures appropriate for memory systems:
+
+- **Sensitive Information Filtering**: Careful handling of personal, financial, and confidential data
+- **Regular Security Audits**: Review stored information for compliance and security risks
+- **Secure Defaults**: Use secure configurations by default across all implementations
+- **Incident Response**: Procedures for handling security incidents and data breaches
+
+## Best Practices
+
+### Memory Design
+
+Design effective memory systems for your use case:
+
+- **Relevance Focus**: Store only useful, relevant information that improves future interactions
+- **Quality Control**: Maintain high-quality, accurate knowledge through filtering and validation
+- **User-Centric Organization**: Structure information for efficient user-specific retrieval
+- **Lifecycle Management**: Regular cleanup and quality assurance processes
+
+### Implementation Guidelines
+
+Follow best practices for memory system implementation:
+
+- **Service Selection**: Choose appropriate memory implementation for your specific needs
+- **Search Strategy**: Design effective search and retrieval patterns for your use cases
+- **Error Handling**: Implement robust error handling for memory operations and failures
+- **Testing Strategy**: Test memory functionality across realistic scenarios and edge cases
+
+### Production Considerations
+
+Prepare memory systems for production deployment:
+
+- **Backup Strategy**: Implement comprehensive backup and recovery for persistent memory
+- **Migration Planning**: Plan for service upgrades and data migration between implementations
+- **Monitoring**: Monitor memory service health, performance, and usage patterns
+- **Disaster Recovery**: Prepare for memory service failure scenarios with appropriate failover
+
+## Common Use Cases
+
+### Customer Support
+
+Build institutional memory for customer support operations:
+
+```typescript
+// Store support interaction patterns
+const supportMemory = new VertexAiRagMemoryService(/* config */);
+
+// Archive resolved support cases
+await supportMemory.addSessionToMemory(resolvedSupportSession);
+
+// Search for similar issues
+const similarCases = await supportMemory.searchMemory({
+  appName: 'support-system',
+  userId: 'support-agent-1',
+  query: 'login error after password change'
+});
+```
+
+**Support Use Cases:**
+- **Case History**: Previous support interactions and successful resolutions
+- **Knowledge Base**: Product documentation and troubleshooting guides
+- **Pattern Recognition**: Common issues and their solutions
+- **Agent Training**: Learn from successful support interactions
+
+### Personal Assistants
+
+Create personalized memory for individual users:
+
+```typescript
+// Personal assistant memory
+const personalMemory = new VertexAiRagMemoryService(/* config */);
+
+// Remember user preferences and patterns
+await personalMemory.addSessionToMemory(userPreferenceSession);
+
+// Recall personal information
+const userContext = await personalMemory.searchMemory({
+  appName: 'personal-assistant',
+  userId: 'user123',
+  query: 'favorite restaurants dietary restrictions'
+});
+```
+
+**Personal Assistant Features:**
+- **User Preferences**: Personal preferences, settings, and behavioral patterns
+- **Interaction History**: Past conversations, decisions, and outcomes
+- **Task Patterns**: Common workflows, procedures, and personal habits
+- **Learning**: Adaptation based on user behavior and feedback over time
+
+### Knowledge Management
+
+Implement organizational knowledge management:
+
+```typescript
+// Organizational knowledge memory
+const knowledgeMemory = new VertexAiRagMemoryService(/* config */);
+
+// Store organizational knowledge
+await knowledgeMemory.addSessionToMemory(knowledgeSession);
+
+// Search institutional knowledge
+const organizationalKnowledge = await knowledgeMemory.searchMemory({
+  appName: 'knowledge-system',
+  userId: 'employee-456',
+  query: 'project approval process enterprise clients'
+});
+```
+
+**Knowledge Management Applications:**
+- **Document Archives**: Searchable document collections and repositories
+- **Expertise Capture**: Subject matter expert knowledge and insights
+- **Process Documentation**: Organizational procedures, policies, and workflows
+- **Decision History**: Past decisions, rationales, and outcomes for reference
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="💬 Session Management"
+    description="Learn how sessions coordinate with memory systems"
+    href="/docs/framework/sessions/session"
+  />
+
+  <Card
+    title="🗂️ State Management"
+    description="Understand session state vs long-term memory"
+    href="/docs/framework/sessions/state"
+  />
+
+  <Card
+    title="🔧 Tools"
+    description="Memory tools for knowledge retrieval and management"
+    href="/docs/framework/tools"
+  />
+
+  <Card
+    title="📊 Evaluation"
+    description="Evaluate memory effectiveness and agent performance"
+    href="/docs/framework/evaluation"
+  />
+</Cards>

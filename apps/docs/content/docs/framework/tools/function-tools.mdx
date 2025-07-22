@@ -1,0 +1,235 @@
+---
+title: Function Tools
+description: Create custom tools for your specific application needs
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Function tools enable you to create custom functionality tailored to your specific requirements. When built-in tools don't meet your needs, function tools provide the flexibility to implement custom logic, connect to proprietary systems, or create specialized algorithms.
+
+## What Are Function Tools?
+
+Function tools transform regular TypeScript functions into tools that agents can use. They bridge the gap between your application's specific requirements and the agent's capabilities.
+
+### Key Benefits
+
+- **Custom Logic**: Implement specialized algorithms or business rules
+- **System Integration**: Connect to proprietary databases or internal APIs
+- **Flexibility**: Adapt to unique requirements that built-in tools can't address
+- **Performance**: Optimize for your specific use case and data patterns
+
+<Callout type="info" title="When to Use Function Tools">
+Create function tools when you need custom logic, specific integrations, or when built-in tools don't meet your requirements.
+</Callout>
+
+## Function Tool Types
+
+ADK TypeScript offers three approaches to creating function tools:
+
+<Cards>
+  <Card
+    title="⚡ Standard Function Tools"
+    description="Transform regular functions into agent tools"
+  />
+
+  <Card
+    title="⏱️ Long Running Function Tools"
+    description="Handle time-intensive operations with progress updates"
+  />
+
+  <Card
+    title="🤖 Agent-as-a-Tool"
+    description="Use other agents as specialized tools"
+  />
+</Cards>
+
+## Standard Function Tools
+
+The most straightforward approach to creating custom tools.
+
+### Function Design
+
+- **Parameters**: Use JSON-serializable types (string, number, array, object)
+- **Return Type**: Prefer objects for structured responses
+- **Documentation**: Use JSDoc comments for LLM understanding
+- **Naming**: Choose descriptive, action-oriented function names
+
+### Best Practices
+
+<Callout type="warn" title="Function Design Guidelines">
+- Avoid default parameter values (LLM doesn't interpret them)
+- Use simple data types over complex classes
+- Include status indicators in return objects
+- Write clear JSDoc documentation for LLM guidance
+</Callout>
+
+### Return Value Structure
+
+- **Object Returns**: Provide structured key-value responses
+- **Automatic Wrapping**: Non-object returns are wrapped in `{result: value}`
+- **Status Keys**: Include clear success/error indicators
+- **Descriptive Content**: Make responses LLM-readable, not just code-readable
+
+## Long Running Function Tools
+
+Designed for operations that require significant processing time without blocking agent execution.
+
+### How They Work
+
+1. **Initiation**: LLM calls the tool to start the operation
+2. **Progress Updates**: Function yields intermediate results periodically
+3. **Continuation**: Agent can work on other tasks while tool runs
+4. **Completion**: Function returns final result when finished
+
+### Use Cases
+
+- **Human-in-the-Loop**: Operations requiring human approval
+- **File Processing**: Large file analysis or transformation
+- **External API Calls**: Time-intensive third-party integrations
+- **Complex Calculations**: CPU-intensive computational tasks
+
+### Implementation Pattern
+
+- Use TypeScript async generator functions (`async function*`)
+- **Yield** intermediate updates for progress reporting
+- **Return** final results when operation completes
+- Framework handles all communication with the LLM
+
+### Progress Reporting
+
+Include meaningful update information:
+
+- **Status**: Current operation state
+- **Progress**: Percentage or step completion
+- **Messages**: User-friendly progress descriptions
+- **Estimates**: Time remaining if calculable
+
+## Agent-as-a-Tool
+
+Leverage other agents as specialized tools within your system.
+
+### Key Concept
+
+Transform agents into callable tools for delegation and specialization:
+
+- **Delegation**: Assign specific tasks to specialized agents
+- **Control Flow**: Calling agent retains control and continues execution
+- **Response Integration**: Tool agent's response is returned to calling agent
+
+### Agent-as-Tool vs Sub-Agents
+
+<Callout type="info" title="Important Distinction">
+**Agent-as-Tool**: Response is passed back to the calling agent, which retains control.
+**Sub-Agent**: Control is transferred completely to the called agent.
+</Callout>
+
+### Use Cases
+
+- **Specialized Processing**: Dedicated agents for specific tasks (summarization, analysis)
+- **Modular Architecture**: Break complex operations into specialized components
+- **Reusable Logic**: Share agent capabilities across different workflows
+- **Domain Expertise**: Leverage specialized knowledge in focused agents
+
+### Configuration Options
+
+- **Skip Summarization**: Bypass LLM processing when tool response is ready
+- **Custom Instructions**: Tailor tool behavior for specific contexts
+- **Error Handling**: Configure how tool failures are handled
+
+## Tool Context Integration
+
+Function tools can access rich contextual information:
+
+### Available Context
+
+- **Session State**: Read and modify persistent data
+- **Event Actions**: Control agent flow after tool execution
+- **Authentication**: Access credentials and auth responses
+- **Artifacts**: Manage files and documents
+- **Memory**: Search long-term user memory
+
+### State Management
+
+- **State Prefixes**: Different scopes (app, user, session, temp)
+- **Data Persistence**: Changes tracked and saved automatically
+- **Cross-Tool Communication**: Share data between different tools
+
+### Flow Control
+
+Tools can influence subsequent agent behavior:
+
+- **Transfer Control**: Hand off to specialized agents
+- **Skip Processing**: Bypass unnecessary LLM calls
+- **Loop Termination**: End workflow loops conditionally
+- **Error Escalation**: Bubble up critical failures
+
+## Implementation Best Practices
+
+### Function Design
+
+- **Simplicity**: Minimize parameters and complexity
+- **Clarity**: Use meaningful names and documentation
+- **Reliability**: Handle errors gracefully with informative messages
+- **Performance**: Optimize for your specific use case
+
+### Error Handling
+
+- **Status Indicators**: Clear success/error flags in responses
+- **Error Messages**: Human-readable error descriptions
+- **Graceful Degradation**: Continue operation when possible
+- **Recovery Strategies**: Provide actionable error guidance
+
+### Testing Strategy
+
+- **Unit Testing**: Test functions independently
+- **Integration Testing**: Verify tool behavior with agents
+- **Error Scenarios**: Test failure modes and edge cases
+- **Performance Testing**: Validate performance under load
+
+## Advanced Patterns
+
+### Tool Composition
+
+Combine multiple function tools for complex workflows:
+
+- **Sequential Processing**: Chain tools for multi-step operations
+- **Conditional Logic**: Use tool results to determine next steps
+- **Parallel Execution**: Run independent tools simultaneously
+- **Error Recovery**: Implement fallback strategies
+
+### Dynamic Tool Selection
+
+Create tools that adapt behavior based on context:
+
+- **Runtime Configuration**: Adjust tool behavior based on session state
+- **Conditional Execution**: Different logic paths based on input
+- **Environment Adaptation**: Behavior changes based on deployment context
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="⚡ Built-in Tools"
+    description="Explore ready-made tools for common tasks"
+    href="/docs/framework/tools/built-in-tools"
+  />
+
+  <Card
+    title="🔐 Authentication"
+    description="Secure your custom tool integrations"
+    href="/docs/framework/tools/authentication"
+  />
+
+  <Card
+    title="🤖 Agents"
+    description="Learn how agents use and coordinate tools"
+    href="/docs/framework/agents"
+  />
+
+  <Card
+    title="💾 Sessions"
+    description="Understand state management and persistence"
+    href="/docs/framework/sessions"
+  />
+</Cards>

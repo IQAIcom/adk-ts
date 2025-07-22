@@ -40,28 +40,23 @@ export function Footer() {
             <h3 className="text-lg font-semibold text-card-foreground">Documentation</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/docs/get-started" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <Link href="/docs/framework/get-started" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Getting Started
                 </Link>
               </li>
               <li>
-                <Link href="/docs/agents" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <Link href="/docs/framework/agents" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Agent Building
                 </Link>
               </li>
               <li>
-                <Link href="/docs/tools" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <Link href="/docs/framework/tools" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Tools & Functions
                 </Link>
               </li>
               <li>
-                <Link href="/docs/context" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <Link href="/docs/framework/context" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Context & Memory
-                </Link>
-              </li>
-              <li>
-                <Link href="/docs/deploy" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Deployment
                 </Link>
               </li>
             </ul>

@@ -1,13 +1,14 @@
 import { env } from "node:process";
 import {
-	FunctionTool,
+	AgentBuilder,
 	InMemoryArtifactService,
 	InMemorySessionService,
-	LlmAgent,
 	LoadArtifactsTool,
-	Runner,
+	createTool,
 } from "@iqai/adk";
+import dedent from "dedent";
 import { v4 as uuidv4 } from "uuid";
+import * as z from "zod/v4";
 
 /**
  * Application configuration constants
@@ -51,31 +52,75 @@ async function main() {
 		 */
 		const artifactService = new InMemoryArtifactService();
 		const sessionService = new InMemorySessionService();
-		const session = await sessionService.createSession(APP_NAME, USER_ID);
 
 		/**
 		 * Create agent with artifact management capabilities
 		 * The agent can save, load, and manage persistent files
 		 */
-		const agent = createArtifactAgent();
+		const { runner } = await AgentBuilder.create("file_assistant")
+			.withModel(env.LLM_MODEL)
+			.withDescription("Assistant that manages files using artifacts")
+			.withInstruction(dedent`
+				You help users save, load, and manage files using artifacts.
 
-		/**
-		 * Set up runner with artifact service integration
-		 * The runner coordinates artifact operations with agent interactions
-		 */
-		const runner = new Runner({
-			appName: APP_NAME,
-			agent,
-			sessionService,
-			artifactService,
-		});
+				Available functions:
+				- saveArtifact(filename, content): Save content to a file
+				- listArtifacts(): List all available artifacts
+				- deleteArtifact(filename): Delete an artifact
+				- load_artifacts: Load specific artifacts (via LoadArtifactsTool)
+
+				When users ask to save files, use saveArtifact function.
+				When users ask to see files, use listArtifacts or load_artifacts.
+				Always confirm operations and provide helpful feedback about what was accomplished.`)
+			.withTools(
+				createTool({
+					name: "saveArtifact",
+					description:
+						"Save text content to an artifact file with a specified filename",
+					schema: z.object({
+						filename: z.string().describe("Name of the file to save"),
+						content: z.string().describe("Content to save in the file"),
+					}),
+					fn: ({ filename, content }, toolContext) =>
+						saveArtifact(filename, content, toolContext),
+					isLongRunning: true,
+				}),
+				createTool({
+					name: "listArtifacts",
+					description: "List all available artifacts in the current session",
+					schema: z.object({}),
+					fn: (_args, toolContext) => listArtifacts(toolContext),
+					isLongRunning: true,
+				}),
+				createTool({
+					name: "deleteArtifact",
+					description: "Delete an artifact file by filename",
+					schema: z.object({
+						filename: z.string().describe("Name of the file to delete"),
+					}),
+					fn: ({ filename }, toolContext) =>
+						deleteArtifact(filename, toolContext),
+					isLongRunning: true,
+				}),
+				new LoadArtifactsTool(),
+			)
+			.withSession(sessionService, {
+				userId: USER_ID,
+				appName: APP_NAME,
+			})
+			.withArtifactService(artifactService)
+			.build();
 
 		/**
 		 * Run comprehensive artifact demonstrations
 		 * Shows file management operations and persistence capabilities
 		 */
-		await demonstrateFileOperations(runner, session.id);
-		await demonstrateCrossSessionPersistence(runner, sessionService);
+		await demonstrateFileOperations(runner);
+		await demonstrateCrossSessionPersistence(
+			runner,
+			artifactService,
+			sessionService,
+		);
 
 		console.log("\n✅ Artifact Management example completed!");
 	} catch (error) {
@@ -85,161 +130,90 @@ async function main() {
 }
 
 /**
- * Creates and configures the LLM agent with artifact management tools
- * @returns Configured LlmAgent with artifact capabilities
- */
-function createArtifactAgent(): LlmAgent {
-	return new LlmAgent({
-		name: "file_assistant",
-		model: env.LLM_MODEL,
-		description: "Assistant that manages files using artifacts",
-		instruction: `You help users save, load, and manage files using artifacts.
-
-Available functions:
-- saveArtifact(filename, content): Save content to a file
-- listArtifacts(): List all available artifacts
-- deleteArtifact(filename): Delete an artifact
-- load_artifacts: Load specific artifacts (via LoadArtifactsTool)
-
-When users ask to save files, use saveArtifact function.
-When users ask to see files, use listArtifacts or load_artifacts.
-Always confirm operations and provide helpful feedback about what was accomplished.`,
-		tools: [
-			new FunctionTool(saveArtifact, {
-				name: "saveArtifact",
-				description:
-					"Save text content to an artifact file with a specified filename",
-				isLongRunning: true,
-			}),
-			new FunctionTool(listArtifacts, {
-				name: "listArtifacts",
-				description: "List all available artifacts in the current session",
-				isLongRunning: true,
-			}),
-			new FunctionTool(deleteArtifact, {
-				name: "deleteArtifact",
-				description: "Delete an artifact file by filename",
-				isLongRunning: true,
-			}),
-			new LoadArtifactsTool(),
-		],
-	});
-}
-
-/**
  * Runs file operation demonstrations
- * @param runner The Runner instance for executing agent tasks
- * @param sessionId The current session identifier
+ * @param runner The AgentBuilder runner for executing agent tasks
  */
-async function demonstrateFileOperations(
-	runner: Runner,
-	sessionId: string,
-): Promise<void> {
+async function demonstrateFileOperations(runner: any): Promise<void> {
 	/**
 	 * Example 1: Save a greeting file
 	 * Demonstrates basic file saving capability
 	 */
 	console.log("\n💾 Saving greeting file...");
-	await runAgentTask(
-		runner,
-		sessionId,
-		'Save "Hello World!" as "greeting.txt"',
-	);
+	const greeting = await runner.ask('Save "Hello World!" as "greeting.txt"');
+	console.log("✅", greeting);
 
 	/**
 	 * Example 2: Save user preferences
 	 * Shows saving structured data as artifacts
 	 */
 	console.log("\n⚙️ Saving user preferences...");
-	await runAgentTask(
-		runner,
-		sessionId,
+	const preferences = await runner.ask(
 		'Save my preferences as "user_settings.json": {"theme": "dark", "language": "en"}',
 	);
+	console.log("✅", preferences);
 
 	/**
 	 * Example 3: List all files
 	 * Demonstrates artifact enumeration
 	 */
 	console.log("\n📋 Listing all files...");
-	await runAgentTask(runner, sessionId, "Show me all my files");
+	const listFiles = await runner.ask("Show me all my files");
+	console.log("✅", listFiles);
 
 	/**
 	 * Example 4: Load specific file
 	 * Shows how to retrieve saved artifacts
 	 */
 	console.log("\n📄 Loading greeting file...");
-	await runAgentTask(runner, sessionId, 'Load "greeting.txt"');
+	const loadFile = await runner.ask('Load "greeting.txt"');
+	console.log("✅", loadFile);
 
 	/**
 	 * Example 5: Update existing file
 	 * Demonstrates file modification capabilities
 	 */
 	console.log("\n🔄 Updating greeting file...");
-	await runAgentTask(
-		runner,
-		sessionId,
+	const updateFile = await runner.ask(
 		'Update "greeting.txt" with "Hello Updated World!"',
 	);
+	console.log("✅", updateFile);
 }
 
 /**
  * Demonstrates cross-session persistence
- * @param runner The Runner instance for executing agent tasks
- * @param sessionService Session service for creating new sessions
+ * @param runner The AgentBuilder runner for executing agent tasks
+ * @param artifactService The artifact service for creating new sessions
+ * @param sessionService The session service for creating new sessions
  */
 async function demonstrateCrossSessionPersistence(
-	runner: Runner,
+	_runner: any,
+	artifactService: InMemoryArtifactService,
 	sessionService: InMemorySessionService,
 ): Promise<void> {
 	console.log("\n🔄 Testing cross-session persistence...");
 
 	/**
-	 * Create a new session to test persistence
+	 * Create a new agent instance to test persistence
 	 * Artifacts should be accessible across different sessions
 	 */
-	const newSession = await sessionService.createSession(APP_NAME, USER_ID);
+	const { runner: newRunner } = await AgentBuilder.create("file_assistant_new")
+		.withModel(env.LLM_MODEL)
+		.withDescription("Assistant that manages files using artifacts")
+		.withInstruction(
+			dedent`
+				You help users save, load, and manage files using artifacts.
+				When users ask to load files, use the load_artifacts tool.
+				Always confirm operations and provide helpful feedback about what was found.`,
+		)
+		.withTools(new LoadArtifactsTool())
+		.withArtifactService(artifactService)
+		.withSession(sessionService, { userId: USER_ID, appName: APP_NAME })
+		.build();
 
-	await runAgentTask(
-		runner,
-		newSession.id,
+	const crossSession = await newRunner.ask(
 		'Load my user settings from "user_settings.json"',
 	);
-}
-
-/**
- * Executes a user message through the agent and displays the response
- * @param runner The Runner instance for executing agent tasks
- * @param sessionId The current session identifier
- * @param message The user message to send
- */
-async function runAgentTask(
-	runner: Runner,
-	sessionId: string,
-	message: string,
-): Promise<void> {
-	try {
-		const userMessage = {
-			parts: [{ text: message }],
-		};
-
-		for await (const event of runner.runAsync({
-			userId: USER_ID,
-			sessionId,
-			newMessage: userMessage,
-		})) {
-			if (event.author === "file_assistant" && event.content?.parts) {
-				const content = event.content.parts
-					.map((part) => part.text || "")
-					.join("");
-				if (content) {
-					console.log("✅", content);
-				}
-			}
-		}
-	} catch (error) {
-		console.error("❌ Error:", error);
-	}
+	console.log("✅", crossSession);
 }
 
 /**

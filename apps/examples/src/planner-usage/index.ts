@@ -1,18 +1,6 @@
 import { env } from "node:process";
-import {
-	BuiltInPlanner,
-	InMemorySessionService,
-	LlmAgent,
-	PlanReActPlanner,
-	Runner,
-} from "@iqai/adk";
+import { AgentBuilder, BuiltInPlanner, PlanReActPlanner } from "@iqai/adk";
 import { v4 as uuidv4 } from "uuid";
-
-/**
- * Application configuration constants
- */
-const APP_NAME = "planner-demo";
-const USER_ID = uuidv4();
 
 /**
  * Planner Usage Example
@@ -63,21 +51,15 @@ async function main() {
 async function demonstrateNoPlannerBaseline(): Promise<void> {
 	console.log("\n⚡ === No Planner Baseline ===");
 
-	const agent = new LlmAgent({
-		name: "SimpleAgent",
-		description: "An agent without any planner",
-		model: env.LLM_MODEL || "gemini-2.5-pro",
-		instruction: "You are a helpful assistant.",
-		// No planner specified
-	});
-
-	const response = await runAgentWithQuery(
-		agent,
-		"What's the capital of France?",
-	);
+	const response = await AgentBuilder.create("SimpleAgent")
+		.withModel(env.LLM_MODEL || "gemini-2.5-pro")
+		.withDescription("An agent without any planner")
+		.withInstruction("You are a helpful assistant.")
+		.ask("What's the capital of France?");
 
 	console.log("📝 No Planner Response (baseline):");
-	console.log(response);
+	console.log("👤 User: What's the capital of France?");
+	console.log("🤖 Agent:", response);
 }
 
 /**
@@ -86,26 +68,27 @@ async function demonstrateNoPlannerBaseline(): Promise<void> {
 async function demonstrateBuiltInPlanner(): Promise<void> {
 	console.log("\n🧠 === BuiltInPlanner Example ===");
 
-	const agent = new LlmAgent({
-		name: "ThinkingAgent",
-		description: "An agent that uses built-in thinking",
-		model: env.LLM_MODEL || "gemini-2.5-pro",
-		instruction:
+	const { runner } = await AgentBuilder.create("ThinkingAgent")
+		.withModel(env.LLM_MODEL || "gemini-2.5-pro")
+		.withDescription("An agent that uses built-in thinking")
+		.withInstruction(
 			"You are a helpful assistant that thinks through problems carefully.",
-		planner: new BuiltInPlanner({
-			thinkingConfig: {
-				includeThinking: true,
-			},
-		}),
-	});
+		)
+		.withPlanner(
+			new BuiltInPlanner({
+				thinkingConfig: {
+					includeThinking: true,
+				},
+			}),
+		)
+		.build();
 
-	const response = await runAgentWithQuery(
-		agent,
-		"What's 2 + 2? Please explain your reasoning.",
-	);
+	const query = "What's 2 + 2? Please explain your reasoning.";
+	const response = await runner.ask(query);
 
 	console.log("📝 BuiltInPlanner Response:");
-	console.log(response);
+	console.log(`👤 User: ${query}`);
+	console.log("🤖 Agent:", response);
 }
 
 /**
@@ -114,77 +97,22 @@ async function demonstrateBuiltInPlanner(): Promise<void> {
 async function demonstratePlanReActPlanner(): Promise<void> {
 	console.log("\n📋 === PlanReActPlanner Example ===");
 
-	const agent = new LlmAgent({
-		name: "PlanningAgent",
-		description: "An agent that uses structured planning",
-		model: env.LLM_MODEL || "gemini-2.5-pro",
-		instruction: "You are a helpful assistant that plans before acting.",
-		planner: new PlanReActPlanner(),
-	});
+	const { runner } = await AgentBuilder.create("PlanningAgent")
+		.withModel(env.LLM_MODEL || "gemini-2.5-pro")
+		.withDescription("An agent that uses structured planning")
+		.withInstruction("You are a helpful assistant that plans before acting.")
+		.withPlanner(new PlanReActPlanner())
 
-	const response = await runAgentWithQuery(
-		agent,
-		"I need to plan a birthday party for 20 people. Help me organize this.",
-	);
+		.build();
+
+	const query =
+		"I need to plan a birthday party for 20 people. Help me organize this.";
+	const response = await runner.ask(query);
 
 	console.log("📝 PlanReActPlanner Response:");
-	console.log(response);
+	console.log(`👤 User: ${query}`);
+	console.log("🤖 Agent:", response);
 	console.log("\n📊 Notice the structured planning tags in the response!");
-}
-
-/**
- * Runs an agent with a specific query and returns the response
- * @param agent The LlmAgent to execute
- * @param userMessage The message to send to the agent
- * @returns The agent's response as a string
- */
-async function runAgentWithQuery(
-	agent: LlmAgent,
-	userMessage: string,
-): Promise<string> {
-	console.log(`👤 User: ${userMessage}`);
-
-	try {
-		/**
-		 * Set up session and runner for agent execution
-		 * Each agent gets its own isolated session
-		 */
-		const sessionService = new InMemorySessionService();
-		const session = await sessionService.createSession(APP_NAME, USER_ID);
-
-		const runner = new Runner({
-			appName: APP_NAME,
-			agent,
-			sessionService,
-		});
-
-		/**
-		 * Execute the agent and collect the response
-		 * Process streaming events to build complete response
-		 */
-		let agentResponse = "";
-
-		for await (const event of runner.runAsync({
-			userId: USER_ID,
-			sessionId: session.id,
-			newMessage: {
-				parts: [{ text: userMessage }],
-			},
-		})) {
-			if (event.author === agent.name && event.content?.parts) {
-				const content = event.content.parts
-					.map((part) => part.text || "")
-					.join("");
-				if (content) {
-					agentResponse += content;
-				}
-			}
-		}
-
-		return agentResponse || "No response from agent";
-	} catch (error) {
-		return `❌ Error: ${error instanceof Error ? error.message : String(error)}`;
-	}
 }
 
 /**

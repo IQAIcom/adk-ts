@@ -1,0 +1,248 @@
+---
+title: Installation
+description: Install ADK TypeScript and set up your development environment
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Prerequisites
+
+<Callout type="info" title="System Requirements">
+- **Node.js**: v22.0 or higher
+- **Package Manager**: npm, yarn, or pnpm
+- **TypeScript**: v5.3 or higher (optional but recommended)
+</Callout>
+
+## Quick Start with CLI
+
+The fastest way to get started is using our CLI tool to create a new project:
+
+<Tabs items={['npm', 'yarn', 'pnpm']}>
+  <Tab value="npm">
+    ```bash
+    npx create-adk-project
+    ```
+  </Tab>
+
+  <Tab value="yarn">
+    ```bash
+    yarn create adk-project
+    ```
+  </Tab>
+
+  <Tab value="pnpm">
+    ```bash
+    pnpm create adk-project
+    ```
+  </Tab>
+</Tabs>
+
+This will:
+- Create a new project with the ADK Agent Starter template
+- Set up TypeScript configuration
+- Install all necessary dependencies
+- Provide example code to get you started
+
+<Callout type="info" title="What's Included">
+The CLI creates a complete project with:
+- Pre-configured TypeScript setup
+- Example agent implementations
+- Environment configuration template
+- Development scripts and tooling
+</Callout>
+
+## Manual Installation
+
+If you prefer to add ADK to an existing project or want more control over the setup:
+
+<Steps>
+
+### Install the Package
+
+<Tabs items={['npm', 'yarn', 'pnpm']}>
+  <Tab value="npm">
+    ```bash
+    npm install @iqai/adk
+    ```
+  </Tab>
+
+  <Tab value="yarn">
+    ```bash
+    yarn add @iqai/adk
+    ```
+  </Tab>
+
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @iqai/adk
+    ```
+  </Tab>
+</Tabs>
+
+### Set Up Environment Variables
+
+Create a `.env` file in your project root:
+
+```bash
+# Optional: specify your preferred LLM model
+LLM_MODEL=gemini-2.5-flash
+
+# Add any API keys if needed for specific tools
+# GOOGLE_API_KEY=your_google_api_key_here
+```
+
+### Verify Installation
+
+Create a simple test file to verify everything is working:
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+async function test() {
+  try {
+    const response = await AgentBuilder
+      .withModel("gemini-2.5-flash")
+      .ask("Hello! Can you confirm the installation is working?");
+
+    console.log("✅ Installation successful!");
+    console.log("Response:", response);
+  } catch (error) {
+    console.error("❌ Installation issue:", error);
+  }
+}
+
+test();
+```
+
+### Run the Test
+
+<Tabs items={['tsx', 'ts-node', 'compile']}>
+  <Tab value="tsx">
+    ```bash
+    npx tsx test-install.ts
+    ```
+  </Tab>
+
+  <Tab value="ts-node">
+    ```bash
+    npx ts-node test-install.ts
+    ```
+  </Tab>
+
+  <Tab value="compile">
+    ```bash
+    npx tsc test-install.ts
+    node test-install.js
+    ```
+  </Tab>
+</Tabs>
+
+</Steps>
+
+## Project Setup
+
+For a new TypeScript project, you can set up a complete environment:
+
+<Steps>
+
+### Initialize Project
+
+```bash
+mkdir my-adk-project
+cd my-adk-project
+npm init -y
+```
+
+### Install Dependencies
+
+```bash
+# Core dependencies
+npm install @iqai/adk
+
+# Development dependencies
+npm install -D typescript tsx @types/node
+
+# Optional utilities (used in examples)
+npm install dedent uuid dotenv
+npm install -D @types/uuid
+```
+
+### Configure TypeScript
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+### Create Project Structure
+
+```bash
+mkdir src
+touch src/index.ts
+touch .env
+```
+
+</Steps>
+
+## Dependencies Overview
+
+ADK TypeScript has minimal dependencies to keep your project lightweight:
+
+<Callout type="info" title="Core Dependencies">
+**Required**: The ADK package includes everything needed for basic agent functionality.
+
+**Optional**: Additional packages are only needed for specific features:
+- `uuid` - For session management
+- `dedent` - For clean template strings (used in examples)
+- `dotenv` - For environment variable management
+</Callout>
+
+## Troubleshooting
+
+### Common Installation Issues
+
+<Callout type="warn" title="Node.js Version">
+If you encounter installation errors, ensure you're using Node.js v22.0 or higher:
+```bash
+node --version
+```
+</Callout>
+
+<Callout type="warn" title="TypeScript Compatibility">
+For TypeScript projects, ensure you're using v5.3 or higher:
+```bash
+npx tsc --version
+```
+</Callout>
+
+### Getting Help
+
+If you encounter issues:
+
+1. **Check the examples**: Our [examples](https://github.com/IQAICOM/adk-ts/tree/main/apps/examples/src) directory contains working setups
+2. **Review error messages**: Most installation issues are dependency-related
+3. **Open an issue**: Report bugs or compatibility issues on GitHub
+
+## Next Steps
+
+Now that you have ADK TypeScript installed, you're ready to:
+
+- **New to ADK?** Use `npx create-adk-project` for a complete starter template
+- [Create your first agent](/docs/framework/get-started/quickstart) - Build a simple agent in minutes
+- <a href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples" target="_blank" rel="noopener noreferrer">Explore examples</a> - See real working code
+- [Learn about agents](/docs/framework/agents) - Understand the core concepts

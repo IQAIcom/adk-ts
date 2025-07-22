@@ -1,0 +1,188 @@
+---
+title: Tools
+description: Extend agent capabilities with tools for external interactions and actions
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Tools represent specific capabilities that extend AI agents beyond text generation and reasoning. They enable agents to interact with external systems, perform actions, and access real-time information.
+
+## What Are Tools?
+
+Tools are modular code components that execute distinct, predefined tasks. They bridge the gap between an agent's reasoning capabilities and the external world.
+
+### Key Characteristics
+
+- **Action-Oriented**: Perform specific tasks like API calls, database queries, or file operations
+- **Extends Capabilities**: Access real-time information and affect external systems
+- **Predefined Logic**: Execute developer-defined functions without independent reasoning
+- **Dynamic Usage**: Agents decide which tools to use and when based on context
+
+<Callout type="info" title="Agent vs Tool Responsibilities">
+The LLM reasons about which tool to use, when, and with what inputs. The tool itself executes its designated function without independent reasoning.
+</Callout>
+
+## How Agents Use Tools
+
+Agents leverage tools through a dynamic process:
+
+1. **Reasoning**: LLM analyzes instructions, context, and user requests
+2. **Selection**: Chooses appropriate tools based on available options and descriptions
+3. **Invocation**: Generates required arguments and executes the tool
+4. **Observation**: Receives and processes the tool's output
+5. **Integration**: Incorporates results into ongoing reasoning and response generation
+
+## Tool Types
+
+ADK TypeScript supports several types of tools for different use cases:
+
+<Cards>
+  <Card
+    title="🔧 Function Tools"
+    description="Custom tools created for your specific application needs"
+    href="/docs/framework/tools/function-tools"
+  />
+
+  <Card
+    title="⚡ Built-in Tools"
+    description="Ready-to-use tools for search, file operations, and user interaction"
+    href="/docs/framework/tools/built-in-tools"
+  />
+
+  <Card
+    title="🔌 MCP Tools"
+    description="Model Context Protocol tools for standardized integrations"
+    href="/docs/framework/tools/mcp-tools"
+  />
+
+  <Card
+    title="🌐 Third-Party Tools"
+    description="Manual integration patterns for external libraries and frameworks"
+    href="/docs/framework/tools/third-party-tools"
+  />
+
+  <Card
+    title="📊 OpenAPI Tools"
+    description="Manual tool creation for REST API integration using OpenAPI specs"
+    href="/docs/framework/tools/openapi-tools"
+  />
+
+  <Card
+    title="☁️ Google Cloud Tools"
+    description="Authentication patterns and integration for Google Cloud services"
+    href="/docs/framework/tools/google-cloud-tools"
+  />
+</Cards>
+
+## Tool Context & Advanced Features
+
+### Context Access
+
+Tools can access additional contextual information through `ToolContext`:
+
+- **Session State**: Read and modify persistent session data
+- **Event Actions**: Control agent flow and behavior after tool execution
+- **Authentication**: Handle API credentials and authentication flows
+- **Artifacts**: Manage files and documents uploaded or generated
+- **Memory**: Search and access long-term user memory
+
+### State Management
+
+Tools can interact with session state to:
+
+- Share data between different tools and agents
+- Maintain information across interactions
+- Use state prefixes for different scopes (app, user, session, temporary)
+- Track state changes automatically
+
+### Flow Control
+
+Tools can influence agent behavior through event actions:
+
+- **Skip Summarization**: Bypass LLM processing when tool output is ready
+- **Transfer Control**: Hand off execution to specialized agents
+- **Escalate**: Pass control to parent agents in hierarchies
+- **Loop Control**: Terminate loops in workflow agents
+
+## Authentication & Security
+
+<Cards>
+  <Card
+    title="🔐 Authentication"
+    description="Secure access to external APIs and services"
+    href="/docs/framework/tools/authentication"
+  />
+</Cards>
+
+Tools support various authentication mechanisms:
+
+- **OAuth flows** for secure API access
+- **API key management** for service authentication
+- **Credential storage** and retrieval
+- **Multi-step auth** flows with user interaction
+
+## Best Practices
+
+<Callout type="warn" title="Tool Design Guidelines">
+- Use descriptive, action-oriented function names
+- Provide clear type hints and parameter descriptions
+- Return structured dictionaries with status indicators
+- Write comprehensive docstrings for LLM understanding
+- Handle errors gracefully with meaningful messages
+</Callout>
+
+### Function Design
+
+- **Naming**: Use verb-noun patterns (e.g., `getWeather`, `searchDocuments`)
+- **Parameters**: Clear names with proper TypeScript types
+- **Returns**: Structured objects with status and error handling
+- **Documentation**: Detailed descriptions for LLM decision making
+
+### Error Handling
+
+- **Status Indicators**: Include clear success/error status in responses
+- **Error Messages**: Provide actionable error information
+- **Graceful Degradation**: Handle failures without breaking agent flow
+- **Retry Logic**: Implement appropriate retry mechanisms
+
+### Performance Considerations
+
+- **Async Operations**: Support for long-running operations
+- **Caching**: Cache frequently accessed data
+- **Rate Limiting**: Respect external service limits
+- **Timeout Handling**: Implement appropriate timeouts
+
+## Tool Integration Patterns
+
+### Sequential Tool Usage
+
+Tools can be chained together where one tool's output becomes another's input.
+
+### Conditional Tool Selection
+
+Agents can choose different tools based on context and previous results.
+
+### Parallel Tool Execution
+
+Multiple tools can run simultaneously for independent tasks.
+
+### Tool Composition
+
+Complex workflows can combine multiple tool types for sophisticated operations.
+
+## Getting Started
+
+New to tools? Start with these foundational concepts:
+
+1. **[Function Tools](/docs/framework/tools/function-tools)** - Learn to create custom tools
+2. **[Built-in Tools](/docs/framework/tools/built-in-tools)** - Explore ready-to-use capabilities
+3. **[Authentication](/docs/framework/tools/authentication)** - Secure your tool integrations
+
+## Advanced Topics
+
+Once you're comfortable with the basics:
+
+- **[OpenAPI Tools](/docs/framework/tools/openapi-tools)** - Generate tools from API specifications
+- **[Google Cloud Tools](/docs/framework/tools/google-cloud-tools)** - Enterprise cloud integrations
+- **[MCP Tools](/docs/framework/tools/mcp-tools)** - Standardized tool protocols

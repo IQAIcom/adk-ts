@@ -1,0 +1,101 @@
+---
+title: Sequential Agents
+description: Execute agents one after another in a specific order
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+Sequential agents execute a list of sub-agents one after another in a predetermined order. Each agent runs after the previous one completes, creating a predictable pipeline workflow.
+
+## How Sequential Agents Work
+
+1. **Ordered Execution**: Agents run in the exact order you specify
+2. **Sequential Processing**: Each agent waits for the previous one to complete
+3. **Context Sharing**: Results flow through the conversation context
+4. **State Passing**: Use session state to pass structured data between agents
+
+## When to Use Sequential Agents
+
+Sequential agents are perfect for:
+
+- **Multi-step pipelines** - Research → Analysis → Summary
+- **Data processing workflows** - Extract → Transform → Load
+- **Quality assurance** - Generate → Review → Approve
+- **Progressive refinement** - Draft → Edit → Finalize
+
+<Callout type="info" title="Order Matters">
+Use sequential agents when the order of execution is important and each step depends on the previous ones.
+</Callout>
+
+## Configuration
+
+### Basic Setup
+- **agents**: List of agents to execute in order
+- **name**: Unique identifier for the workflow
+- **description**: Summary for other agents to understand the workflow
+
+### Advanced Options
+- **max_iterations**: Limit the number of execution cycles
+- **global_instruction**: Instructions that apply to all sub-agents
+- **disallow_transfer**: Control agent delegation behavior
+
+## Common Patterns
+
+### Research Pipeline
+Execute research, then analysis, then summarization in sequence.
+
+### Content Creation Workflow
+Generate content, review for accuracy, then format for publication.
+
+### Data Processing Pipeline
+Extract data, transform it, then load it into the target system.
+
+### Quality Assurance Workflow
+Create initial content, perform quality checks, then make final adjustments.
+
+## Best Practices
+
+<Callout type="warn" title="Design Considerations">
+- Keep the number of sequential steps reasonable (3-7 agents typically)
+- Ensure each agent has a clear, specific purpose
+- Use descriptive names and instructions for better coordination
+- Consider error handling between steps
+</Callout>
+
+### Agent Design
+- Make each agent's purpose clear and specific
+- Design agents to work well with the outputs of previous agents
+- Use consistent naming conventions across the workflow
+
+### Data Flow
+- Plan how data will flow between agents
+- Use session state for structured data passing
+- Consider what context each agent needs
+
+### Error Handling
+- Design agents to handle unexpected inputs gracefully
+- Consider retry logic for critical steps
+- Plan for partial failure scenarios
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="⚡ Parallel Agents"
+    description="Run agents simultaneously when order doesn't matter"
+    href="/docs/framework/agents/workflow-agents/parallel-agents"
+  />
+
+  <Card
+    title="🔄 Loop Agents"
+    description="Repeat execution until conditions are met"
+    href="/docs/framework/agents/workflow-agents/loop-agents"
+  />
+
+  <Card
+    title="💾 Sessions"
+    description="Manage state and context between agents"
+    href="/docs/framework/sessions"
+  />
+</Cards>

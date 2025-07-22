@@ -1,10 +1,8 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import { tracer } from "../telemetry";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import type { LlmRequest } from "./llm-request";
 import type { LlmResponse } from "./llm-response";
-
-const logger = new Logger({ name: "BaseLlm" });
 
 /**
  * The BaseLlm class.
@@ -14,6 +12,8 @@ export abstract class BaseLlm {
 	 * The name of the LLM, e.g. gemini-1.5-flash or gemini-1.5-flash-001.
 	 */
 	model: string;
+
+	protected logger = new Logger({ name: "BaseLlm" });
 
 	/**
 	 * Constructor for BaseLlm
@@ -78,13 +78,6 @@ export abstract class BaseLlm {
 						"adk.streaming": stream || false,
 					});
 
-					logger.debug("ADK LLM Request:", {
-						model: this.model,
-						contentCount: llmRequest.contents?.length || 0,
-						streaming: stream || false,
-						config: llmRequest.config,
-					});
-
 					let responseCount = 0;
 					let totalTokens = 0;
 
@@ -93,20 +86,6 @@ export abstract class BaseLlm {
 						stream,
 					)) {
 						responseCount++;
-
-						// Log each response chunk
-						logger.debug(`ADK LLM Response ${responseCount}:`, {
-							model: this.model,
-							parts: response.parts?.map((part) => ({
-								text:
-									typeof part.text === "string"
-										? part.text.substring(0, 200) +
-											(part.text.length > 200 ? "..." : "")
-										: "[non_text_content]",
-							})),
-							finishReason: response.finish_reason,
-							usage: response.usage,
-						});
 
 						// Update span attributes with response info
 						if (response.usage) {
@@ -132,7 +111,7 @@ export abstract class BaseLlm {
 				} catch (error) {
 					span.recordException(error as Error);
 					span.setStatus({ code: 2, message: (error as Error).message });
-					console.error("❌ ADK LLM Error:", {
+					this.logger.error("❌ ADK LLM Error:", {
 						model: this.model,
 						error: (error as Error).message,
 					});

@@ -4,10 +4,69 @@ description: Interact with the IQ AI Agent Tokenization Platform
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-**Package**: [`@iqai/mcp-atp`](https://www.npmjs.com/package/@iqai/mcp-atp)
-**Purpose**: Interact with the IQ AI Agent Tokenization Platform
-**Example**: 🚀 [MCP-ATP Agent Example](https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/mcp-atp-agent)
+- **Package**: [`@iqai/mcp-atp`](https://www.npmjs.com/package/@iqai/mcp-atp)
+- **Purpose**: Interact with the IQ AI Agent Tokenization Platform
+- **Example**: 🚀 <a href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/mcp-atp-agent" target="_blank" rel="noopener noreferrer">MCP-ATP Agent Example</a>
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpAtp} from "@iqai/adk";
+
+    const toolset = McpAtp({
+      env: {
+        ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+        ATP_API_KEY: process.env.ATP_API_KEY,
+      },
+    })
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "ATP MCP Client",
+      description: "Client for the @iqai/mcp-atp server",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-atp"],
+        env: {
+          ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+          ATP_API_KEY: process.env.ATP_API_KEY,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "atp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-atp"],
+          "env": {
+            "ATP_WALLET_PRIVATE_KEY": "your_wallet_private_key_here",
+            "ATP_API_KEY": "your_iq_atp_api_key_here"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
 
 ## Features
 
@@ -63,23 +122,6 @@ Add a new log entry for a specific AI agent:
 
 - `ATP_WALLET_PRIVATE_KEY`: Required for position and trading operations
 - `ATP_API_KEY`: Required for certain backend API calls
-
-## Configuration Example
-
-```json
-{
-  "mcpServers": {
-    "atp-server": {
-      "command": "pnpm",
-      "args": ["dlx", "@iqai/mcp-atp"],
-      "env": {
-        "ATP_WALLET_PRIVATE_KEY": "your_wallet_private_key_here",
-        "ATP_API_KEY": "your_iq_atp_api_key_here"
-      }
-    }
-  }
-}
-```
 
 ## Usage Examples
 

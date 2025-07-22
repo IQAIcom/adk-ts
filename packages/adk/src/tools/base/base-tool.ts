@@ -1,8 +1,6 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import type { ToolContext } from "../tool-context";
-
-const logger = new Logger({ name: "BaseTool" });
 
 /**
  * Configuration for tool initialization
@@ -91,6 +89,8 @@ export abstract class BaseTool {
 	 * Maximum delay for retry in ms
 	 */
 	maxRetryDelay = 10000;
+
+	protected logger = new Logger({ name: "BaseTool" });
 
 	/**
 	 * Constructor for BaseTool
@@ -261,7 +261,7 @@ export abstract class BaseTool {
 		) {
 			try {
 				if (attempts > 0) {
-					logger.debug(
+					this.logger.debug(
 						`Retrying tool ${this.name} (attempt ${attempts} of ${this.maxRetryAttempts})...`,
 					);
 

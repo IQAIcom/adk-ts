@@ -1,4 +1,4 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import { Event } from "../events/event";
 import { BaseAgent } from "./base-agent";
 import type { InvocationContext } from "./invocation-context";
@@ -86,7 +86,7 @@ export class LangGraphAgent extends BaseAgent {
 	 */
 	private results: Array<{ node: string; events: Event[] }> = [];
 
-	private logger = new Logger({ name: "LangGraphAgent" });
+	protected logger = new Logger({ name: "LangGraphAgent" });
 
 	/**
 	 * Constructor for LangGraphAgent

@@ -1,4 +1,4 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -7,7 +7,7 @@ import type { ToolContext } from "../tool-context";
  * Simple GoogleSearch tool implementation
  */
 export class GoogleSearch extends BaseTool {
-	private logger = new Logger({ name: "GoogleSearch" });
+	protected logger = new Logger({ name: "GoogleSearch" });
 
 	/**
 	 * Constructor for GoogleSearch

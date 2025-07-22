@@ -15,7 +15,7 @@ export function CTA() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link
-            href="/docs/get-started/installation"
+            href="/docs/framework/get-started/installation"
             className="inline-flex items-center justify-center rounded-lg bg-primary px-8 py-3 text-lg font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 shadow-lg"
           >
             Start Building

@@ -17,8 +17,8 @@
 		"prepare": "husky"
 	},
 	"devDependencies": {
-		"@changesets/cli": "^2.27.1",
 		"@biomejs/biome": "1.9.4",
+		"@changesets/cli": "^2.27.1",
 		"husky": "9.1.7",
 		"lint-staged": "^15.4.3",
 		"turbo": "^2.3.3"
@@ -28,8 +28,9 @@
 		"node": ">=22.0"
 	},
 	"lint-staged": {
-		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-			"biome check --write --organize-imports-enabled=false --no-errors-on-unmatched"
+		"*.{js,ts,jsx,tsx,cjs,mjs,cts,mts,json,jsonc}": [
+			"biome lint --write --no-errors-on-unmatched",
+			"biome format --write"
 		]
 	}
 }

@@ -1,5 +1,6 @@
 {
   "title": "MCP Servers",
   "icon": "Server",
-  "pages": ["index", "abi", "atp", "bamm", "fraxlend", "iqwiki", "near-agent", "near-intent-swaps", "odos", "telegram"]
+  "root": true,
+  "pages": ["index", "abi", "atp", "bamm", "discord", "fraxlend", "iqwiki", "near-agent", "near-intents", "odos", "telegram"]
 }

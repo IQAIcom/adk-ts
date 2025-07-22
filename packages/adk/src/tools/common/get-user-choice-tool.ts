@@ -1,4 +1,4 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -7,7 +7,7 @@ import type { ToolContext } from "../tool-context";
  * Tool that allows an agent to get a choice from the user
  */
 export class GetUserChoiceTool extends BaseTool {
-	private logger = new Logger({ name: "GetUserChoiceTool" });
+	protected logger = new Logger({ name: "GetUserChoiceTool" });
 
 	/**
 	 * Constructor for GetUserChoiceTool

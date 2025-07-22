@@ -1,12 +1,10 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import dedent from "dedent";
 import OpenAI from "openai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
-
-const logger = new Logger({ name: "OpenAiLlm" });
 
 const NEW_LINE = "\n";
 
@@ -42,11 +40,6 @@ export class OpenAiLlm extends BaseLlm {
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		// Preprocess request
 		this.preprocessRequest(llmRequest);
-
-		logger.debug(
-			`Sending OpenAI request, model: ${llmRequest.model || this.model}, stream: ${stream}`,
-		);
-		logger.debug(this.buildRequestLog(llmRequest));
 
 		const model = llmRequest.model || this.model;
 		const messages = (llmRequest.contents || []).map((content) =>
@@ -102,16 +95,12 @@ export class OpenAiLlm extends BaseLlm {
 				if (!choice) continue;
 
 				const delta = choice.delta;
-				logger.debug("Delta content:", delta.content);
 
 				// Create LlmResponse for this chunk
 				const llmResponse = this.createChunkResponse(delta, chunk.usage);
 				if (chunk.usage) {
 					usageMetadata = chunk.usage;
 				}
-
-				// Log each chunk response similar to Google LLM
-				logger.debug(this.buildResponseLog(llmResponse));
 
 				// Handle content accumulation similar to Google LLM
 				if (llmResponse.content?.parts?.[0]?.text) {
@@ -220,7 +209,6 @@ export class OpenAiLlm extends BaseLlm {
 						finishReason: this.toAdkFinishReason(choice.finish_reason),
 					});
 
-					logger.debug(this.buildResponseLog(finalResponse));
 					yield finalResponse;
 				} else {
 					// Yield partial response if we have content
@@ -262,7 +250,9 @@ export class OpenAiLlm extends BaseLlm {
 					choice,
 					response.usage,
 				);
-				logger.debug(this.buildResponseLog(llmResponse));
+				this.logger.debug(
+					`OpenAI response: ${response.usage?.completion_tokens || 0} tokens`,
+				);
 				yield llmResponse;
 			}
 		}
@@ -335,10 +325,6 @@ export class OpenAiLlm extends BaseLlm {
 		usage?: OpenAI.CompletionUsage,
 	): LlmResponse {
 		const message = choice.message;
-		logger.debug(
-			"OpenAI response:",
-			JSON.stringify({ message, usage }, null, 2),
-		);
 
 		const parts: any[] = [];
 
@@ -581,90 +567,6 @@ export class OpenAiLlm extends BaseLlm {
 		// but this method is here for consistency with the flow control pattern
 		const parts = response.content?.parts;
 		return parts?.some((part: any) => part.inlineData) || false;
-	}
-
-	/**
-	 * Build request log string for debugging (similar to Google LLM)
-	 */
-	private buildRequestLog(req: LlmRequest): string {
-		const functionDecls =
-			(req.config?.tools?.[0] as any)?.functionDeclarations || [];
-
-		const functionLogs =
-			functionDecls.length > 0
-				? functionDecls.map(
-						(funcDecl: any) =>
-							`${funcDecl.name}: ${JSON.stringify(funcDecl.parameters?.properties || {})}`,
-					)
-				: [];
-
-		const contentsLogs =
-			req.contents?.map((content) =>
-				JSON.stringify(content, (key, value) => {
-					// Exclude large data fields from logs
-					if (
-						key === "data" &&
-						typeof value === "string" &&
-						value.length > 100
-					) {
-						return "[EXCLUDED]";
-					}
-					return value;
-				}),
-			) || [];
-
-		return dedent`
-		LLM Request:
-		-----------------------------------------------------------
-		System Instruction:
-		${req.getSystemInstructionText() || ""}
-		-----------------------------------------------------------
-		Contents:
-		${contentsLogs.join(NEW_LINE)}
-		-----------------------------------------------------------
-		Functions:
-		${functionLogs.join(NEW_LINE)}
-		-----------------------------------------------------------`;
-	}
-
-	/**
-	 * Build response log string for debugging (similar to Google LLM)
-	 */
-	private buildResponseLog(response: LlmResponse): string {
-		const functionCallsText: string[] = [];
-
-		if (response.content?.parts) {
-			for (const part of response.content.parts) {
-				if ((part as any).functionCall) {
-					const funcCall = (part as any).functionCall;
-					functionCallsText.push(
-						`name: ${funcCall.name}, args: ${JSON.stringify(funcCall.args)}`,
-					);
-				}
-			}
-		}
-
-		const text =
-			response.content?.parts
-				?.filter((part: any) => part.text)
-				?.map((part: any) => part.text)
-				?.join("") || "";
-
-		return dedent`
-		LLM Response:
-		-----------------------------------------------------------
-		Text:
-		${text}
-		-----------------------------------------------------------
-		Function calls:
-		${functionCallsText.join(NEW_LINE)}
-		-----------------------------------------------------------
-		Usage:
-		${JSON.stringify(response.usageMetadata, null, 2)}
-		-----------------------------------------------------------
-		Finish Reason:
-		${response.finishReason}
-		-----------------------------------------------------------`;
 	}
 
 	/**

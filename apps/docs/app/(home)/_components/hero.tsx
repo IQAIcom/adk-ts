@@ -29,7 +29,7 @@ export function Hero() {
             <svg className="w-3.5 h-3.5 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            Google ADK for TypeScript
+            ADK-TS: Build AI Agents in TypeScript
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 animate-fade-in-up animation-delay-200">
@@ -49,7 +49,7 @@ export function Hero() {
           {/* Action buttons with enhanced styling */}
           <div className="flex flex-row gap-3 justify-center mb-12 animate-fade-in-up animation-delay-600">
             <Link
-              href="/docs"
+              href="/docs/framework"
               className="group inline-flex items-center justify-center rounded-lg bg-primary px-4 sm:px-6 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 shadow-lg hover:shadow-primary/25"
             >
               Get Started
@@ -59,7 +59,7 @@ export function Hero() {
             </Link>
 
             <Link
-              href="/docs/get-started/quickstart"
+              href="/docs/framework/get-started/quickstart"
               className="group inline-flex items-center justify-center rounded-lg border border-border bg-background/80 backdrop-blur-sm px-4 sm:px-6 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-accent hover:text-accent-foreground hover:scale-105 hover:shadow-lg"
             >
               Quick Start

@@ -43,5 +43,21 @@
 		"formatter": {
 			"quoteStyle": "double"
 		}
-	}
+	},
+	"overrides": [
+		{
+			"include": ["**/*.test.ts", "**/*.spec.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noPrototypeBuiltins": "off",
+						"noExplicitAny": "off"
+					},
+					"complexity": {
+						"useLiteralKeys": "off"
+					}
+				}
+			}
+		}
+	]
 }

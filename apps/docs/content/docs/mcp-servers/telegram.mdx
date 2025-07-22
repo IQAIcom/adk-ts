@@ -4,9 +4,67 @@ description: An MCP server for interacting with Telegram bots and channels
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-**Package**: [`@iqai/mcp-telegram`](https://www.npmjs.com/package/@iqai/mcp-telegram)
-**Purpose**: Interacting with Telegram bots and channels using the Telegraf library.
+- **Package**: [`@iqai/mcp-telegram`](https://www.npmjs.com/package/@iqai/mcp-telegram)
+- **Purpose**: Interacting with Telegram bots and channels using the Telegraf library.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpTelegram} from "@iqai/adk";
+
+    const toolset = McpTelegram({
+      env: {
+        TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Telegram MCP Client",
+      description: "Client for Telegram bot operations",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-telegram"],
+        env: {
+          TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "telegram-mcp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-telegram"],
+          "env": {
+            "TELEGRAM_BOT_TOKEN": "your_bot_token_here"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
 
 ## Features
 
@@ -42,25 +100,21 @@ Get channel administrators (limited by Telegram API).
 
 - Parameters: `channelId` (string), `limit` (number, optional)
 
+## Sampling
+
+Sampling enables an mcp server to request llm sampling (generations or completions) from the client.
+The mcp-telegram server listens to new messages and uses sampling to get llm responses and responds to them, basically in a nutshell allowing for bi-directional communication.
+
+This is useful when you want agentic capabilities ie building a telegram bot that can respond to messages and also send messages to other users.
+
+### Resources
+
+- An example telegram bot written with adk-ts that makes use of sampling: <a href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/mcp-telegram-agent/index.ts" target="_blank" rel="noopener noreferrer">Telegram bot example</a>
+- For more info on sampling please refer to: [MCP Sampling](https://modelcontextprotocol.io/specification/2025-06-18/client/sampling)
+
 ## Environment Variables
 
 - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token (required)
-
-## Configuration Example
-
-```json
-{
-  "mcpServers": {
-    "telegram-mcp-server": {
-      "command": "pnpm",
-      "args": ["dlx", "@iqai/mcp-telegram"],
-      "env": {
-        "TELEGRAM_BOT_TOKEN": "your_bot_token_here"
-      }
-    }
-  }
-}
-```
 
 ## Usage Examples
 

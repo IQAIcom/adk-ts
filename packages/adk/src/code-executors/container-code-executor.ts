@@ -1,7 +1,8 @@
-import Docker from "dockerode";
-import * as path from "node:path";
 import * as fs from "node:fs";
-import { Logger } from "@adk/helpers/logger";
+import * as path from "node:path";
+import { Logger } from "@adk/logger";
+import Docker from "dockerode";
+import type { InvocationContext } from "../agents/invocation-context";
 import {
 	BaseCodeExecutor,
 	type BaseCodeExecutorConfig,
@@ -10,9 +11,7 @@ import type {
 	CodeExecutionInput,
 	CodeExecutionResult,
 } from "./code-execution-utils";
-import type { InvocationContext } from "../agents/invocation-context";
 
-const logger = new Logger({ name: "ContainerCodeExecutor" });
 const DEFAULT_IMAGE_TAG = "adk-code-executor:latest";
 
 /**
@@ -58,6 +57,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 	private client?: Docker;
 	private container?: Docker.Container;
 	private isInitialized = false;
+	protected logger = new Logger({ name: "ContainerCodeExecutor" });
 
 	constructor(config: ContainerCodeExecutorConfig = {}) {
 		// Validate configuration
@@ -112,7 +112,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			throw new Error("Container is not initialized");
 		}
 
-		logger.debug("Executing code in container", {
+		this.logger.debug("Executing code in container", {
 			containerId: this.container.id,
 			codeLength: codeExecutionInput.code.length,
 		});
@@ -133,7 +133,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 				this.createTimeoutPromise(),
 			]);
 
-			logger.debug("Code execution completed", {
+			this.logger.debug("Code execution completed", {
 				exitCode: result.exitCode,
 				stdoutLength: result.stdout.length,
 				stderrLength: result.stderr.length,
@@ -145,7 +145,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 				outputFiles: [], // Container executor doesn't support output files yet
 			};
 		} catch (error) {
-			logger.error("Error executing code in container", error);
+			this.logger.error("Error executing code in container", error);
 
 			if (error instanceof Error && error.message.includes("timeout")) {
 				return {
@@ -250,7 +250,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			throw new Error("Docker client is not initialized.");
 		}
 
-		logger.info("Building Docker image...", {
+		this.logger.info("Building Docker image...", {
 			path: this.dockerPath,
 			tag: this.image,
 		});
@@ -280,15 +280,15 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 					},
 					(event: any) => {
 						if (event.stream) {
-							logger.debug("Build output:", event.stream.trim());
+							this.logger.debug("Build output:", event.stream.trim());
 						}
 					},
 				);
 			});
 
-			logger.info("Docker image built successfully", { tag: this.image });
+			this.logger.info("Docker image built successfully", { tag: this.image });
 		} catch (error) {
-			logger.error("Failed to build Docker image", error);
+			this.logger.error("Failed to build Docker image", error);
 			throw error;
 		}
 	}
@@ -326,9 +326,9 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 				stream.on("error", reject);
 			});
 
-			logger.debug("Python 3 installation verified");
+			this.logger.debug("Python 3 installation verified");
 		} catch (error) {
-			logger.error("Python verification failed", error);
+			this.logger.error("Python verification failed", error);
 			throw new Error("python3 is not installed in the container.");
 		}
 	}
@@ -346,7 +346,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			await this.buildDockerImage();
 		}
 
-		logger.info("Starting container for ContainerCodeExecutor...", {
+		this.logger.info("Starting container for ContainerCodeExecutor...", {
 			image: this.image,
 		});
 
@@ -363,14 +363,14 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 
 			await this.container.start();
 
-			logger.info("Container started successfully", {
+			this.logger.info("Container started successfully", {
 				containerId: this.container.id,
 			});
 
 			// Verify Python installation
 			await this.verifyPythonInstallation();
 		} catch (error) {
-			logger.error("Failed to initialize container", error);
+			this.logger.error("Failed to initialize container", error);
 			await this.cleanupContainer(); // Clean up on failure
 			throw error;
 		}
@@ -383,7 +383,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 		const cleanup = () => {
 			// Use synchronous cleanup for process exit
 			this.cleanupContainer().catch((error) => {
-				logger.error("Error during cleanup", error);
+				this.logger.error("Error during cleanup", error);
 			});
 		};
 
@@ -403,7 +403,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 		}
 
 		try {
-			logger.info("Cleaning up container...", {
+			this.logger.info("Cleaning up container...", {
 				containerId: this.container.id,
 			});
 
@@ -413,11 +413,11 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			// Remove the container
 			await this.container.remove();
 
-			logger.info("Container stopped and removed successfully", {
+			this.logger.info("Container stopped and removed successfully", {
 				containerId: this.container.id,
 			});
 		} catch (error) {
-			logger.error("Error during container cleanup", error);
+			this.logger.error("Error during container cleanup", error);
 		} finally {
 			this.container = undefined;
 			this.isInitialized = false;

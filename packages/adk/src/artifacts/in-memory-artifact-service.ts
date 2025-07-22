@@ -1,8 +1,5 @@
 import type { Part } from "@google/genai";
 import type { BaseArtifactService } from "./base-artifact-service";
-import { Logger } from "@adk/helpers/logger";
-
-const logger = new Logger({ name: "InMemoryArtifactService" });
 
 export class InMemoryArtifactService implements BaseArtifactService {
 	private readonly artifacts: Map<string, Part[]> = new Map();

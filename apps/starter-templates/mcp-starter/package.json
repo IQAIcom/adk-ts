@@ -1,0 +1,32 @@
+{
+	"name": "mcp-server-template",
+	"version": "0.0.1",
+	"description": "A starter template for building MCP servers with FastMCP and TypeScript.",
+	"main": "dist/index.js",
+	"type": "module",
+	"private": true,
+	"bin": {
+		"mcp-weather-server": "dist/index.js"
+	},
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsc && shx chmod +x dist/index.js",
+		"watch": "tsc --watch",
+		"start": "node dist/index.js",
+		"publish-packages": "pnpm run build && changeset publish"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"dedent": "^1.6.0",
+		"fastmcp": "^1.27.7",
+		"zod": "^3.25.7"
+	},
+	"devDependencies": {
+		"@changesets/cli": "^2.29.4",
+		"@types/node": "^22.15.19",
+		"shx": "^0.3.4",
+		"typescript": "^5.8.3"
+	}
+}

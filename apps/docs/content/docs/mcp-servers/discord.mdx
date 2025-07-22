@@ -1,0 +1,281 @@
+---
+title: MCP Discord
+description: An MCP server for interacting with Discord bots and channels
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+- **Package**: [`@iqai/mcp-discord`](https://www.npmjs.com/package/@iqai/mcp-discord)
+- **Purpose**: Interacting with Discord bots and channels using the Discord.js library.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpDiscord} from "@iqai/adk";
+
+    const toolset = McpDiscord({
+      env: {
+        DISCORD_TOKEN: process.env.DISCORD_TOKEN,
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Discord MCP Client",
+      description: "Client for Discord bot operations",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-discord"],
+        env: {
+          DISCORD_TOKEN: process.env.DISCORD_TOKEN,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "discord-mcp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-discord"],
+          "env": {
+            "DISCORD_TOKEN": "your_bot_token_here"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Features
+
+- Provides tools to send messages, get server information, manage channels, create forum posts, handle reactions, and manage webhooks.
+- Uses the Discord.js library, a powerful Discord bot framework for Node.js.
+- Supports both channel IDs and channel names for flexible interaction.
+
+## Available Tools
+
+The server exposes the following tools that MCP clients can utilize:
+
+### `discord_send`
+Send a message to a Discord channel.
+
+- Parameters: `channelId` (string), `message` (string), `channelName` (string, optional)
+
+### `discord_get_server_info`
+Get information about a Discord server.
+
+- Parameters: `serverId` (string)
+
+### `discord_create_text_channel`
+Create a text channel in a Discord server.
+
+- Parameters: `serverId` (string), `channelName` (string), `categoryId` (string, optional)
+
+### `discord_delete_channel`
+Delete a channel from a Discord server.
+
+- Parameters: `channelId` (string)
+
+### `discord_read_messages`
+Read messages from a Discord channel.
+
+- Parameters: `channelId` (string), `limit` (number, optional)
+
+### `discord_delete_message`
+Delete a specific message from a Discord channel.
+
+- Parameters: `channelId` (string), `messageId` (string)
+
+### `discord_add_reaction`
+Add a reaction to a Discord message.
+
+- Parameters: `channelId` (string), `messageId` (string), `emoji` (string)
+
+### `discord_remove_reaction`
+Remove a reaction from a Discord message.
+
+- Parameters: `channelId` (string), `messageId` (string), `emoji` (string)
+
+### `discord_get_forum_channels`
+Get a list of forum channels in a Discord server.
+
+- Parameters: `serverId` (string)
+
+### `discord_create_forum_post`
+Create a forum post in a Discord forum channel.
+
+- Parameters: `channelId` (string), `title` (string), `message` (string)
+
+### `discord_reply_to_forum`
+Reply to a forum post in a Discord forum channel.
+
+- Parameters: `channelId` (string), `message` (string)
+
+### `discord_delete_forum_post`
+Delete a forum post from a Discord forum channel.
+
+- Parameters: `channelId` (string), `postId` (string)
+
+### `discord_create_webhook`
+Create a new webhook for a Discord channel.
+
+- Parameters: `channelId` (string), `webhookName` (string), `avatarUrl` (string, optional)
+
+### `discord_send_webhook_message`
+Send a message to a Discord channel using a webhook.
+
+- Parameters: `webhookUrl` (string), `message` (string), `username` (string, optional), `avatarUrl` (string, optional)
+
+### `discord_edit_webhook`
+Edit an existing webhook for a Discord channel.
+
+- Parameters: `webhookId` (string), `webhookName` (string), `avatarUrl` (string, optional)
+
+### `discord_delete_webhook`
+Delete an existing webhook for a Discord channel.
+
+- Parameters: `webhookId` (string)
+
+## Sampling
+
+Sampling enables an mcp server to request llm sampling (generations or completions) from the client.
+The mcp-discord server listens to new messages and bot mentions and uses sampling to get llm responses and responds to them, basically in a nutshell allowing for bi-directional communication.
+
+This is useful when you want agentic capabilities ie building a discord bot that can respond to messages and also send messages to other users.
+
+### Resources
+
+- An example discord bot written with adk-ts that makes use of sampling: <a href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/mcp-discord-agent/index.ts" target="_blank" rel="noopener noreferrer">Discord bot example</a>
+- For more info on sampling please refer to: [MCP Sampling](https://modelcontextprotocol.io/specification/2025-06-18/client/sampling)
+
+## Environment Variables
+
+- `DISCORD_TOKEN`: Your Discord bot token (required)
+- `SAMPLING_ENABLED`: Enable bi-directional message sampling (default: true)
+- `DEFAULT_RATE_LIMIT_SECONDS`: Rate limit for sampling requests per user (default: 2)
+- `DEFAULT_MESSAGE_CHUNK_SIZE`: Max message chunk size for sampling responses (default: 2000)
+
+## Usage Examples
+
+### discord_send
+
+Send a message to a Discord channel:
+
+```json
+{
+  "tool_name": "discord_send",
+  "arguments": {
+    "channelId": "123456789012345678",
+    "message": "Hello from the Discord MCP Server!"
+  }
+}
+```
+
+### discord_get_server_info
+
+Get information about a Discord server:
+
+```json
+{
+  "tool_name": "discord_get_server_info",
+  "arguments": {
+    "serverId": "123456789012345678"
+  }
+}
+```
+
+### discord_create_forum_post
+
+Create a forum post:
+
+```json
+{
+  "tool_name": "discord_create_forum_post",
+  "arguments": {
+    "channelId": "123456789012345678",
+    "title": "New Discussion Topic",
+    "message": "Let's discuss this important topic!"
+  }
+}
+```
+
+## Response Examples
+
+### discord_send
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "result": "Message sent successfully!\n\nMessage ID: 123456789012345678\nChannel ID: 123456789012345678\nSent at: 2024-03-15T12:34:56.789Z\nContent: Hello from the Discord MCP Server!"
+}
+```
+
+### discord_get_server_info
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "result": "Server Information:\n\nName: My Discord Server\nID: 123456789012345678\nOwner: ServerOwner#1234\nMember Count: 1500\nCreated: 2020-01-15T10:30:00.000Z\nDescription: Welcome to our community server!"
+}
+```
+
+## Error Handling
+
+The tools will return an error message in the `result` field if an error occurs. Common errors include:
+
+- **Missing bot token:** Ensure the `DISCORD_TOKEN` environment variable is set.
+- **Invalid channel ID:** Double-check the channel ID or name.
+- **Bot not in server:** Add the bot to the server with appropriate permissions.
+- **Insufficient permissions:** Ensure the bot has the required permissions for the action.
+
+## Bot Setup
+
+<Callout type="info" title="Bot Setup Required">
+You'll need to create and configure a Discord bot before using this server.
+</Callout>
+
+1. Create a bot application in the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Get your bot token from the Bot section
+3. Enable the following Privileged Gateway Intents:
+   - Message Content Intent
+   - Server Members Intent
+   - Presence Intent
+4. Add your bot to servers with appropriate permissions:
+   - **Administrator** (recommended for full functionality)
+   - Or select specific permissions:
+     - Send Messages
+     - Create Public Threads
+     - Send Messages in Threads
+     - Manage Messages
+     - Manage Threads
+     - Manage Channels
+     - Manage Webhooks
+     - Add Reactions
+     - View Channel
+
+5. Use the following invite link (replace `INSERT_CLIENT_ID_HERE` with your bot's client ID):
+   - **Administrator:** `https://discord.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=8`
+   - **Minimum required:** `https://discord.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=52076489808`

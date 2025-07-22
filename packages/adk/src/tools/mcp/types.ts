@@ -76,4 +76,7 @@ export class McpError extends Error {
 
 export type McpSamplingRequest = z.infer<typeof CreateMessageRequestSchema>;
 export type McpSamplingResponse = z.infer<typeof CreateMessageResultSchema>;
-export type SamplingHandler = (messages: LlmRequest) => Promise<LlmResponse>;
+
+export type SamplingHandler = (
+	request: LlmRequest,
+) => Promise<string | LlmResponse>;

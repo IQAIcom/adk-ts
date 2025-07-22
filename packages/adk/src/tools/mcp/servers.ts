@@ -251,10 +251,10 @@ export function McpNearAgent(config: McpServerConfig = {}): McpToolset {
  * Required env vars: ACCOUNT_ID, ACCOUNT_KEY
  * Optional env vars: NEAR_NETWORK_ID, NEAR_NODE_URL, NEAR_GAS_LIMIT
  */
-export function McpNearIntentSwaps(config: McpServerConfig = {}): McpToolset {
+export function McpNearIntents(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Near Intents Swaps MCP Client",
-		"@iqai/mcp-near-intent-swaps",
+		"@iqai/mcp-near-intents",
 		config,
 	);
 	return new McpToolset(mcpConfig);
@@ -283,6 +283,35 @@ export function McpTelegram(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Telegram MCP Client",
 		"@iqai/mcp-telegram",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Discord - Interact with Discord via MCP protocol
+ *
+ * Required env vars: DISCORD_TOKEN
+ * Optional env vars: PATH
+ */
+export function McpDiscord(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Discord MCP Client",
+		"@iqai/mcp-discord",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP CoinGecko - Access cryptocurrency market data and analytics
+ *
+ * Optional env vars: COINGECKO_PRO_API_KEY, COINGECKO_DEMO_API_KEY, COINGECKO_ENVIRONMENT
+ */
+export function McpCoinGecko(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"CoinGecko MCP Client",
+		"@coingecko/coingecko-mcp",
 		config,
 	);
 	return new McpToolset(mcpConfig);

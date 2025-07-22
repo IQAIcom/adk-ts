@@ -1,5 +1,10 @@
+import type { LlmRequest } from "@adk/models";
+import type { Content, Part } from "@google/genai";
+import { type LanguageModel, generateId } from "ai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service.js";
+import type { Event } from "../events/event.js";
 import type { BaseMemoryService } from "../memory/base-memory-service.js";
+import type { BaseLlm } from "../models/base-llm.js";
 import type { BasePlanner } from "../planners/base-planner.js";
 import { Runner } from "../runners.js";
 import type { BaseSessionService } from "../sessions/base-session-service.js";
@@ -18,7 +23,7 @@ import { SequentialAgent } from "./sequential-agent.js";
  */
 export interface AgentBuilderConfig {
 	name: string;
-	model?: string;
+	model?: string | BaseLlm | LanguageModel;
 	description?: string;
 	instruction?: string;
 	tools?: BaseTool[];
@@ -30,23 +35,55 @@ export interface AgentBuilderConfig {
 }
 
 /**
- * Session configuration for the AgentBuilder
+ * Session configuration options
  */
-export interface SessionConfig {
-	service: BaseSessionService;
-	userId: string;
-	appName: string;
-	memoryService?: BaseMemoryService;
-	artifactService?: BaseArtifactService;
+export interface SessionOptions {
+	userId?: string;
+	appName?: string;
 }
 
 /**
- * Built agent result containing the agent and optional runner/session
+ * Internal session configuration for the AgentBuilder
+ */
+interface InternalSessionConfig {
+	service: BaseSessionService;
+	userId: string;
+	appName: string;
+}
+
+/**
+ * Message part interface for flexible message input
+ */
+export interface MessagePart extends Part {
+	image?: string;
+}
+
+/**
+ * Full message interface for advanced usage
+ */
+export interface FullMessage extends Content {
+	parts?: MessagePart[];
+}
+
+/**
+ * Enhanced runner interface with simplified API
+ */
+export interface EnhancedRunner {
+	ask(message: string | FullMessage | LlmRequest): Promise<string>;
+	runAsync(params: {
+		userId: string;
+		sessionId: string;
+		newMessage: FullMessage;
+	}): AsyncIterable<Event>;
+}
+
+/**
+ * Built agent result containing the agent and runner/session
  */
 export interface BuiltAgent {
 	agent: BaseAgent;
-	runner?: Runner;
-	session?: Session;
+	runner: EnhancedRunner;
+	session: Session;
 }
 
 /**
@@ -60,37 +97,57 @@ export type AgentType =
 	| "langgraph";
 
 /**
- * AgentBuilder - A fluent interface for building agents with optional session management
+ * Configuration for creating a Runner instance
+ */
+interface RunnerConfig {
+	appName: string;
+	agent: BaseAgent;
+	sessionService: BaseSessionService;
+	memoryService?: BaseMemoryService;
+	artifactService?: BaseArtifactService;
+}
+
+/**
+ * AgentBuilder - A fluent interface for creating AI agents with automatic session management
  *
- * This builder provides a convenient way to create agents, manage sessions, and
- * automatically set up runners without the boilerplate code. It supports all
- * agent types and maintains backward compatibility with existing interfaces.
+ * Provides a simple, chainable API for building different types of agents (LLM, Sequential,
+ * Parallel, Loop, LangGraph) with tools, custom instructions, and multi-agent workflows.
+ * Sessions are automatically created using in-memory storage by default.
  *
- * Examples:
+ * @example
  * ```typescript
- * // Simplest possible usage
- * const response = await AgentBuilder
- *   .withModel("gemini-2.5-flash")
- *   .ask("What is the capital of Australia?");
+ * // Simple usage
+ * const response = await AgentBuilder.withModel("gemini-2.5-flash").ask("Hello");
  *
- * // Simple agent with name
- * const { agent } = AgentBuilder
- *   .create("my-agent")
+ * // With tools and instructions
+ * const { runner } = await AgentBuilder
+ *   .create("research-agent")
  *   .withModel("gemini-2.5-flash")
- *   .withInstruction("You are helpful")
+ *   .withTools(new GoogleSearch())
+ *   .withInstruction("You are a research assistant")
  *   .build();
  *
- * // Agent with session and runner
- * const { agent, runner, session } = await AgentBuilder
- *   .create("my-agent")
+ * // With memory and artifact services
+ * const { runner } = await AgentBuilder
+ *   .create("persistent-agent")
  *   .withModel("gemini-2.5-flash")
- *   .withSession(sessionService, "user123", "myApp")
+ *   .withMemory(new RedisMemoryService())
+ *   .withArtifactService(new S3ArtifactService())
+ *   .withSession(new DatabaseSessionService(), { userId: "user123", appName: "myapp" })
+ *   .build();
+ *
+ * // Multi-agent workflow
+ * const { runner } = await AgentBuilder
+ *   .create("workflow")
+ *   .asSequential([agent1, agent2])
  *   .build();
  * ```
  */
 export class AgentBuilder {
 	private config: AgentBuilderConfig;
-	private sessionConfig?: SessionConfig;
+	private sessionConfig?: InternalSessionConfig;
+	private memoryService?: BaseMemoryService;
+	private artifactService?: BaseArtifactService;
 	private agentType: AgentType = "llm";
 
 	/**
@@ -114,7 +171,7 @@ export class AgentBuilder {
 	 * @param model The model identifier (e.g., "gemini-2.5-flash")
 	 * @returns New AgentBuilder instance with model set
 	 */
-	static withModel(model: string): AgentBuilder {
+	static withModel(model: string | BaseLlm | LanguageModel): AgentBuilder {
 		return new AgentBuilder("default_agent").withModel(model);
 	}
 
@@ -123,7 +180,7 @@ export class AgentBuilder {
 	 * @param model The model identifier (e.g., "gemini-2.5-flash")
 	 * @returns This builder instance for chaining
 	 */
-	withModel(model: string): this {
+	withModel(model: string | BaseLlm | LanguageModel): this {
 		this.config.model = model;
 		return this;
 	}
@@ -217,39 +274,48 @@ export class AgentBuilder {
 	}
 
 	/**
-	 * Configure session management
+	 * Configure session management with optional smart defaults
 	 * @param service Session service to use
-	 * @param userId User identifier
-	 * @param appName Application name
-	 * @param memoryService Optional memory service
-	 * @param artifactService Optional artifact service
+	 * @param options Session configuration options (userId and appName)
 	 * @returns This builder instance for chaining
 	 */
-	withSession(
-		service: BaseSessionService,
-		userId: string,
-		appName: string,
-		memoryService?: BaseMemoryService,
-		artifactService?: BaseArtifactService,
-	): this {
+	withSession(service: BaseSessionService, options: SessionOptions = {}): this {
 		this.sessionConfig = {
 			service,
-			userId,
-			appName,
-			memoryService,
-			artifactService,
+			userId: options.userId || this.generateDefaultUserId(),
+			appName: options.appName || this.generateDefaultAppName(),
 		};
 		return this;
 	}
 
 	/**
-	 * Configure with an in-memory session (for quick setup)
-	 * @param appName Application name
-	 * @param userId User identifier
+	 * Configure memory service for the agent
+	 * @param memoryService Memory service to use for conversation history and context
 	 * @returns This builder instance for chaining
 	 */
-	withQuickSession(appName: string, userId: string): this {
-		return this.withSession(new InMemorySessionService(), userId, appName);
+	withMemory(memoryService: BaseMemoryService): this {
+		this.memoryService = memoryService;
+		return this;
+	}
+
+	/**
+	 * Configure artifact service for the agent
+	 * @param artifactService Artifact service to use for managing generated artifacts
+	 * @returns This builder instance for chaining
+	 */
+	withArtifactService(artifactService: BaseArtifactService): this {
+		this.artifactService = artifactService;
+		return this;
+	}
+
+	/**
+	 * Configure with an in-memory session with custom IDs
+	 * Note: In-memory sessions are created automatically by default, use this only if you need custom appName/userId
+	 * @param options Session configuration options (userId and appName)
+	 * @returns This builder instance for chaining
+	 */
+	withQuickSession(options: SessionOptions = {}): this {
+		return this.withSession(new InMemorySessionService(), options);
 	}
 
 	/**
@@ -258,8 +324,13 @@ export class AgentBuilder {
 	 */
 	async build(): Promise<BuiltAgent> {
 		const agent = this.createAgent();
-		let runner: Runner | undefined;
+		let runner: EnhancedRunner | undefined;
 		let session: Session | undefined;
+
+		// If no session config is provided, create a default in-memory session
+		if (!this.sessionConfig) {
+			this.withQuickSession();
+		}
 
 		if (this.sessionConfig) {
 			session = await this.sessionConfig.service.createSession(
@@ -267,21 +338,18 @@ export class AgentBuilder {
 				this.sessionConfig.userId,
 			);
 
-			const runnerConfig: any = {
+			const runnerConfig: RunnerConfig = {
 				appName: this.sessionConfig.appName,
 				agent,
 				sessionService: this.sessionConfig.service,
+				memoryService: this.memoryService,
+				artifactService: this.artifactService,
 			};
 
-			if (this.sessionConfig.memoryService) {
-				runnerConfig.memoryService = this.sessionConfig.memoryService;
-			}
+			const baseRunner = new Runner(runnerConfig);
 
-			if (this.sessionConfig.artifactService) {
-				runnerConfig.artifactService = this.sessionConfig.artifactService;
-			}
-
-			runner = new Runner(runnerConfig);
+			// Create enhanced runner with simplified API
+			runner = this.createEnhancedRunner(baseRunner, session);
 		}
 
 		return { agent, runner, session };
@@ -289,43 +357,12 @@ export class AgentBuilder {
 
 	/**
 	 * Quick execution helper - build and run a message
-	 * @param message Message to send to the agent
+	 * @param message Message to send to the agent (string or full message object)
 	 * @returns Agent response
 	 */
-	async ask(message: string): Promise<string> {
-		// If no session config is provided, create a temporary one automatically
-		if (!this.sessionConfig) {
-			const userId = `user-${this.config.name}`;
-			const appName = `session-${this.config.name}`;
-			this.withQuickSession(appName, userId);
-		}
-
-		const { runner, session } = await this.build();
-
-		if (!runner || !session) {
-			throw new Error("Failed to create runner and session");
-		}
-
-		let response = "";
-
-		for await (const event of runner.runAsync({
-			userId: this.sessionConfig!.userId,
-			sessionId: session.id,
-			newMessage: {
-				parts: [{ text: message }],
-			},
-		})) {
-			if (event.content?.parts) {
-				const content = event.content.parts
-					.map((part) => part.text || "")
-					.join("");
-				if (content) {
-					response += content;
-				}
-			}
-		}
-
-		return response;
+	async ask(message: string | FullMessage): Promise<string> {
+		const { runner } = await this.build();
+		return runner.ask(message);
 	}
 
 	/**
@@ -334,8 +371,28 @@ export class AgentBuilder {
 	 */
 	private createAgent(): BaseAgent {
 		switch (this.agentType) {
+			case "llm": {
+				if (!this.config.model) {
+					throw new Error("Model is required for LLM agent");
+				}
+
+				const model = this.config.model;
+
+				return new LlmAgent({
+					name: this.config.name,
+					model: model,
+					description: this.config.description,
+					instruction: this.config.instruction,
+					tools: this.config.tools,
+					planner: this.config.planner,
+				});
+			}
 			case "sequential":
-				if (!this.config.subAgents) {
+				if (
+					!this.config.subAgents ||
+					!Array.isArray(this.config.subAgents) ||
+					this.config.subAgents.length === 0
+				) {
 					throw new Error("Sub-agents required for sequential agent");
 				}
 				return new SequentialAgent({
@@ -345,7 +402,11 @@ export class AgentBuilder {
 				});
 
 			case "parallel":
-				if (!this.config.subAgents) {
+				if (
+					!this.config.subAgents ||
+					!Array.isArray(this.config.subAgents) ||
+					this.config.subAgents.length === 0
+				) {
 					throw new Error("Sub-agents required for parallel agent");
 				}
 				return new ParallelAgent({
@@ -355,7 +416,11 @@ export class AgentBuilder {
 				});
 
 			case "loop":
-				if (!this.config.subAgents) {
+				if (
+					!this.config.subAgents ||
+					!Array.isArray(this.config.subAgents) ||
+					this.config.subAgents.length === 0
+				) {
 					throw new Error("Sub-agents required for loop agent");
 				}
 				return new LoopAgent({
@@ -366,7 +431,13 @@ export class AgentBuilder {
 				});
 
 			case "langgraph":
-				if (!this.config.nodes || !this.config.rootNode) {
+				if (
+					!this.config.nodes ||
+					!Array.isArray(this.config.nodes) ||
+					this.config.nodes.length === 0 ||
+					!this.config.rootNode ||
+					typeof this.config.rootNode !== "string"
+				) {
 					throw new Error("Nodes and root node required for LangGraph agent");
 				}
 				return new LangGraphAgent({
@@ -375,16 +446,82 @@ export class AgentBuilder {
 					nodes: this.config.nodes,
 					rootNode: this.config.rootNode,
 				});
-
-			default:
-				return new LlmAgent({
-					name: this.config.name,
-					model: this.config.model,
-					description: this.config.description,
-					instruction: this.config.instruction,
-					tools: this.config.tools,
-					planner: this.config.planner,
-				});
 		}
+	}
+
+	/**
+	 * Generate default user ID based on agent name and id
+	 * @returns Generated user ID
+	 */
+	private generateDefaultUserId(): string {
+		const id = generateId();
+		return `user-${this.config.name}-${id}`;
+	}
+
+	/**
+	 * Generate default app name based on agent name
+	 * @returns Generated app name
+	 */
+	private generateDefaultAppName(): string {
+		return `app-${this.config.name}`;
+	}
+
+	/**
+	 * Create enhanced runner with simplified API
+	 * @param baseRunner The base runner instance
+	 * @param session The session instance
+	 * @returns Enhanced runner with simplified API
+	 */
+	private createEnhancedRunner(
+		baseRunner: Runner,
+		session: Session,
+	): EnhancedRunner {
+		const sessionConfig = this.sessionConfig; // Capture sessionConfig in closure
+
+		return {
+			async ask(message: string | FullMessage | LlmRequest): Promise<string> {
+				const newMessage: FullMessage =
+					typeof message === "string"
+						? { parts: [{ text: message }] }
+						: typeof message === "object" && "contents" in message
+							? { parts: message.contents[message.contents.length - 1].parts }
+							: message;
+				let response = "";
+
+				if (!sessionConfig) {
+					throw new Error("Session configuration is required");
+				}
+
+				for await (const event of baseRunner.runAsync({
+					userId: sessionConfig.userId,
+					sessionId: session.id,
+					newMessage,
+				})) {
+					if (event.content?.parts && Array.isArray(event.content.parts)) {
+						const content = event.content.parts
+							.map(
+								(part) =>
+									(part && typeof part === "object" && "text" in part
+										? part.text
+										: "") || "",
+							)
+							.join("");
+						if (content) {
+							response += content;
+						}
+					}
+				}
+
+				return response;
+			},
+
+			runAsync(params: {
+				userId: string;
+				sessionId: string;
+				newMessage: FullMessage;
+			}) {
+				return baseRunner.runAsync(params);
+			},
+		};
 	}
 }

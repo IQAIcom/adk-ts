@@ -1,0 +1,369 @@
+---
+title: Quickstart
+description: Build your first AI agent with ADK TypeScript in minutes
+---
+
+import { Steps } from 'fumadocs-ui/components/steps';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Card } from 'fumadocs-ui/components/card';
+
+<Callout type="info" title="Prerequisites">
+Make sure you have [installed ADK TypeScript](/docs/framework/get-started/installation) before continuing.
+</Callout>
+
+<Callout title="Quick Start Alternative">
+Want to skip the manual setup? Use our CLI to create a complete project:
+
+```bash
+npx create-adk-project
+```
+
+This creates a project with all the examples below already set up and ready to run!
+</Callout>
+
+## Your First Agent
+
+Let's start with the simplest possible agent - one that can answer questions:
+
+<Steps>
+
+### Create Your Agent File
+
+Create a new file called `my-first-agent.ts`:
+
+```typescript
+import { env } from "node:process";
+import { AgentBuilder } from "@iqai/adk";
+import dedent from "dedent";
+
+/**
+ * Simple Agent Example
+ *
+ * The simplest way to create and use an AI agent with AgentBuilder.
+ */
+async function main() {
+  const question = "What is the capital of France?";
+
+  // The simplest possible usage - just model and ask!
+  const response = await AgentBuilder.withModel(
+    env.LLM_MODEL || "gemini-2.5-flash",
+  ).ask(question);
+
+  console.log(dedent`
+    🤖 Simple Agent Example
+    ═══════════════════════
+
+    📝 Question: ${question}
+    🤖 Response: ${response}
+  `);
+}
+
+main().catch(console.error);
+```
+
+### Run Your Agent
+
+<Tabs items={['tsx', 'ts-node', 'compile']}>
+  <Tab value="tsx">
+    ```bash
+    npx tsx my-first-agent.ts
+    ```
+  </Tab>
+
+  <Tab value="ts-node">
+    ```bash
+    npx ts-node my-first-agent.ts
+    ```
+  </Tab>
+
+  <Tab value="compile">
+    ```bash
+    npx tsc my-first-agent.ts
+    node my-first-agent.js
+    ```
+  </Tab>
+</Tabs>
+
+### Expected Output
+
+You should see something like:
+
+```
+🤖 Simple Agent Example
+═══════════════════════
+
+📝 Question: What is the capital of France?
+🤖 Response: The capital of France is Paris.
+```
+
+</Steps>
+
+## Understanding the Code
+
+Let's break down what's happening:
+
+<Card title="Code Explanation">
+  ```typescript
+  // 1. Import the AgentBuilder class
+  import { AgentBuilder } from "@iqai/adk";
+
+  // 2. Create an agent with a model and ask a question
+  const response = await AgentBuilder
+    .withModel("gemini-2.5-flash")  // Specify the LLM model
+    .ask(question);                 // Ask your question
+  ```
+
+  **That's it!** AgentBuilder provides the simplest way to get started with AI agents.
+</Card>
+
+## Adding Tools
+
+Now let's make your agent more powerful by adding tools. Create a new file:
+
+```typescript
+import { env } from "node:process";
+import {
+  AgentBuilder,
+  GoogleSearch
+} from "@iqai/adk";
+
+async function main() {
+  console.log("🛠️ Agent with Tools Example");
+  console.log("═══════════════════════════");
+
+  // Ask a question that requires web search
+  const query = "What are the latest developments in AI agents this year?";
+  console.log(`📝 Query: ${query}\n`);
+
+  // Create an agent with tools using AgentBuilder
+  const response = await AgentBuilder
+    .create("research_agent")
+    .withModel(env.LLM_MODEL || "gemini-2.5-flash")
+    .withDescription("A research agent that can search the web")
+    .withInstruction(
+      "You are a helpful research assistant. Use the Google Search tool " +
+      "when you need current information. Provide clear, well-sourced answers."
+    )
+    .withTools(new GoogleSearch())
+    .ask(query);
+
+  console.log("🤖 Response:", response);
+}
+
+main().catch(console.error);
+```
+
+<Callout type="info" title="What's New Here?">
+- **AgentBuilder**: Using the fluent API pattern for simpler agent creation
+- **Tools**: Added `GoogleSearch` for web searching capabilities
+- **Instructions**: Giving the agent specific guidance on how to behave
+- **Direct Response**: Getting the response directly without streaming complexity
+</Callout>
+
+## Configuration Options
+
+You can customize your agent in many ways:
+
+<Tabs items={['Basic', 'With Instructions', 'Advanced']}>
+  <Tab value="Basic">
+    ```typescript
+    // Minimal agent
+    const response = await AgentBuilder
+      .withModel("gemini-2.5-flash")
+      .ask("Hello!");
+    ```
+  </Tab>
+
+  <Tab value="With Instructions">
+    ```typescript
+    // Agent with custom behavior
+    const response = await AgentBuilder
+      .create("helpful_assistant")
+      .withModel("gemini-2.5-flash")
+      .withDescription("A friendly and helpful assistant")
+      .withInstruction(
+        "You are a helpful assistant. Always be polite and " +
+        "provide clear, accurate information."
+      )
+      .ask("Hello!");
+    ```
+  </Tab>
+
+  <Tab value="Advanced">
+    ```typescript
+    // Full-featured agent with tools and sessions
+    const { runner } = await AgentBuilder
+      .create("research_agent")
+      .withModel("gemini-2.5-flash")
+      .withDescription("A research agent with web search")
+      .withInstruction("Use tools to find accurate information")
+      .withTools(new GoogleSearch())
+
+      .build();
+
+    // Use the runner for conversation memory
+    const response = await runner.ask("What's the weather like today?");
+    ```
+  </Tab>
+</Tabs>
+
+## Common Patterns
+
+Here are some common patterns you'll use:
+
+### Environment Configuration
+
+```bash
+# Specify your preferred model
+LLM_MODEL=gemini-2.5-flash
+
+# Or use other supported models
+# LLM_MODEL=gemini-1.5-pro
+# LLM_MODEL=gpt-4
+```
+
+### Error Handling
+
+```typescript
+async function safeAgentCall() {
+  try {
+    const response = await AgentBuilder
+      .withModel("gemini-2.5-flash")
+      .ask("What is the weather like?");
+
+    console.log("Success:", response);
+  } catch (error) {
+    console.error("Agent error:", error);
+    // Handle the error appropriately
+  }
+}
+```
+
+### Multiple Questions
+
+```typescript
+async function multipleQuestions() {
+  const agent = AgentBuilder
+    .create("qa_agent")
+    .withModel("gemini-2.5-flash")
+    .withInstruction("Provide concise, accurate answers");
+
+  const questions = [
+    "What is TypeScript?",
+    "How do AI agents work?",
+    "What is the capital of Japan?"
+  ];
+
+  for (const question of questions) {
+    const answer = await agent.ask(question);
+    console.log(`Q: ${question}`);
+    console.log(`A: ${answer}\n`);
+  }
+}
+```
+
+## Using External Models
+
+Want to use models from OpenAI, Anthropic, or other providers? ADK supports 100+ models through Vercel AI SDK:
+
+### OpenAI Example
+
+```bash
+# First install the OpenAI provider package
+npm install @ai-sdk/openai
+```
+
+```typescript
+import { LlmAgent } from "@iqai/adk";
+import { openai } from "@ai-sdk/openai";
+
+async function useOpenAI() {
+  // Set OPENAI_API_KEY in your environment
+
+  const agent = new LlmAgent({
+    name: "openai_agent",
+    model: openai("gpt-4.1"),
+    instruction: "You are a helpful assistant"
+  });
+
+  const response = await agent.ask("Explain quantum computing in simple terms");
+  console.log(response);
+}
+```
+
+### Anthropic Example
+
+```bash
+# First install the Anthropic provider package
+npm install @ai-sdk/anthropic
+```
+
+```typescript
+import { LlmAgent } from "@iqai/adk";
+import { anthropic } from "@ai-sdk/anthropic";
+
+async function useAnthropic() {
+  // Set ANTHROPIC_API_KEY in your environment
+
+  const agent = new LlmAgent({
+    name: "claude_agent",
+    model: anthropic("claude-3-5-sonnet-20241022"),
+    instruction: "You are a helpful assistant"
+  });
+
+  const response = await agent.ask("Write a haiku about programming");
+  console.log(response);
+}
+```
+
+<Callout type="info" title="More Providers">
+ADK supports many models through Vercel AI SDK including OpenAI, Anthropic, Google, Mistral, and more. Check the [Models documentation](/docs/framework/agents/models) for the complete list of supported providers.
+</Callout>
+
+## Next Steps
+
+Congratulations! You've created your first AI agent. Here's what to explore next:
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <Card
+    title="🛠️ Add More Tools"
+    description="Learn about built-in tools and how to create custom ones"
+    href="/docs/framework/tools"
+  />
+
+  <Card
+    title="🤖 Advanced Agents"
+    description="Explore LLM agents, workflow agents, and multi-agent systems"
+    href="/docs/framework/agents"
+  />
+
+  <Card
+    title="💾 Sessions & Memory"
+    description="Add persistent conversations and memory to your agents"
+    href="/docs/framework/sessions"
+  />
+
+  <Card
+    title="📊 Real Examples"
+    description="See complete working examples with different patterns"
+    href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples"
+    target="_blank"
+    rel="noopener noreferrer"
+  />
+</div>
+
+## Troubleshooting
+
+### Common Issues
+
+<Callout type="warn" title="Model Access">
+If you get authentication errors, make sure you have access to the Gemini models or configure appropriate API keys in your environment.
+</Callout>
+
+<Callout type="warn" title="Dependencies">
+If you encounter import errors, ensure all dependencies are installed:
+```bash
+npm install @iqai/adk dedent uuid
+```
+</Callout>

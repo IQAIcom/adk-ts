@@ -4,9 +4,67 @@ description: Interact with decentralized exchanges through ODOS aggregation
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-**Package**: [`@iqai/mcp-odos`](https://www.npmjs.com/package/@iqai/mcp-odos)
-**Purpose**: Interact with decentralized exchanges through ODOS aggregation
+- **Package**: [`@iqai/mcp-odos`](https://www.npmjs.com/package/@iqai/mcp-odos)
+- **Purpose**: Interact with decentralized exchanges through ODOS aggregation
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpOdos} from "@iqai/adk";
+
+    const toolset = McpOdos({
+      env: {
+        WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "ODOS MCP Client",
+      description: "Client for ODOS DEX aggregation",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-odos"],
+        env: {
+          WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "odos-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-odos"],
+          "env": {
+            "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
 
 ## Features
 
@@ -46,22 +104,6 @@ The private key is used for signing transactions. Handle with care.
 
 - `WALLET_PRIVATE_KEY`: Required for executing swaps
 - The private key of the wallet to be used for interacting with DEX platforms
-
-## Configuration Example
-
-```json
-{
-  "mcpServers": {
-    "odos-server": {
-      "command": "pnpm",
-      "args": ["dlx", "@iqai/mcp-odos"],
-      "env": {
-        "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
-      }
-    }
-  }
-}
-```
 
 ## Usage Examples
 

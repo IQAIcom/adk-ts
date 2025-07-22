@@ -1,11 +1,6 @@
 import * as path from "node:path";
 import { env } from "node:process";
-import {
-	FileOperationsTool,
-	InMemorySessionService,
-	LlmAgent,
-	Runner,
-} from "@iqai/adk";
+import { AgentBuilder, FileOperationsTool } from "@iqai/adk";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -51,33 +46,29 @@ async function main() {
 		const tempDir = path.join(process.cwd(), "temp-examples");
 
 		/**
-		 * Set up session management
-		 * Provides conversation context for the agent
-		 */
-		const sessionService = new InMemorySessionService();
-		const session = await sessionService.createSession(APP_NAME, USER_ID);
-
-		/**
-		 * Create agent with file operations capabilities
+		 * Create agent with file operations capabilities using AgentBuilder
 		 * The agent can safely perform file system operations within the base path
 		 */
-		const agent = createFileOperationsAgent(tempDir);
+		const fileToolWithBasePath = new FileOperationsTool({ basePath: tempDir });
 
-		/**
-		 * Set up runner for agent execution
-		 * Coordinates agent interactions and tool usage
-		 */
-		const runner = new Runner({
-			appName: APP_NAME,
-			agent,
-			sessionService,
-		});
+		const { runner } = await AgentBuilder.create("file_operations_demo")
+			.withModel(env.LLM_MODEL || "gemini-2.5-flash")
+			.withDescription(
+				"An agent that demonstrates file operations capabilities using Google Gemini",
+			)
+			.withInstruction(`You are a helpful assistant that can perform file system operations.
+Use the file_operations tool to read, write, and manage files.
+Always verify operations success by checking the 'success' property in the response.
+For reading operations, the content will be in the 'data' property when successful.
+Provide clear feedback about what operations were performed.`)
+			.withTools(fileToolWithBasePath)
+			.build();
 
 		/**
 		 * Run comprehensive file operations demonstrations
 		 * Shows various file system operations through natural language
 		 */
-		await demonstrateFileOperations(runner, session.id);
+		await demonstrateFileOperations(runner);
 
 		console.log("\n✅ File operations example completed!");
 		console.log(
@@ -90,44 +81,16 @@ async function main() {
 }
 
 /**
- * Creates and configures the LLM agent with file operations capabilities
- * @param tempDir The base directory for file operations
- * @returns Configured LlmAgent with FileOperationsTool
- */
-function createFileOperationsAgent(tempDir: string): LlmAgent {
-	const fileToolWithBasePath = new FileOperationsTool({ basePath: tempDir });
-
-	return new LlmAgent({
-		name: "file_operations_demo",
-		model: env.LLM_MODEL || "gemini-2.5-flash",
-		description:
-			"An agent that demonstrates file operations capabilities using Google Gemini",
-		instruction: `You are a helpful assistant that can perform file system operations.
-Use the file_operations tool to read, write, and manage files.
-Always verify operations success by checking the 'success' property in the response.
-For reading operations, the content will be in the 'data' property when successful.
-Provide clear feedback about what operations were performed.`,
-		tools: [fileToolWithBasePath],
-	});
-}
-
-/**
  * Runs comprehensive file operations demonstrations
- * @param runner The Runner instance for executing agent tasks
- * @param sessionId The current session identifier
+ * @param runner The AgentBuilder runner for executing agent tasks
  */
-async function demonstrateFileOperations(
-	runner: Runner,
-	sessionId: string,
-): Promise<void> {
+async function demonstrateFileOperations(runner: any): Promise<void> {
 	/**
 	 * Example 1: Write a simple file
 	 * Demonstrates basic file creation and writing
 	 */
 	console.log("\n--- Example 1: Write a file ---");
-	const writeResult = await runAgentTask(
-		runner,
-		sessionId,
+	const writeResult = await runner.ask(
 		"Write 'Hello, world!' to a file named 'hello.txt'",
 	);
 	console.log("Agent response:", writeResult);
@@ -137,9 +100,7 @@ async function demonstrateFileOperations(
 	 * Shows file content retrieval
 	 */
 	console.log("\n--- Example 2: Read a file ---");
-	const readResult = await runAgentTask(
-		runner,
-		sessionId,
+	const readResult = await runner.ask(
 		"Read the contents of the file 'hello.txt'",
 	);
 	console.log("Agent response:", readResult);
@@ -149,9 +110,7 @@ async function demonstrateFileOperations(
 	 * Demonstrates directory enumeration
 	 */
 	console.log("\n--- Example 3: List directory contents ---");
-	const listResult = await runAgentTask(
-		runner,
-		sessionId,
+	const listResult = await runner.ask(
 		"List all files in the current directory",
 	);
 	console.log("Agent response:", listResult);
@@ -161,9 +120,7 @@ async function demonstrateFileOperations(
 	 * Shows file existence verification
 	 */
 	console.log("\n--- Example 4: Check if a file exists ---");
-	const existsResult = await runAgentTask(
-		runner,
-		sessionId,
+	const existsResult = await runner.ask(
 		"Check if a file named 'non-existent.txt' exists",
 	);
 	console.log("Agent response:", existsResult);
@@ -173,9 +130,7 @@ async function demonstrateFileOperations(
 	 * Demonstrates directory creation
 	 */
 	console.log("\n--- Example 5: Create a directory ---");
-	const mkdirResult = await runAgentTask(
-		runner,
-		sessionId,
+	const mkdirResult = await runner.ask(
 		"Create a new directory called 'test-dir'",
 	);
 	console.log("Agent response:", mkdirResult);
@@ -185,9 +140,7 @@ async function demonstrateFileOperations(
 	 * Shows file operations in subdirectories
 	 */
 	console.log("\n--- Example 6: Write to subdirectory ---");
-	const subDirWriteResult = await runAgentTask(
-		runner,
-		sessionId,
+	const subDirWriteResult = await runner.ask(
 		"Write 'Hello from subdirectory!' to 'test-dir/sub-hello.txt'",
 	);
 	console.log("Agent response:", subDirWriteResult);
@@ -197,52 +150,10 @@ async function demonstrateFileOperations(
 	 * Demonstrates subdirectory navigation and listing
 	 */
 	console.log("\n--- Example 7: List subdirectory contents ---");
-	const subDirListResult = await runAgentTask(
-		runner,
-		sessionId,
+	const subDirListResult = await runner.ask(
 		"List all files in the 'test-dir' directory",
 	);
 	console.log("Agent response:", subDirListResult);
-}
-
-/**
- * Executes a user message through the agent and returns the response
- * @param runner The Runner instance for executing agent tasks
- * @param sessionId The current session identifier
- * @param userMessage The message to send to the agent
- * @returns The agent's response as a string
- */
-async function runAgentTask(
-	runner: Runner,
-	sessionId: string,
-	userMessage: string,
-): Promise<string> {
-	const newMessage = {
-		parts: [{ text: userMessage }],
-	};
-
-	let agentResponse = "";
-
-	try {
-		for await (const event of runner.runAsync({
-			userId: USER_ID,
-			sessionId,
-			newMessage,
-		})) {
-			if (event.author === "file_operations_demo" && event.content?.parts) {
-				const content = event.content.parts
-					.map((part) => part.text || "")
-					.join("");
-				if (content) {
-					agentResponse += content;
-				}
-			}
-		}
-	} catch (error) {
-		return `❌ Error: ${error instanceof Error ? error.message : String(error)}`;
-	}
-
-	return agentResponse || "No response from agent";
 }
 
 /**

@@ -1,0 +1,148 @@
+---
+title: Runtime & Execution
+description: Understanding the agent execution engine and event-driven architecture
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The ADK Runtime is the execution engine that powers agent applications during user interactions. It orchestrates agents, tools, and services through an event-driven architecture.
+
+## Overview
+
+The Runtime serves as the coordination layer that connects all components of your agent application and manages their interactions through a cooperative async generator pattern.
+
+### Core Responsibilities
+
+- **Execution Orchestration**: Coordinate agent, tool, and callback execution
+- **Event Processing**: Handle event flow between components
+- **State Management**: Manage session state changes and persistence
+- **Service Integration**: Connect with LLMs, storage, and external services
+- **Resource Management**: Handle lifecycle and resource allocation
+
+<Callout type="info" title="Event-Driven Architecture">
+The Runtime operates on events - agents yield events to communicate with the Runner, which processes them and coordinates with services before allowing agents to continue.
+</Callout>
+
+## Key Components
+
+The Runtime consists of several key components working together:
+
+**Runner**: The main orchestrator that receives user queries, processes events, and coordinates with services
+**Agents**: Execute reasoning logic and yield events to communicate progress
+**Events**: Messages that flow between components containing content, actions, and metadata
+**Services**: Backend systems for session management, artifacts, and memory
+
+## Documentation Structure
+
+<Cards>
+  <Card
+    title="🔄 Event Loop"
+    description="Understanding the cooperative async generator pattern and event flow"
+    href="/docs/framework/runtime/event-loop"
+  />
+
+  <Card
+    title="📋 Invocation Lifecycle"
+    description="Complete lifecycle from user query to response completion"
+    href="/docs/framework/runtime/invocation-lifecycle"
+  />
+
+  <Card
+    title="🧩 Components"
+    description="Detailed look at Runner, agents, events, and services"
+    href="/docs/framework/runtime/components"
+  />
+
+  <Card
+    title="⚡ Performance"
+    description="Optimization, monitoring, and scalability considerations"
+    href="/docs/framework/runtime/performance"
+  />
+</Cards>
+
+## Quick Start
+
+Here's a basic example of how the Runtime works:
+
+```typescript
+import { LlmAgent, Runner, InMemorySessionService } from '@iqai/adk';
+
+// Create an agent
+const agent = new LlmAgent({
+  name: "assistant",
+  model: "gemini-2.5-flash",
+  description: "A helpful assistant",
+  instruction: "You are a helpful assistant"
+});
+
+// Set up runtime components
+const sessionService = new InMemorySessionService();
+const session = await sessionService.createSession("my_app", "user_123");
+
+const runner = new Runner({
+  appName: "my_app",
+  agent,
+  sessionService
+});
+
+// Process user input through the runtime
+for await (const event of runner.runAsync({
+  userId: "user_123",
+  sessionId: session.id,
+  newMessage: { parts: [{ text: "Hello!" }] }
+})) {
+  console.log('Event:', event.author, event.content?.parts);
+}
+```
+
+## Runtime Features
+
+### Event-Driven Execution
+
+- **Async Generator Pattern**: Cooperative execution between Runner and agents
+- **Event Streaming**: Real-time event processing and streaming responses
+- **State Consistency**: Guaranteed state consistency through event ordering
+- **Error Handling**: Comprehensive error recovery and graceful degradation
+
+### Service Integration
+
+- **Session Management**: Persistent conversation history and state
+- **Artifact Storage**: Binary data and file management
+- **Memory Services**: Long-term knowledge storage and retrieval
+- **LLM Integration**: Seamless language model interactions
+
+### Scalability & Performance
+
+- **Stateless Execution**: Horizontal scaling support
+- **Resource Pooling**: Efficient resource management
+- **Monitoring**: Built-in observability and metrics
+- **Optimization**: Performance optimization strategies
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🤖 Agents"
+    description="Learn how agents integrate with runtime execution"
+    href="/docs/framework/agents"
+  />
+
+  <Card
+    title="💬 Sessions"
+    description="Session management and state persistence"
+    href="/docs/framework/sessions"
+  />
+
+  <Card
+    title="📋 Callbacks"
+    description="Lifecycle hooks and execution control"
+    href="/docs/framework/callbacks"
+  />
+
+  <Card
+    title="🔧 Tools"
+    description="Tool integration within the runtime"
+    href="/docs/framework/tools"
+  />
+</Cards>

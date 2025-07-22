@@ -1,0 +1,199 @@
+---
+title: Context Management
+description: Access execution state, services, and session information throughout agent operations
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Context management provides agents and tools with access to execution state, services, and session information needed for effective operation. Context objects serve as the bridge between your code and the ADK framework.
+
+## What is Context?
+
+Context refers to the bundle of information available to agents, tools, and callbacks during execution. It provides access to session state, services, and execution details needed for intelligent decision-making.
+
+<Callout type="info" title="Context as Bridge">
+Think of context as the bridge connecting your agent logic to the ADK framework - providing access to everything needed for intelligent agent behavior.
+</Callout>
+
+## Context Types
+
+ADK provides specialized context objects tailored for different execution scenarios and security requirements.
+
+<Cards>
+  <Card
+    title="ReadonlyContext"
+    description="Safe read-only access to basic invocation information"
+    href="/docs/framework/context/readonly-context"
+  />
+
+  <Card
+    title="CallbackContext"
+    description="State management and artifact operations for callbacks"
+    href="/docs/framework/context/callback-context"
+  />
+
+  <Card
+    title="ToolContext"
+    description="Enhanced context for tool execution with memory and authentication"
+    href="/docs/framework/context/tool-context"
+  />
+
+  <Card
+    title="InvocationContext"
+    description="Complete framework access for agent implementation"
+    href="/docs/framework/context/invocation-context"
+  />
+</Cards>
+
+## Core Capabilities
+
+### State Management
+- **Session State**: Read and modify session state across conversation turns
+- **State Scoping**: Proper handling of session, user, app, and temporary state
+- **Change Tracking**: Automatic tracking of state modifications through events
+
+### Service Integration
+- **Session Services**: Access to session and history management
+- **Artifact Services**: File and binary data storage operations
+- **Memory Services**: Long-term knowledge storage and retrieval
+
+### Execution Control
+- **Identity Tracking**: Know which agent is running and track invocation details
+- **Flow Control**: Manage execution flow and lifecycle
+- **Resource Management**: Handle external resources and cleanup
+
+## Context Hierarchy
+
+```typescript
+ReadonlyContext
+├── CallbackContext (extends ReadonlyContext)
+│   └── ToolContext (extends CallbackContext)
+└── InvocationContext (standalone, comprehensive)
+```
+
+- **ReadonlyContext**: Base class providing safe read-only access
+- **CallbackContext**: Adds state management and artifact operations
+- **ToolContext**: Extends with memory search and enhanced capabilities
+- **InvocationContext**: Complete framework access for core agent implementation
+
+## Basic Usage
+
+### In Instruction Providers
+
+```typescript
+import { ReadonlyContext } from "@iqai/adk";
+
+const dynamicInstruction = (ctx: ReadonlyContext): string => {
+  const userState = ctx.state;
+  return `You are helping user in session ${ctx.invocationId}. User context: ${JSON.stringify(userState)}`;
+};
+```
+
+### In Function Tools
+
+```typescript
+import { FunctionTool, ToolContext } from "@iqai/adk";
+
+function searchAndSave(params: { query: string }, toolContext: ToolContext) {
+  // Search memory
+  const memories = await toolContext.searchMemory(params.query);
+
+  // Save to state
+  toolContext.state.searchResults = memories;
+
+  return { found: memories.memories?.length || 0 };
+}
+
+const searchTool = new FunctionTool(searchAndSave, {
+  name: "search_and_save",
+  description: "Search memory and save results to state"
+});
+```
+
+### In Agent Implementation
+
+```typescript
+import { LlmAgent, InvocationContext } from "@iqai/adk";
+
+class CustomAgent extends LlmAgent {
+  protected async *runAsyncImpl(context: InvocationContext) {
+    // Access all services and manage full execution flow
+    const session = context.session;
+    const memoryService = context.memoryService;
+
+    // Your custom agent logic here
+    yield* super.runAsyncImpl(context);
+  }
+}
+```
+
+## Common Patterns
+
+### State Management
+- Use appropriate state prefixes for scoping (`session.`, `user.`, `app.`, `temp.`)
+- Leverage automatic change tracking in callback contexts
+- Access read-only state safely in instruction providers
+
+### Service Usage
+- Handle service availability gracefully (services may be undefined)
+- Implement proper error handling for service operations
+- Use context-appropriate service access patterns
+
+### Performance Considerations
+- Use minimal context type needed for each operation
+- Avoid accessing unnecessary context properties
+- Implement efficient resource management patterns
+
+## Best Practices
+
+<Cards>
+  <Card
+    title="Context Patterns"
+    description="Learn common patterns and best practices for context usage"
+    href="/docs/framework/context/context-patterns"
+  />
+</Cards>
+
+### Security
+- Use ReadonlyContext for safe operations that don't need state modification
+- Validate context access patterns in production environments
+- Handle sensitive information appropriately through context layers
+
+### Error Handling
+- Check service availability before using context services
+- Implement graceful degradation when services are unavailable
+- Use proper error boundaries for context operations
+
+### Debugging
+- Use invocation IDs for request tracing and correlation
+- Log context state at key execution points for development
+- Monitor context usage patterns in production
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="Agents"
+    description="How agents use context for execution and state management"
+    href="/docs/framework/agents"
+  />
+
+  <Card
+    title="Sessions"
+    description="Session state management through context objects"
+    href="/docs/framework/sessions"
+  />
+
+  <Card
+    title="Tools"
+    description="Tool context usage for external system integration"
+    href="/docs/framework/tools"
+  />
+
+  <Card
+    title="Callbacks"
+    description="Callback context for behavior customization"
+    href="/docs/framework/callbacks"
+  />
+</Cards>

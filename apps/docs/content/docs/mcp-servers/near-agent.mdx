@@ -1,169 +1,291 @@
 ---
-title: NEAR Agent
-description: MCP server for NEAR blockchain agent operations
+title: MCP Near Agent
+description: MCP server for Near blockchain agent operations
 ---
 
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-The NEAR Agent MCP server provides AI agents with comprehensive access to NEAR Protocol functionality, enabling blockchain operations, account management, and smart contract interactions.
+- **Package**: [`@iqai/mcp-near-agent`](https://www.npmjs.com/package/@iqai/mcp-near-agent)
+- **Purpose**: A Model Context Protocol (MCP) server enabling smart contract interaction, transaction handling, and event listening on the NEAR blockchain for AI agents and applications.
+- **Example**: 🚀 [NEAR AMM Agent Example](https://github.com/IQAIcom/near-amm-agent)
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpNearAgent} from "@iqai/adk";
+
+    const toolset = McpNearAgent({
+      env: {
+        ACCOUNT_ID: "your-account.testnet",
+        ACCOUNT_KEY: "ed25519:your-private-key-here",
+        NEAR_NETWORK_ID: "testnet",
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "NEAR Agent MCP Client",
+      description: "Client for NEAR blockchain operations",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-near-agent"],
+        env: {
+          ACCOUNT_ID: process.env.NEAR_ACCOUNT_ID,
+          ACCOUNT_KEY: process.env.NEAR_ACCOUNT_KEY,
+          NEAR_NETWORK_ID: "testnet",
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "near-agent-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-near-agent"],
+          "env": {
+            "ACCOUNT_ID": "your-account.testnet",
+            "ACCOUNT_KEY": "ed25519:your-private-key-here",
+            "NEAR_NETWORK_ID": "testnet"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
 
 ## Features
 
-- **Account Operations**: Create, manage, and query NEAR accounts
-- **Transaction Execution**: Send transactions and call smart contracts
-- **Balance Management**: Check NEAR token balances and transfers
-- **Smart Contract Interaction**: Deploy and interact with NEAR smart contracts
-- **Network Operations**: Support for mainnet, testnet, and custom networks
-- **Key Management**: Secure handling of NEAR account keys
-- **State Queries**: Read blockchain state and account information
+- ✅ **Execute contract methods and transactions** on NEAR blockchain
+- ✅ **Listen to and respond to contract events** with AI processing
+- ✅ **View contract data and account information**
+- ✅ **Handle custom logic** through intelligent event listeners
+- ✅ **Compatible with any MCP client** (Claude Desktop, Cursor, custom agents)
+- ✅ **AI-driven event processing workflow** for smart contract automation
+
+## 🔄 AI-Driven Event Processing Workflow
+
+The server enables an "AI in the loop" workflow:
+
+1. 🔗 Smart contract transaction triggers an event and pauses execution
+2. 🤖 MCP server detects the event and requests AI processing from the client
+3. 🧠 AI client processes the event data and provides intelligent response
+4. ↩️ Server sends AI response back to blockchain via transaction
+5. ✅ Original smart contract resumes with the AI-provided data
 
 ## Installation
 
+### Option 1: Using `pnpm dlx` (Recommended)
+Run directly without installation:
 ```bash
-npx @iqai/mcp-near-agent
+pnpm dlx @iqai/mcp-near-agent
 ```
 
-## Quick Start
+### Option 2: Global Installation
+```bash
+pnpm add -g @iqai/mcp-near-agent
+```
 
-```typescript
-import { McpNearAgent } from "@iqai/adk";
-
-const nearAgent = McpNearAgent({
-  env: {
-    ACCOUNT_ID: "your-account.testnet",
-    ACCOUNT_KEY: "ed25519:your-private-key-here",
-    NEAR_NETWORK_ID: "testnet"
-  },
-  debug: true
-});
+### Option 3: From Source
+```bash
+git clone <repository_url>
+cd mcp-near-agent
+pnpm install
+pnpm run build
 ```
 
 ## Configuration
+
+Set these environment variables in your MCP client configuration:
 
 ### Required Environment Variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `ACCOUNT_ID` | Your NEAR account identifier | `alice.testnet` |
-| `ACCOUNT_KEY` | Private key for the NEAR account | `ed25519:...` |
+| `ACCOUNT_KEY` | Private key for the NEAR account (ed25519: or secp256k1: format) | `ed25519:...` |
 
 ### Optional Environment Variables
 
 | Variable | Description | Default | Options |
 |----------|-------------|---------|---------|
-| `NEAR_NETWORK_ID` | NEAR network to connect to | `mainnet` | `mainnet`, `testnet` |
-| `NEAR_RPC_URL` | Custom RPC endpoint | Network default | Any valid NEAR RPC URL |
-| `NEAR_WALLET_URL` | Wallet service URL | Network default | Custom wallet URL |
-| `NEAR_HELPER_URL` | Helper service URL | Network default | Custom helper URL |
+| `NEAR_NETWORK_ID` | NEAR network to connect to | `mainnet` | `mainnet`, `testnet`, `betanet` |
+| `NEAR_NODE_URL` | Custom NEAR RPC endpoint | Network default | Any valid NEAR RPC URL |
+| `NEAR_GAS_LIMIT` | Gas limit for transactions | Network default | Custom gas limit |
 
 ## Usage Examples
 
-### Basic Account Operations
+### Event Watching and AI Processing
 
 ```typescript
-// Get account balance
-const balance = await nearAgent.tools.getAccountBalance({
-  accountId: "alice.testnet"
+// Start watching for specific events on a NEAR contract
+const watcher = await nearAgent.tools.watch_near_event({
+  eventName: "run_agent",           // Event to watch for
+  contractId: "contract.testnet",   // Contract to monitor
+  responseMethodName: "agent_response", // Method to call with AI response
+  cronExpression: "*/10 * * * * *"  // Optional: polling frequency
 });
 
-// Transfer NEAR tokens
-const transfer = await nearAgent.tools.transferNear({
-  receiverId: "bob.testnet",
-  amount: "1.5" // in NEAR
-});
-```
-
-### Smart Contract Interactions
-
-```typescript
-// Call a smart contract method
-const result = await nearAgent.tools.callContract({
+// Stop watching for specific events
+await nearAgent.tools.stop_watching_near_event({
   contractId: "contract.testnet",
-  methodName: "get_greeting",
-  args: {},
-  attachedDeposit: "0"
+  eventName: "run_agent"
 });
 
-// Deploy a smart contract
-const deployment = await nearAgent.tools.deployContract({
-  contractCode: wasmBinary,
-  initMethod: "init",
-  initArgs: { owner_id: "alice.testnet" }
+// List all currently watched events and statistics
+const watchedEvents = await nearAgent.tools.list_watched_near_events({
+  includeStats: true  // Optional: include performance statistics
 });
 ```
 
-### Transaction Management
+### MCP Client Configuration
 
 ```typescript
-// Send a complex transaction
-const transaction = await nearAgent.tools.sendTransaction({
-  receiverId: "contract.testnet",
-  actions: [
-    {
-      type: "FunctionCall",
-      method_name: "increment",
-      args: {},
-      gas: "30000000000000",
-      deposit: "0"
-    }
-  ]
+import { MCPClient } from "your-mcp-client";
+
+const client = new MCPClient({
+  serverCommand: "pnpm",
+  serverArgs: ["dlx", "@iqai/mcp-near-agent"],
+  serverEnv: {
+    ACCOUNT_ID: "your-account.testnet",
+    ACCOUNT_KEY: "ed25519:your_private_key_here",
+    NEAR_NETWORK_ID: "testnet"
+  }
 });
 ```
 
 ## Available Tools
 
-### Account Management
-- `getAccountBalance` - Check NEAR token balance
-- `getAccountInfo` - Get account details and state
-- `createSubAccount` - Create a new sub-account
-- `deleteAccount` - Delete an account and transfer remaining funds
-
-### Token Operations
-- `transferNear` - Send NEAR tokens to another account
-- `transferFt` - Transfer fungible tokens
-- `transferNft` - Transfer non-fungible tokens
-
-### Contract Interactions
-- `callContract` - Call a smart contract method
-- `deployContract` - Deploy a new smart contract
-- `upgradeContract` - Upgrade an existing contract
-- `getContractState` - Query contract storage
-
-### Transaction Tools
-- `sendTransaction` - Send custom transactions
-- `getTransaction` - Query transaction details
-- `getTransactionHistory` - Get account transaction history
-
-### Network Tools
-- `getNetworkInfo` - Get current network status
-- `getValidators` - List active validators
-- `getBlockInfo` - Get block information
-
-## Error Handling
-
-Common error scenarios and solutions:
-
+### `watch_near_event`
+Start watching for specific events on a NEAR contract:
 ```typescript
-try {
-  const result = await nearAgent.tools.transferNear({
-    receiverId: "invalid.account",
-    amount: "1.0"
-  });
-} catch (error) {
-  if (error.type === "AccountNotFound") {
-    console.log("Recipient account does not exist");
-  } else if (error.type === "InsufficientFunds") {
-    console.log("Not enough NEAR tokens for transfer");
-  }
+{
+  eventName: "run_agent",           // Event to watch for
+  contractId: "contract.testnet",   // Contract to monitor
+  responseMethodName: "agent_response", // Method to call with AI response
+  cronExpression: "*/10 * * * * *"  // Optional: polling frequency
 }
 ```
 
+### `stop_watching_near_event`
+Stop watching for specific events:
+```typescript
+{
+  contractId: "contract.testnet",
+  eventName: "run_agent"
+}
+```
+
+### `list_watched_near_events`
+List all currently watched events and statistics:
+```typescript
+{
+  includeStats: true  // Optional: include performance statistics
+}
+```
+
+## 🌜 Event Processing Flow
+
+When a blockchain event is detected:
+
+1. 📡 **Event Detection**: Server monitors blockchain for specified events
+2. 🤖 **AI Request**: Server requests sampling from MCP client with event data
+3. 🧠 **AI Processing**: Client processes event and returns intelligent response
+4. 📤 **Blockchain Response**: Server sends AI response back to contract
+5. 📊 **Statistics**: Performance metrics are tracked and available
+
+## 📊 Response Format
+
+The server provides structured responses:
+
+- ✔ **Success/failure status** with detailed messages
+- 🔗 **Subscription IDs** for tracking active watchers
+- 📈 **Performance statistics** (success rates, processing times)
+- 🎯 **Event details** (contract, event type, timestamps)
+- 💡 **Helpful guidance** and troubleshooting tips
+
+## Example Workflow
+
+1. **Start the MCP server** with your client
+2. **Watch for events** using the MCP tool:
+   ```
+   Use watch_near_event with:
+   - eventName: "price_request"
+   - contractId: "oracle.testnet"
+   - responseMethodName: "price_response"
+   ```
+3. **AI processes events automatically** when they occur on the blockchain
+4. **Monitor with** `list_watched_near_events` to see status and statistics
+
+## Error Handling
+
+The server handles common NEAR-related errors:
+
+- 🚨 **Invalid contract calls** or method names
+- 💸 **Insufficient account balance** for transactions
+- 🔑 **Authentication issues** with account credentials
+- 🌐 **Network connectivity problems** with NEAR RPC
+- 🚫 **Contract execution errors** returned by smart contracts
+- ⏱️ **Timeout handling** for long-running operations
+
+## 🔍 Monitoring & Debugging
+
+- **Real-time logging** of all blockchain interactions
+- **Performance metrics** for event processing
+- **Error tracking** with detailed error messages
+- **Statistics dashboard** via `list_watched_near_events`
+
 ## Security Best Practices
 
-1. **Key Management**: Store private keys securely using environment variables
-2. **Network Selection**: Always verify you're on the intended network
-3. **Amount Validation**: Double-check transaction amounts before sending
-4. **Gas Estimation**: Use appropriate gas limits for contract calls
-5. **Account Verification**: Verify recipient accounts exist before transfers
+🛡️ **Security Notes**:
+
+- **Private keys** are handled securely in memory only
+- **Environment variables** should be properly secured
+- **Gas limits** prevent runaway transaction costs
+- **Error handling** prevents sensitive data leakage
+
+### Key Management
+1. Store private keys securely using environment variables
+2. Ensure keys include proper format prefix (`ed25519:` or `secp256k1:`)
+3. Never expose private keys in logs or error messages
+
+### Network Security
+1. Always verify you're on the intended network
+2. Use appropriate gas limits for operations
+3. Validate contract addresses before interactions
+
+## Integration with AI Agents
+
+The NEAR Agent MCP server is designed to work seamlessly with AI agents, providing intelligent event processing and blockchain automation:
+
+```typescript
+// AI agent can process blockchain events automatically
+const response = await aiAgent.process(
+  "Watch for price_request events on oracle.testnet and respond with current market data"
+);
+
+// AI agent can interpret event data and provide intelligent responses
+const eventProcessor = await aiAgent.process(
+  "Process the incoming smart contract event and determine the appropriate response"
+);
+```
 
 ## Network Configuration
 
@@ -189,40 +311,29 @@ const mainnetAgent = McpNearAgent({
 });
 ```
 
-## Integration with AI Agents
-
-The NEAR Agent MCP server is designed to work seamlessly with AI agents, providing natural language interfaces for blockchain operations:
-
-```typescript
-// AI agent can interpret: "Send 2 NEAR to bob.testnet"
-const response = await aiAgent.process(
-  "Transfer 2 NEAR tokens to bob.testnet from my account"
-);
-
-// AI agent can interpret: "What's my account balance?"
-const balance = await aiAgent.process(
-  "Check my NEAR account balance"
-);
-```
-
 ## Troubleshooting
 
 ### Common Issues
 
+**Event Detection Problems**
+- Verify contract ID is correct and exists on the specified network
+- Check that the event name matches exactly what the contract emits
+- Ensure proper network configuration (testnet vs mainnet)
+
 **Connection Errors**
-- Verify `NEAR_NETWORK_ID` matches your account
+- Verify `NEAR_NETWORK_ID` matches your account network
 - Check if RPC endpoints are accessible
-- Ensure account credentials are correct
+- Ensure account credentials are correct and properly formatted
 
-**Transaction Failures**
-- Verify sufficient gas for operations
-- Check account has enough NEAR for transactions
-- Validate recipient account exists
+**Authentication Issues**
+- Verify private key includes proper prefix (`ed25519:` or `secp256k1:`)
+- Check that the private key corresponds to the specified account
+- Ensure account has sufficient permissions for operations
 
-**Key Format Issues**
-- Ensure private key includes `ed25519:` prefix
-- Verify key corresponds to the specified account
-- Check key hasn't been rotated or changed
+**Performance Issues**
+- Adjust `cronExpression` for optimal polling frequency
+- Monitor gas usage and adjust `NEAR_GAS_LIMIT` if needed
+- Check network latency and RPC endpoint performance
 
 ### Debug Mode
 

@@ -1,47 +1,14 @@
 import { env } from "node:process";
 import {
-	InMemorySessionService,
-	LlmAgent,
+	AgentBuilder,
+	type BuiltAgent,
+	type EnhancedRunner,
 	type McpConfig,
 	McpError,
 	McpToolset,
-	Runner,
 } from "@iqai/adk";
-import { v4 as uuidv4 } from "uuid";
 
-/**
- * Application configuration constants
- */
-const APP_NAME = "mcp-atp-example";
-const USER_ID = uuidv4();
-
-/**
- * MCP ATP Agent Example
- *
- * This example demonstrates how to use the Model Context Protocol (MCP) with the
- * @iqai/mcp-atp server to create an AI agent capable of interacting with the
- * IQ AI Agent Tokenization Platform (ATP).
- *
- * The example:
- * 1. Connects to the @iqai/mcp-atp server via stdio transport
- * 2. Creates an LLM agent with ATP tools (statistics, logs, trading)
- * 3. Demonstrates various ATP operations through natural language commands
- * 4. Shows proper error handling and resource cleanup
- *
- * Expected Output:
- * - Connection status and available ATP tools
- * - Agent statistics retrieval
- * - Agent logs management (retrieve and add)
- * - Agent token trading operations (buy and sell)
- * - Proper error handling for missing configuration
- *
- * Prerequisites:
- * - Node.js environment
- * - EXAMPLE_ATP_TOKEN_CONTRACT environment variable (required)
- * - WALLET_PRIVATE_KEY environment variable (optional, for trading operations)
- * - ATP_API_KEY environment variable (optional, for enhanced features)
- * - LLM_MODEL environment variable (optional, defaults to gemini-2.5-flash)
- */
+let runner: EnhancedRunner;
 async function main() {
 	let toolset: McpToolset | null = null;
 
@@ -75,19 +42,12 @@ async function main() {
 		 * Create LLM agent with ATP capabilities
 		 * The agent is configured to understand and execute ATP-related operations
 		 */
-		const agent = createAtpAgent(mcpTools);
-
-		/**
-		 * Set up session management and runner
-		 * Provides proper conversation context and execution environment
-		 */
-		const { runner, session } = await setupSessionAndRunner(agent);
-
+		runner = (await createAtpAgent(mcpTools)).runner;
 		/**
 		 * Execute demonstration examples
 		 * Shows various ATP operations through natural language interactions
 		 */
-		await runAtpExamples(runner, session.id, exampleTokenContract!);
+		await runAtpExamples(exampleTokenContract!);
 
 		console.log("\n🎉 MCP ATP agent example completed!");
 	} catch (error) {
@@ -105,7 +65,9 @@ function validateEnvironmentVariables(): {
 	isValid: boolean;
 	exampleTokenContract: string | undefined;
 } {
-	const exampleTokenContract = env.EXAMPLE_ATP_TOKEN_CONTRACT;
+	const exampleTokenContract =
+		env.EXAMPLE_ATP_TOKEN_CONTRACT ||
+		"0x4dBcC239b265295500D2Fe2d0900629BDcBBD0fB"; // Defaults to Sophia's token contract
 	const walletPrivateKey = env.WALLET_PRIVATE_KEY;
 	const atpApiKey = env.ATP_API_KEY;
 
@@ -197,81 +159,19 @@ function displayAvailableTools(mcpTools: any[]): void {
  * @param mcpTools Array of tools to be used by the agent
  * @returns Configured LlmAgent instance
  */
-function createAtpAgent(mcpTools: any[]): LlmAgent {
-	return new LlmAgent({
-		name: "mcp_atp_assistant",
-		model: env.LLM_MODEL || "gemini-2.5-flash",
-		description:
-			"An assistant that can interact with the IQ AI ATP via MCP using Google Gemini",
-		instruction:
+async function createAtpAgent(mcpTools: any[]): Promise<BuiltAgent> {
+	return await AgentBuilder.create("mcp_atp_assistant")
+		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
+		.withDescription(
+			"Helpful assistant that can interact with the IQ AI Agent Tokenization Platform (ATP). ",
+		)
+		.withInstruction(
 			"You are a helpful assistant that can interact with the IQ AI Agent Tokenization Platform (ATP). " +
-			"You can retrieve agent statistics, manage logs, and perform token trading operations. " +
-			"Be clear and informative in your responses about the operations you perform.",
-		tools: mcpTools,
-	});
-}
-
-/**
- * Sets up session management and runner for the agent
- * @param agent The configured LlmAgent instance
- * @returns Object containing runner and session
- */
-async function setupSessionAndRunner(agent: LlmAgent): Promise<{
-	runner: Runner;
-	session: any;
-}> {
-	const sessionService = new InMemorySessionService();
-	const session = await sessionService.createSession(APP_NAME, USER_ID);
-
-	const runner = new Runner({
-		appName: APP_NAME,
-		agent,
-		sessionService,
-	});
-
-	console.log("🤖 Agent initialized with MCP ATP tools.");
-
-	return { runner, session };
-}
-
-/**
- * Executes a user message through the agent and returns the response
- * @param runner The Runner instance for executing agent tasks
- * @param sessionId The current session identifier
- * @param userMessage The message to send to the agent
- * @returns The agent's response as a string
- */
-async function runAgentTask(
-	runner: Runner,
-	sessionId: string,
-	userMessage: string,
-): Promise<string> {
-	const newMessage = {
-		parts: [{ text: userMessage }],
-	};
-
-	let agentResponse = "";
-
-	try {
-		for await (const event of runner.runAsync({
-			userId: USER_ID,
-			sessionId,
-			newMessage,
-		})) {
-			if (event.author === "mcp_atp_assistant" && event.content?.parts) {
-				const content = event.content.parts
-					.map((part) => part.text || "")
-					.join("");
-				if (content) {
-					agentResponse += content;
-				}
-			}
-		}
-	} catch (error) {
-		return `❌ Error: ${error instanceof Error ? error.message : String(error)}`;
-	}
-
-	return agentResponse || "No response from agent";
+				"You can retrieve agent statistics, manage logs, and perform token trading operations. " +
+				"Be clear and informative in your responses about the operations you perform.",
+		)
+		.withTools(...mcpTools)
+		.build();
 }
 
 /**
@@ -280,11 +180,7 @@ async function runAgentTask(
  * @param sessionId The current session identifier
  * @param exampleTokenContract The token contract address to use in examples
  */
-async function runAtpExamples(
-	runner: Runner,
-	sessionId: string,
-	exampleTokenContract: string,
-): Promise<void> {
+async function runAtpExamples(exampleTokenContract: string): Promise<void> {
 	console.log("-----------------------------------");
 
 	/**
@@ -295,8 +191,6 @@ async function runAtpExamples(
 		title: "Get Agent Statistics",
 		description: `Retrieving comprehensive statistics for ${exampleTokenContract}`,
 		query: `Get the agent statistics for token contract ${exampleTokenContract}`,
-		runner,
-		sessionId,
 	});
 
 	/**
@@ -307,8 +201,6 @@ async function runAtpExamples(
 		title: "Get Agent Logs",
 		description: `Fetching recent logs for ${exampleTokenContract}`,
 		query: `Retrieve the first page of logs for agent token contract ${exampleTokenContract}, with a limit of 5.`,
-		runner,
-		sessionId,
 	});
 
 	/**
@@ -320,8 +212,6 @@ async function runAtpExamples(
 		title: "Add Agent Log",
 		description: `Adding a custom log entry to ${exampleTokenContract}`,
 		query: `Add the following log message to agent token contract ${exampleTokenContract}: "${logMessage}"`,
-		runner,
-		sessionId,
 	});
 
 	/**
@@ -333,8 +223,6 @@ async function runAtpExamples(
 		title: `Buy ${iqAmountToBuy} IQ worth of Agent Tokens`,
 		description: `Purchasing agent tokens for ${exampleTokenContract}`,
 		query: `Buy ${iqAmountToBuy} IQ worth of agent tokens for token contract ${exampleTokenContract}.`,
-		runner,
-		sessionId,
 	});
 
 	/**
@@ -346,8 +234,6 @@ async function runAtpExamples(
 		title: `Sell ${tokensToSell} Agent Tokens`,
 		description: `Selling agent tokens for ${exampleTokenContract}`,
 		query: `Sell ${tokensToSell} agent tokens for token contract ${exampleTokenContract}.`,
-		runner,
-		sessionId,
 	});
 
 	console.log("✅ MCP ATP Agent examples complete!");
@@ -361,17 +247,15 @@ async function runExample(config: {
 	title: string;
 	description: string;
 	query: string;
-	runner: Runner;
-	sessionId: string;
 }): Promise<void> {
-	const { title, description, query, runner, sessionId } = config;
+	const { title, description, query } = config;
 
 	console.log(`\n🌟 Example: ${title}`);
 	console.log(`📋 ${description}`);
 	console.log(`💬 User Query: ${query}`);
 	console.log("-----------------------------------");
 
-	const response = await runAgentTask(runner, sessionId, query);
+	const response = await runner.ask(query);
 	console.log(`💡 Agent Response: ${response}`);
 	console.log("-----------------------------------");
 }

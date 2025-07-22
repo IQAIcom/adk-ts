@@ -1,12 +1,70 @@
 ---
-title: MCP FRAXLEND
+title: MCP Fraxlend
 description: Interact with the Fraxlend lending platform
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-**Package**: [`@iqai/mcp-fraxlend`](https://www.npmjs.com/package/@iqai/mcp-fraxlend)
-**Purpose**: Interact with the Fraxlend lending platform
+- **Package**: [`@iqai/mcp-fraxlend`](https://www.npmjs.com/package/@iqai/mcp-fraxlend)
+- **Purpose**: Interact with the Fraxlend lending platform
+
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpFraxlend} from "@iqai/adk";
+
+    const toolset = McpFraxlend({
+      env: {
+        WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Fraxlend MCP Client",
+      description: "Client for Fraxlend lending operations",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-fraxlend"],
+        env: {
+          WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "fraxlend-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-fraxlend"],
+          "env": {
+            "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
 
 ## Features
 
@@ -83,22 +141,6 @@ The private key is used for signing transactions for lending, borrowing, etc. Ha
 </Callout>
 
 - `WALLET_PRIVATE_KEY`: Required for `LEND`, `BORROW`, `ADD_COLLATERAL`, `REMOVE_COLLATERAL`, `REPAY`, `WITHDRAW`
-
-## Configuration Example
-
-```json
-{
-  "mcpServers": {
-    "fraxlend-server": {
-      "command": "pnpm",
-      "args": ["dlx", "@iqai/mcp-fraxlend"],
-      "env": {
-        "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
-      }
-    }
-  }
-}
-```
 
 ## Usage Examples
 

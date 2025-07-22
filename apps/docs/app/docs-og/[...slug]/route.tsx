@@ -83,7 +83,7 @@ export async function GET(
                 <img
                   src={`${baseUrl}/adk.png`}
                   alt="ADK Logo"
-                  width="180"
+                  width="210"
                   height="180"
                 />
               </div>

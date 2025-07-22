@@ -1,4 +1,4 @@
-import { Logger } from "@adk/helpers/logger";
+import { Logger } from "@adk/logger";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
@@ -6,7 +6,7 @@ import type { ToolContext } from "../tool-context";
  * Tool that allows an agent to transfer control to another agent
  */
 export class TransferToAgentTool extends BaseTool {
-	private logger = new Logger({ name: "TransferToAgentTool" });
+	protected logger = new Logger({ name: "TransferToAgentTool" });
 
 	/**
 	 * Constructor for TransferToAgentTool

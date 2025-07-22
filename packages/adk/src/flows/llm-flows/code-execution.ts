@@ -1,26 +1,22 @@
-import type { Content, Part } from "@google/genai";
+import { LlmAgent } from "@adk/agents";
+import type { Content } from "@google/genai";
 import type { InvocationContext } from "../../agents/invocation-context";
+import { BaseCodeExecutor } from "../../code-executors/base-code-executor";
+import { BuiltInCodeExecutor } from "../../code-executors/built-in-code-executor";
+import {
+	type CodeExecutionResult,
+	CodeExecutionUtils,
+	type File,
+} from "../../code-executors/code-execution-utils";
+import { CodeExecutorContext } from "../../code-executors/code-executor-context";
+import { Event } from "../../events/event";
+import { EventActions } from "../../events/event-actions";
 import type { LlmRequest } from "../../models/llm-request";
 import type { LlmResponse } from "../../models/llm-response";
 import {
 	BaseLlmRequestProcessor,
 	BaseLlmResponseProcessor,
 } from "./base-llm-processor";
-import { CodeExecutorContext } from "../../code-executors/code-executor-context";
-import {
-	CodeExecutionUtils,
-	type File,
-	type CodeExecutionInput,
-	type CodeExecutionResult,
-} from "../../code-executors/code-execution-utils";
-import { BaseCodeExecutor } from "../../code-executors/base-code-executor";
-import { BuiltInCodeExecutor } from "../../code-executors/built-in-code-executor";
-import { EventActions } from "../../events/event-actions";
-import { Event } from "../../events/event";
-import { Logger } from "@adk/helpers/logger";
-import { LlmAgent } from "@adk/agents";
-
-const logger = new Logger({ name: "CodeExecutionProcessor" });
 
 /**
  * Data file utility structure for code execution
@@ -530,11 +526,11 @@ export const responseProcessor = new CodeExecutionResponseProcessor();
  * Export utility functions for testing
  */
 export {
+	DATA_FILE_HELPER_LIB,
+	DATA_FILE_UTIL_MAP,
 	extractAndReplaceInlineFiles,
 	getDataFilePreprocessingCode,
 	getOrSetExecutionId,
-	postProcessCodeExecutionResult,
 	hasCodeExecutor,
-	DATA_FILE_UTIL_MAP,
-	DATA_FILE_HELPER_LIB,
+	postProcessCodeExecutionResult,
 };

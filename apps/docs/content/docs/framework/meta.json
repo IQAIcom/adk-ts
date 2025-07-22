@@ -1,0 +1,6 @@
+{
+  "title": "Framework",
+  "icon": "Building",
+  "root": true,
+  "pages": ["index", "get-started", "agents", "tools", "sessions", "runtime", "evaluation", "artifacts", "callbacks", "context", "deploy", "events"]
+}

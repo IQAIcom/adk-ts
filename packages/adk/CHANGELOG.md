@@ -1,5 +1,77 @@
 # @iqai/adk
 
+## 0.1.13
+
+### Patch Changes
+
+- 89db602: Update mcp server name for near intents
+
+## 0.1.12
+
+### Patch Changes
+
+- 1b9f517: - Add support for withMemory and withArtifactService methods to agent builder instead of passing it from withSession
+
+## 0.1.11
+
+### Patch Changes
+
+- 4a93c0a: Makes schema optional for createTool function
+
+## 0.1.10
+
+### Patch Changes
+
+- 83e8a58: Add create tool function to easily create tools with zod schema
+
+## 0.1.9
+
+### Patch Changes
+
+- 2711998: - adds @iqai/mcp-discord mcp definition
+  - update EnhancedRunner.ask() to take in message type LlmRequest
+  - update SamplingHandler response type to be LlmResponse | string for more flexibility when used with enhanced runner
+
+## 0.1.8
+
+### Patch Changes
+
+- 38e6ec5: Improve type safety in AgentBuilder by removing undefined types from BuiltAgent interface
+
+## 0.1.7
+
+### Patch Changes
+
+- 6e97c5a: Improve agent builder to take minimal params and improved experience with runner.ask
+
+## 0.1.6
+
+### Patch Changes
+
+- 6bc189d: Adds coingecko mcp server definition
+
+## 0.1.5
+
+### Patch Changes
+
+- f5962ca: Adds AI-SDK integration with comprehensive tool calling support
+
+  This release introduces integration with Vercel's AI SDK, expanding the platform's capabilities to support a wider range of large language models without requiring manual maintenance of model synchronization.
+
+  ## Key Features
+
+  - **AI-SDK Integration**: New `AiSdkLlm` class that integrates with Vercel AI SDK, supporting multiple providers (Google, OpenAI, Anthropic)
+  - **Tool Calling Support**: Robust tool calling capabilities with automatic transformation of ADK function declarations to AI SDK tool definitions using Zod schemas
+  - **Agent Builder Support**: Enhanced agent builder with AI-SDK model support
+  - **Example Implementation**: Complete weather agent example demonstrating AI-SDK usage with tool calling
+
+  ## Technical Details
+
+  - Adds `ai-sdk.ts` model implementation with streaming support
+  - Implements message format conversion between ADK and AI SDK formats
+  - Supports both streaming and non-streaming model interactions
+  - Maintains backward compatibility with existing ADK functionality
+
 ## 0.1.4
 
 ### Patch Changes

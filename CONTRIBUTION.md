@@ -249,7 +249,7 @@ The LLM provider system abstracts away the complexities of different language mo
 
 Each provider implementation (like **OpenAiLlm** and **GoogleLlm**) translates between ADK's standardized `LlmRequest`/`LlmResponse` format and the provider's specific API requirements. This includes handling different parameter names, response structures, function calling formats, and streaming protocols.
 
-The **LLMRegistry** system enables dynamic model resolution using pattern matching. Agents can specify models using simple strings like `"gpt-4"` or `"gemini-pro"`, and the registry automatically instantiates the appropriate provider with the correct configuration. This makes it easy to switch models without changing agent code.
+The **LLMRegistry** system enables dynamic model resolution using pattern matching. Agents can specify models using simple strings like `"gpt-4.1"` or `"gemini-pro"`, and the registry automatically instantiates the appropriate provider with the correct configuration. This makes it easy to switch models without changing agent code.
 
 The provider system also handles advanced features like token counting, cost tracking, rate limiting, and retry logic, ensuring robust production deployment across different LLM services.
 

@@ -16,62 +16,14 @@ const USER_ID = uuidv4();
 function createCodeAgent(): LlmAgent {
 	return new LlmAgent({
 		name: "code_agent",
-		model: env.LLM_MODEL || "gemini-2.0-flash",
+		model: "gemini-2.0-flash",
 		description: "A coder agent that can execute Python code",
-		instruction: `You are a coder agent. When given a mathematical expression or problem, 
+		instruction: `You are a coder agent. When given a mathematical expression or problem,
 write and execute Python code to solve it. Always show your work with code.`,
 		codeExecutor: new BuiltInCodeExecutor(),
 		disallowTransferToParent: true,
 		disallowTransferToPeers: true,
 	});
-}
-
-/**
- * Demonstrates basic code execution
- * @param runner The Runner instance for executing agent tasks
- * @param sessionId The current session identifier
- */
-async function demonstrateCodeExecution(
-	runner: Runner,
-	sessionId: string,
-): Promise<void> {
-	console.log("🧮 Demonstrating Code Execution");
-	console.log("-----------------------------------");
-
-	const mathRequest = {
-		parts: [
-			{
-				text: "Create a list of numbers from 1 to 5, square each number, and then find the sum of the squared numbers.",
-			},
-		],
-	};
-
-	for await (const event of runner.runAsync({
-		userId: USER_ID,
-		sessionId,
-		newMessage: mathRequest,
-	})) {
-		if (event.author === "code_agent" && event.content?.parts) {
-			for (const part of event.content.parts) {
-				if (part.executableCode) {
-					console.log("🐍 Generated Code:");
-					console.log("-------------------");
-					console.log(part.executableCode.code);
-					console.log("-------------------\n");
-				} else if (part.codeExecutionResult) {
-					console.log("✅ Execution Result:");
-					console.log("-------------------");
-					console.log(part.codeExecutionResult.output);
-					console.log("-------------------\n");
-				} else if (part.text) {
-					console.log("🤖 Agent Response:");
-					console.log("-------------------");
-					console.log(part.text);
-					console.log("-------------------\n");
-				}
-			}
-		}
-	}
 }
 
 async function main() {
@@ -89,13 +41,59 @@ async function main() {
 			sessionService,
 		});
 
-		await demonstrateCodeExecution(runner, session.id);
+		/**
+		 * Demonstrate code execution with a mathematical problem
+		 * Using runner.ask() for simplified response handling
+		 */
+		console.log("🧮 Demonstrating Code Execution");
+		console.log("-----------------------------------");
+
+		const mathProblem =
+			"Create a list of numbers from 1 to 5, square each number, and then find the sum of the squared numbers.";
+		console.log(`📝 Problem: ${mathProblem}`);
+		console.log("🤖 Agent Response:");
+
+		// Create a simple runner.ask() equivalent for this specific runner
+		const response = await askRunner(runner, session.id, mathProblem);
+		console.log(response);
 
 		console.log("\n✅ Code Executor example completed!");
 	} catch (error) {
 		console.error("❌ Error in code executor example:", error);
 		process.exit(1);
 	}
+}
+
+/**
+ * Simple ask function that mimics AgentBuilder's runner.ask() pattern
+ * @param runner The Runner instance
+ * @param sessionId The session ID
+ * @param message The message to send
+ * @returns The agent's response as a string
+ */
+async function askRunner(
+	runner: Runner,
+	sessionId: string,
+	message: string,
+): Promise<string> {
+	let response = "";
+
+	for await (const event of runner.runAsync({
+		userId: USER_ID,
+		sessionId,
+		newMessage: { parts: [{ text: message }] },
+	})) {
+		if (event.author === "code_agent" && event.content?.parts) {
+			const content = event.content.parts
+				.map((part) => part.text || "")
+				.join("");
+			if (content) {
+				response += content;
+			}
+		}
+	}
+
+	return response || "No response from agent";
 }
 
 /**

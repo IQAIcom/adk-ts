@@ -1,11 +1,9 @@
-import { Logger } from "@adk/helpers/logger";
 import type { BaseTool } from "@adk/tools";
 import type {
 	Content,
 	GenerateContentConfig,
 	LiveConnectConfig,
 } from "@google/genai";
-const logger = new Logger({ name: "LlmRequest" });
 
 /**
  * LLM request class that allows passing in tools, output schema and system

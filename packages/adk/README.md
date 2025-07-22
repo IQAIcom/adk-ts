@@ -1,6 +1,14 @@
-# @iqai/adk - Agent Development Kit Core
+<div align="center">
 
-`@iqai/adk` is the core TypeScript library for the Agent Development Kit, providing the foundational tools and abstractions to build sophisticated AI agents. It enables seamless integration with multiple Large Language Models (LLMs), advanced tool usage, and persistent memory capabilities.
+<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
+
+<br/>
+
+# @iqai/adk
+
+**The core TypeScript library for building sophisticated AI agents with multi-LLM support, advanced tools, and flexible conversation flows.**
+
+*Production-ready • Multi-Agent Systems • Extensible Architecture*
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@iqai/adk">
@@ -17,30 +25,43 @@
   </a>
 </p>
 
-## 🚀 Core Features
+---
 
-The `@iqai/adk` package empowers your AI agent development with:
+</div>
 
-*   **Multi-Provider LLM Support:** Flexibly integrate and switch between leading LLM providers like OpenAI, Anthropic, and Google.
-*   **Extensible Tool System:** Define and utilize custom tools with declarative schemas, allowing LLMs to intelligently leverage external functionalities.
-*   **Advanced Agent Reasoning Loop:** A complete reasoning loop implementation for complex task execution and iterative problem-solving.
-*   **Real-Time Streaming:** Support for streaming responses from LLMs for dynamic user interactions.
-*   **Flexible Authentication:** Mechanisms for securing agent API access.
-*   **Persistent Memory Systems:** Capabilities for agents to retain context and learn from past interactions.
+## 🌟 Overview
 
-## 🚦 Installation
+`@iqai/adk` is the core TypeScript library for the Agent Development Kit, providing the foundational tools and abstractions to build sophisticated AI agents. It enables seamless integration with multiple Large Language Models (LLMs), advanced tool usage, and persistent memory capabilities.
 
-Install the `@iqai/adk` package using your preferred package manager:
+## 🚀 Key Features
+
+- **🤖 Multi-Provider LLM Support** - Seamlessly integrate OpenAI, Anthropic, Google, and other leading providers
+- **🛠️ Extensible Tool System** - Define custom tools with declarative schemas for intelligent LLM integration
+- **🧠 Advanced Agent Reasoning** - Complete reasoning loop implementation for complex task execution
+- **⚡ Real-Time Streaming** - Support for streaming responses and dynamic user interactions
+- **🔐 Flexible Authentication** - Secure agent API access with multiple auth mechanisms
+- **💾 Persistent Memory Systems** - Context retention and learning from past interactions
+- **🔄 Multi-Agent Orchestration** - Sequential, parallel, and loop-based agent workflows
+- **📊 Built-in Telemetry** - Comprehensive monitoring and analytics capabilities
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-# Using npm
 npm install @iqai/adk
+```
 
-# Using yarn
-yarn add @iqai/adk
+### Simple Example
 
-# Using pnpm
-pnpm add @iqai/adk
+```typescript
+import { AgentBuilder } from '@iqai/adk';
+
+const response = await AgentBuilder
+  .withModel("gpt-4.1")
+  .ask("What is the primary function of an AI agent?");
+
+console.log(response);
 ```
 
 ## ⚙️ Environment Configuration
@@ -108,7 +129,6 @@ async function quickQuery() {
     .create("query_assistant")
     .withModel("gemini-2.5-flash")
     .withInstruction("You are a helpful AI. Respond clearly and concisely.")
-    .withQuickSession("my-app", "user-123")
     .ask("What is the capital of France?");
 
   console.log(response);
@@ -228,12 +248,84 @@ async function performCalculation() {
 performCalculation().catch(console.error);
 ```
 
-More detailed examples and advanced usage patterns can be found in the `apps/examples` directory of the main [ADK TypeScript repository](https://github.com/IQAIcom/adk-ts).
+## 🏗️ Advanced Features
+
+### Multi-Agent Systems
+
+```typescript
+import { AgentBuilder } from '@iqai/adk';
+
+// Sequential workflow
+const workflow = await AgentBuilder
+  .create("data_pipeline")
+  .asSequential([dataCollector, dataProcessor, dataAnalyzer])
+  .withQuickSession("pipeline-app", "admin")
+  .build();
+
+// Parallel execution
+const parallelAnalysis = await AgentBuilder
+  .create("multi_analysis")
+  .asParallel([sentimentAnalyzer, topicExtractor, summaryGenerator])
+  .build();
+```
+
+### Memory & Sessions
+
+```typescript
+import { Agent, InMemorySessionService } from '@iqai/adk';
+
+const agent = new Agent({
+  name: "persistent_assistant",
+  model: "gpt-4-turbo",
+  sessionService: new InMemorySessionService(),
+  instructions: "Remember our conversation history."
+});
+```
+
+### Custom Tools
+
+```typescript
+import { BaseTool } from '@iqai/adk';
+
+class WeatherTool extends BaseTool {
+  constructor() {
+    super({
+      name: 'weather',
+      description: 'Get current weather information'
+    });
+  }
+
+  async runAsync(args: { location: string }) {
+    // Implementation here
+    return { temperature: 72, condition: 'sunny' };
+  }
+}
+```
+
+## 📚 Documentation
+
+For comprehensive guides, API reference, and advanced examples:
+
+**[https://adk.iqai.com](https://adk.iqai.com)**
+
+## 🧪 Examples
+
+Explore comprehensive examples in the main repository:
+
+```bash
+git clone https://github.com/IQAIcom/adk-ts
+cd adk-ts/apps/examples
+pnpm install && pnpm dev
+```
 
 ## 🤝 Contributing
 
-While this README focuses on the `@iqai/adk` package, contributions to the overall ADK TypeScript project are welcome. Please see the [Contributing Guide](https://github.com/IQAIcom/adk-ts/blob/main/CONTRIBUTING.md) in the main repository for details on how to contribute.
+Contributions are welcome! See our [Contributing Guide](https://github.com/IQAIcom/adk-ts/blob/main/CONTRIBUTION.md) for details.
 
 ## 📜 License
 
-This package is licensed under the [MIT License](https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md).
+MIT License - see [LICENSE](https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md) for details.
+
+---
+
+**Ready to build your first AI agent?** Visit [https://adk.iqai.com](https://adk.iqai.com) to get started!

@@ -1,0 +1,114 @@
+---
+title: Parallel Agents
+description: Run multiple agents simultaneously for faster processing
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+Parallel agents execute multiple sub-agents simultaneously, allowing independent tasks to run concurrently for improved performance and efficiency.
+
+## How Parallel Agents Work
+
+1. **Concurrent Execution**: All agents start at the same time
+2. **Independent Processing**: Agents run without waiting for each other
+3. **Result Aggregation**: Collect and combine results when all agents complete
+4. **Performance Optimization**: Reduce total execution time for independent tasks
+
+## When to Use Parallel Agents
+
+Parallel agents are ideal for:
+
+- **Independent tasks** - Multiple research queries that don't depend on each other
+- **Data validation** - Simultaneous fact-checking and grammar review
+- **Distributed processing** - Processing different data partitions
+- **Comparative analysis** - Getting multiple perspectives on the same topic
+
+<Callout type="info" title="Independence Required">
+Use parallel agents only when tasks are truly independent and don't need to share results during execution.
+</Callout>
+
+## Configuration
+
+### Basic Setup
+- **agents**: List of agents to execute in parallel
+- **name**: Unique identifier for the workflow
+- **description**: Summary for other agents to understand the workflow
+
+### Advanced Options
+- **max_concurrent**: Limit the number of agents running simultaneously
+- **timeout**: Set maximum execution time for the parallel execution
+- **fail_fast**: Stop all agents if one fails (default: false)
+
+## Common Patterns
+
+### Multi-Source Research
+Query different information sources simultaneously for comprehensive research.
+
+### Content Review Workflow
+Run fact-checking, grammar review, and style analysis in parallel.
+
+### Distributed Data Processing
+Process different data sets or partitions simultaneously.
+
+### Comparative Analysis
+Get multiple expert opinions or analysis perspectives on the same input.
+
+## Result Handling
+
+### Aggregation Strategies
+- **Combine all results**: Merge outputs from all agents
+- **Best result selection**: Choose the highest quality response
+- **Consensus building**: Find common themes across results
+- **Structured compilation**: Organize results by agent type or topic
+
+### Error Handling
+- **Graceful degradation**: Continue with successful results if some agents fail
+- **Retry mechanisms**: Restart failed agents while others continue
+- **Partial results**: Handle scenarios where not all agents complete
+
+## Best Practices
+
+<Callout type="warn" title="Design Considerations">
+- Ensure tasks are truly independent before using parallel execution
+- Consider resource usage when running many agents simultaneously
+- Plan how to handle varying completion times
+- Design clear result aggregation strategies
+</Callout>
+
+### Performance Optimization
+- Limit concurrent agents based on system resources
+- Use timeouts to prevent hanging executions
+- Consider the trade-off between parallelism and resource usage
+
+### Result Quality
+- Design consistent output formats across parallel agents
+- Plan for varying result quality and completeness
+- Consider how to handle conflicting information
+
+### Resource Management
+- Monitor system resource usage with parallel execution
+- Consider rate limits for external API calls
+- Plan for network and memory constraints
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🔗 Sequential Agents"
+    description="Execute agents in order when dependencies exist"
+    href="/docs/framework/agents/workflow-agents/sequential-agents"
+  />
+
+  <Card
+    title="🔄 Loop Agents"
+    description="Repeat execution until conditions are met"
+    href="/docs/framework/agents/workflow-agents/loop-agents"
+  />
+
+  <Card
+    title="🚀 Performance"
+    description="Optimize agent performance and resource usage"
+    href="/docs/framework/advanced/performance"
+  />
+</Cards>

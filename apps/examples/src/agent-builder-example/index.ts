@@ -5,16 +5,9 @@ import {
 	AgentBuilder,
 	GoogleSearch,
 	HttpRequestTool,
-	InMemoryMemoryService,
 	createDatabaseSessionService,
 } from "@iqai/adk";
 import dedent from "dedent";
-
-/**
- * Application configuration constants
- */
-const APP_NAME = "AgentBuilderDemo";
-const USER_ID = "demo-user";
 
 /**
  * AgentBuilder Example
@@ -113,9 +106,7 @@ async function demonstrateSessionManagement(): Promise<void> {
 	console.log("════════════════════════════════════");
 
 	// Create agent with persistent session
-	const { agent, runner, session } = await AgentBuilder.create(
-		"persistent_agent",
-	)
+	const { runner } = await AgentBuilder.create("persistent_agent")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.withDescription("An agent that remembers our conversation")
 		.withInstruction(dedent`
@@ -125,31 +116,24 @@ async function demonstrateSessionManagement(): Promise<void> {
 		`)
 		.withSession(
 			createDatabaseSessionService(getSqliteConnectionString("agentbuilder")),
-			USER_ID,
-			APP_NAME,
-			new InMemoryMemoryService(),
 		)
 		.build();
 
-	if (!runner || !session) {
-		throw new Error("Failed to create runner and session");
-	}
-
-	// First interaction
+	// First interaction - using simplified runner API
 	console.log("💬 First interaction:");
-	await runConversation(
-		runner,
-		session.id,
+	const firstResponse = await runner.ask(
 		"My name is Alice. Remember this for our conversation.",
 	);
+	console.log("👤 User: My name is Alice. Remember this for our conversation.");
+	console.log(`🤖 Agent: ${firstResponse}`);
 
 	// Second interaction - testing memory
 	console.log("\n💬 Second interaction (testing memory):");
-	await runConversation(
-		runner,
-		session.id,
+	const secondResponse = await runner.ask(
 		"What was my name that I told you earlier?",
 	);
+	console.log("👤 User: What was my name that I told you earlier?");
+	console.log(`🤖 Agent: ${secondResponse}`);
 
 	console.log(
 		"💡 Run this example multiple times to see session persistence!\n",
@@ -189,24 +173,20 @@ async function demonstrateMultiAgentWorkflows(): Promise<void> {
 	console.log("📋 Sequential Workflow (Research → Summarize):");
 	console.log("   Creating and executing sequential workflow...");
 
-	const { runner: sequentialRunner, session: sequentialSession } =
-		await AgentBuilder.create("sequential_workflow")
-			.withDescription("A workflow that researches and then summarizes")
-			.asSequential([(await researchAgent).agent, (await summaryAgent).agent])
-			.withQuickSession(APP_NAME, USER_ID)
-			.build();
+	const { runner: sequentialRunner } = await AgentBuilder.create(
+		"sequential_workflow",
+	)
+		.withDescription("A workflow that researches and then summarizes")
+		.asSequential([(await researchAgent).agent, (await summaryAgent).agent])
+		.build();
 
-	if (!sequentialRunner || !sequentialSession) {
-		throw new Error("Failed to create sequential workflow runner and session");
-	}
-
-	// Execute the actual sequential workflow
+	// Execute the actual sequential workflow using simplified API
 	console.log("🔬 Executing: Research → Summarize workflow");
-	await runConversation(
-		sequentialRunner,
-		sequentialSession.id,
-		"Research the latest developments in TypeScript 5.0 and provide a summary of the key features",
-	);
+	const workflowMessage =
+		"Research the latest developments in TypeScript 5.0 and provide a summary of the key features";
+	const workflowResponse = await sequentialRunner.ask(workflowMessage);
+	console.log(`👤 User: ${workflowMessage}`);
+	console.log(`🤖 Agent: ${workflowResponse}`);
 
 	// Demonstrate parallel workflow execution
 	console.log("\n🔀 Parallel Workflow Execution:");
@@ -277,35 +257,6 @@ async function demonstrateMultiAgentWorkflows(): Promise<void> {
 	console.log("🎯 Synthesized Overview:");
 	console.log(synthesisResult);
 	console.log("\n✅ Multi-agent workflow execution completed!\n");
-}
-
-/**
- * Helper function to run a conversation and display results
- */
-async function runConversation(
-	runner: any,
-	sessionId: string,
-	message: string,
-): Promise<void> {
-	console.log(`👤 User: ${message}`);
-
-	let response = "";
-	for await (const event of runner.runAsync({
-		userId: USER_ID,
-		sessionId,
-		newMessage: {
-			parts: [{ text: message }],
-		},
-	})) {
-		if (event.content?.parts && !event.partial) {
-			const content = event.content.parts.map((p) => p.text).join("");
-			if (content) {
-				response += content;
-			}
-		}
-	}
-
-	console.log(`🤖 Agent: ${response}`);
 }
 
 /**

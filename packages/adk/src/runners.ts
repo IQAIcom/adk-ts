@@ -8,7 +8,7 @@ import { RunConfig } from "./agents/run-config";
 import type { BaseArtifactService } from "./artifacts/base-artifact-service";
 import { InMemoryArtifactService } from "./artifacts/in-memory-artifact-service";
 import { Event } from "./events/event";
-import { Logger } from "./helpers/logger";
+import { Logger } from "./logger";
 import type { BaseMemoryService } from "./memory/base-memory-service";
 import { InMemoryMemoryService } from "./memory/in-memory-memory-service";
 import type { BaseSessionService } from "./sessions/base-session-service";
@@ -16,12 +16,10 @@ import { InMemorySessionService } from "./sessions/in-memory-session-service";
 import type { Session } from "./sessions/session";
 import { tracer } from "./telemetry";
 
-const logger = new Logger({ name: "Runner" });
-
 /**
  * Find function call event if last event is function response.
  */
-function _findFunctionCallEventIfLastEventIsFunctionResponse(
+export function _findFunctionCallEventIfLastEventIsFunctionResponse(
 	session: Session,
 ): Event | null {
 	const events = session.events;
@@ -59,7 +57,7 @@ function _findFunctionCallEventIfLastEventIsFunctionResponse(
  * processing, event generation, and interaction with various services like
  * artifact storage, session management, and memory.
  */
-export class Runner {
+export class Runner<T extends BaseAgent = BaseAgent> {
 	/**
 	 * The app name of the runner.
 	 */
@@ -68,7 +66,7 @@ export class Runner {
 	/**
 	 * The root agent to run.
 	 */
-	agent: BaseAgent;
+	agent: T;
 
 	/**
 	 * The artifact service for the runner.
@@ -85,6 +83,8 @@ export class Runner {
 	 */
 	memoryService?: BaseMemoryService;
 
+	protected logger = new Logger({ name: "Runner" });
+
 	/**
 	 * Initializes the Runner.
 	 */
@@ -96,7 +96,7 @@ export class Runner {
 		memoryService,
 	}: {
 		appName: string;
-		agent: BaseAgent;
+		agent: T;
 		artifactService?: BaseArtifactService;
 		sessionService: BaseSessionService;
 		memoryService?: BaseMemoryService;
@@ -220,7 +220,7 @@ export class Runner {
 				yield event;
 			}
 		} catch (error) {
-			logger.debug("Error running agent:", error);
+			this.logger.debug("Error running agent:", error);
 			span.recordException(error as Error);
 			span.setStatus({
 				code: SpanStatusCode.ERROR,
@@ -310,7 +310,7 @@ export class Runner {
 			const agent = rootAgent.findSubAgent?.(event.author);
 			if (!agent) {
 				// Agent not found, continue looking
-				logger.debug(
+				this.logger.debug(
 					`Event from an unknown agent: ${event.author}, event id: ${event.id}`,
 				);
 				continue;
@@ -379,7 +379,7 @@ export class Runner {
 /**
  * An in-memory Runner for testing and development.
  */
-export class InMemoryRunner extends Runner {
+export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
 	/**
 	 * Deprecated. Please don't use. The in-memory session service for the runner.
 	 */
@@ -389,7 +389,7 @@ export class InMemoryRunner extends Runner {
 	 * Initializes the InMemoryRunner.
 	 */
 	constructor(
-		agent: BaseAgent,
+		agent: T,
 		{ appName = "InMemoryRunner" }: { appName?: string } = {},
 	) {
 		const inMemorySessionService = new InMemorySessionService();
