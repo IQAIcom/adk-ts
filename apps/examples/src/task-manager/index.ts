@@ -6,6 +6,7 @@ import {
   Runner,
 } from "@iqai/adk";
 import { v4 as uuidv4 } from "uuid";
+import dedent from "dedent";
 
 /**
  * Task Manager Example
@@ -68,14 +69,12 @@ function createTaskManagerAgent(): LlmAgent {
     description:
       "A task management assistant that helps manage your to-do list",
     model: env.LLM_MODEL || "gemini-2.5-flash",
-    instruction:
-      "You are a helpful task management assistant. Your job is to help the user manage their task list by:" +
-      "\n- Adding new tasks when they mention something they want to do" +
-      "\n- Removing tasks when they indicate something is completed or should be removed" +
-      "\n- Updating tasks when they want to change details" +
-      "\n- Showing the current task list when asked" +
-      "\n\nAlways be conversational, friendly and brief in your responses. " +
-      "After performing any task operation, mention the current state of the task list.",
+    instruction: dedent`You are a helpful task management assistant. Your job is to help the user manage their task list by:
+      - Adding new tasks when they mention something they want to do
+      - Removing tasks when they indicate something is completed or should be removed
+      - Updating tasks when they want to change details
+      - Showing the current task list when asked
+      Always be conversational, friendly and brief in your responses. After performing any task operation, mention the current state of the task list.`,
   });
 }
 
