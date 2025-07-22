@@ -1,5 +1,6 @@
 import { env } from "node:process";
 import { InMemorySessionService, LlmAgent, Runner } from "@iqai/adk";
+import { intro, outro, text } from "@clack/prompts";
 import { v4 as uuidv4 } from "uuid";
 import dedent from "dedent";
 
@@ -227,31 +228,22 @@ async function runTaskManagerInteractive(
   sessionService: InMemorySessionService,
   sessionId: string
 ): Promise<void> {
-  console.log("\n" + "=".repeat(50));
-  console.log("🗒️ Task Manager Agent");
-  console.log("Type your tasks or questions. Type 'exit' to quit.");
-  console.log("=".repeat(50) + "\n");
-
-  const readline = require("readline").createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  const askQuestion = () => {
-    readline.question("> ", async (input: string) => {
-      if (input.toLowerCase() === "exit") {
-        console.log("👋 Goodbye!");
-        readline.close();
-        return;
-      }
-
-      await sendMessage(runner, sessionService, sessionId, input);
-
-      askQuestion();
+  intro("🗒️ Task Manager Agent");
+  let exit = false;
+  while (!exit) {
+    const input = await text({
+      message: "Type your tasks or questions (type 'exit' to quit):",
+      placeholder: "e.g. buy groceries, remove 1, update 2 call mom, show list",
     });
-  };
-
-  askQuestion();
+    if (typeof input === "string" && input.trim().toLowerCase() === "exit") {
+      outro("👋 Goodbye!");
+      exit = true;
+      break;
+    }
+    if (typeof input === "string" && input.trim()) {
+      await sendMessage(runner, sessionService, sessionId, input.trim());
+    }
+  }
 }
 
 async function main() {
