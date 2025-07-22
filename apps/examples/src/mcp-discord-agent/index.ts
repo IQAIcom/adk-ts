@@ -1,12 +1,12 @@
-import {
-	createSamplingHandler,
-	createDatabaseSessionService,
-	McpDiscord,
-	AgentBuilder,
-} from "@iqai/adk";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { env } from "node:process";
+import {
+	AgentBuilder,
+	McpDiscord,
+	createDatabaseSessionService,
+	createSamplingHandler,
+} from "@iqai/adk";
 
 async function main() {
 	console.log("🤖 Initializing agent runner...");
@@ -25,7 +25,7 @@ async function main() {
 		- Is very sarcastic and witty
 	`,
 		)
-		.withSession(
+		.withSessionService(
 			createDatabaseSessionService(getSqliteConnectionString("discord_agent")),
 		)
 		.build();

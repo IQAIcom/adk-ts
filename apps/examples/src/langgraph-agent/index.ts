@@ -68,6 +68,9 @@ const main = async () => {
 		.withInstruction(
 			"You will be asked to provide passwords from different agents. Combine them to form the full password.",
 		)
+		.withSessionService(
+			createDatabaseSessionService("sqlite://langgraph_agent.db"),
+		)
 		.asLangGraph(
 			[
 				{

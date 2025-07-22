@@ -53,7 +53,7 @@ async function main() {
 				- Be mindful of server rules and community standards
 				- Use Discord markdown formatting when helpful (e.g., **bold**, *italic*, \`code\`)
 			`)
-			.withSession(
+			.withSessionService(
 				createDatabaseSessionService(getSqliteConnectionString("discord_bot")),
 			)
 			.build();

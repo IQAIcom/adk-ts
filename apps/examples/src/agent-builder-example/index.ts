@@ -114,7 +114,7 @@ async function demonstrateSessionManagement(): Promise<void> {
 			Remember important details from our discussion and reference them when relevant.
 			Be conversational and personable while staying helpful and accurate.
 		`)
-		.withSession(
+		.withSessionService(
 			createDatabaseSessionService(getSqliteConnectionString("agentbuilder")),
 		)
 		.build();

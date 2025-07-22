@@ -104,7 +104,7 @@ async function main() {
 				}),
 				new LoadArtifactsTool(),
 			)
-			.withSession(sessionService, {
+			.withSessionService(sessionService, {
 				userId: USER_ID,
 				appName: APP_NAME,
 			})
@@ -207,7 +207,7 @@ async function demonstrateCrossSessionPersistence(
 		)
 		.withTools(new LoadArtifactsTool())
 		.withArtifactService(artifactService)
-		.withSession(sessionService, { userId: USER_ID, appName: APP_NAME })
+		.withSessionService(sessionService, { userId: USER_ID, appName: APP_NAME })
 		.build();
 
 	const crossSession = await newRunner.ask(
