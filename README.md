@@ -68,6 +68,7 @@ For comprehensive guides, API reference, and advanced examples, visit our docume
 **[https://adk.iqai.com](https://adk.iqai.com)**
 
 The documentation includes:
+
 - Getting started tutorials
 - API reference
 - Advanced usage patterns
@@ -91,6 +92,7 @@ pnpm dev
 ## 🤝 Contributing
 
 We welcome contributions! See our [Contributing Guide](CONTRIBUTION.md) for details on:
+
 - Framework architecture
 - Development setup
 - Implementation patterns
