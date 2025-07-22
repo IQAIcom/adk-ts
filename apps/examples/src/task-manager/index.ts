@@ -37,24 +37,6 @@ const MAX_EVENTS = 12; // 6 pairs of user/assistant interactions
 let taskList: string[] = [];
 
 /**
- * Validates required environment configuration
- * @returns True if configuration is valid, false otherwise
- */
-function validateEnvironment(): boolean {
-  if (!env.GOOGLE_API_KEY && !env.LLM_MODEL) {
-    console.log(
-      "⚠️  Please set the GOOGLE_API_KEY environment variable to run this example"
-    );
-
-    console.log(
-      "   Example: GOOGLE_API_KEY=your-key-here npm run dev src/task-manager"
-    );
-    return false;
-  }
-  return true;
-}
-
-/**
  * Creates and configures the LLM agent for task management
  * @returns Configured LlmAgent
  */
