@@ -144,6 +144,7 @@ async function main() {
 		const templatePath = selectedStarter.template;
 		const targetDir = join(process.cwd(), projectName);
 
+		// Download template from GitHub
 		await downloadTemplate(templatePath, {
 			dir: targetDir,
 			offline: false,

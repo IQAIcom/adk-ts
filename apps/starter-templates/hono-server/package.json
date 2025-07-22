@@ -1,0 +1,38 @@
+{
+	"name": "adk-hono-server",
+	"version": "0.0.1",
+	"description": "ADK Hono Server - A starter project for creating AI agents with Hono web framework",
+	"main": "dist/index.js",
+	"private": true,
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsx watch src/index.ts",
+		"start": "node dist/index.js",
+		"clean": "rimraf dist",
+		"prebuild": "pnpm clean"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/IQAICOM/adk-hono-server.git"
+	},
+	"keywords": ["ai", "agent", "mcp", "adk-ts", "IQAI", "hono", "web-server"],
+	"author": "IQAI",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/IQAICOM/adk-hono-server/issues"
+	},
+	"homepage": "https://github.com/IQAICOM/adk-hono-server#readme",
+	"dependencies": {
+		"@hono/node-server": "^1.17.1",
+		"@iqai/adk": "^0.1.8",
+		"dotenv": "^17.2.0",
+		"hono": "^4.8.5",
+		"zod": "^4.0.5"
+	},
+	"devDependencies": {
+		"@types/node": "^22.16.0",
+		"rimraf": "^6.0.1",
+		"tsx": "^4.20.3",
+		"typescript": "^5.8.3"
+	}
+}

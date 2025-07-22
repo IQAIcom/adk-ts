@@ -81,7 +81,6 @@ async function demonstrateBuiltInPlanner(): Promise<void> {
 				},
 			}),
 		)
-		.withQuickSession()
 		.build();
 
 	const query = "What's 2 + 2? Please explain your reasoning.";
@@ -103,7 +102,7 @@ async function demonstratePlanReActPlanner(): Promise<void> {
 		.withDescription("An agent that uses structured planning")
 		.withInstruction("You are a helpful assistant that plans before acting.")
 		.withPlanner(new PlanReActPlanner())
-		.withQuickSession()
+
 		.build();
 
 	const query =

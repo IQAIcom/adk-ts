@@ -26,7 +26,6 @@ Be careful and respectful when accessing files - only read what's necessary.
 Provide helpful summaries and insights from the file content you access.
 Always respect file permissions and security boundaries.`)
 			.withTools(...filesystemTools)
-			.withQuickSession()
 			.build();
 
 		/**

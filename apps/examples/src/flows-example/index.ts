@@ -17,7 +17,6 @@ When asked to create a file, use the file_operations tool with operation: "write
 When asked to read a file, use the file_operations tool with operation: "read".
 Always use the tools available to you and be clear about the operations you perform.`)
 			.withTools(new FileOperationsTool())
-			.withQuickSession()
 			.build();
 
 		/**

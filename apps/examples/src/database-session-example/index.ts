@@ -32,7 +32,7 @@ async function main() {
 			.withDescription(
 				"You are a counter. Increment the count each time when I tell you so. Start with 1",
 			)
-			.withSession(sessionService, USER_ID, APP_NAME)
+			.withSession(sessionService, { userId: USER_ID, appName: APP_NAME })
 			.build();
 
 		/**

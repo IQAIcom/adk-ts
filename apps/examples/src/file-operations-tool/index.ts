@@ -62,7 +62,6 @@ Always verify operations success by checking the 'success' property in the respo
 For reading operations, the content will be in the 'data' property when successful.
 Provide clear feedback about what operations were performed.`)
 			.withTools(fileToolWithBasePath)
-			.withQuickSession()
 			.build();
 
 		/**

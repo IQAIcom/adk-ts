@@ -5,7 +5,7 @@ description: MCP server for Near Intents-based cross-chain swaps
 
 import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-- **Package**: [`@iqai/mcp-near-intent-swaps`](https://www.npmjs.com/package/@iqai/mcp-near-intent-swaps)
+- **Package**: [`@iqai/mcp-near-intents`](https://www.npmjs.com/package/@iqai/mcp-near-intents)
 - **Purpose**: An MCP server for Near Intents swaps using the [Defuse Protocol one-click SDK](https://github.com/defuse-protocol/one-click-sdk-typescript). This server provides tools for cross-chain token swaps through NEAR's intent-based architecture.
 - **Example**: 🚀 [Near Intents Swaps Example](https://github.com/IQAIcom/near-intent-swap-agent)
 
@@ -14,7 +14,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 <Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
   <Tab value="Simple">
     ```typescript
-    McpNearIntentSwaps({
+    McpNearIntents({
       env: {
         NEAR_SWAP_JWT_TOKEN: process.env.NEAR_SWAP_JWT_TOKEN,
       },
@@ -32,7 +32,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
       transport: {
         mode: "stdio",
         command: "pnpm",
-        args: ["dlx", "@iqai/mcp-near-intent-swaps"],
+        args: ["dlx", "@iqai/mcp-near-intents"],
         env: {
           NEAR_SWAP_JWT_TOKEN: process.env.NEAR_SWAP_JWT_TOKEN,
           PATH: process.env.PATH || "",
@@ -40,7 +40,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
       },
     })
 
-    const tools = toolset.getTools()
+    const tools = await toolset.getTools()
     ```
   </Tab>
 
@@ -48,9 +48,9 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
     ```json
     {
       "mcpServers": {
-        "near-intent-swaps-server": {
+        "near-intents-server": {
           "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-near-intent-swaps"],
+          "args": ["dlx", "@iqai/mcp-near-intents"],
           "env": {
             "NEAR_SWAP_JWT_TOKEN": "your-jwt-token-here"
           }
@@ -60,7 +60,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
     ```
   </Tab>
 </Tabs>
-
+:
 
 ## Features
 
@@ -234,23 +234,6 @@ The server provides detailed error messages for common issues:
 - Invalid request parameters
 - API connection errors
 - Invalid asset identifiers
-
-## Development
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd mcp-near-intent-swaps
-
-# Watch for changes during development
-pnpm watch
-
-# Format code
-pnpm format
-
-# Lint code
-pnpm lint
-```
 
 ## Related Resources
 

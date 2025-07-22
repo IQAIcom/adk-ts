@@ -1,3 +1,4 @@
+import type { LlmRequest } from "@adk/models";
 import type { Content, Part } from "@google/genai";
 import { type LanguageModel, generateId } from "ai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service.js";
@@ -16,7 +17,6 @@ import { LlmAgent } from "./llm-agent.js";
 import { LoopAgent } from "./loop-agent.js";
 import { ParallelAgent } from "./parallel-agent.js";
 import { SequentialAgent } from "./sequential-agent.js";
-import type { LlmRequest } from "@adk/models";
 
 /**
  * Configuration options for the AgentBuilder
@@ -35,14 +35,20 @@ export interface AgentBuilderConfig {
 }
 
 /**
- * Session configuration for the AgentBuilder
+ * Session configuration options
  */
-export interface SessionConfig {
+export interface SessionOptions {
+	userId?: string;
+	appName?: string;
+}
+
+/**
+ * Internal session configuration for the AgentBuilder
+ */
+interface InternalSessionConfig {
 	service: BaseSessionService;
 	userId: string;
 	appName: string;
-	memoryService?: BaseMemoryService;
-	artifactService?: BaseArtifactService;
 }
 
 /**
@@ -121,6 +127,15 @@ interface RunnerConfig {
  *   .withInstruction("You are a research assistant")
  *   .build();
  *
+ * // With memory and artifact services
+ * const { runner } = await AgentBuilder
+ *   .create("persistent-agent")
+ *   .withModel("gemini-2.5-flash")
+ *   .withMemory(new RedisMemoryService())
+ *   .withArtifactService(new S3ArtifactService())
+ *   .withSession(new DatabaseSessionService(), { userId: "user123", appName: "myapp" })
+ *   .build();
+ *
  * // Multi-agent workflow
  * const { runner } = await AgentBuilder
  *   .create("workflow")
@@ -130,7 +145,9 @@ interface RunnerConfig {
  */
 export class AgentBuilder {
 	private config: AgentBuilderConfig;
-	private sessionConfig?: SessionConfig;
+	private sessionConfig?: InternalSessionConfig;
+	private memoryService?: BaseMemoryService;
+	private artifactService?: BaseArtifactService;
 	private agentType: AgentType = "llm";
 
 	/**
@@ -259,38 +276,46 @@ export class AgentBuilder {
 	/**
 	 * Configure session management with optional smart defaults
 	 * @param service Session service to use
-	 * @param userId User identifier (optional, defaults to agent-based ID)
-	 * @param appName Application name (optional, defaults to agent-based name)
-	 * @param memoryService Optional memory service
-	 * @param artifactService Optional artifact service
+	 * @param options Session configuration options (userId and appName)
 	 * @returns This builder instance for chaining
 	 */
-	withSession(
-		service: BaseSessionService,
-		userId?: string,
-		appName?: string,
-		memoryService?: BaseMemoryService,
-		artifactService?: BaseArtifactService,
-	): this {
+	withSession(service: BaseSessionService, options: SessionOptions = {}): this {
 		this.sessionConfig = {
 			service,
-			userId: userId || this.generateDefaultUserId(),
-			appName: appName || this.generateDefaultAppName(),
-			memoryService,
-			artifactService,
+			userId: options.userId || this.generateDefaultUserId(),
+			appName: options.appName || this.generateDefaultAppName(),
 		};
+		return this;
+	}
+
+	/**
+	 * Configure memory service for the agent
+	 * @param memoryService Memory service to use for conversation history and context
+	 * @returns This builder instance for chaining
+	 */
+	withMemory(memoryService: BaseMemoryService): this {
+		this.memoryService = memoryService;
+		return this;
+	}
+
+	/**
+	 * Configure artifact service for the agent
+	 * @param artifactService Artifact service to use for managing generated artifacts
+	 * @returns This builder instance for chaining
+	 */
+	withArtifactService(artifactService: BaseArtifactService): this {
+		this.artifactService = artifactService;
 		return this;
 	}
 
 	/**
 	 * Configure with an in-memory session with custom IDs
 	 * Note: In-memory sessions are created automatically by default, use this only if you need custom appName/userId
-	 * @param appName Application name (optional, defaults to agent-based name)
-	 * @param userId User identifier (optional, defaults to agent-based ID)
+	 * @param options Session configuration options (userId and appName)
 	 * @returns This builder instance for chaining
 	 */
-	withQuickSession(appName?: string, userId?: string): this {
-		return this.withSession(new InMemorySessionService(), userId, appName);
+	withQuickSession(options: SessionOptions = {}): this {
+		return this.withSession(new InMemorySessionService(), options);
 	}
 
 	/**
@@ -317,8 +342,8 @@ export class AgentBuilder {
 				appName: this.sessionConfig.appName,
 				agent,
 				sessionService: this.sessionConfig.service,
-				memoryService: this.sessionConfig.memoryService,
-				artifactService: this.sessionConfig.artifactService,
+				memoryService: this.memoryService,
+				artifactService: this.artifactService,
 			};
 
 			const baseRunner = new Runner(runnerConfig);

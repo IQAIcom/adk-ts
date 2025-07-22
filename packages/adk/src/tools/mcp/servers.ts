@@ -251,10 +251,10 @@ export function McpNearAgent(config: McpServerConfig = {}): McpToolset {
  * Required env vars: ACCOUNT_ID, ACCOUNT_KEY
  * Optional env vars: NEAR_NETWORK_ID, NEAR_NODE_URL, NEAR_GAS_LIMIT
  */
-export function McpNearIntentSwaps(config: McpServerConfig = {}): McpToolset {
+export function McpNearIntents(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Near Intents Swaps MCP Client",
-		"@iqai/mcp-near-intent-swaps",
+		"@iqai/mcp-near-intents",
 		config,
 	);
 	return new McpToolset(mcpConfig);

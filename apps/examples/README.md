@@ -88,7 +88,7 @@ There are over 20 examples available, covering a wide range of use cases from ba
 | Example | Description | Features |
 |---------|-------------|----------|
 | **[tool-usage](src/tool-usage/)** | Custom tools with calculator and weather APIs | Function calling, API integration |
-| **[function-tool](src/function-tool/)** | Converting regular functions to agent tools | Simple tool creation |
+| **[create-tool](src/create-tool/)** | Converting regular functions to agent tools using createTool | Simple tool creation |
 | **[http-request-tool](src/http-request-tool/)** | HTTP requests and API interactions | External service integration |
 
 ### 🧠 **Memory & State Examples**

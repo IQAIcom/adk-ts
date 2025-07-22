@@ -31,7 +31,6 @@ async function main() {
 				Provide comprehensive responses that utilize your tools effectively.
 			`)
 			.withTools(calculatorTool, weatherTool)
-			.withQuickSession()
 			.build();
 
 		/**

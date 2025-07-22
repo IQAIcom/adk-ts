@@ -1,6 +1,6 @@
 {
 	"name": "create-adk-project",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "CLI tool to create ADK TypeScript projects with different frameworks",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",

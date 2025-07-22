@@ -1,5 +1,29 @@
 # @iqai/adk
 
+## 0.1.13
+
+### Patch Changes
+
+- 89db602: Update mcp server name for near intents
+
+## 0.1.12
+
+### Patch Changes
+
+- 1b9f517: - Add support for withMemory and withArtifactService methods to agent builder instead of passing it from withSession
+
+## 0.1.11
+
+### Patch Changes
+
+- 4a93c0a: Makes schema optional for createTool function
+
+## 0.1.10
+
+### Patch Changes
+
+- 83e8a58: Add create tool function to easily create tools with zod schema
+
 ## 0.1.9
 
 ### Patch Changes

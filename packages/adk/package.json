@@ -1,6 +1,6 @@
 {
 	"name": "@iqai/adk",
-	"version": "0.1.9",
+	"version": "0.1.13",
 	"description": "Agent Development Kit for TypeScript with multi-provider LLM support",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",

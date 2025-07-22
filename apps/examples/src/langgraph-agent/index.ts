@@ -1,59 +1,69 @@
-import { AgentBuilder, createFunctionTool } from "@iqai/adk";
+import { AgentBuilder, InMemorySessionService, createTool } from "@iqai/adk";
+import * as z from "zod/v4";
 
 const main = async () => {
+	const session = new InMemorySessionService();
+	const userId = "user1";
+	const appName = "langgraph_agent";
+
 	const firstPasswordAgent = await AgentBuilder.create("first_password")
 		.withDescription("Agent that has first password")
 		.withModel("gemini-2.5-flash")
 		.withTools(
-			createFunctionTool(() => "eamt2CXOlJ3F0Dq", {
+			createTool({
 				name: "getFirstPassword",
 				description: "Returns the first password for the user",
+				fn: () => "First password is eamt2CXOlJ3F0Dq",
 			}),
 		)
+		.withSession(session, { userId, appName })
 		.build();
 
 	const secondPasswordAgent = await AgentBuilder.create("second_password")
 		.withDescription("Agent that has second password")
 		.withModel("gemini-2.5-flash")
 		.withTools(
-			createFunctionTool(() => "p84ylYk_9G6xlE8", {
+			createTool({
 				name: "getSecondPassword",
 				description: "Returns the second password for the user",
+				schema: z.object({}),
+				fn: () => "Second password is p84ylYk_9G6xlE8",
 			}),
 		)
+		.withSession(session, { userId, appName })
 		.build();
 
 	const thirdPasswordAgent = await AgentBuilder.create("third_password")
 		.withDescription("Agent that has third password")
 		.withModel("gemini-2.5-flash")
 		.withTools(
-			createFunctionTool(() => "UnKfArgJ2gF0TtN", {
+			createTool({
 				name: "getThirdPassword",
 				description: "Returns the third password for the user",
+				schema: z.object({}),
+				fn: () => "Third password is UnKfArgJ2gF0TtN",
 			}),
 		)
+		.withSession(session, { userId, appName })
 		.build();
 
 	const fullPasswordAgent = await AgentBuilder.create("full_password")
 		.withDescription("Agent that combines passwords from other agents")
 		.withModel("gemini-2.5-flash")
+		.withSession(session, { userId, appName })
 		.withTools(
-			createFunctionTool(
-				async (
-					firstPassword: string,
-					secondPassword: string,
-					thirdPassword: string,
-				) => {
+			createTool({
+				name: "getFullPassword",
+				description: "Combines passwords from other agents",
+				schema: z.object({
+					firstPassword: z.string().describe("First password"),
+					secondPassword: z.string().describe("Second password"),
+					thirdPassword: z.string().describe("Third password"),
+				}),
+				fn: async ({ firstPassword, secondPassword, thirdPassword }) => {
 					return `${firstPassword}-${secondPassword}-${thirdPassword}`;
 				},
-				{
-					name: "getFullPassword",
-					description: "Combines passwords from other agents",
-					isLongRunning: true,
-					shouldRetryOnFailure: true,
-					maxRetryAttempts: 3,
-				},
-			),
+			}),
 		)
 		.build();
 
@@ -62,6 +72,7 @@ const main = async () => {
 		.withInstruction(
 			"You will be asked to provide passwords from different agents. Combine them to form the full password.",
 		)
+		.withSession(session, { userId, appName })
 		.asLangGraph(
 			[
 				{
