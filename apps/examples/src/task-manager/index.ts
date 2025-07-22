@@ -226,7 +226,7 @@ async function runTaskManagerInteractive(
   sessionId: string
 ): Promise<void> {
   console.log("\n" + "=".repeat(50));
-  console.log("🗒️ Task Manager Interactive Mode");
+  console.log("🗒️ Task Manager Agent");
   console.log("Type your tasks or questions. Type 'exit' to quit.");
   console.log("=".repeat(50) + "\n");
 
@@ -254,14 +254,6 @@ async function runTaskManagerInteractive(
 
 async function main() {
   console.log("📝 Starting Task Manager example...");
-
-  /**
-   * Validate environment configuration
-   * Ensure required API keys are available
-   */
-  if (!validateEnvironment()) {
-    process.exit(1);
-  }
 
   try {
     /**
