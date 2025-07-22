@@ -12,6 +12,7 @@ import { InMemorySessionService } from "../sessions/in-memory-session-service.js
 import type { Session } from "../sessions/session.js";
 import type { BaseTool } from "../tools/base/base-tool.js";
 import type { BaseAgent } from "./base-agent.js";
+import { InvocationContext } from "./invocation-context.js";
 import { LangGraphAgent, type LangGraphNode } from "./lang-graph-agent.js";
 import { LlmAgent } from "./llm-agent.js";
 import { LoopAgent } from "./loop-agent.js";
@@ -274,16 +275,50 @@ export class AgentBuilder {
 	}
 
 	/**
-	 * Configure session management with optional smart defaults
+	 * Configure session service with optional smart defaults
 	 * @param service Session service to use
 	 * @param options Session configuration options (userId and appName)
 	 * @returns This builder instance for chaining
 	 */
-	withSession(service: BaseSessionService, options: SessionOptions = {}): this {
+	withSessionService(
+		service: BaseSessionService,
+		options: SessionOptions = {},
+	): this {
 		this.sessionConfig = {
 			service,
 			userId: options.userId || this.generateDefaultUserId(),
 			appName: options.appName || this.generateDefaultAppName(),
+		};
+		return this;
+	}
+
+	/**
+	 * Configure with an existing session
+	 * @param session Existing session to use
+	 * @returns This builder instance for chaining
+	 */
+	withSession(session: Session): this {
+		// Ensure the session has proper structure
+		const safeSession: Session = {
+			...session,
+			events: Array.isArray(session.events) ? session.events : [],
+			state: session.state || {},
+		};
+
+		// Create a mock session service that returns the provided session
+		const mockSessionService = {
+			createSession: async () => safeSession,
+			getSession: async () => safeSession,
+			listSessions: async () => ({ sessions: [safeSession] }),
+			deleteSession: async () => {},
+			appendEvent: async (_: Session, event: Event) => event,
+			updateSessionState: async () => {},
+		} as unknown as BaseSessionService;
+
+		this.sessionConfig = {
+			service: mockSessionService,
+			userId: session.userId,
+			appName: session.appName,
 		};
 		return this;
 	}
@@ -315,7 +350,7 @@ export class AgentBuilder {
 	 * @returns This builder instance for chaining
 	 */
 	withQuickSession(options: SessionOptions = {}): this {
-		return this.withSession(new InMemorySessionService(), options);
+		return this.withSessionService(new InMemorySessionService(), options);
 	}
 
 	/**
@@ -323,7 +358,7 @@ export class AgentBuilder {
 	 * @returns Built agent with optional runner and session
 	 */
 	async build(): Promise<BuiltAgent> {
-		const agent = this.createAgent();
+		let agent = this.createAgent();
 		let runner: EnhancedRunner | undefined;
 		let session: Session | undefined;
 
@@ -337,6 +372,13 @@ export class AgentBuilder {
 				this.sessionConfig.appName,
 				this.sessionConfig.userId,
 			);
+
+			// Override sub-agent sessions for multi-agent patterns
+			if (session && this.agentType !== "llm") {
+				this.overrideSubAgentSessions(session);
+				// Re-create the agent with overridden sub-agents
+				agent = this.createAgent();
+			}
 
 			const runnerConfig: RunnerConfig = {
 				appName: this.sessionConfig.appName,
@@ -464,6 +506,78 @@ export class AgentBuilder {
 	 */
 	private generateDefaultAppName(): string {
 		return `app-${this.config.name}`;
+	}
+
+	/**
+	 * Override sub-agent sessions to use the parent session
+	 * @param parentSession The session to use for all sub-agents
+	 */
+	private overrideSubAgentSessions(parentSession: Session): void {
+		if (this.agentType === "langgraph" && this.config.nodes) {
+			this.config.nodes = this.config.nodes.map((node) => ({
+				...node,
+				agent: this.createSessionOverriddenAgent(node.agent, parentSession),
+			}));
+		} else if (this.agentType === "sequential" && this.config.subAgents) {
+			this.config.subAgents = this.config.subAgents.map((agent) =>
+				this.createSessionOverriddenAgent(agent, parentSession),
+			);
+		} else if (this.agentType === "parallel" && this.config.subAgents) {
+			this.config.subAgents = this.config.subAgents.map((agent) =>
+				this.createSessionOverriddenAgent(agent, parentSession),
+			);
+		} else if (this.agentType === "loop" && this.config.subAgents) {
+			this.config.subAgents = this.config.subAgents.map((agent) =>
+				this.createSessionOverriddenAgent(agent, parentSession),
+			);
+		}
+	}
+
+	/**
+	 * Create a session-overridden agent wrapper
+	 * @param originalAgent The original agent to wrap
+	 * @param parentSession The session to use instead of the agent's own session
+	 * @returns Wrapped agent that uses the parent session
+	 */
+	private createSessionOverriddenAgent(
+		originalAgent: BaseAgent,
+		parentSession: Session,
+	): BaseAgent {
+		// Create a proxy that intercepts runAsync calls to override the session
+		return new Proxy(originalAgent, {
+			get(target, prop, receiver) {
+				if (prop === "runAsync") {
+					return async function* (context: InvocationContext) {
+						// Ensure the parent session has proper events array structure
+						const safeParentSession: Session = {
+							...parentSession,
+							events: Array.isArray(parentSession.events)
+								? parentSession.events
+								: [],
+						};
+
+						// Override the session in context
+						const overriddenContext = new InvocationContext({
+							artifactService: context.artifactService,
+							sessionService: context.sessionService,
+							memoryService: context.memoryService,
+							invocationId: context.invocationId,
+							branch: context.branch,
+							agent: target,
+							userContent: context.userContent,
+							session: safeParentSession, // Use safe parent session
+							endInvocation: context.endInvocation,
+							liveRequestQueue: context.liveRequestQueue,
+							activeStreamingTools: context.activeStreamingTools,
+							transcriptionCache: context.transcriptionCache,
+							runConfig: context.runConfig,
+						});
+						yield* target.runAsync(overriddenContext);
+					};
+				}
+				return Reflect.get(target, prop, receiver);
+			},
+		});
 	}
 
 	/**
