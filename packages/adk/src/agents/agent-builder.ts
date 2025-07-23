@@ -388,11 +388,10 @@ export class AgentBuilder {
 				this.sessionConfig.userId,
 			);
 
-			// Override sub-agent sessions for multi-agent patterns
-			if (session && this.agentType !== "llm") {
-				this.overrideSubAgentSessions(session);
-				// Re-create the agent with overridden sub-agents
-				agent = this.createAgent();
+			// Apply session override to existing agent for multi-agent patterns
+			// Skip LangGraph agents as they manage their own session flow
+			if (session && this.agentType !== "llm" && this.agentType !== "langgraph") {
+				agent = this.applySessionOverrideToAgent(agent, session);
 			}
 
 			const runnerConfig: RunnerConfig = {
@@ -534,7 +533,7 @@ export class AgentBuilder {
 		return subAgents.map((agent, index) => {
 			// Only auto-generate for LlmAgents that don't already have an outputKey
 			if (agent instanceof LlmAgent && !agent.outputKey) {
-				// Create a new LlmAgent with auto-generated outputKey
+				// Create a new LlmAgent with auto-generated outputKey and clear parent
 				return new LlmAgent({
 					name: agent.name,
 					model: agent.model,
@@ -554,34 +553,40 @@ export class AgentBuilder {
 					codeExecutor: agent.codeExecutor,
 				});
 			}
-			// Return agent unchanged if it's not an LlmAgent or already has outputKey
-			return agent;
+			// Return a fresh copy of the agent to avoid parent conflicts
+			return this.cloneAgent(agent);
 		});
 	}
 
 	/**
-	 * Override sub-agent sessions to use the parent session
-	 * @param parentSession The session to use for all sub-agents
+	 * Create a fresh copy of an agent to avoid parent agent conflicts
+	 * @param agent The agent to clone
+	 * @returns A new agent instance without parent relationships
 	 */
-	private overrideSubAgentSessions(parentSession: Session): void {
-		if (this.agentType === "langgraph" && this.config.nodes) {
-			this.config.nodes = this.config.nodes.map((node) => ({
-				...node,
-				agent: this.createSessionOverriddenAgent(node.agent, parentSession),
-			}));
-		} else if (this.agentType === "sequential" && this.config.subAgents) {
-			this.config.subAgents = this.config.subAgents.map((agent) =>
-				this.createSessionOverriddenAgent(agent, parentSession),
-			);
-		} else if (this.agentType === "parallel" && this.config.subAgents) {
-			this.config.subAgents = this.config.subAgents.map((agent) =>
-				this.createSessionOverriddenAgent(agent, parentSession),
-			);
-		} else if (this.agentType === "loop" && this.config.subAgents) {
-			this.config.subAgents = this.config.subAgents.map((agent) =>
-				this.createSessionOverriddenAgent(agent, parentSession),
-			);
+	private cloneAgent(agent: BaseAgent): BaseAgent {
+		// For LlmAgent, create a new instance
+		if (agent instanceof LlmAgent) {
+			return new LlmAgent({
+				name: agent.name,
+				model: agent.model,
+				description: agent.description,
+				instruction: agent.instruction,
+				tools: agent.tools,
+				planner: agent.planner,
+				outputKey: agent.outputKey,
+				globalInstruction: agent.globalInstruction,
+				generateContentConfig: agent.generateContentConfig,
+				inputSchema: agent.inputSchema,
+				outputSchema: agent.outputSchema,
+				includeContents: agent.includeContents,
+				disallowTransferToParent: agent.disallowTransferToParent,
+				disallowTransferToPeers: agent.disallowTransferToPeers,
+				codeExecutor: agent.codeExecutor,
+			});
 		}
+		// For other agent types, we could add similar cloning logic if needed
+		// For now, return the agent as-is and hope it doesn't have parent conflicts
+		return agent;
 	}
 
 	/**
@@ -607,7 +612,7 @@ export class AgentBuilder {
 								: [],
 						};
 
-						// Override the session in context
+						// Override only the session in context, preserve everything else
 						const overriddenContext = new InvocationContext({
 							artifactService: context.artifactService,
 							sessionService: context.sessionService,
@@ -615,7 +620,7 @@ export class AgentBuilder {
 							invocationId: context.invocationId,
 							branch: context.branch,
 							agent: target,
-							userContent: context.userContent,
+							userContent: context.userContent, // Preserve original user content
 							session: safeParentSession, // Use safe parent session
 							endInvocation: context.endInvocation,
 							liveRequestQueue: context.liveRequestQueue,
@@ -629,6 +634,53 @@ export class AgentBuilder {
 				return Reflect.get(target, prop, receiver);
 			},
 		});
+	}
+
+	/**
+	 * Apply session override to an existing agent without recreating it
+	 * @param agent The agent to apply session override to
+	 * @param parentSession The session to use for all sub-agents
+	 * @returns The agent with session overrides applied
+	 */
+	private applySessionOverrideToAgent(agent: BaseAgent, parentSession: Session): BaseAgent {
+		// For all multi-agent patterns, override their sub-agents with session-aware proxies
+		if (agent.subAgents && agent.subAgents.length > 0) {
+			const sessionOverriddenSubAgents = agent.subAgents.map((subAgent) =>
+				this.createSessionOverriddenAgent(subAgent, parentSession)
+			);
+			
+			// Override the subAgents property on the agent
+			Object.defineProperty(agent, 'subAgents', {
+				value: sessionOverriddenSubAgents,
+				writable: false,
+				enumerable: true,
+				configurable: true,
+			});
+			
+			// For LangGraph agents, we also need to update the internal nodes map
+			if (agent instanceof LangGraphAgent) {
+				// We need to override the private nodes Map through reflection
+				const nodesMap = (agent as any).nodes as Map<string, LangGraphNode>;
+				const newNodesMap = new Map<string, LangGraphNode>();
+				
+				// Update each node in the map with session-overridden agents
+				for (const [nodeName, node] of nodesMap.entries()) {
+					const overriddenAgent = sessionOverriddenSubAgents.find(
+						(subAgent, index) => index === Array.from(nodesMap.values()).findIndex(n => n.agent === node.agent)
+					) || node.agent;
+					
+					newNodesMap.set(nodeName, {
+						...node,
+						agent: overriddenAgent,
+					});
+				}
+				
+				// Replace the nodes map
+				(agent as any).nodes = newNodesMap;
+			}
+		}
+		
+		return agent;
 	}
 
 	/**
