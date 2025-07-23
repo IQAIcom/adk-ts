@@ -1,8 +1,8 @@
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { Event } from "../../events/event";
 import type { LlmRequest } from "../../models/llm-request";
-import { ToolContext } from "../../tools/tool-context";
 import { TransferToAgentTool } from "../../tools/common/transfer-to-agent-tool";
+import { ToolContext } from "../../tools/tool-context";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
 /**
@@ -14,7 +14,6 @@ class AgentTransferLlmRequestProcessor extends BaseLlmRequestProcessor {
 	 * Processes agent transfer by adding transfer instructions and tools
 	 * if the agent has transfer targets available
 	 */
-	// eslint-disable-next-line @typescript-eslint/require-yield
 	async *runAsync(
 		invocationContext: InvocationContext,
 		llmRequest: LlmRequest,
