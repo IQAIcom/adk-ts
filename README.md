@@ -35,62 +35,64 @@ The Agent Development Kit (ADK) for TypeScript provides a comprehensive framewor
 
 ## 🚀 Quick Start
 
-### Create a New Project
+### Getting Started
 
-Get started quickly with our CLI tool:
+You can get started in two ways:
 
-```bash
-npx create-adk-project
-```
+- **Create a new project with our CLI:**
 
-### Manual Installation
+  ```bash
+  npx create-adk-project
+  ```
 
-```bash
-npm install @iqai/adk
-```
+- **Add ADK-TS to an existing project:**
+
+  ```bash
+  npm install @iqai/adk dotenv
+  ```
 
 ### Simple Example
 
 ```typescript
 import { AgentBuilder } from '@iqai/adk';
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 const response = await AgentBuilder
-  .withModel("gpt-4.1")
-  .ask("What is the primary function of an AI agent?");
+  .withModel("gemini-2.5-flash")
+  .ask("What is the capital of France?");
 
 console.log(response);
 ```
 
 ## 📚 Documentation
 
-For comprehensive guides, API reference, and advanced examples, visit our documentation:
+Visit our comprehensive [documentation](https://adk.iqai.com) to learn more about:
 
-**[https://adk.iqai.com](https://adk.iqai.com)**
-
-The documentation includes:
-- Getting started tutorials
-- API reference
-- Advanced usage patterns
-- Multi-agent systems
-- Tool development
-- Memory and session management
-- Production deployment guides
+- [How to get started](https://adk.iqai.com/docs/framework/get-started)
+- [Building multi-agent systems](https://adk.iqai.com/docs/framework/agents/multi-agents)
+- [Extending Agents with Tools](https://adk.iqai.com/docs/framework/tools)
+- [Context Management](https://adk.iqai.com/docs/framework/sessions)
+- [Prebuilt MCP Servers](https://adk.iqai.com/docs/mcp-servers)
 
 ## 🧪 Examples
 
-Explore comprehensive examples in the `apps/examples` directory:
+For examples of how to use ADK-TS, check out the [`apps/examples`](https://github.com/IQAIcom/adk-ts/tree/main/apps/examples) directory:
 
 ```bash
 git clone https://github.com/IQAIcom/adk-ts.git
 cd adk-ts
 pnpm install
+pnpm build
 cd apps/examples
-pnpm dev
+pnpm start
 ```
 
 ## 🤝 Contributing
 
 We welcome contributions! See our [Contributing Guide](CONTRIBUTION.md) for details on:
+
 - Framework architecture
 - Development setup
 - Implementation patterns
@@ -98,7 +100,11 @@ We welcome contributions! See our [Contributing Guide](CONTRIBUTION.md) for deta
 
 ## 📜 License
 
-MIT License - see [LICENSE](LICENSE.md) for details.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## 🔒 Security
+
+If you discover a security vulnerability within this project, please report it by following our [Security Policy](SECURITY.md). We take security seriously and will respond promptly to any reports.
 
 ---
 
