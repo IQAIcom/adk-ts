@@ -25,32 +25,25 @@ class AgentTransferLlmRequestProcessor extends BaseLlmRequestProcessor {
 			return;
 		}
 
-		const transferTargets = getTransferTargets(agent as any);
+		const transferTargets = getTransferTargets(agent);
 		if (!transferTargets || transferTargets.length === 0) {
 			return;
 		}
 
 		// Add transfer instructions to the LLM request
 		const transferInstructions = buildTargetAgentsInstructions(
-			agent as any,
+			agent,
 			transferTargets,
 		);
 
-		if (llmRequest.appendInstructions) {
-			llmRequest.appendInstructions([transferInstructions]);
-		} else {
-			// Fallback if appendInstructions doesn't exist
-			const existingInstructions = (llmRequest as any).instructions || "";
-			(llmRequest as any).instructions =
-				`${existingInstructions}\n\n${transferInstructions}`;
-		}
+		llmRequest.appendInstructions([transferInstructions]);
 
 		// Add transfer_to_agent tool to the request
 		const transferToAgentTool = new TransferToAgentTool();
 		const toolContext = new ToolContext(invocationContext);
 
 		// Type cast due to LlmRequest interface differences between modules
-		await transferToAgentTool.processLlmRequest(toolContext, llmRequest as any);
+		await transferToAgentTool.processLlmRequest(toolContext, llmRequest);
 
 		// This processor doesn't yield any events, just configures the request
 		// Empty async generator - no events to yield

@@ -1,4 +1,5 @@
 import { Logger } from "@adk/logger";
+import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -29,17 +30,17 @@ export class GetUserChoiceTool extends BaseTool {
 			name: this.name,
 			description: this.description,
 			parameters: {
-				type: "object",
+				type: Type.OBJECT,
 				properties: {
 					options: {
-						type: "array",
+						type: Type.ARRAY,
 						description: "List of options for the user to choose from",
 						items: {
-							type: "string",
+							type: Type.STRING,
 						},
 					},
 					question: {
-						type: "string",
+						type: Type.STRING,
 						description:
 							"The question or prompt to show the user before presenting options",
 					},

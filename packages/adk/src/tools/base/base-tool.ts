@@ -1,5 +1,6 @@
 import { Logger } from "@adk/logger";
-import type { FunctionDeclaration } from "../../models/function-declaration";
+import type { FunctionDeclaration, LlmRequest } from "@adk/models";
+import type { Tool } from "@google/genai";
 import type { ToolContext } from "../tool-context";
 
 /**
@@ -31,18 +32,6 @@ export interface ToolConfig {
 	 * Maximum retry attempts
 	 */
 	maxRetryAttempts?: number;
-}
-
-/**
- * LLM request interface for processing outgoing requests
- */
-export interface LlmRequest {
-	toolsDict: Record<string, BaseTool>;
-	config?: {
-		tools?: Array<{
-			functionDeclarations?: FunctionDeclaration[];
-		}>;
-	};
 }
 
 /**
@@ -295,16 +284,18 @@ export abstract class BaseTool {
 	 */
 	private findToolWithFunctionDeclarations(
 		llmRequest: LlmRequest,
-	): { functionDeclarations?: FunctionDeclaration[] } | null {
+	): Tool | null {
 		if (!llmRequest.config || !llmRequest.config.tools) {
 			return null;
 		}
-
-		return (
-			llmRequest.config.tools.find(
+		const toolWithFunctionDeclaration =
+			(llmRequest.config.tools.find(
 				(tool) =>
-					tool.functionDeclarations && tool.functionDeclarations.length > 0,
-			) || null
-		);
+					"functionDeclarations" in tool &&
+					tool.functionDeclarations &&
+					tool.functionDeclarations.length > 0,
+			) as Tool) || null;
+
+		return toolWithFunctionDeclaration;
 	}
 }

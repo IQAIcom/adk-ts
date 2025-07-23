@@ -1,4 +1,5 @@
 import { Logger } from "@adk/logger";
+import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -27,10 +28,10 @@ export class LoadMemoryTool extends BaseTool {
 			name: this.name,
 			description: this.description,
 			parameters: {
-				type: "object",
+				type: Type.OBJECT,
 				properties: {
 					query: {
-						type: "string",
+						type: Type.STRING,
 						description: "The query to load memories for",
 					},
 				},

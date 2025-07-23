@@ -1,3 +1,4 @@
+import type { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -125,7 +126,7 @@ You could retry calling this tool, but it is IMPORTANT for you to provide all th
 				this.parameterTypes,
 			)) {
 				if (declaration.parameters.properties[paramName]) {
-					declaration.parameters.properties[paramName].type = paramType;
+					declaration.parameters.properties[paramName].type = paramType as Type;
 				}
 			}
 		}

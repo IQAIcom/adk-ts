@@ -1,3 +1,4 @@
+import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -40,21 +41,21 @@ export class UserInteractionTool extends BaseTool {
 			name: this.name,
 			description: this.description,
 			parameters: {
-				type: "object",
+				type: Type.OBJECT,
 				properties: {
 					prompt: {
-						type: "string",
+						type: Type.STRING,
 						description: "The prompt message to display to the user",
 					},
 					options: {
-						type: "array",
+						type: Type.ARRAY,
 						description: "Optional array of choices to present to the user",
 						items: {
-							type: "string",
+							type: Type.STRING,
 						},
 					},
 					defaultValue: {
-						type: "string",
+						type: Type.STRING,
 						description: "Optional default value for the input field",
 					},
 				},

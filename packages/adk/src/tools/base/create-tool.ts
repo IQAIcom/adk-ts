@@ -129,7 +129,7 @@ class CreatedTool<T extends Record<string, any>> extends BaseTool {
 	 * Builds the function declaration from the Zod schema
 	 */
 	private buildDeclaration(): FunctionDeclaration {
-		const parameters = z.toJSONSchema(this.schema) as JSONSchema;
+		const parameters = z.toJSONSchema(this.schema) as unknown as JSONSchema; // TODO: Investigate further on type compatibility
 
 		return {
 			name: this.name,

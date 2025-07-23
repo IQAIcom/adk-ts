@@ -1,19 +1,10 @@
+import { Type } from "@google/genai";
 import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
 import type {
 	FunctionDeclaration,
 	JSONSchema,
 } from "../../models/function-declaration";
 import type { BaseTool } from "../base/base-tool";
-
-// Define our own JSONSchemaType since it's not exported from FunctionDeclaration
-type JSONSchemaType =
-	| "object"
-	| "array"
-	| "string"
-	| "number"
-	| "boolean"
-	| "null"
-	| "integer";
 
 /**
  * Converts an ADK-style BaseTool to an MCP tool format
@@ -71,13 +62,13 @@ export function jsonSchemaToDeclaration(
 			parameters = schema as JSONSchema;
 		} else {
 			parameters = {
-				type: "object",
+				type: Type.OBJECT,
 				properties: schema as Record<string, any>,
 			};
 		}
 	} else {
 		parameters = {
-			type: "object",
+			type: Type.OBJECT,
 			properties: {},
 		};
 	}
@@ -95,7 +86,7 @@ export function jsonSchemaToDeclaration(
  */
 export function normalizeJsonSchema(schema: Record<string, any>): JSONSchema {
 	if (!schema) {
-		return { type: "object", properties: {} };
+		return { type: Type.OBJECT, properties: {} };
 	}
 
 	const normalizedSchema = { ...schema };
@@ -116,9 +107,9 @@ export function normalizeJsonSchema(schema: Record<string, any>): JSONSchema {
 		case "integer":
 			return normalizeNumberSchema(normalizedSchema);
 		case "boolean":
-			return { type: "boolean" };
+			return { type: Type.BOOLEAN };
 		case "null":
-			return { type: "null" };
+			return { type: Type.NULL };
 		default:
 			return normalizedSchema as JSONSchema;
 	}
@@ -127,26 +118,26 @@ export function normalizeJsonSchema(schema: Record<string, any>): JSONSchema {
 /**
  * Attempts to determine the schema type based on schema structure
  */
-function determineSchemaType(schema: Record<string, any>): JSONSchemaType {
+function determineSchemaType(schema: Record<string, any>): Type {
 	if (
 		schema.properties ||
 		schema.required ||
 		schema.additionalProperties !== undefined
 	) {
-		return "object";
+		return Type.OBJECT;
 	}
 
 	if (schema.items) {
-		return "array";
+		return Type.ARRAY;
 	}
 
 	if (schema.enum !== undefined) {
-		if (schema.enum.length === 0) return "string";
+		if (schema.enum.length === 0) return Type.STRING;
 		const firstItem = schema.enum[0];
-		if (typeof firstItem === "string") return "string";
-		if (typeof firstItem === "number") return "number";
-		if (typeof firstItem === "boolean") return "boolean";
-		return "string";
+		if (typeof firstItem === "string") return Type.STRING;
+		if (typeof firstItem === "number") return Type.NUMBER;
+		if (typeof firstItem === "boolean") return Type.BOOLEAN;
+		return Type.STRING;
 	}
 
 	if (
@@ -154,7 +145,7 @@ function determineSchemaType(schema: Record<string, any>): JSONSchemaType {
 		schema.maxLength !== undefined ||
 		schema.pattern
 	) {
-		return "string";
+		return Type.STRING;
 	}
 
 	if (
@@ -164,11 +155,11 @@ function determineSchemaType(schema: Record<string, any>): JSONSchemaType {
 		schema.exclusiveMaximum !== undefined
 	) {
 		return schema.multipleOf === undefined || schema.multipleOf % 1 === 0
-			? "integer"
-			: "number";
+			? Type.INTEGER
+			: Type.NUMBER;
 	}
 
-	return "object";
+	return Type.OBJECT;
 }
 
 /**
@@ -176,7 +167,7 @@ function determineSchemaType(schema: Record<string, any>): JSONSchemaType {
  */
 function normalizeObjectSchema(schema: Record<string, any>): JSONSchema {
 	const normalizedSchema: JSONSchema = {
-		type: "object",
+		type: Type.OBJECT,
 		properties: {},
 	};
 
@@ -191,8 +182,6 @@ function normalizeObjectSchema(schema: Record<string, any>): JSONSchema {
 	}
 
 	if (schema.required) normalizedSchema.required = schema.required;
-	if (schema.additionalProperties !== undefined)
-		normalizedSchema.additionalProperties = schema.additionalProperties;
 	if (schema.title) normalizedSchema.title = schema.title;
 	if (schema.description) normalizedSchema.description = schema.description;
 
@@ -204,7 +193,7 @@ function normalizeObjectSchema(schema: Record<string, any>): JSONSchema {
  */
 function normalizeArraySchema(schema: Record<string, any>): JSONSchema {
 	const normalizedSchema: JSONSchema = {
-		type: "array",
+		type: Type.ARRAY,
 	};
 
 	if (schema.items) {
@@ -217,8 +206,6 @@ function normalizeArraySchema(schema: Record<string, any>): JSONSchema {
 		normalizedSchema.minItems = schema.minItems;
 	if (schema.maxItems !== undefined)
 		normalizedSchema.maxItems = schema.maxItems;
-	if (schema.uniqueItems !== undefined)
-		normalizedSchema.uniqueItems = schema.uniqueItems;
 	if (schema.title) normalizedSchema.title = schema.title;
 	if (schema.description) normalizedSchema.description = schema.description;
 
@@ -230,7 +217,7 @@ function normalizeArraySchema(schema: Record<string, any>): JSONSchema {
  */
 function normalizeStringSchema(schema: Record<string, any>): JSONSchema {
 	const normalizedSchema: JSONSchema = {
-		type: "string",
+		type: Type.STRING,
 	};
 
 	if (schema.minLength !== undefined)
@@ -251,17 +238,11 @@ function normalizeStringSchema(schema: Record<string, any>): JSONSchema {
  */
 function normalizeNumberSchema(schema: Record<string, any>): JSONSchema {
 	const normalizedSchema: JSONSchema = {
-		type: schema.type as JSONSchemaType,
+		type: schema.type as Type,
 	};
 
 	if (schema.minimum !== undefined) normalizedSchema.minimum = schema.minimum;
 	if (schema.maximum !== undefined) normalizedSchema.maximum = schema.maximum;
-	if (schema.exclusiveMinimum !== undefined)
-		normalizedSchema.exclusiveMinimum = schema.exclusiveMinimum;
-	if (schema.exclusiveMaximum !== undefined)
-		normalizedSchema.exclusiveMaximum = schema.exclusiveMaximum;
-	if (schema.multipleOf !== undefined)
-		normalizedSchema.multipleOf = schema.multipleOf;
 	if (schema.enum) normalizedSchema.enum = schema.enum;
 	if (schema.title) normalizedSchema.title = schema.title;
 	if (schema.description) normalizedSchema.description = schema.description;
@@ -283,7 +264,7 @@ export function mcpSchemaToParameters(mcpTool: McpTool): JSONSchema {
 
 	if (!schema) {
 		return {
-			type: "object",
+			type: Type.OBJECT,
 			properties: {},
 		};
 	}

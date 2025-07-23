@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -35,10 +36,10 @@ export class FileOperationsTool extends BaseTool {
 			name: this.name,
 			description: this.description,
 			parameters: {
-				type: "object",
+				type: Type.OBJECT,
 				properties: {
 					operation: {
-						type: "string",
+						type: Type.STRING,
 						description: "The file operation to perform",
 						enum: [
 							"read",
@@ -51,17 +52,17 @@ export class FileOperationsTool extends BaseTool {
 						],
 					},
 					filepath: {
-						type: "string",
+						type: Type.STRING,
 						description:
 							"Path to the file or directory (relative to the base path)",
 					},
 					content: {
-						type: "string",
+						type: Type.STRING,
 						description:
 							"Content to write to the file (for write and append operations)",
 					},
 					encoding: {
-						type: "string",
+						type: Type.STRING,
 						description: "File encoding to use",
 						default: "utf8",
 					},

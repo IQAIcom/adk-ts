@@ -1,4 +1,5 @@
 import { Logger } from "@adk/logger";
+import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -27,14 +28,14 @@ export class GoogleSearch extends BaseTool {
 			name: this.name,
 			description: this.description,
 			parameters: {
-				type: "object",
+				type: Type.OBJECT,
 				properties: {
 					query: {
-						type: "string",
+						type: Type.STRING,
 						description: "The search query to execute",
 					},
 					num_results: {
-						type: "integer",
+						type: Type.INTEGER,
 						description: "Number of results to return (max 10)",
 						default: 5,
 					},

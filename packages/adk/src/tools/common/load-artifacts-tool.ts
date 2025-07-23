@@ -1,6 +1,7 @@
-import type { Part } from "@google/genai";
+import type { LlmRequest } from "@adk/models";
+import { type Part, Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
-import { BaseTool, type LlmRequest } from "../base/base-tool";
+import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
 /**
@@ -17,14 +18,6 @@ interface Content {
 interface FunctionResponse {
 	name: string;
 	response: Record<string, any>;
-}
-
-/**
- * Extended LLM request interface with content support
- */
-interface ExtendedLlmRequest extends LlmRequest {
-	contents?: Content[];
-	appendInstructions?: (instructions: string[]) => void;
 }
 
 /**
@@ -46,12 +39,12 @@ export class LoadArtifactsTool extends BaseTool {
 			name: this.name,
 			description: this.description,
 			parameters: {
-				type: "object",
+				type: Type.OBJECT,
 				properties: {
 					artifact_names: {
-						type: "array",
+						type: Type.ARRAY,
 						items: {
-							type: "string",
+							type: Type.STRING,
 						},
 						description: "List of artifact names to load",
 					},
@@ -77,7 +70,7 @@ export class LoadArtifactsTool extends BaseTool {
 	 */
 	async processLlmRequest(
 		toolContext: ToolContext,
-		llmRequest: ExtendedLlmRequest,
+		llmRequest: LlmRequest,
 	): Promise<void> {
 		await super.processLlmRequest(toolContext, llmRequest);
 		await this.appendArtifactsToLlmRequest(toolContext, llmRequest);
@@ -88,7 +81,7 @@ export class LoadArtifactsTool extends BaseTool {
 	 */
 	private async appendArtifactsToLlmRequest(
 		toolContext: ToolContext,
-		llmRequest: ExtendedLlmRequest,
+		llmRequest: LlmRequest,
 	): Promise<void> {
 		try {
 			const artifactNames = await toolContext.listArtifacts();

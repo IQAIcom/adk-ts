@@ -1,7 +1,5 @@
-import type {
-	FunctionDeclaration,
-	JSONSchema,
-} from "../../models/function-declaration";
+import type { FunctionDeclaration, JSONSchema } from "@adk/models";
+import { Type } from "@google/genai";
 
 /**
  * Options for building a function declaration
@@ -62,7 +60,7 @@ function extractParametersSchema(
 
 	// Extract parameter list from function string
 	const paramMatch = funcStr.match(/\(([^)]*)\)/);
-	if (!paramMatch) return { type: "object", properties: {} };
+	if (!paramMatch) return { type: Type.OBJECT, properties: {} };
 
 	const paramList = paramMatch[1]
 		.split(",")
@@ -73,7 +71,7 @@ function extractParametersSchema(
 		paramList.length === 0 ||
 		(paramList.length === 1 && paramList[0] === "")
 	) {
-		return { type: "object", properties: {} };
+		return { type: Type.OBJECT, properties: {} };
 	}
 
 	// Extract JSDoc param annotations if available
@@ -136,7 +134,7 @@ function extractParametersSchema(
 	}
 
 	const schema: JSONSchema = {
-		type: "object",
+		type: Type.OBJECT,
 		properties,
 	};
 

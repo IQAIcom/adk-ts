@@ -1,3 +1,4 @@
+import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -28,39 +29,33 @@ export class HttpRequestTool extends BaseTool {
 			name: this.name,
 			description: this.description,
 			parameters: {
-				type: "object",
+				type: Type.OBJECT,
 				properties: {
 					url: {
-						type: "string",
+						type: Type.STRING,
 						description: "The URL to send the request to",
 					},
 					method: {
-						type: "string",
+						type: Type.STRING,
 						description:
 							"The HTTP method to use (GET, POST, PUT, DELETE, etc.)",
 						enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
 						default: "GET",
 					},
 					headers: {
-						type: "object",
+						type: Type.OBJECT,
 						description: "Request headers to include",
-						additionalProperties: {
-							type: "string",
-						},
 					},
 					body: {
-						type: "string",
+						type: Type.STRING,
 						description: "Request body content (as string, typically JSON)",
 					},
 					params: {
-						type: "object",
+						type: Type.OBJECT,
 						description: "URL query parameters to include",
-						additionalProperties: {
-							type: "string",
-						},
 					},
 					timeout: {
-						type: "integer",
+						type: Type.INTEGER,
 						description: "Request timeout in milliseconds",
 						default: 10000,
 					},
