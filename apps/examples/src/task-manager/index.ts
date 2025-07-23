@@ -1,7 +1,15 @@
 import { env } from "node:process";
-import { InMemorySessionService, LlmAgent, Runner } from "@iqai/adk";
+import { AgentBuilder, type EnhancedRunner } from "@iqai/adk";
 import { intro, outro, text } from "@clack/prompts";
-import { v4 as uuidv4 } from "uuid";
+import {
+  TaskManager,
+  AddTaskTool,
+  RemoveTaskTool,
+  UpdateTaskTool,
+  ToggleTaskTool,
+  GetTasksTool,
+  ClearTasksTool,
+} from "./task-tools.js";
 import dedent from "dedent";
 
 /**
@@ -12,12 +20,14 @@ import dedent from "dedent";
  * - Remove tasks from the list
  * - Update existing tasks
  * - Show the current task list
+ * - Toggle task completion status
+ * - Clear all tasks
  *
- * The example uses memory services to maintain the task list across interactions.
+ * The example uses a proper TaskManager class with tools for agentic task management.
  *
  * Expected Output:
- * - Natural language task management
- * - Persistent task list stored in memory
+ * - Natural language task management using tools
+ * - Persistent task list managed by TaskManager class
  * - Conversational responses about task operations
  *
  * Prerequisites:
@@ -26,259 +36,110 @@ import dedent from "dedent";
  * - LLM_MODEL environment variable (optional, defaults to gemini-2.5-flash)
  */
 
-/**
- * Application configuration constants
- */
-
-const APP_NAME = "task-manager-demo";
-const USER_ID = uuidv4();
-const MAX_EVENTS = 12; // 6 pairs of user/assistant interactions
-
-// In-memory storage for tasks
-let taskList: string[] = [];
-
-/**
- * Creates and configures the LLM agent for task management
- * @returns Configured LlmAgent
- */
-function createTaskManagerAgent(): LlmAgent {
-  return new LlmAgent({
-    name: "task_manager",
-    description:
-      "A task management assistant that helps manage your to-do list",
-    model: env.LLM_MODEL || "gemini-2.5-flash",
-    instruction: dedent`
-      You are a task manager assistant. Your ONLY job is to manage the user's task list using the provided tools:
-      - addTask(task: string): Add a new task
-      - removeTask(index: number): Remove a task by its number
-      - updateTask(index: number, newTask: string): Update a task
-      - getTasks(): Show the current task list
-      - clearTasks(): Clear all tasks
-      Do NOT offer advice, ask questions, or provide suggestions. Only perform task operations and show the current state of the task list after each operation. Respond briefly and only about the task list.`,
-  });
-}
-
-/**
- * Sends a message to the agent and handles the response
- * @param runner The Runner instance for executing agent tasks
- * @param sessionService Session service for conversation tracking
- * @param memoryService Memory service for storing conversation context
- * @param sessionId Current session identifier
- * @param message User message to send
- * @returns Agent's response string
- */
-async function sendMessage(
-  runner: Runner,
-  sessionService: InMemorySessionService,
-  sessionId: string,
-  message: string
-): Promise<string> {
-  console.log(`\n💬 USER: ${message}`);
-
-  // Add the current task list to the message context
-  const taskListContext = `Current task list: ${
-    taskList.length > 0
-      ? taskList.map((task, index) => `\n${index + 1}. ${task}`).join("")
-      : "empty"
-  }`;
-
-  const newMessage = {
-    parts: [{ text: message }, { text: `\n\n${taskListContext}` }],
-  };
-
-  let agentResponse = "";
-
-  try {
-    /**
-     * Process the message through the agent
-     * The runner handles memory integration automatically
-     */
-    for await (const event of runner.runAsync({
-      userId: USER_ID,
-      sessionId,
-      newMessage,
-    })) {
-      if (event.author === "task_manager" && event.content?.parts) {
-        const content = event.content.parts
-          .map((part) => part.text || "")
-          .join("");
-        if (content) {
-          agentResponse += content;
-        }
-      }
-    }
-    console.log(`🤖 ASSISTANT: ${agentResponse}`);
-
-    // Parse the agent's response to update the task list
-    updateTaskListFromResponse(message, agentResponse);
-
-    /**
-     * Trim events if conversation gets too long
-     */
-    const currentSession = await sessionService.getSession(
-      APP_NAME,
-      USER_ID,
-      sessionId
-    );
-    if (currentSession && currentSession.events.length > MAX_EVENTS) {
-      currentSession.events = currentSession.events.slice(-MAX_EVENTS);
-    }
-    return agentResponse;
-  } catch (error) {
-    const errorMsg = `Error: ${
-      error instanceof Error ? error.message : String(error)
-    }`;
-    console.error(errorMsg);
-    console.log("🤖 ASSISTANT: Sorry, I had trouble processing that request.");
-    return errorMsg;
-  }
-}
-
-/**
- * Updates the task list based on user input and agent response
- * This is a simple heuristic approach to interpret natural language
- * @param userMessage The user's message
- * @param agentResponse The agent's response
- */
-function updateTaskListFromResponse(
-  userMessage: string,
-  agentResponse: string
-): void {
-  const userMsgLower = userMessage.toLowerCase();
-
-  // Adding tasks
-  if (
-    (userMsgLower.includes("add") ||
-      userMsgLower.includes("create") ||
-      userMsgLower.includes("remember") ||
-      userMsgLower.includes("need to")) &&
-    agentResponse.toLowerCase().includes("added")
-  ) {
-    // Extract what might be a new task from the agent's response
-    const responseLines = agentResponse.split(/[.!]\s+/);
-
-    for (const line of responseLines) {
-      if (line.toLowerCase().includes("added")) {
-        const taskMatch =
-          line.match(/added ["'](.+?)["']/i) || line.match(/added (.+?) to/i);
-        if (taskMatch && taskMatch[1]) {
-          taskList.push(taskMatch[1]);
-          break;
-        }
-      }
-    }
-
-    // If we couldn't parse from the response, make a best guess from user input
-    if (
-      taskList.length === 0 ||
-      (taskList[taskList.length - 1] !== userMessage &&
-        !agentResponse
-          .toLowerCase()
-          .includes(taskList[taskList.length - 1].toLowerCase()))
-    ) {
-      // Basic extraction - just use the user's message as a fallback
-      taskList.push(
-        userMessage.replace(/add|create|remember|i need to/i, "").trim()
-      );
-    }
-  }
-
-  // Removing tasks
-  if (
-    (userMsgLower.includes("remove") ||
-      userMsgLower.includes("delete") ||
-      userMsgLower.includes("complete") ||
-      userMsgLower.includes("finished")) &&
-    agentResponse.toLowerCase().includes("removed")
-  ) {
-    // Check for number references
-    const numberMatch = userMsgLower.match(/(\d+)/);
-    if (numberMatch) {
-      const index = parseInt(numberMatch[1]) - 1;
-      if (index >= 0 && index < taskList.length) {
-        taskList.splice(index, 1);
-      }
-    } else {
-      // Look for task name in the user message
-      for (let i = taskList.length - 1; i >= 0; i--) {
-        if (userMsgLower.includes(taskList[i].toLowerCase())) {
-          taskList.splice(i, 1);
-          break;
-        }
-      }
-    }
-  }
-
-  // Clear the list
-  if (userMsgLower.includes("clear") && userMsgLower.includes("list")) {
-    taskList = [];
-  }
-}
-
-/**
- * Introduce the task manager and demonstrate basic functionality
- * @param runner The Runner instance for executing agent tasks
- * @param sessionService Session service for conversation tracking
- * @param memoryService Memory service for storing conversation context
- * @param sessionId Current session identifier
- */
-
-async function runTaskManagerInteractive(
-  runner: Runner,
-  sessionService: InMemorySessionService,
-  sessionId: string
-): Promise<void> {
-  intro("🗒️ Task Manager Agent");
-  let exit = false;
-  while (!exit) {
-    const input = await text({
-      message: "Type your tasks or questions (type 'exit' to quit):",
-      placeholder: "e.g. buy groceries, remove 1, update 2 call mom, show list",
-    });
-    if (typeof input === "string" && input.trim().toLowerCase() === "exit") {
-      outro("👋 Goodbye!");
-      exit = true;
-      break;
-    }
-    if (typeof input === "string" && input.trim()) {
-      await sendMessage(runner, sessionService, sessionId, input.trim());
-    }
-  }
-}
-
 async function main() {
   console.log("📝 Starting Task Manager example...");
 
   try {
     /**
-     * Set up memory and session services
-     * Memory service stores conversation context for future retrieval
+     * Create TaskManager instance and associated tools
      */
-    const sessionService = new InMemorySessionService();
-    const session = await sessionService.createSession(APP_NAME, USER_ID);
-    console.log(`📋 Created session: ${session.id}`);
+    const taskManager = new TaskManager();
+
+    // Create tools that use the TaskManager instance
+    const addTaskTool = new AddTaskTool(taskManager);
+    const removeTaskTool = new RemoveTaskTool(taskManager);
+    const updateTaskTool = new UpdateTaskTool(taskManager);
+    const toggleTaskTool = new ToggleTaskTool(taskManager);
+    const getTasksTool = new GetTasksTool(taskManager);
+    const clearTasksTool = new ClearTasksTool(taskManager);
 
     /**
-     * Create agent with task management capabilities
+     * Create agent with task management capabilities using AgentBuilder
      */
-    const agent = createTaskManagerAgent();
+    const { runner } = await AgentBuilder.create("task_manager")
+      .withModel(env.LLM_MODEL || "gemini-2.5-flash")
+      .withDescription(
+        "A task management assistant that helps manage your to-do list"
+      )
+      .withInstruction(
+        dedent`
+        You are a helpful task management assistant with access to comprehensive task management tools. Your ONLY job is to manage the user's task list using the provided tools.
+        
+        Available tools:
+        - addTask(task: string): Add a new task to the list
+        - removeTask(index: number): Remove a task by its number (1-based)
+        - updateTask(index: number, newTask: string): Update an existing task
+        - toggleTask(index: number): Mark a task as completed or incomplete
+        - getTasks(): Show the current task list with status
+        - clearTasks(): Clear all tasks from the list
+        
+        When users mention tasks, always use the appropriate tools to perform the requested operations.
+        Be helpful and conversational. After performing operations that modify the task list, 
+        consider showing the updated task list using getTasks() to give users feedback.
+        
+        Always use the tools to manage tasks - don't try to maintain task state manually.
+      `
+      )
+      .withTools(
+        addTaskTool,
+        removeTaskTool,
+        updateTaskTool,
+        toggleTaskTool,
+        getTasksTool,
+        clearTasksTool
+      )
+      .build();
 
     /**
-     * Set up runner with session service only
+     * Start interactive task management session
      */
-    const runner = new Runner({
-      appName: APP_NAME,
-      agent,
-      sessionService,
-    });
+    await runTaskManagerInteractive(runner);
 
-    /**
-     * Start interactive mode only
-     */
-    await runTaskManagerInteractive(runner, sessionService, session.id);
+    console.log("\n✅ Task Manager example completed!");
   } catch (error) {
     console.error("❌ Error in task manager example:", error);
     process.exit(1);
+  }
+}
+
+/**
+ * Interactive task manager session
+ * @param runner The AgentBuilder runner for executing agent tasks
+ */
+async function runTaskManagerInteractive(
+  runner: EnhancedRunner
+): Promise<void> {
+  intro("🗒️ Task Manager Agent");
+
+  console.log(
+    "\nYou can now interact with the task manager. Try commands like:"
+  );
+  console.log("• 'Add a task to call mom'");
+  console.log("• 'Show my tasks'");
+  console.log("• 'Complete task 1'");
+  console.log("• 'Update task 2 to something else'");
+  console.log("• 'Remove task 3'");
+  console.log("• 'Clear all tasks'");
+
+  let exit = false;
+  while (!exit) {
+    const input = await text({
+      message:
+        "What would you like to do with your tasks? (type 'exit' to quit):",
+      placeholder: "e.g. add buy milk, complete task 1, show my tasks",
+    });
+
+    if (typeof input === "string" && input.trim().toLowerCase() === "exit") {
+      outro("👋 Goodbye!");
+      exit = true;
+      break;
+    }
+
+    if (typeof input === "string" && input.trim()) {
+      console.log(`\n💬 USER: ${input.trim()}`);
+      const response = await runner.ask(input.trim());
+      console.log(`🤖 ASSISTANT: ${response}`);
+    }
   }
 }
 
