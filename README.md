@@ -103,7 +103,7 @@ pnpm start
 
 All contributions are welcome! Please check out our [Contributing Guide](CONTRIBUTION.md) for details on how to get started.  
 
-## Community
+## 🌍 Community
 
 Join our community to discuss ideas, ask questions, and share your projects:
 
