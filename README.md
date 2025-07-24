@@ -101,12 +101,14 @@ pnpm start
 
 ## 🤝 Contributing
 
-We welcome contributions! See our [Contributing Guide](CONTRIBUTION.md) for details on:
+All contributions are welcome! Please check out our [Contributing Guide](CONTRIBUTION.md) for details on how to get started.  
 
-- Framework architecture
-- Development setup
-- Implementation patterns
-- Coding standards
+## Community
+
+Join our community to discuss ideas, ask questions, and share your projects:
+
+- [Discord Community](https://discord.com/invite/x9EWvTcPXt)
+- [GitHub Discussions](https://github.com/IQAIcom/adk-ts/discussions)
 
 ## 📜 License
 
