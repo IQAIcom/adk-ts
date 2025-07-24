@@ -12,6 +12,7 @@ import {
 	requestProcessor as nlPlanningRequestProcessor,
 	responseProcessor as nlPlanningResponseProcessor,
 } from "./nl-planning";
+import { sharedMemoryRequestProcessor } from "./shared-memory";
 
 /**
  * SingleFlow is the LLM flow that handles tool calls.
@@ -35,6 +36,7 @@ export class SingleFlow extends BaseLlmFlow {
 			instructionsRequestProcessor,
 			identityRequestProcessor,
 			contentRequestProcessor,
+			sharedMemoryRequestProcessor,
 			// Some implementations of NL Planning mark planning contents as thoughts
 			// in the post processor. Since these need to be unmarked, NL Planning
 			// should be after contents.

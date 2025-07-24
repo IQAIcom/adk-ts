@@ -81,13 +81,23 @@ Visit our comprehensive [documentation](https://adk.iqai.com) to learn more abou
 For examples of how to use ADK-TS, check out the [`apps/examples`](https://github.com/IQAIcom/adk-ts/tree/main/apps/examples) directory:
 
 ```bash
+# 1. Clone and install the repository
 git clone https://github.com/IQAIcom/adk-ts.git
 cd adk-ts
 pnpm install
+
+# 2. Build the ADK package (required for examples to work)
 pnpm build
+
+# 3. Setup API keys
 cd apps/examples
+echo "GOOGLE_API_KEY=your_google_api_key_here" > .env
+
+# 4. Run examples
 pnpm start
 ```
+
+> ⚠️ Important: The examples require API keys from at least one LLM provider. The default LLM is Google Gemini. You can get a Google API key from [Google AI Studio](https://makersuite.google.com/app/apikey).
 
 ## 🤝 Contributing
 

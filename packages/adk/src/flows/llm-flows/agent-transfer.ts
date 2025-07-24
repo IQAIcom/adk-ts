@@ -1,8 +1,10 @@
+import type { Agent, BaseAgent } from "@adk/agents";
+import dedent from "dedent";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { Event } from "../../events/event";
 import type { LlmRequest } from "../../models/llm-request";
-import { ToolContext } from "../../tools/tool-context";
 import { TransferToAgentTool } from "../../tools/common/transfer-to-agent-tool";
+import { ToolContext } from "../../tools/tool-context";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
 /**
@@ -14,12 +16,11 @@ class AgentTransferLlmRequestProcessor extends BaseLlmRequestProcessor {
 	 * Processes agent transfer by adding transfer instructions and tools
 	 * if the agent has transfer targets available
 	 */
-	// eslint-disable-next-line @typescript-eslint/require-yield
 	async *runAsync(
 		invocationContext: InvocationContext,
 		llmRequest: LlmRequest,
 	): AsyncGenerator<Event> {
-		const agent = invocationContext.agent;
+		const agent = invocationContext.agent as Agent;
 
 		// Check if agent has LlmAgent-like structure
 		if (!("subAgents" in agent) || typeof agent.subAgents !== "object") {
@@ -39,17 +40,18 @@ class AgentTransferLlmRequestProcessor extends BaseLlmRequestProcessor {
 
 		llmRequest.appendInstructions([transferInstructions]);
 
-		// Add transfer_to_agent tool to the request
+		// Add transfer_to_agent tool to the request using TransferToAgentTool
 		const transferToAgentTool = new TransferToAgentTool();
 		const toolContext = new ToolContext(invocationContext);
 
-		// Type cast due to LlmRequest interface differences between modules
+		// Process the tool to add it to the LLM request
 		await transferToAgentTool.processLlmRequest(toolContext, llmRequest);
 
-		// This processor doesn't yield any events, just configures the request
-		// Empty async generator - no events to yield
-		for await (const _ of []) {
-			yield _;
+		// This processor doesn't yield any events, but needs to satisfy AsyncGenerator
+		// By having early returns, we ensure no events are yielded
+		const shouldYield = false;
+		if (shouldYield) {
+			yield {} as Event;
 		}
 	}
 }
@@ -57,44 +59,44 @@ class AgentTransferLlmRequestProcessor extends BaseLlmRequestProcessor {
 /**
  * Builds information string for a target agent
  */
-function buildTargetAgentsInfo(targetAgent: any): string {
-	return `
-Agent name: ${targetAgent.name}
-Agent description: ${targetAgent.description}
-`;
+function buildTargetAgentsInfo(targetAgent: Agent): string {
+	return dedent`
+		Agent name: ${targetAgent.name}
+		Agent description: ${targetAgent.description}
+	`;
 }
 
 /**
  * Builds transfer instructions for the LLM request
  */
 function buildTargetAgentsInstructions(
-	agent: any,
-	targetAgents: any[],
+	agent: Agent,
+	targetAgents: Agent[],
 ): string {
 	const lineBreak = "\n";
 	const transferFunctionName = "transfer_to_agent";
 
-	let instructions = `
-You have a list of other agents to transfer to:
+	let instructions = dedent`
+		You have a list of other agents to transfer to:
 
-${targetAgents.map((targetAgent) => buildTargetAgentsInfo(targetAgent)).join(lineBreak)}
+		${targetAgents.map((targetAgent) => buildTargetAgentsInfo(targetAgent)).join(lineBreak)}
 
-If you are the best to answer the question according to your description, you
-can answer it.
+		If you are the best to answer the question according to your description, you
+		can answer it.
 
-If another agent is better for answering the question according to its
-description, call \`${transferFunctionName}\` function to transfer the
-question to that agent. When transferring, do not generate any text other than
-the function call.
+		If another agent is better for answering the question according to its
+		description, call \`${transferFunctionName}\` function to transfer the
+		question to that agent. When transferring, do not generate any text other than
+		the function call.
 `;
 
 	// Add parent agent transfer instructions if applicable
 	if (agent.parentAgent && !agent.disallowTransferToParent) {
-		instructions += `
-Your parent agent is ${agent.parentAgent.name}. If neither the other agents nor
-you are best for answering the question according to the descriptions, transfer
-to your parent agent.
-`;
+		instructions += dedent`
+			Your parent agent is ${agent.parentAgent.name}. If neither the other agents nor
+			you are best for answering the question according to the descriptions, transfer
+			to your parent agent.
+		`;
 	}
 
 	return instructions;
@@ -104,22 +106,22 @@ to your parent agent.
  * Gets the list of agents this agent can transfer to
  * Includes sub-agents, parent agent, and peer agents based on permissions
  */
-function getTransferTargets(agent: any): any[] {
-	const result: any[] = [];
+function getTransferTargets(agent: Agent): any[] {
+	const targets: BaseAgent[] = [];
 
 	// Add sub-agents
 	if (agent.subAgents && Array.isArray(agent.subAgents)) {
-		result.push(...agent.subAgents);
+		targets.push(...agent.subAgents);
 	}
 
 	// If no parent agent, return just sub-agents
 	if (!agent.parentAgent || !("subAgents" in agent.parentAgent)) {
-		return result;
+		return targets;
 	}
 
 	// Add parent agent if transfer to parent is allowed
 	if (!agent.disallowTransferToParent) {
-		result.push(agent.parentAgent);
+		targets.push(agent.parentAgent);
 	}
 
 	// Add peer agents if transfer to peers is allowed
@@ -127,10 +129,10 @@ function getTransferTargets(agent: any): any[] {
 		const peerAgents = agent.parentAgent.subAgents.filter(
 			(peerAgent: any) => peerAgent.name !== agent.name,
 		);
-		result.push(...peerAgents);
+		targets.push(...peerAgents);
 	}
 
-	return result;
+	return targets;
 }
 
 /**

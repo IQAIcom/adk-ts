@@ -216,6 +216,9 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			)) {
 				if (!event.partial) {
 					await this.sessionService.appendEvent(session, event);
+					if (this.memoryService) {
+						await this.memoryService.addSessionToMemory(session);
+					}
 				}
 				yield event;
 			}

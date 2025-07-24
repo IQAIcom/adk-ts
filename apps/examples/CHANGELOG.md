@@ -1,5 +1,29 @@
 # @iqai/examples
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [d5d9750]
+  - @iqai/adk@0.1.15
+
+## 0.0.8
+
+### Patch Changes
+
+- c36e159: Adds Shared memory request processor & shared memory agents example
+- Updated dependencies [d1935c5]
+- Updated dependencies [be898e3]
+- Updated dependencies [d4a6bd3]
+- Updated dependencies [55dde45]
+- Updated dependencies [c36e159]
+- Updated dependencies [da0d86f]
+- Updated dependencies [f846fc5]
+- Updated dependencies [623f375]
+- Updated dependencies [01b358b]
+- Updated dependencies [d2591fb]
+  - @iqai/adk@0.1.14
+
 ## 0.0.7
 
 ### Patch Changes

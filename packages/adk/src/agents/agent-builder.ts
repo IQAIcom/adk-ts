@@ -12,7 +12,11 @@ import type { BaseSessionService } from "../sessions/base-session-service.js";
 import { InMemorySessionService } from "../sessions/in-memory-session-service.js";
 import type { Session } from "../sessions/session.js";
 import type { BaseTool } from "../tools/base/base-tool.js";
-import type { BaseAgent } from "./base-agent.js";
+import type {
+	AfterAgentCallback,
+	BaseAgent,
+	BeforeAgentCallback,
+} from "./base-agent.js";
 import { LangGraphAgent, type LangGraphNode } from "./lang-graph-agent.js";
 import { LlmAgent } from "./llm-agent.js";
 import { LoopAgent } from "./loop-agent.js";
@@ -31,6 +35,8 @@ export interface AgentBuilderConfig {
 	planner?: BasePlanner;
 	codeExecutor?: BaseCodeExecutor;
 	subAgents?: BaseAgent[];
+	beforeAgentCallback?: BeforeAgentCallback;
+	afterAgentCallback?: AfterAgentCallback;
 	maxIterations?: number;
 	nodes?: LangGraphNode[];
 	rootNode?: string;
@@ -43,15 +49,8 @@ export interface AgentBuilderConfig {
 export interface SessionOptions {
 	userId?: string;
 	appName?: string;
-}
-
-/**
- * Internal session configuration for the AgentBuilder
- */
-interface InternalSessionConfig {
-	service: BaseSessionService;
-	userId: string;
-	appName: string;
+	state?: Record<string, any>;
+	sessionId?: string;
 }
 
 /**
@@ -156,7 +155,8 @@ interface RunnerConfig {
  */
 export class AgentBuilder {
 	private config: AgentBuilderConfig;
-	private sessionConfig?: InternalSessionConfig;
+	private sessionService?: BaseSessionService;
+	private sessionOptions?: SessionOptions;
 	private memoryService?: BaseMemoryService;
 	private artifactService?: BaseArtifactService;
 	private agentType: AgentType = "llm";
@@ -258,6 +258,36 @@ export class AgentBuilder {
 	}
 
 	/**
+	 * Add sub-agents to the agent
+	 * @param subAgents Sub-agents to add to the agent
+	 * @returns This builder instance for chaining
+	 */
+	withSubAgents(subAgents: BaseAgent[]): this {
+		this.config.subAgents = subAgents;
+		return this;
+	}
+
+	/**
+	 * Set the before agent callback
+	 * @param callback Callback to invoke before agent execution
+	 * @returns This builder instance for chaining
+	 */
+	withBeforeAgentCallback(callback: BeforeAgentCallback): this {
+		this.config.beforeAgentCallback = callback;
+		return this;
+	}
+
+	/**
+	 * Set the after agent callback
+	 * @param callback Callback to invoke after agent execution
+	 * @returns This builder instance for chaining
+	 */
+	withAfterAgentCallback(callback: AfterAgentCallback): this {
+		this.config.afterAgentCallback = callback;
+		return this;
+	}
+
+	/**
 	 * Configure as a sequential agent
 	 * @param subAgents Sub-agents to execute in sequence
 	 * @returns This builder instance for chaining
@@ -315,10 +345,12 @@ export class AgentBuilder {
 		service: BaseSessionService,
 		options: SessionOptions = {},
 	): this {
-		this.sessionConfig = {
-			service,
+		this.sessionService = service;
+		this.sessionOptions = {
 			userId: options.userId || this.generateDefaultUserId(),
 			appName: options.appName || this.generateDefaultAppName(),
+			state: options.state,
+			sessionId: options.sessionId,
 		};
 		return this;
 	}
@@ -331,18 +363,20 @@ export class AgentBuilder {
 	 */
 	withSession(session: Session): this {
 		// Require that withSessionService() was called first
-		if (!this.sessionConfig?.service) {
+		if (!this.sessionService) {
 			throw new Error(
 				"Session service must be configured before using withSession(). " +
 					"Call withSessionService() first, or use withQuickSession() for in-memory sessions.",
 			);
 		}
 
-		// Use the existing session service that was already configured
-		this.sessionConfig = {
-			service: this.sessionConfig.service,
+		// Update session options with the session details
+		this.sessionOptions = {
+			...this.sessionOptions,
 			userId: session.userId,
 			appName: session.appName,
+			sessionId: session.id,
+			state: session.state,
 		};
 
 		// Store the existing session to use directly in build()
@@ -389,26 +423,28 @@ export class AgentBuilder {
 		let runner: EnhancedRunner | undefined;
 		let session: Session | undefined;
 
-		// If no session config is provided, create a default in-memory session
-		if (!this.sessionConfig) {
+		// If no session service is provided, create a default in-memory session
+		if (!this.sessionService) {
 			this.withQuickSession();
 		}
 
-		if (this.sessionConfig) {
+		if (this.sessionService && this.sessionOptions) {
 			// Use existing session if provided, otherwise create a new one
 			if (this.existingSession) {
 				session = this.existingSession;
 			} else {
-				session = await this.sessionConfig.service.createSession(
-					this.sessionConfig.appName,
-					this.sessionConfig.userId,
+				session = await this.sessionService.createSession(
+					this.sessionOptions.appName!,
+					this.sessionOptions.userId!,
+					this.sessionOptions.state,
+					this.sessionOptions.sessionId,
 				);
 			}
 
 			const runnerConfig: RunnerConfig = {
-				appName: this.sessionConfig.appName,
+				appName: this.sessionOptions.appName!,
 				agent,
-				sessionService: this.sessionConfig.service,
+				sessionService: this.sessionService,
 				memoryService: this.memoryService,
 				artifactService: this.artifactService,
 			};
@@ -453,10 +489,13 @@ export class AgentBuilder {
 					tools: this.config.tools,
 					planner: this.config.planner,
 					codeExecutor: this.config.codeExecutor,
+					subAgents: this.config.subAgents,
+					beforeAgentCallback: this.config.beforeAgentCallback,
+					afterAgentCallback: this.config.afterAgentCallback,
 					memoryService: this.memoryService,
 					artifactService: this.artifactService,
 					outputKey: this.config.outputKey,
-					sessionService: this.sessionConfig?.service,
+					sessionService: this.sessionService,
 				});
 			}
 			case "sequential":
@@ -548,7 +587,7 @@ export class AgentBuilder {
 		baseRunner: Runner,
 		session: Session,
 	): EnhancedRunner {
-		const sessionConfig = this.sessionConfig; // Capture sessionConfig in closure
+		const sessionOptions = this.sessionOptions; // Capture sessionOptions in closure
 
 		return {
 			async ask(message: string | FullMessage | LlmRequest): Promise<string> {
@@ -560,12 +599,12 @@ export class AgentBuilder {
 							: message;
 				let response = "";
 
-				if (!sessionConfig) {
+				if (!sessionOptions?.userId) {
 					throw new Error("Session configuration is required");
 				}
 
 				for await (const event of baseRunner.runAsync({
-					userId: sessionConfig.userId,
+					userId: sessionOptions.userId,
 					sessionId: session.id,
 					newMessage,
 				})) {

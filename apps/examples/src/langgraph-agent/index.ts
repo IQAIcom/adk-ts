@@ -1,68 +1,58 @@
-import { AgentBuilder, InMemorySessionService, createTool } from "@iqai/adk";
+import {
+	AgentBuilder,
+	InMemorySessionService,
+	LlmAgent,
+	createTool,
+} from "@iqai/adk";
 import * as z from "zod/v4";
 
 const main = async () => {
-	const sessionService = new InMemorySessionService();
-	const sessionConfig = { userId: "default_user", appName: "langgraph_agent" };
-	const session = await sessionService.createSession(
-		sessionConfig.appName,
-		sessionConfig.userId,
-	);
-
-	const firstPasswordAgent = await AgentBuilder.create("first_password")
-		.withDescription("Agent that has first password")
-		.withModel("gemini-2.5-flash")
-		.withTools(
+	const firstPasswordAgent = new LlmAgent({
+		name: "first_password",
+		description: "Agent that has first password",
+		model: "gemini-2.5-flash",
+		tools: [
 			createTool({
 				name: "getFirstPassword",
 				description: "Returns the first password for the user",
 				fn: () => "First password is eamt2CXOlJ3F0Dq",
 			}),
-		)
-		.withSessionService(sessionService, sessionConfig)
-		.withSession(session)
-		.withOutputKey(sessionConfig.appName)
-		.build();
+		],
+	});
 
-	const secondPasswordAgent = await AgentBuilder.create("second_password")
-		.withDescription("Agent that has second password")
-		.withModel("gemini-2.5-flash")
-		.withTools(
+	const secondPasswordAgent = new LlmAgent({
+		name: "second_password",
+		description: "Agent that has second password",
+		model: "gemini-2.5-flash",
+		tools: [
 			createTool({
 				name: "getSecondPassword",
 				description: "Returns the second password for the user",
 				schema: z.object({}),
-				fn: () => "Second password is p84ylYk_9G6xlE8",
+				fn: () => "p84ylYk_9G6xlE8",
 			}),
-		)
-		.withSessionService(sessionService, sessionConfig)
-		.withSession(session)
-		.withOutputKey(sessionConfig.appName)
-		.build();
+		],
+	});
 
-	const thirdPasswordAgent = await AgentBuilder.create("third_password")
-		.withDescription("Agent that has third password")
-		.withModel("gemini-2.5-flash")
-		.withTools(
+	const thirdPasswordAgent = new LlmAgent({
+		name: "third_password",
+		description: "Agent that has third password",
+		model: "gemini-2.5-flash",
+		tools: [
 			createTool({
 				name: "getThirdPassword",
 				description: "Returns the third password for the user",
 				schema: z.object({}),
-				fn: () => "Third password is UnKfArgJ2gF0TtN",
+				fn: () => "UnKfArgJ2gF0TtN",
 			}),
-		)
-		.withSessionService(sessionService, sessionConfig)
-		.withSession(session)
-		.withOutputKey(sessionConfig.appName)
-		.build();
+		],
+	});
 
-	const fullPasswordAgent = await AgentBuilder.create("full_password")
-		.withDescription("Agent that combines passwords from other agents")
-		.withModel("gemini-2.5-flash")
-		.withSessionService(sessionService, sessionConfig)
-		.withSession(session)
-		.withOutputKey(sessionConfig.appName)
-		.withTools(
+	const fullPasswordAgent = new LlmAgent({
+		name: "full_password",
+		description: "Agent that combines passwords from other agents",
+		model: "gemini-2.5-flash",
+		tools: [
 			createTool({
 				name: "getFullPassword",
 				description: "Combines passwords from other agents",
@@ -75,41 +65,38 @@ const main = async () => {
 					return `${firstPassword}-${secondPassword}-${thirdPassword}`;
 				},
 			}),
-		)
-		.build();
+		],
+	});
 
 	const response = await AgentBuilder.create("langgraph_agent")
 		.withDescription("Agent that uses LangGraph to combine passwords")
 		.withInstruction(
 			"You will be asked to provide passwords from different agents. Combine them to form the full password.",
 		)
-		.withSessionService(sessionService, sessionConfig)
-		.withSession(session)
-		.withOutputKey(sessionConfig.appName)
 		.asLangGraph(
 			[
 				{
 					name: "getFirstPassword",
 					condition: () => true,
-					agent: firstPasswordAgent.agent,
+					agent: firstPasswordAgent,
 					targets: ["getSecondPassword"],
 				},
 				{
 					name: "getSecondPassword",
 					condition: () => true,
-					agent: secondPasswordAgent.agent,
+					agent: secondPasswordAgent,
 					targets: ["getThirdPassword"],
 				},
 				{
 					name: "getThirdPassword",
 					condition: () => true,
-					agent: thirdPasswordAgent.agent,
+					agent: thirdPasswordAgent,
 					targets: ["getFullPassword"],
 				},
 				{
 					name: "getFullPassword",
 					condition: () => true,
-					agent: fullPasswordAgent.agent,
+					agent: fullPasswordAgent,
 				},
 			],
 			"getFirstPassword",

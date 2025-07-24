@@ -11,6 +11,8 @@ export {
 	type CreateToolConfigWithSchema,
 	type CreateToolConfigWithoutSchema,
 } from "./base/create-tool";
+export { AgentTool } from "./common/agent-tool";
+export type { AgentToolConfig, BaseAgentType } from "./common/agent-tool";
 
 // Tool context
 export { ToolContext } from "./tool-context";
