@@ -1,73 +1,45 @@
-# 🤖 ADK Agent Starter
+# 🤖 ADK-TS Basic Agent Starter Template
 
-This is a starter template to start building your own agent with `@iqai/adk` library. 
+Kickstart your AI agent journey with this minimal template, bootstrapped using [`create-adk-project`](https://www.npmjs.com/package/create-adk-project). Build, customize, and deploy agents powered by [`@iqai/adk`](https://adk.iqai.com) in minutes!
 
-## 🚀 Get Started
-Start by cloning the repository or clicking on use as template button on github ui. 
+## 🚀 Quick Start
 
-```bash
-git clone https://github.com/IQAICOM/adk-agent-starter.git
-```
+### 1. Clone & Setup Environment
 
-📦 Install the dependencies
-
-```bash
-pnpm install
-```
-
-▶️ Run the agent
-
-```bash
-pnpm dev
-```
-
-## 📁 Folder Structure
-The main agent code lives in `index.ts` where the subagents live inside the `agents` folder. The agents can have tools which reside in the `tools` folder.
-
-```
-├── src/
-│   ├── agents/
-│   │   └── financial-agent/
-│   │       ├── index.ts
-│   │       └── tools/
-│   │           └── currency-converter-tool.ts
-│   ├── services/
-│   │   └── wallet.ts
-│   ├── env.ts
-│   └── index.ts
-```
-
-## ⚙️ Environment Setup
-Make sure to configure your environment variables:
+Copy the example environment file and fill in your API keys or configuration:
 
 ```bash
 cp .env.example .env
 ```
 
-## 🧰 Dev Tools
-This starter includes:
--  **GitHub Actions**: CI/CD pipeline
-- 📦 **PNPM**: Fast package manager
+### 2. Install Dependencies
 
-## 🏗️ Building Your Agent
-1. **Create new agents** in the `src/agents/` directory
-2. **Add tools** to your agents in the `tools/` subdirectory
-3. **Configure services** in the `src/services/` directory
-4. **Update environment** variables in `src/env.ts`
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
 
-## 📚 Links
-- [ADK Library](https://github.com/IQAICOM/adk-ts)
+### 3. Run Your Agent
 
-## 🤝 Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+```
 
-## 📄 License
-MIT License - see the [LICENSE](LICENSE) file for details.
+## 🛠️ Customization
 
-## 🆘 Support
-If you encounter any issues or have questions:
-- 📝 [Create an issue](https://github.com/IQAICOM/adk-agent-starter/issues)
+- Edit `src/index.ts` to define your agent’s logic and capabilities.
+- Use the [ADK-TS Simple documentation](https://adk.iqai.com) for advanced features like multi-agent flows, tool integration, and memory.
+
+## 📚 Resources
+
+- [ADK-TS Documentation](https://adk.iqai.com/docs/framework)
+- [GitHub Repository](https://github.com/IQAIcom/adk-ts)
+- [More Examples](https://github.com/IQAIcom/adk-ts/tree/main/apps/examples)
+- [Discord Community](https://discord.com/invite/x9EWvTcPXt)
