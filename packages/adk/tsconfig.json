@@ -6,9 +6,17 @@
 		"rootDir": ".",
 		"declaration": true,
 		"paths": {
-			"@adk/*": ["./src/*"]
+			"@adk/*": [
+				"./src/*"
+			]
 		},
-		"types": ["node", "vitest/globals"]
+		"types": [
+			"node",
+			"vitest/globals"
+		]
 	},
-	"include": ["src", "tests"]
+	"include": [
+		"src",
+		"tests"
+	]
 }
