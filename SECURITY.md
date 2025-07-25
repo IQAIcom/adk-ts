@@ -6,7 +6,7 @@ We take the security seriously. If you believe you've found a security vulnerabi
 
 ### How to Report
 
-1. Go to the [Issues](https://github.com/IQAIcom/brain/issues) section of the repository
+1. Go to the [Issues](https://github.com/IQAIcom/adk-ts/issues) section of the repository
 2. Click "New Issue"
 3. Select "Security Vulnerability" (if available) or create a regular issue
 4. Add the label "security" to your issue
@@ -34,7 +34,7 @@ After you submit a security issue:
 
 ## Security Best Practices
 
-When using Brain Framework:
+When using ADK-TS Framework:
 
 1. Keep all dependencies up to date
 2. Use proper authentication for any agent deployments
@@ -44,10 +44,10 @@ When using Brain Framework:
 
 ## Scope
 
-This security policy applies to the latest version of Brain Framework and its core plugins. Third-party plugins or modified versions of the framework may have different security considerations.
+This security policy applies to the latest version of ADK-TS Framework and its core plugins. Third-party plugins or modified versions of the framework may have different security considerations.
 
 ## Security Updates
 
-Security updates will be released as part of our regular release cycle or as emergency patches for critical vulnerabilities. We recommend always using the latest version of Brain Framework and its dependencies.
+Security updates will be released as part of our regular release cycle or as emergency patches for critical vulnerabilities. We recommend always using the latest version of ADK-TS Framework and its dependencies.
 
-Thank you for helping keep Brain Framework and its community safe!
+Thank you for helping keep ADK-TS Framework and its community safe!
