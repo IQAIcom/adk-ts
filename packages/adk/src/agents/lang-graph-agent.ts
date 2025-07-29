@@ -1,16 +1,87 @@
-import { Logger } from "@adk/logger";
-import { Event } from "../events/event";
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 import { BaseAgent } from "./base-agent";
-import type { InvocationContext } from "./invocation-context";
+import { Event } from "../events/event";
+
+// Note: These imports would need to be adjusted based on actual ADK TypeScript structure
+// import { BaseAgent } from './base-agent';
+// import { InvocationContext } from './invocation-context';
+// import { Event } from '../events/event';
 
 /**
- * Represents a node in a LangGraph workflow
+ * Placeholder types until actual ADK TypeScript types are available
  */
+interface Content {
+	role: string;
+	parts: Array<{ text?: string }>;
+}
+
+// interface Event {
+//   invocationId?: string;
+//   author: string;
+//   branch?: string;
+//   content?: Content;
+// }
+
+// class EventClass implements Event {
+//   public invocationId?: string;
+//   public author: string;
+//   public branch?: string;
+//   public content?: Content;
+
+//   constructor(options: Event) {
+//     this.invocationId = options.invocationId;
+//     this.author = options.author;
+//     this.branch = options.branch;
+//     this.content = options.content;
+//   }
+// }
+
+interface Session {
+	id: string;
+	events: Event[];
+}
+
+interface InvocationContext {
+	invocationId: string;
+	session: Session;
+	branch?: string;
+}
+
+// abstract class BaseAgent {
+//   public name: string;
+//   public description: string;
+
+//   constructor(options: { name: string; description: string }) {
+//     this.name = options.name;
+//     this.description = options.description;
+//   }
+
+//   protected abstract runAsyncImpl(
+//     ctx: InvocationContext
+//   ): AsyncGenerator<Event, void>;
+//   protected abstract runLiveImpl(
+//     ctx: InvocationContext
+//   ): AsyncGenerator<Event, void>;
+// }
+
 export interface LangGraphNode {
+	name: string;
 	/**
 	 * Name of the node
 	 */
-	name: string;
 
 	/**
 	 * Agent associated with this node
@@ -21,348 +92,227 @@ export interface LangGraphNode {
 	 * Target nodes to execute after this node
 	 */
 	targets?: string[];
-
-	/**
-	 * Condition function to determine if this node should execute
-	 */
-	condition?: (
-		lastEvent: Event,
-		context: InvocationContext,
-	) => boolean | Promise<boolean>;
+	run: (ctx: InvocationContext) => Promise<void>;
 }
 
 /**
- * Configuration for LangGraphAgent
+ * LangChain message types for TypeScript
  */
-export interface LangGraphAgentConfig {
+export interface BaseMessage {
+	content: string;
+	type: string;
+}
+
+export interface HumanMessage extends BaseMessage {
+	type: "human";
+}
+
+export interface AIMessage extends BaseMessage {
+	type: "ai";
+}
+
+export interface SystemMessage extends BaseMessage {
+	type: "system";
+}
+
+export type LangChainMessage = HumanMessage | AIMessage | SystemMessage;
+
+/**
+ * LangGraph types for TypeScript
+ */
+export interface RunnableConfig {
+	configurable: {
+		thread_id: string;
+		[key: string]: any;
+	};
+	[key: string]: any;
+}
+
+export interface GraphState {
+	values?: {
+		messages?: LangChainMessage[];
+		[key: string]: any;
+	};
+	[key: string]: any;
+}
+
+export interface CompiledGraph {
 	/**
-	 * Name of the agent
+	 * Get the current state of the graph for a given configuration
 	 */
-	name: string;
+	getState(config: RunnableConfig): GraphState;
 
 	/**
-	 * Description of the agent
+	 * Invoke the graph with input and configuration
 	 */
-	description: string;
+	invoke(
+		input: { messages: LangChainMessage[] },
+		config: RunnableConfig,
+	): Promise<{ messages: LangChainMessage[] }>;
 
 	/**
-	 * Graph nodes (agents and their connections)
+	 * Optional checkpointer for state persistence
 	 */
-	nodes: LangGraphNode[];
-
-	/**
-	 * Root node to start execution from
-	 */
-	rootNode: string;
-
-	/**
-	 * Maximum number of steps to prevent infinite loops
-	 */
-	maxSteps?: number;
+	checkpointer?: any;
 }
 
 /**
- * LangGraphAgent that implements a directed graph of agents
- * Allows complex workflows with conditional branching
+ * Extracts last human messages from given list of events.
+ */
+function getLastHumanMessages(events: Event[]): HumanMessage[] {
+	const messages: HumanMessage[] = [];
+
+	for (let i = events.length - 1; i >= 0; i--) {
+		const event = events[i];
+
+		if (messages.length > 0 && event.author !== "user") {
+			break;
+		}
+
+		if (event.author === "user" && event.content && event.content.parts) {
+			const text = event.content.parts[0]?.text;
+			if (text) {
+				messages.unshift({
+					type: "human",
+					content: text,
+				});
+			}
+		}
+	}
+
+	return messages;
+}
+
+/**
+ * LangGraph Agent - TypeScript implementation matching Python functionality
+ * Currently a concept implementation, supports single and multi-turn.
  */
 export class LangGraphAgent extends BaseAgent {
 	/**
-	 * Graph nodes (agents and their connections)
+	 * The compiled LangGraph graph
 	 */
-	private nodes: Map<string, LangGraphNode>;
+	public readonly graph: CompiledGraph;
 
 	/**
-	 * Root node to start execution from
+	 * System instruction to add as SystemMessage
 	 */
-	private rootNode: string;
+	public instruction = "";
 
-	/**
-	 * Maximum number of steps to prevent infinite loops
-	 */
-	private maxSteps: number;
-
-	/**
-	 * Results from node executions
-	 */
-	private results: Array<{ node: string; events: Event[] }> = [];
-
-	protected logger = new Logger({ name: "LangGraphAgent" });
-
-	/**
-	 * Constructor for LangGraphAgent
-	 */
-	constructor(config: LangGraphAgentConfig) {
+	constructor(options: {
+		name: string;
+		description: string;
+		graph: CompiledGraph;
+		instruction?: string;
+	}) {
 		super({
-			name: config.name,
-			description: config.description,
+			name: options.name,
+			description: options.description,
 		});
 
-		// Initialize nodes map
-		this.nodes = new Map<string, LangGraphNode>();
-
-		// Add all nodes to the map
-		for (const node of config.nodes) {
-			if (this.nodes.has(node.name)) {
-				throw new Error(`Duplicate node name in graph: ${node.name}`);
-			}
-			this.nodes.set(node.name, node);
-			this.subAgents.push(node.agent);
-		}
-
-		// Set root node
-		if (!this.nodes.has(config.rootNode)) {
-			throw new Error(
-				`Root node "${config.rootNode}" not found in graph nodes`,
-			);
-		}
-		this.rootNode = config.rootNode;
-
-		// Set max steps (default to 50)
-		this.maxSteps = config.maxSteps || 50;
-
-		// Validate graph for cycles and unreachable nodes
-		this.validateGraph();
+		this.graph = options.graph;
+		this.instruction = options.instruction || "";
 	}
 
 	/**
-	 * Validates the graph for potential issues
+	 * Core implementation of the agent's async execution
 	 */
-	private validateGraph(): void {
-		// Check all target nodes exist
-		for (const [nodeName, node] of Array.from(this.nodes)) {
-			if (node.targets) {
-				for (const target of node.targets) {
-					if (!this.nodes.has(target)) {
-						throw new Error(
-							`Node "${nodeName}" targets non-existent node "${target}"`,
-						);
-					}
-				}
-			}
+	protected async *runAsyncImpl(
+		ctx: InvocationContext,
+	): AsyncGenerator<Event, void> {
+		// Needed for langgraph checkpointer (for subsequent invocations; multi-turn)
+		const config: RunnableConfig = {
+			configurable: {
+				thread_id: ctx.session.id,
+			},
+		};
+
+		// Add instruction as SystemMessage if graph state is empty
+		const currentGraphState = this.graph.getState(config);
+		const graphMessages = currentGraphState.values?.messages || [];
+
+		const messages: LangChainMessage[] = [];
+
+		// Add system message if instruction exists and no messages in graph state
+		if (this.instruction && graphMessages.length === 0) {
+			messages.push({
+				type: "system",
+				content: this.instruction,
+			});
 		}
 
-		// TODO: Add cycle detection if needed
+		// Add events to messages (evaluating the memory used; parent agent vs checkpointer)
+		messages.push(...this.getMessages(ctx.session.events));
+
+		// Use the Runnable
+		const finalState = await this.graph.invoke({ messages }, config);
+		const result = finalState.messages[finalState.messages.length - 1].content;
+
+		const resultEvent = new Event({
+			invocationId: ctx.invocationId,
+			author: this.name,
+			branch: ctx.branch,
+			content: {
+				role: "model",
+				parts: [{ text: result }],
+			} as Content,
+		});
+
+		yield resultEvent;
 	}
 
 	/**
-	 * Gets the next nodes to execute based on the current node and its result
+	 * Extracts messages from given list of events.
+	 *
+	 * If the developer provides their own memory within langgraph, we return the
+	 * last user messages only. Otherwise, we return all messages between the user
+	 * and the agent.
 	 */
-	private async getNextNodes(
-		currentNode: LangGraphNode,
-		lastEvent: Event,
-		context: InvocationContext,
-	): Promise<LangGraphNode[]> {
-		if (!currentNode.targets || currentNode.targets.length === 0) {
-			// Terminal node
-			return [];
+	private getMessages(events: Event[]): LangChainMessage[] {
+		if (this.graph.checkpointer) {
+			return getLastHumanMessages(events);
 		}
+		return this.getConversationWithAgent(events);
+	}
 
-		const nextNodes: LangGraphNode[] = [];
+	/**
+	 * Extracts all conversation messages from given list of events.
+	 */
+	private getConversationWithAgent(events: Event[]): LangChainMessage[] {
+		const messages: LangChainMessage[] = [];
 
-		for (const targetName of currentNode.targets) {
-			const targetNode = this.nodes.get(targetName);
-			if (!targetNode) {
-				this.logger.error(`Target node "${targetName}" not found`);
+		for (const event of events) {
+			if (!event.content || !event.content.parts) {
 				continue;
 			}
 
-			// Check condition if exists
-			if (targetNode.condition) {
-				const shouldExecute = await targetNode.condition(lastEvent, context);
-				if (!shouldExecute) {
-					this.logger.debug(`Skipping node "${targetName}" due to condition`);
-					continue;
-				}
+			const text = event.content.parts[0]?.text;
+			if (!text) {
+				continue;
 			}
 
-			nextNodes.push(targetNode);
-		}
-
-		return nextNodes;
-	}
-
-	/**
-	 * Core logic to run this agent via text-based conversation.
-	 */
-	protected async *runAsyncImpl(
-		context: InvocationContext,
-	): AsyncGenerator<Event, void, unknown> {
-		this.logger.debug(
-			`Starting graph execution from root node "${this.rootNode}"`,
-		);
-
-		if (this.nodes.size === 0) {
-			yield new Event({
-				author: this.name,
-				content: { parts: [{ text: "No nodes defined in the graph." }] },
-			});
-			return;
-		}
-
-		// Start with the root node
-		const rootNode = this.nodes.get(this.rootNode);
-		if (!rootNode) {
-			yield new Event({
-				author: this.name,
-				content: {
-					parts: [{ text: `Root node "${this.rootNode}" not found.` }],
-				},
-			});
-			return;
-		}
-
-		// Initialize execution
-		let stepCount = 0;
-		const nodesToExecute: Array<{
-			node: LangGraphNode;
-			context: InvocationContext;
-		}> = [{ node: rootNode, context }];
-
-		// Track executed nodes for logging
-		const executedNodes: string[] = [];
-		let lastEvent: Event | null = null;
-
-		// Execute the graph
-		while (nodesToExecute.length > 0 && stepCount < this.maxSteps) {
-			stepCount++;
-
-			// Get next node to execute
-			const { node } = nodesToExecute.shift()!;
-			this.logger.debug(`Step ${stepCount}: Executing node "${node.name}"`);
-			executedNodes.push(node.name);
-
-			// Create child context for the sub-agent
-			const childContext = context.createChildContext(node.agent);
-
-			try {
-				// Execute node agent
-				const nodeEvents: Event[] = [];
-				for await (const event of node.agent.runAsync(childContext)) {
-					nodeEvents.push(event);
-					lastEvent = event;
-					yield event;
-				}
-
-				// Record in result history
-				this.results.push({
-					node: node.name,
-					events: nodeEvents,
+			if (event.author === "user") {
+				messages.push({
+					type: "human",
+					content: text,
 				});
-
-				// Determine the next node(s) to execute
-				if (lastEvent) {
-					const nextNodes = await this.getNextNodes(node, lastEvent, context);
-
-					// Add all valid next nodes to execution queue for parallel execution
-					for (const nextNode of nextNodes) {
-						nodesToExecute.push({
-							node: nextNode,
-							context: childContext,
-						});
-					}
-				}
-			} catch (error) {
-				this.logger.error(`Error in node "${node.name}":`, error);
-				const errorEvent = new Event({
-					author: this.name,
-					content: {
-						parts: [
-							{
-								text: `Error in node "${node.name}": ${error instanceof Error ? error.message : String(error)}`,
-							},
-						],
-					},
+			} else if (event.author === this.name) {
+				messages.push({
+					type: "ai",
+					content: text,
 				});
-
-				// Set error properties directly since they're inherited from LlmResponse
-				errorEvent.errorCode = "NODE_EXECUTION_ERROR";
-				errorEvent.errorMessage =
-					error instanceof Error ? error.message : String(error);
-
-				yield errorEvent;
-				return;
 			}
 		}
 
-		// Final completion event
-		const completionEvent = new Event({
-			author: this.name,
-			content: {
-				parts: [
-					{
-						text: `Graph execution complete. Executed nodes: ${executedNodes.join(" → ")}`,
-					},
-				],
-			},
-		});
-
-		// Set turnComplete property since it's inherited from LlmResponse
-		completionEvent.turnComplete = true;
-
-		yield completionEvent;
+		return messages;
 	}
 
 	/**
-	 * Core logic to run this agent via video/audio-based conversation.
-	 * For LangGraph, this follows the same execution pattern as text-based.
+	 * For LangGraph agents, live execution follows the same pattern as async
+	 * The graph itself will handle any live-specific behavior
 	 */
 	protected async *runLiveImpl(
-		context: InvocationContext,
-	): AsyncGenerator<Event, void, unknown> {
-		// For LangGraph agents, live execution follows the same pattern as async
-		// The individual node agents will handle their own live vs async differences
-		yield* this.runAsyncImpl(context);
-	}
-
-	/**
-	 * Gets the execution results from the last run
-	 */
-	getExecutionResults(): Array<{ node: string; events: Event[] }> {
-		return [...this.results];
-	}
-
-	/**
-	 * Clears the execution history
-	 */
-	clearExecutionHistory(): void {
-		this.results = [];
-	}
-
-	/**
-	 * Gets all nodes in the graph
-	 */
-	getNodes(): LangGraphNode[] {
-		return Array.from(this.nodes.values());
-	}
-
-	/**
-	 * Gets a specific node by name
-	 */
-	getNode(name: string): LangGraphNode | undefined {
-		return this.nodes.get(name);
-	}
-
-	/**
-	 * Gets the root node name
-	 */
-	getRootNodeName(): string {
-		return this.rootNode;
-	}
-
-	/**
-	 * Gets the maximum steps configuration
-	 */
-	getMaxSteps(): number {
-		return this.maxSteps;
-	}
-
-	/**
-	 * Updates the maximum steps configuration
-	 */
-	setMaxSteps(maxSteps: number): void {
-		if (maxSteps <= 0) {
-			throw new Error("maxSteps must be greater than 0");
-		}
-		this.maxSteps = maxSteps;
+		ctx: InvocationContext,
+	): AsyncGenerator<Event, void> {
+		yield* this.runAsyncImpl(ctx);
 	}
 }

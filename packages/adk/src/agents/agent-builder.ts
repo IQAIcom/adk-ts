@@ -13,7 +13,14 @@ import { InMemorySessionService } from "../sessions/in-memory-session-service.js
 import type { Session } from "../sessions/session.js";
 import type { BaseTool } from "../tools/base/base-tool.js";
 import type { BaseAgent } from "./base-agent.js";
-import { LangGraphAgent, type LangGraphNode } from "./lang-graph-agent.js";
+import {
+	type CompiledGraph,
+	type GraphState,
+	type LangChainMessage,
+	LangGraphAgent,
+	type LangGraphNode,
+	type RunnableConfig,
+} from "./lang-graph-agent.js";
 import { LlmAgent } from "./llm-agent.js";
 import { LoopAgent } from "./loop-agent.js";
 import { ParallelAgent } from "./parallel-agent.js";
@@ -292,18 +299,18 @@ export class AgentBuilder {
 		return this;
 	}
 
-	/**
-	 * Configure as a LangGraph agent
-	 * @param nodes Graph nodes defining the workflow
-	 * @param rootNode The starting node name
-	 * @returns This builder instance for chaining
-	 */
-	asLangGraph(nodes: LangGraphNode[], rootNode: string): this {
-		this.agentType = "langgraph";
-		this.config.nodes = nodes;
-		this.config.rootNode = rootNode;
-		return this;
-	}
+	// /**
+	//  * Configure as a LangGraph agent
+	//  * @param nodes Graph nodes defining the workflow
+	//  * @param rootNode The starting node name
+	//  * @returns This builder instance for chaining
+	//  */
+	// asLangGraph(nodes: LangGraphNode[], rootNode: string): this {
+	// 	this.agentType = "langgraph";
+	// 	this.config.nodes = nodes;
+	// 	this.config.rootNode = rootNode;
+	// 	return this;
+	// }
 
 	/**
 	 * Configure session management with optional smart defaults
@@ -502,7 +509,7 @@ export class AgentBuilder {
 					maxIterations: this.config.maxIterations || 3,
 				});
 
-			case "langgraph":
+			case "langgraph": {
 				if (
 					!this.config.nodes ||
 					!Array.isArray(this.config.nodes) ||
@@ -512,12 +519,46 @@ export class AgentBuilder {
 				) {
 					throw new Error("Nodes and root node required for LangGraph agent");
 				}
+				const compiledGraph: CompiledGraph = {
+					getState(_config: RunnableConfig): GraphState {
+						return {
+							values: {
+								messages: [],
+							},
+						};
+					},
+
+					async invoke(
+						input: { messages: LangChainMessage[] },
+						config: RunnableConfig,
+					): Promise<{ messages: LangChainMessage[] }> {
+						// Execute nodes in sequence starting from root
+						let currentNode = this.config.nodes.find(
+							(n) => n.name === this.config.rootNode,
+						);
+						const messages = [...input.messages];
+
+						while (currentNode) {
+							await currentNode.run(config);
+							// Move to next node if targets specified
+							currentNode = currentNode.targets
+								? this.config.nodes.find(
+										(n) => n.name === currentNode.targets[0],
+									)
+								: null;
+						}
+
+						return { messages };
+					},
+				};
+
 				return new LangGraphAgent({
 					name: this.config.name,
 					description: this.config.description || "",
-					nodes: this.config.nodes,
-					rootNode: this.config.rootNode,
+					graph: compiledGraph,
+					instruction: this.config.instruction,
 				});
+			}
 		}
 	}
 
