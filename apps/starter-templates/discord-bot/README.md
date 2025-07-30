@@ -65,7 +65,7 @@ LLM_MODEL=gemini-2.5-flash
 GOOGLE_API_KEY=your_google_api_key_here
 
 # Optional
-DEBUG=false
+ADK_DEBUG=false
 ```
 
 ## Creating Your Discord Bot

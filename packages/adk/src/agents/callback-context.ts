@@ -24,7 +24,7 @@ export class CallbackContext extends ReadonlyContext {
 		super(invocationContext);
 
 		this._eventActions = options.eventActions || new EventActions();
-		this._state = new State(
+		this._state = State.create(
 			invocationContext.session.state,
 			this._eventActions.stateDelta,
 		);

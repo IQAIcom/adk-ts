@@ -1,4 +1,5 @@
-import * as z from "zod/v4";
+import * as z from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import type {
 	FunctionDeclaration,
 	JSONSchema,
@@ -19,7 +20,7 @@ export interface CreateToolConfig<
 	/** Zod schema for validating tool arguments (optional) */
 	schema?: z.ZodSchema<T>;
 	/** The function to execute (can be sync or async) */
-	fn: (args: T, context?: ToolContext) => any;
+	fn: (args: T, context: ToolContext) => any;
 	/** Whether the tool is a long running operation */
 	isLongRunning?: boolean;
 	/** Whether the tool execution should be retried on failure */
@@ -39,7 +40,7 @@ export interface CreateToolConfigWithSchema<T extends Record<string, any>> {
 	/** Zod schema for validating tool arguments */
 	schema: z.ZodSchema<T>;
 	/** The function to execute (can be sync or async) */
-	fn: (args: T, context?: ToolContext) => any;
+	fn: (args: T, context: ToolContext) => any;
 	/** Whether the tool is a long running operation */
 	isLongRunning?: boolean;
 	/** Whether the tool execution should be retried on failure */
@@ -57,7 +58,7 @@ export interface CreateToolConfigWithoutSchema {
 	/** A description of what the tool does */
 	description: string;
 	/** The function to execute (can be sync or async) */
-	fn: (args: Record<string, never>, context?: ToolContext) => any;
+	fn: (args: Record<string, never>, context: ToolContext) => any;
 	/** Whether the tool is a long running operation */
 	isLongRunning?: boolean;
 	/** Whether the tool execution should be retried on failure */
@@ -70,7 +71,7 @@ export interface CreateToolConfigWithoutSchema {
  * A tool implementation created by createTool
  */
 class CreatedTool<T extends Record<string, any>> extends BaseTool {
-	private func: (args: T, context?: ToolContext) => any;
+	private func: (args: T, context: ToolContext) => any;
 	private schema: z.ZodSchema<T>;
 	private functionDeclaration: FunctionDeclaration;
 
@@ -98,22 +99,20 @@ class CreatedTool<T extends Record<string, any>> extends BaseTool {
 
 			// Call the function with validated arguments.
 			// `Promise.resolve` handles both sync and async functions gracefully.
-			const result = await Promise.resolve(
-				this.func.length > 1
-					? this.func(validatedArgs, context)
-					: this.func(validatedArgs),
-			);
+			const result = await Promise.resolve(this.func(validatedArgs, context));
 
 			// Ensure we return an object, but preserve falsy values like 0, false, ""
 			return result ?? {};
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				return {
-					error: `Invalid arguments for ${this.name}: ${z.prettifyError(error)}`,
+					error: `Invalid arguments for ${this.name}: ${error.message}`,
 				};
 			}
 			return {
-				error: `Error executing ${this.name}: ${error instanceof Error ? error.message : String(error)}`,
+				error: `Error executing ${this.name}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
 			};
 		}
 	}
@@ -129,12 +128,18 @@ class CreatedTool<T extends Record<string, any>> extends BaseTool {
 	 * Builds the function declaration from the Zod schema
 	 */
 	private buildDeclaration(): FunctionDeclaration {
-		const parameters = z.toJSONSchema(this.schema) as unknown as JSONSchema; // TODO: Investigate further on type compatibility
+		const rawParameters = zodToJsonSchema(this.schema, {
+			target: "jsonSchema7",
+			$refStrategy: "none",
+		});
+
+		// Remove $schema field which is not needed for LLM function declarations
+		const { $schema, ...parameters } = rawParameters as any;
 
 		return {
 			name: this.name,
 			description: this.description,
-			parameters,
+			parameters: parameters as JSONSchema,
 		};
 	}
 }
@@ -194,9 +199,13 @@ export function createTool<T extends Record<string, any>>(
 // Function overload for tools without schema
 export function createTool(config: CreateToolConfigWithoutSchema): BaseTool;
 
-// Implementation
-export function createTool<
-	T extends Record<string, any> = Record<string, never>,
->(config: CreateToolConfig<T>): BaseTool {
-	return new CreatedTool(config);
+// CORRECTED IMPLEMENTATION:
+// This non-generic implementation uses a union type to match the overloads,
+// preventing the recursive type inference that was causing the crash.
+export function createTool(
+	config: CreateToolConfigWithSchema<any> | CreateToolConfigWithoutSchema,
+): BaseTool {
+	// The overloads guarantee the config is valid, so we can safely cast it
+	// to the general shape that the CreatedTool constructor expects.
+	return new CreatedTool(config as CreateToolConfig<any>);
 }

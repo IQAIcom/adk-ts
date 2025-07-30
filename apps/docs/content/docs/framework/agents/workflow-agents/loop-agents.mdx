@@ -14,17 +14,17 @@ Here's how to create a problem-solving loop that tries different approaches unti
 
 ```typescript
 // Create a problem-solving agent
-const { agent: solverAgent } = await AgentBuilder
-  .create("code-problem-solver")
-  .withModel("gemini-2.5-flash")
-  .withTools(new CodeExecutorTool(), new ExitLoopTool())
-  .withInstruction(`
+const solverAgent = new LlmAgent({
+  name: "code-problem-solver",
+  model: "gemini-2.5-flash",
+  tools: [new CodeExecutorTool(), new ExitLoopTool()],
+  instruction: `
     Try to solve the given coding problem step by step.
     Test your solution with the CodeExecutorTool.
     If tests pass, use ExitLoopTool to indicate success.
     If tests fail, analyze the error and try a different approach.
-  `)
-  .build();
+  `,
+});
 
 // Create loop agent that tries up to 8 different approaches
 const { runner } = await AgentBuilder

@@ -65,62 +65,49 @@ The default model is set to `gemini-2.5-flash`, `gemini-2.0-flash` or `gemini-2.
 
 4. **Run Examples**
 
-To explore the examples, run the following command:
+To explore the examples, you can either browse all available examples or run a specific one directly:
 
  ```bash
    cd apps/examples 
+   
+   # Interactive mode - browse and select an example
    pnpm start
+   
+   # Or run a specific example directly
+   pnpm start --name 01-simple-agent
+   pnpm start --name 11-mcp-integrations
  ```
 
 ## 📚 Explore Example Applications
 
-There are over 20 examples available, covering a wide range of use cases from basic agent setups to advanced multi-agent systems. Here are some of them organized by category to help you get started:
+We have **12 comprehensive examples** that cover the complete ADK feature set, organized in a logical learning progression from basic concepts to advanced implementations:
 
-### 🎯 **Getting Started Examples**
+### 🎯 **Foundational Examples (01-04)**
 
-| Example | Description | Best For |
-|---------|-------------|----------|
-| **[simple-agent](src/simple-agent/)** | Basic agent setup and conversation | First-time users |
-| **[agent-builder-example](src/agent-builder-example/)** | Comprehensive AgentBuilder patterns | Understanding core concepts |
+| Example | Description | Key Concepts |
+|---------|-------------|--------------|
+| **[01-simple-agent](src/01-simple-agent/)** | Basic agent setup and conversation patterns | AgentBuilder basics, simple interactions |
+| **[02-tools-and-state](src/02-tools-and-state/)** | Custom tools with state management | Tool creation, state persistence |
+| **[03-interactive-app](src/03-interactive-app/)** | Building interactive CLI applications | User interaction, input handling |
+| **[04-agent-composition](src/04-agent-composition/)** | Multi-agent systems and coordination | Agent delegation, specialized roles |
 
-### 🛠️ **Tool Integration Examples**
+### 🔧 **Intermediate Examples (05-08)**
 
-| Example | Description | Features |
-|---------|-------------|----------|
-| **[tool-usage](src/tool-usage/)** | Custom tools with calculator and weather APIs | Function calling, API integration |
-| **[create-tool](src/create-tool/)** | Converting regular functions to agent tools using createTool | Simple tool creation |
-| **[http-request-tool](src/http-request-tool/)** | HTTP requests and API interactions | External service integration |
+| Example | Description | Key Concepts |
+|---------|-------------|--------------|
+| **[05-persistence-and-sessions](src/05-persistence-and-sessions/)** | Database integration and session management | Data persistence, session handling |
+| **[06-flows-and-planning](src/06-flows-and-planning/)** | Advanced planning and execution flows | Task decomposition, flow processors |
+| **[07-code-execution](src/07-code-execution/)** | Code generation and execution capabilities | Code tools, sandboxed execution |
+| **[08-external-integrations](src/08-external-integrations/)** | API integrations and external services | HTTP tools, service integration |
 
-### 🧠 **Memory & State Examples**
+### 🚀 **Advanced Examples (09-12)**
 
-| Example | Description | Features |
-|---------|-------------|----------|
-| **[memory-usage](src/memory-usage/)** | Persistent memory across conversations | Context preservation |
-| **[database-session-example](src/database-session-example/)** | Database-backed session management | Persistent storage |
-| **[artifact-example](src/artifact-example/)** | File creation and management | Document handling, versioning |
-
-### 🤝 **Multi-Agent Examples**
-
-| Example | Description | Features |
-|---------|-------------|----------|
-| **[specialized-agents](src/specialized-agents/)** | Multiple specialized agents working together | Agent coordination |
-| **[transfer-to-agent-tool](src/transfer-to-agent-tool/)** | Agent delegation and transfers | Conversation handoffs |
-
-### 🧩 **Advanced Examples**
-
-| Example | Description | Features |
-|---------|-------------|----------|
-| **[planner-usage](src/planner-usage/)** | Step-by-step task planning and execution | Task decomposition |
-| **[flows-example](src/flows-example/)** | Custom flow processors and pipeline extensions | Request/response processing |
-| **[telemetry-agent](src/telemetry-agent/)** | Observability and monitoring integration | Performance tracking |
-
-### 🔌 **Integration Examples**
-
-| Example | Description | Features |
-|---------|-------------|----------|
-| **[mcp-filesystem](src/mcp-filesystem/)** | Model Context Protocol file system integration | MCP tools |
-| **[mcp-sampling](src/mcp-sampling/)** | MCP sampling and data processing | Data handling |
-| **[mcp-atp-agent](src/mcp-atp-agent/)** | Advanced MCP agent patterns | Complex integrations |
+| Example | Description | Key Concepts |
+|---------|-------------|--------------|
+| **[09-observability](src/09-observability/)** | Monitoring, logging, and performance tracking | Telemetry, debugging, metrics |
+| **[10-advanced-workflows](src/10-advanced-workflows/)** | Complex multi-step workflows and automation | Advanced patterns, orchestration |
+| **[11-mcp-integrations](src/11-mcp-integrations/)** | Model Context Protocol with custom servers | MCP servers, sampling, FastMCP |
+| **[12-chat-bots](src/12-chat-bots/)** | Platform-specific chat bot implementations | Discord, Telegram, platform APIs |
 
 ## 🤝 Contributing
 
@@ -153,4 +140,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](../../LICE
 
 ---
 
-💡 **Pro Tip**: Start with `simple-agent` or `agent-builder-example` to understand the basics, then explore more advanced examples based on your use case!
+💡 **Pro Tip**: Follow the examples in order (01-12) for a structured learning path, or jump to specific examples based on your needs. Start with `01-simple-agent` to understand the basics, then explore advanced features like MCP integrations and chat bots!

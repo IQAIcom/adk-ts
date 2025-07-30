@@ -1,4 +1,3 @@
-import { Logger } from "@adk/logger";
 import {
 	type Content,
 	FinishReason,
@@ -7,13 +6,11 @@ import {
 	GoogleGenAI,
 	type Part,
 } from "@google/genai";
-import dedent from "dedent";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
-const NEW_LINE = "\n";
 const AGENT_ENGINE_TELEMETRY_TAG = "remote_reasoning_engine";
 const AGENT_ENGINE_TELEMETRY_ENV_VARIABLE_NAME = "GOOGLE_CLOUD_AGENT_ENGINE_ID";
 
@@ -65,7 +62,7 @@ export class GoogleLlm extends BaseLlm {
 
 		const model = llmRequest.model || this.model;
 		const contents = this.convertContents(llmRequest.contents || []);
-		const config = this.convertConfig(llmRequest.config);
+		const config = llmRequest.config;
 
 		if (stream) {
 			const responses = await this.apiClient.models.generateContentStream({
@@ -183,21 +180,6 @@ export class GoogleLlm extends BaseLlm {
 			role: content.role === "assistant" ? "model" : content.role,
 			parts: content.parts || [{ text: content.content || "" }],
 		}));
-	}
-
-	/**
-	 * Convert LlmRequest config to GoogleGenAI format
-	 */
-	private convertConfig(config: any): any {
-		if (!config) return {};
-
-		return {
-			temperature: config.temperature,
-			topP: config.top_p,
-			maxOutputTokens: config.max_tokens,
-			tools: config.tools,
-			systemInstruction: config.system_instruction,
-		};
 	}
 
 	/**

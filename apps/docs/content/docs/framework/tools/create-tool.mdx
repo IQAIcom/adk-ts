@@ -1,0 +1,87 @@
+---
+title: Create Tool
+description: Create custom tools from functions with `createTool`.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The `createTool` function provides a convenient way to create a tool from a function. This method handles the boilerplate of creating a tool class and instance for you.
+
+## Usage
+
+To create a tool, you pass a configuration object to the `createTool` function. The function should be well-documented with JSDoc comments, as this information is used by the LLM to understand how to use the tool.
+
+```typescript
+import { AgentBuilder } from "@adk/agents";
+import { createTool } from "@adk/tools";
+import { z } from "zod";
+
+/**
+ * A simple tool that adds two numbers.
+ * @param a The first number.
+ * @param b The second number.
+ * @returns The sum of the two numbers.
+ */
+const add = (a: number, b: number) => a + b;
+
+const { runner } = await AgentBuilder.create("calculator-agent")
+  .withModel("gemini-2.5-flash")
+  .withTools(createTool({
+    name: "add",
+    description: "Adds two numbers.",
+    schema: z.object({
+        a: z.number(),
+        b: z.number(),
+    }),
+    fn: add,
+  }))
+  .build();
+
+const result = await runner.ask("What is 2 + 2?");
+```
+
+## Parameters
+
+The `createTool` function accepts a configuration object with the following properties:
+
+-   `name`: The name of the tool.
+-   `description`: A description of what the tool does.
+-   `fn`: The function to be converted into a tool.
+-   `schema` (optional): A Zod schema that defines the input parameters for the tool.
+-   `isLongRunning` (optional): A boolean indicating if the tool performs a long-running operation. Defaults to `false`.
+-   `shouldRetryOnFailure` (optional): A boolean indicating if the tool should be retried on failure. Defaults to `false`.
+-   `maxRetryAttempts` (optional): The maximum number of retry attempts. Defaults to `3`.
+
+### Advanced Usage
+
+Here is an example that uses the optional parameters:
+
+```typescript
+import { AgentBuilder } from "@adk/agents";
+import { createTool } from "@adk/tools";
+import { z } from "zod";
+
+/**
+ * A tool that simulates a long-running task.
+ * @returns A message indicating the task is complete.
+ */
+const longRunningTask = async () => {
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    return "Long running task complete!";
+}
+
+const { runner } = await AgentBuilder.create("long-running-agent")
+  .withModel("gemini-2.5-flash")
+  .withTools(createTool({
+    name: "longRunningTask",
+    description: "A tool that simulates a long-running task.",
+    fn: longRunningTask,
+    isLongRunning: true,
+    shouldRetryOnFailure: true,
+    maxRetryAttempts: 5,
+  }))
+  .build();
+
+const result = await runner.ask("Run the long running task.");
+```

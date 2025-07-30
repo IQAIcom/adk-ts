@@ -14,26 +14,26 @@ Here's how to create a research workflow that runs three specialized agents in p
 
 ```typescript
 // Create three specialized research agents
-const { agent: webAgent } = await AgentBuilder
-  .create("web-researcher")
-  .withModel("gemini-2.5-flash")
-  .withTools(new GoogleSearchTool())
-  .withInstruction("Search the web for current information")
-  .build();
+const webAgent = new LlmAgent({
+  name: "web-researcher",
+  model: "gemini-2.5-flash",
+  tools: [new GoogleSearchTool()],
+  instruction: "Search the web for current information",
+});
 
-const { agent: wikiAgent } = await AgentBuilder
-  .create("wiki-researcher")
-  .withModel("gemini-2.5-flash")
-  .withTools(new WikipediaTool())
-  .withInstruction("Find comprehensive background information")
-  .build();
+const wikiAgent = new LlmAgent({
+  name: "wiki-researcher",
+  model: "gemini-2.5-flash",
+  tools: [new WikipediaTool()],
+  instruction: "Find comprehensive background information",
+});
 
-const { agent: newsAgent } = await AgentBuilder
-  .create("news-researcher")
-  .withModel("gemini-2.5-flash")
-  .withTools(new NewsTool())
-  .withInstruction("Find latest news and developments")
-  .build();
+const newsAgent = new LlmAgent({
+  name: "news-researcher",
+  model: "gemini-2.5-flash",
+  tools: [new NewsTool()],
+  instruction: "Find latest news and developments",
+});
 
 // Create parallel coordinator that runs all three simultaneously
 const { runner } = await AgentBuilder

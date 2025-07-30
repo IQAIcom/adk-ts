@@ -169,6 +169,55 @@ export class AiSdkLlm extends BaseLlm {
 	}
 
 	/**
+	 * Transform JSON schema to use lowercase types for AI SDK compatibility
+	 */
+	private transformSchemaForAiSdk(schema: any): any {
+		if (Array.isArray(schema)) {
+			return schema.map((item) => this.transformSchemaForAiSdk(item));
+		}
+
+		if (!schema || typeof schema !== "object") {
+			return schema;
+		}
+
+		const transformedSchema = { ...schema };
+
+		// Transform type property from uppercase to lowercase
+		if (transformedSchema.type && typeof transformedSchema.type === "string") {
+			transformedSchema.type = transformedSchema.type.toLowerCase();
+		}
+
+		// Recursively transform properties
+		if (transformedSchema.properties) {
+			transformedSchema.properties = Object.fromEntries(
+				Object.entries(transformedSchema.properties).map(([key, value]) => [
+					key,
+					this.transformSchemaForAiSdk(value),
+				]),
+			);
+		}
+
+		// Transform array items (handles both single schema and array of schemas)
+		if (transformedSchema.items) {
+			transformedSchema.items = this.transformSchemaForAiSdk(
+				transformedSchema.items,
+			);
+		}
+
+		// Transform anyOf, oneOf, allOf
+		const arrayKeywords = ["anyOf", "oneOf", "allOf"];
+		for (const keyword of arrayKeywords) {
+			if (transformedSchema[keyword]) {
+				transformedSchema[keyword] = this.transformSchemaForAiSdk(
+					transformedSchema[keyword],
+				);
+			}
+		}
+
+		return transformedSchema;
+	}
+
+	/**
 	 * Convert ADK tools to AI SDK tools format
 	 */
 	private convertToAiSdkTools(llmRequest: LlmRequest): Record<string, Tool> {
@@ -180,7 +229,9 @@ export class AiSdkLlm extends BaseLlm {
 					for (const funcDecl of toolConfig.functionDeclarations) {
 						tools[funcDecl.name] = {
 							description: funcDecl.description,
-							parameters: jsonSchema(funcDecl.parameters || {}),
+							parameters: jsonSchema(
+								this.transformSchemaForAiSdk(funcDecl.parameters || {}),
+							),
 						};
 					}
 				}

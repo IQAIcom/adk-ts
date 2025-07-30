@@ -1,5 +1,56 @@
 # @iqai/adk
 
+## 0.1.20
+
+### Patch Changes
+
+- 85473c7: Fix OpenAI and AI SDK LLMs not taking in the schema from MCP tools
+
+## 0.1.19
+
+### Patch Changes
+
+- a3956ec: Updates create tool type to make context required in callback param
+
+## 0.1.18
+
+### Patch Changes
+
+- a73eee4: Update create tool to always get tool context
+
+## 0.1.17
+
+### Patch Changes
+
+- 12b0f37: Resolved a critical performance issue in `createTool` that could cause the TypeScript Language Server to crash. This change is non-breaking.
+
+## 0.1.16
+
+### Patch Changes
+
+- 335fa8e: Updates createTool to use zod v3 instead of v4
+
+## 0.1.15
+
+### Patch Changes
+
+- d5d9750: update transfer agent tool to work
+
+## 0.1.14
+
+### Patch Changes
+
+- d1935c5: Update withSesion method on agent builder to withSessionService to be more accurate to its function
+- be898e3: Adds agent tool
+- d4a6bd3: Adds withSession to pass session from outside the agent builder
+- 55dde45: Fixes google llm redundant config translation which is causing to loose system instruction and max tokens information
+- c36e159: Adds Shared memory request processor & shared memory agents example
+- da0d86f: Updates session service passing to have optional check
+- f846fc5: Adds better state config, now we can pass state and session id to withSessionService
+- 623f375: Refactor function declarations to utilize the new type definitions from the @google/genai package, ensuring type compatibility across various tools. Adjustments made to parameter types and schema definitions enhance consistency and clarity in tool configurations.
+- 01b358b: Fixes callback context to properly initalize new state
+- d2591fb: Updates agent builder to properly handle session, session service, artifact service and codeExecutor
+
 ## 0.1.13
 
 ### Patch Changes

@@ -14,24 +14,24 @@ Here's how to create a research pipeline that processes information through mult
 
 ```typescript
 // Create specialized agents for each step
-const { agent: researchAgent } = await AgentBuilder
-  .create("researcher")
-  .withModel("gemini-2.5-flash")
-  .withTools(new GoogleSearchTool(), new WikipediaTool())
-  .withInstruction("Gather comprehensive information about the topic")
-  .build();
+const researchAgent = new LlmAgent({
+  name: "researcher",
+  model: "gemini-2.5-flash",
+  tools: [new GoogleSearchTool(), new WikipediaTool()],
+  instruction: "Gather comprehensive information about the topic",
+});
 
-const { agent: analysisAgent } = await AgentBuilder
-  .create("analyst")
-  .withModel("gemini-2.5-flash")
-  .withInstruction("Analyze the research data and identify key insights")
-  .build();
+const analysisAgent = new LlmAgent({
+  name: "analyst",
+  model: "gemini-2.5-flash",
+  instruction: "Analyze the research data and identify key insights",
+});
 
-const { agent: summaryAgent } = await AgentBuilder
-  .create("summarizer")
-  .withModel("gemini-2.5-flash")
-  .withInstruction("Create a concise summary with actionable recommendations")
-  .build();
+const summaryAgent = new LlmAgent({
+  name: "summarizer",
+  model: "gemini-2.5-flash",
+  instruction: "Create a concise summary with actionable recommendations",
+});
 
 // Create sequential pipeline that runs research → analysis → summary
 const { runner } = await AgentBuilder

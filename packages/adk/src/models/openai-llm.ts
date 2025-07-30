@@ -1,12 +1,8 @@
-import { Logger } from "@adk/logger";
-import dedent from "dedent";
 import OpenAI from "openai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
-
-const NEW_LINE = "\n";
 
 type OpenAIRole = "user" | "assistant" | "system";
 
@@ -456,6 +452,55 @@ export class OpenAiLlm extends BaseLlm {
 	}
 
 	/**
+	 * Transform JSON schema to use lowercase types for OpenAI compatibility
+	 */
+	private transformSchemaForOpenAi(schema: any): any {
+		if (Array.isArray(schema)) {
+			return schema.map((item) => this.transformSchemaForOpenAi(item));
+		}
+
+		if (!schema || typeof schema !== "object") {
+			return schema;
+		}
+
+		const transformedSchema = { ...schema };
+
+		// Transform type property from uppercase to lowercase
+		if (transformedSchema.type && typeof transformedSchema.type === "string") {
+			transformedSchema.type = transformedSchema.type.toLowerCase();
+		}
+
+		// Recursively transform properties
+		if (transformedSchema.properties) {
+			transformedSchema.properties = Object.fromEntries(
+				Object.entries(transformedSchema.properties).map(([key, value]) => [
+					key,
+					this.transformSchemaForOpenAi(value),
+				]),
+			);
+		}
+
+		// Transform array items (handles both single schema and array of schemas)
+		if (transformedSchema.items) {
+			transformedSchema.items = this.transformSchemaForOpenAi(
+				transformedSchema.items,
+			);
+		}
+
+		// Transform anyOf, oneOf, allOf
+		const arrayKeywords = ["anyOf", "oneOf", "allOf"];
+		for (const keyword of arrayKeywords) {
+			if (transformedSchema[keyword]) {
+				transformedSchema[keyword] = this.transformSchemaForOpenAi(
+					transformedSchema[keyword],
+				);
+			}
+		}
+
+		return transformedSchema;
+	}
+
+	/**
 	 * Convert ADK function declaration to OpenAI tool
 	 */
 	private functionDeclarationToOpenAiTool(
@@ -466,7 +511,9 @@ export class OpenAiLlm extends BaseLlm {
 			function: {
 				name: functionDeclaration.name,
 				description: functionDeclaration.description || "",
-				parameters: functionDeclaration.parameters || {},
+				parameters: this.transformSchemaForOpenAi(
+					functionDeclaration.parameters || {},
+				),
 			},
 		};
 	}

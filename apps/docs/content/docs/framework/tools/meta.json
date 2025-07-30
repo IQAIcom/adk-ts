@@ -1,3 +1,15 @@
 {
-  "icon": "Wrench"
+  "title": "Tools",
+  "icon": "Wrench",
+  "pages": [
+    "index",
+    "function-tools",
+    "create-tool",
+    "built-in-tools",
+    "google-cloud-tools",
+    "mcp-tools",
+    "openapi-tools",
+    "third-party-tools",
+    "authentication"
+  ]
 }

@@ -30,6 +30,37 @@ Workflow agents provide deterministic orchestration patterns for coordinating mu
   />
 </Cards>
 
+## Quick Example
+
+Here's a simple example of a sequential workflow that uses a writer agent followed by an editor agent:
+
+```typescript
+import { AgentBuilder, LlmAgent } from '@iqai/adk';
+
+// 1. Define the sub-agents
+const writerAgent = new LlmAgent({
+  name: 'writer',
+  model: 'gemini-2.5-flash',
+  instruction: 'You are a creative writer. Write a short story based on the user prompt.',
+});
+
+const editorAgent = new LlmAgent({
+  name: 'editor',
+  model: 'gemini-2.5-flash',
+  instruction: 'You are an editor. Review the story for grammar and style, then provide a final version.',
+});
+
+// 2. Create the sequential workflow
+const { runner } = await AgentBuilder.create('story-pipeline')
+  .asSequential([writerAgent, editorAgent])
+  .build();
+
+// 3. Run the workflow
+const result = await runner.ask('Write a story about a robot who discovers music.');
+
+console.log(result);
+```
+
 ## When to Use Workflow Agents
 
 Workflow agents are ideal for:
