@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentBuilder } from "../../agents/agent-builder.js";
-import { LangGraphAgent } from "../../agents/lang-graph-agent.js";
 import { LlmAgent } from "../../agents/llm-agent.js";
 import { LoopAgent } from "../../agents/loop-agent.js";
 import { ParallelAgent } from "../../agents/parallel-agent.js";
@@ -183,23 +182,6 @@ describe("AgentBuilder", () => {
 			const result = builder.asLoop([mockAgent]);
 			expect(result).toBe(builder);
 		});
-
-		it("should configure as LangGraph agent", () => {
-			const nodes = [
-				{
-					name: "start",
-					agent: mockAgent,
-					targets: ["end"],
-				},
-				{
-					name: "end",
-					agent: mockAgent,
-					targets: [],
-				},
-			];
-			const result = builder.asLangGraph(nodes, "start");
-			expect(result).toBe(builder);
-		});
 	});
 
 	describe("Building agents", () => {
@@ -256,28 +238,6 @@ describe("AgentBuilder", () => {
 			expect(agent).toBeInstanceOf(LoopAgent);
 		});
 
-		it("should build LangGraph agent successfully", async () => {
-			const subAgent = new LlmAgent({
-				name: "sub_agent",
-				model: "gemini-2.5-flash",
-				description: "Sub agent for testing",
-			});
-
-			const nodes = [
-				{
-					name: "start",
-					agent: subAgent,
-					targets: [],
-				},
-			];
-
-			const { agent } = await AgentBuilder.create("test_langgraph")
-				.asLangGraph(nodes, "start")
-				.build();
-
-			expect(agent).toBeInstanceOf(LangGraphAgent);
-		});
-
 		it("should create default session when none provided", async () => {
 			const { session } = await AgentBuilder.create("test_agent")
 				.withModel("gemini-2.5-flash")
@@ -325,32 +285,6 @@ describe("AgentBuilder", () => {
 			await expect(
 				AgentBuilder.create("test_agent").asLoop([]).build(),
 			).rejects.toThrow("Sub-agents required for loop agent");
-		});
-
-		it("should throw error when building LangGraph agent without nodes", async () => {
-			await expect(
-				AgentBuilder.create("test_agent").asLangGraph([], "start").build(),
-			).rejects.toThrow("Nodes and root node required for LangGraph agent");
-		});
-
-		it("should throw error when building LangGraph agent without root node", async () => {
-			const mockAgent = new LlmAgent({
-				name: "mock_agent",
-				model: "gemini-2.5-flash",
-				description: "Mock agent for testing",
-			});
-
-			const nodes = [
-				{
-					name: "start",
-					agent: mockAgent,
-					targets: [],
-				},
-			];
-
-			await expect(
-				AgentBuilder.create("test_agent").asLangGraph(nodes, "").build(),
-			).rejects.toThrow("Nodes and root node required for LangGraph agent");
 		});
 	});
 
