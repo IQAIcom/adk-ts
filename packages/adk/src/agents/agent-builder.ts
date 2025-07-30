@@ -299,18 +299,18 @@ export class AgentBuilder {
 		return this;
 	}
 
-	// /**
-	//  * Configure as a LangGraph agent
-	//  * @param nodes Graph nodes defining the workflow
-	//  * @param rootNode The starting node name
-	//  * @returns This builder instance for chaining
-	//  */
-	// asLangGraph(nodes: LangGraphNode[], rootNode: string): this {
-	// 	this.agentType = "langgraph";
-	// 	this.config.nodes = nodes;
-	// 	this.config.rootNode = rootNode;
-	// 	return this;
-	// }
+	/**
+	 * Configure as a LangGraph agent
+	 * @param nodes Graph nodes defining the workflow
+	 * @param rootNode The starting node name
+	 * @returns This builder instance for chaining
+	 */
+	asLangGraph(nodes: LangGraphNode[], rootNode: string): this {
+		this.agentType = "langgraph";
+		this.config.nodes = nodes;
+		this.config.rootNode = rootNode;
+		return this;
+	}
 
 	/**
 	 * Configure session management with optional smart defaults
