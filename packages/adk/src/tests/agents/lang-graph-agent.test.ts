@@ -6,7 +6,6 @@ import {
 } from "../../agents/lang-graph-agent";
 import { Event } from "../../events/event";
 
-// Test wrapper to access private methods
 class TestLangGraphAgent extends LangGraphAgent {
 	public testGetMessages(events: Event[]): LangChainMessage[] {
 		return this["getMessages"](events);
