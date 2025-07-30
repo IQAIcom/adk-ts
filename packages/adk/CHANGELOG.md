@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.1.21
+
+### Patch Changes
+
+- f141bc0: Improves error handling for missing models in workflows
+
 ## 0.1.20
 
 ### Patch Changes
