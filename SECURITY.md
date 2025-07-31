@@ -34,7 +34,7 @@ After you submit a security issue:
 
 ## Security Best Practices
 
-When using ADK TS Framework:
+When using ADK-TS Framework:
 
 1. Keep all dependencies up to date
 2. Use proper authentication for any agent deployments
@@ -44,10 +44,10 @@ When using ADK TS Framework:
 
 ## Scope
 
-This security policy applies to the latest version of ADK TS Framework and its core plugins. Third-party plugins or modified versions of the framework may have different security considerations.
+This security policy applies to the latest version of ADK-TS Framework and its core plugins. Third-party plugins or modified versions of the framework may have different security considerations.
 
 ## Security Updates
 
-Security updates will be released as part of our regular release cycle or as emergency patches for critical vulnerabilities. We recommend always using the latest version of ADK TS Framework and its dependencies.
+Security updates will be released as part of our regular release cycle or as emergency patches for critical vulnerabilities. We recommend always using the latest version of ADK-TS Framework and its dependencies.
 
-Thank you for helping keep ADK TS Framework and its community safe!
+Thank you for helping keep ADK-TS Framework and its community safe!
