@@ -59,6 +59,9 @@ temp-examples/
 # Yarn Integrity file
 .yarn-integrity
 
+# Crush workspace
+.crush/
+
 # parcel-bundler cache
 .cache
 .parcel-cache

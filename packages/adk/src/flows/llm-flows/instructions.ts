@@ -1,9 +1,10 @@
+import { zodToJsonSchema } from "zod-to-json-schema";
+import type { BaseAgent } from "../../agents/base-agent";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
-import type { BaseAgent } from "../../agents/base-agent";
+import { ReadonlyContext } from "../../agents/readonly-context";
 import type { Event } from "../../events/event";
 import type { LlmRequest } from "../../models/llm-request";
-import { ReadonlyContext } from "../../agents/readonly-context";
 import { injectSessionState } from "../../utils/instructions-utils";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
@@ -61,8 +62,24 @@ class InstructionsLlmRequestProcessor extends BaseLlmRequestProcessor {
 			llmRequest.appendInstructions([instruction]);
 		}
 
+		// Append schema guidance to system instruction if provided
+		if (agent.outputSchema) {
+			try {
+				const raw = zodToJsonSchema(agent.outputSchema as any, {
+					target: "jsonSchema7",
+					$refStrategy: "none",
+				});
+				const { $schema, ...json } = (raw as any) || {};
+				llmRequest.appendInstructions([
+					"You must respond with application/json that validates against this JSON Schema:",
+					"```json",
+					JSON.stringify(json, null, 2),
+					"```",
+				]);
+			} catch {}
+		}
+
 		// This processor doesn't yield any events, just configures the request
-		// Empty async generator - no events to yield
 		for await (const _ of []) {
 			yield _;
 		}

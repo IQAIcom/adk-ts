@@ -172,7 +172,7 @@ export abstract class BaseLlm {
 	 * @param llmRequest LlmRequest, the request to send to the LLM.
 	 * @returns BaseLLMConnection, the connection to the LLM.
 	 */
-	connect(llmRequest: LlmRequest): BaseLLMConnection {
+	connect(_llmRequest: LlmRequest): BaseLLMConnection {
 		throw new Error(`Live connection is not supported for ${this.model}.`);
 	}
 }
