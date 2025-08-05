@@ -1,5 +1,5 @@
 import type { Content } from "@google/genai";
-import { SpanStatusCode } from "@opentelemetry/api";
+import { SpanStatusCode, context, trace } from "@opentelemetry/api";
 import type { BaseAgent } from "./agents/base-agent";
 import { InvocationContext } from "./agents/invocation-context";
 import { newInvocationContextId } from "./agents/invocation-context";
@@ -184,13 +184,14 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		runConfig?: RunConfig;
 	}): AsyncGenerator<Event, void, unknown> {
 		const span = tracer.startSpan("invocation");
+		const spanContext = trace.setSpan(context.active(), span);
 
 		try {
-			const session = await this.sessionService.getSession(
-				this.appName,
-				userId,
-				sessionId,
+			// Execute all invocation logic within the span context
+			const session = await context.with(spanContext, () =>
+				this.sessionService.getSession(this.appName, userId, sessionId),
 			);
+
 			if (!session) {
 				throw new Error(`Session not found: ${sessionId}`);
 			}
@@ -201,25 +202,42 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			});
 
 			if (newMessage) {
-				await this._appendNewMessageToSession(
-					session,
-					newMessage,
-					invocationContext,
-					runConfig.saveInputBlobsAsArtifacts || false,
+				await context.with(spanContext, () =>
+					this._appendNewMessageToSession(
+						session,
+						newMessage,
+						invocationContext,
+						runConfig.saveInputBlobsAsArtifacts || false,
+					),
 				);
 			}
 
 			invocationContext.agent = this._findAgentToRun(session, this.agent);
 
-			for await (const event of invocationContext.agent.runAsync(
-				invocationContext,
-			)) {
-				if (!event.partial) {
-					await this.sessionService.appendEvent(session, event);
-					if (this.memoryService) {
-						await this.memoryService.addSessionToMemory(session);
-					}
+			// Execute agent within the span context
+			const agentGenerator =
+				invocationContext.agent.runAsync(invocationContext);
+
+			while (true) {
+				const result = await context.with(spanContext, () =>
+					agentGenerator.next(),
+				);
+
+				if (result.done) {
+					break;
 				}
+
+				const event = result.value as Event;
+
+				if (!event.partial) {
+					await context.with(spanContext, async () => {
+						await this.sessionService.appendEvent(session, event);
+						if (this.memoryService) {
+							await this.memoryService.addSessionToMemory(session);
+						}
+					});
+				}
+
 				yield event;
 			}
 		} catch (error) {

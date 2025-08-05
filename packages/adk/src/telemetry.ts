@@ -2,6 +2,7 @@ import {
 	DiagConsoleLogger,
 	DiagLogLevel,
 	type Tracer,
+	context,
 	diag,
 	trace,
 } from "@opentelemetry/api";
@@ -18,6 +19,7 @@ import type { Event } from "./events/event";
 import type { LlmRequest } from "./models/llm-request";
 import type { LlmResponse } from "./models/llm-response";
 import type { BaseTool } from "./tools";
+import type { ToolContext } from "./tools/tool-context";
 
 export interface TelemetryConfig {
 	appName: string;
@@ -67,7 +69,19 @@ export class TelemetryService {
 		this.sdk = new NodeSDK({
 			resource,
 			traceExporter,
-			instrumentations: [getNodeAutoInstrumentations()],
+			instrumentations: [
+				getNodeAutoInstrumentations({
+					// Follow Python ADK approach: let all HTTP instrumentation through.
+					// This provides transparency and aligns with standard OpenTelemetry behavior.
+					// High-level LLM tracing is provided through dedicated ADK spans.
+					"@opentelemetry/instrumentation-http": {
+						ignoreIncomingRequestHook: (req) => {
+							// Ignore incoming requests (we're usually making outgoing calls)
+							return true;
+						},
+					},
+				}),
+			],
 		});
 
 		try {
@@ -172,7 +186,7 @@ export class TelemetryService {
 		}
 
 		span.setAttributes({
-			"gen_ai.system.name": "iqai-adk",
+			"gen_ai.system": "iqai-adk",
 			"gen_ai.operation.name": "execute_tool",
 			"gen_ai.tool.name": tool.name,
 			"gen_ai.tool.description": tool.description,
@@ -189,7 +203,7 @@ export class TelemetryService {
 				"deployment.environment.name": process.env.NODE_ENV,
 			}),
 
-			// Tool-specific data
+			// ADK-specific attributes (matching Python namespace pattern)
 			"adk.tool_call_args": this._safeJsonStringify(args),
 			"adk.event_id": functionResponseEvent.invocationId,
 			"adk.tool_response": this._safeJsonStringify(toolResponse),
@@ -215,9 +229,8 @@ export class TelemetryService {
 		const requestData = this._buildLlmRequestForTrace(llmRequest);
 
 		span.setAttributes({
-			// Standard OpenTelemetry attributes
-			"gen_ai.system.name": "iqai-adk",
-			"gen_ai.operation.name": "generate",
+			// Standard OpenTelemetry attributes (following Python pattern)
+			"gen_ai.system": "iqai-adk",
 			"gen_ai.request.model": llmRequest.model,
 
 			// Session and user tracking (maps to Langfuse sessionId, userId)
@@ -234,15 +247,26 @@ export class TelemetryService {
 			"gen_ai.request.temperature": llmRequest.config.temperature || 0,
 			"gen_ai.request.top_p": llmRequest.config.topP || 0,
 
-			// Legacy ADK attributes (keep for backward compatibility)
 			"adk.system_name": "iqai-adk",
 			"adk.request_model": llmRequest.model,
-			"adk.invocation_id": invocationContext.session.id,
+
+			// ADK-specific attributes (matching Python namespace pattern)
+			"adk.invocation_id": invocationContext.invocationId,
 			"adk.session_id": invocationContext.session.id,
 			"adk.event_id": eventId,
 			"adk.llm_request": this._safeJsonStringify(requestData),
 			"adk.llm_response": this._safeJsonStringify(llmResponse),
 		});
+
+		// Add token usage information (matching Python implementation)
+		if (llmResponse.usageMetadata) {
+			span.setAttributes({
+				"gen_ai.usage.input_tokens":
+					llmResponse.usageMetadata.promptTokenCount || 0,
+				"gen_ai.usage.output_tokens":
+					llmResponse.usageMetadata.candidatesTokenCount || 0,
+			});
+		}
 
 		// Add input/output as events (preferred over deprecated attributes)
 		span.addEvent("gen_ai.content.prompt", {
@@ -262,10 +286,18 @@ export class TelemetryService {
 		generator: AsyncGenerator<T, void, unknown>,
 	): AsyncGenerator<T, void, unknown> {
 		const span = this.tracer.startSpan(spanName);
+		const spanContext = trace.setSpan(context.active(), span);
 
 		try {
-			for await (const item of generator) {
-				yield item;
+			// Execute each iteration within the span context
+			while (true) {
+				const result = await context.with(spanContext, () => generator.next());
+
+				if (result.done) {
+					break;
+				}
+
+				yield result.value as T;
 			}
 		} catch (error) {
 			span.recordException(error as Error);
