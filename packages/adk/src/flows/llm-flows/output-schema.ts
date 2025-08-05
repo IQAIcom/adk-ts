@@ -79,13 +79,13 @@ class OutputSchemaResponseProcessor extends BaseLlmResponseProcessor {
 				return part;
 			});
 
-			this.logger.debug(
+			this.logger.info(
 				{
 					agent: agent.name,
-					originalLength: textContent.length,
 					validatedKeys: Object.keys(validated),
+					responseLength: textContent.length,
 				},
-				"Output schema validation successful",
+				"✅ Output schema validation successful",
 			);
 		} catch (error) {
 			// Create error message with detailed information

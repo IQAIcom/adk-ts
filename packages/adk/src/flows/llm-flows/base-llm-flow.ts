@@ -30,7 +30,7 @@ export abstract class BaseLlmFlow {
 			{
 				invocationId: invocationContext.invocationId,
 			},
-			"Agent started",
+			"🚀 Agent started",
 		);
 
 		let stepCount = 0;
@@ -55,7 +55,7 @@ export abstract class BaseLlmFlow {
 						stepCount,
 						duration: Date.now() - startTime,
 					},
-					"Agent completed",
+					"✅ Agent completed",
 				);
 				break;
 			}
@@ -303,6 +303,19 @@ export abstract class BaseLlmFlow {
 
 		// Handle function calls for live mode
 		if (finalizedEvent.getFunctionCalls()) {
+			const functionCalls = finalizedEvent.getFunctionCalls();
+			const functionCallsDisplay =
+				LogFormatter.formatFunctionCallsString(functionCalls);
+
+			// INFO level - Function execution start
+			this.logger.info(
+				{
+					functionCalls: functionCallsDisplay,
+					functionCount: functionCalls.length,
+				},
+				"🔧 Executing function calls",
+			);
+
 			// TODO: Implement functions.handleFunctionCallsLive when available
 			const functionResponseEvent = await functions.handleFunctionCallsAsync(
 				invocationContext,
@@ -311,6 +324,15 @@ export abstract class BaseLlmFlow {
 			);
 
 			if (functionResponseEvent) {
+				// INFO level - Function execution completed
+				const functionResponses = functionResponseEvent.getFunctionResponses();
+				this.logger.info(
+					{
+						responseCount: functionResponses?.length || 0,
+					},
+					"✅ Function calls completed",
+				);
+
 				yield functionResponseEvent;
 
 				const transferToAgent = functionResponseEvent.actions?.transferToAgent;
@@ -497,34 +519,50 @@ export abstract class BaseLlmFlow {
 			})
 			.join(", ");
 
-		// Format system instruction (truncate if too long)
+		// Format system instruction (show more for better debugging)
 		const systemInstruction = llmRequest.getSystemInstructionText() || "";
-		const truncatedSystemInstruction =
-			systemInstruction.length > 100
-				? `${systemInstruction.substring(0, 100)}...`
-				: systemInstruction;
+		const formattedSystemInstruction = systemInstruction
+			? systemInstruction.length > 200
+				? `${systemInstruction.substring(0, 200)}...`
+				: systemInstruction
+			: "none";
 
-		// Format content preview (show first message content)
+		// Format content preview (show user input clearly)
 		const contentPreview =
 			llmRequest.contents?.length > 0
 				? LogFormatter.formatContentPreview(llmRequest.contents[0])
 				: "none";
 
+		// Get user message content specifically
+		const userContent = llmRequest.contents?.find((c) => c.role === "user");
+		const userMessage = userContent
+			? LogFormatter.formatContentPreview(userContent)
+			: "none";
+
 		// Create LLM-specific logger
 		const llmLogger = this.logger.llm(llm.model);
 
-		// DEBUG level - Replace debugStructured calls
+		// INFO level - Important request information
+		llmLogger.info(
+			{
+				agent: invocationContext.agent.name,
+				userMessage: userMessage,
+				toolsAvailable: toolNames || "none",
+				toolCount: llmRequest.config?.tools?.length || 0,
+				streaming: isStreaming,
+			},
+			"📤 LLM Request Started",
+		);
+
+		// DEBUG level - Detailed request information
 		llmLogger.debug(
 			{
 				agent: invocationContext.agent.name,
 				contentItems: llmRequest.contents?.length || 0,
-				contentPreview: contentPreview,
-				systemInstruction: truncatedSystemInstruction || "none",
-				availableTools: toolNames || "none",
-				toolCount: llmRequest.config?.tools?.length || 0,
-				streaming: isStreaming,
+				systemInstruction: formattedSystemInstruction,
+				hasOutputSchema: !!llmRequest.config?.responseSchema,
 			},
-			"LLM request",
+			"LLM request details",
 		);
 
 		let responseCount = 0;
@@ -556,20 +594,38 @@ export abstract class BaseLlmFlow {
 			// Format response content preview
 			const responsePreview = LogFormatter.formatResponsePreview(llmResponse);
 
+			// INFO level - Key response information
+			if (functionCalls.length > 0) {
+				llmLogger.info(
+					{
+						functionCallsDetail: functionCallsDisplay,
+						tokenCount: tokenCount,
+						responseNumber: responseCount,
+						duration_ms: duration,
+					},
+					"🔧 LLM Function Calls",
+				);
+			} else {
+				llmLogger.info(
+					{
+						responsePreview: responsePreview,
+						tokenCount: tokenCount,
+						responseNumber: responseCount,
+						duration_ms: duration,
+					},
+					"📥 LLM Response",
+				);
+			}
+
 			// DEBUG level - Detailed response info
 			llmLogger.debug(
 				{
-					tokenCount: tokenCount,
 					functionCallCount: functionCalls.length,
-					functionCallsDisplay: functionCallsDisplay,
-					responsePreview: responsePreview,
 					finishReason: llmResponse.finishReason || "unknown",
-					responseNumber: responseCount,
 					partial: llmResponse.partial || false,
 					error: llmResponse.errorCode || null,
-					duration_ms: duration,
 				},
-				"LLM response",
+				"LLM response details",
 			);
 
 			// TRACE level - Very detailed response analysis

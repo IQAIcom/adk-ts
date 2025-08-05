@@ -15,6 +15,7 @@ export * from "./flows";
 export * from "./utils";
 export * from "./events";
 export * from "./code-executors";
+export * from "./logger"; // Export logger module
 
 export * from "./planners";
 
