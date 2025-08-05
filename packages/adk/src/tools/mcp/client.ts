@@ -98,7 +98,7 @@ export class McpClientService {
 
 			// Convert to McpError if it's not already
 			if (!(error instanceof McpError)) {
-				this.logger.error("Failed to initialize MCP client:", error);
+				this.logger.error({ error }, "Failed to initialize MCP client");
 				throw new McpError(
 					`Failed to initialize MCP client: ${error instanceof Error ? error.message : String(error)}`,
 					McpErrorType.CONNECTION_ERROR,
@@ -117,8 +117,11 @@ export class McpClientService {
 			// Configure transport based on mode
 			if (this.config.transport.mode === "sse") {
 				this.logger.debug(
-					"🚀 Initializing MCP client in SSE mode",
-					this.config.transport.serverUrl,
+					{
+						mode: "sse",
+						serverUrl: this.config.transport.serverUrl,
+					},
+					"Initializing MCP client in SSE mode",
 				);
 
 				const headers = {
@@ -139,8 +142,10 @@ export class McpClientService {
 
 			// STDIO mode
 			this.logger.debug(
+				{
+					command: this.config.transport.command,
+				},
 				"🚀 Initializing MCP client in STDIO mode",
-				this.config.transport.command,
 			);
 
 			return new StdioClientTransport({
@@ -200,7 +205,7 @@ export class McpClientService {
 
 			this.logger.debug("🧹 Cleaned up MCP client resources");
 		} catch (error) {
-			this.logger.error("Error cleaning up MCP resources:", error);
+			this.logger.error({ error }, "Error cleaning up MCP resources");
 		} finally {
 			this.client = null;
 			this.transport = null;
@@ -271,7 +276,7 @@ export class McpClientService {
 				CreateMessageRequestSchema,
 				async (request: any) => {
 					try {
-						this.logger.debug("Received sampling request:", request);
+						this.logger.debug({ request }, "Received sampling request");
 
 						const response =
 							await this.mcpSamplingHandler!.handleSamplingRequest(request);
@@ -280,7 +285,7 @@ export class McpClientService {
 
 						return response;
 					} catch (error) {
-						this.logger.error("❌ Error handling sampling request:", error);
+						this.logger.error({ error }, "❌ Error handling sampling request");
 
 						if (error instanceof McpError) {
 							throw error;
@@ -297,7 +302,7 @@ export class McpClientService {
 
 			this.logger.debug("🎯 Sampling handler registered successfully");
 		} catch (error) {
-			this.logger.error("Failed to setup sampling handler:", error);
+			this.logger.error({ error }, "Failed to setup sampling handler");
 			this.logger.debug(
 				"⚠️ Sampling handler registration failed, continuing without sampling support",
 			);
@@ -312,7 +317,7 @@ export class McpClientService {
 
 		if (this.client) {
 			this.setupSamplingHandler(this.client).catch((error) => {
-				this.logger.error("Failed to update ADK sampling handler:", error);
+				this.logger.error({ error }, "Failed to update ADK sampling handler");
 			});
 		}
 	}
@@ -327,7 +332,7 @@ export class McpClientService {
 			try {
 				this.client.removeRequestHandler?.("sampling/createMessage");
 			} catch (error) {
-				this.logger.error("Failed to remove sampling handler:", error);
+				this.logger.error({ error }, "Failed to remove sampling handler");
 			}
 		}
 	}

@@ -144,7 +144,14 @@ export class AiSdkLlm extends BaseLlm {
 				});
 			}
 		} catch (error) {
-			this.logger.error(`AI SDK Error: ${String(error)}`, { error, request });
+			this.logger.error(
+				{
+					err: error as Error,
+					request: request,
+					model: this.model,
+				},
+				`AI SDK Error: ${String(error)}`,
+			);
 			yield LlmResponse.fromError(error, {
 				errorCode: "AI_SDK_ERROR",
 				model: this.model,

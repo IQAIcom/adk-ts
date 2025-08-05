@@ -112,10 +112,17 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			throw new Error("Container is not initialized");
 		}
 
-		this.logger.debug("Executing code in container", {
-			containerId: this.container.id,
-			codeLength: codeExecutionInput.code.length,
-		});
+		// Create container-specific logger
+		const containerLogger = this.logger.container(this.container.id);
+
+		// DEBUG level - Container operations
+		containerLogger.debug(
+			{
+				codeLength: codeExecutionInput.code.length,
+				language: "python",
+			},
+			"Executing code in container",
+		);
 
 		try {
 			// Execute the Python code in the container
@@ -133,11 +140,15 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 				this.createTimeoutPromise(),
 			]);
 
-			this.logger.debug("Code execution completed", {
-				exitCode: result.exitCode,
-				stdoutLength: result.stdout.length,
-				stderrLength: result.stderr.length,
-			});
+			// DEBUG level - Execution completion
+			containerLogger.debug(
+				{
+					exitCode: result.exitCode,
+					stdoutLength: result.stdout.length,
+					stderrLength: result.stderr.length,
+				},
+				"Code execution completed",
+			);
 
 			return {
 				stdout: result.stdout,
@@ -145,7 +156,11 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 				outputFiles: [], // Container executor doesn't support output files yet
 			};
 		} catch (error) {
-			this.logger.error("Error executing code in container", error);
+			// ERROR level - Execution failure
+			this.logger.error(
+				{ err: error as Error },
+				"Error executing code in container",
+			);
 
 			if (error instanceof Error && error.message.includes("timeout")) {
 				return {
@@ -250,10 +265,13 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			throw new Error("Docker client is not initialized.");
 		}
 
-		this.logger.info("Building Docker image...", {
-			path: this.dockerPath,
-			tag: this.image,
-		});
+		this.logger.info(
+			{
+				path: this.dockerPath,
+				tag: this.image,
+			},
+			"Building Docker image...",
+		);
 
 		try {
 			const stream = await this.client.buildImage(
@@ -280,15 +298,21 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 					},
 					(event: any) => {
 						if (event.stream) {
-							this.logger.debug("Build output:", event.stream.trim());
+							this.logger.debug(
+								{ output: event.stream.trim() },
+								"Build output:",
+							);
 						}
 					},
 				);
 			});
 
-			this.logger.info("Docker image built successfully", { tag: this.image });
+			this.logger.info({ tag: this.image }, "Docker image built successfully");
 		} catch (error) {
-			this.logger.error("Failed to build Docker image", error);
+			this.logger.error(
+				{ err: error as Error },
+				"Failed to build Docker image",
+			);
 			throw error;
 		}
 	}
@@ -328,7 +352,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 
 			this.logger.debug("Python 3 installation verified");
 		} catch (error) {
-			this.logger.error("Python verification failed", error);
+			this.logger.error({ err: error as Error }, "Python verification failed");
 			throw new Error("python3 is not installed in the container.");
 		}
 	}
@@ -346,9 +370,12 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			await this.buildDockerImage();
 		}
 
-		this.logger.info("Starting container for ContainerCodeExecutor...", {
-			image: this.image,
-		});
+		this.logger.info(
+			{
+				image: this.image,
+			},
+			"Starting container for ContainerCodeExecutor...",
+		);
 
 		try {
 			// Create and start the container
@@ -363,14 +390,20 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 
 			await this.container.start();
 
-			this.logger.info("Container started successfully", {
-				containerId: this.container.id,
-			});
+			this.logger.info(
+				{
+					containerId: this.container.id,
+				},
+				"Container started successfully",
+			);
 
 			// Verify Python installation
 			await this.verifyPythonInstallation();
 		} catch (error) {
-			this.logger.error("Failed to initialize container", error);
+			this.logger.error(
+				{ err: error as Error },
+				"Failed to initialize container",
+			);
 			await this.cleanupContainer(); // Clean up on failure
 			throw error;
 		}
@@ -383,7 +416,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 		const cleanup = () => {
 			// Use synchronous cleanup for process exit
 			this.cleanupContainer().catch((error) => {
-				this.logger.error("Error during cleanup", error);
+				this.logger.error({ err: error as Error }, "Error during cleanup");
 			});
 		};
 
@@ -403,9 +436,12 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 		}
 
 		try {
-			this.logger.info("Cleaning up container...", {
-				containerId: this.container.id,
-			});
+			this.logger.info(
+				{
+					containerId: this.container.id,
+				},
+				"Cleaning up container...",
+			);
 
 			// Stop the container with a timeout
 			await this.container.stop({ t: 10 });
@@ -413,11 +449,17 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			// Remove the container
 			await this.container.remove();
 
-			this.logger.info("Container stopped and removed successfully", {
-				containerId: this.container.id,
-			});
+			this.logger.info(
+				{
+					containerId: this.container.id,
+				},
+				"Container stopped and removed successfully",
+			);
 		} catch (error) {
-			this.logger.error("Error during container cleanup", error);
+			this.logger.error(
+				{ err: error as Error },
+				"Error during container cleanup",
+			);
 		} finally {
 			this.container = undefined;
 			this.isInitialized = false;

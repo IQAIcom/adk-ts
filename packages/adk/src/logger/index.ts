@@ -1,138 +1,125 @@
-import chalk from "chalk";
+import pino from "pino";
+import { getLoggerConfig } from "./config";
+import { AgentLogger } from "./specialized/agent-logger";
+import { ContainerLogger } from "./specialized/container-logger";
+import { LLMLogger } from "./specialized/llm-logger";
+import { ToolLogger } from "./specialized/tool-logger";
+import type { LogContext } from "./types";
 
-interface LoggerOpts {
-	name: string;
-}
 export class Logger {
-	name: string;
-	isDebugEnabled = isDebugEnabled();
+	private pino: pino.Logger;
 
-	constructor({ name }: LoggerOpts) {
-		this.name = name;
+	constructor(options: { name: string }) {
+		this.pino = pino({
+			...getLoggerConfig(),
+			base: { component: options.name },
+		});
 	}
 
-	private colorize(message: string): string {
-		// Framework logs are colored blue, user logs are default
-		return chalk.blue(message);
-	}
-
-	debug(message: string, ...args: any[]) {
-		if (this.isDebugEnabled) {
-			const time = new Date().toLocaleTimeString();
-			console.log(
-				this.colorize(`[${time}] 🐛 [${this.name}] ${message}`),
-				...args,
-			);
+	// Standard logging methods with overloads
+	trace(data: LogContext, message: string): void;
+	trace(message: string): void;
+	trace(dataOrMessage: LogContext | string, message?: string) {
+		if (typeof dataOrMessage === "string") {
+			this.pino.trace(dataOrMessage);
+		} else {
+			this.pino.trace(dataOrMessage, message);
 		}
 	}
 
-	info(message: string, ...args: any[]) {
-		const time = new Date().toLocaleTimeString();
-		console.info(
-			this.colorize(`[${time}] ℹ️ [${this.name}] ${message}`),
-			...args,
-		);
+	debug(data: LogContext, message: string): void;
+	debug(message: string): void;
+	debug(dataOrMessage: LogContext | string, message?: string) {
+		if (typeof dataOrMessage === "string") {
+			this.pino.debug(dataOrMessage);
+		} else {
+			this.pino.debug(dataOrMessage, message);
+		}
 	}
 
-	warn(message: string, ...args: any[]) {
-		const time = new Date().toLocaleTimeString();
-		console.warn(
-			this.colorize(`[${time}] 🚧 [${this.name}] ${message}`),
-			...args,
-		);
+	info(data: LogContext, message: string): void;
+	info(message: string): void;
+	info(dataOrMessage: LogContext | string, message?: string) {
+		if (typeof dataOrMessage === "string") {
+			this.pino.info(dataOrMessage);
+		} else {
+			this.pino.info(dataOrMessage, message);
+		}
 	}
 
-	error(message: string, ...args: any[]) {
-		const time = new Date().toLocaleTimeString();
-		console.error(
-			this.colorize(`[${time}] ❌ [${this.name}] ${message}`),
-			...args,
-		);
+	warn(data: LogContext, message: string): void;
+	warn(message: string): void;
+	warn(dataOrMessage: LogContext | string, message?: string) {
+		if (typeof dataOrMessage === "string") {
+			this.pino.warn(dataOrMessage);
+		} else {
+			this.pino.warn(dataOrMessage, message);
+		}
 	}
 
-	/**
-	 * Logs structured data in a visually appealing table format.
-	 * Uses vertical layout for better readability and respects debug settings.
-	 */
-	debugStructured(title: string, data: Record<string, any>): void {
-		if (!this.isDebugEnabled) return;
-
-		// Use terminal width or fallback to 60 if not available
-		const terminalWidth = process.stdout.columns || 60;
-		const width = Math.min(terminalWidth, 100); // Cap at 100 to avoid overly wide tables
-		const contentWidth = width - 4; // Account for "│ " and " │"
-		const topBorder = `┌${"─".repeat(width - 2)}┐`;
-		const bottomBorder = `└${"─".repeat(width - 2)}┘`;
-		const middleBorder = `├${"─".repeat(width - 2)}┤`;
-
-		console.log(this.colorize(topBorder));
-		console.log(this.colorize(`│ ${title.padEnd(contentWidth)} │`));
-		console.log(this.colorize(middleBorder));
-
-		// Log each field in a clean vertical format
-		Object.entries(data).forEach(([key, value]) => {
-			const formattedKey = key.padEnd(20); // Consistent width for alignment
-			const formattedValue = String(value);
-			const availableValueSpace = contentWidth - 20 - 2; // -20 for key, -2 for ": "
-
-			const truncatedValue =
-				formattedValue.length > availableValueSpace
-					? `${formattedValue.substring(0, availableValueSpace - 3)}...`
-					: formattedValue;
-
-			// Build the content line and ensure it's exactly contentWidth
-			const content = `${formattedKey}: ${truncatedValue}`;
-			const paddedContent = content.padEnd(contentWidth);
-
-			console.log(this.colorize(`│ ${paddedContent} │`));
-		});
-
-		console.log(this.colorize(bottomBorder));
+	error(data: LogContext & { err?: Error }, message: string): void;
+	error(message: string): void;
+	error(message: string, error: Error): void;
+	error(
+		dataOrMessage: (LogContext & { err?: Error }) | string,
+		messageOrError?: string | Error,
+	) {
+		if (typeof dataOrMessage === "string") {
+			if (messageOrError instanceof Error) {
+				// Legacy pattern: error(message, error)
+				this.pino.error({ err: messageOrError }, dataOrMessage);
+			} else {
+				// Simple message
+				this.pino.error(dataOrMessage);
+			}
+		} else {
+			this.pino.error(dataOrMessage, messageOrError as string);
+		}
 	}
 
-	/**
-	 * Logs array data in a compact, readable format.
-	 */
-	debugArray(title: string, items: Array<Record<string, any>>): void {
-		if (!this.isDebugEnabled) return;
+	fatal(data: LogContext & { err?: Error }, message: string): void;
+	fatal(message: string): void;
+	fatal(
+		dataOrMessage: (LogContext & { err?: Error }) | string,
+		message?: string,
+	) {
+		if (typeof dataOrMessage === "string") {
+			this.pino.fatal(dataOrMessage);
+		} else {
+			this.pino.fatal(dataOrMessage, message);
+		}
+	}
 
-		// Use terminal width or fallback to 78 if not available
-		const terminalWidth = process.stdout.columns || 78;
-		const width = Math.min(terminalWidth, 120); // Cap at 120 to avoid overly wide tables
-		const contentWidth = width - 4; // Account for "│ " and " │"
-		const topBorder = `┌${"─".repeat(width - 2)}┐`;
-		const bottomBorder = `└${"─".repeat(width - 2)}┘`;
-		const middleBorder = `├${"─".repeat(width - 2)}┤`;
+	// Context-aware logger factories
+	agent(agentName: string): AgentLogger {
+		return new AgentLogger(this.pino.child({ agent: agentName }));
+	}
 
-		console.log(this.colorize(topBorder));
-		console.log(this.colorize(`│ ${title.padEnd(contentWidth)} │`));
-		console.log(this.colorize(middleBorder));
+	llm(model: string): LLMLogger {
+		return new LLMLogger(this.pino.child({ llm: { model } }));
+	}
 
-		items.forEach((item, index) => {
-			const itemStr = Object.entries(item)
-				.map(([k, v]) => `${k}: ${v}`)
-				.join(" • ");
+	tool(toolName: string): ToolLogger {
+		return new ToolLogger(this.pino.child({ tool: toolName }));
+	}
 
-			const indexPart = `[${index + 1}] `;
-			const availableSpace = contentWidth - indexPart.length;
+	container(containerId: string): ContainerLogger {
+		return new ContainerLogger(this.pino.child({ container: containerId }));
+	}
 
-			const truncatedItem =
-				itemStr.length > availableSpace
-					? `${itemStr.substring(0, availableSpace - 3)}...`
-					: itemStr;
-
-			// Build the content line and ensure it's exactly contentWidth
-			const content = `${indexPart}${truncatedItem}`;
-			const paddedContent = content.padEnd(contentWidth);
-
-			console.log(this.colorize(`│ ${paddedContent} │`));
-		});
-
-		console.log(this.colorize(bottomBorder));
+	// Create child logger with additional context
+	child(context: LogContext): Logger {
+		const childLogger = new Logger({ name: "child" });
+		childLogger.pino = this.pino.child(context);
+		return childLogger;
 	}
 }
-export function isDebugEnabled(): boolean {
-	return (
-		process.env.NODE_ENV === "development" || process.env.ADK_DEBUG === "true"
-	);
-}
+
+// Export specialized loggers
+export { AgentLogger } from "./specialized/agent-logger";
+export { LLMLogger } from "./specialized/llm-logger";
+export { ToolLogger } from "./specialized/tool-logger";
+export { ContainerLogger } from "./specialized/container-logger";
+
+// Export types
+export type { LogContext } from "./types";

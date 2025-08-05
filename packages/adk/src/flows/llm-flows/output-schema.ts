@@ -1,6 +1,6 @@
+import { Logger } from "@adk/logger";
 import type { InvocationContext } from "../../agents/invocation-context";
 import { Event } from "../../events/event";
-import { Logger } from "../../logger";
 import type { LlmResponse } from "../../models/llm-response";
 import { BaseLlmResponseProcessor } from "./base-llm-processor";
 
@@ -79,24 +79,30 @@ class OutputSchemaResponseProcessor extends BaseLlmResponseProcessor {
 				return part;
 			});
 
-			this.logger.debug("Output schema validation successful", {
-				agent: agent.name,
-				originalLength: textContent.length,
-				validatedKeys: Object.keys(validated),
-			});
+			this.logger.debug(
+				{
+					agent: agent.name,
+					originalLength: textContent.length,
+					validatedKeys: Object.keys(validated),
+				},
+				"Output schema validation successful",
+			);
 		} catch (error) {
 			// Create error message with detailed information
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 			const detailedError = `Output schema validation failed for agent '${agent.name}': ${errorMessage}`;
 
-			this.logger.error(detailedError, {
-				agent: agent.name,
-				responseContent:
-					textContent.substring(0, 200) +
-					(textContent.length > 200 ? "..." : ""),
-				error: errorMessage,
-			});
+			this.logger.error(
+				{
+					agent: agent.name,
+					responseContent:
+						textContent.substring(0, 200) +
+						(textContent.length > 200 ? "..." : ""),
+					err: error instanceof Error ? error : new Error(String(error)),
+				},
+				detailedError,
+			);
 
 			// Update response with error information
 			llmResponse.errorCode = "OUTPUT_SCHEMA_VALIDATION_FAILED";

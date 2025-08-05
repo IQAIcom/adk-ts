@@ -546,8 +546,18 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 		}
 
 		if (!this.disallowTransferToParent || !this.disallowTransferToPeers) {
+			// WARN level - Configuration warning
 			this.logger.warn(
-				`Invalid config for agent ${this.name}: output_schema cannot co-exist with agent transfer configurations. Setting disallow_transfer_to_parent=true, disallow_transfer_to_peers=true`,
+				{
+					agent: this.name,
+					hasOutputSchema: true,
+					autoFixing: true,
+					changes: [
+						"disallow_transfer_to_parent=true",
+						"disallow_transfer_to_peers=true",
+					],
+				},
+				"Invalid config: output_schema cannot co-exist with agent transfer configurations",
 			);
 			this.disallowTransferToParent = true;
 			this.disallowTransferToPeers = true;
@@ -590,8 +600,14 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 		// Skip if the event was authored by some other agent (e.g. current agent
 		// transferred to another agent)
 		if (event.author !== this.name) {
+			// DEBUG level - Event processing
 			this.logger.debug(
-				`Skipping output save for agent ${this.name}: event authored by ${event.author}`,
+				{
+					currentAgent: this.name,
+					eventAuthor: event.author,
+					action: "skip_output_save",
+				},
+				"Skipping output save for agent",
 			);
 			return;
 		}
@@ -613,7 +629,15 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 					const parsed = JSON.parse(result);
 					result = this.outputSchema.parse(parsed);
 				} catch (error) {
-					this.logger.error("Failed to validate output with schema:", error);
+					// ERROR level - Schema validation failure
+					this.logger.error(
+						{
+							err: error as Error,
+							agent: this.name,
+							operation: "output_validation",
+						},
+						"Failed to validate output with schema",
+					);
 					throw new Error(
 						`Output validation failed: ${error instanceof Error ? error.message : String(error)}`,
 					);
@@ -637,7 +661,17 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	protected async *runAsyncImpl(
 		context: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
-		this.logger.debug(`Starting LlmAgent execution for "${this.name}"`);
+		// Create agent-specific logger
+		const agentLogger = this.logger.agent(this.name);
+
+		// DEBUG level - Agent execution start
+		agentLogger.debug(
+			{
+				agent: this.name,
+				invocationId: context.invocationId,
+			},
+			"Starting LlmAgent execution",
+		);
 
 		try {
 			// Delegate to the LLM flow (matching Python implementation)
@@ -646,7 +680,14 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 				yield event;
 			}
 		} catch (error) {
-			this.logger.error("Error in LlmAgent execution:", error);
+			// ERROR level - Agent execution failure
+			agentLogger.errorStructured(
+				{
+					err: error as Error,
+					invocationId: context.invocationId,
+				},
+				"Error in LlmAgent execution",
+			);
 
 			const errorEvent = new Event({
 				invocationId: context.invocationId,

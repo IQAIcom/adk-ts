@@ -7,7 +7,7 @@ import {
 } from "@adk/agents";
 import { Event } from "@adk/events";
 import { Logger } from "@adk/logger";
-import { LogFormatter } from "@adk/logger/log-formatter";
+import { LogFormatter } from "@adk/logger/formatters/log-formatter";
 import { type BaseLlm, LlmRequest, type LlmResponse } from "@adk/models";
 import { traceLlmCall } from "@adk/telemetry";
 import { ToolContext } from "@adk/tools";
@@ -22,11 +22,26 @@ export abstract class BaseLlmFlow {
 	protected logger = new Logger({ name: "BaseLlmFlow" });
 
 	async *runAsync(invocationContext: InvocationContext): AsyncGenerator<Event> {
-		this.logger.info(`Agent '${invocationContext.agent.name}' started.`);
+		// Create context-aware loggers
+		const agentLogger = this.logger.agent(invocationContext.agent.name);
+
+		// INFO level - Production operational logs
+		agentLogger.info(
+			{
+				invocationId: invocationContext.invocationId,
+			},
+			"Agent started",
+		);
 
 		let stepCount = 0;
+		const startTime = Date.now();
+
 		while (true) {
 			stepCount++;
+
+			// TRACE level - Detailed execution flow
+			this.logger.trace({ step: stepCount }, "Processing agent step");
+
 			let lastEvent: Event | null = null;
 			for await (const event of this._runOneStepAsync(invocationContext)) {
 				lastEvent = event;
@@ -34,15 +49,26 @@ export abstract class BaseLlmFlow {
 			}
 
 			if (!lastEvent || lastEvent.isFinalResponse()) {
-				this.logger.info(
-					`Agent '${invocationContext.agent.name}' finished after ${stepCount} steps.`,
+				// INFO level - Major lifecycle completion
+				agentLogger.info(
+					{
+						stepCount,
+						duration: Date.now() - startTime,
+					},
+					"Agent completed",
 				);
 				break;
 			}
 
 			if (lastEvent.partial) {
+				// ERROR level - Critical execution error
 				this.logger.error(
-					"Partial event encountered. LLM max output limit may be reached.",
+					{
+						stepCount,
+						partial: true,
+						eventType: lastEvent.constructor.name,
+					},
+					"Partial event encountered, LLM max output limit may be reached",
 				);
 				throw new Error(
 					"Last event shouldn't be partial. LLM max output limit may be reached.",
@@ -52,7 +78,15 @@ export abstract class BaseLlmFlow {
 	}
 
 	async *runLive(invocationContext: InvocationContext): AsyncGenerator<Event> {
-		this.logger.warn("⚠️ runLive not fully implemented, delegating to runAsync");
+		// WARN level - Deprecated feature usage
+		this.logger.warn(
+			{
+				method: "runLive",
+				fallback: "runAsync",
+				agent: invocationContext.agent.name,
+			},
+			"runLive not fully implemented, delegating to runAsync",
+		);
 		yield* this.runAsync(invocationContext);
 	}
 
@@ -72,7 +106,14 @@ export abstract class BaseLlmFlow {
 		}
 
 		if (invocationContext.endInvocation) {
-			this.logger.info("Invocation ended during preprocessing.");
+			// INFO level - Important lifecycle event
+			this.logger.info(
+				{
+					phase: "preprocessing",
+					eventCount: preprocessEventCount,
+				},
+				"Invocation ended during preprocessing",
+			);
 			return;
 		}
 
@@ -138,15 +179,32 @@ export abstract class BaseLlmFlow {
 
 		// Log available tools in a clean format
 		if (tools.length > 0) {
-			const toolsData = tools.map((tool) => ({
-				Name: tool.name,
-				Description:
-					tool.description?.substring(0, 50) +
-					(tool.description?.length > 50 ? "..." : ""),
-				"Long Running": tool.isLongRunning ? "Yes" : "No",
-			}));
+			// DEBUG level - Replace debugArray with structured logging
+			this.logger.debug(
+				{
+					toolCount: tools.length,
+					tools: tools.map((tool) => ({
+						name: tool.name,
+						description:
+							tool.description?.substring(0, 50) +
+							(tool.description && tool.description.length > 50 ? "..." : ""),
+						longRunning: tool.isLongRunning,
+					})),
+				},
+				"Available tools loaded",
+			);
 
-			this.logger.debugArray("🛠️ Available Tools", toolsData);
+			// TRACE level - Full tool details
+			this.logger.trace(
+				{
+					tools: tools.map((tool) => ({
+						name: tool.name,
+						fullDescription: tool.description,
+						isLongRunning: tool.isLongRunning,
+					})),
+				},
+				"Complete tool configurations",
+			);
 		}
 	}
 
@@ -184,16 +242,20 @@ export abstract class BaseLlmFlow {
 		// Handle function calls
 		const functionCalls = finalizedEvent.getFunctionCalls();
 		if (functionCalls && functionCalls.length > 0) {
-			// Log function calls in a clean format
-			const functionCallsData = functionCalls.map((fc) => ({
-				Name: fc.name,
-				Arguments:
-					JSON.stringify(fc.args).substring(0, 100) +
-					(JSON.stringify(fc.args).length > 100 ? "..." : ""),
-				ID: fc.id || "auto",
-			}));
-
-			this.logger.debugArray("🔧 Function Calls", functionCallsData);
+			// DEBUG level - Replace debugArray with structured logging
+			this.logger.debug(
+				{
+					functionCallCount: functionCalls.length,
+					functionCalls: functionCalls.map((fc) => ({
+						name: fc.name,
+						arguments:
+							JSON.stringify(fc.args).substring(0, 100) +
+							(JSON.stringify(fc.args).length > 100 ? "..." : ""),
+						id: fc.id || "auto",
+					})),
+				},
+				"Function calls detected",
+			);
 
 			for await (const event of this._postprocessHandleFunctionCallsAsync(
 				invocationContext,
@@ -253,7 +315,15 @@ export abstract class BaseLlmFlow {
 
 				const transferToAgent = functionResponseEvent.actions?.transferToAgent;
 				if (transferToAgent) {
-					this.logger.info(`🔄 Live transfer to agent '${transferToAgent}'`);
+					// INFO level - Agent transfer event
+					this.logger.info(
+						{
+							fromAgent: invocationContext.agent.name,
+							toAgent: transferToAgent,
+							mode: "live",
+						},
+						"Live transfer to agent",
+					);
 
 					const agentToRun = this._getAgentToRun(
 						invocationContext,
@@ -308,7 +378,15 @@ export abstract class BaseLlmFlow {
 
 			const transferToAgent = functionResponseEvent.actions?.transferToAgent;
 			if (transferToAgent) {
-				this.logger.info(`🔄 Transferring to agent '${transferToAgent}'`);
+				// INFO level - Agent transfer event
+				this.logger.info(
+					{
+						fromAgent: invocationContext.agent.name,
+						toAgent: transferToAgent,
+						mode: "async",
+					},
+					"Transferring to agent",
+				);
 
 				const agentToRun = this._getAgentToRun(
 					invocationContext,
@@ -326,13 +404,32 @@ export abstract class BaseLlmFlow {
 		invocationContext: InvocationContext,
 		agentName: string,
 	): BaseAgent {
+		// TRACE level - Agent lookup process
+		this.logger.trace({ targetAgent: agentName }, "Looking up agent in tree");
+
 		const rootAgent = invocationContext.agent.rootAgent;
 		const agentToRun = rootAgent.findAgent(agentName);
 
 		if (!agentToRun) {
-			this.logger.error(`Agent '${agentName}' not found in the agent tree.`);
+			// ERROR level - Agent not found
+			this.logger.error(
+				{
+					targetAgent: agentName,
+					currentAgent: invocationContext.agent.name,
+				},
+				`Agent '${agentName}' not found in agent tree`,
+			);
 			throw new Error(`Agent ${agentName} not found in the agent tree.`);
 		}
+
+		// DEBUG level - Successful agent lookup
+		this.logger.debug(
+			{
+				targetAgent: agentName,
+				found: true,
+			},
+			"Agent found in tree",
+		);
 
 		return agentToRun;
 	}
@@ -413,23 +510,31 @@ export abstract class BaseLlmFlow {
 				? LogFormatter.formatContentPreview(llmRequest.contents[0])
 				: "none";
 
-		this.logger.debugStructured("📤 LLM Request", {
-			Model: llm.model,
-			Agent: invocationContext.agent.name,
-			"Content Items": llmRequest.contents?.length || 0,
-			"Content Preview": contentPreview,
-			"System Instruction": truncatedSystemInstruction || "none",
-			"Available Tools": toolNames || "none",
-			"Tool Count": llmRequest.config?.tools?.length || 0,
-			Streaming: isStreaming ? "Yes" : "No",
-		});
+		// Create LLM-specific logger
+		const llmLogger = this.logger.llm(llm.model);
+
+		// DEBUG level - Replace debugStructured calls
+		llmLogger.debug(
+			{
+				agent: invocationContext.agent.name,
+				contentItems: llmRequest.contents?.length || 0,
+				contentPreview: contentPreview,
+				systemInstruction: truncatedSystemInstruction || "none",
+				availableTools: toolNames || "none",
+				toolCount: llmRequest.config?.tools?.length || 0,
+				streaming: isStreaming,
+			},
+			"LLM request",
+		);
 
 		let responseCount = 0;
+		const startTime = Date.now();
 		for await (const llmResponse of llm.generateContentAsync(
 			llmRequest,
 			isStreaming,
 		)) {
 			responseCount++;
+			const duration = Date.now() - startTime;
 
 			// Telemetry tracing
 			traceLlmCall(
@@ -440,28 +545,49 @@ export abstract class BaseLlmFlow {
 			);
 
 			// Log LLM response in a clean format
-			const tokenCount =
-				llmResponse.usageMetadata?.totalTokenCount || "unknown";
+			const tokenCount = llmResponse.usageMetadata?.totalTokenCount || 0;
 			const functionCalls =
 				llmResponse.content?.parts?.filter((part) => part.functionCall) || [];
 
 			// Format function calls for display using LogFormatter utility
 			const functionCallsDisplay =
-				LogFormatter.formatFunctionCalls(functionCalls);
+				LogFormatter.formatFunctionCallsString(functionCalls);
 
 			// Format response content preview
 			const responsePreview = LogFormatter.formatResponsePreview(llmResponse);
 
-			this.logger.debugStructured("📥 LLM Response", {
-				Model: llm.model,
-				"Token Count": tokenCount,
-				"Function Calls": functionCallsDisplay,
-				"Response Preview": responsePreview,
-				"Finish Reason": llmResponse.finishReason || "unknown",
-				"Response #": responseCount,
-				Partial: llmResponse.partial ? "Yes" : "No",
-				Error: llmResponse.errorCode || "none",
-			});
+			// DEBUG level - Detailed response info
+			llmLogger.debug(
+				{
+					tokenCount: tokenCount,
+					functionCallCount: functionCalls.length,
+					functionCallsDisplay: functionCallsDisplay,
+					responsePreview: responsePreview,
+					finishReason: llmResponse.finishReason || "unknown",
+					responseNumber: responseCount,
+					partial: llmResponse.partial || false,
+					error: llmResponse.errorCode || null,
+					duration_ms: duration,
+				},
+				"LLM response",
+			);
+
+			// TRACE level - Very detailed response analysis
+			if (llmResponse.content?.parts) {
+				this.logger.trace(
+					{
+						parts: llmResponse.content.parts.map((part) => ({
+							type: part.text
+								? "text"
+								: part.functionCall
+									? "function_call"
+									: "other",
+							size: part.text?.length || 0,
+						})),
+					},
+					"Response parts breakdown",
+				);
+			}
 
 			// After model callback
 			const alteredLlmResponse = await this._handleAfterModelCallback(

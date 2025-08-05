@@ -93,7 +93,10 @@ class McpToolAdapter extends BaseTool {
 		args: Record<string, any>,
 		_context: ToolContext,
 	): Promise<any> {
-		this.logger.debug(`Executing MCP tool ${this.name} with args:`, args);
+		this.logger.debug(
+			{ args, toolName: this.name },
+			`Executing MCP tool ${this.name} with args`,
+		);
 
 		try {
 			if (typeof this.mcpTool.execute === "function") {

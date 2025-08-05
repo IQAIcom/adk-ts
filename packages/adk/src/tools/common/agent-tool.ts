@@ -233,7 +233,10 @@ export class AgentTool extends BaseTool {
 
 			return toolResult;
 		} catch (error) {
-			this.logger.error(`Error executing agent tool ${this.name}:`, error);
+			this.logger.error(
+				{ error, toolName: this.name },
+				`Error executing agent tool ${this.name}`,
+			);
 			throw new Error(
 				`Agent tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
 			);

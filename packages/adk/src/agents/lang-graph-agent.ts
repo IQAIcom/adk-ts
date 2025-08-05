@@ -262,7 +262,10 @@ export class LangGraphAgent extends BaseAgent {
 					}
 				}
 			} catch (error) {
-				this.logger.error(`Error in node "${node.name}":`, error);
+				this.logger.error(
+					{ error, node: node.name },
+					`Error in node "${node.name}"`,
+				);
 				const errorEvent = new Event({
 					author: this.name,
 					content: {

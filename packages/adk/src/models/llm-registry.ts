@@ -79,8 +79,12 @@ export class LLMRegistry {
 	 */
 	static logRegisteredModels(): void {
 		LLMRegistry.logger.debug(
-			"Registered LLM models:",
-			[...LLMRegistry.llmRegistry.entries()].map(([regex]) => regex.toString()),
+			{
+				registeredModels: [...LLMRegistry.llmRegistry.entries()].map(
+					([regex]) => regex.toString(),
+				),
+			},
+			"Registered LLM models",
 		);
 	}
 }

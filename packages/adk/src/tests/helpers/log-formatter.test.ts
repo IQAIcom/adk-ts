@@ -1,12 +1,12 @@
 import type { Content, FunctionCall, Part } from "@google/genai";
 import { describe, expect, it } from "vitest";
-import { LogFormatter } from "../../logger/log-formatter";
+import { LogFormatter } from "../../logger/formatters/log-formatter";
 import { LlmResponse } from "../../models/llm-response";
 
 describe("LogFormatter", () => {
 	describe("formatFunctionCalls", () => {
-		it("should return 'none' for empty function calls", () => {
-			expect(LogFormatter.formatFunctionCalls([])).toBe("none");
+		it("should return empty array for empty function calls", () => {
+			expect(LogFormatter.formatFunctionCalls([])).toEqual([]);
 		});
 
 		it("should format function calls with arguments", () => {
@@ -20,9 +20,10 @@ describe("LogFormatter", () => {
 			];
 
 			const result = LogFormatter.formatFunctionCalls(functionCalls);
-			expect(result).toContain("test_function");
-			expect(result).toContain("param1");
-			expect(result).toContain("value1");
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe("test_function");
+			expect(result[0].args).toContain("param1");
+			expect(result[0].args).toContain("value1");
 		});
 
 		it("should handle function calls without arguments", () => {
@@ -35,7 +36,9 @@ describe("LogFormatter", () => {
 			];
 
 			const result = LogFormatter.formatFunctionCalls(functionCalls);
-			expect(result).toBe("no_args_function({})");
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe("no_args_function");
+			expect(result[0].args).toBe("{}");
 		});
 
 		it("should format multiple function calls", () => {
@@ -55,9 +58,9 @@ describe("LogFormatter", () => {
 			];
 
 			const result = LogFormatter.formatFunctionCalls(functionCalls);
-			expect(result).toContain("function1");
-			expect(result).toContain("function2");
-			expect(result).toContain(",");
+			expect(result).toHaveLength(2);
+			expect(result[0].name).toBe("function1");
+			expect(result[1].name).toBe("function2");
 		});
 
 		it("should truncate long arguments", () => {
@@ -72,8 +75,9 @@ describe("LogFormatter", () => {
 			];
 
 			const result = LogFormatter.formatFunctionCalls(functionCalls);
-			expect(result).toContain("...");
-			expect(result.length).toBeLessThan(200); // Should be truncated
+			expect(result).toHaveLength(1);
+			expect(result[0].args).toContain("...");
+			expect(result[0].args.length).toBeLessThan(150); // Should be truncated
 		});
 
 		it("should filter out parts without function calls", () => {
@@ -89,7 +93,9 @@ describe("LogFormatter", () => {
 			];
 
 			const result = LogFormatter.formatFunctionCalls(parts);
-			expect(result).toBe("actual_function({})");
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe("actual_function");
+			expect(result[0].args).toBe("{}");
 		});
 	});
 
@@ -228,13 +234,15 @@ describe("LogFormatter", () => {
 	});
 
 	describe("formatContentParts", () => {
-		it("should return 'no parts' for content without parts", () => {
+		it("should return proper structure for content without parts", () => {
 			const content: Content = {
 				role: "user",
 			};
 
 			const result = LogFormatter.formatContentParts(content);
-			expect(result).toEqual(["no parts"]);
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe("none");
+			expect(result[0].preview).toBe("no parts");
 		});
 
 		it("should format multiple parts with indices", () => {
@@ -253,8 +261,10 @@ describe("LogFormatter", () => {
 
 			const result = LogFormatter.formatContentParts(content);
 			expect(result).toHaveLength(2);
-			expect(result[0]).toMatch(/^\[0\] text:/);
-			expect(result[1]).toMatch(/^\[1\] function_call:/);
+			expect(result[0].type).toBe("text");
+			expect(result[0].index).toBe(0);
+			expect(result[1].type).toBe("function_call");
+			expect(result[1].index).toBe(1);
 		});
 
 		it("should handle different part types", () => {
@@ -279,9 +289,9 @@ describe("LogFormatter", () => {
 
 			const result = LogFormatter.formatContentParts(content);
 			expect(result).toHaveLength(3);
-			expect(result[0]).toContain("text:");
-			expect(result[1]).toContain("function_call:");
-			expect(result[2]).toContain("function_response:");
+			expect(result[0].type).toBe("text");
+			expect(result[1].type).toBe("function_call");
+			expect(result[2].type).toBe("function_response");
 		});
 	});
 });

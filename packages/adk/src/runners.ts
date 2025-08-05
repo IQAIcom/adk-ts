@@ -223,7 +223,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 				yield event;
 			}
 		} catch (error) {
-			this.logger.debug("Error running agent:", error);
+			this.logger.error({ err: error as Error }, "Error running agent");
 			span.recordException(error as Error);
 			span.setStatus({
 				code: SpanStatusCode.ERROR,
@@ -314,7 +314,11 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			if (!agent) {
 				// Agent not found, continue looking
 				this.logger.debug(
-					`Event from an unknown agent: ${event.author}, event id: ${event.id}`,
+					{
+						unknownAgent: event.author,
+						eventId: event.id,
+					},
+					"Event from unknown agent",
 				);
 				continue;
 			}
