@@ -8,22 +8,24 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 Agent evaluation provides systematic approaches to testing and validating agent performance, moving beyond prototype to production-ready AI systems.
 
-<Callout type="info" title="Coming Soon">
-The comprehensive evaluation framework is being actively developed for `@iqai/adk`. Core evaluation classes and automated testing tools will be available in upcoming releases.
+<Callout type="info" title="Experimental Framework">
+The comprehensive evaluation framework is now available in `@iqai/adk` as an experimental feature. APIs may change as we gather feedback and refine the system.
 </Callout>
 
 ## Overview
 
 Unlike traditional software testing, agent evaluation must account for the probabilistic nature of LLM responses and the complexity of multi-step reasoning processes. Effective evaluation encompasses multiple dimensions from tool usage patterns to response quality.
 
-## Current Capabilities
+## Key Features
 
-While the full evaluation framework is in development, you can currently:
+The ADK evaluation framework provides comprehensive agent testing capabilities:
 
-- **Manual Testing**: Use the examples to test agent behavior manually
-- **Session Analysis**: Review agent interactions through session management
-- **Response Validation**: Manually verify agent outputs and tool usage
-- **Performance Observation**: Monitor agent behavior through logging and events
+- **Agent Evaluator**: Automated evaluation of agent performance across test cases
+- **Multiple Metrics**: ROUGE scoring, LLM-as-judge, tool trajectory analysis, safety evaluation
+- **Flexible Test Format**: JSON-based test cases with support for multi-turn conversations
+- **Local & Cloud Evaluation**: Run evaluations locally or integrate with Vertex AI
+- **Session State Support**: Test stateful agents with conversation history
+- **Configurable Thresholds**: Set pass/fail criteria for different evaluation metrics
 
 ## Documentation Structure
 
@@ -53,25 +55,39 @@ While the full evaluation framework is in development, you can currently:
   />
 </Cards>
 
-## Coming Features
+## Core Components
 
-The upcoming evaluation framework will include:
+The evaluation framework includes these key components:
 
-- **AgentEvaluator**: Comprehensive agent performance assessment
-- **TrajectoryEvaluator**: Tool usage and decision path analysis
-- **ResponseEvaluator**: Output quality and semantic similarity scoring
-- **EvalSet Management**: Batch evaluation of complex scenarios
-- **Automated Test Runners**: Continuous integration with development workflows
-- **Performance Analytics**: Trend analysis and regression detection
+- **AgentEvaluator**: Main entry point for agent performance assessment
+- **TrajectoryEvaluator**: Analyzes tool usage patterns and decision paths
+- **ResponseEvaluator**: ROUGE-1 scoring and LLM-based response quality assessment
+- **SafetyEvaluator**: Evaluates response harmlessness and safety
+- **EvalSet Management**: Organized test cases with metadata and version control
+- **MetricEvaluatorRegistry**: Extensible system for custom evaluation metrics
+- **LocalEvalService**: Complete local evaluation pipeline with parallel execution
 
 ## Getting Started
 
-For immediate testing needs:
+To begin using the evaluation framework:
 
-1. **Review Examples**: Explore the [examples directory](https://github.com/iqai/adk-ts/tree/main/apps/examples) for agent testing patterns
-2. **Session Monitoring**: Use session services to track agent interactions
-3. **Manual Validation**: Create custom test scripts using the Runner class
-4. **Event Analysis**: Monitor agent events for behavior analysis
+1. **Create Test Cases**: Define evaluation scenarios in JSON format with expected outputs
+2. **Configure Metrics**: Set up evaluation criteria and thresholds in `test_config.json`
+3. **Run Evaluations**: Use `AgentEvaluator.evaluate()` to assess agent performance
+4. **Analyze Results**: Review detailed evaluation results with per-metric scoring
+
+```typescript
+import { AgentEvaluator } from '@iqai/adk/evaluation';
+
+// Evaluate agent against test files
+const results = await AgentEvaluator.evaluate({
+  agent,
+  testFilePaths: ['./tests/basic.test.json'],
+  testConfigFilePath: './test_config.json'
+});
+
+console.log(`Overall Score: ${results.overallScore}`);
+```
 
 ## Related Topics
 

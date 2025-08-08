@@ -4,7 +4,7 @@ description: Current approaches and future automated testing methods
 ---
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Agent testing involves validating behavior across multiple dimensions from tool usage to response quality. Currently, `@iqai/adk` supports manual testing approaches with automated frameworks coming soon.
+Agent testing involves validating behavior across multiple dimensions from tool usage to response quality. The `@iqai/adk` now includes a comprehensive automated evaluation framework alongside manual testing approaches.
 
 ## Current Testing Approaches
 
@@ -200,23 +200,42 @@ async function testPerformance() {
 }
 ```
 
-## Coming Soon: Automated Evaluation
+## Automated Evaluation Framework
 
-<Callout type="info" title="Future Framework">
-The comprehensive automated evaluation framework is under development and will provide structured testing capabilities.
+<Callout type="info" title="Experimental Feature">
+The automated evaluation framework is now available as an experimental feature. APIs may evolve based on user feedback.
 </Callout>
 
-### Unit Testing with Test Files
+### AgentEvaluator: Core Testing Interface
 
-Rapid evaluation during active development:
+The `AgentEvaluator` provides the main entry point for automated agent testing:
 
-**Planned Features:**
-- Individual JSON test files with expected behaviors
-- Fast execution for quick feedback loops
-- Integration with development workflows
-- Automated regression detection
+```typescript
+import { AgentEvaluator } from '@iqai/adk/evaluation';
+import { LlmAgent } from '@iqai/adk';
 
-**Test File Structure (Coming Soon):**
+// Create your agent
+const agent = new LlmAgent({
+  name: 'test-agent',
+  model: 'gpt-4',
+  instruction: 'You are a helpful assistant'
+});
+
+// Run evaluation against test files
+const results = await AgentEvaluator.evaluate({
+  agent,
+  testFilePaths: ['./tests/basic.test.json'],
+  testConfigFilePath: './test_config.json',
+  numRuns: 3 // Run multiple times for reliability
+});
+
+console.log(`Overall Score: ${results.overallScore}`);
+console.log(`Passed: ${results.passedTests}/${results.totalTests}`);
+```
+
+### Test File Structure
+
+Test files use a structured JSON format with expected behaviors:
 ```json
 {
   "name": "basic_calculation_test",

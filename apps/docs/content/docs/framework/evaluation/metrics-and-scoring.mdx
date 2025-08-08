@@ -8,7 +8,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 Effective agent evaluation requires quantifiable metrics that capture both the quality of agent decisions and the value of their outputs.
 
 <Callout type="info" title="Implementation Status">
-Core metrics and scoring algorithms are being developed for `@iqai/adk`. Current manual evaluation can implement these concepts using custom validation logic.
+Core metrics and scoring algorithms are now available in `@iqai/adk` as part of the experimental evaluation framework. Manual evaluation can still supplement automated metrics.
 </Callout>
 
 ## Trajectory Metrics
@@ -106,11 +106,19 @@ Response quality metrics assess the value and appropriateness of agent outputs.
 
 ### Semantic Similarity Scoring
 
-**ROUGE Metrics (Coming Soon):**
-- **ROUGE-1**: Unigram overlap between agent response and reference
-- **ROUGE-L**: Longest common subsequence similarity
-- **ROUGE-W**: Weighted longest common subsequence
+**ROUGE Metrics (Available):**
+- **ROUGE-1**: Unigram overlap between agent response and reference (F-measure)
+- **Implementation**: Available in `ResponseEvaluator` class
 - **Threshold**: Typically 0.7+ for production quality
+- **Usage**: Automatic similarity scoring between expected and actual responses
+
+```typescript
+import { ResponseEvaluator } from '@iqai/adk/evaluation';
+
+const evaluator = new ResponseEvaluator();
+const result = await evaluator.evaluateInvocations(invocations);
+console.log(`ROUGE Score: ${result.overallScore}`);
+```
 
 **Current Manual Assessment:**
 ```typescript
@@ -354,15 +362,52 @@ function analyzePerformanceTrend(records: PerformanceRecord[]) {
 - **Data Handling**: Correct processing and transformation
 - **Error Recovery**: Resilience to system failures
 
-## Coming Soon: Advanced Analytics
+## Available Evaluation Metrics
 
-<Callout type="info" title="Future Capabilities">
-Advanced analytics and automated scoring will be available in upcoming releases, including ML-based quality assessment and real-time performance monitoring.
+<Callout type="info" title="Current Implementation">
+The following metrics are available in the ADK evaluation framework. Additional advanced analytics are planned for future releases.
 </Callout>
 
-**Planned Features:**
-- **Automated ROUGE Scoring**: Semantic similarity measurement
-- **ML-based Quality Assessment**: Learned evaluation models
+**Built-in Metrics:**
+
+1. **TOOL_TRAJECTORY_AVG_SCORE**:
+   - Exact matching of tool call sequences
+   - Binary scoring (1.0 for perfect match, 0.0 for any mismatch)
+   - Validates tool names, arguments, and execution order
+
+2. **RESPONSE_MATCH_SCORE**:
+   - ROUGE-1 F-measure for text similarity
+   - Compares actual vs expected response content
+   - Range: 0.0 to 1.0
+
+3. **RESPONSE_EVALUATION_SCORE**:
+   - LLM-as-judge evaluation for response quality
+   - Scale: 1-5 with configurable judge models
+   - Assesses helpfulness, accuracy, and appropriateness
+
+4. **SAFETY_V1**:
+   - Safety and harmlessness evaluation
+   - Integration with Vertex AI safety models
+   - Configurable safety thresholds
+
+**Configuration Example:**
+```json
+{
+  "eval_metrics": [
+    {
+      "metric_name": "TOOL_TRAJECTORY_AVG_SCORE",
+      "threshold": 1.0
+    },
+    {
+      "metric_name": "RESPONSE_EVALUATION_SCORE",
+      "threshold": 4.0,
+      "judge_model": "gpt-4"
+    }
+  ]
+}
+```
+
+**Future Capabilities:**
 - **Real-time Analytics**: Live performance dashboards
 - **Comparative Analysis**: Benchmark against other agents
 - **Predictive Metrics**: Early warning systems for performance degradation

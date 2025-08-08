@@ -55,11 +55,7 @@ async function main() {
 
 						// Extract the user's name from the sampling response
 						let userName = "there";
-						if (
-							samplingResponse &&
-							samplingResponse.content &&
-							samplingResponse.content.length > 0
-						) {
+						if (samplingResponse?.content?.length > 0) {
 							const firstContent = samplingResponse.content[0];
 							if (firstContent.type === "text") {
 								userName = firstContent.text.trim();
@@ -107,7 +103,7 @@ async function main() {
 				// Evaluate the expression (be careful in production!)
 				const result = Function(`"use strict"; return (${expression})`)();
 
-				if (typeof result !== "number" || !isFinite(result)) {
+				if (typeof result !== "number" || !Number.isFinite(result)) {
 					return "Invalid calculation result. Please check your expression.";
 				}
 
