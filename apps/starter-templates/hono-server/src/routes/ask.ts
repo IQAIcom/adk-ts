@@ -1,6 +1,28 @@
-import { env } from "node:process";
-import { AgentBuilder } from "@iqai/adk";
+import { AgentBuilder, InMemorySessionService, LlmAgent } from "@iqai/adk";
 import type { Context } from "hono";
+import { agent } from "../agents/agent";
+
+let runnerPromise: Promise<ReturnType<typeof buildRunner>> | null = null;
+
+async function buildRunner() {
+	const builder: any = (AgentBuilder as any).fromAgent
+		? (AgentBuilder as any).fromAgent(agent)
+		: agent instanceof LlmAgent
+			? AgentBuilder.create(agent.name)
+					.withModel((agent as any).model)
+					.withInstruction((agent as any).instruction || "")
+					.withDescription((agent as any).description || "")
+			: AgentBuilder.create(agent.name);
+	const { runner } = await builder
+		.withSessionService(new InMemorySessionService())
+		.build();
+	return runner;
+}
+
+async function getRunner() {
+	if (!runnerPromise) runnerPromise = buildRunner();
+	return runnerPromise;
+}
 
 export const askHandler = async (c: Context) => {
 	try {
@@ -13,10 +35,8 @@ export const askHandler = async (c: Context) => {
 
 		console.log(`📝 Question received: ${question}`);
 
-		// Create agent and get response
-		const response = await AgentBuilder.withModel(
-			env.LLM_MODEL || "gemini-2.5-flash",
-		).ask(question);
+		const runner = await getRunner();
+		const response = await runner.ask(question);
 
 		console.log(`🤖 Response generated: ${response}`);
 

@@ -15,7 +15,7 @@ To create a tool, you pass a configuration object to the `createTool` function. 
 ```typescript
 import { AgentBuilder } from "@adk/agents";
 import { createTool } from "@adk/tools";
-import { z } from "zod";
+import * as z from "zod";
 
 /**
  * A simple tool that adds two numbers.
@@ -60,7 +60,7 @@ Here is an example that uses the optional parameters:
 ```typescript
 import { AgentBuilder } from "@adk/agents";
 import { createTool } from "@adk/tools";
-import { z } from "zod";
+import * as z from "zod";
 
 /**
  * A tool that simulates a long-running task.

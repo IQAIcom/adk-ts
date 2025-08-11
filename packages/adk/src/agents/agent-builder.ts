@@ -192,6 +192,38 @@ export class AgentBuilder {
 	}
 
 	/**
+	 * Create a builder pre-populated from an existing agent instance.
+	 * Useful for: export raw LlmAgent for CLI dev, then build a Runner (sessions, memory, etc.) in app code.
+	 */
+	static fromAgent(agent: BaseAgent): AgentBuilder {
+		const builder = AgentBuilder.create(agent.name || "default_agent");
+		// Populate only if it's an LlmAgent (avoid importing at top-level to keep bundle size minimal)
+		try {
+			// Dynamic import via instanceof may fail if multiple copies; use duck typing fallback
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const a: any = agent as any;
+			if (a.model !== undefined) {
+				if (a.model) builder.withModel(a.model);
+				if (a.description) builder.withDescription(a.description);
+				if (a.instruction) builder.withInstruction(a.instruction);
+				if (Array.isArray(a.tools) && a.tools.length)
+					builder.withTools(...a.tools);
+				if (a.codeExecutor) builder.withCodeExecutor(a.codeExecutor);
+				if (a.planner) builder.withPlanner(a.planner);
+				if (a.outputKey) builder.withOutputKey(a.outputKey);
+				if (a.subAgents) builder.withSubAgents(a.subAgents);
+				if (a.outputSchema) {
+					// Preserve generic typing loosely without asserting type parameters
+					builder.withOutputSchema(a.outputSchema as any);
+				}
+			}
+		} catch {
+			// Silent: fallback to empty builder
+		}
+		return builder;
+	}
+
+	/**
 	 * Convenience method to start building with a model directly
 	 * @param model The model identifier (e.g., "gemini-2.5-flash")
 	 * @returns New AgentBuilder instance with model set

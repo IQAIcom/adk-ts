@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { fetchJson } from "../lib/http.js";
+import * as z from "zod";
 import { config } from "../lib/config.js";
+import { fetchJson } from "../lib/http.js";
 
 const weatherResponseSchema = z.object({
 	weather: z.array(

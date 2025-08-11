@@ -3,11 +3,13 @@ import * as path from "node:path";
 import { env } from "node:process";
 import {
 	AgentBuilder,
-	McpDiscord,
+	LlmAgent,
 	createDatabaseSessionService,
 	createSamplingHandler,
 } from "@iqai/adk";
 import * as dotenv from "dotenv";
+import { agent } from "./agents/agent";
+import { createDiscordAgent } from "./createDiscordAgent";
 
 dotenv.config();
 
@@ -30,45 +32,25 @@ async function main() {
 	}
 
 	try {
-		// Create the AI agent with custom persona
-		const { runner } = await AgentBuilder.create("discord_bot")
-			.withModel(env.LLM_MODEL || "gemini-2.5-flash")
-			.withDescription("You are a helpful Discord bot that assists users")
-			.withInstruction(`
-				You are a friendly and helpful Discord bot assistant.
+		// Build a runner from exported agent with fallback if fromAgent unavailable
+		const builder: any = (AgentBuilder as any).fromAgent
+			? (AgentBuilder as any).fromAgent(agent)
+			: agent instanceof LlmAgent
+				? AgentBuilder.create(agent.name)
+						.withModel((agent as any).model)
+						.withInstruction((agent as any).instruction || "")
+						.withDescription((agent as any).description || "")
+				: AgentBuilder.create(agent.name);
 
-				Personality:
-				- Be conversational and engaging
-				- Provide helpful and accurate information
-				- Use Discord-appropriate emojis occasionally
-				- Keep responses concise but informative
-				- Be respectful and follow Discord community guidelines
-				- Understand Discord culture and terminology
-
-				Guidelines:
-				- Always respond in a helpful manner
-				- If you don't know something, admit it
-				- Suggest relevant resources when appropriate
-				- Maintain context from previous messages in the conversation
-				- Be mindful of server rules and community standards
-				- Use Discord markdown formatting when helpful (e.g., **bold**, *italic*, \`code\`)
-			`)
+		const { runner } = await builder
 			.withSessionService(
 				createDatabaseSessionService(getSqliteConnectionString("discord_bot")),
 			)
 			.build();
 
-		// Create sampling handler for the Discord MCP
+		// Create sampling handler and initialize Discord MCP via factory
 		const samplingHandler = createSamplingHandler(runner.ask);
-
-		// Initialize Discord toolset
-		const discordToolset = McpDiscord({
-			samplingHandler,
-			env: {
-				DISCORD_TOKEN: env.DISCORD_TOKEN,
-				PATH: env.PATH,
-			},
-		});
+		const discordToolset = createDiscordAgent(samplingHandler);
 
 		// Get available tools
 		await discordToolset.getTools();

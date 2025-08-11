@@ -1,7 +1,7 @@
 import { env } from "node:process";
 import { AgentBuilder } from "@iqai/adk";
 import dedent from "dedent";
-import { z } from "zod";
+import * as z from "zod";
 
 /**
  * 01 - Simple Agent

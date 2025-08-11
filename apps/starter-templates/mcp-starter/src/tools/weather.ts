@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { WeatherService } from "../services/weather-service.js";
 import dedent from "dedent";
+import * as z from "zod";
+import { WeatherService } from "../services/weather-service.js";
 
 const weatherToolParams = z.object({
 	city: z.string().min(1).describe("The name of the city to get weather for"),

@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 import { FastMCP } from "fastmcp";
-import { z } from "zod";
+import * as z from "zod";
 
 /**
  * Custom MCP Server using FastMCP for Greeting and Calculator Examples
