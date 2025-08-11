@@ -1,5 +1,5 @@
 import { LlmAgent } from "@iqai/adk";
-import { calculatorTool } from "./tools/calculator";
+import { calculatorTool } from "./tools";
 
 export const calculatorAgent = new LlmAgent({
 	name: "calculator_agent",

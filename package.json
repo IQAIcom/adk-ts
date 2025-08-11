@@ -27,6 +27,11 @@
 	"engines": {
 		"node": ">=22.0"
 	},
+	"pnpm": {
+		"overrides": {
+			"zod": "^4.0.17"
+		}
+	},
 	"lint-staged": {
 		"*.{js,ts,jsx,tsx,cjs,mjs,cts,mts,json,jsonc}": [
 			"biome lint --write --no-errors-on-unmatched",

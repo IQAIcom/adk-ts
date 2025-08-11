@@ -8,4 +8,3 @@ export const agent = new SequentialAgent({
 	description: "Root agent orchestrating weather and calculator agents",
 	subAgents: [weatherAgent, calculatorAgent],
 });
-// If you prefer a single agent export, you could export weatherAgent directly.

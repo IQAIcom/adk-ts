@@ -60,10 +60,10 @@
 		"socket.io": "^4.8.1",
 		"ts-node": "^10.9.2",
 		"uuid": "^11.1.0",
-		"zod": "^3.25.67",
 		"zod-to-json-schema": "^3.24.6"
 	},
 	"peerDependencies": {
+		"zod": "^4.0.0",
 		"better-sqlite3": "^11.10.0",
 		"mysql2": "^3.14.1",
 		"pg": "^8.16.0"
@@ -80,6 +80,7 @@
 		}
 	},
 	"devDependencies": {
+		"zod": "^4.0.17",
 		"@iqai/tsconfig": "workspace:*",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/dockerode": "^3.3.42",

@@ -3,3 +3,4 @@ packages:
   - 'apps/examples'
   - 'packages/*'
   - 'apps/adk-web'
+  - 'apps/starter-templates/*'
