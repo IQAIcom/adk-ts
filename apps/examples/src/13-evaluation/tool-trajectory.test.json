@@ -1,0 +1,31 @@
+{
+  "evalSetId": "tools-trajectory-set-1",
+  "name": "Tool Trajectory Demo",
+  "creationTimestamp": 0,
+  "evalCases": [
+    {
+      "evalId": "echo-sequence-1",
+      "conversation": [
+        {
+          "creationTimestamp": 0,
+          "userContent": {
+            "role": "user",
+            "parts": [{ "text": "Echo back: hello world" }]
+          },
+          "finalResponse": { "role": "model", "parts": [{ "text": "hello world" }] },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "name": "echo",
+                "args": { "text": "hello world" }
+              }
+            ],
+            "intermediateResponses": []
+          }
+        }
+      ]
+    }
+  ]
+}
+
+

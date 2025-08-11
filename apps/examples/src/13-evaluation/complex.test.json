@@ -1,0 +1,91 @@
+{
+  "evalSetId": "complex-set-1",
+  "name": "Complex EvalSet",
+  "creationTimestamp": 0,
+  "evalCases": [
+    {
+      "evalId": "multi-step-1",
+      "conversation": [
+        {
+          "creationTimestamp": 0,
+          "userContent": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Summarize the following in 10 words exactly: The capital of France is Paris, known for the Eiffel Tower."
+              }
+            ]
+          },
+          "finalResponse": {
+            "role": "model",
+            "parts": [
+              { "text": "Paris is France's capital, famous for the Eiffel Tower." }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "evalId": "formatting-1",
+      "conversation": [
+        {
+          "creationTimestamp": 0,
+          "userContent": {
+            "role": "user",
+            "parts": [
+              { "text": "Return a JSON object with keys city and country for Tokyo." }
+            ]
+          },
+          "finalResponse": {
+            "role": "model",
+            "parts": [
+              { "text": "{ \"city\": \"Tokyo\", \"country\": \"Japan\" }" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "evalId": "reasoning-1",
+      "conversation": [
+        {
+          "creationTimestamp": 0,
+          "userContent": {
+            "role": "user",
+            "parts": [
+              { "text": "What is the 15th Fibonacci number? Provide just the number." }
+            ]
+          },
+          "finalResponse": {
+            "role": "model",
+            "parts": [
+              { "text": "610" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "evalId": "precise-facts-1",
+      "conversation": [
+        {
+          "creationTimestamp": 0,
+          "userContent": {
+            "role": "user",
+            "parts": [
+              { "text": "Name the three primary colors of light in order: R, G, B." }
+            ]
+          },
+          "finalResponse": {
+            "role": "model",
+            "parts": [
+              { "text": "Red Green Blue" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+
+

@@ -1,5 +1,7 @@
 {
 	"criteria": {
-		"response_match_score": 0.0
+		"response_match_score": 0.9,
+		"tool_trajectory_avg_score": 1.0,
+		"safety_v1": 1.0
 	}
 }
