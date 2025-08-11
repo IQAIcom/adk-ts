@@ -174,6 +174,10 @@ export class AgentBuilder {
 	private artifactService?: BaseArtifactService;
 	private agentType: AgentType = "llm";
 	private existingSession?: Session;
+	/**
+	 * If set, an existing agent instance to reuse instead of constructing a new one.
+	 */
+	private existingAgent?: BaseAgent;
 
 	/**
 	 * Private constructor - use static create() method
@@ -194,34 +198,8 @@ export class AgentBuilder {
 	/**
 	 * Create a builder pre-populated from an existing agent instance.
 	 * Useful for: export raw LlmAgent for CLI dev, then build a Runner (sessions, memory, etc.) in app code.
+	 * (Deprecated) Use AgentBuilder.create().withAgent(existingAgent) instead.
 	 */
-	static fromAgent(agent: BaseAgent): AgentBuilder {
-		const builder = AgentBuilder.create(agent.name || "default_agent");
-		// Populate only if it's an LlmAgent (avoid importing at top-level to keep bundle size minimal)
-		try {
-			// Dynamic import via instanceof may fail if multiple copies; use duck typing fallback
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const a: any = agent as any;
-			if (a.model !== undefined) {
-				if (a.model) builder.withModel(a.model);
-				if (a.description) builder.withDescription(a.description);
-				if (a.instruction) builder.withInstruction(a.instruction);
-				if (Array.isArray(a.tools) && a.tools.length)
-					builder.withTools(...a.tools);
-				if (a.codeExecutor) builder.withCodeExecutor(a.codeExecutor);
-				if (a.planner) builder.withPlanner(a.planner);
-				if (a.outputKey) builder.withOutputKey(a.outputKey);
-				if (a.subAgents) builder.withSubAgents(a.subAgents);
-				if (a.outputSchema) {
-					// Preserve generic typing loosely without asserting type parameters
-					builder.withOutputSchema(a.outputSchema as any);
-				}
-			}
-		} catch {
-			// Silent: fallback to empty builder
-		}
-		return builder;
-	}
 
 	/**
 	 * Convenience method to start building with a model directly
@@ -341,6 +319,20 @@ export class AgentBuilder {
 	 */
 	withAfterAgentCallback(callback: AfterAgentCallback): this {
 		this.config.afterAgentCallback = callback;
+		return this;
+	}
+
+	/**
+	 * Provide an already constructed agent instance (LlmAgent or any BaseAgent).
+	 * build()/ask() will then reuse this instance instead of creating a new one from
+	 * the configuration stored in the builder. Subsequent mutator calls like
+	 * withModel/withTools won't alter the passed agent; modify it beforehand if needed.
+	 */
+	withAgent(agent: BaseAgent): this {
+		this.existingAgent = agent;
+		if (!this.config.name || this.config.name === "default_agent") {
+			this.config.name = agent.name || this.config.name;
+		}
 		return this;
 	}
 
@@ -539,6 +531,8 @@ export class AgentBuilder {
 	 * @returns Created agent instance
 	 */
 	private createAgent(): BaseAgent {
+		// Prefer an explicitly provided existing agent instance.
+		if (this.existingAgent) return this.existingAgent;
 		switch (this.agentType) {
 			case "llm": {
 				if (!this.config.model) {

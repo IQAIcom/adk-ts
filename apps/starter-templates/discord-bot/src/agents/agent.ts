@@ -1,18 +1,19 @@
-import { SequentialAgent } from "@iqai/adk";
-import { calculatorAgent } from "./calculator/agent";
-import { discordSubAgent } from "./discord/agent";
-import { discordTools } from "./discord/tools";
-import { weatherAgent } from "./weather/agent";
+import { LlmAgent } from "@iqai/adk";
+import { getCalculatorAgent } from "./calculator-agent/agent";
+import { getWeatherAgent } from "./weather-agent/agent";
 
-if (discordTools.length) {
-	(discordSubAgent as any).tools = [
-		...((discordSubAgent as any).tools || []),
-		...discordTools,
-	];
+export function getRootAgent() {
+	const calculatorAgent = getCalculatorAgent();
+	const weatherAgent = getWeatherAgent();
+
+	const agent = new LlmAgent({
+		name: "rootAgent",
+		description:
+			"The root agent that delegates tasks to calculator and weather agents.",
+		instruction:
+			"Use the calculator agent for math-related queries and the weather agent for weather-related queries. Route user requests to the appropriate sub-agent.",
+		subAgents: [calculatorAgent, weatherAgent],
+	});
+
+	return agent;
 }
-
-export const agent = new SequentialAgent({
-	name: "discord_super_agent",
-	description: "Root orchestrator for Discord interactions",
-	subAgents: [discordSubAgent, weatherAgent, calculatorAgent],
-});
