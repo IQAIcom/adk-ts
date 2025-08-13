@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import chalk from "chalk";
-import { ADKServer } from "../server.js";
+import { ADKServer } from "../server/index.js";
 
 export interface ServeOptions {
 	port?: number;
