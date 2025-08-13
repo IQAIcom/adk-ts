@@ -23,7 +23,7 @@
 	},
 	"homepage": "https://github.com/IQAICOM/adk-agent-starter#readme",
 	"dependencies": {
-		"@iqai/adk": "workspace:*",
+		"@iqai/adk": "^0.2.0",
 		"dotenv": "^17.2.0",
 		"zod": "^4.0.17"
 	},
