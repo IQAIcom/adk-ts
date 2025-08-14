@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.2.1
+
+### Patch Changes
+
+- 14fdbf4: added mcp-upbit to servers file
+
 ## 0.2.0
 
 ### Minor Changes
