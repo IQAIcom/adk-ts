@@ -77,7 +77,6 @@ async function executeCompleteNearIntentsFlow() {
 
 	const { tools } = await initializeNearIntents();
 
-	// Add our simulation tool to the available tools
 	const allTools = [...tools, simulateDepositTool];
 
 	const { runner } = await AgentBuilder.create("near_workflow_agent")
