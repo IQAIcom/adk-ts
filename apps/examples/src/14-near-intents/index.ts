@@ -125,9 +125,6 @@ async function demonstrateSimpleQuotes() {
 
 	const { tools } = await initializeNearIntents();
 
-	console.log("📋 **Different Integration Approaches:**\n");
-
-	// Quick Quote Flow
 	const quickQuoteAgent = await AgentBuilder.create("quick_quote_agent")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.withDescription("Agent for quick price discovery")
@@ -145,6 +142,43 @@ async function demonstrateSimpleQuotes() {
 	console.log(`Quick Quote: ${quickQuote}\n`);
 }
 
+async function demonstrateCrossChainSwaps() {
+	console.log("🌉 Cross-Chain Swap: ETH to SOL");
+	console.log("═══════════════════════════════\n");
+
+	const { tools } = await initializeNearIntents();
+
+	const crossChainAgent = await AgentBuilder.create("cross_chain_agent")
+		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
+		.withDescription("Agent for executing real cross-chain swaps")
+		.withInstruction(dedent`
+			You execute real cross-chain swaps using NEAR Intents.
+			
+			You are helping a user who wants to swap 0.1 ETH (on Ethereum) for SOL (on Solana).
+			This is a real swap request that needs specific token addresses.
+			
+			Process:
+			1. Use GET_NEAR_SWAP_TOKENS to find the exact ETH and SOL token IDs
+			2. Use GET_NEAR_SWAP_SIMPLE_QUOTE with the specific token IDs to get a real quote
+			3. Explain the rates, fees			
+		`)
+		.withTools(...tools)
+		.build();
+
+	console.log("🔗 User wants to swap 0.1 ETH for SOL across chains...");
+	const crossChainResponse = await crossChainAgent.runner.ask(dedent`
+		I want to swap 0.1 ETH (from Ethereum blockchain) to SOL (on Solana blockchain).
+		
+		Please:
+		1. Find the exact token IDs for ETH on Ethereum and SOL on Solana
+		2. Get me a real quote for this cross-chain swap
+		3. Tell me the current rate, fees, and estimated timing
+		
+	`);
+
+	console.log(`${crossChainResponse}\n`);
+}
+
 async function main() {
 	console.log("🚀 NEAR Intents Complete Workflow Demo");
 	console.log("======================================\n");
@@ -152,6 +186,9 @@ async function main() {
 	try {
 		// Execute the complete 5-step workflow
 		await executeCompleteNearIntentsFlow();
+
+		// Cross-chain swap examples
+		await demonstrateCrossChainSwaps();
 
 		// simple quote flow
 		await demonstrateSimpleQuotes();
