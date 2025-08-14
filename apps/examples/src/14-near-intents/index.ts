@@ -71,11 +71,11 @@ const simulateDepositTool = createTool({
 	},
 });
 
-async function executeCompleteNearIntentsFlow() {
+async function executeCompleteNearIntentsFlow(
+	tools: Awaited<ReturnType<typeof initializeNearIntents>>["tools"],
+) {
 	console.log("🌉 Complete NEAR Intents 5-Step Workflow");
 	console.log("=========================================\n");
-
-	const { tools } = await initializeNearIntents();
 
 	const allTools = [...tools, simulateDepositTool];
 
@@ -119,11 +119,11 @@ async function executeCompleteNearIntentsFlow() {
 	console.log(`\n${response}\n`);
 }
 
-async function demonstrateSimpleQuotes() {
+async function demonstrateSimpleQuotes(
+	tools: Awaited<ReturnType<typeof initializeNearIntents>>["tools"],
+) {
 	console.log("🔀 Simple Quote Flow");
 	console.log("═══════════════════════════\n");
-
-	const { tools } = await initializeNearIntents();
 
 	const quickQuoteAgent = await AgentBuilder.create("quick_quote_agent")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
@@ -142,11 +142,11 @@ async function demonstrateSimpleQuotes() {
 	console.log(`Quick Quote: ${quickQuote}\n`);
 }
 
-async function demonstrateCrossChainSwaps() {
+async function demonstrateCrossChainSwaps(
+	tools: Awaited<ReturnType<typeof initializeNearIntents>>["tools"],
+) {
 	console.log("🌉 Cross-Chain Swap: ETH to SOL");
 	console.log("═══════════════════════════════\n");
-
-	const { tools } = await initializeNearIntents();
 
 	const crossChainAgent = await AgentBuilder.create("cross_chain_agent")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
@@ -184,14 +184,17 @@ async function main() {
 	console.log("======================================\n");
 
 	try {
+		// Initialize MCP connection once
+		const { tools } = await initializeNearIntents();
+
 		// Execute the complete 5-step workflow
-		await executeCompleteNearIntentsFlow();
+		await executeCompleteNearIntentsFlow(tools);
 
 		// Cross-chain swap examples
-		await demonstrateCrossChainSwaps();
+		await demonstrateCrossChainSwaps(tools);
 
 		// simple quote flow
-		await demonstrateSimpleQuotes();
+		await demonstrateSimpleQuotes(tools);
 
 		console.log("🎉 **Complete NEAR Intents Demo Finished!**");
 	} catch (error) {
