@@ -23,7 +23,7 @@ async function initializeNearIntents() {
 		transport: {
 			mode: "stdio",
 			command: "npx",
-			args: ["tsx", "/Users/sid/repos/work/mcp-near-intents/src/index.ts"],
+			args: ["tsx", env.NEAR_INTENTS_MCP_PATH],
 		},
 	});
 
