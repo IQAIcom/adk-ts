@@ -95,7 +95,7 @@ async function executeCompleteNearIntentsFlow() {
 			[STEP 5] Use CHECK_NEAR_SWAP_STATUS to monitor progress
 			
 			Use these realistic parameters:
-			- Swap 0.1 ETH to USDC (popular pair)
+			- Swap 0.1 ETH to USDC (available pair)
 			- Recipient: 0x742d35Cc6634C0532925a3b8D24e7B7EBDBB3d1E
 			- Refund: 0x1234567890123456789012345678901234567890
 		`)
@@ -157,7 +157,6 @@ async function main() {
 		await demonstrateSimpleQuotes();
 
 		console.log("🎉 **Complete NEAR Intents Demo Finished!**");
-		console.log("You've seen the full workflow and architectural patterns.\n");
 	} catch (error) {
 		console.error("❌ Error:", error);
 		console.log(dedent`
