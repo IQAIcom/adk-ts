@@ -249,6 +249,16 @@ export class AgentBuilder {
 	): AgentBuilderWithSchema<T> {
 		this.warnIfLocked("withOutputSchema");
 		this.config.outputSchema = schema;
+
+		// If we're in sequential mode and have subAgents, apply schema to last LlmAgent
+		if (this.agentType === "sequential" && this.config.subAgents) {
+			this.applyOutputSchemaToLastLlmAgent(this.config.subAgents);
+		}
+		// If we're in parallel mode and have subAgents, apply schema to all LlmAgents
+		else if (this.agentType === "parallel" && this.config.subAgents) {
+			this.applyOutputSchemaToAllLlmAgents(this.config.subAgents);
+		}
+
 		return this as unknown as AgentBuilderWithSchema<T>;
 	}
 
@@ -352,6 +362,12 @@ export class AgentBuilder {
 		this.warnIfLocked("asSequential");
 		this.agentType = "sequential";
 		this.config.subAgents = subAgents;
+
+		// If outputSchema is configured, apply it to the last LlmAgent
+		if (this.config.outputSchema) {
+			this.applyOutputSchemaToLastLlmAgent(subAgents);
+		}
+
 		return this;
 	}
 
@@ -364,6 +380,12 @@ export class AgentBuilder {
 		this.warnIfLocked("asParallel");
 		this.agentType = "parallel";
 		this.config.subAgents = subAgents;
+
+		// If outputSchema is configured, apply it to all LlmAgents
+		if (this.config.outputSchema) {
+			this.applyOutputSchemaToAllLlmAgents(subAgents);
+		}
+
 		return this;
 	}
 
@@ -725,6 +747,48 @@ export class AgentBuilder {
 				return baseRunner.runAsync(params);
 			},
 		};
+	}
+
+	/**
+	 * Apply the configured output schema to the last LlmAgent in the subAgents array
+	 * @param subAgents Array of sub-agents to search through
+	 */
+	private applyOutputSchemaToLastLlmAgent(subAgents: BaseAgent[]): void {
+		// Find the last LlmAgent in the array
+		for (let i = subAgents.length - 1; i >= 0; i--) {
+			const agent = subAgents[i];
+			if (agent instanceof LlmAgent) {
+				// Apply the output schema to this LlmAgent
+				agent.outputSchema = this.config.outputSchema;
+				this.logger.debug(
+					`Applied output schema to last LlmAgent: ${agent.name}`,
+				);
+				break; // Only apply to the last (rightmost) LlmAgent
+			}
+		}
+	}
+
+	/**
+	 * Apply the configured output schema to all LlmAgents in the subAgents array
+	 * @param subAgents Array of sub-agents to search through
+	 */
+	private applyOutputSchemaToAllLlmAgents(subAgents: BaseAgent[]): void {
+		let appliedCount = 0;
+		for (const agent of subAgents) {
+			if (agent instanceof LlmAgent) {
+				// Apply the output schema to this LlmAgent
+				agent.outputSchema = this.config.outputSchema;
+				appliedCount++;
+				this.logger.debug(
+					`Applied output schema to LlmAgent: ${agent.name}`,
+				);
+			}
+		}
+		if (appliedCount > 0) {
+			this.logger.debug(
+				`Applied output schema to ${appliedCount} LlmAgent(s) in parallel configuration`,
+			);
+		}
 	}
 
 	/**

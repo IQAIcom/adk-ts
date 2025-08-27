@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { AgentBuilder } from "../../agents/agent-builder.js";
 import { LangGraphAgent } from "../../agents/lang-graph-agent.js";
 import { LlmAgent } from "../../agents/llm-agent.js";
@@ -148,6 +149,251 @@ describe("AgentBuilder", () => {
 				.withMemory(memoryService)
 				.withArtifactService(artifactService);
 			expect(result).toBe(builder);
+		});
+	});
+
+	describe("Output schema configuration", () => {
+		let builder: AgentBuilder;
+		let mockAgent1: LlmAgent;
+		let mockAgent2: LlmAgent;
+		let mockAgent3: LlmAgent;
+
+		beforeEach(() => {
+			builder = AgentBuilder.create("test_agent");
+			mockAgent1 = new LlmAgent({
+				name: "agent1",
+				model: "gemini-2.5-flash",
+				description: "First agent",
+			});
+			mockAgent2 = new LlmAgent({
+				name: "agent2",
+				model: "gemini-2.5-flash",
+				description: "Second agent",
+			});
+			mockAgent3 = new LlmAgent({
+				name: "agent3",
+				model: "gemini-2.5-flash",
+				description: "Third agent (last)",
+			});
+		});
+
+		it("should configure output schema", () => {
+			const schema = z.object({
+				result: z.string(),
+				confidence: z.number(),
+			});
+			const result = builder.withOutputSchema(schema);
+			expect(result).toBe(builder);
+		});
+
+		it("should apply output schema to last LlmAgent when using withOutputSchema then asSequential", async () => {
+			const schema = z.object({
+				result: z.string(),
+				confidence: z.number(),
+			});
+
+			const { agent } = await builder
+				.withOutputSchema(schema)
+				.asSequential([mockAgent1, mockAgent2, mockAgent3])
+				.build();
+
+			expect(agent).toBeInstanceOf(SequentialAgent);
+			const sequentialAgent = agent as SequentialAgent;
+
+			// Check that the last agent has the output schema applied
+			const lastAgent =
+				sequentialAgent.subAgents[sequentialAgent.subAgents.length - 1];
+			expect(lastAgent).toBeInstanceOf(LlmAgent);
+			expect((lastAgent as LlmAgent).outputSchema).toBe(schema);
+
+			// Check that other agents don't have the output schema
+			expect(
+				(sequentialAgent.subAgents[0] as LlmAgent).outputSchema,
+			).toBeUndefined();
+			expect(
+				(sequentialAgent.subAgents[1] as LlmAgent).outputSchema,
+			).toBeUndefined();
+		});
+
+		it("should apply output schema to last LlmAgent when using asSequential then withOutputSchema", async () => {
+			const schema = z.object({
+				result: z.string(),
+				confidence: z.number(),
+			});
+
+			const { agent } = await builder
+				.asSequential([mockAgent1, mockAgent2, mockAgent3])
+				.withOutputSchema(schema)
+				.build();
+
+			expect(agent).toBeInstanceOf(SequentialAgent);
+			const sequentialAgent = agent as SequentialAgent;
+
+			// Check that the last agent has the output schema applied
+			const lastAgent =
+				sequentialAgent.subAgents[sequentialAgent.subAgents.length - 1];
+			expect(lastAgent).toBeInstanceOf(LlmAgent);
+			expect((lastAgent as LlmAgent).outputSchema).toBe(schema);
+		});
+
+		it("should apply output schema to last LlmAgent when there are only LlmAgents", async () => {
+			const schema = z.object({
+				result: z.string(),
+			});
+
+			const { agent } = await builder
+				.withOutputSchema(schema)
+				.asSequential([mockAgent1, mockAgent2])
+				.build();
+
+			expect(agent).toBeInstanceOf(SequentialAgent);
+			const sequentialAgent = agent as SequentialAgent;
+
+			// Check that the last agent (agent2) has the output schema applied
+			const lastAgent =
+				sequentialAgent.subAgents[sequentialAgent.subAgents.length - 1];
+			expect(lastAgent).toBeInstanceOf(LlmAgent);
+			expect((lastAgent as LlmAgent).outputSchema).toBe(schema);
+
+			// Check that the first agent doesn't have the output schema
+			expect(
+				(sequentialAgent.subAgents[0] as LlmAgent).outputSchema,
+			).toBeUndefined();
+		});
+
+		it("should apply output schema to last LlmAgent when sequential has mixed agent types", async () => {
+			const schema = z.object({
+				result: z.string(),
+			});
+
+			// Create a non-LlmAgent (we'll use SequentialAgent as an example)
+			const nestedSequential = new SequentialAgent({
+				name: "nested_sequential",
+				description: "Nested sequential agent",
+				subAgents: [mockAgent1],
+			});
+
+			const { agent } = await builder
+				.withOutputSchema(schema)
+				.asSequential([nestedSequential, mockAgent2, mockAgent3])
+				.build();
+
+			expect(agent).toBeInstanceOf(SequentialAgent);
+			const sequentialAgent = agent as SequentialAgent;
+
+			// Check that the last LlmAgent (agent3) has the output schema applied
+			const lastAgent =
+				sequentialAgent.subAgents[sequentialAgent.subAgents.length - 1];
+			expect(lastAgent).toBeInstanceOf(LlmAgent);
+			expect((lastAgent as LlmAgent).outputSchema).toBe(schema);
+
+			// Check that agent2 (middle agent) doesn't have the output schema
+			expect(
+				(sequentialAgent.subAgents[1] as LlmAgent).outputSchema,
+			).toBeUndefined();
+		});
+
+		it("should not apply output schema when not using sequential agent type", async () => {
+			const schema = z.object({
+				result: z.string(),
+			});
+
+			const { agent } = await builder
+				.withOutputSchema(schema)
+				.withModel("gemini-2.5-flash")
+				.build();
+
+			expect(agent).toBeInstanceOf(LlmAgent);
+			// For regular LLM agents, the output schema should still be applied
+			expect((agent as LlmAgent).outputSchema).toBe(schema);
+		});
+
+		it("should handle empty sequential agents gracefully", async () => {
+			const schema = z.object({
+				result: z.string(),
+			});
+
+			// This should throw an error because sequential agents require sub-agents
+			await expect(
+				builder.withOutputSchema(schema).asSequential([]).build(),
+			).rejects.toThrow("Sub-agents required for sequential agent");
+		});
+
+		it("should apply output schema to all LlmAgents when using withOutputSchema then asParallel", async () => {
+			const schema = z.object({
+				result: z.string(),
+				confidence: z.number(),
+			});
+
+			const { agent } = await builder
+				.withOutputSchema(schema)
+				.asParallel([mockAgent1, mockAgent2, mockAgent3])
+				.build();
+
+			expect(agent).toBeInstanceOf(ParallelAgent);
+			const parallelAgent = agent as ParallelAgent;
+
+			// Check that all LlmAgents have the output schema applied
+			expect((parallelAgent.subAgents[0] as LlmAgent).outputSchema).toBe(schema);
+			expect((parallelAgent.subAgents[1] as LlmAgent).outputSchema).toBe(schema);
+			expect((parallelAgent.subAgents[2] as LlmAgent).outputSchema).toBe(schema);
+		});
+
+		it("should apply output schema to all LlmAgents when using asParallel then withOutputSchema", async () => {
+			const schema = z.object({
+				result: z.string(),
+				confidence: z.number(),
+			});
+
+			const { agent } = await builder
+				.asParallel([mockAgent1, mockAgent2, mockAgent3])
+				.withOutputSchema(schema)
+				.build();
+
+			expect(agent).toBeInstanceOf(ParallelAgent);
+			const parallelAgent = agent as ParallelAgent;
+
+			// Check that all LlmAgents have the output schema applied
+			expect((parallelAgent.subAgents[0] as LlmAgent).outputSchema).toBe(schema);
+			expect((parallelAgent.subAgents[1] as LlmAgent).outputSchema).toBe(schema);
+			expect((parallelAgent.subAgents[2] as LlmAgent).outputSchema).toBe(schema);
+		});
+
+		it("should apply output schema to all LlmAgents when parallel has mixed agent types", async () => {
+			const schema = z.object({
+				result: z.string(),
+			});
+
+			// Create a non-LlmAgent (we'll use SequentialAgent as an example)
+			const nestedSequential = new SequentialAgent({
+				name: "nested_sequential",
+				description: "Nested sequential agent",
+				subAgents: [mockAgent1],
+			});
+
+			const { agent } = await builder
+				.withOutputSchema(schema)
+				.asParallel([nestedSequential, mockAgent2, mockAgent3])
+				.build();
+
+			expect(agent).toBeInstanceOf(ParallelAgent);
+			const parallelAgent = agent as ParallelAgent;
+
+			// Check that all LlmAgents have the output schema applied
+			// nestedSequential is not an LlmAgent, so it shouldn't have the schema
+			expect((parallelAgent.subAgents[1] as LlmAgent).outputSchema).toBe(schema);
+			expect((parallelAgent.subAgents[2] as LlmAgent).outputSchema).toBe(schema);
+		});
+
+		it("should handle empty parallel agents gracefully", async () => {
+			const schema = z.object({
+				result: z.string(),
+			});
+
+			// This should throw an error because parallel agents require sub-agents
+			await expect(
+				builder.withOutputSchema(schema).asParallel([]).build(),
+			).rejects.toThrow("Sub-agents required for parallel agent");
 		});
 	});
 
