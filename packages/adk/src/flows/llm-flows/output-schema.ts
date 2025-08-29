@@ -45,6 +45,18 @@ class OutputSchemaResponseProcessor extends BaseLlmResponseProcessor {
 			return;
 		}
 
+		// Skip validation if individual schema validation is disabled for this agent
+		// (e.g., when used in SequentialAgent/ParallelAgent where container handles validation)
+		if (
+			"disableIndividualSchemaValidation" in agent &&
+			agent.disableIndividualSchemaValidation
+		) {
+			this.logger.debug(
+				`Skipping individual schema validation for agent ${agent.name} (disabled by container agent)`,
+			);
+			return;
+		}
+
 		// Extract text content from response parts
 		let textContent = llmResponse.content.parts
 			.map((part) => {

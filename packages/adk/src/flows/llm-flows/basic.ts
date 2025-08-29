@@ -1,3 +1,4 @@
+import { zodToJsonSchema } from "zod-to-json-schema";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
 import type { Event } from "../../events/event";
@@ -52,17 +53,37 @@ class BasicLlmRequestProcessor extends BaseLlmRequestProcessor {
 				!(agent.disallowTransferToParent && agent.disallowTransferToPeers)
 			);
 
-			if (!hasTools && !hasTransfers) {
-				llmRequest.setOutputSchema(agent.outputSchema);
+			// If individual validation is disabled (container will validate), skip provider-level schema
+			const individualDisabled =
+				"disableIndividualSchemaValidation" in agent &&
+				(agent as any).disableIndividualSchemaValidation;
+
+			if (!hasTools && !hasTransfers && !individualDisabled) {
+				try {
+					const raw = zodToJsonSchema(agent.outputSchema as any, {
+						target: "jsonSchema7",
+						$refStrategy: "none",
+					});
+					const { $schema, ...json } = (raw as any) || {};
+					if ((json as any)?.type === "object") {
+						llmRequest.setOutputSchema(json);
+					} else {
+						const logger = new Logger({ name: "BasicLlmRequestProcessor" });
+						logger.debug(
+							`Skipping provider-level response schema for agent ${agent.name} because top-level type is not 'object'.`,
+						);
+					}
+				} catch {
+					// If conversion fails, do not set provider-level schema
+				}
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				(() => {
 					try {
 						const logger = new Logger({ name: "BasicLlmRequestProcessor" });
 						logger.debug(
-							`Skipping request-level output schema for agent ${agent.name} because tools/transfers are present. Schema will be validated during response processing.`,
+							`Skipping request-level output schema for agent ${agent.name} because tools/transfers are present or individual validation is disabled. Schema will be validated during response processing.`,
 						);
-					} catch (e) {
+					} catch {
 						// ignore logger errors
 					}
 				})();

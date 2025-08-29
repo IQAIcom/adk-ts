@@ -1,4 +1,5 @@
-import type { Event } from "../events/event";
+import { Event } from "../events/event";
+import { Logger } from "../logger";
 import { BaseAgent } from "./base-agent";
 import { InvocationContext } from "./invocation-context";
 
@@ -111,6 +112,11 @@ export interface ParallelAgentConfig {
 	 * Sub-agents to execute in parallel
 	 */
 	subAgents?: BaseAgent[];
+
+	/**
+	 * Output schema for validating the final response
+	 */
+	outputSchema?: import("zod").ZodSchema;
 }
 
 /**
@@ -124,6 +130,16 @@ export interface ParallelAgentConfig {
  */
 export class ParallelAgent extends BaseAgent {
 	/**
+	 * Output schema for validating the final response
+	 */
+	outputSchema?: import("zod").ZodSchema;
+
+	/**
+	 * Logger for this agent
+	 */
+	private logger = new Logger({ name: "ParallelAgent" });
+
+	/**
 	 * Constructor for ParallelAgent
 	 */
 	constructor(config: ParallelAgentConfig) {
@@ -132,6 +148,7 @@ export class ParallelAgent extends BaseAgent {
 			description: config.description,
 			subAgents: config.subAgents,
 		});
+		this.outputSchema = config.outputSchema;
 	}
 
 	/**
@@ -144,8 +161,140 @@ export class ParallelAgent extends BaseAgent {
 			subAgent.runAsync(createBranchContextForSubAgent(this, subAgent, ctx)),
 		);
 
+		// Build a quick lookup for sub-agent by name to access outputKey when needed
+		const nameToSubAgent: Record<string, BaseAgent> = {};
+		for (const a of this.subAgents) {
+			nameToSubAgent[a.name] = a;
+		}
+
+		const responses: string[] = [];
+		const finalByName: Record<string, string> = {};
+		let combinedResponse = "";
+		let lastFinalResponseText = "";
+
+		// Collect all events and responses from parallel agents
 		for await (const event of mergeAgentRun(agentRuns)) {
+			// Collect text content from the event
+			if (event.content?.parts) {
+				for (const part of event.content.parts) {
+					if (part && typeof part === "object" && "text" in part && part.text) {
+						const text = part.text;
+						responses.push(text);
+						combinedResponse += `${text} `;
+					}
+				}
+			}
+
+			// Track the last final response text from any sub-agent
+			if (event.isFinalResponse() && event.content?.parts) {
+				let text = "";
+				for (const part of event.content.parts) {
+					if (part && typeof part === "object" && "text" in part && part.text) {
+						text += part.text;
+					}
+				}
+				if (text.trim()) {
+					lastFinalResponseText = text.trim();
+					finalByName[event.author] = text.trim();
+
+					// NEW: Ensure sub-agent final outputs are persisted to session state when outputKey is set
+					const sub = nameToSubAgent[event.author];
+					// Only handle LlmAgent-like instances that may have outputKey
+					if (sub && "outputKey" in (sub as any)) {
+						const ok = (sub as any).outputKey as string | undefined;
+						if (ok) {
+							// Attach state delta to this final event so Runner persists it
+							if (!event.actions.stateDelta) {
+								event.actions.stateDelta = {};
+							}
+							event.actions.stateDelta[ok] = text.trim();
+						}
+					}
+				}
+			}
+
+			// Only yield the event AFTER any stateDelta has been attached
 			yield event;
+		}
+
+		// Emit a final container event that consolidates any sub-agent outputs into session state
+		try {
+			const stateDelta: Record<string, any> = {};
+			for (const sub of this.subAgents) {
+				const maybe = sub as any;
+				if (maybe && typeof maybe === "object" && "outputKey" in maybe) {
+					const ok = maybe.outputKey as string | undefined;
+					if (ok && finalByName[sub.name]) {
+						stateDelta[ok] = finalByName[sub.name];
+					}
+				}
+			}
+
+			if (Object.keys(stateDelta).length > 0) {
+				const consolidationEvent = new Event({
+					invocationId: ctx.invocationId,
+					author: this.name,
+					branch: ctx.branch,
+					content: { parts: [{ text: "" }] },
+				});
+				consolidationEvent.actions.stateDelta = stateDelta;
+				yield consolidationEvent;
+			}
+		} catch (e) {
+			this.logger.debug(
+				`ParallelAgent ${this.name}: consolidation event failed: ${e instanceof Error ? e.message : String(e)}`,
+			);
+		}
+
+		// If we have an output schema, validate the combined response
+		if (this.outputSchema && (responses.length > 0 || lastFinalResponseText)) {
+			try {
+				let parsed: any;
+				const candidate = lastFinalResponseText || combinedResponse.trim();
+				// Prefer parsing the last final response text as JSON
+				try {
+					parsed = this.outputSchema.parse(JSON.parse(candidate));
+				} catch {
+					// Fallback to validating the raw string
+					parsed = this.outputSchema.parse(candidate);
+				}
+
+				this.logger.debug(
+					`Output schema validation successful for agent ${this.name}`,
+				);
+
+				// Yield a final event with the validated response
+				const finalEvent = new Event({
+					invocationId: ctx.invocationId,
+					author: this.name,
+					branch: ctx.branch,
+					content: {
+						parts: [
+							{
+								text:
+									typeof parsed === "string" ? parsed : JSON.stringify(parsed),
+							},
+						],
+					},
+				});
+				yield finalEvent;
+			} catch (validationError) {
+				this.logger.warn(
+					`Output schema validation failed for agent ${this.name}: ${validationError}`,
+				);
+				// Still yield the original combined response if validation fails
+				const finalEvent = new Event({
+					invocationId: ctx.invocationId,
+					author: this.name,
+					branch: ctx.branch,
+					content: {
+						parts: [
+							{ text: (lastFinalResponseText || combinedResponse).trim() },
+						],
+					},
+				});
+				yield finalEvent;
+			}
 		}
 	}
 

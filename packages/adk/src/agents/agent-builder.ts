@@ -250,13 +250,13 @@ export class AgentBuilder {
 		this.warnIfLocked("withOutputSchema");
 		this.config.outputSchema = schema;
 
-		// If we're in sequential mode and have subAgents, apply schema to last LlmAgent
+		// For sequential and parallel agents, we still apply schema to individual LlmAgents
+		// but disable their individual validation during execution. The container agent
+		// will handle final validation of the combined response.
 		if (this.agentType === "sequential" && this.config.subAgents) {
-			this.applyOutputSchemaToLastLlmAgent(this.config.subAgents);
-		}
-		// If we're in parallel mode and have subAgents, apply schema to all LlmAgents
-		else if (this.agentType === "parallel" && this.config.subAgents) {
-			this.applyOutputSchemaToAllLlmAgents(this.config.subAgents);
+			this.applyOutputSchemaToAllLlmAgents(this.config.subAgents, true);
+		} else if (this.agentType === "parallel" && this.config.subAgents) {
+			this.applyOutputSchemaToAllLlmAgents(this.config.subAgents, true);
 		}
 
 		return this as unknown as AgentBuilderWithSchema<T>;
@@ -363,10 +363,8 @@ export class AgentBuilder {
 		this.agentType = "sequential";
 		this.config.subAgents = subAgents;
 
-		// If outputSchema is configured, apply it to the last LlmAgent
-		if (this.config.outputSchema) {
-			this.applyOutputSchemaToLastLlmAgent(subAgents);
-		}
+		// Note: Output schema will be applied at the SequentialAgent level,
+		// not to individual sub-agents
 
 		return this;
 	}
@@ -381,10 +379,8 @@ export class AgentBuilder {
 		this.agentType = "parallel";
 		this.config.subAgents = subAgents;
 
-		// If outputSchema is configured, apply it to all LlmAgents
-		if (this.config.outputSchema) {
-			this.applyOutputSchemaToAllLlmAgents(subAgents);
-		}
+		// Note: Output schema will be applied at the ParallelAgent level,
+		// not to individual sub-agents
 
 		return this;
 	}
@@ -534,7 +530,7 @@ export class AgentBuilder {
 			const baseRunner = new Runner(runnerConfig);
 
 			// Create enhanced runner with simplified API
-			runner = this.createEnhancedRunner<T>(baseRunner, session);
+			runner = this.createEnhancedRunner<T>(baseRunner, session, agent);
 		}
 
 		return { agent, runner, session } as BuiltAgent<T>;
@@ -604,6 +600,7 @@ export class AgentBuilder {
 					name: this.config.name,
 					description: this.config.description || "",
 					subAgents: this.config.subAgents,
+					outputSchema: this.config.outputSchema,
 				});
 
 			case "parallel":
@@ -618,6 +615,7 @@ export class AgentBuilder {
 					name: this.config.name,
 					description: this.config.description || "",
 					subAgents: this.config.subAgents,
+					outputSchema: this.config.outputSchema,
 				});
 
 			case "loop":
@@ -680,6 +678,7 @@ export class AgentBuilder {
 	private createEnhancedRunner<T>(
 		baseRunner: Runner,
 		session: Session,
+		rootAgent: BaseAgent,
 	): EnhancedRunner<T> {
 		const sessionOptions = this.sessionOptions; // Capture sessionOptions in closure
 		const outputSchema = this.config.outputSchema;
@@ -693,7 +692,9 @@ export class AgentBuilder {
 						: typeof message === "object" && "contents" in message
 							? { parts: message.contents[message.contents.length - 1].parts }
 							: message;
-				let response = "";
+				let aggregatedText = "";
+				let lastFinalTextAnyAuthor = "";
+				let finalTextFromRootAgent = "";
 
 				if (!sessionOptions?.userId) {
 					throw new Error("Session configuration is required");
@@ -705,16 +706,24 @@ export class AgentBuilder {
 					newMessage,
 				})) {
 					if (event.content?.parts && Array.isArray(event.content.parts)) {
-						const content = event.content.parts
+						const contentText = event.content.parts
 							.map(
 								(part) =>
 									(part && typeof part === "object" && "text" in part
-										? part.text
+										? (part.text as string)
 										: "") || "",
 							)
 							.join("");
-						if (content) {
-							response += content;
+						if (contentText) {
+							aggregatedText += contentText;
+						}
+
+						// Track the last final assistant message texts
+						if (event.isFinalResponse() && contentText.trim()) {
+							lastFinalTextAnyAuthor = contentText.trim();
+							if (event.author === rootAgent.name) {
+								finalTextFromRootAgent = contentText.trim();
+							}
 						}
 					}
 				}
@@ -723,20 +732,34 @@ export class AgentBuilder {
 				// and formatted as JSON. Try to parse it, otherwise return the raw response.
 				if (outputSchema) {
 					try {
-						const parsed = JSON.parse(response);
+						const candidate =
+							finalTextFromRootAgent ||
+							lastFinalTextAnyAuthor ||
+							aggregatedText;
+						const parsed = JSON.parse(candidate);
 						return outputSchema.parse(parsed) as T;
 					} catch (parseError) {
 						// If parsing fails, try to validate the raw response
 						try {
-							return outputSchema.parse(response) as T;
+							const candidate =
+								finalTextFromRootAgent ||
+								lastFinalTextAnyAuthor ||
+								aggregatedText;
+							return outputSchema.parse(candidate) as T;
 						} catch (validationError) {
 							// If both fail, return the raw response as type T (casting)
-							return response.trim() as T;
+							const candidate =
+								finalTextFromRootAgent ||
+								lastFinalTextAnyAuthor ||
+								aggregatedText;
+							return candidate.trim() as T;
 						}
 					}
 				}
 
-				return response.trim() as T;
+				const fallback =
+					finalTextFromRootAgent || lastFinalTextAnyAuthor || aggregatedText;
+				return fallback.trim() as T;
 			},
 
 			runAsync(params: {
@@ -750,43 +773,34 @@ export class AgentBuilder {
 	}
 
 	/**
-	 * Apply the configured output schema to the last LlmAgent in the subAgents array
-	 * @param subAgents Array of sub-agents to search through
-	 */
-	private applyOutputSchemaToLastLlmAgent(subAgents: BaseAgent[]): void {
-		// Find the last LlmAgent in the array
-		for (let i = subAgents.length - 1; i >= 0; i--) {
-			const agent = subAgents[i];
-			if (agent instanceof LlmAgent) {
-				// Apply the output schema to this LlmAgent
-				agent.outputSchema = this.config.outputSchema;
-				this.logger.debug(
-					`Applied output schema to last LlmAgent: ${agent.name}`,
-				);
-				break; // Only apply to the last (rightmost) LlmAgent
-			}
-		}
-	}
-
-	/**
 	 * Apply the configured output schema to all LlmAgents in the subAgents array
 	 * @param subAgents Array of sub-agents to search through
+	 * @param disableIndividualValidation If true, disables individual schema validation for container agents
 	 */
-	private applyOutputSchemaToAllLlmAgents(subAgents: BaseAgent[]): void {
+	private applyOutputSchemaToAllLlmAgents(
+		subAgents: BaseAgent[],
+		disableIndividualValidation = false,
+	): void {
 		let appliedCount = 0;
 		for (const agent of subAgents) {
 			if (agent instanceof LlmAgent) {
 				// Apply the output schema to this LlmAgent
 				agent.outputSchema = this.config.outputSchema;
+
+				// For container agents, disable individual validation
+				if (disableIndividualValidation) {
+					agent.disableIndividualSchemaValidation = true;
+				}
+
 				appliedCount++;
 				this.logger.debug(
-					`Applied output schema to LlmAgent: ${agent.name}`,
+					`Applied output schema to LlmAgent: ${agent.name}${disableIndividualValidation ? " (individual validation disabled)" : ""}`,
 				);
 			}
 		}
 		if (appliedCount > 0) {
 			this.logger.debug(
-				`Applied output schema to ${appliedCount} LlmAgent(s) in parallel configuration`,
+				`Applied output schema to ${appliedCount} LlmAgent(s) in configuration${disableIndividualValidation ? " (individual validation disabled)" : ""}`,
 			);
 		}
 	}
