@@ -74,6 +74,24 @@ export class OpenAiLlm extends BaseLlm {
 			stream,
 		};
 
+		// Apply response_format for structured outputs when response schema or JSON mode is requested
+		try {
+			const maybeSchema = (llmRequest.config as any)?.responseSchema;
+			if (maybeSchema) {
+				(requestParams as any).response_format = {
+					type: "json_schema",
+					json_schema: {
+						name: "adk_output",
+						schema: this.transformSchemaForOpenAi(maybeSchema),
+					},
+				};
+			} else if (
+				(llmRequest.config as any)?.responseMimeType === "application/json"
+			) {
+				(requestParams as any).response_format = { type: "json_object" } as any;
+			}
+		} catch {}
+
 		if (stream) {
 			const streamResponse = await this.client.chat.completions.create({
 				...requestParams,

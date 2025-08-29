@@ -1,4 +1,5 @@
-import type { Event } from "../events/event";
+import { Event } from "../events/event";
+import { Logger } from "../logger";
 import { BaseAgent } from "./base-agent";
 import type { InvocationContext } from "./invocation-context";
 import { LlmAgent } from "./llm-agent";
@@ -21,12 +22,27 @@ export interface SequentialAgentConfig {
 	 * Sub-agents to execute in sequence
 	 */
 	subAgents?: BaseAgent[];
+
+	/**
+	 * Output schema for validating the final response
+	 */
+	outputSchema?: import("zod").ZodSchema;
 }
 
 /**
  * A shell agent that runs its sub-agents in sequence.
  */
 export class SequentialAgent extends BaseAgent {
+	/**
+	 * Output schema for validating the final response
+	 */
+	outputSchema?: import("zod").ZodSchema;
+
+	/**
+	 * Logger for this agent
+	 */
+	private logger = new Logger({ name: "SequentialAgent" });
+
 	/**
 	 * Constructor for SequentialAgent
 	 */
@@ -36,6 +52,7 @@ export class SequentialAgent extends BaseAgent {
 			description: config.description,
 			subAgents: config.subAgents,
 		});
+		this.outputSchema = config.outputSchema;
 	}
 
 	/**
@@ -44,10 +61,104 @@ export class SequentialAgent extends BaseAgent {
 	protected async *runAsyncImpl(
 		ctx: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
+		let lastValidResponse = "";
+		let lastRespondingAgent = "";
+		let lastFinalEvent: Event | null = null;
+
+		// Run each sub-agent in sequence
 		for (const subAgent of this.subAgents) {
+			// Run the sub-agent and collect events
 			for await (const event of subAgent.runAsync(ctx)) {
+				// Yield all events from sub-agent (including intermediate ones like tool calls, transfers)
 				yield event;
+
+				// Track the last valid response from any agent
+				if (
+					event.isFinalResponse() &&
+					event.author === subAgent.name &&
+					event.content?.parts
+				) {
+					let responseText = "";
+					for (const part of event.content.parts) {
+						if (
+							part &&
+							typeof part === "object" &&
+							"text" in part &&
+							part.text
+						) {
+							responseText += part.text;
+						}
+					}
+
+					if (responseText.trim()) {
+						lastValidResponse = responseText.trim();
+						lastRespondingAgent = subAgent.name;
+						lastFinalEvent = event;
+						this.logger.debug(
+							`SequentialAgent: Collected response from ${subAgent.name}`,
+						);
+					}
+				}
 			}
+		}
+
+		// If we have a valid response and output schema, validate it
+		if (this.outputSchema && lastValidResponse) {
+			try {
+				let parsed: any;
+				// Try to parse as JSON first
+				try {
+					parsed = this.outputSchema.parse(JSON.parse(lastValidResponse));
+				} catch {
+					// If that fails, try to validate the raw response
+					parsed = this.outputSchema.parse(lastValidResponse);
+				}
+
+				this.logger.debug(
+					`Output schema validation successful for agent ${this.name} (using response from ${lastRespondingAgent})`,
+				);
+
+				// Yield a final event with the validated response
+				const finalEvent = new Event({
+					invocationId: ctx.invocationId,
+					author: this.name,
+					branch: ctx.branch,
+					content: {
+						parts: [
+							{
+								text:
+									typeof parsed === "string" ? parsed : JSON.stringify(parsed),
+							},
+						],
+					},
+				});
+				yield finalEvent;
+			} catch (validationError) {
+				this.logger.warn(
+					`Output schema validation failed for agent ${this.name}: ${validationError}`,
+				);
+				// Still yield the response if validation fails
+				const finalEvent = new Event({
+					invocationId: ctx.invocationId,
+					author: this.name,
+					branch: ctx.branch,
+					content: {
+						parts: [{ text: lastValidResponse }],
+					},
+				});
+				yield finalEvent;
+			}
+		} else if (lastValidResponse) {
+			// No schema validation needed, just yield the response
+			const finalEvent = new Event({
+				invocationId: ctx.invocationId,
+				author: this.name,
+				branch: ctx.branch,
+				content: {
+					parts: [{ text: lastValidResponse }],
+				},
+			});
+			yield finalEvent;
 		}
 	}
 

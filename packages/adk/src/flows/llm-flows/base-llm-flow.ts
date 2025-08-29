@@ -10,12 +10,13 @@ import { Logger } from "@adk/logger";
 import { LogFormatter } from "@adk/logger/log-formatter";
 import {
 	type BaseLlm,
+	type FunctionDeclaration,
 	LlmRequest,
 	type LlmResponse,
-	type FunctionDeclaration,
 } from "@adk/models";
 import { traceLlmCall } from "@adk/telemetry";
 import { ToolContext } from "@adk/tools";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import * as functions from "./functions";
 
 // Tool interfaces for better type safety
@@ -351,8 +352,184 @@ export abstract class BaseLlmFlow {
 					transferToAgent,
 				);
 
+				// Remember the original agent's output schema for validation
+				const originalAgent = invocationContext.agent;
+				const originalOutputSchema =
+					"outputSchema" in originalAgent
+						? (originalAgent.outputSchema as any)
+						: null;
+
+				// Collect all events from the transferred agent
+				const transferredEvents: Event[] = [];
+				let transferredAgentResponse: Event | null = null;
+
 				for await (const event of agentToRun.runAsync(invocationContext)) {
+					transferredEvents.push(event);
+
+					// Check if this is a final response from the transferred agent
+					if (event.isFinalResponse() && event.author === agentToRun.name) {
+						transferredAgentResponse = event;
+					}
+
+					// Yield the event as-is for now
 					yield event;
+				}
+
+				// If we have an original agent's output schema and a response from the transferred agent,
+				// apply the original agent's schema validation
+				if (
+					originalOutputSchema &&
+					transferredAgentResponse &&
+					transferredAgentResponse.content?.parts
+				) {
+					try {
+						let responseText = "";
+						for (const part of transferredAgentResponse.content.parts) {
+							if (
+								part &&
+								typeof part === "object" &&
+								"text" in part &&
+								part.text
+							) {
+								responseText += part.text;
+							}
+						}
+
+						if (responseText.trim()) {
+							let parsed: any;
+							// Try to parse as JSON first
+							try {
+								parsed = originalOutputSchema.parse(JSON.parse(responseText));
+							} catch {
+								// If that fails, try to validate the raw response
+								parsed = originalOutputSchema.parse(responseText);
+							}
+
+							this.logger.debug(
+								`Output schema validation successful for agent ${originalAgent.name} (applied to transferred response from ${agentToRun.name})`,
+							);
+
+							// Yield a final validated event with the original agent's authorship
+							const validatedEvent = new Event({
+								invocationId: invocationContext.invocationId,
+								author: originalAgent.name, // Use original agent as author
+								branch: invocationContext.branch,
+								content: {
+									parts: [
+										{
+											text:
+												typeof parsed === "string"
+													? parsed
+													: JSON.stringify(parsed),
+										},
+									],
+								},
+							});
+							yield validatedEvent;
+						}
+					} catch (validationError) {
+						this.logger.warn(
+							`Output schema validation failed for agent ${originalAgent.name}: ${validationError}`,
+						);
+
+						// Attempt a second-pass formatting LLM call to coerce into schema
+						try {
+							let responseText = "";
+							for (const part of transferredAgentResponse.content.parts) {
+								if (
+									part &&
+									typeof part === "object" &&
+									"text" in part &&
+									part.text
+								) {
+									responseText += part.text;
+								}
+							}
+
+							const llm = this.__getLlm(invocationContext);
+							const repairRequest = new LlmRequest();
+							// Apply provider-level schema since no tools/transfers in this pass
+							try {
+								const raw = zodToJsonSchema(originalOutputSchema as any, {
+									target: "jsonSchema7",
+									$refStrategy: "none",
+								});
+								const { $schema, ...json } = (raw as any) || {};
+								repairRequest.setOutputSchema(json);
+							} catch {
+								// Fallback: set the zod schema directly if conversion fails (provider may ignore)
+								repairRequest.setOutputSchema(originalOutputSchema as any);
+							}
+							// Strong instruction for pure JSON
+							repairRequest.appendInstructions([
+								"You are a formatter. Produce ONLY valid application/json that conforms to the given schema.",
+							]);
+							repairRequest.contents = [
+								{
+									role: "user",
+									parts: [
+										{
+											text: `Convert the following text into a JSON object that matches the schema. Do not include any extra text.\n\nText:\n${responseText}`,
+										},
+									],
+								},
+							];
+
+							let formattedText = "";
+							for await (const r of llm.generateContentAsync(
+								repairRequest,
+								false,
+							)) {
+								if (r?.content?.parts) {
+									formattedText += r.content.parts
+										.map((p: any) => (p && "text" in p ? p.text || "" : ""))
+										.join("");
+								}
+							}
+
+							if (formattedText.trim()) {
+								let parsed: any;
+								try {
+									parsed = (originalOutputSchema as any).parse(
+										JSON.parse(formattedText),
+									);
+								} catch {
+									parsed = (originalOutputSchema as any).parse(formattedText);
+								}
+
+								const validatedEvent = new Event({
+									invocationId: invocationContext.invocationId,
+									author: originalAgent.name,
+									branch: invocationContext.branch,
+									content: {
+										parts: [
+											{
+												text:
+													typeof parsed === "string"
+														? parsed
+														: JSON.stringify(parsed),
+											},
+										],
+									},
+								});
+								yield validatedEvent;
+								return; // Succeed; stop fallback
+							}
+						} catch (formatError) {
+							this.logger.warn(
+								`Second-pass formatting failed for agent ${originalAgent.name}: ${formatError}`,
+							);
+						}
+
+						// Still yield the original response if validation and repair both fail
+						const fallbackEvent = new Event({
+							invocationId: invocationContext.invocationId,
+							author: originalAgent.name,
+							branch: invocationContext.branch,
+							content: transferredAgentResponse.content,
+						});
+						yield fallbackEvent;
+					}
 				}
 			}
 		}

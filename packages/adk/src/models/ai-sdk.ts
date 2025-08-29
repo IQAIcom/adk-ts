@@ -45,7 +45,7 @@ export class AiSdkLlm extends BaseLlm {
 			const systemMessage = request.getSystemInstructionText();
 			const tools = this.convertToAiSdkTools(request);
 
-			const requestParams = {
+			const requestParams: any = {
 				model: this.modelInstance,
 				messages,
 				system: systemMessage,
@@ -54,6 +54,17 @@ export class AiSdkLlm extends BaseLlm {
 				temperature: request.config?.temperature,
 				topP: request.config?.topP,
 			};
+
+			// If the request has a response schema, set AI SDK schema param
+			try {
+				if ((request.config as any)?.responseSchema) {
+					requestParams.schema = jsonSchema(
+						this.transformSchemaForAiSdk(
+							(request.config as any).responseSchema,
+						),
+					);
+				}
+			} catch {}
 
 			if (stream) {
 				const result = streamText(requestParams);

@@ -62,8 +62,14 @@ class InstructionsLlmRequestProcessor extends BaseLlmRequestProcessor {
 			llmRequest.appendInstructions([instruction]);
 		}
 
-		// Append schema guidance to system instruction if provided
-		if (agent.outputSchema) {
+		// Append schema guidance ONLY when agent validates individually
+		if (
+			agent.outputSchema &&
+			!(
+				"disableIndividualSchemaValidation" in agent &&
+				agent.disableIndividualSchemaValidation
+			)
+		) {
 			try {
 				const raw = zodToJsonSchema(agent.outputSchema as any, {
 					target: "jsonSchema7",
@@ -77,10 +83,6 @@ class InstructionsLlmRequestProcessor extends BaseLlmRequestProcessor {
 					JSON.stringify(json, null, 2),
 				]);
 
-				// Add an explicit final-response instruction to improve reliability
-				// when tools or transfers are used. This instructs the model to emit
-				// exactly the JSON matching the schema as the final assistant message
-				// with no extra commentary.
 				llmRequest.appendInstructions([
 					'IMPORTANT: After any tool calls, function calls, or agent transfers have completed, produce ONE final assistant message whose entire content is ONLY the JSON object that conforms to the schema provided above. Do NOT include any explanatory text, markdown, or additional messages. Do NOT wrap the JSON in code fences (for example, do NOT use ```json or ```). If you cannot produce valid JSON that matches the schema, return a JSON object with an "error" field describing the problem.',
 				]);

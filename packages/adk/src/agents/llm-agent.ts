@@ -226,6 +226,12 @@ export interface LlmAgentConfig<T extends BaseLlm = BaseLlm> {
 	outputSchema?: z.ZodSchema;
 
 	/**
+	 * Disable individual schema validation for this agent when used in container agents
+	 * (SequentialAgent, ParallelAgent). The container agent will handle final validation.
+	 */
+	disableIndividualSchemaValidation?: boolean;
+
+	/**
 	 * Callback or list of callbacks to be called before calling the LLM
 	 */
 	beforeModelCallback?: BeforeModelCallback;
@@ -343,6 +349,11 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	public outputSchema?: z.ZodSchema;
 
 	/**
+	 * Disable individual schema validation for this agent when used in container agents
+	 */
+	public disableIndividualSchemaValidation?: boolean;
+
+	/**
 	 * Callback or list of callbacks to be called before calling the LLM
 	 */
 	public beforeModelCallback?: BeforeModelCallback;
@@ -394,6 +405,8 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 		this.generateContentConfig = config.generateContentConfig;
 		this.inputSchema = config.inputSchema;
 		this.outputSchema = config.outputSchema;
+		this.disableIndividualSchemaValidation =
+			config.disableIndividualSchemaValidation;
 		this.beforeModelCallback = config.beforeModelCallback;
 		this.afterModelCallback = config.afterModelCallback;
 		this.beforeToolCallback = config.beforeToolCallback;
@@ -607,7 +620,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 				.map((part) => part.text || "")
 				.join("");
 
-			if (this.outputSchema) {
+			if (this.outputSchema && !this.disableIndividualSchemaValidation) {
 				// If the result from the final chunk is just whitespace or empty,
 				// it means this is an empty final chunk of a stream.
 				// Do not attempt to parse it as JSON.
