@@ -7,6 +7,7 @@ import {
 } from "@iqai/adk";
 import dedent from "dedent";
 import * as z from "zod";
+import { ask } from "../utils";
 
 /**
  * 09 - Observability and Telemetry
@@ -74,19 +75,20 @@ async function main() {
 			"A helpful weather assistant with automatic telemetry tracking",
 		)
 		.withTools(getWeatherTool)
-		.withInstruction(dedent`
+		.withInstruction(
+			dedent`
 			You are a helpful weather assistant. When users ask about weather,
 			use the get_weather tool to provide current conditions.
 			Be friendly and conversational in your responses.
-		`)
+		`,
+		)
 		.build();
 
-	console.log("🤖 Asking agent about weather:");
-	const response = await runner.ask(
+	console.log("\nAsking agent about weather:");
+	await ask(
+		runner.ask.bind(runner),
 		"What's the weather like in San Francisco? Also, can you give me some tips for what to wear in that weather?",
 	);
-
-	console.log(`🌤️  Agent Response: ${response}`);
 
 	console.log(
 		"\n 💡 Check your Langfuse dashboard to see traces, tool usage, and metrics",

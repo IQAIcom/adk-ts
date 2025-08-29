@@ -2,6 +2,7 @@ import { cancel, intro, isCancel, outro, text } from "@clack/prompts";
 import { AgentBuilder, InMemorySessionService, createTool } from "@iqai/adk";
 import * as z from "zod";
 import dedent from "dedent";
+import { ask } from "../utils";
 
 /**
  * 03 - Interactive Todo Application
@@ -310,7 +311,8 @@ async function main() {
 		.withDescription(
 			"A smart todo list assistant with comprehensive task management",
 		)
-		.withInstruction(dedent`
+		.withInstruction(
+			dedent`
 			You are a friendly and efficient todo list assistant. Help users manage their tasks effectively.
 
 			Key capabilities:
@@ -329,7 +331,8 @@ async function main() {
 			- Use 1-based indexing when talking to users about todo IDs
 			- Be helpful with filtering and organization suggestions
 			- Celebrate productivity wins and provide gentle motivation
-		`)
+		`,
+		)
 		.withTools(
 			addTodoTool,
 			viewTodosTool,
@@ -344,8 +347,7 @@ async function main() {
 	// Start interactive session
 	intro("📝 Todo Assistant");
 
-	const initialStats = await runner.ask("Show me my current todos and stats");
-	console.log(`${initialStats}\n`);
+	await ask(runner.ask.bind(runner), "Show me my current todos and stats");
 
 	// Interactive loop
 	while (true) {
@@ -366,9 +368,7 @@ async function main() {
 		}
 
 		try {
-			console.log("\n🤖 Todo Assistant:");
-			const response = await runner.ask(userInput);
-			console.log(response);
+			await ask(runner.ask.bind(runner), userInput);
 
 			const updatedSession = await sessionService.getSession(
 				session.appName,

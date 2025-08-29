@@ -22,7 +22,7 @@ async function main() {
 		const samplingHandler = createSamplingHandler(runner.ask);
 
 		// Initialize Telegram toolset
-await getTelegramAgent(samplingHandler);
+		await getTelegramAgent(samplingHandler);
 
 		console.log("✅ Telegram bot agent initialized successfully!");
 		console.log("🚀 Bot is now running and ready to receive messages...");

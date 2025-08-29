@@ -22,7 +22,7 @@ async function main() {
 		const samplingHandler = createSamplingHandler(runner.ask);
 
 		// Initialize Discord toolset
-await getDiscordAgent(samplingHandler);
+		await getDiscordAgent(samplingHandler);
 
 		console.log("✅ Discord bot agent initialized successfully!");
 		console.log("🚀 Bot is now running and ready to receive messages...");

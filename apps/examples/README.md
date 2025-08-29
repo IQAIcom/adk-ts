@@ -65,6 +65,8 @@ Create a `.env` file in the **examples directory** (not in the root folder) and 
 
 The default LLM is Google Gemini. You can get a Google API key from [Google AI Studio](https://makersuite.google.com/app/apikey). If you want to use a different model, you can specify it in the `.env` file using the `LLM_MODEL` variable or update it directly in the example code.
 
+> Note: Some examples require additional configuration or dependencies. Please check the [`.env.example`](.env.example) file for specific instructions.
+
 4. **Run Examples**
 
 To explore the examples, you can either browse all available examples or run a specific one directly:
