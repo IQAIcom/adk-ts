@@ -1,14 +1,14 @@
-import type { EnhancedRunner, LlmAgent } from "@iqai/adk";
+import type { EnhancedRunner, BaseAgent } from "@iqai/adk";
 
 export interface Agent {
 	relativePath: string;
 	name: string;
 	absolutePath: string;
-	instance?: LlmAgent; // Store the loaded agent instance
+	instance?: BaseAgent; // Store the loaded agent instance
 }
 
 export interface LoadedAgent {
-	agent: LlmAgent;
+	agent: BaseAgent;
 	runner: EnhancedRunner; // AgentBuilder's enhanced runner
 	sessionId: string; // Session ID for this agent instance
 	userId: string; // User ID for session management
@@ -49,4 +49,55 @@ export interface MessagesResponse {
 		content: string;
 		timestamp: string;
 	}>;
+}
+
+export interface SessionResponse {
+	id: string;
+	appName: string;
+	userId: string;
+	state: Record<string, any>;
+	eventCount: number;
+	lastUpdateTime: number;
+	createdAt: number;
+}
+
+export interface SessionsResponse {
+	sessions: SessionResponse[];
+}
+
+export interface CreateSessionRequest {
+	state?: Record<string, any>;
+	sessionId?: string;
+}
+
+export interface EventsResponse {
+	events: Array<{
+		id: string;
+		author: string;
+		timestamp: number;
+		content: any;
+		actions: any;
+		functionCalls: any[];
+		functionResponses: any[];
+		branch?: string;
+		isFinalResponse: boolean;
+	}>;
+	totalCount: number;
+}
+
+export interface StateResponse {
+	agentState: Record<string, any>;
+	userState: Record<string, any>;
+	sessionState: Record<string, any>;
+	metadata: {
+		lastUpdated: number;
+		changeCount: number;
+		totalKeys: number;
+		sizeBytes: number;
+	};
+}
+
+export interface StateUpdateRequest {
+	path: string;
+	value: any;
 }

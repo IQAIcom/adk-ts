@@ -23,7 +23,7 @@ export class Logger {
 	}
 
 	private colorize(message: string): string {
-		return chalk.blue(message);
+		return chalk.gray(message);
 	}
 
 	private prefix(icon: string, message: string): string {

@@ -1,49 +1,51 @@
 import type { Hono } from "hono";
-import { cors } from "hono/cors";
-import type { AgentManager, SessionManager } from "./services.js";
+import { Logger } from "../logger.js";
+import type { AgentManager, SessionManager } from "../services/index.js";
 import type {
 	AgentListResponse,
 	MessageRequest,
 	MessageResponse,
 	MessagesResponse,
-} from "./types.js";
+} from "../types.js";
 
-export function setupRoutes(
+/**
+ * Helper function to map agents to response format
+ */
+function mapAgentsToResponse(agents: Map<string, any>): AgentListResponse[] {
+	return Array.from(agents.values()).map((agent) => ({
+		path: agent.absolutePath,
+		name: agent.name,
+		directory: agent.absolutePath,
+		relativePath: agent.relativePath,
+	}));
+}
+
+/**
+ * Helper function to create empty collection responses
+ */
+function createEmptyMessagesResponse() {
+	return { messages: [] };
+}
+
+export function setupAgentRoutes(
 	app: Hono,
 	agentManager: AgentManager,
 	sessionManager: SessionManager,
 	agentsDir: string,
+	quiet = false,
 ): void {
-	// CORS middleware
-	app.use("/*", cors());
-
-	// Health check
-	app.get("/health", (c) => c.json({ status: "ok" }));
+	const logger = new Logger({ name: "agent-routes", quiet });
 
 	// List agents
 	app.get("/api/agents", (c) => {
-		const agentsList: AgentListResponse[] = Array.from(
-			agentManager.getAgents().values(),
-		).map((agent) => ({
-			path: agent.absolutePath,
-			name: agent.name,
-			directory: agent.absolutePath,
-			relativePath: agent.relativePath,
-		}));
+		const agentsList = mapAgentsToResponse(agentManager.getAgents());
 		return c.json({ agents: agentsList });
 	});
 
 	// Refresh agents list
 	app.post("/api/agents/refresh", (c) => {
 		agentManager.scanAgents(agentsDir);
-		const agentsList: AgentListResponse[] = Array.from(
-			agentManager.getAgents().values(),
-		).map((agent) => ({
-			path: agent.absolutePath,
-			name: agent.name,
-			directory: agent.absolutePath,
-			relativePath: agent.relativePath,
-		}));
+		const agentsList = mapAgentsToResponse(agentManager.getAgents());
 		return c.json({ agents: agentsList });
 	});
 
@@ -52,7 +54,7 @@ export function setupRoutes(
 		const agentPath = decodeURIComponent(c.req.param("id"));
 		const loadedAgent = agentManager.getLoadedAgents().get(agentPath);
 		if (!loadedAgent) {
-			return c.json({ messages: [] });
+			return c.json(createEmptyMessagesResponse());
 		}
 
 		const messages = await sessionManager.getSessionMessages(loadedAgent);

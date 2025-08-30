@@ -1,1 +1,1 @@
-declare module '@neardefi/shade-agent-js'; 
+declare module "@neardefi/shade-agent-js";

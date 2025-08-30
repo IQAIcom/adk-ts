@@ -1,7 +1,6 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
-import type { ComponentProps, HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 	from: UIMessage["role"];
@@ -39,19 +38,28 @@ export const MessageContent = ({
 	</div>
 );
 
-export type MessageAvatarProps = ComponentProps<typeof Avatar> & {
-	src: string;
+export type MessageAvatarProps = HTMLAttributes<HTMLDivElement> & {
+	/** icon to render inside the avatar (required for icon-only use) */
+	icon?: React.ReactNode;
+	/** optional fallback name rendered as text when no icon */
 	name?: string;
 };
 
 export const MessageAvatar = ({
-	src,
+	icon,
 	name,
 	className,
 	...props
 }: MessageAvatarProps) => (
-	<Avatar className={cn("size-8 ring-1 ring-border", className)} {...props}>
-		<AvatarImage alt="" className="mt-0 mb-0" src={src} />
-		<AvatarFallback>{name?.slice(0, 3) || "ME"}</AvatarFallback>
-	</Avatar>
+	<div
+		role="img"
+		aria-label={name}
+		className={cn(
+			"size-8 ring-1 ring-border flex items-center justify-center rounded-full bg-muted text-muted-foreground",
+			className,
+		)}
+		{...props}
+	>
+		{icon ?? <span className="font-medium">{name?.slice(0, 3) || "ME"}</span>}
+	</div>
 );

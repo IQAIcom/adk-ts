@@ -1,6 +1,4 @@
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Play, Square } from "lucide-react";
 import type { Agent } from "../_schema";
 
 interface AgentCardProps {

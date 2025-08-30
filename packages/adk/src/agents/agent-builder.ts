@@ -344,6 +344,29 @@ export class AgentBuilder {
 	}
 
 	/**
+	 * Extract session configuration from an existing agent for CLI/server use
+	 * This is a workaround for CLI servers that need to preserve session state
+	 */
+	public static extractSessionConfig(agent: BaseAgent): {
+		sessionService?: any;
+		sessionOptions?: any;
+	} {
+		// Access private properties using type assertion
+		const agentAny = agent as any;
+		if (agentAny.sessionService) {
+			return {
+				sessionService: agentAny.sessionService,
+				sessionOptions: {
+					appName: agentAny.appName || "adk-server",
+					userId: agentAny.userId || `user_${agent.name}`,
+					state: undefined, // Will be extracted from existing sessions
+				},
+			};
+		}
+		return {};
+	}
+
+	/**
 	 * Configure as a sequential agent
 	 * @param subAgents Sub-agents to execute in sequence
 	 * @returns This builder instance for chaining

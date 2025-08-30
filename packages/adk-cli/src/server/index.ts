@@ -2,9 +2,14 @@ import { type ServerType, serve } from "@hono/node-server";
 import { InMemorySessionService } from "@iqai/adk";
 import { Hono } from "hono";
 import { Logger } from "./logger.js";
-import { setupRoutes } from "./routes.js";
-import { AgentManager, SessionManager } from "./services.js";
+import { setupRoutes } from "./routes/index.js";
+import { AgentManager, SessionManager } from "./services/index.js";
 import type { ServerConfig } from "./types.js";
+
+// Constants
+const DEFAULT_PORT = 8042;
+const DEFAULT_HOST = "localhost";
+const SERVER_STARTUP_DELAY_MS = 100;
 
 export class ADKServer {
 	private agentManager: AgentManager;
@@ -17,8 +22,8 @@ export class ADKServer {
 
 	constructor(
 		agentsDir: string,
-		port = 8042,
-		host = "localhost",
+		port = DEFAULT_PORT,
+		host = DEFAULT_HOST,
 		quiet = false,
 	) {
 		this.config = { agentsDir, port, host, quiet };
@@ -29,7 +34,13 @@ export class ADKServer {
 		this.app = new Hono();
 
 		// Setup routes
-		setupRoutes(this.app, this.agentManager, this.sessionManager, agentsDir);
+		setupRoutes(
+			this.app,
+			this.agentManager,
+			this.sessionManager,
+			agentsDir,
+			quiet,
+		);
 
 		// Initial agent scan
 		this.logger.info(`Starting agent scan in ${agentsDir} ✨`);
@@ -50,7 +61,7 @@ export class ADKServer {
 					`Server listening on http://${this.config.host}:${this.config.port} 🚀`,
 				);
 				resolve();
-			}, 100);
+			}, SERVER_STARTUP_DELAY_MS);
 		});
 	}
 
