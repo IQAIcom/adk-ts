@@ -5,6 +5,7 @@ import { ChatPanel } from "@/components/chat-panel";
 import { Navbar } from "@/components/navbar";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { useAgents } from "@/hooks/useAgents";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -24,6 +25,8 @@ function HomeContent() {
 	>(null);
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
+	const queryClient = useQueryClient();
+
 	const {
 		agents,
 		selectedAgent,
@@ -36,6 +39,36 @@ function HomeContent() {
 		refreshAgents,
 		isSendingMessage,
 	} = useAgents(finalApiUrl, currentSessionId);
+
+	// Subscribe to server-side hot-reload stream (SSE) and refresh data on change
+	useEffect(() => {
+		if (!finalApiUrl) return;
+		let es: EventSource | null = null;
+		try {
+			es = new EventSource(`${finalApiUrl}/reload/stream`);
+			es.onmessage = (ev) => {
+				try {
+					const data = ev.data ? JSON.parse(ev.data) : null;
+					if (data && data.type === "reload") {
+						// Refresh agents and invalidate common queries
+						refreshAgents();
+						queryClient.invalidateQueries({ queryKey: ["agents"] });
+						queryClient.invalidateQueries({ queryKey: ["sessions"] });
+						queryClient.invalidateQueries({ queryKey: ["events"] });
+					}
+				} catch {
+					// ignore parse errors
+				}
+			};
+		} catch {
+			// ignore connection failures
+		}
+		return () => {
+			try {
+				es?.close();
+			} catch {}
+		};
+	}, [finalApiUrl, queryClient, refreshAgents]);
 
 	// Panel action handlers
 	const handlePanelSelect = (panel: "sessions" | "events" | "state" | null) => {
