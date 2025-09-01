@@ -1,4 +1,5 @@
 import { AgentBuilder } from "@iqai/adk";
+// Root agent need not impose its own schema; sub-agents produce structured output
 import { env } from "../env";
 import { getEthPriceAgent } from "./eth-price-agent/agent";
 import { getEthSentimentAgent } from "./eth-sentiment-agent/agent";

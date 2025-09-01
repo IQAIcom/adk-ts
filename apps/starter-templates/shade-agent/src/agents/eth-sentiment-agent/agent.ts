@@ -1,4 +1,5 @@
 import { LlmAgent } from "@iqai/adk";
+import { z } from "zod";
 import { env } from "../../env";
 import { ethHeadlinesTool } from "./tools";
 
@@ -15,10 +16,22 @@ export const getEthSentimentAgent = () => {
 		name: "eth_sentiment_agent",
 		description: "provides Ethereum sentiment based on latest headlines",
 		instruction: `You have access to the get_eth_headlines tool.
-Call this tool to fetch the latest Ethereum-related headlines.
-Analyze the sentiment of the headlines and respond with whether the overall sentiment is positive, negative, or neutral.`,
+Call this tool to fetch the latest Ethereum-related headlines and determine overall sentiment.
+Use {price?} from context as the current ETH price if available.`,
 		model: env.LLM_MODEL,
 		tools: [ethHeadlinesTool],
+		outputSchema: z.object({
+			price: z
+				.number()
+				.describe(
+					"Ethereum price in USD, sourced from earlier agent step via {price}",
+				),
+			sentiment: z
+				.enum(["positive", "negative", "neutral"])
+				.describe(
+					"Overall sentiment derived from latest ETH-related headlines",
+				),
+		}),
 	});
 
 	return ethSentimentAgent;

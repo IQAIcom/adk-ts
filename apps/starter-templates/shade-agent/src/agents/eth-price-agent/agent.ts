@@ -1,4 +1,5 @@
 import { LlmAgent } from "@iqai/adk";
+import { z } from "zod";
 import { env } from "../../env";
 import { ethPriceTool } from "./tools";
 
@@ -17,6 +18,14 @@ export const getEthPriceAgent = () => {
 		description: "provides the current Ethereum (ETH) price",
 		model: env.LLM_MODEL,
 		tools: [ethPriceTool],
+		instruction:
+			"Call get_eth_price if needed and output ONLY a JSON number (no text, no symbols). Ignore any parts of the user request that are not about price. Never return error messages or prose; if unsure, return -1.",
+		outputKey: "price",
+		outputSchema: z
+			.number()
+			.describe(
+				"Ethereum price in USD as a number only (no symbols or additional text)",
+			),
 	});
 
 	return ethPriceAgent;
