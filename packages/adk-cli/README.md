@@ -86,6 +86,7 @@ adk new my-agent --template simple-agent
 - `discord-bot` - Agent integrated with Discord bot framework
 - `telegram-bot` - Agent integrated with Telegram bot API  
 - `hono-server` - Web server with RESTful agent endpoints
+- `shade-agent` – Agent with Near Shade Agents
 - `mcp-starter` - Model Context Protocol server integration
 
 ### `adk run`

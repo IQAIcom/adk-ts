@@ -10,10 +10,17 @@ import { dirname, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { FullMessage, InMemorySessionService, LlmAgent } from "@iqai/adk";
 import { AgentBuilder } from "@iqai/adk";
+import { Logger } from "./logger.js";
 import type { Agent, LoadedAgent } from "./types.js";
 
 export class AgentScanner {
-	constructor(private quiet = false) {}
+	private logger: Logger;
+
+	constructor(private quiet = false) {
+		this.logger = new Logger({ name: "session-manager", quiet: this.quiet });
+	}
+
+	async getSessionMessages(loadedAgent: LoadedAgent) {}
 
 	scanAgents(
 		agentsDir: string,
@@ -41,8 +48,6 @@ export class AgentScanner {
 		};
 
 		const scanDirectory = (dir: string): void => {
-			if (!existsSync(dir)) return;
-
 			const items = readdirSync(dir);
 			for (const item of items) {
 				const fullPath = join(dir, item);
@@ -85,9 +90,7 @@ export class AgentScanner {
 		};
 
 		scanDirectory(scanDir);
-		if (!this.quiet) {
-			console.log(`✅ Agent scan complete. Found ${agents.size} agents.`);
-		}
+		this.logger.info(`Agent scan complete. Found ${agents.size} agents. ✨`);
 
 		return agents;
 	}
@@ -111,7 +114,11 @@ export class AgentScanner {
 }
 
 export class AgentLoader {
-	constructor(private quiet = false) {}
+	private logger: Logger;
+
+	constructor(private quiet = false) {
+		this.logger = new Logger({ name: "agent-loader", quiet: this.quiet });
+	}
 
 	/**
 	 * Import a TypeScript file by compiling it on-demand
@@ -190,15 +197,11 @@ export class AgentLoader {
 					v == null || ["string", "number", "boolean"].includes(typeof v);
 				if (isPrimitive(agentExport)) {
 					// Primitive named 'agent' export (e.g., a string) isn't a real agent; fall through to full-module scan
-					if (!this.quiet) {
-						console.log(
-							`ℹ️ Ignoring primitive 'agent' export in ${filePath}; scanning module for factory...`,
-						);
-					}
+					this.logger.info(
+						`Ignoring primitive 'agent' export in ${filePath}; scanning module for factory...`,
+					);
 				} else {
-					if (!this.quiet) {
-						console.log(`✅ TS agent imported via esbuild: ${filePath}`);
-					}
+					this.logger.info(`TS agent imported via esbuild: ${filePath} ✅`);
 					return { agent: agentExport };
 				}
 			}
@@ -254,8 +257,8 @@ export class AgentLoader {
 						}
 					}
 				} catch (error) {
-					console.warn(
-						`⚠️ Warning: Could not load ${envFile} file: ${error instanceof Error ? error.message : String(error)}`,
+					this.logger.warn(
+						`Warning: Could not load ${envFile} file: ${error instanceof Error ? error.message : String(error)}`,
 					);
 				}
 			}
@@ -374,6 +377,7 @@ export class AgentManager {
 	private loadedAgents = new Map<string, LoadedAgent>();
 	private scanner: AgentScanner;
 	private loader: AgentLoader;
+	private logger: Logger;
 
 	constructor(
 		private sessionService: InMemorySessionService,
@@ -381,6 +385,7 @@ export class AgentManager {
 	) {
 		this.scanner = new AgentScanner(quiet);
 		this.loader = new AgentLoader(quiet);
+		this.logger = new Logger({ name: "agent-manager", quiet: this.quiet });
 	}
 
 	getAgents(): Map<string, Agent> {
@@ -464,7 +469,11 @@ export class AgentManager {
 			agent.instance = exportedAgent;
 			agent.name = exportedAgent.name;
 		} catch (error) {
-			console.error(`❌ Failed to load agent "${agent.name}":`, error);
+			// agent might be undefined if lookup failed earlier
+			const agentName = agent?.name ?? agentPath;
+			this.logger.error(
+				`Failed to load agent "${agentName}": ${error instanceof Error ? error.message : String(error)}`,
+			);
 			throw new Error(
 				`Failed to load agent: ${error instanceof Error ? error.message : String(error)}`,
 			);
@@ -520,9 +529,8 @@ export class AgentManager {
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			console.error(
-				`Error sending message to agent ${agentPath}:`,
-				errorMessage,
+			this.logger.error(
+				`Error sending message to agent ${agentPath}: ${errorMessage}`,
 			);
 			throw new Error(`Failed to send message to agent: ${errorMessage}`);
 		}
@@ -536,7 +544,14 @@ export class AgentManager {
 }
 
 export class SessionManager {
-	constructor(private sessionService: InMemorySessionService) {}
+	private logger: Logger;
+
+	constructor(
+		private sessionService: InMemorySessionService,
+		private quiet = false,
+	) {
+		this.logger = new Logger({ name: "session-manager", quiet: this.quiet });
+	}
 
 	async getSessionMessages(loadedAgent: LoadedAgent) {
 		try {
@@ -573,7 +588,10 @@ export class SessionManager {
 
 			return messages;
 		} catch (error) {
-			console.error("Error fetching messages:", error);
+			this.logger.error(
+				"Error fetching messages:",
+				error instanceof Error ? error.message : String(error),
+			);
 			return [];
 		}
 	}
