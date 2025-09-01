@@ -46,24 +46,49 @@ export async function* mergeAgentRun(
 		return;
 	}
 
-	// Create initial promises for each generator
-	const promises = agentRuns.map(async (generator, index) => {
-		try {
-			const result = await generator.next();
-			return { index, result };
-		} catch (error) {
-			return { index, result: { done: true, value: undefined }, error };
-		}
-	});
+	// Robustly track pending promises by generator index
+	const pendingByIndex = new Map<
+		number,
+		Promise<{
+			index: number;
+			result: IteratorResult<Event, void>;
+			error?: unknown;
+		}>
+	>();
 
-	let pendingPromises = [...promises];
+	function makeNextPromise(genIndex: number): Promise<{
+		index: number;
+		result: IteratorResult<Event, void>;
+		error?: unknown;
+	}> {
+		return (async () => {
+			try {
+				const result = await agentRuns[genIndex].next();
+				return { index: genIndex, result };
+			} catch (error) {
+				return {
+					index: genIndex,
+					result: { done: true, value: undefined } as IteratorResult<
+						Event,
+						void
+					>,
+					error,
+				};
+			}
+		})();
+	}
 
-	while (pendingPromises.length > 0) {
-		// Wait for the first generator to produce an event
-		const { index, result, error } = await Promise.race(pendingPromises);
+	for (let i = 0; i < agentRuns.length; i++) {
+		pendingByIndex.set(i, makeNextPromise(i));
+	}
 
-		// Remove the completed promise
-		pendingPromises = pendingPromises.filter((_, i) => i !== index);
+	while (pendingByIndex.size > 0) {
+		const { index, result, error } = await Promise.race(
+			Array.from(pendingByIndex.values()),
+		);
+
+		// Remove completed
+		pendingByIndex.delete(index);
 
 		if (error) {
 			console.error(`Error in parallel agent ${index}:`, error);
@@ -71,26 +96,9 @@ export async function* mergeAgentRun(
 		}
 
 		if (!result.done) {
-			// Yield the event
-			yield result.value;
-
-			// Create a new promise for the next event from this generator
-			const nextPromise = (async () => {
-				try {
-					const nextResult = await agentRuns[index].next();
-					return { index, result: nextResult };
-				} catch (nextError) {
-					return {
-						index,
-						result: { done: true, value: undefined },
-						error: nextError,
-					};
-				}
-			})();
-
-			pendingPromises.push(nextPromise);
+			yield result.value as Event;
+			pendingByIndex.set(index, makeNextPromise(index));
 		}
-		// If result.done is true, this generator is finished and we don't add it back
 	}
 }
 
@@ -157,143 +165,226 @@ export class ParallelAgent extends BaseAgent {
 	protected async *runAsyncImpl(
 		ctx: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
-		const agentRuns = this.subAgents.map((subAgent) =>
-			subAgent.runAsync(createBranchContextForSubAgent(this, subAgent, ctx)),
-		);
+		// Auto-toggle transfer flags for sub-agents when output schemas are involved
+		const restoreRecords: Array<{
+			agent: BaseAgent & {
+				disallowTransferToParent?: boolean;
+				disallowTransferToPeers?: boolean;
+			};
+			parent?: boolean;
+			peers?: boolean;
+		}> = [];
 
-		// Build a quick lookup for sub-agent by name to access outputKey when needed
-		const nameToSubAgent: Record<string, BaseAgent> = {};
-		for (const a of this.subAgents) {
-			nameToSubAgent[a.name] = a;
-		}
-
-		const responses: string[] = [];
-		const finalByName: Record<string, string> = {};
-		let combinedResponse = "";
-		let lastFinalResponseText = "";
-
-		// Collect all events and responses from parallel agents
-		for await (const event of mergeAgentRun(agentRuns)) {
-			// Collect text content from the event
-			if (event.content?.parts) {
-				for (const part of event.content.parts) {
-					if (part && typeof part === "object" && "text" in part && part.text) {
-						const text = part.text;
-						responses.push(text);
-						combinedResponse += `${text} `;
+		try {
+			// If container has an outputSchema or any sub-agent has one, disable transfers on sub-agents
+			const containerHasSchema = !!this.outputSchema;
+			const anySubHasSchema = this.subAgents.some(
+				(a) => (a as any).outputSchema,
+			);
+			if (containerHasSchema || anySubHasSchema) {
+				for (const sa of this.subAgents) {
+					const s = sa as any;
+					if (
+						"disallowTransferToParent" in s ||
+						"disallowTransferToPeers" in s
+					) {
+						restoreRecords.push({
+							agent: s,
+							parent: s.disallowTransferToParent,
+							peers: s.disallowTransferToPeers,
+						});
+						s.disallowTransferToParent = true;
+						s.disallowTransferToPeers = true;
+						this.logger.warn(
+							`ParallelAgent ${this.name}: auto-disabled transfers for sub-agent '${sa.name}' because ${
+								containerHasSchema
+									? "container has outputSchema"
+									: "a sub-agent has outputSchema"
+							}. Configure disallowTransfer flags explicitly to suppress this warning.`,
+						);
 					}
 				}
 			}
 
-			// Track the last final response text from any sub-agent
-			if (event.isFinalResponse() && event.content?.parts) {
-				let text = "";
-				for (const part of event.content.parts) {
-					if (part && typeof part === "object" && "text" in part && part.text) {
-						text += part.text;
-					}
-				}
-				if (text.trim()) {
-					lastFinalResponseText = text.trim();
-					finalByName[event.author] = text.trim();
+			const agentRuns = this.subAgents.map((subAgent) =>
+				subAgent.runAsync(createBranchContextForSubAgent(this, subAgent, ctx)),
+			);
 
-					// NEW: Ensure sub-agent final outputs are persisted to session state when outputKey is set
-					const sub = nameToSubAgent[event.author];
-					// Only handle LlmAgent-like instances that may have outputKey
-					if (sub && "outputKey" in (sub as any)) {
-						const ok = (sub as any).outputKey as string | undefined;
-						if (ok) {
-							// Attach state delta to this final event so Runner persists it
-							if (!event.actions.stateDelta) {
-								event.actions.stateDelta = {};
-							}
-							event.actions.stateDelta[ok] = text.trim();
+			// Build a quick lookup for sub-agent by name to access outputKey when needed
+			const nameToSubAgent: Record<string, BaseAgent> = {};
+			for (const a of this.subAgents) {
+				nameToSubAgent[a.name] = a;
+			}
+
+			const responses: string[] = [];
+			const finalByName: Record<string, string> = {};
+			let combinedResponse = "";
+			let lastFinalResponseText = "";
+
+			// Collect all events and responses from parallel agents
+			for await (const event of mergeAgentRun(agentRuns)) {
+				// Collect text content from the event
+				if (event.content?.parts) {
+					for (const part of event.content.parts) {
+						if (
+							part &&
+							typeof part === "object" &&
+							"text" in part &&
+							part.text
+						) {
+							const text = part.text;
+							responses.push(text);
+							combinedResponse += `${text} `;
 						}
 					}
 				}
-			}
 
-			// Only yield the event AFTER any stateDelta has been attached
-			yield event;
-		}
+				// Track the last final response text from any sub-agent
+				if (event.isFinalResponse() && event.content?.parts) {
+					let text = "";
+					for (const part of event.content.parts) {
+						if (
+							part &&
+							typeof part === "object" &&
+							"text" in part &&
+							part.text
+						) {
+							text += part.text;
+						}
+					}
+					if (text.trim()) {
+						lastFinalResponseText = text.trim();
+						finalByName[event.author] = text.trim();
 
-		// Emit a final container event that consolidates any sub-agent outputs into session state
-		try {
-			const stateDelta: Record<string, any> = {};
-			for (const sub of this.subAgents) {
-				const maybe = sub as any;
-				if (maybe && typeof maybe === "object" && "outputKey" in maybe) {
-					const ok = maybe.outputKey as string | undefined;
-					if (ok && finalByName[sub.name]) {
-						stateDelta[ok] = finalByName[sub.name];
+						// NEW: Ensure sub-agent final outputs are persisted to session state when outputKey is set
+						const sub = nameToSubAgent[event.author];
+						// Only handle LlmAgent-like instances that may have outputKey
+						if (sub && "outputKey" in (sub as any)) {
+							const ok = (sub as any).outputKey as string | undefined;
+							if (ok) {
+								// Attach state delta to this final event so Runner persists it
+								if (!event.actions.stateDelta) {
+									event.actions.stateDelta = {};
+								}
+								event.actions.stateDelta[ok] = text.trim();
+							}
+						}
 					}
 				}
+
+				// Only yield the event AFTER any stateDelta has been attached
+				yield event;
 			}
 
-			if (Object.keys(stateDelta).length > 0) {
-				const consolidationEvent = new Event({
-					invocationId: ctx.invocationId,
-					author: this.name,
-					branch: ctx.branch,
-					content: { parts: [{ text: "" }] },
-				});
-				consolidationEvent.actions.stateDelta = stateDelta;
-				yield consolidationEvent;
-			}
-		} catch (e) {
-			this.logger.debug(
-				`ParallelAgent ${this.name}: consolidation event failed: ${e instanceof Error ? e.message : String(e)}`,
-			);
-		}
-
-		// If we have an output schema, validate the combined response
-		if (this.outputSchema && (responses.length > 0 || lastFinalResponseText)) {
+			// Emit a final container event that consolidates any sub-agent outputs into session state
 			try {
-				let parsed: any;
-				const candidate = lastFinalResponseText || combinedResponse.trim();
-				// Prefer parsing the last final response text as JSON
-				try {
-					parsed = this.outputSchema.parse(JSON.parse(candidate));
-				} catch {
-					// Fallback to validating the raw string
-					parsed = this.outputSchema.parse(candidate);
+				const stateDelta: Record<string, any> = {};
+				for (const sub of this.subAgents) {
+					const maybe = sub as any;
+					if (maybe && typeof maybe === "object" && "outputKey" in maybe) {
+						const ok = maybe.outputKey as string | undefined;
+						if (ok && finalByName[sub.name]) {
+							stateDelta[ok] = finalByName[sub.name];
+						}
+					}
 				}
 
+				if (Object.keys(stateDelta).length > 0) {
+					const consolidationEvent = new Event({
+						invocationId: ctx.invocationId,
+						author: this.name,
+						branch: ctx.branch,
+						content: { parts: [{ text: "" }] },
+					});
+					consolidationEvent.actions.stateDelta = stateDelta;
+					yield consolidationEvent;
+				}
+			} catch (e) {
 				this.logger.debug(
-					`Output schema validation successful for agent ${this.name}`,
+					`ParallelAgent ${this.name}: consolidation event failed: ${e instanceof Error ? e.message : String(e)}`,
 				);
+			}
 
-				// Yield a final event with the validated response
-				const finalEvent = new Event({
-					invocationId: ctx.invocationId,
-					author: this.name,
-					branch: ctx.branch,
-					content: {
-						parts: [
-							{
-								text:
-									typeof parsed === "string" ? parsed : JSON.stringify(parsed),
-							},
-						],
-					},
-				});
-				yield finalEvent;
-			} catch (validationError) {
-				this.logger.warn(
-					`Output schema validation failed for agent ${this.name}: ${validationError}`,
-				);
-				// Still yield the original combined response if validation fails
-				const finalEvent = new Event({
-					invocationId: ctx.invocationId,
-					author: this.name,
-					branch: ctx.branch,
-					content: {
-						parts: [
-							{ text: (lastFinalResponseText || combinedResponse).trim() },
-						],
-					},
-				});
-				yield finalEvent;
+			// If we have an output schema, validate an appropriate candidate
+			if (
+				this.outputSchema &&
+				(responses.length > 0 || lastFinalResponseText)
+			) {
+				try {
+					let parsed: any;
+					// First, try to construct an object from sub-agent outputKeys when available
+					const outputByKey: Record<string, any> = {};
+					for (const sub of this.subAgents) {
+						const maybe = sub as any;
+						if (maybe && typeof maybe === "object" && "outputKey" in maybe) {
+							const ok = maybe.outputKey as string | undefined;
+							if (ok && finalByName[sub.name]) {
+								outputByKey[ok] = finalByName[sub.name];
+							}
+						}
+					}
+
+					if (Object.keys(outputByKey).length > 0) {
+						// Validate the constructed object directly
+						parsed = this.outputSchema.parse(outputByKey);
+					} else {
+						// Otherwise, try last final response text or combined text
+						const candidate = lastFinalResponseText || combinedResponse.trim();
+						try {
+							parsed = this.outputSchema.parse(JSON.parse(candidate));
+						} catch {
+							parsed = this.outputSchema.parse(candidate);
+						}
+					}
+
+					this.logger.debug(
+						`Output schema validation successful for agent ${this.name}`,
+					);
+
+					// Yield a final event with the validated response
+					const finalEvent = new Event({
+						invocationId: ctx.invocationId,
+						author: this.name,
+						branch: ctx.branch,
+						content: {
+							parts: [
+								{
+									text:
+										typeof parsed === "string"
+											? parsed
+											: JSON.stringify(parsed),
+								},
+							],
+						},
+					});
+					yield finalEvent;
+				} catch (validationError) {
+					this.logger.warn(
+						`Output schema validation failed for agent ${this.name}: ${validationError}`,
+					);
+					// Still yield the original combined response if validation fails
+					const finalEvent = new Event({
+						invocationId: ctx.invocationId,
+						author: this.name,
+						branch: ctx.branch,
+						content: {
+							parts: [
+								{ text: (lastFinalResponseText || combinedResponse).trim() },
+							],
+						},
+					});
+					yield finalEvent;
+				}
+			}
+		} finally {
+			// Restore original transfer flags
+			for (const r of restoreRecords) {
+				try {
+					if (typeof r.parent !== "undefined")
+						r.agent.disallowTransferToParent = r.parent;
+					if (typeof r.peers !== "undefined")
+						r.agent.disallowTransferToPeers = r.peers;
+				} catch {}
 			}
 		}
 	}

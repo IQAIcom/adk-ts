@@ -61,6 +61,47 @@ export class SequentialAgent extends BaseAgent {
 	protected async *runAsyncImpl(
 		ctx: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
+		// Auto-toggle transfer flags on sub-agents when output schema is present on container or sub-agents
+		const restoreRecords: Array<{
+			agent: BaseAgent & {
+				disallowTransferToParent?: boolean;
+				disallowTransferToPeers?: boolean;
+			};
+			parent?: boolean;
+			peers?: boolean;
+		}> = [];
+
+		try {
+			const containerHasSchema = !!this.outputSchema;
+			const anySubHasSchema = this.subAgents.some(
+				(a) => (a as any).outputSchema,
+			);
+			if (containerHasSchema || anySubHasSchema) {
+				for (const sa of this.subAgents) {
+					const s = sa as any;
+					if (
+						"disallowTransferToParent" in s ||
+						"disallowTransferToPeers" in s
+					) {
+						restoreRecords.push({
+							agent: s,
+							parent: s.disallowTransferToParent,
+							peers: s.disallowTransferToPeers,
+						});
+						s.disallowTransferToParent = true;
+						s.disallowTransferToPeers = true;
+						this.logger.warn(
+							`SequentialAgent ${this.name}: auto-disabled transfers for sub-agent '${sa.name}' because ${
+								containerHasSchema
+									? "container has outputSchema"
+									: "a sub-agent has outputSchema"
+							}. Configure disallowTransfer flags explicitly to suppress this warning.`,
+						);
+					}
+				}
+			}
+		} catch {}
+
 		let lastValidResponse = "";
 		let lastRespondingAgent = "";
 		let lastFinalEvent: Event | null = null;
@@ -100,6 +141,16 @@ export class SequentialAgent extends BaseAgent {
 					}
 				}
 			}
+		}
+
+		// Restore original transfer flags
+		for (const r of restoreRecords) {
+			try {
+				if (typeof r.parent !== "undefined")
+					r.agent.disallowTransferToParent = r.parent;
+				if (typeof r.peers !== "undefined")
+					r.agent.disallowTransferToPeers = r.peers;
+			} catch {}
 		}
 
 		// If we have a valid response and output schema, validate it

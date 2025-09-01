@@ -629,8 +629,14 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 				}
 
 				try {
-					const parsed = JSON.parse(result);
-					result = this.outputSchema.parse(parsed);
+					// Try JSON parse first, then fallback to validating raw string for primitive schemas
+					let validated: any;
+					try {
+						validated = this.outputSchema.parse(JSON.parse(result));
+					} catch {
+						validated = this.outputSchema.parse(result);
+					}
+					result = validated;
 				} catch (error) {
 					this.logger.error("Failed to validate output with schema:", error);
 					throw new Error(

@@ -58,7 +58,7 @@ class OutputSchemaResponseProcessor extends BaseLlmResponseProcessor {
 		}
 
 		// Extract text content from response parts
-		let textContent = llmResponse.content.parts
+		const textContent = llmResponse.content.parts
 			.map((part) => {
 				if (part && typeof part === "object" && "text" in part) {
 					return part.text || "";
@@ -73,22 +73,31 @@ class OutputSchemaResponseProcessor extends BaseLlmResponseProcessor {
 		}
 
 		try {
-			// Prepare candidate JSON text by stripping fences and try parsing (with repair fallback)
+			// Prepare candidate JSON text by stripping fences
 			const candidate = this.stripCodeFences(textContent);
-			const parsed = this.tryParseJson(candidate, agent.name);
 
-			const validated = (agent.outputSchema as any).parse(parsed);
+			// Validate by trying JSON first, then raw text for primitive schemas
+			const validated: any = (() => {
+				try {
+					const parsedJson = this.tryParseJson(candidate, agent.name);
+					return (agent.outputSchema as any).parse(parsedJson);
+				} catch {
+					return (agent.outputSchema as any).parse(candidate);
+				}
+			})();
 
-			// Update the response content with validated data
-			// This ensures downstream processors get the validated, typed data
-			textContent = JSON.stringify(validated, null, 2);
+			// Normalize content to string
+			const normalized =
+				typeof validated === "string"
+					? validated
+					: JSON.stringify(validated, null, 2);
 
 			// Update the response parts with the validated content
 			llmResponse.content.parts = llmResponse.content.parts.map((part) => {
 				if (part && typeof part === "object" && "text" in part) {
 					return {
 						...part,
-						text: textContent,
+						text: normalized,
 					};
 				}
 				return part;
@@ -96,8 +105,11 @@ class OutputSchemaResponseProcessor extends BaseLlmResponseProcessor {
 
 			this.logger.debug("Output schema validation successful", {
 				agent: agent.name,
-				originalLength: textContent.length,
-				validatedKeys: Object.keys(validated),
+				originalLength: normalized.length,
+				validatedKeys:
+					typeof validated === "object" && validated !== null
+						? Object.keys(validated)
+						: [],
 			});
 		} catch (error) {
 			// Create error message with detailed information

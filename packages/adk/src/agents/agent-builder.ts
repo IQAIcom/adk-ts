@@ -314,6 +314,15 @@ export class AgentBuilder {
 	withSubAgents(subAgents: BaseAgent[]): this {
 		this.warnIfLocked("withSubAgents");
 		this.config.subAgents = subAgents;
+
+		// If an output schema is already configured and this is a container agent,
+		// make sure new sub-agents receive the schema and disable their own validation.
+		if (
+			this.config.outputSchema &&
+			(this.agentType === "sequential" || this.agentType === "parallel")
+		) {
+			this.applyOutputSchemaToAllLlmAgents(subAgents, true);
+		}
 		return this;
 	}
 
@@ -363,8 +372,12 @@ export class AgentBuilder {
 		this.agentType = "sequential";
 		this.config.subAgents = subAgents;
 
-		// Note: Output schema will be applied at the SequentialAgent level,
-		// not to individual sub-agents
+		// If an output schema was already set before configuring as sequential,
+		// ensure it's applied consistently to LlmAgent sub-agents and
+		// their individual validation is disabled.
+		if (this.config.outputSchema) {
+			this.applyOutputSchemaToAllLlmAgents(subAgents, true);
+		}
 
 		return this;
 	}
@@ -379,8 +392,12 @@ export class AgentBuilder {
 		this.agentType = "parallel";
 		this.config.subAgents = subAgents;
 
-		// Note: Output schema will be applied at the ParallelAgent level,
-		// not to individual sub-agents
+		// If an output schema was already set before configuring as parallel,
+		// ensure it's applied consistently to LlmAgent sub-agents and
+		// their individual validation is disabled.
+		if (this.config.outputSchema) {
+			this.applyOutputSchemaToAllLlmAgents(subAgents, true);
+		}
 
 		return this;
 	}
