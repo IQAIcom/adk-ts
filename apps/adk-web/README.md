@@ -78,7 +78,7 @@ Open http://localhost:3000. To connect to a running CLI server, append `?port=80
 	- `GET /api/agents` – list agents
 	- `POST /api/agents/:relativePath/message` – send a message
 
-See `lib/api.ts` for the client used by the UI.
+The UI now uses the generated OpenAPI client in `Api.ts` directly via React Query inside hooks (see `hooks/useAgents.ts`, `useSessions.ts`, `useEvents.ts`, `useStatePanel.ts`).
 
 ## 📚 Related Packages
 

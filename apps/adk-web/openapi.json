@@ -1,0 +1,740 @@
+{
+	"openapi": "3.0.0",
+	"paths": {
+		"/api/agents": {
+			"get": {
+				"operationId": "AgentsController_listAgents",
+				"summary": "List discovered agents",
+				"description": "Returns all agent entries found by scanning the agents directory. Each agent includes name, absolute, and relative paths.",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AgentsListResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["agents"]
+			}
+		},
+		"/api/agents/refresh": {
+			"post": {
+				"operationId": "AgentsController_refreshAgents",
+				"summary": "Rescan and list agents",
+				"description": "Triggers a fresh scan of the agents directory and returns the updated agent list.",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AgentsListResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["agents"]
+			}
+		},
+		"/api/agents/{id}/messages": {
+			"get": {
+				"operationId": "MessagingController_getAgentMessages",
+				"summary": "Get message history",
+				"description": "Returns ordered chat transcript for the agent, including user and assistant messages.",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Agent identifier",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessagesResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["messaging"]
+			}
+		},
+		"/api/agents/{id}/message": {
+			"post": {
+				"operationId": "MessagingController_postAgentMessage",
+				"summary": "Send a message to the agent",
+				"description": "Adds a user message (with optional base64 attachments) and returns the assistant response.",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Agent identifier",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"description": "Message payload",
+					"content": {
+						"application/json": {
+							"schema": {
+								"example": {
+									"message": "Hello agent!",
+									"attachments": [
+										{
+											"name": "notes.txt",
+											"mimeType": "text/plain",
+											"data": "YmFzZTY0IGRhdGE="
+										}
+									]
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["messaging"]
+			}
+		},
+		"/api/agents/{id}/sessions": {
+			"get": {
+				"operationId": "SessionsController_listSessions",
+				"summary": "List sessions for an agent",
+				"description": "Returns all active sessions for the specified agent including metadata.",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "URL-encoded absolute agent path or identifier",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SessionsResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["sessions"]
+			},
+			"post": {
+				"operationId": "SessionsController_createSession",
+				"summary": "Create a new session",
+				"description": "Creates a session for the agent. Optional state and custom sessionId may be provided.",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "URL-encoded absolute agent path or identifier",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"description": "Initial session creation payload with optional state",
+					"content": {
+						"application/json": {
+							"schema": {
+								"example": {
+									"state": {
+										"foo": "bar"
+									},
+									"sessionId": "custom-id-123"
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SessionResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["sessions"]
+			}
+		},
+		"/api/agents/{id}/sessions/{sessionId}": {
+			"delete": {
+				"operationId": "SessionsController_deleteSession",
+				"summary": "Delete a session",
+				"description": "Stops and removes the session if it exists.",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Agent identifier",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "sessionId",
+						"required": true,
+						"in": "path",
+						"description": "Session to delete",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SuccessResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["sessions"]
+			}
+		},
+		"/api/agents/{id}/sessions/{sessionId}/switch": {
+			"post": {
+				"operationId": "SessionsController_switchSession",
+				"summary": "Switch active session",
+				"description": "Marks the specified session as active (implementation specific).",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Agent identifier",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "sessionId",
+						"required": true,
+						"in": "path",
+						"description": "Session to switch to",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SuccessResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["sessions"]
+			}
+		},
+		"/api/agents/{id}/sessions/{sessionId}/events": {
+			"get": {
+				"operationId": "EventsController_getEvents",
+				"summary": "Get session events",
+				"description": "Returns chronological events for a specific agent session including actions, function calls, and responses.",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "URL-encoded absolute agent path or identifier",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "sessionId",
+						"required": true,
+						"in": "path",
+						"description": "Target session identifier",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/EventsResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["events"]
+			}
+		},
+		"/api/agents/{id}/sessions/{sessionId}/state": {
+			"get": {
+				"operationId": "StateController_getState",
+				"summary": "Get current session state",
+				"description": "Retrieves combined agent, user, and session state along with metadata such as last update time and size metrics.",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Agent identifier",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "sessionId",
+						"required": true,
+						"in": "path",
+						"description": "Session identifier",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/StateResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["state"]
+			},
+			"put": {
+				"operationId": "StateController_updateState",
+				"summary": "Update a state path",
+				"description": "Updates a nested state value for the session given a dot/JSON path and value payload.",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Agent identifier",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "sessionId",
+						"required": true,
+						"in": "path",
+						"description": "Session identifier",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"description": "State update payload specifying path and new value",
+					"content": {
+						"application/json": {
+							"schema": {
+								"example": {
+									"path": "user.preferences.theme",
+									"value": "dark"
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SuccessResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["state"]
+			}
+		},
+		"/reload/stream": {
+			"get": {
+				"operationId": "ReloadController_stream",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": ""
+					}
+				}
+			}
+		},
+		"/health": {
+			"get": {
+				"operationId": "HealthController_health",
+				"summary": "Health check",
+				"description": "Basic liveness probe returning status: ok when the service is up.",
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HealthResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": ["health"]
+			}
+		}
+	},
+	"info": {
+		"title": "ADK HTTP API",
+		"description": "REST endpoints for managing and interacting with ADK agents",
+		"version": "1.0.0",
+		"contact": {}
+	},
+	"tags": [
+		{
+			"name": "agents",
+			"description": ""
+		},
+		{
+			"name": "sessions",
+			"description": ""
+		},
+		{
+			"name": "events",
+			"description": ""
+		},
+		{
+			"name": "state",
+			"description": ""
+		},
+		{
+			"name": "messaging",
+			"description": ""
+		},
+		{
+			"name": "health",
+			"description": ""
+		}
+	],
+	"servers": [],
+	"components": {
+		"schemas": {
+			"AgentListItemDto": {
+				"type": "object",
+				"properties": {
+					"path": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"directory": {
+						"type": "string"
+					},
+					"relativePath": {
+						"type": "string"
+					}
+				},
+				"required": ["path", "name", "directory", "relativePath"]
+			},
+			"AgentsListResponseDto": {
+				"type": "object",
+				"properties": {
+					"agents": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/AgentListItemDto"
+						}
+					}
+				},
+				"required": ["agents"]
+			},
+			"MessageItemDto": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "number",
+						"example": 1
+					},
+					"type": {
+						"type": "string",
+						"enum": ["user", "assistant"],
+						"example": "user"
+					},
+					"content": {
+						"type": "string",
+						"example": "Hello"
+					},
+					"timestamp": {
+						"type": "string",
+						"example": "2025-09-05T06:41:53.630Z"
+					}
+				},
+				"required": ["id", "type", "content", "timestamp"]
+			},
+			"MessagesResponseDto": {
+				"type": "object",
+				"properties": {
+					"messages": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/MessageItemDto"
+						}
+					}
+				},
+				"required": ["messages"]
+			},
+			"MessageResponseDto": {
+				"type": "object",
+				"properties": {
+					"response": {
+						"type": "string",
+						"example": "Hi there!"
+					}
+				},
+				"required": ["response"]
+			},
+			"SessionResponseDto": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"appName": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"state": {
+						"type": "object"
+					},
+					"eventCount": {
+						"type": "number",
+						"example": 3
+					},
+					"lastUpdateTime": {
+						"type": "number",
+						"example": 1757054513630
+					},
+					"createdAt": {
+						"type": "number",
+						"example": 1757054513630
+					}
+				},
+				"required": [
+					"id",
+					"appName",
+					"userId",
+					"state",
+					"eventCount",
+					"lastUpdateTime",
+					"createdAt"
+				]
+			},
+			"SessionsResponseDto": {
+				"type": "object",
+				"properties": {
+					"sessions": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/SessionResponseDto"
+						}
+					}
+				},
+				"required": ["sessions"]
+			},
+			"SuccessResponseDto": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"example": true
+					}
+				},
+				"required": ["success"]
+			},
+			"EventItemDto": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"author": {
+						"type": "string"
+					},
+					"timestamp": {
+						"type": "number",
+						"example": 1757054513630
+					},
+					"content": {
+						"type": "object",
+						"description": "Raw event content"
+					},
+					"actions": {
+						"type": "object",
+						"nullable": true
+					},
+					"functionCalls": {
+						"type": "array",
+						"items": {
+							"type": "object"
+						}
+					},
+					"functionResponses": {
+						"type": "array",
+						"items": {
+							"type": "object"
+						}
+					},
+					"branch": {
+						"type": "string",
+						"nullable": true
+					},
+					"isFinalResponse": {
+						"type": "boolean",
+						"example": false
+					}
+				},
+				"required": [
+					"id",
+					"author",
+					"timestamp",
+					"content",
+					"actions",
+					"functionCalls",
+					"functionResponses",
+					"isFinalResponse"
+				]
+			},
+			"EventsResponseDto": {
+				"type": "object",
+				"properties": {
+					"events": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/EventItemDto"
+						}
+					},
+					"totalCount": {
+						"type": "number",
+						"example": 1
+					}
+				},
+				"required": ["events", "totalCount"]
+			},
+			"StateMetadataDto": {
+				"type": "object",
+				"properties": {
+					"lastUpdated": {
+						"type": "number",
+						"example": 1757054513630
+					},
+					"changeCount": {
+						"type": "number",
+						"example": 0
+					},
+					"totalKeys": {
+						"type": "number",
+						"example": 5
+					},
+					"sizeBytes": {
+						"type": "number",
+						"example": 120
+					}
+				},
+				"required": ["lastUpdated", "changeCount", "totalKeys", "sizeBytes"]
+			},
+			"StateResponseDto": {
+				"type": "object",
+				"properties": {
+					"agentState": {
+						"type": "object"
+					},
+					"userState": {
+						"type": "object"
+					},
+					"sessionState": {
+						"type": "object"
+					},
+					"metadata": {
+						"$ref": "#/components/schemas/StateMetadataDto"
+					}
+				},
+				"required": ["agentState", "userState", "sessionState", "metadata"]
+			},
+			"HealthResponseDto": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "string",
+						"example": "ok"
+					}
+				},
+				"required": ["status"]
+			}
+		}
+	}
+}

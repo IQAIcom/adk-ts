@@ -91,10 +91,7 @@ async function demonstrateCustomMcpServer() {
 
 		// Test calculator tool
 		console.log("🧮 Testing calculator functionality:");
-		await ask(
-			runner.ask.bind(runner),
-			"What's 25 multiplied by 8?",
-		);
+		await ask(runner.ask.bind(runner), "What's 25 multiplied by 8?");
 
 		await greetingToolset.close();
 	} catch (error) {

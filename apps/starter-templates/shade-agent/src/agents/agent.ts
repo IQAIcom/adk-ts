@@ -16,23 +16,20 @@ import { getEthSentimentAgent } from "./eth-sentiment-agent/agent";
 export const getRootAgent = async () => {
 	const ethPriceAgent = getEthPriceAgent();
 	const ethSentimentAgent = getEthSentimentAgent();
-	const sessionService = new InMemorySessionService();
-	const session = await sessionService.createSession("default", "default", {
-		headlines: "",
-		price: 0,
-		sentiment: "",
-	});
 
-	const { runner } = await AgentBuilder.create("root_agent")
+	return await AgentBuilder.create("root_agent")
 		.withDescription(
 			"Delegates tasks to sub-agents for Ethereum price and sentiment.",
 		)
 		.withInstruction("Check Ethereum price, then sentiment when asked.")
 		.withModel(env.LLM_MODEL)
 		.asParallel([ethSentimentAgent, ethPriceAgent])
-		.withSessionService(sessionService)
-		.withSession(session)
+		.withQuickSession({
+			state: {
+				headlines: "",
+				price: 0,
+				sentiment: "",
+			},
+		})
 		.build();
-
-	return { runner, sessionService, session };
 };

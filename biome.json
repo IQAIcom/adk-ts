@@ -15,7 +15,8 @@
 			"*.log",
 			".next",
 			"docs/**",
-			"packages/adk/src/cli/browser/**"
+			"packages/adk/src/cli/browser/**",
+			"Api.ts"
 		]
 	},
 	"formatter": {
@@ -37,14 +38,19 @@
 				"noStaticOnlyClass": "off",
 				"noThisInStatic": "off"
 			},
+
 			"style": {
-				"noNonNullAssertion": "off"
+				"noNonNullAssertion": "off",
+				"useImportType": "off"
 			}
 		}
 	},
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"
+		},
+		"parser": {
+			"unsafeParameterDecoratorsEnabled": true
 		}
 	},
 	"overrides": [

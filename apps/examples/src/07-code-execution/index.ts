@@ -1,8 +1,5 @@
 import { env } from "node:process";
-import {
-	InMemorySessionService,
-	AgentBuilder,
-} from "@iqai/adk";
+import { InMemorySessionService, AgentBuilder } from "@iqai/adk";
 import { BuiltInCodeExecutor } from "@iqai/adk";
 import { v4 as uuidv4 } from "uuid";
 import dedent from "dedent";
@@ -53,7 +50,7 @@ async function demonstrateBasicCodeExecution() {
 	);
 
 	console.log("📊 Testing data manipulation:");
-    await ask(
+	await ask(
 		runner.ask.bind(runner),
 		"Generate a list of the first 10 Fibonacci numbers and calculate their average",
 	);

@@ -372,10 +372,7 @@ async function demonstrateHybridPersistence() {
 	);
 
 	console.log("📊 Checking project status:");
-	await ask(
-		runner.ask.bind(runner),
-		"Show me all my projects and their files",
-	);
+	await ask(runner.ask.bind(runner), "Show me all my projects and their files");
 }
 
 async function demonstratePersistencePatterns() {

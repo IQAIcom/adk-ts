@@ -279,16 +279,10 @@ async function demonstrateSubAgents() {
 
 	// Test sub-agent delegation
 	console.log("😄 Testing joke delegation:");
-	await ask(
-		runner.ask.bind(runner),
-		"Tell me a programming joke",
-	);
+	await ask(runner.ask.bind(runner), "Tell me a programming joke");
 
 	console.log("🧮 Testing math delegation:");
-	await ask(
-		runner.ask.bind(runner),
-		"What's 127 multiplied by 43?",
-	);
+	await ask(runner.ask.bind(runner), "What's 127 multiplied by 43?");
 
 	console.log("🌤️ Testing weather delegation:");
 	await ask(
@@ -297,10 +291,7 @@ async function demonstrateSubAgents() {
 	);
 
 	console.log("💬 Testing general query (no delegation):");
-	await ask(
-		runner.ask.bind(runner),
-		"What's the capital of Australia?",
-	);
+	await ask(runner.ask.bind(runner), "What's the capital of Australia?");
 }
 
 async function demonstrateInteractiveMultiAgent() {

@@ -61,10 +61,7 @@ async function demonstrateAiSdkIntegration() {
 		.withTools(weatherTool)
 		.build();
 
-	await ask(
-		runner.ask.bind(runner),
-		"Get the weather for Tokyo",
-	);
+	await ask(runner.ask.bind(runner), "Get the weather for Tokyo");
 }
 
 async function demonstrateHttpIntegration() {

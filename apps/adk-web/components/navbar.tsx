@@ -1,6 +1,5 @@
 import type { Agent } from "@/app/(dashboard)/_schema";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Badge } from "@/components/ui/badge";
 import {
 	Select,
 	SelectContent,
@@ -8,9 +7,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { Bot } from "lucide-react";
-import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface NavbarProps {
 	apiUrl: string;
@@ -26,37 +24,26 @@ export function Navbar({
 	onSelectAgent,
 }: NavbarProps) {
 	return (
-		<nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-			<div className="container mx-auto px-6 py-3">
+		<nav className="border-b bg-background/95 backdrop-blur h-[60px] supports-[backdrop-filter]:bg-background/60">
+			<div className="px-4 py-3">
 				<div className="flex items-center justify-between">
-					{/* Logo and Title */}
-					<div className="flex items-center space-x-3">
-						<div className="relative">
-							<Image
-								src="/adk.png"
-								alt="ADK Logo"
-								width={32}
-								height={32}
-								className="dark:hidden"
-							/>
-							<Image
-								src="/dark-adk.png"
-								alt="ADK Logo"
-								width={32}
-								height={32}
-								className="hidden dark:block"
-							/>
-						</div>
-						<div className="flex flex-col">
-							<h1 className="text-xl font-bold">ADK-TS Web</h1>
-							<p className="text-xs text-muted-foreground">
-								Connected to {new URL(apiUrl).host}
-							</p>
-						</div>
-					</div>
+					{/* Connection Status */}
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<div className="flex items-center space-x-2 cursor-pointer">
+								<div className="h-2 w-2 rounded-full bg-green-500" />
+								<span className="text-xs text-muted-foreground">
+									{new URL(apiUrl).host}
+								</span>
+							</div>
+						</TooltipTrigger>
+						<TooltipContent>
+							<span>Connected to this server</span>
+						</TooltipContent>
+					</Tooltip>
 
 					{/* Agent Selector */}
-					<div className="flex items-center space-x-4">
+					<div className="flex items-center space-x-3">
 						{agents.length > 0 && (
 							<div className="flex items-center space-x-2">
 								<Select
@@ -66,12 +53,12 @@ export function Navbar({
 										if (agent) onSelectAgent(agent);
 									}}
 								>
-									<SelectTrigger className="w-[200px]">
+									<SelectTrigger className="w-[180px]">
 										<SelectValue placeholder="Select an agent">
 											{selectedAgent && (
-												<div className="flex items-center space-x-2 justify-between">
-													<Bot className="h-4 w-4 text-muted-foreground" />
-													<span>{selectedAgent.name}</span>
+												<div className="flex items-center space-x-1.5 justify-between">
+													<Bot className="h-3.5 w-3.5 text-muted-foreground" />
+													<span className="text-sm">{selectedAgent.name}</span>
 												</div>
 											)}
 										</SelectValue>

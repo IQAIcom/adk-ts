@@ -105,7 +105,10 @@ async function demonstrateAdvancedFlowPatterns() {
 		.withPlanner(new PlanReActPlanner())
 		.build();
 
-	await ask(runner.ask.bind(runner), "Create API docs: specification, endpoints, getting started guide");
+	await ask(
+		runner.ask.bind(runner),
+		"Create API docs: specification, endpoints, getting started guide",
+	);
 }
 
 async function main() {
