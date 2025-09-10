@@ -250,7 +250,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			throw new Error("Docker client is not initialized.");
 		}
 
-		this.logger.info("Building Docker image...", {
+		this.logger.debug("Building Docker image...", {
 			path: this.dockerPath,
 			tag: this.image,
 		});
@@ -286,7 +286,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 				);
 			});
 
-			this.logger.info("Docker image built successfully", { tag: this.image });
+			this.logger.debug("Docker image built successfully", { tag: this.image });
 		} catch (error) {
 			this.logger.error("Failed to build Docker image", error);
 			throw error;
@@ -346,7 +346,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			await this.buildDockerImage();
 		}
 
-		this.logger.info("Starting container for ContainerCodeExecutor...", {
+		this.logger.debug("Starting container for ContainerCodeExecutor...", {
 			image: this.image,
 		});
 
@@ -363,7 +363,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 
 			await this.container.start();
 
-			this.logger.info("Container started successfully", {
+			this.logger.debug("Container started successfully", {
 				containerId: this.container.id,
 			});
 
@@ -403,7 +403,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 		}
 
 		try {
-			this.logger.info("Cleaning up container...", {
+			this.logger.debug("Cleaning up container...", {
 				containerId: this.container.id,
 			});
 
@@ -413,7 +413,7 @@ export class ContainerCodeExecutor extends BaseCodeExecutor {
 			// Remove the container
 			await this.container.remove();
 
-			this.logger.info("Container stopped and removed successfully", {
+			this.logger.debug("Container stopped and removed successfully", {
 				containerId: this.container.id,
 			});
 		} catch (error) {

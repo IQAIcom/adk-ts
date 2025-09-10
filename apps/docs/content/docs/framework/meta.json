@@ -1,6 +1,18 @@
 {
-  "title": "Framework",
+  "title": "Docs",
   "icon": "Building",
   "root": true,
-  "pages": ["index", "get-started", "agents", "tools", "sessions", "runtime", "evaluation", "artifacts", "callbacks", "context", "deploy", "events"]
+  "pages": [
+    "get-started",
+    "agents",
+    "tools",
+    "sessions",
+    "runtime",
+    "evaluation",
+    "artifacts",
+    "callbacks",
+    "context",
+    "deploy",
+    "events"
+  ]
 }

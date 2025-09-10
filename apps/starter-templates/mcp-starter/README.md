@@ -1,4 +1,20 @@
+
+<div align="center">
+
+<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
+
+<br/>
+
+
 # MCP Server Starter Template
+
+**A minimal starter template for building Model Context Protocol (MCP) servers using TypeScript and FastMCP.**
+
+_MCP • FastMCP • TypeScript_
+
+---
+
+</div>
 
 A minimal starter template for building Model Context Protocol (MCP) servers using TypeScript and FastMCP.
 
@@ -16,31 +32,34 @@ A minimal starter template for building Model Context Protocol (MCP) servers usi
 
 ## Getting Started
 
-1. **Create a new repository from this template:**
-   Click [here](https://github.com/new?template_name=mcp-server-starter&template_owner=IQAIcom) to generate a new repository from this template.
 
-2. **Navigate to your new project:**
+The easiest way to create a new MCP server project using this template is with the ADK CLI:
 
-    ```bash
-    cd /path/to/your-new-mcp-server
-    ```
+```bash
+npm install -g @iqai/adk-cli # if you haven't already
+adk new --template mcp-starter my-mcp-server
+cd my-mcp-server
+pnpm install
+```
 
-3. **Initialize Git Repository (if not already):**
+You can also use this template directly by copying the files, but using the CLI is recommended for best results.
 
-    ```bash
-    git init
-    git branch -M main # Or your preferred default branch name
-    ```
+### Running the Server
 
-4. **Customize `package.json`:**
-    * Update `name`, `version`, `description`, `author`, `repository`, etc.
-    * Update the `bin` entry if you change the command name.
+**Default (Production/Development) Route**
 
-5. **Install dependencies:**
+To run your MCP server in production or for standard development, use:
+```bash
+pnpm dev
+```
 
-    ```bash
-    pnpm install
-    ```
+**Fast Iteration & Agent Setup (ADK CLI)**
+
+For rapid prototyping, interactive testing, or initial agent setup, use the ADK CLI:
+```bash
+adk run   # Interactive CLI chat with your agents
+adk web   # Web interface for easy testing and demonstration
+```
 
 6. **Configure environment variables:**
    For the weather service example, you'll need an OpenWeather API key:
@@ -147,6 +166,28 @@ This template is ready for release management using [Changesets](https://github.
 * `pnpm run build`: Compiles TypeScript to JavaScript in `dist/` and makes the output executable.
 * `pnpm run dev`: Runs the server in development mode using `tsx` (hot-reloading for TypeScript).
 * `pnpm run start`: Runs the built server (from `dist/`) using Node.
+
+## Testing Your MCP Server
+
+**Option 1: Direct MCP Server Usage**
+Use the server directly with MCP clients or integrate it into other applications.
+
+**Option 2: With ADK CLI (For Client-Side Testing)**
+While this template creates an MCP *server*, you can create a simple client to test it:
+
+1. Install the ADK CLI globally:
+   ```bash
+   npm install -g @iqai/adk-cli
+   ```
+
+2. Create a simple agent that uses your MCP server (in a separate test directory):
+   ```bash
+   # In a test directory, create an agents/agent.ts file that connects to your MCP server
+   adk run  # Test the integration
+   adk web  # Web interface for testing
+   ```
+
+This approach is useful for testing how your MCP server tools work within the ADK ecosystem.
 
 ## Using the Server
 

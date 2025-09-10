@@ -1,0 +1,180 @@
+---
+title: MCP Upbit
+description: An MCP server for interacting with the Upbit cryptocurrency exchange
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+- **Package**: [`@iqai/mcp-upbit`](https://www.npmjs.com/package/@iqai/mcp-upbit)
+- **Purpose**: Interacting with the Upbit cryptocurrency exchange for market data and trading operations.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpUpbit} from "@iqai/adk";
+
+    const toolset = McpUpbit({
+      env: {
+        UPBIT_ACCESS_KEY: process.env.UPBIT_ACCESS_KEY,
+        UPBIT_SECRET_KEY: process.env.UPBIT_SECRET_KEY,
+        UPBIT_ENABLE_TRADING: "true",
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Upbit MCP Client",
+      description: "Client for Upbit exchange operations",
+      transport: {
+        mode: "stdio",
+        command: "npx",
+        args: ["-y", "@iqai/mcp-upbit"],
+        env: {
+          UPBIT_ACCESS_KEY: process.env.UPBIT_ACCESS_KEY,
+          UPBIT_SECRET_KEY: process.env.UPBIT_SECRET_KEY,
+          UPBIT_ENABLE_TRADING: "true",
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "upbit-mcp-server": {
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-upbit"],
+          "env": {
+            "UPBIT_ACCESS_KEY": "your_access_key_here",
+            "UPBIT_SECRET_KEY": "your_secret_key_here",
+            "UPBIT_ENABLE_TRADING": "true"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Features
+
+- Access Upbit market data and trading operations
+- Public market data tools (no authentication required)
+- Private trading tools with API key authentication
+- Real-time ticker, orderbook, and trade data
+
+## Available Tools
+
+### `GET_TICKER`
+
+Get the latest ticker information for a specific market:
+
+- Parameters: `market` (string)
+
+### `GET_ORDERBOOK`
+
+Get the current orderbook snapshot for a market:
+
+- Parameters: `market` (string)
+
+### `GET_TRADES`
+
+Get recent trades for a market:
+
+- Parameters: `market` (string)
+
+### `GET_ACCOUNTS`
+
+Get account information and balances:
+
+- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
+
+### `GET_ORDERS`
+
+Get order history with optional filtering:
+
+- Parameters: `market` (string, optional), `state` (string, optional), `page` (number, optional), `limit` (number, optional)
+- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
+
+### `GET_ORDER`
+
+Get specific order details:
+
+- Parameters: `uuid` (string, optional), `identifier` (string, optional)
+- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
+
+### `CREATE_ORDER`
+
+Create a new trading order:
+
+- Parameters: `tokenContract` (string), `side` (string), `ord_type` (string), `volume` (string, optional), `price` (string, optional)
+- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
+
+### `CANCEL_ORDER`
+
+Cancel an existing order:
+
+- Parameters: `uuid` (string)
+- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
+
+## Environment Variables
+
+<Callout type="warn" title="Security">
+Private keys are used for trading operations. Handle with care.
+</Callout>
+
+- `UPBIT_ACCESS_KEY`: Required for private trading operations
+- `UPBIT_SECRET_KEY`: Required for private trading operations
+- `UPBIT_ENABLE_TRADING`: Set to "true" to enable trading functionality
+- `UPBIT_SERVER_URL`: Optional API server URL (defaults to https://api.upbit.com)
+
+## Usage Examples
+
+### Public Market Data
+
+- "Get ticker for KRW-BTC market"
+- "Show me the orderbook for KRW-ETH"
+- "What are the recent trades for KRW-ADA?"
+
+### Private Trading Operations
+
+- "Show my Upbit account balances"
+- "Get my order history for KRW-BTC"
+- "Create a buy order for 0.001 BTC at 50,000,000 KRW"
+- "Cancel order with UUID abc123..."
+
+## Response Format
+
+Actions return **structured responses** including:
+
+✔ **Market data with prices and volumes** 💹
+✔ **Account balances and positions** 💰
+✔ **Order status and transaction details** 📋
+✔ **Error messages when applicable** ⚠️
+
+## Error Handling
+
+<Callout type="warn" title="Error Scenarios">
+The server handles various error scenarios gracefully.
+</Callout>
+
+🚨 **Missing API credentials**
+💸 **Invalid market identifiers**
+🔄 **Trading disabled**
+🌐 **API rate limits**
+🛑 **Insufficient balances**

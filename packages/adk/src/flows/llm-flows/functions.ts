@@ -1,4 +1,5 @@
 import type { Content, FunctionCall, Part } from "@google/genai";
+import { context, trace } from "@opentelemetry/api";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
 import { Event } from "../../events/event";
@@ -7,6 +8,7 @@ import type { AuthConfig } from "../../auth/auth-config";
 import type { AuthToolArguments } from "../../auth/auth-tool";
 import type { BaseTool } from "../../tools/base/base-tool";
 import { ToolContext } from "../../tools/tool-context";
+import { telemetryService } from "../../telemetry";
 
 export const AF_FUNCTION_CALL_ID_PREFIX = "adk-";
 export const REQUEST_EUC_FUNCTION_CALL_NAME = "adk_request_credential";
@@ -152,30 +154,54 @@ export async function handleFunctionCallsAsync(
 		// Execute tool
 		const functionArgs = functionCall.args || {};
 
-		// Call tool directly (tool callbacks not implemented in current TypeScript version)
-		const functionResponse = await callToolAsync(
-			tool,
-			functionArgs,
-			toolContext,
-		);
+		// Create tracing span for tool execution (matching Python pattern)
+		const tracer = telemetryService.getTracer();
+		const span = tracer.startSpan(`execute_tool ${tool.name}`);
+		const spanContext = trace.setSpan(context.active(), span);
 
-		// Handle long running tools
-		if (tool.isLongRunning) {
-			// Allow long running function to return null to not provide function response
+		try {
+			// Execute tool within the span context
+			const functionResponse = await context.with(spanContext, async () => {
+				const result = await callToolAsync(tool, functionArgs, toolContext);
+
+				// Handle long running tools
+				if (tool.isLongRunning && !result) {
+					return null;
+				}
+
+				// Build function response event
+				const functionResponseEvent = buildResponseEvent(
+					tool,
+					result,
+					toolContext,
+					invocationContext,
+				);
+
+				// Trace the tool call with the complete response event (matching Python)
+				// This must be called within the span context so the span is active
+				telemetryService.traceToolCall(
+					tool,
+					functionArgs,
+					functionResponseEvent,
+				);
+
+				return { result, event: functionResponseEvent };
+			});
+
+			// Handle long running tools that returned null
 			if (!functionResponse) {
 				continue;
 			}
+
+			functionResponseEvents.push(functionResponse.event);
+			span.setStatus({ code: 1 }); // OK
+		} catch (error) {
+			span.recordException(error as Error);
+			span.setStatus({ code: 2, message: (error as Error).message });
+			throw error;
+		} finally {
+			span.end();
 		}
-
-		// Build function response event
-		const functionResponseEvent = buildResponseEvent(
-			tool,
-			functionResponse,
-			toolContext,
-			invocationContext,
-		);
-
-		functionResponseEvents.push(functionResponseEvent);
 	}
 
 	if (!functionResponseEvents.length) {

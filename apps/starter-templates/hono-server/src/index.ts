@@ -35,6 +35,10 @@ const port = Number(env.PORT) || 3000;
 console.log(`🚀 Started Hono server on port ${port}`);
 console.log(`👉 Visit http://localhost:${port} to see the server in action`);
 
+/**
+ * Start the Hono server with the configured app and port.
+ * The server exposes AI agent functionality through REST endpoints.
+ */
 serve({
 	fetch: app.fetch,
 	port,

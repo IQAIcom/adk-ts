@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: ADK-TS Documentation
+    url: https://adk.iqai.com/docs
+    about: Check our documentation for guides and API references
+  - name: Discord Community
+    url: https://discord.com/invite/x9EWvTcPXt
+    about: Join our community for real-time discussions and support

@@ -79,7 +79,7 @@ export class VertexAiSessionService extends BaseSessionService {
 			request_dict: sessionJsonDict,
 		});
 
-		console.info("Create Session response", apiResponse);
+		console.debug("Create Session response", apiResponse);
 
 		const createdSessionId = apiResponse.name.split("/").slice(-3, -2)[0];
 		const operationId = apiResponse.name.split("/").pop();

@@ -1,5 +1,127 @@
 # @iqai/adk
 
+## 0.3.1
+
+### Patch Changes
+
+- b6c0344: Improved adk cli experience
+
+## 0.3.0
+
+### Minor Changes
+
+- 3561208: ## Features
+
+  - Introduced conditional typing for multi-agent responses in `EnhancedRunner`, `BuiltAgent`, and `AgentBuilderWithSchema`. The ask() method now returns appropriate response type based on agent configuration.
+  - Improved `AgentBuilder` methods (asSequential, asParallel, and related build methods) for better type propagation and correct return types for multi-agent aggregators.
+  - Output schemas can no longer be set directly on multi-agent aggregators. Schemas must now be defined on individual sub-agents.
+
+  ## Fixes
+
+  - Bugfix in mergeAgentRun that caused incorrect removal of resolved promises.
+
+  ## Changes
+
+  - `ask()` implementation tailored to aggregate and return per-agent responses for multi-agent setups while maintaining schema validation for single-agent cases.
+  - Now, `AgentBuilder` and `BuiltAgent` are being re-exported explicitly from the ADK entrypoint for type preservation in bundled declarations.
+
+### Patch Changes
+
+- c890576: Enhance structured logging and error handling in the AgentBuilder. Unify logger styles and improve warning messages for better clarity.
+- b0fdba9: Fixes string concatination for output schema validation error
+
+## 0.2.5
+
+### Patch Changes
+
+- e1dc750: - Implements output schema to work with tools and agent transfers
+
+## 0.2.4
+
+### Patch Changes
+
+- dc2c3eb: Fix database session service to use consistent state prefixes with in-memory service
+
+  The database session service was using hardcoded prefix strings ("app*", "user*", "temp\_") instead of the proper State constants (State.APP_PREFIX, State.USER_PREFIX, State.TEMP_PREFIX) that are used by the in-memory session service. This inconsistency could cause state handling issues when switching between session service implementations.
+
+## 0.2.3
+
+### Patch Changes
+
+- 298edf1: `convertMcpToolToBaseTool` now takes in a optional toolHandler for more modularity
+
+## 0.2.2
+
+### Patch Changes
+
+- 0485d51: export convertMcpToolToBaseTool to convert Tool -> BaseTool
+
+## 0.2.1
+
+### Patch Changes
+
+- 765592d: export McpClientService
+- 14fdbf4: added mcp-upbit to servers file
+
+## 0.2.0
+
+### Minor Changes
+
+- 17341fc: Refactor agent loading and resolution logic with enhanced flexibility and reliability
+
+  This major enhancement improves the ADK CLI server's agent loading capabilities and adds new features to the core framework:
+
+  **CLI Server Improvements:**
+
+  - **Modular Architecture**: Refactored monolithic server file into organized modules (`server/index.ts`, `server/routes.ts`, `server/services.ts`, `server/types.ts`)
+  - **Enhanced Agent Resolution**: New `resolveAgentExport` method supports multiple export patterns:
+    - Direct agent exports: `export const agent = new LlmAgent(...)`
+    - Function factories: `export function agent() { return new LlmAgent(...) }`
+    - Async factories: `export async function agent() { return new LlmAgent(...) }`
+    - Container objects: `export default { agent: ... }`
+    - Primitive exports with fallback scanning
+  - **Improved TypeScript Import Handling**: Better project root detection and module resolution for TypeScript files
+
+  **Core Framework Enhancements:**
+
+  - **New AgentBuilder Method**: Added `withAgent()` method to directly provide existing agent instances with definition locking to prevent accidental configuration overwrites
+  - **Two-Tier Tool Deduplication**: Implemented robust deduplication logic to prevent duplicate function declarations that cause errors with LLM providers (especially Google)
+  - **Better Type Safety**: Improved type definitions and replaced `any[]` usage with proper typed interfaces
+
+  **Testing & Reliability:**
+
+  - **Comprehensive Test Coverage**: New `agent-resolution.test.ts` with extensive fixtures testing various agent export patterns
+  - **Multiple Test Fixtures**: Added 6 different agent export pattern examples for validation
+  - **Edge Case Handling**: Improved error handling and logging throughout the agent loading pipeline
+
+  These changes provide a more flexible, reliable, and maintainable foundation for agent development and deployment while maintaining backward compatibility.
+
+- 1564b7b: Port Python evaluation framework to TypeScript
+
+  This change introduces a comprehensive evaluation framework for testing AI agent performance. Key features include:
+
+  - **Core evaluation engine** with agent-evaluator and local evaluation service
+  - **Built-in evaluators** for response matching, trajectory analysis, LLM-as-judge, and safety checks
+  - **Metrics system** with ROUGE scoring and tool trajectory analysis
+  - **Vertex AI integration** for cloud-based evaluation
+  - **Pluggable registry system** for custom metric evaluators
+  - **Structured evaluation cases and test sets** for organized testing
+
+  The framework is marked as experimental and provides essential tooling for evaluating agent responses, tool usage, and overall performance across different scenarios.
+
+## 0.1.22
+
+### Patch Changes
+
+- c4e642a: downgraded info level logs to debug, removed legacy starter in create-adk-project and new adk cli initial version!
+
+## 0.1.21
+
+### Patch Changes
+
+- 22c1cc6: Adds support for input and output schemas for agents, now output schema would update the instruction with the given schema to ristrict model into giving the desired output and validates it before producing output. Agent builder is wired to provide better type inference of the schema given by withOutputSchema
+- f141bc0: Improves error handling for missing models in workflows
+
 ## 0.1.20
 
 ### Patch Changes

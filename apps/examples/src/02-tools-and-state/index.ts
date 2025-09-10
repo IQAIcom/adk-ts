@@ -2,6 +2,7 @@ import { env } from "node:process";
 import { AgentBuilder, InMemorySessionService, createTool } from "@iqai/adk";
 import dedent from "dedent";
 import * as z from "zod";
+import { ask } from "../utils";
 
 /**
  * 02 - Tools and State Management
@@ -89,7 +90,8 @@ async function demonstrateToolsAndState() {
 		.withDescription(
 			"A shopping cart assistant that manages items and calculates totals",
 		)
-		.withInstruction(dedent`
+		.withInstruction(
+			dedent`
 			You are a shopping cart assistant. Help users manage their cart.
 
 			Current cart state:
@@ -98,27 +100,25 @@ async function demonstrateToolsAndState() {
 
 			You can add items and view the cart. Always be helpful with pricing and quantities.
 			When asked about current cart without tools, reference the cart state above.
-		`)
+		`,
+		)
 		.withTools(addItemTool, viewCartTool)
 		.withSessionService(sessionService, { state: initialState })
 		.build();
 
 	// Test adding items
-	const item1 = await runner.ask("Add 2 apples to my cart at $1.50 each");
-	console.log(item1);
+	await ask(runner.ask.bind(runner), "Add 2 apples to my cart at $1.50 each");
 
-	const item2 = await runner.ask("Add 1 banana for $0.75");
-	console.log(item2);
+	await ask(runner.ask.bind(runner), "Add 1 banana for $0.75");
 
 	// Test state injection - ask about cart without using tools
-	const stateCheck = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"How many items are in my cart and what are they? Use the state information from your instructions, don't call any tools.",
 	);
-	console.log(stateCheck);
 
 	// Test viewing cart with tools
-	const cartView = await runner.ask("Show me my complete cart with total");
-	console.log(cartView);
+	await ask(runner.ask.bind(runner), "Show me my complete cart with total");
 }
 
 async function main() {

@@ -1,5 +1,93 @@
 # @iqai/examples
 
+## 0.0.24
+
+### Patch Changes
+
+- Updated dependencies [b6c0344]
+  - @iqai/adk@0.3.1
+
+## 0.0.23
+
+### Patch Changes
+
+- Updated dependencies [c890576]
+- Updated dependencies [b0fdba9]
+- Updated dependencies [3561208]
+  - @iqai/adk@0.3.0
+
+## 0.0.22
+
+### Patch Changes
+
+- Updated dependencies [e1dc750]
+  - @iqai/adk@0.2.5
+
+## 0.0.21
+
+### Patch Changes
+
+- Updated dependencies [dc2c3eb]
+  - @iqai/adk@0.2.4
+
+## 0.0.20
+
+### Patch Changes
+
+- Updated dependencies [298edf1]
+  - @iqai/adk@0.2.3
+
+## 0.0.19
+
+### Patch Changes
+
+- Updated dependencies [0485d51]
+  - @iqai/adk@0.2.2
+
+## 0.0.18
+
+### Patch Changes
+
+- Updated dependencies [765592d]
+- Updated dependencies [14fdbf4]
+  - @iqai/adk@0.2.1
+
+## 0.0.17
+
+### Patch Changes
+
+- 1564b7b: Port Python evaluation framework to TypeScript
+
+  This change introduces a comprehensive evaluation framework for testing AI agent performance. Key features include:
+
+  - **Core evaluation engine** with agent-evaluator and local evaluation service
+  - **Built-in evaluators** for response matching, trajectory analysis, LLM-as-judge, and safety checks
+  - **Metrics system** with ROUGE scoring and tool trajectory analysis
+  - **Vertex AI integration** for cloud-based evaluation
+  - **Pluggable registry system** for custom metric evaluators
+  - **Structured evaluation cases and test sets** for organized testing
+
+  The framework is marked as experimental and provides essential tooling for evaluating agent responses, tool usage, and overall performance across different scenarios.
+
+- Updated dependencies [17341fc]
+- Updated dependencies [1564b7b]
+  - @iqai/adk@0.2.0
+
+## 0.0.16
+
+### Patch Changes
+
+- Updated dependencies [c4e642a]
+  - @iqai/adk@0.1.22
+
+## 0.0.15
+
+### Patch Changes
+
+- Updated dependencies [22c1cc6]
+- Updated dependencies [f141bc0]
+  - @iqai/adk@0.1.21
+
 ## 0.0.14
 
 ### Patch Changes

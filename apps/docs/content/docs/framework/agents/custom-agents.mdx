@@ -14,7 +14,7 @@ Building custom agents requires implementing core execution logic directly. We r
 
 ## What Are Custom Agents?
 
-Custom agents inherit from `BaseAgent` and implement their own control flow by defining the `_run_async_impl` method. You have complete control over:
+Custom agents inherit from `BaseAgent` and implement their own control flow by defining the `runAsyncImpl` method. You have complete control over:
 
 - How sub-agents are called and orchestrated
 - State management and data flow
@@ -37,38 +37,94 @@ Use custom agents when predefined workflow agents (Sequential, Parallel, Loop) c
 
 ## Core Implementation
 
-### The `_run_async_impl` Method
+### The `runAsyncImpl` method (TypeScript)
 
-This is the heart of every custom agent:
+This is the heart of every custom agent in TypeScript:
 
-- **Asynchronous Generator**: Must yield events back to the runner
-- **Context Access**: Receive `InvocationContext` for session and state access
-- **Event Handling**: Process and forward events from sub-agents
-- **Custom Logic**: Implement any required control flow
+- Asynchronous generator that yields `Event` objects back to the runner
+- Receives `InvocationContext` (`ctx`) for session/state access and configuration
+- Forwards events from sub-agents, and can add its own events and `EventActions`
+- Implements any required control flow (branching, loops, retries, transfers)
 
-### Key Capabilities
+```ts
+import { BaseAgent, Event } from "@iqai/adk";
+
+export class MyCustomAgent extends BaseAgent {
+  constructor() {
+    super({ name: "my_custom_agent", description: "Custom orchestration" });
+  }
+
+  protected async *runAsyncImpl(ctx: any) {
+    // Announce start
+    yield new Event({ author: this.name, content: { parts: [{ text: "Starting…" }] } });
+
+    // ... your orchestration logic here ...
+
+    // Announce done
+    yield new Event({ author: this.name, content: { parts: [{ text: "Done" }] } });
+  }
+}
+```
+
+### Key capabilities in `runAsyncImpl`
 
 <Cards>
-  <Card
-    title="🔄 Sub-Agent Orchestration"
-    description="Call and coordinate multiple sub-agents with custom logic"
-  />
-
-  <Card
-    title="📊 State Management"
-    description="Read from and write to session state for data sharing"
-  />
-
-  <Card
-    title="🧠 Control Flow"
-    description="Use Python constructs for conditional and iterative workflows"
-  />
-
-  <Card
-    title="🔌 External Integration"
-    description="Integrate APIs, databases, and custom services directly"
-  />
+  <Card title="Sub-agent orchestration" description="Call and coordinate sub-agents with custom logic" />
+  <Card title="State management" description="Share data via session state and EventActions" />
+  <Card title="Control flow" description="Implement conditional, iterative, and retry logic" />
+  <Card title="External integration" description="Call APIs, databases, or services as needed" />
 </Cards>
+
+#### Orchestrating sub-agents
+
+```ts
+// Forward events from a child agent
+for await (const event of someChild.runAsync(ctx)) {
+  // optionally inspect/transform event here
+  yield event;
+}
+```
+
+#### Reading/writing session state
+
+```ts
+// Read data set by a previous step
+const status = ctx.session.state.get("status", "pending");
+
+// Write data for downstream steps (often also done via outputKey of child agents)
+ctx.session.state.set("processing_started_at", Date.now());
+```
+
+#### Using EventActions (stateDelta, escalate, transfer)
+
+```ts
+import { Event, EventActions } from "@iqai/adk";
+
+// Save a value via stateDelta on a yielded event
+yield new Event({
+  author: this.name,
+  actions: new EventActions({ stateDelta: { current_stage: "validated" } }),
+});
+
+// Escalate to signal termination to a LoopAgent or parent logic
+yield new Event({ author: this.name, actions: new EventActions({ escalate: true }) });
+
+// Transfer to another agent by name (within the known hierarchy)
+yield new Event({ author: this.name, actions: new EventActions({ transferToAgent: "target_agent" }) });
+```
+
+#### Error handling and reporting
+
+```ts
+try {
+  // risky operation
+} catch (err) {
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: `Error: ${err instanceof Error ? err.message : String(err)}` }] },
+  });
+}
+```
 
 ## Design Patterns
 
@@ -88,7 +144,7 @@ Choose which agents to execute based on input analysis or environment conditions
 
 ### Agent Hierarchy
 - Store sub-agents as instance attributes during initialization
-- Declare sub-agents in the `sub_agents` list for framework awareness
+- Declare sub-agents in the `subAgents` list (constructor `super({ subAgents: [...] })`) for framework awareness
 - Use direct method calls for orchestration within your custom logic
 
 ### State Coordination

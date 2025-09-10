@@ -10,8 +10,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'ADK TypeScript - Agent Development Kit',
-    template: '%s | ADK TypeScript'
+    default: 'ADK-TS - Agent Development Kit (ADK) for TypeScript',
+    template: '%s | ADK-TS',
   },
   description: 'Comprehensive framework for building sophisticated AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible conversation flows.',
   metadataBase: new URL('https://adk.iqai.com'),
@@ -22,20 +22,20 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    title: 'ADK TypeScript - Agent Development Kit',
+    title: 'ADK-TS - Agent Development Kit (ADK) for TypeScript',
     description: 'Comprehensive framework for building sophisticated AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible conversation flows.',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'ADK TypeScript - Agent Development Kit'
-      }
-    ]
+        alt: 'ADK-TS - Agent Development Kit (ADK) for TypeScript',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ADK TypeScript - Agent Development Kit',
+    title: 'ADK-TS - Agent Development Kit (ADK) for TypeScript',
     description: 'Comprehensive framework for building sophisticated AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible conversation flows.',
     images: ['/og-image.png']
   }

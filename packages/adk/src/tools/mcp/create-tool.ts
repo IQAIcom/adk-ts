@@ -1,6 +1,9 @@
 import { Logger } from "@adk/logger";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
+import type {
+	CallToolResult,
+	Tool as McpTool,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
@@ -19,15 +22,21 @@ interface McpToolMetadata {
 	[key: string]: any;
 }
 
-/**
- * Converts an MCP tool definition into a BaseTool implementation
- */
-export async function createTool(
-	mcpTool: McpTool,
-	client: Client,
+type ConvertMcpToolTooBaseToolParams = {
+	mcpTool: McpTool;
+	client?: Client;
+	toolHandler?: (name: string, args: unknown) => Promise<CallToolResult>;
+};
+
+export async function convertMcpToolToBaseTool(
+	params: ConvertMcpToolTooBaseToolParams,
 ): Promise<BaseTool> {
 	try {
-		return new McpToolAdapter(mcpTool, client);
+		return new McpToolAdapter(
+			params.mcpTool,
+			params.client,
+			params.toolHandler,
+		);
 	} catch (error) {
 		if (!(error instanceof McpError)) {
 			throw new McpError(
@@ -45,12 +54,20 @@ export async function createTool(
  */
 class McpToolAdapter extends BaseTool {
 	private mcpTool: McpTool;
-	private client: Client;
+	private client: Client | undefined;
 	private clientService: McpClientService | null = null;
+	private toolHandler?: (
+		name: string,
+		args: unknown,
+	) => Promise<CallToolResult>;
 
 	protected logger = new Logger({ name: "McpToolAdapter" });
 
-	constructor(mcpTool: McpTool, client: Client) {
+	constructor(
+		mcpTool: McpTool,
+		client?: Client,
+		handler?: (name: string, args: unknown) => Promise<CallToolResult>,
+	) {
 		const metadata = (mcpTool.metadata || {}) as McpToolMetadata;
 
 		super({
@@ -62,8 +79,10 @@ class McpToolAdapter extends BaseTool {
 		});
 		this.mcpTool = mcpTool;
 		this.client = client;
+		this.toolHandler = handler;
 
 		if (
+			client &&
 			(client as any).reinitialize &&
 			typeof (client as any).reinitialize === "function"
 		) {
@@ -104,11 +123,11 @@ class McpToolAdapter extends BaseTool {
 				return await this.clientService.callTool(this.name, args);
 			}
 
-			if (this.client && typeof this.client.callTool === "function") {
+			if (this.client && typeof (this.client as any).callTool === "function") {
 				if (this.shouldRetryOnFailure) {
 					const executeWithRetry = withRetry(
 						async () => {
-							return await this.client.callTool({
+							return await (this.client as any).callTool({
 								name: this.name,
 								arguments: args,
 							});
@@ -124,11 +143,15 @@ class McpToolAdapter extends BaseTool {
 					return await executeWithRetry();
 				}
 
-				const result = await this.client.callTool({
+				const result = await (this.client as any).callTool({
 					name: this.name,
 					arguments: args,
 				});
 				return result;
+			}
+
+			if (this.toolHandler) {
+				return await this.toolHandler(this.name, args);
 			}
 
 			throw new McpError(

@@ -1,6 +1,6 @@
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Building2, Server } from 'lucide-react';
+import { Building2, Server, Terminal } from 'lucide-react';
 import Link, { type LinkProps } from 'next/link';
 
 export default function DocsPage(): React.ReactElement {
@@ -30,18 +30,18 @@ export default function DocsPage(): React.ReactElement {
           Get Started
         </Link>
         <Link
-          href="/docs/framework/quickstart"
+          href="/docs/framework/get-started/quickstart"
           className={cn(buttonVariants({ variant: 'outline' }), 'ml-4 px-6')}
         >
           Quickstart Guide
         </Link>
       </div>
-      <div className="mt-16 grid grid-cols-1 gap-6 text-left md:grid-cols-2 max-w-4xl mx-auto">
-        <Item href="/docs/framework">
+      <div className="mt-16 grid grid-cols-1 gap-6 text-left md:grid-cols-3 max-w-4xl mx-auto">
+        <Item href="/docs/framework/get-started">
           <Icon>
             <Building2 className="size-full" />
           </Icon>
-          <h2 className="mb-2 text-lg font-semibold">Framework</h2>
+          <h2 className="mb-2 text-lg font-semibold">Docs</h2>
           <p className="text-sm text-fd-muted-foreground">
             Build intelligent AI agents with our comprehensive TypeScript framework featuring tools, sessions, and runtime management.
           </p>
@@ -53,6 +53,15 @@ export default function DocsPage(): React.ReactElement {
           <h2 className="mb-2 text-lg font-semibold">MCP Servers</h2>
           <p className="text-sm text-fd-muted-foreground">
             Pre-built MCP server integrations for blockchain, social media, and data services to enhance your agents.
+          </p>
+        </Item>
+        <Item href="/docs/cli">
+          <Icon>
+            <Terminal className="size-full" />
+          </Icon>
+          <h2 className="mb-2 text-lg font-semibold">CLI</h2>
+          <p className="text-sm text-fd-muted-foreground">
+            Command-line tooling to scaffold projects, run agents, and launch web/API.
           </p>
         </Item>
       </div>

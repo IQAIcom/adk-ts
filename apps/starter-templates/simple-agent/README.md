@@ -1,40 +1,70 @@
-# 🤖 ADK Agent Starter
 
-This is a starter template to start building your own agent with `@iqai/adk` library. 
+<div align="center">
+
+<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
+
+<br/>
+
+
+
+# ADK Simple Agent Starter
+
+**A starter template to build your own agent with the `@iqai/adk` library.**
+
+_Minimal • Extensible • TypeScript_
+
+---
+
+</div>
+
+This is the recommended starter template for building your own agent with the ADK TypeScript framework.
 
 ## 🚀 Get Started
-Start by cloning the repository or clicking on use as template button on github ui. 
+
+
+The easiest way to create a new project using this template is with the ADK CLI:
 
 ```bash
-git clone https://github.com/IQAICOM/adk-agent-starter.git
-```
-
-📦 Install the dependencies
-
-```bash
+npm install -g @iqai/adk-cli # if you haven't already
+adk new --template simple-agent my-agent-project
+cd my-agent-project
 pnpm install
 ```
 
-▶️ Run the agent
+You can also use this template directly by copying the files, but using the CLI is recommended for best results.
 
+### Running the Agent
+
+**Default (Production/Development) Route**
+
+To run your agent in production or for standard development, use:
 ```bash
 pnpm dev
 ```
 
+**Fast Iteration & Agent Setup (ADK CLI)**
+
+For rapid prototyping, interactive testing, or initial agent setup, use the ADK CLI:
+```bash
+adk run   # Interactive CLI chat with your agents
+adk web   # Web interface for easy testing and demonstration
+```
+
 ## 📁 Folder Structure
-The main agent code lives in `index.ts` where the subagents live inside the `agents` folder. The agents can have tools which reside in the `tools` folder.
+The main agent code lives in `index.ts` where the subagents live inside the `agents` folder. The `agents/agent.ts` file is compatible with the ADK CLI for easy testing.
 
 ```
 ├── src/
 │   ├── agents/
-│   │   └── financial-agent/
-│   │       ├── index.ts
-│   │       └── tools/
-│   │           └── currency-converter-tool.ts
-│   ├── services/
-│   │   └── wallet.ts
-│   ├── env.ts
-│   └── index.ts
+│   │   ├── agent.ts          # Root agent (ADK CLI compatible)
+│   │   ├── joke-agent/       # Joke-telling sub-agent
+│   │   │   ├── agent.ts
+│   │   │   └── tools.ts
+│   │   └── weather-agent/    # Weather information sub-agent
+│   │       ├── agent.ts
+│   │       └── tools.ts
+│   ├── env.ts                # Environment variable validation
+│   └── index.ts              # Main execution entry point
 ```
 
 ## ⚙️ Environment Setup
@@ -46,8 +76,18 @@ cp .env.example .env
 
 ## 🧰 Dev Tools
 This starter includes:
--  **GitHub Actions**: CI/CD pipeline
+- **GitHub Actions**: CI/CD pipeline
 - 📦 **PNPM**: Fast package manager
+- 🤖 **ADK CLI**: Interactive testing with `adk run` and `adk web`
+
+## 🧪 Testing Your Agent
+
+**Traditional Testing**: Run `pnpm dev` to execute the sample questions.
+
+**Interactive Testing with ADK CLI**:
+1. Install: `npm install -g @iqai/adk-cli`
+2. Run: `adk run` for CLI chat or `adk web` for web interface
+3. Perfect for development, testing, and demonstrating your agent's capabilities
 
 ## 🏗️ Building Your Agent
 1. **Create new agents** in the `src/agents/` directory
@@ -56,18 +96,10 @@ This starter includes:
 4. **Update environment** variables in `src/env.ts`
 
 ## 📚 Links
-- [ADK Library](https://github.com/IQAICOM/adk-ts)
-
-## 🤝 Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-MIT License - see the [LICENSE](LICENSE) file for details.
+- [ADK Documentation](https://adk.iqai.com)
+- [ADK GitHub Repository](https://github.com/IQAIcom/adk-ts)
 
 ## 🆘 Support
 If you encounter any issues or have questions:
-- 📝 [Create an issue](https://github.com/IQAICOM/adk-agent-starter/issues)
+- 📝 [Create an issue](https://github.com/IQAIcom/adk-ts/issues)
+- 💬 [Start a discussion](https://github.com/IQAIcom/adk-ts/discussions)

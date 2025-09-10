@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
+<img src="https://files.catbox.moe/vumztw.png" alt="ADK-TypeScript Logo" width="100" />
 
 <br/>
 
-# ADK Examples
+# ADK-TS Examples
 
 **A collection of comprehensive examples that demonstrate how to utilize the Agent Development Kit (ADK) for TypeScript in real-world scenarios**
 
@@ -13,6 +13,8 @@
 ---
 
 </div>
+
+## 🌟 Overview
 
 This directory contains a collection of comprehensive examples that demonstrate how to utilize the Agent Development Kit (ADK) for TypeScript in real-world scenarios. You can use these examples to learn how to build AI agents, integrate tools, manage memory, and implement advanced features.
 
@@ -25,21 +27,21 @@ Before running the examples, here's what you need:
 - **Node.js 22.0+** (or as specified in the `package.json` file)
 - **API Keys** for your chosen LLM provider(s)
 
-Note: this project uses [**pnpm**](https://pnpm.io/) as the package manager. You can use other package managers, but to have a better experience, please install pnpm globally on your system.
+*Note: this project uses [**pnpm**](https://pnpm.io/) as the package manager. You can use other package managers, but to have a better experience, please install pnpm globally on your system.*
 
 ### Setup Instructions
 
 1. **Clone the Repository and Install the Dependencies**
 
- ```bash
-   git clone https://github.com/IQAIcom/adk-ts.git
-   cd adk-ts
-   pnpm install
- ```
+```bash
+  git clone https://github.com/IQAIcom/adk-ts.git
+  cd adk-ts
+  pnpm install
+```
 
-2. **Build the ADK Package**
+2. **Build the ADK-TS Package**
 
-For the examples to work correctly, you need to build the core ADK package first. This step compiles the TypeScript code and prepares the necessary files.
+For the examples to work correctly, you need to build the core ADK-TS package first. This step compiles the TypeScript code and prepares the necessary files.
 
  ```bash
    pnpm build
@@ -47,7 +49,7 @@ For the examples to work correctly, you need to build the core ADK package first
 
 3. **Configure Environment Variables**
 
- Create a `.env` file in the **examples directory** (not in the root folder) and add your API keys and optional model configuration. This file is used to set environment variables that the examples will use.
+Create a `.env` file in the **examples directory** (not in the root folder) and add your API keys and optional model configuration. This file is used to set environment variables that the examples will use.
 
  ```bash
    # apps/examples/.env
@@ -56,12 +58,14 @@ For the examples to work correctly, you need to build the core ADK package first
    LLM_MODEL=your_model_name
 
    # Required: At least one API key
-   OPENAI_API_KEY=your_openai_api_key
    GOOGLE_API_KEY=your_google_api_key
+   OPENAI_API_KEY=your_openai_api_key
    ANTHROPIC_API_KEY=your_anthropic_api_key
  ```
 
-The default model is set to `gemini-2.5-flash`, `gemini-2.0-flash` or `gemini-2.5-pro` depending on the example. If you want to use a different model, you can specify it in the `.env` file using the `LLM_MODEL` variable or update it directly in the example code.
+The default LLM is Google Gemini. You can get a Google API key from [Google AI Studio](https://makersuite.google.com/app/apikey). If you want to use a different model, you can specify it in the `.env` file using the `LLM_MODEL` variable or update it directly in the example code.
+
+> Note: Some examples require additional configuration or dependencies. Please check the [`.env.example`](.env.example) file for specific instructions.
 
 4. **Run Examples**
 
@@ -111,32 +115,7 @@ We have **12 comprehensive examples** that cover the complete ADK feature set, o
 
 ## 🤝 Contributing
 
-We welcome contributions! The following are ways you can help:
-
-### 📝 **Documentation**
-
-- Improve existing example documentation
-- Add new example scenarios
-- Fix typos or unclear instructions
-
-### 🛠️ **Code Contributions**
-
-- Add new example applications
-- Improve existing examples
-- Fix bugs or performance issues
-
-For a comprehensive guide on how to contribute to this project, visit the [Contributing Guide](../../CONTRIBUTION.md).
-
-### 📚 **Resources**
-
-- **[Main Documentation (WIP)](https://adk.iqai.com/docs)** - Core ADK documentation
-- **[Contributing Guide](../../CONTRIBUTION.md)** - Detailed contribution guidelines
-- **[Code of Conduct](../../CODE_OF_CONDUCT.md)** - Community standards
-- **[Security Policy](../../SECURITY.md)** - Security reporting
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE.md](../../LICENSE.md) file for details.
+If you would like to add examples or improve existing ones, please check out our [Contributing Guide](../../CONTRIBUTION.md) for details on how to get started.
 
 ---
 

@@ -6,45 +6,101 @@ description: Run multiple agents simultaneously for faster processing
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
-Parallel agents execute multiple sub-agents simultaneously, allowing independent tasks to run concurrently for improved performance.
+## The `ParallelAgent`
+
+The `ParallelAgent` executes sub‑agents concurrently, allowing independent tasks to run simultaneously for improved performance. Use it when tasks are truly independent and do not depend on intermediate results from each other. Orchestration is deterministic; sub‑agents can be any type, including `LlmAgent`.
+
+### Visual
+
+<Mermaid
+  chart="
+flowchart TD
+  U[User or Upstream] --> P[ParallelAgent]
+  P --> A[Agent A]
+  P --> B[Agent B]
+  P --> C[Agent C]
+  A -. writes state: a_key .-> P
+  B -. writes state: b_key .-> P
+  C -. writes state: c_key .-> P
+  P --> G[Gather/Synthesize]
+  G -. reads a_key,b_key,c_key .-> P
+"
+/>
 
 ## Quick Example
 
 Here's how to create a research workflow that runs three specialized agents in parallel:
 
 ```typescript
+import { LlmAgent, ParallelAgent } from "@iqai/adk";
+
 // Create three specialized research agents
 const webAgent = new LlmAgent({
-  name: "web-researcher",
+  name: "web_researcher",
+  description: "Web research",
   model: "gemini-2.5-flash",
-  tools: [new GoogleSearchTool()],
   instruction: "Search the web for current information",
+  // tools: [new GoogleSearchTool()],
+  outputKey: "web_result",
 });
 
 const wikiAgent = new LlmAgent({
-  name: "wiki-researcher",
+  name: "wiki_researcher",
+  description: "Wikipedia research",
   model: "gemini-2.5-flash",
-  tools: [new WikipediaTool()],
   instruction: "Find comprehensive background information",
+  // tools: [new WikipediaTool()],
+  outputKey: "wiki_result",
 });
 
 const newsAgent = new LlmAgent({
-  name: "news-researcher",
+  name: "news_researcher",
+  description: "News research",
   model: "gemini-2.5-flash",
-  tools: [new NewsTool()],
   instruction: "Find latest news and developments",
+  // tools: [new NewsTool()],
+  outputKey: "news_result",
 });
 
 // Create parallel coordinator that runs all three simultaneously
-const { runner } = await AgentBuilder
-  .create("research-coordinator")
-  .withDescription("Coordinates parallel research across multiple sources")
-  .asParallel([webAgent, wikiAgent, newsAgent])
-  .build();
-
-// All three agents will research simultaneously
-const result = await runner.ask("Research the latest developments in quantum computing");
+const researchCoordinator = new ParallelAgent({
+  name: "research_coordinator",
+  description: "Coordinates parallel research",
+  subAgents: [webAgent, wikiAgent, newsAgent],
+});
 ```
+
+## How it Works
+
+When a `ParallelAgent` runs:
+
+1. Concurrent execution: Starts each sub‑agent concurrently
+2. Isolated branches: Each child runs in its own branch; events interleave in time
+3. Result collection: Results are available via events/state; ordering is not deterministic
+
+### Independent execution and state
+
+Sub‑agents run independently. If you need coordination:
+
+- Use shared session state with unique keys and design for concurrent writes
+- Aggregate results in a follow‑up step (for example, a `SequentialAgent` after the parallel step)
+
+### Visual
+
+<Mermaid
+  chart="
+flowchart TD
+  U[User or Upstream] --> P[ParallelAgent]
+  P --> A[Agent A]
+  P --> B[Agent B]
+  P --> C[Agent C]
+  A -. writes state: a_key .-> P
+  B -. writes state: b_key .-> P
+  C -. writes state: c_key .-> P
+  P --> G[Gather/Synthesize]
+  G -. reads a_key,b_key,c_key .-> P
+"
+/>
 
 ## Key Benefits
 
@@ -74,19 +130,19 @@ Use parallel agents only when tasks are truly independent and don't need to shar
 
 <Cards>
   <Card
-    title="🔗 Sequential Agents"
+    title="Sequential Agents"
     description="Execute agents in order when dependencies exist"
     href="/docs/framework/agents/workflow-agents/sequential-agents"
   />
 
   <Card
-    title="🔄 Loop Agents"
+    title="Loop Agents"
     description="Repeat execution until conditions are met"
     href="/docs/framework/agents/workflow-agents/loop-agents"
   />
 
   <Card
-    title="🏗️ Agent Builder"
+    title="Agent Builder"
     description="Fluent API for creating and configuring agents"
     href="/docs/framework/agents/agent-builder"
   />

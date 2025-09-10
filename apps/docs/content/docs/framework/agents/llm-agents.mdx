@@ -6,155 +6,302 @@ description: Use language models for reasoning, decision-making, and tool usage
 import { Cards, Card } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-LLM Agents are the most common agent type in ADK TypeScript. They use Large Language Models for reasoning, understanding natural language, making decisions, and interacting with tools.
+LLM agents are the core "thinking" components in ADK TypeScript. They use Large Language Models (LLMs) for reasoning, understanding natural language, making decisions, and interacting with tools.
 
-Unlike deterministic workflow agents that follow predefined paths, LLM agents are dynamic. They interpret instructions and context, deciding how to proceed, which tools to use, or whether to transfer control to another agent.
+Unlike deterministic workflow agents that follow predefined paths, LLM agents are dynamic. They interpret instructions and context to decide how to proceed, which tools to use (if any), or whether to transfer control to another agent.
 
-## Core Concepts
+Building an effective LLM agent involves defining its identity, guiding its behavior through instructions, and equipping it with the necessary tools and capabilities.
 
-### Agent Identity
+## Defining Identity and Purpose
 
-Every LLM agent needs a clear identity:
+First, establish what the agent is and what it is for.
 
-- **Name**: Unique identifier for the agent (required)
-- **Description**: Summary of capabilities for other agents to understand
-- **Model**: The LLM that powers the agent's reasoning
+- **Name (required)**: Unique identifier for the agent. Critical for multi-agent systems where agents may delegate tasks. Avoid reserved names like `user`.
+- **Description (optional; recommended for multi-agent)**: Concise summary of the agent's capabilities, used by other agents for routing. Make it specific enough to differentiate from peers.
+- **Model (required)**: The LLM powering the agent's reasoning (for example, `gemini-2.0-flash`). Model choice affects capability, cost, and latency. See [Models](/docs/framework/agents/models).
 
-### Instructions
+```ts
+import { LlmAgent } from "@iqai/adk";
 
-The instruction parameter shapes how your agent behaves:
+const capitalAgent = new LlmAgent({
+  name: "capital_agent",
+  model: "gemini-2.5-flash",
+  description:
+    "Answers questions about the capital city of a given country",
+});
+```
 
-- Core task or goal definition
-- Personality or persona
-- Behavioral constraints
-- Tool usage guidance
-- Output format requirements
+## Guiding Behavior with Instructions
 
-<Callout type="info" title="Effective Instructions">
-Be clear and specific, use examples for complex tasks, and explicitly guide when and why to use tools.
+The `instruction` shapes the agent's behavior. It can be a string or a function that returns a string and should clarify:
+
+- Core task or goal
+- Persona (for example, helpful assistant, succinct analyst)
+- Constraints (for example, scope limits, safety guidelines)
+- Tool usage guidance: when and why to call specific tools
+- Output format (for example, JSON, bullet list)
+
+<Callout type="info" title="Tips for Effective Instructions">
+Be clear and specific, structure complex guidance with Markdown, include examples for tricky formats, and explicitly describe when and why tools should be used.
 </Callout>
 
-### Tools Integration
+You can interpolate state into instruction templates when needed:
 
-LLM agents can use tools to extend their capabilities beyond text generation:
+- `{var}` inserts the value of a state variable named `var`
+- `{artifact.var}` inserts the text content of an artifact named `var`
+- Append `?` (for example, `{var?}`) to ignore missing values instead of raising an error
 
-- Function tools for calculations and processing
-- Built-in tools for web search, file operations, etc.
-- Agent tools for delegation to other agents
-- Custom tools for specific integrations
+```ts
+import { LlmAgent } from "@iqai/adk";
+import dedent from "dedent";
 
-## Configuration Options
+const capitalAgent = new LlmAgent({
+  name: "capital_agent",
+  model: "gemini-2.5-flash",
+  description: "Answers questions about capital cities",
+  instruction: dedent`
+    You are an agent that provides the capital city of a country.
+    When a user asks for the capital of a country:
+    1. Identify the country name from the user's query.
+    2. Use available tools if needed to look up the capital.
+    3. Respond clearly, stating the capital city.
 
-<Cards>
-  <Card
-    title="🎛️ Generation Control"
-    description="Adjust temperature, output length, and safety settings"
-  />
+    Example Query: "What's the capital of {country?}?"
+    Example Response: "The capital of France is Paris."
+  `,
+});
+```
 
-  <Card
-    title="📊 Structured Data"
-    description="Use input/output schemas for JSON-based communication"
-  />
+## Equipping the Agent with Tools
 
-  <Card
-    title="🧠 Context Management"
-    description="Control conversation history and memory inclusion"
-  />
+Tools extend the agent beyond text-only reasoning to perform actions, fetch data, or compute results.
 
-  <Card
-    title="⚙️ Advanced Features"
-    description="Planning, code execution, and callback integration"
-  />
-</Cards>
+- **tools (optional)**: A list of callable tools available to the agent. Items can be:
+  - Function-based tools (for computations and simple integrations)
+  - Class-based tools extending a base tool abstraction
+  - Agent tools enabling delegation to other agents (see [Multi-Agents](/docs/framework/agents/multi-agents))
 
-## When to Use LLM Agents
+The LLM decides which tool to call using tool names, descriptions, and parameter schemas, guided by the agent's instructions and conversation context. Learn more in [Tools](/docs/framework/tools).
 
-LLM agents are ideal for:
+```ts
+import { createTool } from "@iqai/adk";
+import { LlmAgent } from "@iqai/adk";
+import { z } from "zod";
 
-- **Conversational interfaces** - Chat bots, assistants, Q&A systems
-- **Tool coordination** - Agents that need to use multiple tools intelligently
-- **Dynamic decision making** - When responses depend on context and reasoning
-- **Natural language processing** - Understanding and generating human language
+// Define a function tool with schema
+const getCapitalCity = createTool({
+  name: "get_capital_city",
+  description: "Retrieves the capital city for a given country",
+  schema: z.object({ country: z.string().describe("Country name") }),
+  fn: async ({ country }) => {
+    const capitals: Record<string, string> = {
+      france: "Paris",
+      japan: "Tokyo",
+      canada: "Ottawa",
+    };
+    const key = country.toLowerCase();
+    return capitals[key] || `Unknown capital for ${country}`;
+  },
+});
 
-## Key Features
+// Attach tool to the agent
+const capitalAgent = new LlmAgent({
+  name: "capital_agent",
+  model: "gemini-2.5-flash",
+  description: "Answers questions about capital cities",
+  instruction: "Use tools when necessary to ensure accuracy.",
+  tools: [getCapitalCity],
+});
+```
 
-### Dynamic Behavior
-LLM agents adapt their responses based on context, instructions, and available tools.
+## Advanced Configuration and Control
 
-### Tool Integration
-Seamlessly combine multiple tools and capabilities within a single agent.
+Fine-tune agent behavior with the following options.
 
-### Multi-Agent Coordination
-Can delegate tasks to other agents or be used as tools by other agents.
+### Generation Control
 
-### Flexible Configuration
-Extensive options for customizing behavior, output format, and capabilities.
+Configure the underlying model's generation (temperature, output length, sampling, and safety policies). Refer to provider-specific options in [Models](/docs/framework/agents/models).
 
-## Working with LLM Agents
+```ts
+import { LlmAgent } from "@iqai/adk";
 
-### Basic Setup
-Start with a simple agent that has a clear purpose and model configuration.
+const agent = new LlmAgent({
+  name: "controlled_generation",
+  model: "gemini-2.5-flash",
+  description: "Demonstrates generation controls",
+  generateContentConfig: {
+    temperature: 0.2,
+    maxOutputTokens: 250,
+  },
+});
+```
 
-### Add Instructions
-Provide clear, specific instructions that guide the agent's behavior.
+### Structured Data: Input/Output Schemas
 
-### Integrate Tools
-Add relevant tools that extend the agent's capabilities.
+For structured exchanges:
 
-### Fine-tune Configuration
-Adjust generation parameters, schemas, and advanced options as needed.
+- Input schema (optional): Enforce the expected input shape. If set, upstream messages must provide JSON matching this schema.
+- Output schema (optional): Enforce the agent's final response to match a schema (for example, strict JSON response contracts).
+- Output key (optional): Persist the agent's final text output into session state under a given key to pass results between steps or agents.
+
+```ts
+import { LlmAgent } from "@iqai/adk";
+import { z } from "zod";
+
+const CapitalOutput = z.object({
+  capital: z.string().describe("The capital of the country"),
+});
+
+const structuredAgent = new LlmAgent({
+  name: "structured_capital_agent",
+  model: "gemini-2.5-flash",
+  description: "Returns capital in JSON format",
+  instruction:
+    'Return ONLY a JSON object matching schema: { "capital": "..." }',
+  outputSchema: CapitalOutput,
+  outputKey: "found_capital",
+});
+```
+
+### Managing Context
+
+Control whether prior conversation history is sent to the LLM:
+
+- `default`: Include relevant conversation history
+- `none`: Do not include prior contents; operate only on current input and instruction (useful for stateless or isolated tasks)
+
+```ts
+import { LlmAgent } from "@iqai/adk";
+
+const statelessAgent = new LlmAgent({
+  name: "stateless_agent",
+  model: "gemini-2.5-flash",
+  description: "Stateless responses",
+  instruction: "Answer based only on the current query.",
+  includeContents: "none",
+});
+```
+
+### Planning
+
+Enable multi-step reasoning and planning before execution.
+
+- Built-in planning: Use model-native planning capabilities when available
+- Plan-and-Act patterns: Instruct the model to outline a plan, then take actions (like calling tools), and produce a final answer
+
+Choose a planning strategy based on model capabilities and the complexity of your tasks.
+
+```ts
+import { LlmAgent, BuiltInPlanner, PlanReActPlanner } from "@iqai/adk";
+
+// Built-in planner (model-native thinking when available)
+const thinkingAgent = new LlmAgent({
+  name: "thinking_agent",
+  model: "gemini-2.5-flash",
+  planner: new BuiltInPlanner({ thinkingConfig: { includeThinking: true } }),
+});
+
+// PlanReAct pattern (explicit plan → actions → final answer)
+const planreactAgent = new LlmAgent({
+  name: "strategic_planner",
+  model: "gemini-2.5-flash",
+  planner: new PlanReActPlanner(),
+});
+```
+
+### Code Execution
+
+Enable execution of code blocks emitted by the model to evaluate snippets or run tasks during agent execution. See [Built-in Tools](/docs/framework/tools/built-in-tools) for available executors and usage considerations.
+
+```ts
+import { LlmAgent, BuiltInCodeExecutor } from "@iqai/adk";
+import dedent from "dedent";
+
+const codeAgent = new LlmAgent({
+  name: "code_executor",
+  model: "gemini-2.5-flash",
+  description: "Agent with code execution capabilities",
+  instruction: dedent`
+    When solving computational tasks, write Python code blocks and execute them.
+    Explain results clearly and handle errors gracefully.
+  `,
+  codeExecutor: new BuiltInCodeExecutor(),
+  disallowTransferToParent: true,
+  disallowTransferToPeers: true,
+});
+```
+
+## Putting It Together
+
+A typical LLM agent configuration combines identity (name, description, model), a clear instruction, optional tools, and—when needed—generation controls, schemas, context management, planning, or code execution.
+
+```ts
+import { LlmAgent, createTool } from "@iqai/adk";
+import { z } from "zod";
+import dedent from "dedent";
+
+// Tool
+const getCapitalCity = createTool({
+  name: "get_capital_city",
+  description: "Retrieves the capital city for a given country",
+  schema: z.object({ country: z.string() }),
+  fn: async ({ country }) =>
+    ({ france: "Paris", japan: "Tokyo" }[country.toLowerCase()] || "Unknown"),
+});
+
+// Output schema
+const CapitalOutput = z.object({ capital: z.string() });
+
+// Agent
+const capitalAgent = new LlmAgent({
+  name: "capital_agent",
+  model: "gemini-2.5-flash",
+  description: "Provides capital cities with tool assistance",
+  instruction: dedent`
+    Identify the country and provide its capital.
+    Prefer tool lookups when uncertain. Respond clearly.
+  `,
+  tools: [getCapitalCity],
+  generateContentConfig: { temperature: 0.2, maxOutputTokens: 200 },
+  outputSchema: CapitalOutput,
+  outputKey: "found_capital",
+});
+```
 
 ## Related Topics
 
 <Cards>
   <Card
-    title="🛠️ Tools"
-    description="Learn about available tools and creating custom ones"
-    href="/docs/framework/tools"
-  />
-
-  <Card
-    title="🧠 Models"
-    description="Configure and choose between different LLM models"
+    title="Generation Control"
+    description="Configure temperature, max tokens, sampling, and safety policies"
     href="/docs/framework/agents/models"
   />
 
   <Card
-    title="👥 Multi-Agent Systems"
-    description="Coordinate multiple LLM agents for complex tasks"
+    title="Structured Data"
+    description="Define input/output schemas and persist outputs via state keys"
+  />
+
+  <Card
+    title="Context Management"
+    description="Control conversation history inclusion for stateless or stateful tasks"
+  />
+
+  <Card
+    title="Tools"
+    description="Available tools, agent tools, and how to create custom tools"
+    href="/docs/framework/tools"
+  />
+
+  <Card
+    title="Multi-Agent Systems"
+    description="Coordinate agents, delegate tasks, and use system-wide instructions"
     href="/docs/framework/agents/multi-agents"
   />
 
   <Card
-    title="📞 Callbacks"
+    title="Callbacks"
     description="Hook into agent execution for monitoring and control"
     href="/docs/framework/callbacks"
   />
 </Cards>
-
-## Best Practices
-
-<Callout type="warn" title="Common Pitfalls">
-- Avoid vague instructions that lead to inconsistent behavior
-- Don't overload agents with too many tools or responsibilities
-- Test instructions thoroughly with different inputs
-- Consider structured output for data processing tasks
-</Callout>
-
-### Instruction Design
-- Be specific about the agent's role and responsibilities
-- Provide examples for complex output formats
-- Clearly define when and how to use tools
-- Set appropriate boundaries and constraints
-
-### Tool Selection
-- Choose tools that match the agent's purpose
-- Avoid redundant or conflicting tool capabilities
-- Document tool usage in instructions
-- Test tool interactions thoroughly
-
-### Performance Optimization
-- Use appropriate models for your use case
-- Configure generation parameters for consistency
-- Implement proper error handling
-- Monitor and log agent behavior

@@ -31,10 +31,11 @@ ADK-TS is the Agent Development Kit for TypeScript - a comprehensive framework f
 
 ### Monorepo Structure
 - `packages/adk/` - Core ADK framework package (`@iqai/adk`)
-- `packages/create-adk-project/` - CLI for creating new ADK projects
+// ...existing code...
 - `packages/tsconfig/` - Shared TypeScript configurations
 - `apps/docs/` - Documentation website (Next.js + Fumadocs)
 - `apps/examples/` - Comprehensive example implementations
+- `packages/adk-cli/` - Official CLI for creating and managing ADK projects.
 
 ### Core Framework Components
 

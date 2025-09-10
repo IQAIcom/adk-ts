@@ -1,0 +1,30 @@
+{
+	"extends": "@iqai/tsconfig/base.json",
+	"include": ["src/**/*"],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"src/server/index.ts",
+		"src/server/routes/**/*",
+		"src/index.ts",
+		"src/commands/**/*",
+		"src/nest/**/*"
+	],
+	"compilerOptions": {
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"target": "ES2022",
+		"module": "CommonJS",
+		"moduleResolution": "node",
+		"outDir": "dist",
+		"rootDir": "src",
+		"resolveJsonModule": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"downlevelIteration": true,
+		"types": ["node"],
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"skipLibCheck": true,
+		"sourceMap": true
+	}
+}

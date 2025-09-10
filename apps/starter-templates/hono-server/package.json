@@ -15,7 +15,15 @@
 		"type": "git",
 		"url": "git+https://github.com/IQAICOM/adk-hono-server.git"
 	},
-	"keywords": ["ai", "agent", "mcp", "adk-ts", "IQAI", "hono", "web-server"],
+	"keywords": [
+		"ai",
+		"agent",
+		"mcp",
+		"adk-ts",
+		"IQAI",
+		"hono",
+		"web-server"
+	],
 	"author": "IQAI",
 	"license": "MIT",
 	"bugs": {
@@ -23,16 +31,16 @@
 	},
 	"homepage": "https://github.com/IQAICOM/adk-hono-server#readme",
 	"dependencies": {
-		"@hono/node-server": "^1.17.1",
-		"@iqai/adk": "^0.1.19",
-		"dotenv": "^17.2.0",
-		"hono": "^4.8.5",
-		"zod": "^4.0.5"
+		"@hono/node-server": "^1.19.2",
+		"@iqai/adk": "^0.3.1",
+		"dotenv": "^17.2.2",
+		"hono": "^4.9.6",
+		"zod": "^4.1.5"
 	},
 	"devDependencies": {
-		"@types/node": "^22.16.0",
+		"@types/node": "^24.3.1",
 		"rimraf": "^6.0.1",
-		"tsx": "^4.20.3",
-		"typescript": "^5.8.3"
+		"tsx": "^4.20.5",
+		"typescript": "^5.9.2"
 	}
 }

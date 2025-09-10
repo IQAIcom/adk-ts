@@ -6,43 +6,73 @@ description: Execute agents one after another in a specific order
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
-Sequential agents execute sub-agents one after another in a predetermined order, creating predictable pipeline workflows where each step builds on the previous one.
+## The `SequentialAgent`
+
+Sequential agents execute sub‑agents one after another in a predetermined order, creating predictable pipeline workflows where each step builds on the previous one. Use the `SequentialAgent` when you need a fixed, strict order (for example: get → analyze → summarize). As with other workflow agents, orchestration is deterministic; sub‑agents can be any type, including `LlmAgent`.
+
+### Visual
+
+<Mermaid
+  chart="
+flowchart TD
+  U[User or Upstream] --> S[SequentialAgent]
+  S --> A[Agent A]
+  A --> B[Agent B]
+  B --> C[Agent C]
+  A -. writes state: key1 .-> S
+  B -. reads key1 / writes key2 .-> S
+  C -. reads key2 .-> S
+"
+/>
 
 ## Quick Example
 
 Here's how to create a research pipeline that processes information through multiple sequential steps:
 
 ```typescript
+import { LlmAgent, SequentialAgent } from "@iqai/adk";
+
 // Create specialized agents for each step
 const researchAgent = new LlmAgent({
   name: "researcher",
+  description: "Gathers information",
   model: "gemini-2.5-flash",
-  tools: [new GoogleSearchTool(), new WikipediaTool()],
   instruction: "Gather comprehensive information about the topic",
+  // tools: [new GoogleSearchTool(), new WikipediaTool()],
 });
 
 const analysisAgent = new LlmAgent({
   name: "analyst",
+  description: "Analyzes research data",
   model: "gemini-2.5-flash",
   instruction: "Analyze the research data and identify key insights",
 });
 
 const summaryAgent = new LlmAgent({
   name: "summarizer",
+  description: "Summarizes findings",
   model: "gemini-2.5-flash",
   instruction: "Create a concise summary with actionable recommendations",
 });
 
 // Create sequential pipeline that runs research → analysis → summary
-const { runner } = await AgentBuilder
-  .create("research-pipeline")
-  .withDescription("Comprehensive research pipeline with analysis and summary")
-  .asSequential([researchAgent, analysisAgent, summaryAgent])
-  .build();
-
-// Each agent processes the output from the previous one
-const result = await runner.ask("Analyze the current state of renewable energy adoption");
+const pipeline = new SequentialAgent({
+  name: "research_pipeline",
+  description: "Research, analysis, summary",
+  subAgents: [researchAgent, analysisAgent, summaryAgent],
+});
 ```
+
+## How it Works
+
+When a `SequentialAgent` runs:
+
+1. Iteration: It iterates through `subAgents` in the order provided
+2. Sub‑Agent Execution: For each sub‑agent, it calls the sub‑agent’s run method
+
+<Callout type="info" title="Shared Invocation Context">
+All sub‑agents receive the same invocation context and thus share the same session state, which makes passing data between steps straightforward (often via `outputKey`).
+</Callout>
 
 ## Key Benefits
 
@@ -73,19 +103,19 @@ Use sequential agents when the order of execution is important and each step dep
 
 <Cards>
   <Card
-    title="⚡ Parallel Agents"
+    title="Parallel Agents"
     description="Run agents simultaneously when order doesn't matter"
     href="/docs/framework/agents/workflow-agents/parallel-agents"
   />
 
   <Card
-    title="🔄 Loop Agents"
+    title="Loop Agents"
     description="Repeat execution until conditions are met"
     href="/docs/framework/agents/workflow-agents/loop-agents"
   />
 
   <Card
-    title="🏗️ Agent Builder"
+    title="Agent Builder"
     description="Fluent API for creating and configuring agents"
     href="/docs/framework/agents/agent-builder"
   />

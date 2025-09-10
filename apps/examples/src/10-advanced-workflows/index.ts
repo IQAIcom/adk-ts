@@ -1,6 +1,7 @@
-import { AgentBuilder, LlmAgent, createTool } from "@iqai/adk";
 import { env } from "node:process";
+import { AgentBuilder, LlmAgent, createTool } from "@iqai/adk";
 import * as z from "zod";
+import { ask } from "../utils";
 
 /**
  * 10 - Advanced Workflows
@@ -25,7 +26,10 @@ const workflowStateTool = createTool({
 		status: z
 			.enum(["pending", "in_progress", "completed", "failed"])
 			.describe("Stage status"),
-		data: z.record(z.any()).optional().describe("Stage-specific data"),
+		data: z
+			.record(z.string(), z.any())
+			.optional()
+			.describe("Stage-specific data"),
 		nextStage: z.string().optional().describe("Next stage to execute"),
 	}),
 	fn: ({ stage, status, data, nextStage }, context) => {
@@ -98,7 +102,9 @@ const makeDecisionTool = createTool({
 			success: true,
 			decision: newDecision,
 			totalDecisions: decisions.length,
-			message: `Decision made: ${decision} (confidence: ${(confidence * 100).toFixed(1)}%)`,
+			message: `Decision made: ${decision} (confidence: ${(
+				confidence * 100
+			).toFixed(1)}%)`,
 		};
 	},
 });
@@ -143,10 +149,10 @@ async function demonstrateBasicWorkflow() {
 		.withSubAgents([coordinator, researchAgent, analysisAgent])
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Create a market analysis for electric vehicle charging stations. Break this into research and analysis stages, tracking progress through each step.",
 	);
-	console.log(`Response: ${response}\n`);
 }
 
 async function demonstrateLangGraphStyleWorkflow() {
@@ -227,10 +233,10 @@ async function demonstrateLangGraphStyleWorkflow() {
 		)
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Create a customer onboarding system. Analyze complexity and route to appropriate processing.",
 	);
-	console.log(`Response: ${response}\n`);
 }
 
 async function demonstrateErrorRecoveryWorkflow() {
@@ -264,10 +270,10 @@ async function demonstrateErrorRecoveryWorkflow() {
 		.withSubAgents([errorRecoveryAgent, resilientWorker])
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Simulate processing customer data with potential failures. Show retry logic, alternative approaches, and escalation patterns.",
 	);
-	console.log(`Response: ${response}\n`);
 }
 
 async function main() {

@@ -1,0 +1,88 @@
+---
+title: Commands
+description: Reference for adk new, adk run, adk web, and adk serve commands
+icon: Terminal
+---
+## `adk new`
+
+Create a new ADK project from professional templates.
+
+```bash
+adk new
+# or with a specific template
+adk new my-agent --template simple-agent
+```
+
+**Available Templates:**
+- `simple-agent` – Basic agent with chat
+- `discord-bot` – Discord bot integration
+- `telegram-bot` – Telegram bot integration
+- `hono-server` – RESTful web server
+- `shade-agent` – Agent with Near Shade Agents
+- `mcp-starter` – Model Context Protocol server
+
+---
+
+## `adk run`
+
+Run agents with intelligent discovery and interactive chat interface.
+
+```bash
+adk run
+# Run a specific agent file
+adk run path/to/agent.ts
+# Server-only mode (no chat)
+adk run --server
+# Custom host for server mode
+adk run --server --host 0.0.0.0
+```
+
+- Auto-discovers agents in the current directory
+- Interactive selector if multiple agents are found
+- Supports server mode for API-only usage
+
+---
+
+## `adk web`
+
+Launch a React-based web interface for visual agent testing and management.
+
+```bash
+adk web
+# Use a specific API server port
+adk web --port 8080
+# Scan a custom directory
+adk web --dir ./my-agents
+# Run local development version
+adk web --local --web-port 3000
+# Custom web application URL
+adk web --web-url https://custom-web-app.com
+```
+
+- Visual agent browser and chat
+- Live status monitoring
+- Responsive design for desktop and mobile
+
+---
+
+## `adk serve`
+
+Start a standalone API server for agent management (no chat UI).
+
+```bash
+adk serve
+# Custom host and port
+adk serve --host 0.0.0.0 --port 9000
+# Scan a specific directory
+adk serve --dir ./production-agents
+```
+
+**API Endpoints:**
+- `GET /api/agents` – List all discovered agents
+- `POST /api/agents/refresh` – Refresh agent discovery scan
+- `POST /api/agents/:id/start` – Start a specific agent
+- `POST /api/agents/:id/stop` – Stop a specific agent
+- `GET /api/agents/running` – Get status of running agents
+- `POST /api/agents/:id/message` – Send message to agent
+- `GET /api/agents/:id/messages` – Get conversation history
+- `GET /health` – Health check

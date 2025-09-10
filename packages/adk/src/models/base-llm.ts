@@ -9,7 +9,7 @@ import type { LlmResponse } from "./llm-response";
  */
 export abstract class BaseLlm {
 	/**
-	 * The name of the LLM, e.g. gemini-1.5-flash or gemini-1.5-flash-001.
+	 * The name of the LLM, e.g. gemini-2.5-flash or gemini-2.5-flash-001.
 	 */
 	model: string;
 
@@ -172,7 +172,7 @@ export abstract class BaseLlm {
 	 * @param llmRequest LlmRequest, the request to send to the LLM.
 	 * @returns BaseLLMConnection, the connection to the LLM.
 	 */
-	connect(llmRequest: LlmRequest): BaseLLMConnection {
+	connect(_llmRequest: LlmRequest): BaseLLMConnection {
 		throw new Error(`Live connection is not supported for ${this.model}.`);
 	}
 }

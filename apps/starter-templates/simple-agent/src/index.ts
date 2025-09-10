@@ -1,25 +1,26 @@
-import { env } from "node:process";
-import { AgentBuilder } from "@iqai/adk";
 import * as dotenv from "dotenv";
+import { getRootAgent } from "./agents/agent";
 
 dotenv.config();
 
 /**
- * Simple Agent Example
+ * Main function demonstrating basic ADK agent usage.
  *
- * The simplest way to create and use an AI agent with AgentBuilder.
+ * Creates a root agent with sub-agents for weather and jokes,
+ * then processes a series of sample questions to showcase
+ * the agent's capabilities in routing requests to appropriate
+ * specialized sub-agents.
  */
 async function main() {
-	const question = "What is the capital of France?";
+	const questions = ["how is weather in london?", "tell me a random joke"];
 
-	console.log(`📝 Question: ${question}`);
+	const { runner } = await getRootAgent();
 
-	// The simplest possible usage - just model and ask!
-	const response = await AgentBuilder.withModel(
-		env.LLM_MODEL || "gemini-2.5-flash",
-	).ask(question);
-
-	console.log(`🤖 Response: ${response}`);
+	for (const question of questions) {
+		console.log(`📝 Question: ${question}`);
+		const response = await runner.ask(question);
+		console.log(`🤖 Response: ${response}`);
+	}
 }
 
 main().catch(console.error);

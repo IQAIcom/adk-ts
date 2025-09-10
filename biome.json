@@ -13,7 +13,10 @@
 			"dist/**",
 			"*.lock",
 			"*.log",
-			"docs/**"
+			".next",
+			"docs/**",
+			"packages/adk/src/cli/browser/**",
+			"Api.ts"
 		]
 	},
 	"formatter": {
@@ -32,16 +35,22 @@
 			},
 			"complexity": {
 				"noForEach": "off",
-				"noStaticOnlyClass": "off"
+				"noStaticOnlyClass": "off",
+				"noThisInStatic": "off"
 			},
+
 			"style": {
-				"noNonNullAssertion": "off"
+				"noNonNullAssertion": "off",
+				"useImportType": "off"
 			}
 		}
 	},
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"
+		},
+		"parser": {
+			"unsafeParameterDecoratorsEnabled": true
 		}
 	},
 	"overrides": [

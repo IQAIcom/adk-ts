@@ -1,0 +1,63 @@
+name: Question / Support
+description: Ask a question or request support for ADK-TS
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in ADK-TS! We're here to help.
+
+        Before submitting a question, please check:
+        - [ADK-TS Documentation](https://adk.iqai.com/docs)
+        - Existing issues and discussions
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: A clear and concise description of your question or what you need help with.
+      placeholder: I'm trying to understand how to [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide any relevant context for your question (code snippets, what you've tried so far, etc.)
+      placeholder: |
+        ```typescript
+        // Your code here
+        ```
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: ADK-TS Version
+      description: Which version of ADK-TS are you using?
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Where are you running ADK-TS?
+      options:
+        - Node.js
+        - Browser
+        - Both
+        - Other (please specify in additional context)
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information
+      description: Add any other information that might help us answer your question.
+    validations:
+      required: false

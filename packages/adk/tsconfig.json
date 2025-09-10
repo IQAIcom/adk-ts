@@ -10,5 +10,5 @@
 		},
 		"types": ["node", "vitest/globals"]
 	},
-	"include": ["src", "tests"]
+	"include": ["src", "tests", "../../apps/examples/src/zod-schema-example"]
 }

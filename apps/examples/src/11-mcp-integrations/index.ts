@@ -1,11 +1,7 @@
 import { env } from "node:process";
-import {
-	AgentBuilder,
-	type EnhancedRunner,
-	McpToolset,
-	createSamplingHandler,
-} from "@iqai/adk";
+import { AgentBuilder, McpToolset, createSamplingHandler } from "@iqai/adk";
 import dedent from "dedent";
+import { ask } from "../utils";
 
 /**
  * 11 - MCP (Model Context Protocol) Integrations
@@ -32,11 +28,13 @@ async function demonstrateCustomMcpServer() {
 		.withDescription(
 			"Assistant that provides user context for sampling requests",
 		)
-		.withInstruction(dedent`
+		.withInstruction(
+			dedent`
 			You are a helpful assistant that provides user context when requested.
 			When asked for a user's name or identity, respond with "Alice Johnson".
 			Keep responses brief and relevant to the sampling request.
-		`)
+		`,
+		)
 		.build();
 
 	// Create sampling handler using the agent runner
@@ -45,10 +43,10 @@ async function demonstrateCustomMcpServer() {
 		console.log(`   Request: ${JSON.stringify(request)}`);
 
 		// Use the agent runner to handle the sampling request
-		const response = await samplingRunner.ask(
+		return ask(
+			samplingRunner.ask.bind(samplingRunner),
 			"What is the user's name for personalization?",
 		);
-		return response;
 	});
 
 	// Create MCP toolset with our custom server
@@ -74,25 +72,26 @@ async function demonstrateCustomMcpServer() {
 		const { runner } = await AgentBuilder.create("mcp_assistant")
 			.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 			.withDescription("Assistant with custom MCP server integration")
-			.withInstruction(dedent`
+			.withInstruction(
+				dedent`
 				You have access to custom MCP tools that can use sampling to get user information.
 				Use the greeting tool to provide personalized responses.
 				Always use the available tools when appropriate.
-			`)
+			`,
+			)
 			.withTools(...tools)
 			.build();
 
 		// Test the sampling-enabled greeting
 		console.log("� Testing personalized greeting with sampling:");
-		const greetingResponse = await runner.ask(
+		await ask(
+			runner.ask.bind(runner),
 			"Please greet me using the greeting tool.",
 		);
-		console.log(`Response: ${greetingResponse}\n`);
 
 		// Test calculator tool
 		console.log("🧮 Testing calculator functionality:");
-		const calcResponse = await runner.ask("What's 25 multiplied by 8?");
-		console.log(`Response: ${calcResponse}\n`);
+		await ask(runner.ask.bind(runner), "What's 25 multiplied by 8?");
 
 		await greetingToolset.close();
 	} catch (error) {

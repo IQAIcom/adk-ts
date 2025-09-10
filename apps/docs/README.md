@@ -1,14 +1,14 @@
 <div align="center">
 
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="80" />
+<img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
 
 <br/>
 
-# ADK Documentation
+# ADK-TS Documentation Site
 
-**Official documentation site for the Agent Development Kit (ADK) TypeScript framework**
+**Contributing guide for the official ADK-TS documentation**
 
-*Comprehensive guides • API reference • Examples • Best practices*
+*Setup • Development • Contributing • Best practices*
 
 ---
 
@@ -16,113 +16,153 @@
 
 ## 📖 About
 
-This is the official documentation website for ADK TS, built with [Next.js](https://nextjs.org) and [Fumadocs](https://fumadocs.dev). It provides comprehensive documentation, tutorials, and examples for building sophisticated AI agents with the ADK framework.
+This README is specifically for contributors to the ADK-TS documentation. The documentation site is built with [Next.js](https://nextjs.org) and [Fumadocs](https://fumadocs.dev), providing comprehensive guides, API references, tutorials, and examples for building sophisticated AI agents with the ADK framework.
 
-## 🚀 Quick Start
+If you're looking to **use** the ADK framework, visit the [live documentation](https://adk.iqai.com). This guide is for those who want to **contribute** to improving the documentation.
 
-### Development
+## 🚀 Getting Started
 
-Run the development server:
+### Prerequisites
 
-```bash
-pnpm dev
-```
+Before contributing to the documentation, ensure you have:
 
-Open [http://localhost:3000](http://localhost:3000) to view the documentation locally.
+- [Node.js](https://nodejs.org) (version 18 or later)
+- [pnpm](https://pnpm.io) (recommended package manager)
+- Basic familiarity with [Markdown](https://www.markdownguide.org/) and [MDX](https://mdxjs.com/)
 
-### Build
+### Setting Up Development Environment
 
-Build the documentation for production:
+1. **Clone the repository** (if you haven't already):
+
+   ```bash
+   git clone https://github.com/IQAIcom/adk-ts.git
+   cd adk-ts
+   ```
+
+2. **Install dependencies**:
+
+   ```bash
+   pnpm install
+   ```
+
+3. **Navigate to the docs directory**:
+
+   ```bash
+   cd apps/docs
+   ```
+
+4. **Start the development server**:
+
+   ```bash
+   pnpm dev
+   ```
+
+5. **View the documentation** at [http://localhost:3000](http://localhost:3000)
+
+The development server supports hot reloading, so changes to documentation files will be reflected immediately in your browser.
+
+### Building for Production
+
+Test your changes by building the documentation:
 
 ```bash
 pnpm build
 ```
 
-### Start Production Server
+To run the production build locally:
 
 ```bash
 pnpm start
 ```
 
-## 📁 Project Structure
+## ⚙️ Architecture Overview
 
-```
-apps/docs/
-├── app/
-│   ├── (home)/          # Landing page and home routes
-│   ├── docs/            # Documentation pages
-│   ├── api/search/      # Search API endpoint
-│   └── layout.tsx       # Root layout
-├── content/docs/        # MDX documentation content
-├── lib/
-│   ├── source.ts        # Content source adapter
-│   └── getLlmText.ts    # LLM text processing
-├── public/              # Static assets
-└── source.config.ts     # Fumadocs configuration
-```
+The documentation site uses:
 
-## 📝 Content Management
+- **[Next.js 15](https://nextjs.org)** - React framework with App Router
+- **[Fumadocs](https://fumadocs.dev)** - Documentation-focused React components and utilities
+- **[Tailwind CSS](https://tailwindcss.com)** - Utility-first CSS framework
+- **[Lucide React](https://lucide.dev)** - Icon library
+- **[next-themes](https://github.com/pacocoursey/next-themes)** - Theme switching
+- **[PostHog](https://posthog.com)** - Analytics (production only)
 
-Documentation content is written in MDX format and stored in the `content/docs/` directory. The content is organized into sections:
+## 🤝 How to Contribute
 
-- **Getting Started** - Installation, quick start, and basic concepts
-- **Agents** - Agent creation, configuration, and management
-- **Tools** - Built-in tools and custom tool development
-- **Memory** - Memory systems and session management
-- **Flows** - Conversation flows and multi-agent orchestration
-- **Artifacts** - File handling and artifact management
-- **API Reference** - Complete API documentation
+### Content Structure
 
-## 🔧 Configuration
+All documentation content is written in [MDX format](https://mdxjs.com/) and organized in the `content/docs/` directory:
 
-### Content Source
+- **`framework/`** - Core ADK framework documentation
+- **`cli/`** - ADK CLI documentation
+- **`mcp-servers/`** - Model Context Protocol server documentation
 
-The `lib/source.ts` file configures the content source adapter using Fumadocs' [`loader()`](https://fumadocs.dev/docs/headless/source-api) API to process MDX files.
+### Types of Documentation Contributions
 
-### Layout Configuration
+We welcome various types of contributions to improve the documentation:
 
-Shared layout options are defined in `app/layout.config.tsx`, including navigation, theme settings, and site metadata.
+- **Fix typos and grammar** - Help improve readability
+- **Add missing examples** - Provide code samples for complex concepts
+- **Improve explanations** - Make difficult topics easier to understand
+- **Add new sections** - Cover missing topics or use cases
+- **Update outdated content** - Keep documentation current with latest features
+- **Improve navigation** - Enhance the organization and discoverability
 
-### MDX Configuration
+### Writing Guidelines
 
-The `source.config.ts` file customizes MDX processing, including frontmatter schema and content transformations.
+1. **Use clear, concise language** - Write for developers of all skill levels
+2. **Include code examples** - Provide working code snippets whenever possible
+3. **Follow MDX syntax** - Use proper frontmatter and MDX components
+4. **Add metadata** - Include proper title, description, and navigation order in frontmatter
+5. **Use headings appropriately** - Structure content with H1, H2, H3, etc.
+6. **Call out important information** - Use callouts for tips, warnings, and important notes
 
-## 🔍 Search
+### Contribution Workflow
 
-The documentation includes full-text search powered by Fumadocs' search system. The search API is implemented in `app/api/search/route.ts`.
+1. **Fork the repository** on GitHub
+2. **Create a feature branch** from main:
 
-## 🎨 Styling
+   ```bash
+   git checkout -b docs/improve-agent-examples
+   ```
 
-The documentation uses:
-- [Tailwind CSS](https://tailwindcss.com) for styling
-- [Fumadocs UI](https://fumadocs.dev) components for documentation layout
-- [Lucide React](https://lucide.dev) for icons
+3. **Make your changes** following the writing guidelines above
+4. **Test locally** with `pnpm dev` to ensure everything works
+5. **Commit your changes** with descriptive commit messages:
 
-## 🚀 Deployment
+   ```bash
+   git commit -m "docs: add examples for custom tool creation"
+   ```
 
-The documentation is automatically deployed when changes are pushed to the main branch. The build process:
+6. **Push to your fork** and **create a Pull Request**
 
-1. Processes MDX content with Fumadocs
-2. Builds the Next.js application
-3. Generates static assets for optimal performance
+### Getting Help
 
-## 🤝 Contributing
+- **[Check existing issues](https://github.com/IQAIcom/adk-ts/issues)** for similar questions or problems
+- **[Ask in discussions](https://github.com/IQAIcom/adk-ts/discussions)** for clarification on documentation topics
 
-To contribute to the documentation:
+For more detailed contribution guidelines, see the main project's [Contributing Guide](../../CONTRIBUTION.md).
 
-1. Edit MDX files in `content/docs/`
-2. Test changes locally with `pnpm dev`
-3. Submit a pull request
+## 📚 Resources for Contributors
 
-For more details, see the main project's [Contributing Guide](../../CONTRIBUTION.md).
+### Documentation Tools & Frameworks
 
-## 📚 Resources
+- **[Fumadocs](https://fumadocs.dev)** - Documentation framework powering this site
+- **[MDX](https://mdxjs.com)** - Markdown with JSX components
+- **[Next.js](https://nextjs.org)** - React framework for the documentation site
 
-- [ADK Framework](https://github.com/IQAIcom/adk-ts) - Main repository
-- [Fumadocs](https://fumadocs.dev) - Documentation framework
-- [Next.js](https://nextjs.org) - React framework
-- [MDX](https://mdxjs.com) - Markdown with JSX
+### ADK Framework Resources
+
+- **[ADK-TS Repository](https://github.com/IQAIcom/adk-ts)** - Main framework repository
+- **[Live Documentation](https://adk.iqai.com)** - Published documentation site
+- **[Contributing Guide](../../CONTRIBUTION.md)** - General project contribution guidelines
+- **[Examples](../../apps/examples/)** - Code examples and tutorials
+
+### Writing & Style Resources
+
+- **[Markdown Guide](https://www.markdownguide.org/)** - Comprehensive Markdown reference
+- **[MDX Documentation](https://mdxjs.com/docs/)** - Learn about MDX syntax and components
+- **[Fumadocs Components](https://fumadocs.dev/docs/ui/components)** - Available UI components for documentation
 
 ---
 
-**Visit the live documentation:** [https://adk.iqai.com](https://adk.iqai.com)
+**Ready to contribute?** Start by exploring the `content/docs/` directory and improving existing pages or adding new content. Your contributions help make ADK-TS more accessible and useful for developers worldwide!

@@ -1,0 +1,65 @@
+---
+title: AgentKit MCP Extension
+description: Use Coinbase AgentKit providers as MCP tools and adapt them into ADK tools.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+This guide shows how to wire Coinbase AgentKit into ADK TypeScript (adk-ts) using the Model Context Protocol (MCP). AgentKit action providers are exposed as MCP SDK tools and then converted into ADK tools so your agent can perform on-chain actions through Coinbase.
+
+<Callout type="info" title="Architecture">
+AgentKit → MCP Extension → ADK BaseTool
+</Callout>
+
+## Convert AgentKit MCP tools to ADK tools
+
+Use `convertMcpToolToBaseTool` to adapt AgentKit’s MCP tools into ADK `BaseTool`s.
+
+```ts
+import { getMcpTools } from "@coinbase/agentkit-model-context-protocol";
+import { type BaseTool, convertMcpToolToBaseTool } from "@iqai/adk";
+import type { AgentKit } from "@coinbase/agentkit";
+
+export async function getAgentKitTools(agentKit: AgentKit): Promise<BaseTool[]> {
+  const { tools, toolHandler } = await getMcpTools(agentKit);
+  const baseTools = await Promise.all(
+    tools.map(async (mcpTool) =>
+      convertMcpToolToBaseTool({ mcpTool, toolHandler }),
+    ),
+  );
+  return baseTools;
+}
+```
+
+If you prefer a helper that creates AgentKit internally, keep the same conversion step and just supply your `agentKit` instance from that helper.
+
+## Attach to an ADK agent
+
+```ts
+import { AgentBuilder } from "@iqai/adk";
+
+// Assume you already created `agentKit` and `getAgentKitTools(agentKit)` from above
+const tools = await getAgentKitTools(agentKit);
+
+const { runner } = await AgentBuilder.create("coinbase_agent")
+  .withModel("gemini-2.5-flash") // or your configured model
+  .withDescription("Crypto-focused agent using Coinbase AgentKit")
+  .withTools(...tools)
+  .build();
+```
+
+## Choosing AgentKit providers
+
+Pick the providers you need (wallet, ERC-20, prices, portfolio, etc.) when constructing your `AgentKit` instance, then run the same conversion step above. See the AgentKit docs for the full provider list.
+
+<Callout type="info" title="Environment outline">
+You will typically need CDP API keys and a wallet private key. Refer to AgentKit’s documentation or the demo agent for exact requirements.
+</Callout>
+
+## References
+
+- [Coinbase AgentKit Docs](https://docs.cdp.coinbase.com/agent-kit)
+- [List of all AgentKit providers](https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md#action-providers)
+- [Demo coinbase agent](https://github.com/GPSxtreme/coinbase-agent)

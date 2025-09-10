@@ -197,6 +197,16 @@ export abstract class BaseTool {
 			if (!toolWithFunctionDeclarations.functionDeclarations) {
 				toolWithFunctionDeclarations.functionDeclarations = [];
 			}
+
+			// Deduplicate by function name to avoid provider errors like
+			// "Duplicate function declaration found: <name>"
+			const alreadyExists =
+				toolWithFunctionDeclarations.functionDeclarations.some(
+					(fd: any) => fd?.name === functionDeclaration.name,
+				);
+			if (alreadyExists) {
+				return;
+			}
 			toolWithFunctionDeclarations.functionDeclarations.push(
 				functionDeclaration,
 			);

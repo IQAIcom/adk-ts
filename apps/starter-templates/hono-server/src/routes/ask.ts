@@ -1,7 +1,19 @@
-import { env } from "node:process";
-import { AgentBuilder } from "@iqai/adk";
 import type { Context } from "hono";
+import { getRootAgent } from "../agents/agent";
 
+/**
+ * HTTP handler for the /ask endpoint.
+ *
+ * Processes POST requests containing user questions and routes them through
+ * the root agent for processing. The agent will delegate to appropriate
+ * sub-agents based on the question content.
+ *
+ * Request body should contain:
+ * - question: string - The user's question to be processed
+ *
+ * @param c - Hono context object containing request and response utilities
+ * @returns JSON response with the agent's answer, original question, and timestamp
+ */
 export const askHandler = async (c: Context) => {
 	try {
 		const body = await c.req.json();
@@ -13,10 +25,9 @@ export const askHandler = async (c: Context) => {
 
 		console.log(`📝 Question received: ${question}`);
 
-		// Create agent and get response
-		const response = await AgentBuilder.withModel(
-			env.LLM_MODEL || "gemini-2.5-flash",
-		).ask(question);
+		// answer with our root agent
+		const { runner } = await getRootAgent();
+		const response = runner.ask(question);
 
 		console.log(`🤖 Response generated: ${response}`);
 

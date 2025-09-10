@@ -6,6 +6,7 @@ import {
 	type ListSessionsResponse,
 } from "./base-session-service";
 import type { Session } from "./session";
+import { State } from "./state";
 
 // Database schema types
 export interface Database {
@@ -626,11 +627,11 @@ export class DatabaseSessionService extends BaseSessionService {
 
 		if (state) {
 			for (const [key, value] of Object.entries(state)) {
-				if (key.startsWith("app_")) {
-					appStateDelta[key.substring(4)] = value; // Remove 'app_' prefix
-				} else if (key.startsWith("user_")) {
-					userStateDelta[key.substring(5)] = value; // Remove 'user_' prefix
-				} else if (!key.startsWith("temp_")) {
+				if (key.startsWith(State.APP_PREFIX)) {
+					appStateDelta[key.substring(State.APP_PREFIX.length)] = value;
+				} else if (key.startsWith(State.USER_PREFIX)) {
+					userStateDelta[key.substring(State.USER_PREFIX.length)] = value;
+				} else if (!key.startsWith(State.TEMP_PREFIX)) {
 					sessionStateDelta[key] = value;
 				}
 			}
@@ -651,12 +652,12 @@ export class DatabaseSessionService extends BaseSessionService {
 
 		// Add app state with prefix
 		for (const [key, value] of Object.entries(appState)) {
-			mergedState[`app_${key}`] = value;
+			mergedState[`${State.APP_PREFIX}${key}`] = value;
 		}
 
 		// Add user state with prefix
 		for (const [key, value] of Object.entries(userState)) {
-			mergedState[`user_${key}`] = value;
+			mergedState[`${State.USER_PREFIX}${key}`] = value;
 		}
 
 		return mergedState;
@@ -782,7 +783,7 @@ export class DatabaseSessionService extends BaseSessionService {
 		}
 
 		for (const [key, value] of Object.entries(event.actions.stateDelta)) {
-			if (!key.startsWith("temp_")) {
+			if (!key.startsWith(State.TEMP_PREFIX)) {
 				session.state[key] = value;
 			}
 		}

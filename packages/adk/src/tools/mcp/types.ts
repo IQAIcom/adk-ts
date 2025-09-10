@@ -1,7 +1,7 @@
 import type { LlmRequest, LlmResponse } from "@adk/models";
 import type {
-	CreateMessageRequestSchema,
-	CreateMessageResultSchema,
+	CreateMessageRequest,
+	CreateMessageResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
 
@@ -74,8 +74,8 @@ export class McpError extends Error {
 	}
 }
 
-export type McpSamplingRequest = z.infer<typeof CreateMessageRequestSchema>;
-export type McpSamplingResponse = z.infer<typeof CreateMessageResultSchema>;
+export type McpSamplingRequest = CreateMessageRequest;
+export type McpSamplingResponse = CreateMessageResult;
 
 export type SamplingHandler = (
 	request: LlmRequest,

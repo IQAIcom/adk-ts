@@ -318,6 +318,24 @@ export function McpCoinGecko(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP Upbit - Interact with the Upbit cryptocurrency exchange
+ *
+ * Public tools require no auth.
+ * Private trading tools require:
+ *  - UPBIT_ACCESS_KEY
+ *  - UPBIT_SECRET_KEY
+ *  - UPBIT_ENABLE_TRADING=true
+ */
+export function McpUpbit(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Upbit MCP Client",
+		"@iqai/mcp-upbit",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * Popular third-party MCP servers
  * These can be added as we expand support for community MCP servers
  */

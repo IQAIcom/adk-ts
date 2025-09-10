@@ -2,6 +2,13 @@
 import { FastMCP } from "fastmcp";
 import { weatherTool } from "./tools/weather.js";
 
+/**
+ * Initializes and starts the Weather MCP (Model Context Protocol) Server.
+ *
+ * This function sets up a FastMCP server that provides weather-related tools
+ * through the MCP protocol. The server communicates via stdio transport,
+ * making it suitable for integration with MCP clients and AI agents.
+ */
 async function main() {
 	console.log("Initializing Weather MCP Server...");
 

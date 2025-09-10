@@ -5,6 +5,7 @@ description: IQAI-built MCP servers for enhanced ADK TypeScript functionality
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
+import Link from 'fumadocs-core/link';
 
 IQAI has developed a collection of specialized Model Context Protocol (MCP) servers designed to enhance and extend the capabilities of ADK TypeScript agents. These servers provide seamless integration with various external services and data sources.
 
@@ -55,6 +56,11 @@ IQAI has developed a collection of specialized Model Context Protocol (MCP) serv
     title="📱 MCP Telegram"
     description="Interact with Telegram bots and channels for messaging automation"
     href="/docs/mcp-servers/telegram"
+  />
+  <Card
+    title="🇰🇷 MCP Upbit"
+    description="Interact with the Upbit cryptocurrency exchange for market data and trading"
+    href="/docs/mcp-servers/upbit"
   />
 </Cards>
 
@@ -108,6 +114,8 @@ const { runner } = await AgentBuilder.create("mcp_assistant")
 // Use the agent
 const response = await runner.ask("Get ATP statistics for contract 0x123...");
 ```
+
+You can find all the wrapper mcp servers in the framework from <Link href="https://github.com/IQAIcom/adk-ts/blob/main/packages/adk/src/tools/mcp/servers.ts">here</Link>
 
 ### Using McpToolset (For Unsupported Servers)
 

@@ -1,5 +1,4 @@
 import * as z from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import type {
 	FunctionDeclaration,
 	JSONSchema,
@@ -128,10 +127,7 @@ class CreatedTool<T extends Record<string, any>> extends BaseTool {
 	 * Builds the function declaration from the Zod schema
 	 */
 	private buildDeclaration(): FunctionDeclaration {
-		const rawParameters = zodToJsonSchema(this.schema, {
-			target: "jsonSchema7",
-			$refStrategy: "none",
-		});
+		const rawParameters = z.toJSONSchema(this.schema);
 
 		// Remove $schema field which is not needed for LLM function declarations
 		const { $schema, ...parameters } = rawParameters as any;

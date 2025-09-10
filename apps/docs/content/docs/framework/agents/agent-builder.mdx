@@ -1,0 +1,374 @@
+---
+title: Agent Builder
+description: Fluent API for creating and configuring agents with automatic session management
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+AgentBuilder provides a fluent, chainable API for creating different types of agents (LLM, Sequential, Parallel, Loop, LangGraph) with tools, custom instructions, and multi-agent workflows. Sessions are automatically created using in-memory storage by default.
+
+## Quick Start
+
+The simplest way to get started is with the convenience method:
+
+```typescript
+// Simple usage - instant execution
+const response = await AgentBuilder
+  .withModel("gemini-2.5-flash")
+  .ask("Hello, what can you help me with?");
+```
+
+For more control, use the full builder pattern:
+
+```typescript
+// Full builder pattern with session
+const { agent, runner, session } = await AgentBuilder
+  .create("my-assistant")
+  .withModel("gemini-2.5-flash")
+  .withInstruction("You are a helpful research assistant")
+  .build();
+
+const response = await runner.ask("What is quantum computing?");
+```
+
+## Core Methods
+
+### Agent Creation
+
+```typescript
+// Create a new builder instance
+AgentBuilder.create("agent-name")
+
+// Start with a model directly
+AgentBuilder.withModel("gemini-2.5-flash")
+```
+
+### Configuration
+
+```typescript
+const { runner } = await AgentBuilder
+  .create("research-agent")
+  .withModel("gemini-2.5-flash")                    // Set LLM model
+  .withDescription("AI research assistant")          // Agent description
+  .withInstruction("You are a research assistant")   // System instructions
+  .withTools(new GoogleSearch(), new Calculator())   // Add tools
+  .withCodeExecutor(new ContainerCodeExecutor())    // Enable code execution
+  .build();
+```
+
+### Agent Types
+
+Transform your builder into different agent types:
+
+```typescript
+// Sequential workflow
+const { runner } = await AgentBuilder
+  .create("workflow")
+  .asSequential([agent1, agent2, agent3])
+  .build();
+
+// Parallel execution
+const { runner } = await AgentBuilder
+  .create("parallel-tasks")
+  .asParallel([researchAgent, analysisAgent])
+  .build();
+
+// Loop for iterative improvement
+const { runner } = await AgentBuilder
+  .create("problem-solver")
+  .asLoop([solverAgent], 5) // max 5 iterations
+  .build();
+
+// Complex workflows with LangGraph
+const { runner } = await AgentBuilder
+  .create("complex-workflow")
+  .asLangGraph(nodes, "start-node")
+  .build();
+```
+
+## Advanced Features
+
+### Session Management
+
+By default, AgentBuilder creates in-memory sessions automatically. For persistence:
+
+```typescript
+// Custom session service
+const { runner } = await AgentBuilder
+  .create("persistent-agent")
+  .withModel("gemini-2.5-flash")
+  .withSessionService(new DatabaseSessionService(), {
+    userId: "user123",
+    appName: "myapp"
+  })
+  .build();
+
+// Use existing session
+const { runner } = await AgentBuilder
+  .create("continuing-agent")
+  .withModel("gemini-2.5-flash")
+  .withSessionService(sessionService)
+  .withSession(existingSession)
+  .build();
+```
+
+### Memory and Artifacts
+
+```typescript
+const { runner } = await AgentBuilder
+  .create("memory-agent")
+  .withModel("gemini-2.5-flash")
+  .withMemory(new RedisMemoryService())       // Conversation history
+  .withArtifactService(new S3ArtifactService()) // File storage
+  .build();
+```
+
+### Structured Input/Output
+
+```typescript
+import { z } from 'zod';
+
+const outputSchema = z.object({
+  summary: z.string(),
+  confidence: z.number(),
+  recommendations: z.array(z.string())
+});
+
+const { runner } = await AgentBuilder
+  .create("structured-agent")
+  .withModel("gemini-2.5-flash")
+  .withOutputSchema(outputSchema)
+  .build();
+
+// TypeScript knows the return type matches the schema
+const result = await runner.ask("Analyze this data...");
+// result.summary, result.confidence, result.recommendations are typed
+```
+
+### Callbacks and Monitoring
+
+```typescript
+const { runner } = await AgentBuilder
+  .create("monitored-agent")
+  .withModel("gemini-2.5-flash")
+  .withBeforeAgentCallback(async (context) => {
+    console.log("Agent starting:", context.agent.name);
+  })
+  .withAfterAgentCallback(async (context, result) => {
+    console.log("Agent completed:", result);
+  })
+  .build();
+```
+
+## Working with Existing Agents
+
+If you already have an agent instance, you can wrap it with AgentBuilder:
+
+```typescript
+const existingAgent = new LlmAgent({
+  name: "my-agent",
+  model: "gemini-2.5-flash"
+});
+
+const { runner } = await AgentBuilder
+  .create("wrapper")
+  .withAgent(existingAgent)
+  .build();
+
+// Further configuration methods are ignored after withAgent()
+```
+
+<Callout type="warn" title="Agent Wrapping">
+When using `withAgent()`, subsequent configuration methods (model, tools, instruction) are ignored. Configure the agent before wrapping or create a new one.
+</Callout>
+
+## Real-World Examples
+
+### Research Assistant
+
+```typescript
+const researchAgent = await AgentBuilder
+  .create("research-assistant")
+  .withModel("gemini-2.5-flash")
+  .withTools(
+    new GoogleSearch(),
+    new WebScraperTool(),
+    new FileWriterTool()
+  )
+  .withInstruction(`
+    You are a thorough research assistant. When given a topic:
+    1. Search for current information using GoogleSearch
+    2. Gather detailed information from relevant sources
+    3. Synthesize findings into a comprehensive report
+    4. Save the report using FileWriterTool
+  `)
+  .build();
+
+const report = await researchAgent.runner.ask(
+  "Research the latest developments in renewable energy storage"
+);
+```
+
+### Code Problem Solver
+
+```typescript
+const codeSolver = await AgentBuilder
+  .create("code-solver")
+  .withModel("gemini-2.5-flash")
+  .withCodeExecutor(new ContainerCodeExecutor())
+  .withTools(new ExitLoopTool())
+  .withInstruction(`
+    Solve coding problems step by step:
+    1. Understand the problem requirements
+    2. Write a solution
+    3. Test with the provided examples
+    4. If tests pass, use ExitLoopTool to finish
+    5. If tests fail, analyze and improve the solution
+  `)
+  .asLoop([], 8) // Try up to 8 iterations
+  .build();
+
+const solution = await codeSolver.runner.ask(`
+  Write a function that finds two numbers in an array that sum to a target.
+  Example: [2, 7, 11, 15], target = 9 → [0, 1]
+`);
+```
+
+### Multi-Stage Workflow
+
+```typescript
+// Create individual agents
+const dataCollector = new LlmAgent({
+  name: "data-collector",
+  model: "gemini-2.5-flash",
+  tools: [new ApiTool()],
+  instruction: "Collect data from specified sources"
+});
+
+const dataProcessor = new LlmAgent({
+  name: "data-processor", 
+  model: "gemini-2.5-flash",
+  tools: [new CalculatorTool()],
+  instruction: "Process and analyze collected data"
+});
+
+const reportGenerator = new LlmAgent({
+  name: "report-generator",
+  model: "gemini-2.5-flash", 
+  tools: [new FileWriterTool()],
+  instruction: "Generate comprehensive reports from analysis"
+});
+
+// Combine into workflow
+const workflow = await AgentBuilder
+  .create("data-pipeline")
+  .asSequential([dataCollector, dataProcessor, reportGenerator])
+  .build();
+
+const result = await workflow.runner.ask("Process sales data for Q3 2024");
+```
+
+## Key Benefits
+
+<Cards>
+  <Card
+    title="🎯 Fluent API"
+    description="Chainable methods make agent configuration intuitive and readable"
+  />
+
+  <Card
+    title="⚡ Quick Execution"
+    description="Use `.ask()` for immediate results without complex setup"
+  />
+
+  <Card
+    title="🔄 Automatic Sessions"
+    description="Sessions created automatically with sensible defaults"
+  />
+
+  <Card
+    title="🏗️ Flexible Architecture"
+    description="Build simple agents or complex multi-agent workflows"
+  />
+</Cards>
+
+## When to Use
+
+**Perfect for:**
+- Rapid prototyping and experimentation
+- Building agents with sensible defaults
+- Creating multi-agent workflows
+- Applications that need automatic session management
+
+**Consider alternatives when:**
+- You need maximum control over agent configuration
+- Building agents for production systems with specific requirements
+- Working with existing agent instances that need minimal wrapping
+
+<Callout type="info" title="Production Usage">
+AgentBuilder is production-ready but provides smart defaults. For mission-critical applications, consider explicit configuration of session services, memory, and error handling.
+</Callout>
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🤖 LLM Agents"
+    description="Core agent type powered by language models"
+    href="/docs/framework/agents/llm-agents"
+  />
+
+  <Card
+    title="🔗 Sequential Agents"
+    description="Execute agents in order for pipeline workflows"
+    href="/docs/framework/agents/workflow-agents/sequential-agents"
+  />
+
+  <Card
+    title="⚡ Parallel Agents" 
+    description="Run multiple agents simultaneously"
+    href="/docs/framework/agents/workflow-agents/parallel-agents"
+  />
+
+  <Card
+    title="🔄 Loop Agents"
+    description="Repeat agent execution until conditions are met"
+    href="/docs/framework/agents/workflow-agents/loop-agents"
+  />
+</Cards>
+
+## Best Practices
+
+### Configuration Order
+- Start with basic configuration (name, model, instruction)
+- Add tools and capabilities
+- Configure sessions and services last
+- Use type-safe schemas for structured data
+
+### Error Handling
+```typescript
+try {
+  const { runner } = await AgentBuilder
+    .create("error-prone-agent")
+    .withModel("gemini-2.5-flash")
+    .build();
+    
+  const result = await runner.ask("complex query");
+} catch (error) {
+  console.error("Agent execution failed:", error);
+}
+```
+
+### Performance Tips
+- Reuse agent instances when possible
+- Use appropriate models for your use case  
+- Consider session persistence for long-running conversations
+- Monitor resource usage with callbacks
+
+<Callout type="warn" title="Common Pitfalls">
+- Don't call configuration methods after `withAgent()`
+- Always handle potential errors in agent execution
+- Be mindful of session lifecycle in long-running applications
+- Test multi-agent workflows thoroughly before production
+</Callout>

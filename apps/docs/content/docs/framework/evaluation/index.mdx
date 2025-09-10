@@ -8,22 +8,24 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 Agent evaluation provides systematic approaches to testing and validating agent performance, moving beyond prototype to production-ready AI systems.
 
-<Callout type="info" title="Coming Soon">
-The comprehensive evaluation framework is being actively developed for `@iqai/adk`. Core evaluation classes and automated testing tools will be available in upcoming releases.
+<Callout type="info" title="Status">
+Evaluation is available in `@iqai/adk` (public but still evolving). Surface may receive additive changes; core evaluator signatures are stable.
 </Callout>
 
 ## Overview
 
 Unlike traditional software testing, agent evaluation must account for the probabilistic nature of LLM responses and the complexity of multi-step reasoning processes. Effective evaluation encompasses multiple dimensions from tool usage patterns to response quality.
 
-## Current Capabilities
+## Key Features
 
-While the full evaluation framework is in development, you can currently:
+The ADK evaluation framework provides comprehensive agent testing capabilities:
 
-- **Manual Testing**: Use the examples to test agent behavior manually
-- **Session Analysis**: Review agent interactions through session management
-- **Response Validation**: Manually verify agent outputs and tool usage
-- **Performance Observation**: Monitor agent behavior through logging and events
+- **Agent Evaluator**: Automated evaluation of agent performance across test cases
+- **Multiple Metrics**: ROUGE scoring, LLM-as-judge, tool trajectory analysis, safety evaluation
+- **Flexible Test Format**: JSON-based test cases with support for multi-turn conversations
+- **Local & Cloud Evaluation**: Run evaluations locally or integrate with Vertex AI
+- **Session State Support**: Test stateful agents with conversation history
+- **Configurable Thresholds**: Set pass/fail criteria for different evaluation metrics
 
 ## Documentation Structure
 
@@ -53,25 +55,78 @@ While the full evaluation framework is in development, you can currently:
   />
 </Cards>
 
-## Coming Features
+## Core Components
 
-The upcoming evaluation framework will include:
+The evaluation framework includes these key components:
 
-- **AgentEvaluator**: Comprehensive agent performance assessment
-- **TrajectoryEvaluator**: Tool usage and decision path analysis
-- **ResponseEvaluator**: Output quality and semantic similarity scoring
-- **EvalSet Management**: Batch evaluation of complex scenarios
-- **Automated Test Runners**: Continuous integration with development workflows
-- **Performance Analytics**: Trend analysis and regression detection
+- **AgentEvaluator**: Main entry point for agent performance assessment
+- **TrajectoryEvaluator**: Analyzes tool usage patterns and decision paths
+- **ResponseEvaluator**: ROUGE-1 scoring and LLM-based response quality assessment
+- **SafetyEvaluator**: Evaluates response harmlessness and safety
+- **EvalSet Management**: Organized test cases with metadata and version control
+- **MetricEvaluatorRegistry**: Extensible system for custom evaluation metrics
+- **LocalEvalService**: Complete local evaluation pipeline with parallel execution
 
 ## Getting Started
 
-For immediate testing needs:
+Workflow:
 
-1. **Review Examples**: Explore the [examples directory](https://github.com/iqai/adk-ts/tree/main/apps/examples) for agent testing patterns
-2. **Session Monitoring**: Use session services to track agent interactions
-3. **Manual Validation**: Create custom test scripts using the Runner class
-4. **Event Analysis**: Monitor agent events for behavior analysis
+1. **Author Dataset**: Provide either:
+   - Legacy array format: `[{ "query": "...", "reference": "..." }]` (auto-migrated at runtime – deprecated warning emitted), or
+   - New EvalSet schema (preferred):
+```json
+{
+  "evalSetId": "calc-v1",
+  "name": "Simple arithmetic",
+  "creationTimestamp": 0,
+  "evalCases": [
+    {
+      "evalId": "case-1",
+      "conversation": [
+        {
+          "creationTimestamp": 0,
+          "userContent": { "role": "user", "parts": [{ "text": "What is 2 + 2?" }] },
+          "finalResponse": { "role": "model", "parts": [{ "text": "4" }] }
+        }
+      ]
+    }
+  ]
+}
+```
+2. **Configure Criteria** in `test_config.json` (sibling to each `*.test.json`):
+```json
+{ "criteria": { "response_match_score": 0.8 } }
+```
+3. **Run Evaluation** – signature: `await AgentEvaluator.evaluate(agent, pathOrFile, numRuns?)`.
+   - Throws an Error if any metric fails threshold (no return value).
+4. **Iterate** – tighten thresholds / expand cases as agent improves.
+
+Minimal usage example:
+```typescript
+import { AgentBuilder, AgentEvaluator } from '@iqai/adk';
+
+const { agent } = await AgentBuilder.create('eval_agent')
+  .withModel('gemini-2.5-flash')
+  .withInstruction('Answer briefly and accurately.')
+  .build();
+
+await AgentEvaluator.evaluate(agent, './evaluation/tests');
+// If it does not throw, all criteria passed.
+```
+
+Programmatic (advanced) usage using an already loaded EvalSet:
+```typescript
+// If you parsed an EvalSet JSON yourself
+// import type { Evaluation } from '@iqai/adk';
+// await AgentEvaluator.evaluateEvalSet(agent, evalSet, { response_match_score: 0.8 });
+```
+
+Default criteria if `test_config.json` absent:
+```json
+{ "tool_trajectory_avg_score": 1.0, "response_match_score": 0.8 }
+```
+
+Each metric key must be one of: `tool_trajectory_avg_score`, `response_evaluation_score`, `response_match_score`, `safety_v1`.
 
 ## Related Topics
 

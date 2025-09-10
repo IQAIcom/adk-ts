@@ -6,47 +6,76 @@ description: Repeat agent execution until conditions are met
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
-Loop agents repeatedly execute a sub-agent until a stopping condition is met, enabling iterative improvement and progressive refinement workflows.
+Loop agents repeatedly execute sub‑agents until a stopping condition is met, enabling iterative improvement and progressive refinement workflows.
+
+## The `LoopAgent`
+
+The `LoopAgent` executes its `subAgents` in a loop. It repeatedly runs a sequence of agents for a specified number of iterations or until a termination condition is met.
+
+Use the `LoopAgent` when your workflow involves repetition or iterative refinement (for example, revising drafts or retrying approaches).
+
+As with other workflow agents, the `LoopAgent` is not powered by an LLM and is deterministic in how it orchestrates. Sub‑agents can be any type, including `LlmAgent`.
+
+### Visual
+
+<Mermaid
+  chart="
+flowchart TD
+  U[User or Upstream] --> L[LoopAgent]
+  L --> A[Agent A]
+  A --> B[Agent B]
+  B -->|escalate? no| L
+  B -->|escalate? yes| E[Exit Loop]
+  A -. updates state .-> L
+  B -. checks state / sets escalate .-> L
+"
+/>
 
 ## Quick Example
 
-Here's how to create a problem-solving loop that tries different approaches until finding a working solution:
+Here's how to create a problem‑solving loop that tries different approaches until finding a working solution:
 
 ```typescript
-// Create a problem-solving agent
+import { LlmAgent, LoopAgent, Event, EventActions } from "@iqai/adk";
+
+// Problem-solving agent (pseudo tools omitted here)
 const solverAgent = new LlmAgent({
-  name: "code-problem-solver",
+  name: "code_problem_solver",
+  description: "Attempts solutions iteratively",
   model: "gemini-2.5-flash",
-  tools: [new CodeExecutorTool(), new ExitLoopTool()],
-  instruction: `
-    Try to solve the given coding problem step by step.
-    Test your solution with the CodeExecutorTool.
-    If tests pass, use ExitLoopTool to indicate success.
-    If tests fail, analyze the error and try a different approach.
-  `,
+  instruction: `Try an approach; if tests pass, state 'PASS'. Otherwise, adapt and try again.`,
+  outputKey: "solver_status",
 });
 
-// Create loop agent that tries up to 8 different approaches
-const { runner } = await AgentBuilder
-  .create("persistent-solver")
-  .withDescription("Keeps trying different approaches until finding a working solution")
-  .asLoop([solverAgent], 8)
-  .build();
+// Checker agent to stop the loop when PASS
+class StopOnPass extends LlmAgent {}
+const stopChecker = new (class extends LlmAgent {
+  constructor() { super({ name: "stop_checker", description: "Stops on PASS" }); }
+  // Delegate to Event emission: if status is PASS, escalate
+  protected async *runAsyncImpl(ctx: any) {
+    const status = String(ctx.session.state.get("solver_status", "")).toUpperCase();
+    const done = status.includes("PASS");
+    yield new Event({ author: this.name, actions: new EventActions({ escalate: done }) });
+  }
+})();
 
-// The loop will keep trying until solution works or max attempts reached
-const result = await runner.ask(`
-  Solve this problem:
-  Write a function that finds the two numbers in an array that sum to a target value.
-
-  Example: [2, 7, 11, 15], target = 9
-  Should return indices [0, 1] because 2 + 7 = 9
-
-  Test cases:
-  - [2, 7, 11, 15], target = 9 → [0, 1]
-  - [3, 2, 4], target = 6 → [1, 2]
-  - [3, 3], target = 6 → [0, 1]
-`);
+// Loop up to 8 attempts
+const persistentSolver = new LoopAgent({
+  name: "persistent_solver",
+  description: "Keeps trying until success or limit",
+  subAgents: [solverAgent, stopChecker],
+  maxIterations: 8,
+});
 ```
+
+## How it Works
+
+When the `LoopAgent` runs, it performs the following actions:
+
+1. Sub‑Agent Execution: Iterates through `subAgents` in order; each sub‑agent’s run method is called per iteration.
+2. Termination Check: The loop itself does not inherently decide when to stop. You must implement a termination mechanism to prevent infinite loops. Common strategies:
+   - Max Iterations: Set `maxIterations` on the `LoopAgent`. The loop terminates after that many iterations.
+   - Escalation from sub‑agent: Design one or more sub‑agents to evaluate a condition (e.g., “Is the quality good enough?”). If the condition is met, the sub‑agent signals termination by yielding an `Event` with `EventActions({ escalate: true })`.
 
 ## Key Benefits
 
@@ -81,19 +110,19 @@ Always set reasonable maximum iteration limits to prevent infinite loops and mon
 
 <Cards>
   <Card
-    title="🔗 Sequential Agents"
+    title="Sequential Agents"
     description="Execute agents in order for pipeline workflows"
     href="/docs/framework/agents/workflow-agents/sequential-agents"
   />
 
   <Card
-    title="⚡ Parallel Agents"
+    title="Parallel Agents"
     description="Run multiple agents simultaneously"
     href="/docs/framework/agents/workflow-agents/parallel-agents"
   />
 
   <Card
-    title="🏗️ Agent Builder"
+    title="Agent Builder"
     description="Fluent API for creating and configuring agents"
     href="/docs/framework/agents/agent-builder"
   />

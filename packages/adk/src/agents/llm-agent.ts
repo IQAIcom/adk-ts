@@ -1,6 +1,7 @@
 import { Logger } from "@adk/logger";
 import type { GenerateContentConfig } from "@google/genai";
 import type { LanguageModel } from "ai";
+import type { z } from "zod";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor";
 import { Event } from "../events/event";
@@ -9,15 +10,19 @@ import type { BaseMemoryService } from "../memory/base-memory-service";
 import { AiSdkLlm } from "../models/ai-sdk";
 import { BaseLlm } from "../models/base-llm";
 import { LLMRegistry } from "../models/llm-registry";
+import type { LlmRequest } from "../models/llm-request";
+import type { LlmResponse } from "../models/llm-response";
 import type { BasePlanner } from "../planners/base-planner";
 import type { BaseSessionService } from "../sessions/base-session-service";
 import type { BaseTool } from "../tools/base/base-tool";
 import { FunctionTool } from "../tools/function/function-tool";
+import type { ToolContext } from "../tools/tool-context";
 import {
 	type AfterAgentCallback,
 	BaseAgent,
 	type BeforeAgentCallback,
 } from "./base-agent";
+import type { CallbackContext } from "./callback-context";
 import type { InvocationContext } from "./invocation-context";
 import type { ReadonlyContext } from "./readonly-context";
 
@@ -32,6 +37,69 @@ export type InstructionProvider = (
  * Union type for tools (supporting functions, tools, and toolsets)
  */
 export type ToolUnion = BaseTool | ((...args: any[]) => any);
+
+/**
+ * Single before model callback type
+ */
+export type SingleBeforeModelCallback = (
+	callbackContext: CallbackContext,
+	llmRequest: LlmRequest,
+) => LlmResponse | null | Promise<LlmResponse | null>;
+
+/**
+ * Before model callback type (single or array)
+ */
+export type BeforeModelCallback =
+	| SingleBeforeModelCallback
+	| SingleBeforeModelCallback[];
+
+/**
+ * Single after model callback type
+ */
+export type SingleAfterModelCallback = (
+	callbackContext: CallbackContext,
+	llmResponse: LlmResponse,
+) => LlmResponse | null | Promise<LlmResponse | null>;
+
+/**
+ * After model callback type (single or array)
+ */
+export type AfterModelCallback =
+	| SingleAfterModelCallback
+	| SingleAfterModelCallback[];
+
+/**
+ * Single before tool callback type
+ */
+export type SingleBeforeToolCallback = (
+	tool: BaseTool,
+	args: Record<string, any>,
+	toolContext: ToolContext,
+) => Record<string, any> | null | Promise<Record<string, any> | null>;
+
+/**
+ * Before tool callback type (single or array)
+ */
+export type BeforeToolCallback =
+	| SingleBeforeToolCallback
+	| SingleBeforeToolCallback[];
+
+/**
+ * Single after tool callback type
+ */
+export type SingleAfterToolCallback = (
+	tool: BaseTool,
+	args: Record<string, any>,
+	toolContext: ToolContext,
+	toolResponse: Record<string, any>,
+) => Record<string, any> | null | Promise<Record<string, any> | null>;
+
+/**
+ * After tool callback type (single or array)
+ */
+export type AfterToolCallback =
+	| SingleAfterToolCallback
+	| SingleAfterToolCallback[];
 
 /**
  * Configuration for LlmAgent
@@ -149,13 +217,33 @@ export interface LlmAgentConfig<T extends BaseLlm = BaseLlm> {
 	/**
 	 * The input schema when agent is used as a tool
 	 */
-	inputSchema?: any; // Schema type - depends on specific implementation
+	inputSchema?: z.ZodSchema;
 
 	/**
 	 * The output schema when agent replies
 	 * NOTE: when this is set, agent can ONLY reply and CANNOT use any tools
 	 */
-	outputSchema?: any; // Schema type - depends on specific implementation
+	outputSchema?: z.ZodSchema;
+
+	/**
+	 * Callback or list of callbacks to be called before calling the LLM
+	 */
+	beforeModelCallback?: BeforeModelCallback;
+
+	/**
+	 * Callback or list of callbacks to be called after calling the LLM
+	 */
+	afterModelCallback?: AfterModelCallback;
+
+	/**
+	 * Callback or list of callbacks to be called before calling a tool
+	 */
+	beforeToolCallback?: BeforeToolCallback;
+
+	/**
+	 * Callback or list of callbacks to be called after calling a tool
+	 */
+	afterToolCallback?: AfterToolCallback;
 }
 
 /**
@@ -247,12 +335,32 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	/**
 	 * The input schema when agent is used as a tool
 	 */
-	public inputSchema?: any; // Schema type - depends on specific implementation
+	public inputSchema?: z.ZodSchema;
 
 	/**
 	 * The output schema when agent replies
 	 */
-	public outputSchema?: any; // Schema type - depends on specific implementation
+	public outputSchema?: z.ZodSchema;
+
+	/**
+	 * Callback or list of callbacks to be called before calling the LLM
+	 */
+	public beforeModelCallback?: BeforeModelCallback;
+
+	/**
+	 * Callback or list of callbacks to be called after calling the LLM
+	 */
+	public afterModelCallback?: AfterModelCallback;
+
+	/**
+	 * Callback or list of callbacks to be called before calling a tool
+	 */
+	public beforeToolCallback?: BeforeToolCallback;
+
+	/**
+	 * Callback or list of callbacks to be called after calling a tool
+	 */
+	public afterToolCallback?: AfterToolCallback;
 
 	protected logger = new Logger({ name: "LlmAgent" });
 
@@ -286,6 +394,13 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 		this.generateContentConfig = config.generateContentConfig;
 		this.inputSchema = config.inputSchema;
 		this.outputSchema = config.outputSchema;
+		this.beforeModelCallback = config.beforeModelCallback;
+		this.afterModelCallback = config.afterModelCallback;
+		this.beforeToolCallback = config.beforeToolCallback;
+		this.afterToolCallback = config.afterToolCallback;
+
+		// Validate output schema configuration
+		this.validateOutputSchemaConfig();
 	}
 
 	/**
@@ -370,6 +485,94 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	}
 
 	/**
+	 * Gets the canonical before model callbacks as an array
+	 */
+	get canonicalBeforeModelCallbacks(): SingleBeforeModelCallback[] {
+		if (!this.beforeModelCallback) {
+			return [];
+		}
+		if (Array.isArray(this.beforeModelCallback)) {
+			return this.beforeModelCallback;
+		}
+		return [this.beforeModelCallback];
+	}
+
+	/**
+	 * Gets the canonical after model callbacks as an array
+	 */
+	get canonicalAfterModelCallbacks(): SingleAfterModelCallback[] {
+		if (!this.afterModelCallback) {
+			return [];
+		}
+		if (Array.isArray(this.afterModelCallback)) {
+			return this.afterModelCallback;
+		}
+		return [this.afterModelCallback];
+	}
+
+	/**
+	 * Gets the canonical before tool callbacks as an array
+	 */
+	get canonicalBeforeToolCallbacks(): SingleBeforeToolCallback[] {
+		if (!this.beforeToolCallback) {
+			return [];
+		}
+		if (Array.isArray(this.beforeToolCallback)) {
+			return this.beforeToolCallback;
+		}
+		return [this.beforeToolCallback];
+	}
+
+	/**
+	 * Gets the canonical after tool callbacks as an array
+	 */
+	get canonicalAfterToolCallbacks(): SingleAfterToolCallback[] {
+		if (!this.afterToolCallback) {
+			return [];
+		}
+		if (Array.isArray(this.afterToolCallback)) {
+			return this.afterToolCallback;
+		}
+		return [this.afterToolCallback];
+	}
+
+	/**
+	 * Validates output schema configuration
+	 * This matches the Python implementation's __check_output_schema
+	 */
+	private validateOutputSchemaConfig(): void {
+		if (!this.outputSchema) {
+			return;
+		}
+
+		// Historically we enforced a strict "reply-only" mode when outputSchema
+		// was provided (disabling transfers and tools). To allow tools and agent
+		// transfers to run while still validating the final response against the
+		// schema, we avoid throwing or forcibly flipping transfer flags here.
+		// Instead, we warn the user if the agent is configured in a mixed mode
+		// and defer application of the output schema to response post-processing
+		// when runtime behaviors (tool calls / transfers) are present.
+
+		if (!this.disallowTransferToParent || !this.disallowTransferToPeers) {
+			this.logger.warn(
+				`Agent ${this.name}: outputSchema is set while transfer flags allow transfers. The output schema will be applied in response post-processing to preserve tool-calling and transfer behavior.`,
+			);
+		}
+
+		if (this.subAgents && this.subAgents.length > 0) {
+			this.logger.warn(
+				`Agent ${this.name}: outputSchema is set and subAgents are present. Agent transfers to sub-agents will remain enabled; the schema will be validated after transfers/tools complete.`,
+			);
+		}
+
+		if (this.tools && this.tools.length > 0) {
+			this.logger.warn(
+				`Agent ${this.name}: outputSchema is set and tools are configured. Tools will be callable; the output schema will be applied during response post-processing.`,
+			);
+		}
+	}
+
+	/**
 	 * Gets the appropriate LLM flow for this agent
 	 * This matches the Python implementation's _llm_flow property
 	 */
@@ -390,10 +593,38 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	 * This matches the Python implementation's __maybe_save_output_to_state
 	 */
 	private maybeSaveOutputToState(event: Event): void {
+		// Skip if the event was authored by some other agent (e.g. current agent
+		// transferred to another agent)
+		if (event.author !== this.name) {
+			this.logger.debug(
+				`Skipping output save for agent ${this.name}: event authored by ${event.author}`,
+			);
+			return;
+		}
+
 		if (this.outputKey && event.isFinalResponse() && event.content?.parts) {
-			const result = event.content.parts
+			let result: any = event.content.parts
 				.map((part) => part.text || "")
 				.join("");
+
+			if (this.outputSchema) {
+				// If the result from the final chunk is just whitespace or empty,
+				// it means this is an empty final chunk of a stream.
+				// Do not attempt to parse it as JSON.
+				if (!result.trim()) {
+					return;
+				}
+
+				try {
+					const parsed = JSON.parse(result);
+					result = this.outputSchema.parse(parsed);
+				} catch (error) {
+					this.logger.error("Failed to validate output with schema:", error);
+					throw new Error(
+						`Output validation failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			}
 
 			if (result) {
 				// Set state delta - this would need proper EventActions handling

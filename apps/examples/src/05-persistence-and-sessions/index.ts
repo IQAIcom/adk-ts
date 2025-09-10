@@ -11,6 +11,7 @@ import {
 import dedent from "dedent";
 import { v4 as uuidv4 } from "uuid";
 import * as z from "zod";
+import { ask } from "../utils";
 
 /**
  * 05 - Persistence and Sessions
@@ -139,11 +140,13 @@ async function demonstrateSessionPersistence() {
 	const { runner, session } = await AgentBuilder.create("persistent_agent")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.withDescription("An agent that remembers conversation state across runs")
-		.withInstruction(dedent`
+		.withInstruction(
+			dedent`
 			You are a persistent agent that can remember information across sessions.
 			You have access to counters that persist between conversations.
 			Help users track various metrics and provide insights about their usage patterns.
-		`)
+		`,
+		)
 		.withTools(counterTool)
 		.withSessionService(sessionService, {
 			userId: USER_ID,
@@ -156,18 +159,20 @@ async function demonstrateSessionPersistence() {
 
 	// Test session persistence
 	console.log("🧮 Testing counter persistence:");
-	const counter1 = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Increment the 'examples_run' counter by 1",
 	);
-	console.log(`Response: ${counter1}\n`);
 
-	const counter2 = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Increment the 'coffee_breaks' counter by 2",
 	);
-	console.log(`Response: ${counter2}\n`);
 
-	const counter3 = await runner.ask("Show me all my counters and their values");
-	console.log(`Response: ${counter3}\n`);
+	await ask(
+		runner.ask.bind(runner),
+		"Show me all my counters and their values",
+	);
 
 	// Demonstrate session retrieval
 	console.log("💾 Current session state:");
@@ -195,66 +200,74 @@ async function demonstrateArtifactPersistence() {
 	const { runner } = await AgentBuilder.create("artifact_manager")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.withDescription("An agent that can manage persistent files and documents")
-		.withInstruction(dedent`
+		.withInstruction(
+			dedent`
 			You are a file management assistant with artifact capabilities.
 			You can save, load, and update files that persist across sessions.
 
 			When users ask you to save information, create appropriate filenames
 			and organize content logically. Always confirm what you've saved.
-		`)
+		`,
+		)
 		.withTools(saveArtifactTool, updateArtifactTool, new LoadArtifactsTool())
 		.withArtifactService(artifactService)
 		.build();
 
 	// Test artifact creation
 	console.log("📄 Creating artifacts:");
-	const saveResponse1 = await runner.ask(dedent`
-		Save a shopping list with these items:
-		- Apples
-		- Bread
-		- Milk
-		- Cheese
-		- Coffee
+	await ask(
+		runner.ask.bind(runner),
+		dedent`
+			Save a shopping list with these items:
+			- Apples
+			- Bread
+			- Milk
+			- Cheese
+			- Coffee
 
-		Save it as "shopping-list.txt"
-	`);
-	console.log(`Response: ${saveResponse1}\n`);
+			Save it as "shopping-list.txt"
+		`,
+	);
 
-	const saveResponse2 = await runner.ask(dedent`
-		Create a meeting agenda for tomorrow:
-		1. Project status update
-		2. Budget review
-		3. Next quarter planning
-		4. Action items
+	await ask(
+		runner.ask.bind(runner),
+		dedent`
+			Create a meeting agenda for tomorrow:
+			1. Project status update
+			2. Budget review
+			3. Next quarter planning
+			4. Action items
 
-		Save it as "meeting-agenda.md"
-	`);
-	console.log(`Response: ${saveResponse2}\n`);
+			Save it as "meeting-agenda.md"
+		`,
+	);
 
 	// Test artifact loading
 	console.log("📖 Loading artifacts:");
-	const loadResponse = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Show me all my saved files and their contents",
 	);
-	console.log(`Response: ${loadResponse}\n`);
 
 	// Test artifact updating
 	console.log("✏️ Updating artifacts:");
-	const updateResponse = await runner.ask(dedent`
-		Update the shopping list to add:
-		- Bananas
-		- Greek yogurt
+	await ask(
+		runner.ask.bind(runner),
+		dedent`
+			Update the shopping list to add:
+			- Bananas
+			- Greek yogurt
 
-		And remove milk from the list.
-	`);
-	console.log(`Response: ${updateResponse}\n`);
+			And remove milk from the list.
+		`,
+	);
 
 	// Show final artifact state
 	console.log("📋 Final artifact verification:");
-	const finalCheck = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Show me the updated shopping list content",
 	);
-	console.log(`Response: ${finalCheck}\n`);
 }
 
 async function demonstrateHybridPersistence() {
@@ -329,13 +342,15 @@ async function demonstrateHybridPersistence() {
 	const { runner } = await AgentBuilder.create("project_manager")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.withDescription("A project manager that tracks projects and manages files")
-		.withInstruction(dedent`
+		.withInstruction(
+			dedent`
 			You are a project management assistant that helps organize projects.
 			You track project metadata in session state and store project files as artifacts.
 
 			When creating projects, suggest appropriate initial files and organize
 			everything clearly. Provide helpful summaries of project status.
-		`)
+		`,
+		)
 		.withTools(createProjectTool, saveArtifactTool, new LoadArtifactsTool())
 		.withSessionService(sessionService, { userId: USER_ID, appName: APP_NAME })
 		.withArtifactService(artifactService)
@@ -343,22 +358,21 @@ async function demonstrateHybridPersistence() {
 
 	// Test hybrid persistence
 	console.log("🏗️ Creating a project with hybrid persistence:");
-	const projectResponse = await runner.ask(dedent`
-		Create a new project called "Website Redesign" with description
-		"Modernize company website with new design and improved UX".
+	await ask(
+		runner.ask.bind(runner),
+		dedent`
+			Create a new project called "Website Redesign" with description
+			"Modernize company website with new design and improved UX".
 
-		Include these initial files:
-		1. README.md with project overview
-		2. requirements.txt with initial requirements
-		3. timeline.md with project phases
-	`);
-	console.log(`Response: ${projectResponse}\n`);
+			Include these initial files:
+			1. README.md with project overview
+			2. requirements.txt with initial requirements
+			3. timeline.md with project phases
+		`,
+	);
 
 	console.log("📊 Checking project status:");
-	const statusResponse = await runner.ask(
-		"Show me all my projects and their files",
-	);
-	console.log(`Response: ${statusResponse}\n`);
+	await ask(runner.ask.bind(runner), "Show me all my projects and their files");
 }
 
 async function demonstratePersistencePatterns() {

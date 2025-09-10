@@ -45,51 +45,62 @@ export async function* mergeAgentRun(
 		return;
 	}
 
-	// Create initial promises for each generator
-	const promises = agentRuns.map(async (generator, index) => {
-		try {
-			const result = await generator.next();
-			return { index, result };
-		} catch (error) {
-			return { index, result: { done: true, value: undefined }, error };
+	// NOTE: Previous implementation incorrectly removed resolved promises using
+	// the generator index as the array index. After the first resolution the
+	// ordering diverges, causing the wrong promise to be removed and leading to
+	// potential starvation / hangs. We instead track promises by generator index.
+
+	const nextFor = (gen: AsyncGenerator<Event, void, unknown>, index: number) =>
+		gen
+			.next()
+			.then((result) => ({ index, result }))
+			.catch((error) => ({
+				index,
+				result: { done: true, value: undefined },
+				error,
+			}));
+
+	// Active entries indexed by generator index
+	const entries: Array<
+		| {
+				index: number;
+				promise: Promise<{
+					index: number;
+					result: IteratorResult<Event, void>;
+					error?: unknown;
+				}>;
+		  }
+		| undefined
+	> = agentRuns.map((gen, i) => ({ index: i, promise: nextFor(gen, i) }));
+
+	const activePromises = () =>
+		entries
+			.filter((e): e is { index: number; promise: Promise<any> } => !!e)
+			.map((e) => e.promise);
+
+	while (true) {
+		const currentActivePromises = activePromises();
+		if (currentActivePromises.length === 0) {
+			break;
 		}
-	});
-
-	let pendingPromises = [...promises];
-
-	while (pendingPromises.length > 0) {
-		// Wait for the first generator to produce an event
-		const { index, result, error } = await Promise.race(pendingPromises);
-
-		// Remove the completed promise
-		pendingPromises = pendingPromises.filter((_, i) => i !== index);
+		const { index, result, error } = await Promise.race(currentActivePromises);
 
 		if (error) {
 			console.error(`Error in parallel agent ${index}:`, error);
+			// Mark this generator as finished
+			entries[index] = undefined;
 			continue;
 		}
 
 		if (!result.done) {
-			// Yield the event
+			// Emit event
 			yield result.value;
-
-			// Create a new promise for the next event from this generator
-			const nextPromise = (async () => {
-				try {
-					const nextResult = await agentRuns[index].next();
-					return { index, result: nextResult };
-				} catch (nextError) {
-					return {
-						index,
-						result: { done: true, value: undefined },
-						error: nextError,
-					};
-				}
-			})();
-
-			pendingPromises.push(nextPromise);
+			// Queue next
+			entries[index] = { index, promise: nextFor(agentRuns[index], index) };
+		} else {
+			// Finished
+			entries[index] = undefined;
 		}
-		// If result.done is true, this generator is finished and we don't add it back
 	}
 }
 

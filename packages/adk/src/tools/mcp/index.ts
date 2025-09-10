@@ -2,7 +2,7 @@ import type { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 import type { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 import { McpClientService } from "./client";
-import { createTool } from "./create-tool";
+import { convertMcpToolToBaseTool } from "./create-tool";
 import {
 	adkToMcpToolType,
 	jsonSchemaToDeclaration,
@@ -20,6 +20,7 @@ export {
 	mcpSchemaToParameters,
 	McpError,
 	McpErrorType,
+	convertMcpToolToBaseTool,
 };
 export * from "./types";
 export * from "./sampling-handler";
@@ -157,7 +158,10 @@ export class McpToolset {
 			for (const mcpTool of toolsResponse.tools) {
 				if (this.isSelected(mcpTool, context)) {
 					try {
-						const tool: BaseTool = await createTool(mcpTool, client);
+						const tool: BaseTool = await convertMcpToolToBaseTool({
+							mcpTool,
+							client,
+						});
 						tools.push(tool);
 					} catch (toolError) {
 						console.error(

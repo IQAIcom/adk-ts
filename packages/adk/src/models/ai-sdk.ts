@@ -1,9 +1,11 @@
 import { Logger } from "@adk/logger";
 import type { Content, Part } from "@google/genai";
 import {
-	type CoreMessage,
+	AssistantContent,
 	type LanguageModel,
+	ModelMessage,
 	type Tool,
+	ToolResultPart,
 	generateText,
 	jsonSchema,
 	streamText,
@@ -25,7 +27,11 @@ export class AiSdkLlm extends BaseLlm {
 	 * @param model - Pre-configured LanguageModel from provider(modelName)
 	 */
 	constructor(modelInstance: LanguageModel) {
-		super(modelInstance.modelId || "ai-sdk-model");
+		let modelId = "ai-sdk-model";
+		if (typeof modelInstance !== "string") {
+			modelId = modelInstance.modelId;
+		}
+		super(modelId);
 		this.modelInstance = modelInstance;
 	}
 
@@ -85,7 +91,7 @@ export class AiSdkLlm extends BaseLlm {
 							functionCall: {
 								id: toolCall.toolCallId,
 								name: toolCall.toolName,
-								args: toolCall.args,
+								args: toolCall.input,
 							},
 						});
 					}
@@ -100,8 +106,8 @@ export class AiSdkLlm extends BaseLlm {
 					},
 					usageMetadata: finalUsage
 						? {
-								promptTokenCount: finalUsage.promptTokens,
-								candidatesTokenCount: finalUsage.completionTokens,
+								promptTokenCount: finalUsage.inputTokens,
+								candidatesTokenCount: finalUsage.outputTokens,
 								totalTokenCount: finalUsage.totalTokens,
 							}
 						: undefined,
@@ -121,7 +127,7 @@ export class AiSdkLlm extends BaseLlm {
 							functionCall: {
 								id: toolCall.toolCallId,
 								name: toolCall.toolName,
-								args: toolCall.args,
+								args: toolCall.input,
 							},
 						});
 					}
@@ -134,8 +140,8 @@ export class AiSdkLlm extends BaseLlm {
 					},
 					usageMetadata: result.usage
 						? {
-								promptTokenCount: result.usage.promptTokens,
-								candidatesTokenCount: result.usage.completionTokens,
+								promptTokenCount: result.usage.inputTokens,
+								candidatesTokenCount: result.usage.outputTokens,
 								totalTokenCount: result.usage.totalTokens,
 							}
 						: undefined,
@@ -155,8 +161,8 @@ export class AiSdkLlm extends BaseLlm {
 	/**
 	 * Convert ADK LlmRequest to AI SDK CoreMessage format
 	 */
-	private convertToAiSdkMessages(llmRequest: LlmRequest): CoreMessage[] {
-		const messages: CoreMessage[] = [];
+	private convertToAiSdkMessages(llmRequest: LlmRequest): ModelMessage[] {
+		const messages: ModelMessage[] = [];
 
 		for (const content of llmRequest.contents || []) {
 			const message = this.contentToAiSdkMessage(content);
@@ -229,7 +235,7 @@ export class AiSdkLlm extends BaseLlm {
 					for (const funcDecl of toolConfig.functionDeclarations) {
 						tools[funcDecl.name] = {
 							description: funcDecl.description,
-							parameters: jsonSchema(
+							inputSchema: jsonSchema(
 								this.transformSchemaForAiSdk(funcDecl.parameters || {}),
 							),
 						};
@@ -243,7 +249,7 @@ export class AiSdkLlm extends BaseLlm {
 	/**
 	 * Convert ADK Content to AI SDK CoreMessage
 	 */
-	private contentToAiSdkMessage(content: Content): CoreMessage | null {
+	private contentToAiSdkMessage(content: Content): ModelMessage | null {
 		const role = this.mapRole(content.role);
 
 		if (!content.parts || content.parts.length === 0) {
@@ -266,15 +272,7 @@ export class AiSdkLlm extends BaseLlm {
 			const textParts = content.parts.filter((part) => part.text);
 			const functionCalls = content.parts.filter((part) => part.functionCall);
 
-			const contentParts: (
-				| { type: "text"; text: string }
-				| {
-						type: "tool-call";
-						toolCallId: string;
-						toolName: string;
-						args: Record<string, any>;
-				  }
-			)[] = [];
+			const contentParts: AssistantContent = [];
 
 			for (const textPart of textParts) {
 				if (textPart.text) {
@@ -291,7 +289,7 @@ export class AiSdkLlm extends BaseLlm {
 						type: "tool-call",
 						toolCallId: funcPart.functionCall.id,
 						toolName: funcPart.functionCall.name,
-						args: funcPart.functionCall.args,
+						input: funcPart.functionCall.args,
 					});
 				}
 			}
@@ -307,12 +305,14 @@ export class AiSdkLlm extends BaseLlm {
 				(part) => part.functionResponse,
 			);
 
-			const contentParts = functionResponses.map((part) => ({
-				type: "tool-result" as const,
-				toolCallId: part.functionResponse.id,
-				toolName: part.functionResponse.name || "unknown",
-				result: part.functionResponse.response,
-			}));
+			const contentParts = functionResponses.map((part) => {
+				return {
+					type: "tool-result" as const,
+					toolCallId: part.functionResponse.id,
+					toolName: part.functionResponse.name || "unknown",
+					output: part.functionResponse.response as ToolResultPart["output"],
+				} satisfies AssistantContent[number];
+			});
 
 			return {
 				role: "tool" as const,

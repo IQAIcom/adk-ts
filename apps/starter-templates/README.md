@@ -1,3 +1,4 @@
+
 <div align="center">
 
 <img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
@@ -8,7 +9,7 @@
 
 **Ready-to-use project templates for building AI agents with the Agent Development Kit (ADK) for TypeScript**
 
-*Quick Start • Multiple Frameworks • Production Ready*
+_Quick Start • Multiple Frameworks • Production Ready_
 
 ---
 
@@ -24,14 +25,35 @@ This directory contains starter templates for ADK projects. These templates are 
 - `simple-agent` - Simple agent starter template
 - `telegram-bot` - Telegram bot starter template
 
-## Development
+## Usage
 
-To work with these templates:
+Each starter template now includes an `agents/` folder with `agent.ts` files containing agent definitions, making them compatible with the ADK CLI for easy testing and interaction.
 
+### Option 1: Direct Development
 1. Navigate to the specific template directory
 2. Install dependencies: `pnpm install`
 3. Build: `pnpm build`
 4. Run: `pnpm dev` or `pnpm start`
+
+### Option 2: ADK CLI (Recommended for Testing)
+First, install the ADK CLI globally:
+```bash
+npm install -g @iqai/adk-cli
+```
+
+Then navigate to any template directory and use:
+
+**Interactive CLI Chat:**
+```bash
+adk run
+```
+Opens a command-line interface to chat with agents defined in `agents/agent.ts`
+
+**Web Interface:**
+```bash
+adk web
+```
+Opens a web interface in your browser to chat with your agents - perfect for easy testing and demonstration
 
 ## Note
 

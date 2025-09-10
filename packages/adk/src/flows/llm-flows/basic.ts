@@ -1,6 +1,7 @@
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
 import type { Event } from "../../events/event";
+import { Logger } from "../../logger";
 import type { LlmRequest } from "../../models/llm-request";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
@@ -37,7 +38,35 @@ class BasicLlmRequestProcessor extends BaseLlmRequestProcessor {
 
 		// Set output schema if specified
 		if (agent.outputSchema) {
-			llmRequest.setOutputSchema(agent.outputSchema);
+			// Only set the request-level output schema when the request will not
+			// contain tool function declarations or transfer instructions. When
+			// tools or agent transfers are present, function-calling semantics
+			// should take precedence and we validate the final assistant response
+			// against the schema in response post-processing.
+			const hasTools =
+				(await agent.canonicalTools?.(invocationContext as any))?.length > 0;
+			const hasTransfers = !!(
+				"subAgents" in agent &&
+				(agent as any).subAgents &&
+				(agent as any).subAgents.length > 0 &&
+				!(agent.disallowTransferToParent && agent.disallowTransferToPeers)
+			);
+
+			if (!hasTools && !hasTransfers) {
+				llmRequest.setOutputSchema(agent.outputSchema);
+			} else {
+				// eslint-disable-next-line @typescript-eslint/no-floating-promises
+				(() => {
+					try {
+						const logger = new Logger({ name: "BasicLlmRequestProcessor" });
+						logger.debug(
+							`Skipping request-level output schema for agent ${agent.name} because tools/transfers are present. Schema will be validated during response processing.`,
+						);
+					} catch (e) {
+						// ignore logger errors
+					}
+				})();
+			}
 		}
 
 		// Configure live connect settings from run config
@@ -63,9 +92,8 @@ class BasicLlmRequestProcessor extends BaseLlmRequestProcessor {
 			runConfig.enableAffectiveDialog;
 		llmRequest.liveConnectConfig.proactivity = runConfig.proactivity;
 
-		// Append tools to the request (matching Python implementation expectation)
-		const tools = await agent.canonicalTools();
-		llmRequest.appendTools(tools);
+		// Tools are added later in the flow by calling each tool's processLlmRequest.
+		// Avoid appending here to prevent duplicate function declarations in providers.
 
 		// This processor doesn't yield any events, just configures the request
 		// Empty async generator - no events to yield

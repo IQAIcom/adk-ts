@@ -8,6 +8,7 @@
     "built-in-tools",
     "google-cloud-tools",
     "mcp-tools",
+    "agentkit",
     "openapi-tools",
     "third-party-tools",
     "authentication"

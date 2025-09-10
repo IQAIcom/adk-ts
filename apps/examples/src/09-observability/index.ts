@@ -1,7 +1,13 @@
 import { env } from "node:process";
-import { AgentBuilder, TelemetryService, createTool } from "@iqai/adk";
+import {
+	AgentBuilder,
+	createTool,
+	initializeTelemetry,
+	shutdownTelemetry,
+} from "@iqai/adk";
 import dedent from "dedent";
 import * as z from "zod";
+import { ask } from "../utils";
 
 /**
  * 09 - Observability and Telemetry
@@ -32,7 +38,7 @@ const getWeatherTool = createTool({
 	},
 });
 
-function initializeTelemetry(): TelemetryService | null {
+function initalizeLangfuse() {
 	if (!env.LANGFUSE_PUBLIC_KEY || !env.LANGFUSE_SECRET_KEY) {
 		console.log(
 			"Set LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY to enable telemetry",
@@ -40,14 +46,13 @@ function initializeTelemetry(): TelemetryService | null {
 		return null;
 	}
 
-	const telemetryService = new TelemetryService();
 	const langfuseHost = env.LANGFUSE_HOST || "https://cloud.langfuse.com";
 
 	const authString = Buffer.from(
 		`${env.LANGFUSE_PUBLIC_KEY}:${env.LANGFUSE_SECRET_KEY}`,
 	).toString("base64");
 
-	telemetryService.initialize({
+	initializeTelemetry({
 		appName: "observability-example",
 		appVersion: "1.0.0",
 		otlpEndpoint: `${langfuseHost}/api/public/otel/v1/traces`,
@@ -55,15 +60,13 @@ function initializeTelemetry(): TelemetryService | null {
 			Authorization: `Basic ${authString}`,
 		},
 	});
-
-	return telemetryService;
 }
 
 async function main() {
 	console.log("Observability Example - Langfuse Telemetry");
 
 	// Initialize telemetry
-	const telemetryService = initializeTelemetry();
+	initalizeLangfuse();
 
 	// Create agent with telemetry tracking
 	const { runner } = await AgentBuilder.create("weather_agent")
@@ -72,25 +75,26 @@ async function main() {
 			"A helpful weather assistant with automatic telemetry tracking",
 		)
 		.withTools(getWeatherTool)
-		.withInstruction(dedent`
+		.withInstruction(
+			dedent`
 			You are a helpful weather assistant. When users ask about weather,
 			use the get_weather tool to provide current conditions.
 			Be friendly and conversational in your responses.
-		`)
+		`,
+		)
 		.build();
 
-	console.log("🤖 Asking agent about weather:");
-	const response = await runner.ask(
+	console.log("\nAsking agent about weather:");
+	await ask(
+		runner.ask.bind(runner),
 		"What's the weather like in San Francisco? Also, can you give me some tips for what to wear in that weather?",
 	);
 
-	console.log(`🌤️  Agent Response: ${response}`);
+	console.log(
+		"\n 💡 Check your Langfuse dashboard to see traces, tool usage, and metrics",
+	);
 
-	if (telemetryService) {
-		console.log(
-			"\n 💡 Check your Langfuse dashboard to see traces, tool usage, and metrics",
-		);
-	}
+	shutdownTelemetry();
 }
 
 main().catch(console.error);

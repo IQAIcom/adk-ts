@@ -1,89 +1,46 @@
 ---
 title: Get Started
-description: Get up and running with ADK TypeScript in minutes
+description: Overview of the Agent Development Kit (ADK) for TypeScript
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Steps } from 'fumadocs-ui/components/steps';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
-<Callout type="info" title="New to AI Agents?">
-AI agents are autonomous programs that can understand instructions, use tools, and complete complex tasks. With ADK TypeScript, you can build agents that search the web, process files, interact with APIs, and coordinate with other agents.
+<Callout type="warn" title="Work in Progress">
+  This is a TypeScript port inspired by the original Python ADK. Features and
+  stability are actively being developed.
 </Callout>
 
-## Quick Start Path
+## What is ADK-TS?
 
-Follow this path to get from zero to your first working agent:
+Agent Development Kit (ADK) for TypeScript is a powerful, open-source framework for **building, orchestrating, and deploying AI agents**.
 
-<Steps>
+Inspired by the architectural principles of Google's Python ADK, our project is reimagined for the TypeScript ecosystem. We offer first-class support for Google Gemini models while providing the freedom to **integrate with any LLM, tool, or data source**. ADK-TS makes it easy to start with simple agents and scales to support complex, multi-agent systems in any Node.js environment.
 
-### Install ADK TypeScript
+### Why Choose ADK-TS?
 
-Set up your development environment and install the package.
+Our vision is to empower every developer to build intelligent agents with the same confidence as any modern software. We achieve this through three core pillars:
 
-[→ Installation Guide](/docs/framework/get-started/installation)
+- **Unparalleled Developer Experience:** We are TypeScript-first, providing full type-safety and autocompletion out of the box. Our intuitive `AgentBuilder` API lets you create powerful agents with minimal, readable code.
+- **Powerful & Flexible Architecture:** ADK-TS is modular by design. Compose multiple agents, equip them with custom tools, and orchestrate complex workflows. Our provider-agnostic foundation means you're never locked into a single ecosystem.
+- **Production-Ready from Day One:** Go beyond prototypes. With built-in session management, persistent memory, and first-class OpenTelemetry support for observability, ADK-TS provides the robust foundation needed for real-world applications.
 
-### Build Your First Agent
+### What You Can Build
 
-Create a simple agent that answers questions using Gemini models.
+ADK-TS enables a wide range of AI agent applications:
 
-[→ Quickstart Tutorial](/docs/framework/get-started/quickstart)
-
-### Understand the Architecture
-
-Learn about the core concepts and components.
-
-[→ About ADK TypeScript](/docs/framework)
-
-</Steps>
-
-## Choose Your Learning Path
-
-<Cards>
-  <Card
-    title="🚀 I want to build quickly"
-    description="Jump straight into code with minimal setup"
-  >
-    Start with the **[Quickstart](/docs/framework/get-started/quickstart)** - you'll have a working agent in 5 minutes.
-
-    Perfect for: Prototyping, proof of concepts, getting a feel for the framework.
-  </Card>
-
-  <Card
-    title="📚 I want to understand first"
-    description="Learn the concepts before diving into code"
-  >
-    Read **[About ADK TypeScript](/docs/framework)** to understand the design philosophy.
-
-    Perfect for: Planning production systems, understanding best practices.
-  </Card>
-
-  <Card
-    title="🎯 I have a specific use case"
-    description="I know what I want to build"
-  >
-    Browse our **<a href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples" target="_blank" rel="noopener noreferrer">Examples</a>** to find patterns that match your needs.
-
-    Perfect for: Specific projects, learning by example, copying working code.
-  </Card>
-</Cards>
-
-## What You Can Build
-
-ADK TypeScript enables a wide range of AI agent applications:
-
-### Simple Agents
+#### Simple Agents
 
 ```typescript
 // Question answering agent
-const response = await AgentBuilder
-  .withModel("gemini-2.5-flash")
-  .ask("Explain quantum computing in simple terms");
+const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
+  "Explain quantum computing in simple terms"
+);
 ```
 
 **Use cases**: Q&A bots, content generation, text analysis
 
-### Tool-Enhanced Agents
+#### Tool-Enhanced Agents
 
 ```typescript
 // Research agent with web search
@@ -91,30 +48,28 @@ const agent = new LlmAgent({
   name: "researcher",
   model: "gemini-2.5-flash",
   tools: [new GoogleSearch(), new FileOperationsTool()],
-  instruction: "Research topics thoroughly and cite sources"
+  instruction: "Research topics thoroughly and cite sources",
 });
 ```
 
 **Use cases**: Research assistants, data analysis, automated reporting
 
-### Multi-Agent Workflows
+#### Multi-Agent Workflows
 
 ```typescript
 // Workflow: Research → Analyze → Summarize
-const workflow = await AgentBuilder
-  .create("content_pipeline")
+const workflow = await AgentBuilder.create("content_pipeline")
   .asSequential([researchAgent, analysisAgent, summaryAgent])
   .build();
 ```
 
 **Use cases**: Content pipelines, complex analysis, quality assurance
 
-### Interactive Applications
+#### Interactive Applications
 
 ```typescript
 // Persistent chat with memory
-const { runner } = await AgentBuilder
-  .create("chat_assistant")
+const { runner } = await AgentBuilder.create("chat_assistant")
   .withModel("gemini-2.5-flash")
   .withSessionService(sessionService, userId, "chat-app")
   .build();
@@ -122,47 +77,58 @@ const { runner } = await AgentBuilder
 
 **Use cases**: Chatbots, virtual assistants, customer support
 
-## Features at a Glance
+## Core Concepts
+
+ADK-TS is built on a set of powerful, modular concepts that allow you to build sophisticated AI agents with ease. These are the features that make ADK-TS special.
 
 <Cards>
   <Card
-    title="🔀 Multiple Agent Types"
-    description="LLM agents, Sequential workflows, Parallel processing, Loop-based iteration"
+    title="🤖 Flexible Agent Architecture"
+    description="Compose sophisticated agentic workflows using a variety of agent types, from simple LLM agents to complex multi-agent systems."
+    href="/docs/framework/agents"
   />
-
   <Card
-    title="🛠️ Rich Tool Ecosystem"
-    description="Google Search, File operations, HTTP requests, Custom functions, MCP tools"
+    title="🛠️ Extensible Tooling with MCP"
+    description="Connect to a universe of tools and services through the Model Context Protocol (MCP), or create your own custom tools with ease."
+    href="/docs/framework/tools"
   />
-
   <Card
-    title="💾 Session Management"
-    description="In-memory sessions, Database persistence, Context preservation, Memory services"
+    title="🧠 Multi-LLM Support"
+    description="Leverage multiple language models across providers like OpenAI, Anthropic, Google Gemini, and more with a unified, provider-agnostic API."
+    href="/docs/framework/agents/models"
   />
-
   <Card
-    title="🎯 TypeScript Native"
-    description="Full type safety, IntelliSense support, Modern async/await, ESM modules"
+    title="🚀 Developer-First Experience"
+    description="Enjoy a seamless development workflow with TypeScript-native APIs, a powerful AgentBuilder, and a CLI for testing and iteration."
+    href="/docs/framework/get-started/quickstart"
   />
-
   <Card
-    title="🚀 Simple to Deploy"
-    description="Node.js compatible, Docker ready, Cloud native, Serverless friendly"
+    title="📈 Production-Ready by Design"
+    description="Build robust, scalable applications with built-in session management, OpenTelemetry tracing for observability, and integrated evaluation."
+    href="/docs/framework/sessions"
   />
-
   <Card
-    title="📊 Built-in Observability"
-    description="Structured logging, Event streaming, Performance metrics, Error tracking"
+    title="🌐 Easy to Deploy"
+    description="Deploy your agents anywhere Node.js runs—from serverless functions to containers, edge environments to traditional servers."
   />
 </Cards>
 
-## Real Examples
+## Next Steps
 
-All our documentation uses real, working TypeScript examples from our test suite. You can copy and run any code you see.
+Ready to start building? Here's how to get started:
 
-<Callout type="info" title="Working Examples">
-Every code sample in our documentation comes from our [examples](https://github.com/IQAICOM/adk-ts/tree/main/apps/examples/src) directory - real, tested, working code that you can run immediately.
-</Callout>
+<Cards>
+  <Card
+    title="🏗️ Installation"
+    description="Set up ADK-TS in your project"
+    href="/docs/framework/get-started/installation"
+  />
+  <Card
+    title="⚡ Quickstart"
+    description="Build your first agent in 5 minutes"
+    href="/docs/framework/get-started/quickstart"
+  />
+</Cards>
 
 ## Community & Support
 
@@ -170,9 +136,9 @@ Join our community for help, discussions, and updates:
 
 <Cards>
   <Card
-    title="💻 GitHub"
-    description="Source code, issues, and contributions"
-    href="https://github.com/IQAIcom/adk-ts"
+    title="💻 GitHub Issues"
+    description="Report bugs, request features, and contribute"
+    href="https://github.com/IQAIcom/adk-ts/issues"
     target="_blank"
     rel="noopener noreferrer"
   />
@@ -183,58 +149,18 @@ Join our community for help, discussions, and updates:
     target="_blank"
     rel="noopener noreferrer"
   />
-  {/* <Card
-    title="Discord"
+  <Card
+    title="💼 Discord"
     description="Join our Discord server for real-time collaboration and support"
-    href="https://discord.gg/your-discord-invite"
+    href="https://discord.com/invite/x9EWvTcPXt"
+    target="_blank"
+    rel="noopener noreferrer"
   />
   <Card
-    title="🔬 Examples"
-    description="Real working examples for common patterns"
-    href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples"
-  /> */}
-</Cards>
-
-## Next Steps
-
-Ready to start building? Choose your path:
-
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-  <Card
-    title="⚡ Quick Start"
-    description="Build your first agent in 5 minutes"
-    href="/docs/framework/get-started/quickstart"
-  />
-
-  <Card
-    title="🏗️ Installation"
-    description="Set up your development environment"
-    href="/docs/framework/get-started/installation"
-  />
-
-  <Card
-    title="🧠 Learn the Concepts"
-    description="Understand the architecture"
-    href="/docs/framework/get-started/about"
-  />
-
-  <Card
-    title="🤖 Explore Agents"
-    description="Learn about different agent types"
-    href="/docs/framework/agents"
-  />
-
-  <Card
-    title="🛠️ Use Tools"
-    description="Add capabilities to your agents"
-    href="/docs/framework/tools"
-  />
-
-  <Card
-    title="📊 See Examples"
+    title="📊 Examples"
     description="Browse working code examples"
     href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples"
     target="_blank"
     rel="noopener noreferrer"
   />
-</div>
+</Cards>

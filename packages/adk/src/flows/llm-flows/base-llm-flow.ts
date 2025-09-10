@@ -8,10 +8,28 @@ import {
 import { Event } from "@adk/events";
 import { Logger } from "@adk/logger";
 import { LogFormatter } from "@adk/logger/log-formatter";
-import { type BaseLlm, LlmRequest, type LlmResponse } from "@adk/models";
+import {
+	type BaseLlm,
+	LlmRequest,
+	type LlmResponse,
+	type FunctionDeclaration,
+} from "@adk/models";
 import { traceLlmCall } from "@adk/telemetry";
 import { ToolContext } from "@adk/tools";
 import * as functions from "./functions";
+
+// Tool interfaces for better type safety
+interface ToolWithFunctionDeclarations {
+	functionDeclarations: FunctionDeclaration[];
+	[key: string]: any;
+}
+
+interface NamedTool {
+	name: string;
+	[key: string]: any;
+}
+
+type Tool = ToolWithFunctionDeclarations | NamedTool | any;
 
 const _ADK_AGENT_NAME_LABEL_KEY = "adk_agent_name";
 
@@ -22,7 +40,7 @@ export abstract class BaseLlmFlow {
 	protected logger = new Logger({ name: "BaseLlmFlow" });
 
 	async *runAsync(invocationContext: InvocationContext): AsyncGenerator<Event> {
-		this.logger.info(`Agent '${invocationContext.agent.name}' started.`);
+		this.logger.debug(`Agent '${invocationContext.agent.name}' started.`);
 
 		let stepCount = 0;
 		while (true) {
@@ -34,7 +52,7 @@ export abstract class BaseLlmFlow {
 			}
 
 			if (!lastEvent || lastEvent.isFinalResponse()) {
-				this.logger.info(
+				this.logger.debug(
 					`Agent '${invocationContext.agent.name}' finished after ${stepCount} steps.`,
 				);
 				break;
@@ -72,7 +90,7 @@ export abstract class BaseLlmFlow {
 		}
 
 		if (invocationContext.endInvocation) {
-			this.logger.info("Invocation ended during preprocessing.");
+			this.logger.debug("Invocation ended during preprocessing.");
 			return;
 		}
 
@@ -127,9 +145,27 @@ export abstract class BaseLlmFlow {
 		}
 
 		// Process canonical tools
-		const tools = await agent.canonicalTools(
+		let tools = await agent.canonicalTools(
 			new ReadonlyContext(invocationContext),
 		);
+
+		// Debug: capture raw tool declarations prior to any dedup (only if DEBUG_TOOLS env var set)
+
+		// Deduplicate tools by name to avoid duplicate function declarations in provider requests
+		if (tools.length > 1) {
+			const seen = new Set<string>();
+			const filtered: any[] = [];
+			for (const t of tools) {
+				const name = (t as any)?.name;
+				if (!name) continue;
+				if (seen.has(name)) {
+					continue;
+				}
+				seen.add(name);
+				filtered.push(t);
+			}
+			tools = filtered;
+		}
 
 		for (const tool of tools) {
 			const toolContext = new ToolContext(invocationContext);
@@ -253,7 +289,7 @@ export abstract class BaseLlmFlow {
 
 				const transferToAgent = functionResponseEvent.actions?.transferToAgent;
 				if (transferToAgent) {
-					this.logger.info(`🔄 Live transfer to agent '${transferToAgent}'`);
+					this.logger.debug(`🔄 Live transfer to agent '${transferToAgent}'`);
 
 					const agentToRun = this._getAgentToRun(
 						invocationContext,
@@ -308,7 +344,7 @@ export abstract class BaseLlmFlow {
 
 			const transferToAgent = functionResponseEvent.actions?.transferToAgent;
 			if (transferToAgent) {
-				this.logger.info(`🔄 Transferring to agent '${transferToAgent}'`);
+				this.logger.debug(`🔄 Transferring to agent '${transferToAgent}'`);
 
 				const agentToRun = this._getAgentToRun(
 					invocationContext,
@@ -381,7 +417,45 @@ export abstract class BaseLlmFlow {
 			invocationContext.runConfig.streamingMode === StreamingMode.SSE;
 
 		// Log LLM request in a clean table format
-		const tools = llmRequest.config?.tools || [];
+		let tools: Tool[] = llmRequest.config?.tools || [];
+
+		// Secondary defensive deduplication: some providers (e.g., Google) error on duplicate function declarations
+		// even if upstream preprocessing attempted to filter. Here we collapse duplicate functionDeclarations by name.
+		if (tools.length) {
+			const deduped: Tool[] = [];
+			const seenFn = new Set<string>();
+			for (const t of tools) {
+				const tool = t as Tool;
+				if (tool && Array.isArray(tool.functionDeclarations)) {
+					const newFds = tool.functionDeclarations.filter(
+						(fd: FunctionDeclaration) => {
+							if (fd?.name) {
+								if (seenFn.has(fd.name)) {
+									return false; // Discard duplicate
+								}
+								seenFn.add(fd.name);
+							}
+							return true; // Keep unique or unnamed function
+						},
+					);
+					if (newFds.length) {
+						deduped.push({ ...tool, functionDeclarations: newFds });
+					}
+				} else if (tool?.name) {
+					if (seenFn.has(tool.name)) continue;
+					seenFn.add(tool.name);
+					deduped.push(tool);
+				} else {
+					deduped.push(tool); // Unknown shape; keep as is
+				}
+			}
+			if (deduped.length !== tools.length) {
+				this.logger.debug(
+					`🔁 Deduplicated tool/function declarations: ${tools.length} -> ${deduped.length}`,
+				);
+			}
+			llmRequest.config.tools = tools = deduped;
+		}
 
 		const toolNames = tools
 			.map((tool: any) => {

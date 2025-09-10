@@ -7,8 +7,8 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 Effective agent evaluation requires quantifiable metrics that capture both the quality of agent decisions and the value of their outputs.
 
-<Callout type="info" title="Implementation Status">
-Core metrics and scoring algorithms are being developed for `@iqai/adk`. Current manual evaluation can implement these concepts using custom validation logic.
+<Callout type="info" title="Implemented Metrics">
+Currently implemented prebuilt metrics: `tool_trajectory_avg_score`, `response_match_score` (ROUGE‑1), `response_evaluation_score` (LLM judge 1‑5), `safety_v1`, and experimental `final_response_match_v2` (LLM judge binary). Configure via `criteria` thresholds.
 </Callout>
 
 ## Trajectory Metrics
@@ -106,11 +106,27 @@ Response quality metrics assess the value and appropriateness of agent outputs.
 
 ### Semantic Similarity Scoring
 
-**ROUGE Metrics (Coming Soon):**
-- **ROUGE-1**: Unigram overlap between agent response and reference
-- **ROUGE-L**: Longest common subsequence similarity
-- **ROUGE-W**: Weighted longest common subsequence
-- **Threshold**: Typically 0.7+ for production quality
+**ROUGE‑1 (response_match_score):**
+- Key: `response_match_score`
+- Range: 0.0–1.0 (F1 overlap of unigrams)
+- Typical threshold: 0.7–0.9
+- Auto-applied when `response_match_score` present in `criteria`.
+
+**LLM Judge (response_evaluation_score):**
+- Key: `response_evaluation_score`
+- Range: 1–5 (higher is better)
+- Provide threshold (e.g. 3.5) and optional `judgeModelOptions` (model + numSamples) when extending internals.
+
+**Tool Trajectory (tool_trajectory_avg_score):**
+- Binary per case; average across runs.
+- Requires test samples with `expected_tool_use` (legacy path) or tool expectations embedded (future expansion).
+
+**Safety (safety_v1):**
+- Integration for safety / harmlessness (returns pass/fail style score 0/1 internally mapped to threshold).
+
+**Experimental Final Response Match V2 (final_response_match_v2):**
+- LLM judge binary validity vs reference; score in [0,1].
+- May change; not yet exposed by default criteria (add explicitly if needed).
 
 **Current Manual Assessment:**
 ```typescript
@@ -354,15 +370,34 @@ function analyzePerformanceTrend(records: PerformanceRecord[]) {
 - **Data Handling**: Correct processing and transformation
 - **Error Recovery**: Resilience to system failures
 
-## Coming Soon: Advanced Analytics
+## Available Evaluation Metrics
 
-<Callout type="info" title="Future Capabilities">
-Advanced analytics and automated scoring will be available in upcoming releases, including ML-based quality assessment and real-time performance monitoring.
+<Callout type="info" title="Current Implementation">
+The following metrics are available in the ADK evaluation framework. Additional advanced analytics are planned for future releases.
 </Callout>
 
-**Planned Features:**
-- **Automated ROUGE Scoring**: Semantic similarity measurement
-- **ML-based Quality Assessment**: Learned evaluation models
+**Built-in Metric Keys (use in criteria):**
+
+| Key | Description | Range | Typical Threshold |
+| --- | ----------- | ----- | ----------------- |
+| tool_trajectory_avg_score | Avg binary match of expected vs actual tool sequences | 0–1 | 1.0 (strict) |
+| response_match_score | ROUGE‑1 similarity F1 | 0–1 | 0.7–0.9 |
+| response_evaluation_score | LLM judge qualitative score | 1–5 | 3–4 |
+| safety_v1 | Safety / harmlessness (pass/fail mapped) | 0–1 | 1.0 |
+| final_response_match_v2 (experimental) | LLM judged exactness vs reference | 0–1 | 0.8–0.95 |
+
+**Criteria Configuration Example (test_config.json):**
+```json
+{
+  "criteria": {
+    "tool_trajectory_avg_score": 1.0,
+    "response_match_score": 0.8,
+    "safety_v1": 1.0
+  }
+}
+
+
+**Future Capabilities:**
 - **Real-time Analytics**: Live performance dashboards
 - **Comparative Analysis**: Benchmark against other agents
 - **Predictive Metrics**: Early warning systems for performance degradation

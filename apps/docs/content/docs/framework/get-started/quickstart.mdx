@@ -1,369 +1,341 @@
 ---
 title: Quickstart
-description: Build your first AI agent with ADK TypeScript in minutes
+description: Build your first AI agent with ADK-TS in 5 minutes
 ---
 
-import { Steps } from 'fumadocs-ui/components/steps';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Card } from 'fumadocs-ui/components/card';
+import { Steps } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-<Callout type="info" title="Prerequisites">
-Make sure you have [installed ADK TypeScript](/docs/framework/get-started/installation) before continuing.
-</Callout>
+Ready to build your first AI agent? This guide will take you from zero to a working agent with tools in just a few minutes.
 
-<Callout title="Quick Start Alternative">
-Want to skip the manual setup? Use our CLI to create a complete project:
+<Callout title="Quick Start with CLI">
+Want to skip the manual setup? Use our CLI to create a complete project with examples:
 
 ```bash
-npx create-adk-project
+npx @iqai/adk-cli new
 ```
 
-This creates a project with all the examples below already set up and ready to run!
+This creates a project with working agents already set up and ready to run!
+
+[Learn more about installation options](/docs/framework/get-started/installation) including adding ADK-TS to existing projects.
+
 </Callout>
 
-## Your First Agent
+## Build Your First Agent
 
-Let's start with the simplest possible agent - one that can answer questions:
+Let's walk through creating your first AI agent step by step.
 
 <Steps>
 
-### Create Your Agent File
+### 1. Set Up a New Project
 
-Create a new file called `my-first-agent.ts`:
+Create a new project from scratch:
+
+```bash
+mkdir my-first-agent && cd my-first-agent
+npm init -y
+npm install @iqai/adk tsx typescript dotenv
+npx tsc --init --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --noEmit
+```
+
+### 2. Configure Environment Variables
+
+Create a `.env` file in your project root with your API key:
+
+```bash
+echo "GOOGLE_API_KEY=your_google_api_key_here" > .env
+echo -e ".env\nnode_modules/" > .gitignore
+```
+
+<Callout type="warn" title="API Key Required">
+  Replace `your_google_api_key_here` with your actual API key from [Google AI
+  Studio](https://aistudio.google.com/app/apikey). ADK-TS supports Google Gemini
+  models by default.
+</Callout>
+
+### 3. Create Your First Agent
+
+Create a simple agent in `src/agents/assistant/agent.ts`:
 
 ```typescript
-import { env } from "node:process";
+// src/agents/assistant/agent.ts
 import { AgentBuilder } from "@iqai/adk";
-import dedent from "dedent";
+import * as dotenv from "dotenv";
 
-/**
- * Simple Agent Example
- *
- * The simplest way to create and use an AI agent with AgentBuilder.
- */
+dotenv.config();
+
+export async function agent() {
+  return await AgentBuilder.create("assistant")
+    .withModel("gemini-2.5-flash")
+    .withInstruction("You are a helpful assistant.")
+    .build();
+}
+```
+
+<Callout type="info" title="Using Different Models">
+  You can easily use other LLM models by changing the model parameter:
+  ```typescript
+  // For OpenAI models
+  .withModel("gpt-4o")
+
+// For Anthropic models
+.withModel("claude-3-5-sonnet")
+
+````
+ADK-TS will automatically detect the provider from the model name, but you'll need to set
+the appropriate API key in your `.env` file (e.g., `OPENAI_API_KEY` for OpenAI
+models or `ANTHROPIC_API_KEY` for Anthropic models).
+
+For advanced LLM configurations, check our [Models
+documentation](/docs/framework/agents/models).
+</Callout>
+
+### 4. Test Your Agent
+
+Now let's test your agent. Create a simple script to interact with it. Add the following to `src/agents/index.ts`:
+
+```typescript
+// src/agents/index.ts
+import { agent } from "./assistant/agent";
+
 async function main() {
-  const question = "What is the capital of France?";
+const { runner } = await agent();
 
-  // The simplest possible usage - just model and ask!
-  const response = await AgentBuilder.withModel(
-    env.LLM_MODEL || "gemini-2.5-flash",
-  ).ask(question);
-
-  console.log(dedent`
-    🤖 Simple Agent Example
-    ═══════════════════════
-
-    📝 Question: ${question}
-    🤖 Response: ${response}
-  `);
+const response = await runner.ask("What is the capital of France?");
+console.log("🤖 Response:", response);
 }
 
 main().catch(console.error);
+````
+
+Run it in your terminal:
+
+```bash
+npx tsx src/agents/index.ts
 ```
-
-### Run Your Agent
-
-<Tabs items={['tsx', 'ts-node', 'compile']}>
-  <Tab value="tsx">
-    ```bash
-    npx tsx my-first-agent.ts
-    ```
-  </Tab>
-
-  <Tab value="ts-node">
-    ```bash
-    npx ts-node my-first-agent.ts
-    ```
-  </Tab>
-
-  <Tab value="compile">
-    ```bash
-    npx tsc my-first-agent.ts
-    node my-first-agent.js
-    ```
-  </Tab>
-</Tabs>
-
-### Expected Output
 
 You should see something like:
 
 ```
-🤖 Simple Agent Example
-═══════════════════════
-
-📝 Question: What is the capital of France?
 🤖 Response: The capital of France is Paris.
 ```
 
+**Congratulations!** 🎉 You've just created and run your first AI agent.
+
 </Steps>
 
-## Understanding the Code
+## Adding Tools to Your Agent
 
-Let's break down what's happening:
+Now let's make your agent more powerful by adding the ability to search the web using our built-in GoogleSearch tool:
 
-<Card title="Code Explanation">
-  ```typescript
-  // 1. Import the AgentBuilder class
-  import { AgentBuilder } from "@iqai/adk";
+<Steps>
 
-  // 2. Create an agent with a model and ask a question
-  const response = await AgentBuilder
-    .withModel("gemini-2.5-flash")  // Specify the LLM model
-    .ask(question);                 // Ask your question
-  ```
+### 1. Update Your Agent with Tools
 
-  **That's it!** AgentBuilder provides the simplest way to get started with AI agents.
-</Card>
-
-## Adding Tools
-
-Now let's make your agent more powerful by adding tools. Create a new file:
+Replace your `src/agents/assistant/agent.ts` with this enhanced version:
 
 ```typescript
-import { env } from "node:process";
-import {
-  AgentBuilder,
-  GoogleSearch
-} from "@iqai/adk";
+// src/agents/assistant/agent.ts
+import { AgentBuilder, GoogleSearch } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-async function main() {
-  console.log("🛠️ Agent with Tools Example");
-  console.log("═══════════════════════════");
+dotenv.config();
 
-  // Ask a question that requires web search
-  const query = "What are the latest developments in AI agents this year?";
-  console.log(`📝 Query: ${query}\n`);
-
-  // Create an agent with tools using AgentBuilder
-  const response = await AgentBuilder
-    .create("research_agent")
-    .withModel(env.LLM_MODEL || "gemini-2.5-flash")
-    .withDescription("A research agent that can search the web")
+export async function agent() {
+  return await AgentBuilder.create("research_assistant")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "A helpful research assistant with web search capabilities"
+    )
     .withInstruction(
-      "You are a helpful research assistant. Use the Google Search tool " +
-      "when you need current information. Provide clear, well-sourced answers."
+      "You are a helpful research assistant. When you need current information " +
+        "or want to search for specific topics, use the Google Search tool. " +
+        "Always cite your sources when providing information from search results."
     )
     .withTools(new GoogleSearch())
-    .ask(query);
+    .build();
+}
+```
 
+### 2. Test the Tool Integration
+
+Update your test script to ask a question that requires web search:
+
+```typescript
+// src/agents/index.ts
+import { agent } from "./assistant/agent";
+
+async function main() {
+  const { runner } = await agent();
+
+  const response = await runner.ask(
+    "What are the latest developments in AI technology in 2024?"
+  );
   console.log("🤖 Response:", response);
 }
 
 main().catch(console.error);
 ```
 
-<Callout type="info" title="What's New Here?">
-- **AgentBuilder**: Using the fluent API pattern for simpler agent creation
-- **Tools**: Added `GoogleSearch` for web searching capabilities
-- **Instructions**: Giving the agent specific guidance on how to behave
-- **Direct Response**: Getting the response directly without streaming complexity
+Run it again:
+
+```bash
+npx tsx src/agents/index.ts
+```
+
+Your agent will now search the web for current information and provide a more comprehensive, up-to-date answer!
+
+<Callout type="info" title="Implementation Note">
+  The current GoogleSearch implementation returns mock results. Integration with
+  actual [Google Search
+  API](https://developers.google.com/custom-search/v1/overview) requires
+  additional configuration.
 </Callout>
 
-## Configuration Options
+</Steps>
 
-You can customize your agent in many ways:
+## Using the CLI for Interactive Testing
 
-<Tabs items={['Basic', 'With Instructions', 'Advanced']}>
-  <Tab value="Basic">
-    ```typescript
-    // Minimal agent
-    const response = await AgentBuilder
-      .withModel("gemini-2.5-flash")
-      .ask("Hello!");
-    ```
-  </Tab>
+Instead of writing test scripts, you can interact with your agent directly using our [CLI](/docs/cli). The CLI provides two ways to test your agents:
 
-  <Tab value="With Instructions">
-    ```typescript
-    // Agent with custom behavior
-    const response = await AgentBuilder
-      .create("helpful_assistant")
-      .withModel("gemini-2.5-flash")
-      .withDescription("A friendly and helpful assistant")
-      .withInstruction(
-        "You are a helpful assistant. Always be polite and " +
-        "provide clear, accurate information."
-      )
-      .ask("Hello!");
-    ```
-  </Tab>
+### Terminal-Based Chat (`adk run`)
 
-  <Tab value="Advanced">
-    ```typescript
-    // Full-featured agent with tools and sessions
-    const { runner } = await AgentBuilder
-      .create("research_agent")
-      .withModel("gemini-2.5-flash")
-      .withDescription("A research agent with web search")
-      .withInstruction("Use tools to find accurate information")
-      .withTools(new GoogleSearch())
-
-      .build();
-
-    // Use the runner for conversation memory
-    const response = await runner.ask("What's the weather like today?");
-    ```
-  </Tab>
-</Tabs>
-
-## Common Patterns
-
-Here are some common patterns you'll use:
-
-### Environment Configuration
+For a command-line chat experience, install the CLI globally and start the chat:
 
 ```bash
-# Specify your preferred model
-LLM_MODEL=gemini-2.5-flash
+# Install the CLI globally
+npm install -g @iqai/adk-cli
 
-# Or use other supported models
-# LLM_MODEL=gemini-1.5-pro
-# LLM_MODEL=gpt-4
+# Start terminal-based chat with your agent
+adk run
 ```
 
-### Error Handling
-
-```typescript
-async function safeAgentCall() {
-  try {
-    const response = await AgentBuilder
-      .withModel("gemini-2.5-flash")
-      .ask("What is the weather like?");
-
-    console.log("Success:", response);
-  } catch (error) {
-    console.error("Agent error:", error);
-    // Handle the error appropriately
-  }
-}
-```
-
-### Multiple Questions
-
-```typescript
-async function multipleQuestions() {
-  const agent = AgentBuilder
-    .create("qa_agent")
-    .withModel("gemini-2.5-flash")
-    .withInstruction("Provide concise, accurate answers");
-
-  const questions = [
-    "What is TypeScript?",
-    "How do AI agents work?",
-    "What is the capital of Japan?"
-  ];
-
-  for (const question of questions) {
-    const answer = await agent.ask(question);
-    console.log(`Q: ${question}`);
-    console.log(`A: ${answer}\n`);
-  }
-}
-```
-
-## Using External Models
-
-Want to use models from OpenAI, Anthropic, or other providers? ADK supports 100+ models through Vercel AI SDK:
-
-### OpenAI Example
+Or use `npx` without global installation:
 
 ```bash
-# First install the OpenAI provider package
-npm install @ai-sdk/openai
+npx @iqai/adk-cli run
 ```
 
-```typescript
-import { LlmAgent } from "@iqai/adk";
-import { openai } from "@ai-sdk/openai";
-
-async function useOpenAI() {
-  // Set OPENAI_API_KEY in your environment
-
-  const agent = new LlmAgent({
-    name: "openai_agent",
-    model: openai("gpt-4.1"),
-    instruction: "You are a helpful assistant"
-  });
-
-  const response = await agent.ask("Explain quantum computing in simple terms");
-  console.log(response);
-}
-```
-
-### Anthropic Example
-
-```bash
-# First install the Anthropic provider package
-npm install @ai-sdk/anthropic
-```
-
-```typescript
-import { LlmAgent } from "@iqai/adk";
-import { anthropic } from "@ai-sdk/anthropic";
-
-async function useAnthropic() {
-  // Set ANTHROPIC_API_KEY in your environment
-
-  const agent = new LlmAgent({
-    name: "claude_agent",
-    model: anthropic("claude-3-5-sonnet-20241022"),
-    instruction: "You are a helpful assistant"
-  });
-
-  const response = await agent.ask("Write a haiku about programming");
-  console.log(response);
-}
-```
-
-<Callout type="info" title="More Providers">
-ADK supports many models through Vercel AI SDK including OpenAI, Anthropic, Google, Mistral, and more. Check the [Models documentation](/docs/framework/agents/models) for the complete list of supported providers.
+<Callout type="info" title="Agent Discovery">
+  For the CLI to auto-discover your agents, make sure your agent files are
+  placed under the `src/agents` directory.
 </Callout>
+
+This command will:
+
+- Auto-discover your agent file
+- Start an interactive chat session in your terminal
+- Allow you to ask questions and see responses in real-time
+- Show tool usage and agent reasoning (if applicable)
+
+### Web-Based Interface (`adk web`)
+
+For a more visual chat experience with a web interface, if you have the ADK-TS CLI installed globally, run:
+
+```bash
+adk web
+```
+
+Or use `npx` without global installation:
+
+```bash
+npx @iqai/adk-cli web
+```
+
+This command will:
+
+- Launch a local web server with a chat interface
+- Display the URL where you can access the web interface (https://adk-web.iqai.com/?port=8042)
+- Provide a more user-friendly way to test your agent
+- Show conversation history and formatting
+
+<Callout type="info" title="No Scripts Required">
+  Both `adk run` and `adk web` let you test your agents interactively without
+  writing any test scripts. Perfect for quick testing and experimentation!
+</Callout>
+
+## Recommended Project Structure
+
+As your project grows, we recommend organizing your code like this:
+
+```
+my-agent-project/
+├── .env                # Environment variables (API keys)
+├── .gitignore          # Don't commit .env files!
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── agent.ts        # Main agent export
+    ├── main.ts         # Script runner (optional)
+    └── tools/          # Custom tools (optional)
+        └── customTool.ts
+```
+
+For larger projects with multiple agents:
+
+```
+my-multi-agent-project/
+├── .env
+├── package.json
+└── src/
+    ├── agents/
+    │   ├── research-agent/
+    │   │   ├── agent.ts
+    │   │   └── tools.ts
+    │   ├── analysis-agent/
+    │   │   ├── agent.ts
+    │   │   └── tools.ts
+    │   └── coordinator/
+    │       └── agent.ts
+    └── shared/
+    │   └── tools/
+    │       └── customTool.ts
+    └── main.ts         # Script runner (optional)
+
+```
 
 ## Next Steps
 
-Congratulations! You've created your first AI agent. Here's what to explore next:
+Congratulations! You've built your first AI agent and learned how to add tools to it. Here's what to explore next:
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+<Cards>
   <Card
-    title="🛠️ Add More Tools"
-    description="Learn about built-in tools and how to create custom ones"
-    href="/docs/framework/tools"
-  />
-
-  <Card
-    title="🤖 Advanced Agents"
-    description="Explore LLM agents, workflow agents, and multi-agent systems"
+    title="🤖 Learn About Agents"
+    description="Explore different types of agents: LLM agents, workflow agents, and multi-agent systems"
     href="/docs/framework/agents"
   />
 
-  <Card
-    title="💾 Sessions & Memory"
-    description="Add persistent conversations and memory to your agents"
-    href="/docs/framework/sessions"
-  />
+<Card
+  title="🛠️ Discover More Tools"
+  description="Learn about all built-in tools and how to create custom ones"
+  href="/docs/framework/tools/built-in-tools"
+/>
 
-  <Card
+<Card
+  title="🔌 MCP Tools"
+  description="Connect to external services and tools through the Model Context Protocol"
+  href="/docs/framework/tools/mcp-tools"
+/>
+
+<Card
+  title="🧠 Models & Providers"
+  description="Learn how to use different LLM providers and configure model settings"
+  href="/docs/framework/agents/models"
+/>
+
+<Card
+  title="💾 Sessions & Memory"
+  description="Add persistent conversations and memory to your agents"
+  href="/docs/framework/sessions"
+/>
+
+<Card
     title="📊 Real Examples"
-    description="See complete working examples with different patterns"
+    description="See complete working examples with different patterns and use cases"
     href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples"
     target="_blank"
     rel="noopener noreferrer"
   />
-</div>
-
-## Troubleshooting
-
-### Common Issues
-
-<Callout type="warn" title="Model Access">
-If you get authentication errors, make sure you have access to the Gemini models or configure appropriate API keys in your environment.
-</Callout>
-
-<Callout type="warn" title="Dependencies">
-If you encounter import errors, ensure all dependencies are installed:
-```bash
-npm install @iqai/adk dedent uuid
-```
-</Callout>
+</Cards>

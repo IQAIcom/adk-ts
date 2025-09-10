@@ -8,6 +8,7 @@ import {
 	createTool,
 } from "@iqai/adk";
 import * as z from "zod";
+import { ask } from "../utils";
 
 /**
  * 08 - External Integrations
@@ -45,7 +46,7 @@ const weatherTool = createTool({
 });
 
 async function demonstrateAiSdkIntegration() {
-	console.log("🤖 AI SDK Integration\n");
+	console.log("🤖 AI SDK Integration");
 
 	const modelConfig = env.GOOGLE_GENERATIVE_AI_API_KEY
 		? google("gemini-2.5-flash")
@@ -60,12 +61,11 @@ async function demonstrateAiSdkIntegration() {
 		.withTools(weatherTool)
 		.build();
 
-	const response = await runner.ask("Get the weather for Tokyo");
-	console.log(`Response: ${response}\n`);
+	await ask(runner.ask.bind(runner), "Get the weather for Tokyo");
 }
 
 async function demonstrateHttpIntegration() {
-	console.log("🌐 HTTP API Integration\n");
+	console.log("🌐 HTTP API Integration");
 
 	const { runner } = await AgentBuilder.create("http_agent")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
@@ -74,14 +74,14 @@ async function demonstrateHttpIntegration() {
 		.withTools(new HttpRequestTool())
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Make a GET request to https://httpbin.org/json and show what you received.",
 	);
-	console.log(`Response: ${response}\n`);
 }
 
 async function demonstrateFileSystemIntegration() {
-	console.log("� File System Integration\n");
+	console.log("� File System Integration");
 
 	const tempDir = path.join(process.cwd(), "temp-examples");
 
@@ -92,14 +92,14 @@ async function demonstrateFileSystemIntegration() {
 		.withTools(new FileOperationsTool({ basePath: tempDir }))
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Create a simple project: make a src directory, add index.html and styles.css files with basic content, then list the structure.",
 	);
-	console.log(`Response: ${response}\n`);
 }
 
 async function demonstrateCompositeIntegration() {
-	console.log("� Composite Integration\n");
+	console.log("� Composite Integration");
 
 	const tempDir = path.join(process.cwd(), "temp-integration");
 
@@ -116,10 +116,10 @@ async function demonstrateCompositeIntegration() {
 		)
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Get weather for London and Tokyo, fetch a UUID from httpbin.org/uuid, then save a weather report as both JSON and markdown files.",
 	);
-	console.log(`Response: ${response}\n`);
 }
 
 async function main() {

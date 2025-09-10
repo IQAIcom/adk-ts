@@ -1,0 +1,104 @@
+---
+title: Overview
+description: CLI to scaffold projects, run agents, launch web UI, and serve APIs
+icon: House
+---
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Experimental Feature">
+The ADK CLI is currently experimental and under active development. Features and APIs may change in future releases.
+</Callout>
+
+The ADK CLI (`@iqai/adk-cli`) is a powerful toolkit for creating, running, and managing AI agent projects. It provides commands for project scaffolding, running agents, launching a web interface, and starting an API server.
+
+<Callout type="info" title="Installation">
+Install globally with:
+
+```bash
+npm install -g @iqai/adk-cli
+```
+</Callout>
+
+## Key Features
+
+- Project scaffolding from maintained templates
+- Web interface for visual agent testing and management
+- Terminal chat interface for quick testing
+- API server for agent management and messaging
+- Intelligent agent discovery
+- Multiple templates: Discord, Telegram, web server, MCP server, and more
+
+## Requirements
+
+- Node.js v22.0 or higher
+- npm, yarn, pnpm, or bun (for project creation)
+- TypeScript support (handled by templates)
+
+## Commands Overview
+
+- **`adk new`** – Create a new ADK project from templates
+- **`adk run`** – Run agents with interactive chat or server mode
+- **`adk web`** – Launch a web interface for agent testing and management
+- **`adk serve`** – Start a standalone API server for agent management
+
+---
+
+## Example Workflow
+
+```bash
+# 1. Create a new project
+adk new my-ai-assistant --template simple-agent
+cd my-ai-assistant
+
+# 2. Install dependencies
+npm install
+
+# 3. Start development
+adk run
+
+# 4. Launch the web interface (in another terminal)
+adk web --local
+```
+
+## Additional Usage Examples
+
+### Multi-Agent Development
+
+```bash
+# Create multiple agent files
+mkdir -p agents
+echo 'import { LlmAgent } from "@iqai/adk"; export const agent = new LlmAgent({ name: "chatbot" });' > agents/chatbot.ts
+echo 'import { LlmAgent } from "@iqai/adk"; export const agent = new LlmAgent({ name: "assistant" });' > agents/assistant.ts
+
+# Web interface will discover all agents automatically
+adk web
+```
+
+### Production Deployment
+
+```bash
+# Start API server in production mode
+adk serve --host 0.0.0.0 --port 8042
+
+# Health check endpoint
+curl http://localhost:8042/health
+```
+
+### Testing and Integration
+
+```bash
+# Quick agent testing
+adk run my-agent.ts
+
+# API testing with curl
+curl -X POST http://localhost:8042/api/agents/my-agent/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello, agent!"}'
+
+# Get conversation history
+curl http://localhost:8042/api/agents/my-agent/messages
+```
+
+<Callout type="info" title="More Info">
+See the [full CLI README](https://github.com/IQAIcom/adk-ts/blob/main/packages/adk-cli/README.md) for advanced usage and troubleshooting.
+</Callout>

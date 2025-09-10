@@ -2,3 +2,4 @@ packages:
   - 'apps/docs'
   - 'apps/examples'
   - 'packages/*'
+  - 'apps/adk-web'

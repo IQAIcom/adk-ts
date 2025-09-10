@@ -29,7 +29,7 @@ export function Features() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-card-foreground mb-2">Multi-LLM Support</h3>
-            <p className="text-muted-foreground">Seamlessly switch between OpenAI, Google Gemini, Anthropic Claude, and more with unified interface.</p>
+            <p className="text-muted-foreground">Seamlessly switch between OpenAI, Google Gemini, Anthropic Claude, AI SDK models and more with unified interface.</p>
           </div>
 
           <div className="bg-card rounded-lg p-6 border border-border shadow-sm hover:shadow-md transition-shadow">

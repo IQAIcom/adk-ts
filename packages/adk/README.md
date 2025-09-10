@@ -73,6 +73,7 @@ OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 GOOGLE_API_KEY=your_google_api_key
 ```
+
 The library uses `dotenv` to load these variables automatically if `dotenv.config()` is called in your application.
 
 ## 📖 Basic Usage
@@ -167,6 +168,7 @@ async function createWorkflowAgent() {
 ```
 
 **Benefits of AgentBuilder:**
+
 - **Reduced Boilerplate**: ~80% less setup code compared to manual configuration
 - **Fluent Interface**: Readable, chainable method calls
 - **Automatic Management**: Handles session and runner creation automatically

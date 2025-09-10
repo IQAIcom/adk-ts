@@ -39,7 +39,7 @@ export function CodeExample() {
             </div>
 
             <div className="text-sm text-muted-foreground">
-              <p><strong>Supported Models:</strong> GPT-4, Claude-3.5-Sonnet, Gemini-2.5-Flash, and more</p>
+              <p><strong>Supported Model providers:</strong> OpenAI, Google, Anthropic, AI SDK models and more</p>
             </div>
           </div>
 

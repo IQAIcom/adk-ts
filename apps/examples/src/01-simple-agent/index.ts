@@ -1,5 +1,8 @@
 import { env } from "node:process";
 import { AgentBuilder } from "@iqai/adk";
+import dedent from "dedent";
+import { z } from "zod";
+import { ask } from "../utils";
 
 /**
  * 01 - Simple Agent
@@ -10,13 +13,38 @@ import { AgentBuilder } from "@iqai/adk";
  * - Basic AgentBuilder usage
  * - Model configuration
  * - Simple question-answer interaction
+ * - Structured output with Zod schemas
  */
 async function main() {
-	console.log("🤖 Simple agent:");
-	const response = await AgentBuilder.withModel(
-		env.LLM_MODEL || "gemini-2.5-flash",
-	).ask("What is the capital of France?");
-	console.log(response);
+	console.log("🤖 Simple agent with structured output:");
+
+	// Define the expected output structure
+	const outputSchema = z.object({
+		capital: z.string().describe("The capital city name"),
+		country: z.string().describe("The country name"),
+		population: z
+			.number()
+			.optional()
+			.describe("Population of the capital city"),
+		fun_fact: z.string().describe("An interesting fact about the city"),
+	});
+
+	const runner = (question: string) =>
+		AgentBuilder.withModel(env.LLM_MODEL || "gemini-2.5-flash")
+			.withOutputSchema(outputSchema)
+			.ask(question);
+
+	const response = await ask(runner, "What is the capital of France?", true);
+
+	console.log(
+		dedent`
+		🌍 Country:    ${response.country}
+		📍 Capital:    ${response.capital}
+		👥 Population: ${
+			response.population ? response.population.toLocaleString() : "N/A"
+		}
+		🎉 Fun fact:   ${response.fun_fact}`,
+	);
 }
 
 main().catch(console.error);

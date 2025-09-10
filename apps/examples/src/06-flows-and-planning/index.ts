@@ -5,6 +5,7 @@ import {
 	FileOperationsTool,
 	PlanReActPlanner,
 } from "@iqai/adk";
+import { ask } from "../utils";
 
 /**
  * 06 - Flows and Planning
@@ -27,10 +28,10 @@ async function demonstrateBasicFlow() {
 		.withTools(new FileOperationsTool())
 		.build();
 
-	const response = await runner.ask(
-		"Create demo.txt with ADK flow info, then read it back.",
+	await ask(
+		runner.ask.bind(runner),
+		"Create demo.txt with ADK-TS flow info, then read it back.",
 	);
-	console.log(response);
 }
 
 async function demonstrateBuiltInPlanner() {
@@ -43,10 +44,10 @@ async function demonstrateBuiltInPlanner() {
 		)
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Plan a $300 birthday party for 20 people who love pizza and games.",
 	);
-	console.log(response);
 }
 
 async function demonstratePlanReActPlanner() {
@@ -58,10 +59,10 @@ async function demonstratePlanReActPlanner() {
 		.withPlanner(new PlanReActPlanner())
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Create a Node.js project with README.md, package.json, main.js, and .gitignore",
 	);
-	console.log(response);
 }
 
 async function comparePlanningApproaches() {
@@ -73,7 +74,8 @@ async function comparePlanningApproaches() {
 	const { runner: baseline } = await AgentBuilder.create("baseline")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.build();
-	console.log("\n🔸 No Planner:", await baseline.ask(problem));
+	console.log("\n🔸 No Planner:");
+	await ask(baseline.ask.bind(baseline), problem);
 
 	// With built-in planner
 	const { runner: builtin } = await AgentBuilder.create("builtin")
@@ -82,14 +84,16 @@ async function comparePlanningApproaches() {
 			new BuiltInPlanner({ thinkingConfig: { includeThinking: true } }),
 		)
 		.build();
-	console.log("\n🔸 Built-In:", await builtin.ask(problem));
+	console.log("\n🔸 Built-In:");
+	await ask(builtin.ask.bind(builtin), problem);
 
 	// With PlanReAct planner
 	const { runner: planreact } = await AgentBuilder.create("planreact")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.withPlanner(new PlanReActPlanner())
 		.build();
-	console.log("\n🔸 PlanReAct:", await planreact.ask(problem));
+	console.log("\n🔸 PlanReAct:");
+	await ask(planreact.ask.bind(planreact), problem);
 }
 
 async function demonstrateAdvancedFlowPatterns() {
@@ -101,23 +105,19 @@ async function demonstrateAdvancedFlowPatterns() {
 		.withPlanner(new PlanReActPlanner())
 		.build();
 
-	const response = await runner.ask(
+	await ask(
+		runner.ask.bind(runner),
 		"Create API docs: specification, endpoints, getting started guide",
 	);
-	console.log(response);
 }
 
 async function main() {
 	console.log("🌊 Flows and Planning Examples\n");
 
 	await demonstrateBasicFlow();
-	console.log();
 	await demonstrateBuiltInPlanner();
-	console.log();
 	await demonstratePlanReActPlanner();
-	console.log();
 	await comparePlanningApproaches();
-	console.log();
 	await demonstrateAdvancedFlowPatterns();
 
 	console.log(`

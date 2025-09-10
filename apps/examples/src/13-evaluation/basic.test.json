@@ -1,0 +1,33 @@
+{
+	"evalSetId": "minimal-set-1",
+	"name": "Minimal EvalSet",
+	"creationTimestamp": 0,
+	"evalCases": [
+		{
+			"evalId": "case-1",
+			"conversation": [
+				{
+					"creationTimestamp": 0,
+					"userContent": {
+						"role": "user",
+						"parts": [{ "text": "What is 2 + 2?" }]
+					},
+					"finalResponse": { "role": "model", "parts": [{ "text": "4" }] }
+				}
+			]
+		},
+		{
+			"evalId": "case-2",
+			"conversation": [
+				{
+					"creationTimestamp": 0,
+					"userContent": {
+						"role": "user",
+						"parts": [{ "text": "Capital of France?" }]
+					},
+					"finalResponse": { "role": "model", "parts": [{ "text": "Paris" }] }
+				}
+			]
+		}
+	]
+}
