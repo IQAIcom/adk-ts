@@ -151,16 +151,23 @@ class AgentChatClient {
 
 				if (p.isCancel(message)) {
 					p.cancel("Chat ended");
-					break;
+					process.exit(0);
 				}
 
 				const trimmed = (message || "").trim();
+				
+				// Handle explicit exit commands
+				if (trimmed.toLowerCase() === "exit" || trimmed.toLowerCase() === "quit") {
+					p.outro("Chat ended");
+					process.exit(0);
+				}
+				
 				if (trimmed) {
 					await this.sendMessage(trimmed);
 				}
 			} catch (error) {
 				console.error(chalk.red("Error in chat:"), error);
-				break;
+				process.exit(1);
 			}
 		}
 	}
@@ -232,6 +239,12 @@ export class RunCommand extends CommandRunner {
 		}
 
 		const client = new AgentChatClient(apiUrl);
+
+		// Setup SIGINT handler for interactive chat mode
+		process.on("SIGINT", () => {
+			console.log(chalk.yellow("\n\n🛑 Chat ended"));
+			process.exit(0);
+		});
 
 		await client.connect();
 
