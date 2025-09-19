@@ -4,6 +4,7 @@ export interface Agent {
 	relativePath: string;
 	name: string;
 	absolutePath: string;
+	projectRoot: string;
 	instance?: BaseAgent; // Store the loaded agent instance
 }
 

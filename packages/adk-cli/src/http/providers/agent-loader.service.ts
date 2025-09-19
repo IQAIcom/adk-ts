@@ -145,25 +145,39 @@ export class AgentLoader {
 
 	/**
 	 * Import a TypeScript file by compiling it on-demand
+	 * Now accepts an optional projectRoot parameter to avoid redundant project root discovery
 	 */
 	async importTypeScriptFile(
 		filePath: string,
+		providedProjectRoot?: string,
 	): Promise<Record<string, unknown>> {
-		// Determine project root (for tsconfig and resolving deps)
-		const startDir = dirname(filePath);
-		let projectRoot = startDir;
-		while (projectRoot !== "/" && projectRoot !== dirname(projectRoot)) {
-			if (
-				existsSync(join(projectRoot, "package.json")) ||
-				existsSync(join(projectRoot, ".env"))
-			) {
-				break;
-			}
-			projectRoot = dirname(projectRoot);
-		}
-		// If we reached root without finding markers, use the original start directory
-		if (projectRoot === "/") {
+		// Use provided project root or discover it
+		let projectRoot = providedProjectRoot;
+
+		if (!projectRoot) {
+			// Fallback to original project root discovery logic
+			const startDir = dirname(filePath);
 			projectRoot = startDir;
+			while (projectRoot !== "/" && projectRoot !== dirname(projectRoot)) {
+				if (
+					existsSync(join(projectRoot, "package.json")) ||
+					existsSync(join(projectRoot, ".env")) ||
+					existsSync(join(projectRoot, "tsconfig.json"))
+				) {
+					break;
+				}
+				projectRoot = dirname(projectRoot);
+			}
+			// If we reached root without finding markers, use the original start directory
+			if (projectRoot === "/") {
+				projectRoot = startDir;
+			}
+		}
+
+		if (!this.quiet) {
+			this.logger.log(
+				`Using project root: ${projectRoot} for agent: ${filePath}`,
+			);
 		}
 
 		// Transpile with esbuild and import (bundles local files, preserves tools)
@@ -230,7 +244,7 @@ export class AgentLoader {
 				sourcemap: false,
 				logLevel: "silent",
 				plugins,
-				absWorkingDir: projectRoot,
+				absWorkingDir: projectRoot, // This is the key fix - use the actual project root
 				external: [...alwaysExternal],
 				// Use tsconfig if present for path aliases
 				...(existsSync(tsconfigPath) ? { tsconfig: tsconfigPath } : {}),

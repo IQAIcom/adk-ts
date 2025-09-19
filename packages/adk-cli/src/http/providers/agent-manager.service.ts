@@ -112,9 +112,10 @@ export class AgentManager {
 
 		const agentFileUrl = pathToFileURL(agentFilePath).href;
 
-		// Use dynamic import to load the agent (TS path uses esbuild wrapper returning { agent })
+		// Use dynamic import to load the agent
+		// For TS files, pass the project root to avoid redundant project root discovery
 		const agentModule: Record<string, unknown> = agentFilePath.endsWith(".ts")
-			? await this.loader.importTypeScriptFile(agentFilePath)
+			? await this.loader.importTypeScriptFile(agentFilePath, agent.projectRoot)
 			: ((await import(agentFileUrl)) as Record<string, unknown>);
 
 		const exportedAgent = await this.loader.resolveAgentExport(agentModule);
