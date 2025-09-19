@@ -1,14 +1,14 @@
 <div align="center">
 
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
+<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="80" />
 
 <br/>
 
 # @iqai/adk-cli
 
-**Command-line interface for the ADK (Agent Development Kit) - a comprehensive toolkit for creating, running, and testing AI agents.**
+**Contributing guide for the ADK CLI package**
 
-*Interactive Development • Agent Management • Production Ready*
+*Setup • Development • Contributing • Architecture*
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@iqai/adk-cli">
@@ -29,259 +29,335 @@
 
 </div>
 
-## 🌟 Overview
+## 📖 About
 
-The ADK CLI provides a complete toolkit for developing, testing, and deploying AI agents. It streamlines the development workflow from project creation to production deployment with powerful features like interactive testing interfaces and intelligent agent discovery.
+This README is specifically for contributors to the ADK CLI package. The CLI provides a complete toolkit for developing, testing, and deploying AI agents with features like project scaffolding, interactive testing interfaces, and intelligent agent discovery.
 
-## 🚀 Key Features
+If you're looking to **use** the ADK CLI, visit the [live documentation](https://adk.iqai.com/docs/cli). This guide is for those who want to **contribute** to improving the CLI itself.
 
-- **🏗️ Project Scaffolding** - Create projects from professional templates with one command
-- **🌐 Web Interface** - React-based UI for visual agent testing and management
-- **🤖 Interactive Chat** - Terminal-based chat interface for quick agent testing
-- **📡 API Server** - RESTful API for agent management and messaging
-- **🔍 Smart Discovery** - Automatically finds and loads agents from your project
-- **📦 Multi-Template Support** - Templates for Discord bots, web servers, MCP servers, and more
+## 🚀 Getting Started
 
-## 🚀 Quick Start
+### Prerequisites
 
-### Installation
+Before contributing to the ADK CLI, ensure you have:
 
-```bash
-npm install -g @iqai/adk-cli
-```
+- [Node.js](https://nodejs.org) (version 22 or later)
+- [pnpm](https://pnpm.io) (recommended package manager)
+- Basic familiarity with [NestJS](https://nestjs.com/), [TypeScript](https://www.typescriptlang.org/), and CLI development
 
-### Create Your First Agent
+### Setting Up Development Environment
 
-```bash
-# Interactive project creation
-adk new
+1. **Clone the repository** (if you haven't already):
 
-# Or create with specific template
-adk new my-agent --template simple-agent
-cd my-agent
+   ```bash
+   git clone https://github.com/IQAIcom/adk-ts.git
+   cd adk-ts
+   ```
 
-# Start developing
-adk run
+2. **Install dependencies**:
 
-# Test with web interface
-adk web
-```
+   ```bash
+   pnpm install
+   ```
 
-## 📚 Commands
+3. **Navigate to the CLI package**:
 
-### `adk new`
+   ```bash
+   cd packages/adk-cli
+   ```
 
-Create a new ADK project from professionally maintained templates.
+4. **Build the CLI**:
 
-```bash
-# Interactive project creation with guided setup
-adk new
+   ```bash
+   pnpm build
+   ```
 
-# Create with specific name and template
-adk new my-agent --template simple-agent
-```
+5. **Link for local development**:
 
-**Available Templates:**
-- `simple-agent` - Basic agent with chat capabilities and examples
-- `discord-bot` - Agent integrated with Discord bot framework
-- `telegram-bot` - Agent integrated with Telegram bot API  
-- `hono-server` - Web server with RESTful agent endpoints
-- `shade-agent` – Agent with Near Shade Agents
-- `mcp-starter` - Model Context Protocol server integration
-
-### `adk run`
-
-Run agents with intelligent discovery and interactive chat interface.
-
-```bash
-# Auto-discover and run agent from current directory
-adk run
-
-# Run specific agent with path
-adk run path/to/agent.ts
-
-# Server-only mode (no chat interface)
-adk run --server
-
-# Custom host for server mode
-adk run --server --host 0.0.0.0
-```
-
-**Agent Discovery:**
-- Scans current directory recursively for `agent.ts` or `agent.js` files
-- Skips common directories: `node_modules`, `.git`, `dist`, `build`, `.next`, `.turbo`, `coverage`, `.vscode`, `.idea`
-- Shows interactive selector when multiple agents found
-
-### `adk web`
-
-Launch a React-based web interface for visual agent testing and management.
-
-```bash
-# Start web interface with default settings
-adk web
-
-# Use specific API server port
-adk web --port 8080
-
-# Scan custom directory for agents
-adk web --dir ./my-agents
-
-# Custom web application URL
-adk web --web-url https://custom-web-app.com
-```
-
-**Web Interface Features:**
-- 🎯 **Visual Agent Browser** - Browse and select from discovered agents
-- 💬 **Interactive Chat** - Real-time chat interface with message history
-- 📊 **Agent Status Monitoring** - Live status updates and health checks
--  **Responsive Design** - Works seamlessly on desktop and mobile
-
-### `adk serve`
-
-Start a standalone API server for agent management without the chat interface.
-
-```bash
-# Start API server on default port 8042
-adk serve
-
-# Custom host and port configuration
-adk serve --host 0.0.0.0 --port 9000
-
-# Scan specific directory for agents
-adk serve --dir ./production-agents
-```
-
-**API Endpoints:**
-- `GET /api/agents` - List all discovered agents
-- `POST /api/agents/refresh` - Refresh agent discovery scan
-- `POST /api/agents/:id/start` - Start a specific agent
-- `POST /api/agents/:id/stop` - Stop a specific agent
-- `GET /api/agents/running` - Get status of running agents
-- `POST /api/agents/:id/message` - Send message to specific agent
-- `GET /api/agents/:id/messages` - Get conversation history
-- `GET /health` - Server health check
-
-
-
-## 💡 Usage Examples
+   ```bash
+   # Link the CLI globally for testing
+   npm link
+   
+   # Or run directly with pnpm
+   pnpm start --help
+   ```
 
 ### Development Workflow
 
 ```bash
-# 1. Create new project
-adk new my-ai-assistant --template simple-agent
-cd my-ai-assistant
+# Watch mode for development
+pnpm dev
 
-# 2. Install dependencies (if not auto-installed)
-npm install
+# Run tests
+pnpm test
 
-# 3. Start development
-adk run
+# Run tests in watch mode
+pnpm test:watch
 
-# 4. In another terminal, start web interface
-adk web
+# Type checking
+pnpm type-check
+
+# Linting
+pnpm lint
+
+# Build for production
+pnpm build
 ```
 
-### Multi-Agent Development
+## ⚙️ Architecture Overview
+
+The ADK CLI is built with:
+
+- **[NestJS](https://nestjs.com)** - Modular framework for building scalable applications
+- **[Commander.js](https://github.com/tj/commander.js)** - Command-line interface framework (via NestJS CLI)
+- **[TypeScript](https://www.typescriptlang.org/)** - Type-safe JavaScript
+- **[tsup](https://tsup.egoist.dev/)** - Fast TypeScript bundler
+- **[Vitest](https://vitest.dev/)** - Fast unit testing framework
+
+### Project Structure
+
+```
+src/
+├── app.module.ts          # Main NestJS application module
+├── main.ts               # CLI entry point
+├── cli/                  # Command implementations
+│   ├── cli.module.ts     # CLI commands module
+│   ├── new.command.ts    # adk new command
+│   ├── run.command.ts    # adk run command
+│   ├── serve.command.ts  # adk serve command
+│   └── web.command.ts    # adk web command
+├── common/               # Shared utilities
+│   ├── tokens.ts         # Dependency injection tokens
+│   └── types.ts          # Common TypeScript types
+└── http/                 # HTTP server implementation
+    ├── bootstrap.ts      # Server bootstrap logic
+    ├── http.module.ts    # HTTP module configuration
+    ├── config/          # Configuration management
+    ├── discovery/       # Agent discovery service
+    ├── dto/            # Data transfer objects
+    ├── events/         # Server-sent events
+    ├── health/         # Health check endpoints
+    ├── messaging/      # Agent messaging
+    ├── providers/      # Core services
+    ├── reload/         # Hot reload functionality
+    ├── sessions/       # Session management
+    └── state/          # State management
+```
+
+### Key Components
+
+1. **Commands** (`src/cli/`) - Individual CLI command implementations
+2. **HTTP Server** (`src/http/`) - RESTful API server for agent management
+3. **Agent Discovery** (`src/http/discovery/`) - Intelligent agent scanning and loading
+4. **Providers** (`src/http/providers/`) - Core services for agent management
+5. **Session Management** (`src/http/sessions/`) - Conversation state persistence
+
+## 🤝 How to Contribute
+
+### Types of Contributions
+
+We welcome various types of contributions to improve the CLI:
+
+- **Add new commands** - Implement new CLI functionality
+- **Improve existing commands** - Enhance current command capabilities
+- **Fix bugs** - Resolve issues and improve stability
+- **Add tests** - Increase test coverage and reliability
+- **Improve documentation** - Update inline docs and comments
+- **Optimize performance** - Make the CLI faster and more efficient
+- **Add new templates** - Create project scaffolding templates
+
+### Development Guidelines
+
+1. **Follow TypeScript best practices** - Use proper typing and modern ES features
+2. **Write comprehensive tests** - Cover new functionality with unit tests
+3. **Use NestJS patterns** - Follow dependency injection and module patterns
+4. **Handle errors gracefully** - Provide clear error messages and recovery
+5. **Support all platforms** - Ensure compatibility across macOS, Linux, and Windows
+6. **Follow semantic versioning** - Use appropriate version bumps for changes
+
+### Testing Your Changes
+
+1. **Unit tests**:
+
+   ```bash
+   pnpm test
+   ```
+
+2. **Manual testing with linking**:
+
+   ```bash
+   # Build and link for testing
+   pnpm build
+   npm link
+   
+   # Test commands
+   adk --help
+   adk new test-project
+   ```
+
+3. **Integration testing**:
+
+   ```bash
+   # Test with actual agent projects
+   cd /tmp
+   adk new test-agent --template simple-agent
+   cd test-agent
+   adk run
+   ```
+
+### Contribution Workflow
+
+1. **Fork the repository** on GitHub
+2. **Create a feature branch** from main:
+
+   ```bash
+   git checkout -b cli/add-new-feature
+   ```
+
+3. **Make your changes** following the guidelines above
+4. **Add or update tests** for your changes
+5. **Run the test suite** to ensure nothing breaks:
+
+   ```bash
+   pnpm test
+   pnpm type-check
+   pnpm lint
+   ```
+
+6. **Test manually** by linking and running CLI commands
+7. **Commit your changes** with descriptive commit messages:
+
+   ```bash
+   git commit -m "cli: add support for custom agent templates"
+   ```
+
+8. **Push to your fork** and **create a Pull Request**
+
+### Adding New Commands
+
+To add a new CLI command:
+
+1. **Create command file** in `src/cli/`:
+
+   ```typescript
+   // src/cli/my-command.ts
+   import { Command, CommandRunner } from 'nest-commander';
+   
+   @Command({
+     name: 'my-command',
+     description: 'Description of what the command does',
+   })
+   export class MyCommand extends CommandRunner {
+     async run(passedParams: string[]): Promise<void> {
+       // Implementation here
+     }
+   }
+   ```
+
+2. **Register in CLI module**:
+
+   ```typescript
+   // src/cli/cli.module.ts
+   import { MyCommand } from './my-command';
+   
+   @Module({
+     providers: [
+       // ... other commands
+       MyCommand,
+     ],
+   })
+   export class CliModule {}
+   ```
+
+3. **Add tests**:
+
+   ```typescript
+   // src/cli/my-command.spec.ts
+   describe('MyCommand', () => {
+     // Test implementation
+   });
+   ```
+
+### Working with the HTTP Server
+
+The CLI includes a full HTTP server for agent management. Key areas:
+
+- **Controllers** - Handle HTTP requests (`src/http/*/`)
+- **Services** - Business logic implementation
+- **DTOs** - Request/response data structures
+- **Modules** - NestJS module organization
+
+## 🧪 Testing
+
+### Running Tests
 
 ```bash
-# Create multiple agent files
-mkdir -p agents
-echo 'import { LlmAgent } from "@iqai/adk"; export const agent = new LlmAgent({ name: "chatbot" });' > agents/chatbot.ts
-echo 'import { LlmAgent } from "@iqai/adk"; export const agent = new LlmAgent({ name: "assistant" });' > agents/assistant.ts
+# Run all tests
+pnpm test
 
-# Web interface will discover all agents automatically
-adk web
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests with coverage
+pnpm test:coverage
+
+# Run specific test file
+pnpm test my-command.spec.ts
 ```
 
-### Production Deployment
+### Test Structure
+
+Tests are organized alongside source files:
+
+- Unit tests: `*.spec.ts`
+- Integration tests: `*.integration.spec.ts`
+- E2E tests: `*.e2e.spec.ts`
+
+## 📚 Resources for Contributors
+
+### ADK Framework Resources
+
+- **[ADK-TS Repository](https://github.com/IQAIcom/adk-ts)** - Main framework repository
+- **[Live Documentation](https://adk.iqai.com)** - Published documentation site
+- **[CLI Documentation](https://adk.iqai.com/docs/cli)** - User-facing CLI docs
+- **[Contributing Guide](../../CONTRIBUTION.md)** - General project contribution guidelines
+- **[Examples](../../apps/examples/)** - Code examples and tutorials
+
+### Technical Resources
+
+- **[NestJS Documentation](https://docs.nestjs.com)** - Framework powering the CLI
+- **[Commander.js](https://github.com/tj/commander.js)** - CLI framework patterns
+- **[TypeScript Handbook](https://www.typescriptlang.org/docs/)** - TypeScript best practices
+- **[Vitest Documentation](https://vitest.dev/)** - Testing framework guide
+
+### Development Tools
+
+- **[tsup Configuration](./tsup.config.ts)** - Build configuration
+- **[Vitest Configuration](./vitest.config.ts)** - Test configuration
+- **[TypeScript Configuration](./tsconfig.json)** - Type checking setup
+- **[HTTP Layer Architecture](./src/http/ARCHITECTURE.md)** - Technical documentation for the HTTP server layer
+
+## 🔧 Debugging
+
+When working on the CLI codebase, use these debugging techniques:
 
 ```bash
-# Start API server in production mode
-adk serve --host 0.0.0.0 --port 8042
+# Enable detailed logging for development
+export ADK_DEBUG_NEST=true
+export ADK_VERBOSE=true
 
-# Health check endpoint available at
-curl http://localhost:8042/health
+# Test your changes with verbose output
+adk run --verbose
+adk serve --verbose
 ```
 
-### Testing and Integration
+### Common Contributor Issues
 
-```bash
-# Quick agent testing
-adk run my-agent.ts
-
-# API testing with curl
-curl -X POST http://localhost:8042/api/agents/my-agent/message \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello, agent!"}'
-
-# Get conversation history
-curl http://localhost:8042/api/agents/my-agent/messages
-```
-
-## ⚙️ Configuration
-
-### Agent File Requirements
-
-Each agent file must export an agent instance:
-
-```typescript
-// agent.ts
-import { LlmAgent } from '@iqai/adk';
-
-export const agent = new LlmAgent({
-  name: "my_agent",
-  model: "gpt-4-turbo",
-  description: "A helpful assistant agent",
-  instruction: "You are a helpful AI assistant."
-});
-```
-
-
-
-## 📚 Documentation
-
-For comprehensive guides, API reference, and advanced examples:
-
-**[https://adk.iqai.com](https://adk.iqai.com)**
-
-The documentation includes:
-- Getting started tutorials
-- CLI command reference
-- Agent development patterns
-- Deployment strategies
-- Troubleshooting guides
-
-## 🧪 Examples
-
-Explore comprehensive examples in the main repository:
-
-```bash
-# Clone the repository
-git clone https://github.com/IQAIcom/adk-ts
-cd adk-ts/apps/examples
-
-# Install dependencies
-pnpm install
-
-# Run examples with the CLI
-adk run
-```
-
-## 🔧 Requirements
-
-- **Node.js** v22.0 or higher
-- **npm**, **yarn**, **pnpm**, or **bun** (for project creation)
- - **TypeScript** support (handled automatically)
-
-## 🤝 Contributing
-
-Contributions are welcome! See our [Contributing Guide](https://github.com/IQAIcom/adk-ts/blob/main/CONTRIBUTION.md) for details.
-
-## 📜 License
-
-MIT License - see [LICENSE](https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md) for details.
+1. **Module resolution errors** - Ensure proper imports and module registration in NestJS
+2. **Build failures** - Check TypeScript configuration and dependency versions
+3. **Test failures** - Verify mock setups and async handling in test files
+4. **Runtime errors during development** - Use debug logging and proper error handling
 
 ---
 
-**Ready to build your first AI agent?** Visit [https://adk.iqai.com](https://adk.iqai.com) to get started!
+**Ready to contribute?** Start by exploring the codebase, running the tests, and trying out the existing commands. Your contributions help make the ADK CLI more powerful and user-friendly for developers worldwide!

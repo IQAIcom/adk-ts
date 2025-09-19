@@ -3,67 +3,154 @@ title: Configuration
 description: Agent discovery rules, export requirements, and project layout conventions
 icon: Settings
 ---
-import { Callout } from 'fumadocs-ui/components/callout';
 
-## How Agent Discovery Works
+import { Callout } from "fumadocs-ui/components/callout";
 
-The ADK CLI and web UI will automatically discover all agents in your project that are exported in a supported format. This enables you to quickly iterate and chat with any agent, whether via the CLI or the web interface.
+## Agent Discovery
+
+The ADK CLI automatically discovers agents in your project through intelligent file scanning.
 
 ### Discovery Rules
 
-- Recursively scans for `agent.ts` and `agent.js` files
-- Skips directories: `node_modules`, `.git`, `dist`, `build`, `.next`, `.turbo`, `coverage`, `.vscode`, `.idea`
-- Presents an interactive selector when multiple agents are found
+- **File Patterns:** Recursively scans for `agent.ts` and `agent.js` files
+- **Excluded Directories:** `node_modules`, `.git`, `dist`, `build`, `.next`, `.turbo`, `coverage`, `.vscode`, `.idea`
+- **Gitignore Support:** Respects `.gitignore` patterns for additional exclusions
+- **Interactive Selection:** Shows agent selector when multiple agents are found
 
-### Supported Agent Exports
+<Callout type="warn">
+  Ensure your agents are named `agent.ts` or `agent.js` and placed outside
+  excluded directories for successful discovery.
+</Callout>
 
-Each `agent.ts` file should export one of the following:
+### Required Exports
 
-- An `LlmAgent` instance (default or named export)
-- A `BuiltAgent` object (the result of `await AgentBuilder.build()`, recommended for root/supervisor agents that need to be run directly)
-- A function (sync or async) returning an `LlmAgent` or `BuiltAgent`
+The ADK CLI expects specific export patterns to recognize your agents. Each agent file must match one of the following patterns:
 
-Example:
+**Option 1: Default Export (Most Common)**
+Best for simple agents. Export an `LlmAgent` instance directly as the default export:
+
 ```typescript
-// For sub-agents or workflow agents (most agents):
 import { LlmAgent } from "@iqai/adk";
 
 export default new LlmAgent({
-	name: "my_sub_agent",
-	model: "gemini-2.5-flash",
-	instruction: "You are a helpful assistant."
+  name: "my_agent",
+  model: "gemini-2.5-flash",
+  instruction: "You are a helpful assistant.",
 });
+```
 
-// For root/supervisor agents (the entry point for CLI/web UI):
+**Option 2: Named Function Export**
+Recommended for complex agents that need initialization or configuration. Export an async function named `agent`:
+
+```typescript
 import { AgentBuilder } from "@iqai/adk";
 
 export async function agent() {
-	return await AgentBuilder
-		.create("my_root_agent")
-		.withModel("gemini-2.5-flash")
-		.withInstruction("You are a helpful supervisor agent.")
-		.build();
+  return await AgentBuilder.create("my_agent")
+    .withModel("gemini-2.5-flash")
+    .withInstruction("You are a helpful assistant.")
+    .build();
 }
 ```
 
-You can organize your agents in folders, e.g.:
-```shell
-agents/
-├── main_agent/
-│   ├── agent.ts         # Exports your main/root agent (see below)
-│   ├── tools.ts         # (optional) Tools for this agent
-│   └── sub_agents/
-│       ├── sub_agent1/
-│       │   ├── agent.ts     # Exports a sub-agent
-│       │   └── tools.ts
-│       └── sub_agent2/
-│           ├── agent.ts
-│           └── tools/
-│               └── customTool.ts
+**Option 3: Named Export**
+Export a function or instance with the name `agent`:
+
+```typescript
+export const agent = () =>
+  new LlmAgent({
+    name: "my_agent",
+    model: "gemini-2.5-flash",
+    instruction: "You are a helpful assistant.",
+  });
 ```
 
-All such agents will be listed for selection in `adk run` and available in the web UI via `adk web`.
-
-<Callout type="info" title="Agent Export Requirements">
-For the CLI and web UI to recognize your agent, make sure to export an `LlmAgent`, `BuiltAgent`, or a function (sync/async) returning one of these from your `agent.ts` file. See the section above for details.
+<Callout type="warn">
+  The CLI will not detect agents that don't follow these export patterns. For
+  named exports, the export must be called `agent`.
 </Callout>
+
+## Development Workflow
+
+### Package Manager Detection
+
+When creating projects with `adk new`, the CLI auto-detects available package managers:
+
+- 📦 npm
+- ⚡ pnpm
+- 🧶 yarn
+- 🍞 bun
+
+<Callout type="info">
+  Only package managers installed on your system will appear as options.
+</Callout>
+
+## Troubleshooting
+
+### Common Issues
+
+**Agent not detected?**
+
+- Verify file naming: `agent.ts` or `agent.js`
+- Check export format matches supported types
+- Ensure agent isn't in excluded directories
+- Review `.gitignore` patterns
+
+**Discovery issues?**
+
+- Use `adk serve` and check `GET /api/agents` endpoint
+- Enable verbose logging with `--verbose` flag
+- Verify TypeScript compilation if using `.ts` files
+
+**Module resolution errors?**
+
+- Ensure proper imports in your agent files
+- Check that dependencies are installed
+- Verify TypeScript configuration if using `.ts` files
+
+**Build or runtime errors?**
+
+- Check agent export patterns match required formats
+- Verify environment variables are properly loaded
+- Use debug logging for detailed error information
+
+**Hot reload not working?**
+
+- Check file watching permissions
+- Review `.gitignore` patterns that might exclude files
+- Ensure watched paths are correctly configured
+
+**Session or state issues?**
+
+- Verify session management in your agent implementation
+- Check that state persistence is working correctly
+- Use the API endpoints to debug session data
+
+### Debug Configuration
+
+Enable detailed logging to diagnose issues:
+
+```bash
+# Enable debug logging
+export ADK_DEBUG_NEST=true
+export ADK_VERBOSE=true
+
+# Run with verbose output
+adk run --verbose
+adk serve --verbose
+```
+
+### Useful Debugging Commands
+
+```bash
+# Check discovered agents
+adk serve
+# Then visit http://localhost:8042/api/agents
+
+# Test agent loading
+adk run --verbose
+
+# Check API endpoints
+curl http://localhost:8042/health
+curl http://localhost:8042/api/agents
+```
