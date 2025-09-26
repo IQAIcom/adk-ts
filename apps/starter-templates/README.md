@@ -19,24 +19,29 @@ This directory contains starter templates for ADK projects. These templates are 
 
 ## Available Templates
 
+- `simple-agent` - Simple agent starter template
 - `discord-bot` - Discord bot starter template
+- `telegram-bot` - Telegram bot starter template
 - `hono-server` - Hono server starter template  
 - `mcp-starter` - MCP (Model Context Protocol) starter template
-- `simple-agent` - Simple agent starter template
-- `telegram-bot` - Telegram bot starter template
+- `shade-agent` - Near Shade Agent starter template
+- `x402-protocol` - x402 protocol starter template
 
 ## Usage
 
-Each starter template now includes an `agents/` folder with `agent.ts` files containing agent definitions, making them compatible with the ADK CLI for easy testing and interaction.
+Each starter template includes an `agents/` folder with `agent.ts` files containing agent definitions, making them compatible with the ADK CLI for easy testing and interaction.
 
 ### Option 1: Direct Development
+
 1. Navigate to the specific template directory
 2. Install dependencies: `pnpm install`
 3. Build: `pnpm build`
 4. Run: `pnpm dev` or `pnpm start`
 
 ### Option 2: ADK CLI (Recommended for Testing)
+
 First, install the ADK CLI globally:
+
 ```bash
 npm install -g @iqai/adk-cli
 ```
@@ -44,15 +49,19 @@ npm install -g @iqai/adk-cli
 Then navigate to any template directory and use:
 
 **Interactive CLI Chat:**
+
 ```bash
 adk run
 ```
+
 Opens a command-line interface to chat with agents defined in `agents/agent.ts`
 
 **Web Interface:**
+
 ```bash
 adk web
 ```
+
 Opens a web interface in your browser to chat with your agents - perfect for easy testing and demonstration
 
 ## Note

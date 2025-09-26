@@ -1,0 +1,30 @@
+{
+	"name": "agent",
+	"version": "1.0.0",
+	"description": "Agent built with ADK-TS that has specialized knowledge on IQAI's ATP",
+	"main": "dist/index.js",
+	"private": true,
+	"scripts": {
+		"build": "tsc",
+		"dev": "adk web",
+		"start": "adk web",
+		"clean": "rimraf dist",
+		"prebuild": "pnpm clean"
+	},
+	"dependencies": {
+		"@iqai/adk": "^0.3.3",
+		"axios": "^1.11.0",
+		"dedent": "^1.7.0",
+		"dotenv": "^17.2.2",
+		"viem": "^2.37.7",
+		"x402-axios": "^0.6.0",
+		"zod": "^4.1.5"
+	},
+	"devDependencies": {
+		"@types/dedent": "^0.7.2",
+		"@types/node": "^24.3.1",
+		"rimraf": "^6.0.1",
+		"tsx": "^4.20.5",
+		"typescript": "^5.9.2"
+	}
+}
