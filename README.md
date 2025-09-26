@@ -113,7 +113,7 @@ All contributions are welcome! Please check out our [Contributing Guide](CONTRIB
 
 Join our community to discuss ideas, ask questions, and share your projects:
 
-- [Discord Community](https://discord.com/invite/x9EWvTcPXt)
+- [Discord Community](https://discord.gg/w2Uk6ACK4D)
 - [GitHub Discussions](https://github.com/IQAIcom/adk-ts/discussions)
 
 ## 📜 License

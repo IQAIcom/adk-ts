@@ -66,7 +66,7 @@ pnpm install
 
 #### 🔑 Google AI API Key (Required)
 
-1. Visit [Google AI Studio](https://aistudio.google.com/apikey)
+1. Visit [Google AI Studio](https://aistudio.google.com/api-keys)
 2. Sign in with your Google account
 3. Click "Create API Key"
 4. Copy the generated key
@@ -299,7 +299,7 @@ src/
 
 ### "Google API key invalid"
 
-- Ensure the API key is from [Google AI Studio](https://aistudio.google.com/apikey)
+- Ensure the API key is from [Google AI Studio](https://aistudio.google.com/api-keys)
 - Make sure there are no extra spaces in your `.env` file
 
 ## 📚 Learn More
