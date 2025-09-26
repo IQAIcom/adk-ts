@@ -1,7 +1,7 @@
 <div align="center">
  <img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
  <br/>
- <h1>ADK-TS x402 Agent Template</h1>
+ <h1>ADK-TS x402 Protocol Template</h1>
  <b>Starter template for creating monetized AI Agents with ADK-TS and x402 payment protocol</b>
  <br/>
   <i>LLM-powered • x402 Micropayments • IQ AI ATP Integration • TypeScript</i>
@@ -9,7 +9,7 @@
 
 ---
 
-# x402 Agent Template - Monetized AI Agents with x402 Protocol
+# x402 Protocol Template - Monetized AI Agents with x402 Protocol
 
 A template showing how to build AI agents that access IQ AI's Agent Tokenization Platform (ATP) through paid API endpoints using the x402 micropayment protocol. The agent pays for API calls automatically using cryptocurrency, enabling new business models for AI-powered services.
 
@@ -55,12 +55,11 @@ This template demonstrates how to build **monetized AI agents** that:
 ## Step 1: Create Project Using ADK CLI
 
 ```bash
-# Create a new project with the x402 Agent template (replace "my-x402-agent" with your desired project name)
-npx @iqai/adk-cli new --template x402-agent my-x402-agent
+# Create a new project with the x402 Protocol template (replace "my-x402-protocol" with your desired project name)
+npx @iqai/adk-cli new --template x402-protocol my-x402-protocol
 
-# Navigate to your project and install dependencies
-cd my-x402-agent
-pnpm install
+# Navigate to the project directory
+cd my-x402-protocol
 ```
 
 ### Step 2: Get Your API Keys
@@ -215,7 +214,7 @@ cd agent && npx @iqai/adk-cli run
 ## 📁 Template Structure
 
 ```text
-x402-agent/
+x402-protocol/
 ├── agent/                      # AI Agent (ADK-TS)
 │   ├── src/
 │   │   ├── agents/
@@ -341,7 +340,7 @@ NETWORK=mainnet  # or polygon, optimism, etc.
 
 ## 🤝 Contributing
 
-This [template](https://github.com/IQAIcom/adk-ts/tree/main/apps/starter-templates/x402-agent) is open source and contributions are welcome! Feel free to:
+This [template](https://github.com/IQAIcom/adk-ts/tree/main/apps/starter-templates/x402-protocol) is open source and contributions are welcome! Feel free to:
 
 - Report bugs or suggest improvements
 - Add new tool examples

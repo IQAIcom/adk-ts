@@ -1,7 +1,7 @@
 {
-  "name": "iq-x402-agent",
+  "name": "x402-protocol",
   "version": "1.0.0",
-  "description": "Agent demonstration of using x402 payments protocol to access IQAI's ATP",
+  "description": "Agent demonstration of using x402 payments protocol to access IQ AI's ATP",
   "private": true,
   "scripts": {
     "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:agent\"",
