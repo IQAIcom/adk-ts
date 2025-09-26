@@ -1,0 +1,25 @@
+{
+  "name": "iq-x402-agent",
+  "version": "1.0.0",
+  "description": "Agent demonstration of using x402 payments protocol to access IQAI's ATP",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:agent\"",
+    "dev:server": "cd server && pnpm run dev",
+    "dev:agent": "cd agent && pnpm run dev",
+    "build": "cd server && pnpm run build && cd ../agent && pnpm run build",
+    "start": "concurrently \"cd server && pnpm run start\" \"cd agent && pnpm run start\"",
+    "postinstall": "cd server && pnpm install && cd ../agent && pnpm install",
+    "lint": "cd server && biome check . && cd ../agent && biome check .",
+    "lint:fix": "cd server && biome check --write . && cd ../agent && biome check --write .",
+    "format": "cd server && biome format --write . && cd ../agent && biome format --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "@biomejs/biome": "^2.2.0"
+  },
+  "keywords": [],
+  "author": "IQAICOM",
+  "license": "MIT",
+  "packageManager": "pnpm@10.13.1"
+}
