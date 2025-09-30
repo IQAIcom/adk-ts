@@ -1,8 +1,8 @@
 <div align="center">
  <img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
  <br/>
- <h1>ADK-TS x402 Protocol Template</h1>
- <b>Starter template for creating monetized AI Agents with ADK-TS and x402 payment protocol</b>
+ <h1>IQ AI x x402 Agent Template</h1>
+ <b>Starter template for creating monetized AI Agents with ADK-TS, IQ AI, and x402 payment protocol</b>
  <br/>
   <i>LLM-powered • x402 Micropayments • IQ AI ATP Integration • TypeScript</i>
   </div>
@@ -80,7 +80,7 @@ You need a wallet private key with Base Sepolia ETH for micropayments:
    - Export the private key (keep this secure!)
 
 2. **Fund with Base Sepolia ETH**:
-   - Get Base Sepolia ETH from [Google Sepolia Faucet](<https://cloud.google.com/application/web3/faucet/ethereum/sepolia>)
+   - Get Base Sepolia ETH from [Base Sepolia Faucet](https://docs.base.org/base-chain/tools/network-faucets?ref=blog.iqai.com) or [Google Sepolia Faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia)
 
 3. **Fund with testnet USDC**:
    - Get testnet USDC from [Circle Testnet Faucet](https://faucet.circle.com/)
@@ -330,12 +330,13 @@ NETWORK=mainnet  # or polygon, optimism, etc.
 
 ### x402 Protocol Resources
 
+- [x402 Protocol Overview](https://www.coinbase.com/developer-platform/products/x402)
 - [x402 Protocol Documentation](https://www.x402.org/)
 - [x402 GitHub Repository](https://github.com/coinbase/x402)
 
 ### IQ AI ATP Resources
 
-- [IQ AI Agent Tokenization Platform](https://iqai.com/)
+- [IQ AI Agent Tokenization Platform (ATP)](https://iqai.com/)
 - [ATP API Documentation](https://app.iqai.com/api)
 
 ## 🤝 Contributing
