@@ -1,6 +1,6 @@
 ---
 title: Agents
-description: Build AI agents that can reason, use tools, and coordinate with other agents
+description: Build autonomous AI agents for reasoning, tool usage, and multi-agent coordination in ADK-TS
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
@@ -25,23 +25,22 @@ ADK-TS provides several agent types, each optimized for specific use cases:
 <Cards>
   <Card
     title="🤖 LLM Agents"
-    description="The most common agent type - powered by language models for reasoning, conversation, and tool usage"
+    description="AI-powered agents that use language models for reasoning, conversation, tool usage, and complex decision-making"
     href="/docs/framework/agents/llm-agents"
   />
-<Card
-  title="🔗 Workflow Agents"
-  description="Orchestrate execution patterns: Sequential, Parallel, and Loop agents for structured workflows"
-  href="/docs/framework/agents/workflow-agents"
-/>
-<Card
-  title="🏗️ Custom Agents"
-  description="Build specialized agents with custom logic by extending BaseAgent directly"
-  href="/docs/framework/agents/custom-agents"
-/>
-
   <Card
-    title="👥 Multi-Agent Systems"
-    description="Coordinate multiple agents for complex distributed tasks and specialized domains"
+    title="⚡ Workflow Agents"
+    description="Orchestration agents for structured processes: Sequential pipelines, Parallel execution, and Loop patterns"
+    href="/docs/framework/agents/workflow-agents"
+  />
+  <Card
+    title="🏗️ Custom Agents"
+    description="Build highly specialized agents with custom business logic by extending the BaseAgent class"
+    href="/docs/framework/agents/custom-agents"
+  />
+  <Card
+    title="🌐 Multi-Agent Systems"
+    description="Coordinate teams of specialized agents with delegation, communication, and distributed task management"
     href="/docs/framework/agents/multi-agents"
   />
 </Cards>
@@ -51,13 +50,12 @@ ADK-TS provides several agent types, each optimized for specific use cases:
 <Cards>
   <Card
     title="🔧 Agent Builder"
-    description="Fluent API for creating and configuring agents with automatic session management"
+    description="Fluent, chainable API for rapid agent creation with built-in session management and configuration"
     href="/docs/framework/agents/agent-builder"
   />
-
   <Card
     title="🧠 Models & Providers"
-    description="Configure LLM models, providers, and generation settings for your agents"
+    description="Configure LLM models from Google Gemini, OpenAI, Anthropic, and more with flexible integration options"
     href="/docs/framework/agents/models"
   />
 </Cards>
@@ -119,34 +117,33 @@ Ready to start building agents? Here's the recommended learning path:
 
 <Cards>
   <Card
-    title="🚀 Start with LLM Agents"
-    description="Learn the fundamentals with the most commonly used agent type"
+    title="🚀 Build Your First LLM Agent"
+    description="Master the fundamentals with hands-on examples using the most popular agent type"
     href="/docs/framework/agents/llm-agents"
   />
-<Card
-  title="🔧 Try the Agent Builder"
-  description="Get hands-on with the fluent API for rapid agent development"
-  href="/docs/framework/agents/agent-builder"
-/>
-<Card
-  title="🧠 Configure Models"
-  description="Set up LLM providers and understand model configuration options"
-  href="/docs/framework/agents/models"
-/>
-<Card
-  title="🔗 Explore Workflows"
-  description="Learn orchestration patterns for complex multi-step processes"
-  href="/docs/framework/agents/workflow-agents"
-/>
-<Card
-  title="👥 Scale with Multi-Agents"
-  description="Build sophisticated systems with multiple coordinated agents"
-  href="/docs/framework/agents/multi-agents"
-/>
-
   <Card
-    title="🎯 Build Custom Agents"
-    description="Create specialized agent types for unique requirements"
+    title="⚡ Master the Agent Builder"
+    description="Learn the fluent API for rapid agent creation, configuration, and deployment"
+    href="/docs/framework/agents/agent-builder"
+  />
+  <Card
+    title="🧠 Set Up Models & Providers"
+    description="Configure Gemini, OpenAI, Claude, and other LLM providers with environment setup"
+    href="/docs/framework/agents/models"
+  />
+  <Card
+    title="⚡ Create Workflow Orchestration"
+    description="Build sequential pipelines, parallel processing, and loop patterns for complex workflows"
+    href="/docs/framework/agents/workflow-agents"
+  />
+  <Card
+    title="🌐 Design Multi-Agent Systems"
+    description="Coordinate specialized agents with delegation, routing, and distributed task management"
+    href="/docs/framework/agents/multi-agents"
+  />
+  <Card
+    title="🎯 Develop Custom Agent Types"
+    description="Extend BaseAgent to create specialized agents for unique business requirements"
     href="/docs/framework/agents/custom-agents"
   />
 </Cards>
