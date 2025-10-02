@@ -3,77 +3,195 @@ title: Models
 description: Configure and use different LLM models with your agents
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-ADK TypeScript provides flexible model integration, allowing you to use various Large Language Models (LLMs) with your agents. You can use Google Gemini models directly or integrate external models through wrapper classes.
+ADK-TS provides flexible model integration, allowing you to use various Large Language Models (LLMs) with your agents. The framework defaults to Google Gemini models but supports extensive customization through two main approaches.
 
-## Model Integration Methods
+## Model Integration Options
 
-ADK TypeScript supports two primary integration approaches:
+ADK-TS supports two primary ways to configure models:
 
 <Cards>
   <Card
-    title="🎯 Direct Integration"
-    description="Use Google Gemini models with simple string identifiers"
+    title="🎯 Option 1: Direct Model Names"
+    description="Pass model names directly to agents - Gemini is default, others require environment configuration"
   />
 
   <Card
-    title="🔌 Vercel AI SDK"
-    description="Access models from multiple providers through Vercel AI SDK"
+    title="🔌 Option 2: Vercel AI SDK"
+    description="Use model instances from Vercel AI SDK for extensive provider support"
   />
 </Cards>
 
-## Google Gemini Models
+## Option 1: Direct Model Names
 
-The most straightforward way to use Google's flagship models with ADK TypeScript.
+The simplest approach - pass model names as strings directly to your agents. ADK-TS defaults to **Gemini models** but supports other providers when properly configured.
 
-### Access Methods
+### Default: Google Gemini Models
 
-<Tabs items={['Google AI Studio', 'Vertex AI']}>
-  <Tab value="Google AI Studio">
-    **Best for**: Rapid prototyping and development
+**Gemini is the default provider**, but you still need to configure your API key:
 
-    **Requirements**:
-    - Google API key
-    - Simple environment variable setup
+**1. Set up your Google API key:**
 
-    **Features**:
-    - Easy to get started
-    - Quick iteration and testing
-    - Direct API access
-  </Tab>
+```bash
+# .env file
+GOOGLE_API_KEY=your_google_api_key_here
+```
 
-  <Tab value="Vertex AI">
-    **Best for**: Production applications
+**2. Use Gemini models directly:**
 
-    **Requirements**:
-    - Google Cloud project
-    - Application Default Credentials
-    - Enterprise-grade setup
+```ts
+import { LlmAgent } from "@iqai/adk";
 
-    **Features**:
-    - Enterprise security and compliance
-    - Advanced monitoring and scaling
-    - Integration with Google Cloud services
-  </Tab>
-</Tabs>
+// Default Gemini models (just need GOOGLE_API_KEY in .env)
+const agent = new LlmAgent({
+  name: "my_agent",
+  model: "gemini-2.0-flash-exp", // Fast and latest
+  instruction: "You are a helpful assistant",
+});
 
-### Available Models
+// Other Gemini models
+const fastAgent = new LlmAgent({
+  name: "fast_agent",
+  model: "gemini-2.0-flash", // Fast and efficient
+});
 
-- **Gemini 2.0 Flash**: Latest high-speed model for most use cases
-- **Gemini 2.5 Pro**: Powerful model for complex reasoning tasks
-- **Gemini 1.5 Pro**: Stable model with large context windows
-- **Live API Models**: Special models supporting voice/video streaming
+const powerfulAgent = new LlmAgent({
+  name: "powerful_agent",
+  model: "gemini-2.0-pro", // Complex reasoning
+});
+```
 
-<Callout type="info" title="Model Selection">
-Choose Flash models for speed and efficiency, Pro models for complex reasoning, and Live API models for real-time audio/video applications.
+### Using Other Providers
+
+To use **non-Gemini models**, you must configure your environment:
+
+**1. Set the model name in your environment:**
+
+```bash
+# .env file
+LLM_MODEL=gpt-4o  # or claude-3-5-sonnet-20241022, etc.
+```
+
+**2. Add the corresponding API key:**
+
+```bash
+# .env file
+LLM_MODEL=gpt-4o
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Or for Claude:
+LLM_MODEL=claude-3-5-sonnet-20241022
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# Or for other providers:
+LLM_MODEL=llama-3.1-70b-versatile
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+**3. Use the model name in your agent:**
+
+```ts
+import { LlmAgent } from "@iqai/adk";
+
+const agent = new LlmAgent({
+  name: "my_agent",
+  model: "gpt-4o", // Must match your .env LLM_MODEL
+  instruction: "You are a helpful assistant",
+});
+```
+
+<Callout type="info" title="Environment Configuration Required">
+  - **Gemini models** (default): Only need `GOOGLE_API_KEY` in your environment
+  - **Other providers**: Must set both `LLM_MODEL` and the corresponding API key
+  (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.)
 </Callout>
 
-## Vercel AI SDK Integration
+### Supported Model Names
 
-Access models from OpenAI, Anthropic, Google, and other providers through the Vercel AI SDK integration.
+| Provider          | Example Model Names                                    | Required API Key                    |
+| ----------------- | ------------------------------------------------------ | ----------------------------------- |
+| **Google Gemini** | `gemini-2.0-flash`, `gemini-2.0-pro`, `gemini-1.5-pro` | `GOOGLE_API_KEY` (default provider) |
+| **OpenAI**        | `gpt-4o`, `gpt-4`, `gpt-3.5-turbo`                     | `OPENAI_API_KEY`                    |
+| **Anthropic**     | `claude-3-5-sonnet-20241022`, `claude-3-opus`          | `ANTHROPIC_API_KEY`                 |
+| **Groq**          | `llama-3.1-70b-versatile`, `mixtral-8x7b`              | `GROQ_API_KEY`                      |
+| **Mistral**       | `mistral-large-latest`, `codestral-latest`             | `MISTRAL_API_KEY`                   |
+
+## Option 2: Vercel AI SDK Integration
+
+For more control and advanced features, use model instances from the [Vercel AI SDK](https://ai-sdk.dev/docs/introduction). This approach provides access to multiple providers with consistent APIs and advanced capabilities.
+
+### Setup Requirements
+
+**1. Install Provider Packages:**
+
+```bash
+# Install the providers you want to use
+npm install @ai-sdk/openai      # For OpenAI models
+npm install @ai-sdk/anthropic   # For Anthropic models
+npm install @ai-sdk/google      # For Google models
+npm install @ai-sdk/mistral     # For Mistral models
+npm install @ai-sdk/groq        # For Groq models
+```
+
+**2. Configure API Keys:**
+
+```bash
+# .env file
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key_here
+MISTRAL_API_KEY=your_mistral_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+**3. Use Model Instances:**
+
+```typescript
+import { LlmAgent } from "@iqai/adk";
+import { openai } from "@ai-sdk/openai";
+import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
+import { mistral } from "@ai-sdk/mistral";
+import { groq } from "@ai-sdk/groq";
+
+// OpenAI models
+const gpt4Agent = new LlmAgent({
+  name: "gpt4_agent",
+  model: openai("gpt-4o"),
+  instruction: "You are a helpful assistant",
+});
+
+// Anthropic models
+const claudeAgent = new LlmAgent({
+  name: "claude_agent",
+  model: anthropic("claude-3-5-sonnet-20241022"),
+  instruction: "You are a helpful assistant",
+});
+
+// Google models via Vercel AI SDK
+const geminiAgent = new LlmAgent({
+  name: "gemini_agent",
+  model: google("gemini-2.0-flash"),
+  instruction: "You are a helpful assistant",
+});
+
+// Mistral models
+const mistralAgent = new LlmAgent({
+  name: "mistral_agent",
+  model: mistral("mistral-large-latest"),
+  instruction: "You are a helpful assistant",
+});
+
+// Groq models
+const groqAgent = new LlmAgent({
+  name: "groq_agent",
+  model: groq("llama-3.1-70b-versatile"),
+  instruction: "You are a helpful assistant",
+});
+```
 
 ### Supported Providers
 
@@ -83,132 +201,80 @@ Access models from OpenAI, Anthropic, Google, and other providers through the Ve
     description="GPT-4o, GPT-4, GPT-3.5, and latest ChatGPT models"
   />
 
-  <Card
-    title="🧠 Anthropic"
-    description="Claude 3.5 Sonnet, Claude 3 Opus, and Haiku models"
-  />
+{" "}
 
-  <Card
-    title="🔥 Mistral"
-    description="Mistral Large, Codestral, and specialized models"
-  />
+<Card
+  title="🧠 Anthropic"
+  description="Claude 3.5 Sonnet, Claude 3 Opus, and Haiku models"
+/>
+
+{" "}
+
+<Card
+  title="🔥 Mistral"
+  description="Mistral Large, Codestral, and specialized models"
+/>
+
+{" "}
+
+<Card
+  title="⚡ Groq"
+  description="Ultra-fast inference for Llama, Mixtral, and Gemma models"
+/>
 
   <Card
     title="🌐 Many Others"
-    description="Google, Groq, Perplexity, Cohere, and other providers"
+    description="Google, Perplexity, Cohere, and other providers"
   />
 </Cards>
 
-### Setup Requirements
+The Vercel AI SDK supports many more providers beyond what's shown here. Check the [official documentation](https://ai-sdk.dev/providers) for the complete list of supported providers and models.
 
-1. **Install Provider Package**: You must install the specific AI SDK provider package for each provider you want to use:
-   - OpenAI: `npm install @ai-sdk/openai`
-   - Anthropic: `npm install @ai-sdk/anthropic`
-   - Google: `npm install @ai-sdk/google`
-   - Mistral: `npm install @ai-sdk/mistral`
-2. **Configure API Keys**: Set environment variables for your chosen providers
-3. **Use in LlmAgent**: Pass the configured model instance to `LlmAgent`
-
-### Example Usage
-
-First, install the required provider packages:
-
-```bash
-# Install the providers you want to use
-npm install @ai-sdk/openai @ai-sdk/anthropic @ai-sdk/google
-```
-
-Then use them in your agents:
-
-```typescript
-import { LlmAgent } from "@iqai/adk";
-import { openai } from "@ai-sdk/openai";
-import { anthropic } from "@ai-sdk/anthropic";
-import { google } from "@ai-sdk/google";
-
-// OpenAI GPT-4
-const openaiAgent = new LlmAgent({
-  name: "openai_agent",
-  model: openai("gpt-4.1"),
-  instruction: "You are a helpful assistant"
-});
-
-// Anthropic Claude
-const claudeAgent = new LlmAgent({
-  name: "claude_agent",
-  model: anthropic("claude-3-5-sonnet-20241022"),
-  instruction: "You are a helpful assistant"
-});
-
-// Google Gemini
-const geminiAgent = new LlmAgent({
-  name: "gemini_agent",
-  model: google("gemini-2.0-flash"),
-  instruction: "You are a helpful assistant"
-});
-```
-
-### Benefits of Vercel AI SDK Integration
-
-- **Unified Interface**: Consistent API across all providers
-- **Type Safety**: Full TypeScript support with proper type definitions
-- **Streaming Support**: Built-in streaming capabilities for real-time responses
-- **Tool Calling**: Native function calling support across providers
-- **Active Maintenance**: Regularly updated with new providers and features
-- **Performance Optimized**: Efficient request handling and response processing
-
-## Local and Open Source Models
-
-Run models locally for privacy, cost control, or offline operation.
-
-### Local Deployment Options
-
-<Cards>
-  <Card
-    title="🦙 Ollama"
-    description="Easy local model deployment and management"
-  />
-
-  <Card
-    title="🏗️ Self-Hosted"
-    description="Custom model server deployments"
-  />
-
-  <Card
-    title="☁️ Private Cloud"
-    description="Models hosted in your own infrastructure"
-  />
-</Cards>
-
-### Considerations for Local Models
-
-- **Tool Support**: Ensure your chosen model supports function calling
-- **Performance**: Consider hardware requirements for model size
-- **Reliability**: Local models may have different reliability characteristics
-- **Model Quality**: Open source models vary in capability and consistency
-
-<Callout type="warn" title="Tool Compatibility">
-When using local models with tools, verify that the model supports function calling. Not all open source models have reliable tool support.
+<Callout type="info" title="Local & Open Source Models">
+  Local and open source models (like Ollama, self-hosted models) are also
+  supported through the Vercel AI SDK approach. Install the appropriate provider
+  package (`@ai-sdk/ollama`, etc.) and configure as needed. Note that not all
+  local models support function calling reliably.
 </Callout>
 
-## Related Topics
+## Which Option Should You Choose?
+
+| Use Case                 | Recommended Option        | Why                                        |
+| ------------------------ | ------------------------- | ------------------------------------------ |
+| **Getting Started**      | Option 1 (Gemini default) | Simple setup, just need GOOGLE_API_KEY     |
+| **Production Apps**      | Option 1 with env config  | Simple, reliable, fewer dependencies       |
+| **Multi-Provider**       | Option 2 (Vercel AI SDK)  | Unified interface, consistent APIs         |
+| **Advanced Features**    | Option 2 (Vercel AI SDK)  | Streaming, advanced config, type safety    |
+| **Local/Private Models** | Option 2 (Vercel AI SDK)  | Only option that supports local deployment |
+
+## Next Steps
 
 <Cards>
   <Card
-    title="🤖 LLM Agents"
-    description="Learn how to use models with LLM agents"
+    title="🤖 Create Your First LLM Agent"
+    description="Learn how to use models with LLM agents and get started building"
     href="/docs/framework/agents/llm-agents"
   />
 
-  <Card
-    title="🛠️ Tools"
-    description="Integrate tools with different model types"
-    href="/docs/framework/tools"
-  />
+{" "}
+
+<Card
+  title="🔧 Use Agent Builder"
+  description="Rapidly create agents with the fluent API and model configuration"
+  href="/docs/framework/agents/agent-builder"
+/>
+
+{" "}
+
+<Card
+  title="🛠️ Add Tools to Your Agents"
+  description="Integrate tools with different model types for enhanced capabilities"
+  href="/docs/framework/tools"
+/>
 
   <Card
-    title="📊 Monitoring"
-    description="Monitor model performance and usage"
-    href="/docs/framework/advanced/monitoring"
+    title="👥 Build Multi-Agent Systems"
+    description="Coordinate multiple agents with different models and specializations"
+    href="/docs/framework/agents/multi-agents"
   />
 </Cards>
