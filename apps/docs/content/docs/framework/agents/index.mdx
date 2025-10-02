@@ -6,11 +6,11 @@ description: Build AI agents that can reason, use tools, and coordinate with oth
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Agents are the foundational building blocks of the ADK framework. They represent autonomous AI programs that can understand instructions, make decisions, use tools, and coordinate with other agents to accomplish complex tasks. Every agent extends from the `BaseAgent` class and implements specific execution patterns for different use cases.
+Agents are the foundational building blocks of the ADK-TS framework. They represent autonomous AI programs that can understand instructions, make decisions, use tools, and coordinate with other agents to accomplish complex tasks. Every agent extends from the `BaseAgent` class and implements specific execution patterns for different use cases.
 
 ## What You'll Learn in This Section
 
-This section covers everything you need to know about building and working with agents in ADK:
+This section covers everything you need to know about building and working with agents in ADK-TS:
 
 - **Core agent types** - From simple LLM agents to complex multi-agent systems
 - **Orchestration patterns** - How to coordinate multiple agents using workflows
@@ -20,7 +20,7 @@ This section covers everything you need to know about building and working with 
 
 ## Agent Types Overview
 
-ADK provides several agent types, each optimized for specific use cases:
+ADK-TS provides several agent types, each optimized for specific use cases:
 
 <Cards>
   <Card
@@ -29,7 +29,7 @@ ADK provides several agent types, each optimized for specific use cases:
     href="/docs/framework/agents/llm-agents"
   />
 <Card
-  title="� Workflow Agents"
+  title="🔗 Workflow Agents"
   description="Orchestrate execution patterns: Sequential, Parallel, and Loop agents for structured workflows"
   href="/docs/framework/agents/workflow-agents"
 />
@@ -64,11 +64,11 @@ ADK provides several agent types, each optimized for specific use cases:
 
 ## Understanding Agent Architecture
 
-All agents in ADK follow a common architecture:
+All agents in ADK-TS follow a common architecture:
 
 - **BaseAgent** - Abstract foundation providing lifecycle management, callbacks, and hierarchy support
 - **Agent Hierarchy** - Agents can have sub-agents, creating parent-child relationships for delegation
-- **Event-Driven Execution** - Agents communicate through events in the ADK runtime
+- **Event-Driven Execution** - Agents communicate through events in the ADK-TS runtime
 - **Tool Integration** - Agents can use tools to extend their capabilities beyond text generation
 
 <Callout type="info" title="Key Concepts">

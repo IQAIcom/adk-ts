@@ -3,305 +3,675 @@ title: LLM Agents
 description: Use language models for reasoning, decision-making, and tool usage
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
-LLM agents are the core "thinking" components in ADK TypeScript. They use Large Language Models (LLMs) for reasoning, understanding natural language, making decisions, and interacting with tools.
+LLM agents are the most commonly used agent type in ADK-TS. They leverage Large Language Models (LLMs) for reasoning, understanding natural language, making decisions, and interacting with tools to accomplish complex tasks.
 
-Unlike deterministic workflow agents that follow predefined paths, LLM agents are dynamic. They interpret instructions and context to decide how to proceed, which tools to use (if any), or whether to transfer control to another agent.
+Unlike deterministic workflow agents that follow predefined paths, LLM agents are dynamic and context-aware. They interpret instructions, analyze situations, and decide how to proceed - whether that's using tools, transferring control to other agents, or generating responses directly.
 
-Building an effective LLM agent involves defining its identity, guiding its behavior through instructions, and equipping it with the necessary tools and capabilities.
+## Configuration Options
 
-## Defining Identity and Purpose
+All LLM agent configuration options and their requirements:
 
-First, establish what the agent is and what it is for.
+| Option                     | Required | Type                                 | Description                                          |
+| -------------------------- | -------- | ------------------------------------ | ---------------------------------------------------- |
+| `name`                     | ✅       | `string`                             | Unique identifier for the agent                      |
+| `description`              | ❌       | `string`                             | Brief description of agent capabilities              |
+| `model`                    | ❌\*     | `string \| BaseLlm \| LanguageModel` | LLM model to use (\*inherits from parent if not set) |
+| `instruction`              | ❌       | `string \| InstructionProvider`      | Primary behavior instructions                        |
+| `globalInstruction`        | ❌       | `string \| InstructionProvider`      | Global instructions for entire agent tree            |
+| `tools`                    | ❌       | `ToolUnion[]`                        | Available tools for the agent                        |
+| `subAgents`                | ❌       | `BaseAgent[]`                        | Sub-agents for delegation                            |
+| `codeExecutor`             | ❌       | `BaseCodeExecutor`                   | Code execution capability                            |
+| `planner`                  | ❌       | `BasePlanner`                        | Planning and reasoning strategy                      |
+| `memoryService`            | ❌       | `BaseMemoryService`                  | Long-term memory storage                             |
+| `sessionService`           | ❌       | `BaseSessionService`                 | Conversation management                              |
+| `artifactService`          | ❌       | `BaseArtifactService`                | File storage and management                          |
+| `includeContents`          | ❌       | `"default" \| "none"`                | Context inclusion behavior                           |
+| `outputKey`                | ❌       | `string`                             | Session state key for agent output                   |
+| `inputSchema`              | ❌       | `ZodSchema`                          | Input validation schema                              |
+| `outputSchema`             | ❌       | `ZodSchema`                          | Output validation schema                             |
+| `generateContentConfig`    | ❌       | `GenerateContentConfig`              | LLM generation parameters                            |
+| `disallowTransferToParent` | ❌       | `boolean`                            | Disable parent agent transfers                       |
+| `disallowTransferToPeers`  | ❌       | `boolean`                            | Disable peer agent transfers                         |
+| `userId`                   | ❌       | `string`                             | User identifier for sessions                         |
+| `appName`                  | ❌       | `string`                             | Application identifier                               |
+| `beforeAgentCallback`      | ❌       | `BeforeAgentCallback`                | Pre-execution hooks                                  |
+| `afterAgentCallback`       | ❌       | `AfterAgentCallback`                 | Post-execution hooks                                 |
+| `beforeModelCallback`      | ❌       | `BeforeModelCallback`                | Pre-LLM call hooks                                   |
+| `afterModelCallback`       | ❌       | `AfterModelCallback`                 | Post-LLM call hooks                                  |
+| `beforeToolCallback`       | ❌       | `BeforeToolCallback`                 | Pre-tool execution hooks                             |
+| `afterToolCallback`        | ❌       | `AfterToolCallback`                  | Post-tool execution hooks                            |
 
-- **Name (required)**: Unique identifier for the agent. Critical for multi-agent systems where agents may delegate tasks. Avoid reserved names like `user`.
-- **Description (optional; recommended for multi-agent)**: Concise summary of the agent's capabilities, used by other agents for routing. Make it specific enough to differentiate from peers.
-- **Model (required)**: The LLM powering the agent's reasoning (for example, `gemini-2.0-flash`). Model choice affects capability, cost, and latency. See [Models](/docs/framework/agents/models).
+## Configuration Details
+
+### name (Required)
+
+**Type:** `string`
+
+Unique identifier for the agent. Must be a valid identifier (start with letter/underscore, contain only letters, numbers, underscore). Critical for multi-agent systems where agents delegate tasks.
 
 ```ts
-import { LlmAgent } from "@iqai/adk";
+const agent = new LlmAgent({
+  name: "customer_support_agent", // ✅ Valid
+  // name: "user", // ❌ Reserved keyword
+  // name: "123agent", // ❌ Cannot start with number
+});
+```
 
-const capitalAgent = new LlmAgent({
-  name: "capital_agent",
-  model: "gemini-2.5-flash",
+### description
+
+**Type:** `string` | **Default:** `""`
+
+Brief description of the agent's capabilities. Used by other agents for routing decisions in multi-agent systems. Should be specific enough to differentiate from peer agents.
+
+```ts
+const agent = new LlmAgent({
+  name: "weather_agent",
   description:
-    "Answers questions about the capital city of a given country",
+    "Provides current weather conditions and forecasts for any city worldwide",
 });
 ```
 
-## Guiding Behavior with Instructions
+### model
 
-The `instruction` shapes the agent's behavior. It can be a string or a function that returns a string and should clarify:
+**Type:** `string | BaseLlm | LanguageModel` | **Default:** Inherited from parent
 
-- Core task or goal
-- Persona (for example, helpful assistant, succinct analyst)
-- Constraints (for example, scope limits, safety guidelines)
-- Tool usage guidance: when and why to call specific tools
-- Output format (for example, JSON, bullet list)
-
-<Callout type="info" title="Tips for Effective Instructions">
-Be clear and specific, structure complex guidance with Markdown, include examples for tricky formats, and explicitly describe when and why tools should be used.
-</Callout>
-
-You can interpolate state into instruction templates when needed:
-
-- `{var}` inserts the value of a state variable named `var`
-- `{artifact.var}` inserts the text content of an artifact named `var`
-- Append `?` (for example, `{var?}`) to ignore missing values instead of raising an error
+The LLM powering the agent's reasoning. Can be a string identifier, BaseLlm instance, or AI SDK LanguageModel. If not set, inherits from parent agent.
 
 ```ts
-import { LlmAgent } from "@iqai/adk";
-import dedent from "dedent";
+// String identifier
+const agent1 = new LlmAgent({
+  name: "agent1",
+  model: "gemini-2.0-flash-exp",
+});
 
-const capitalAgent = new LlmAgent({
-  name: "capital_agent",
-  model: "gemini-2.5-flash",
-  description: "Answers questions about capital cities",
-  instruction: dedent`
-    You are an agent that provides the capital city of a country.
-    When a user asks for the capital of a country:
-    1. Identify the country name from the user's query.
-    2. Use available tools if needed to look up the capital.
-    3. Respond clearly, stating the capital city.
-
-    Example Query: "What's the capital of {country?}?"
-    Example Response: "The capital of France is Paris."
-  `,
+// Custom LLM instance
+import { OpenAiLlm } from "@iqai/adk";
+const customLlm = new OpenAiLlm({ model: "gpt-4o", apiKey: "..." });
+const agent2 = new LlmAgent({
+  name: "agent2",
+  model: customLlm,
 });
 ```
 
-## Equipping the Agent with Tools
+### instruction
 
-Tools extend the agent beyond text-only reasoning to perform actions, fetch data, or compute results.
+**Type:** `string | InstructionProvider` | **Default:** `""`
 
-- **tools (optional)**: A list of callable tools available to the agent. Items can be:
-  - Function-based tools (for computations and simple integrations)
-  - Class-based tools extending a base tool abstraction
-  - Agent tools enabling delegation to other agents (see [Multi-Agents](/docs/framework/agents/multi-agents))
-
-The LLM decides which tool to call using tool names, descriptions, and parameter schemas, guided by the agent's instructions and conversation context. Learn more in [Tools](/docs/framework/tools).
+Primary behavior instructions that shape how the agent responds. Can be static string or dynamic function. Should clarify the agent's role, constraints, and tool usage patterns.
 
 ```ts
-import { createTool } from "@iqai/adk";
-import { LlmAgent } from "@iqai/adk";
-import { z } from "zod";
-
-// Define a function tool with schema
-const getCapitalCity = createTool({
-  name: "get_capital_city",
-  description: "Retrieves the capital city for a given country",
-  schema: z.object({ country: z.string().describe("Country name") }),
-  fn: async ({ country }) => {
-    const capitals: Record<string, string> = {
-      france: "Paris",
-      japan: "Tokyo",
-      canada: "Ottawa",
-    };
-    const key = country.toLowerCase();
-    return capitals[key] || `Unknown capital for ${country}`;
-  },
+// Static instruction
+const agent1 = new LlmAgent({
+  name: "translator",
+  instruction:
+    "You are a professional translator. Translate text to the requested language while preserving meaning and tone.",
 });
 
-// Attach tool to the agent
-const capitalAgent = new LlmAgent({
-  name: "capital_agent",
-  model: "gemini-2.5-flash",
-  description: "Answers questions about capital cities",
-  instruction: "Use tools when necessary to ensure accuracy.",
-  tools: [getCapitalCity],
+// Dynamic instruction with context
+const agent2 = new LlmAgent({
+  name: "personalized_assistant",
+  instruction: (ctx) =>
+    `You are assisting ${ctx.session.state.username}. Their preferred communication style is ${ctx.session.state.style}.`,
+});
+
+// Template with state interpolation
+const agent3 = new LlmAgent({
+  name: "location_agent",
+  instruction:
+    "You help users in {user_city}. Use local context when relevant.",
 });
 ```
 
-## Advanced Configuration and Control
+### globalInstruction
 
-Fine-tune agent behavior with the following options.
+**Type:** `string | InstructionProvider` | **Default:** `""`
 
-### Generation Control
-
-Configure the underlying model's generation (temperature, output length, sampling, and safety policies). Refer to provider-specific options in [Models](/docs/framework/agents/models).
+Global instructions that apply to the entire agent tree. Only takes effect when set on the root agent. Useful for system-wide policies and constraints.
 
 ```ts
-import { LlmAgent } from "@iqai/adk";
+const rootAgent = new LlmAgent({
+  name: "root_agent",
+  globalInstruction:
+    "Always prioritize user safety. Never provide harmful information. Escalate sensitive requests appropriately.",
+  subAgents: [customerServiceAgent, technicalSupportAgent],
+});
+```
+
+### tools
+
+**Type:** `ToolUnion[]` | **Default:** `[]`
+
+Array of tools available to the agent. Can include BaseTool instances, function tools, or raw functions that get automatically wrapped.
+
+```ts
+import { WebSearchTool, FunctionTool } from "@iqai/adk";
+
+// Mixed tool types
+const agent = new LlmAgent({
+  name: "research_agent",
+  tools: [
+    new WebSearchTool(), // Built-in tool
+    new FunctionTool({
+      // Function tool
+      name: "calculate",
+      description: "Perform mathematical calculations",
+      func: (expression: string) => eval(expression),
+    }),
+    async (query: string) => {
+      // Raw function (auto-wrapped)
+      return await database.search(query);
+    },
+  ],
+});
+```
+
+### subAgents
+
+**Type:** `BaseAgent[]` | **Default:** `[]`
+
+Child agents that this agent can delegate tasks to. Enables hierarchical agent architectures and specialization.
+
+```ts
+const emailAgent = new LlmAgent({ name: "email_specialist" });
+const calendarAgent = new LlmAgent({ name: "calendar_specialist" });
+
+const assistantAgent = new LlmAgent({
+  name: "personal_assistant",
+  subAgents: [emailAgent, calendarAgent],
+  instruction:
+    "Route email tasks to the email specialist and calendar tasks to the calendar specialist.",
+});
+```
+
+### codeExecutor
+
+**Type:** `BaseCodeExecutor` | **Default:** `undefined`
+
+Enables the agent to execute code in a sandboxed environment. Useful for data analysis, calculations, and dynamic problem solving.
+
+```ts
+import { PythonCodeExecutor } from "@iqai/adk";
+
+const dataAgent = new LlmAgent({
+  name: "data_analyst",
+  codeExecutor: new PythonCodeExecutor(),
+  instruction:
+    "Analyze data and create visualizations using Python. Execute code to provide accurate results.",
+});
+```
+
+### planner
+
+**Type:** `BasePlanner` | **Default:** `undefined`
+
+Strategic planning capability that enables the agent to break down complex tasks into steps and execute them systematically.
+
+```ts
+import { PlanReActPlanner } from "@iqai/adk";
+
+const projectAgent = new LlmAgent({
+  name: "project_manager",
+  planner: new PlanReActPlanner(),
+  instruction:
+    "Break down complex projects into actionable steps and execute them systematically.",
+});
+```
+
+### memoryService
+
+**Type:** `BaseMemoryService` | **Default:** `undefined`
+
+Long-term memory storage for persistent information across sessions. Enables agents to remember facts, preferences, and context.
+
+```ts
+import { VectorMemoryService } from "@iqai/adk";
 
 const agent = new LlmAgent({
-  name: "controlled_generation",
-  model: "gemini-2.5-flash",
-  description: "Demonstrates generation controls",
+  name: "knowledge_agent",
+  memoryService: new VectorMemoryService({
+    apiKey: process.env.OPENAI_API_KEY,
+  }),
+  instruction:
+    "Remember important facts about users and reference them in future conversations.",
+});
+```
+
+### sessionService
+
+**Type:** `BaseSessionService` | **Default:** `undefined`
+
+Manages conversation state and history. Usually handled automatically by AgentBuilder, but can be customized for specific session management needs.
+
+```ts
+import { InMemorySessionService } from "@iqai/adk";
+
+const agent = new LlmAgent({
+  name: "chat_agent",
+  sessionService: new InMemorySessionService(),
+});
+```
+
+### artifactService
+
+**Type:** `BaseArtifactService` | **Default:** `undefined`
+
+File storage and management service for handling documents, images, and other artifacts during conversations.
+
+```ts
+import { LocalArtifactService } from "@iqai/adk";
+
+const agent = new LlmAgent({
+  name: "document_agent",
+  artifactService: new LocalArtifactService({ baseDir: "./uploads" }),
+  instruction:
+    "Help users manage and analyze documents. Save important files for future reference.",
+});
+```
+
+### includeContents
+
+**Type:** `"default" | "none"` | **Default:** `"default"`
+
+Controls whether conversation history is included in model requests. Use `"none"` for stateless agents or privacy-sensitive scenarios.
+
+```ts
+// Stateless agent (no conversation history)
+const statelessAgent = new LlmAgent({
+  name: "calculator",
+  includeContents: "none",
+  instruction: "Perform calculations without needing conversation context.",
+});
+
+// Stateful agent (includes history)
+const chatAgent = new LlmAgent({
+  name: "assistant",
+  includeContents: "default", // Default behavior
+});
+```
+
+### outputKey
+
+**Type:** `string` | **Default:** `undefined`
+
+Session state key where the agent's output will be stored. Enables other agents to access this agent's results.
+
+```ts
+const analysisAgent = new LlmAgent({
+  name: "data_analyzer",
+  outputKey: "analysis_results",
+  instruction:
+    "Analyze the provided data and store results for other agents to use.",
+});
+
+// Later, another agent can access: ctx.session.state.analysis_results
+```
+
+### inputSchema & outputSchema
+
+**Type:** `ZodSchema` | **Default:** `undefined`
+
+Zod schemas for input validation and structured output. When outputSchema is set, the agent can only reply and cannot use tools.
+
+```ts
+import { z } from "zod";
+
+const InputSchema = z.object({
+  text: z.string(),
+  language: z.string(),
+});
+
+const OutputSchema = z.object({
+  translation: z.string(),
+  confidence: z.number(),
+});
+
+const translatorAgent = new LlmAgent({
+  name: "translator",
+  inputSchema: InputSchema,
+  outputSchema: OutputSchema, // Disables tool usage
+  instruction: "Translate text and provide confidence score.",
+});
+```
+
+### generateContentConfig
+
+**Type:** `GenerateContentConfig` | **Default:** `undefined`
+
+Fine-tune LLM generation parameters like temperature, max tokens, and safety settings.
+
+```ts
+const creativeAgent = new LlmAgent({
+  name: "creative_writer",
   generateContentConfig: {
-    temperature: 0.2,
-    maxOutputTokens: 250,
+    temperature: 0.9, // High creativity
+    maxOutputTokens: 1000, // Longer responses
+    topP: 0.95, // Nucleus sampling
+    topK: 40, // Top-k sampling
+  },
+});
+
+const preciseAgent = new LlmAgent({
+  name: "fact_checker",
+  generateContentConfig: {
+    temperature: 0.1, // Low creativity, high precision
+    maxOutputTokens: 200, // Concise responses
   },
 });
 ```
 
-### Structured Data: Input/Output Schemas
+### Transfer Control Options
 
-For structured exchanges:
+**Type:** `boolean` | **Default:** `false`
 
-- Input schema (optional): Enforce the expected input shape. If set, upstream messages must provide JSON matching this schema.
-- Output schema (optional): Enforce the agent's final response to match a schema (for example, strict JSON response contracts).
-- Output key (optional): Persist the agent's final text output into session state under a given key to pass results between steps or agents.
+Control whether the agent can transfer to parent or peer agents via LLM decision-making.
 
 ```ts
-import { LlmAgent } from "@iqai/adk";
-import { z } from "zod";
-
-const CapitalOutput = z.object({
-  capital: z.string().describe("The capital of the country"),
-});
-
-const structuredAgent = new LlmAgent({
-  name: "structured_capital_agent",
-  model: "gemini-2.5-flash",
-  description: "Returns capital in JSON format",
+const restrictedAgent = new LlmAgent({
+  name: "secure_agent",
+  disallowTransferToParent: true, // Cannot escalate
+  disallowTransferToPeers: true, // Cannot delegate to siblings
   instruction:
-    'Return ONLY a JSON object matching schema: { "capital": "..." }',
-  outputSchema: CapitalOutput,
-  outputKey: "found_capital",
+    "Handle all requests independently without transferring control.",
 });
 ```
 
-### Managing Context
+### Session Identifiers
 
-Control whether prior conversation history is sent to the LLM:
+**Type:** `string` | **Default:** `undefined`
 
-- `default`: Include relevant conversation history
-- `none`: Do not include prior contents; operate only on current input and instruction (useful for stateless or isolated tasks)
+User and application identifiers for session management and analytics.
 
 ```ts
-import { LlmAgent } from "@iqai/adk";
-
-const statelessAgent = new LlmAgent({
-  name: "stateless_agent",
-  model: "gemini-2.5-flash",
-  description: "Stateless responses",
-  instruction: "Answer based only on the current query.",
-  includeContents: "none",
+const agent = new LlmAgent({
+  name: "user_agent",
+  userId: "user_12345",
+  appName: "my_assistant_app",
 });
 ```
 
-### Planning
+### Callback Hooks
 
-Enable multi-step reasoning and planning before execution.
+**Type:** Various callback types | **Default:** `undefined`
 
-- Built-in planning: Use model-native planning capabilities when available
-- Plan-and-Act patterns: Instruct the model to outline a plan, then take actions (like calling tools), and produce a final answer
-
-Choose a planning strategy based on model capabilities and the complexity of your tasks.
+Hooks for monitoring and controlling agent execution at different stages.
 
 ```ts
-import { LlmAgent, BuiltInPlanner, PlanReActPlanner } from "@iqai/adk";
-
-// Built-in planner (model-native thinking when available)
-const thinkingAgent = new LlmAgent({
-  name: "thinking_agent",
-  model: "gemini-2.5-flash",
-  planner: new BuiltInPlanner({ thinkingConfig: { includeThinking: true } }),
-});
-
-// PlanReAct pattern (explicit plan → actions → final answer)
-const planreactAgent = new LlmAgent({
-  name: "strategic_planner",
-  model: "gemini-2.5-flash",
-  planner: new PlanReActPlanner(),
-});
-```
-
-### Code Execution
-
-Enable execution of code blocks emitted by the model to evaluate snippets or run tasks during agent execution. See [Built-in Tools](/docs/framework/tools/built-in-tools) for available executors and usage considerations.
-
-```ts
-import { LlmAgent, BuiltInCodeExecutor } from "@iqai/adk";
-import dedent from "dedent";
-
-const codeAgent = new LlmAgent({
-  name: "code_executor",
-  model: "gemini-2.5-flash",
-  description: "Agent with code execution capabilities",
-  instruction: dedent`
-    When solving computational tasks, write Python code blocks and execute them.
-    Explain results clearly and handle errors gracefully.
-  `,
-  codeExecutor: new BuiltInCodeExecutor(),
-  disallowTransferToParent: true,
-  disallowTransferToPeers: true,
+const monitoredAgent = new LlmAgent({
+  name: "monitored_agent",
+  beforeAgentCallback: (ctx) => {
+    console.log(`Starting agent: ${ctx.agent.name}`);
+    // Return content to skip agent execution, or undefined to continue
+  },
+  afterAgentCallback: (ctx) => {
+    console.log(`Completed agent: ${ctx.agent.name}`);
+  },
+  beforeModelCallback: (ctx, request) => {
+    console.log("Calling LLM with:", request.parts);
+    // Return LlmResponse to skip model call, or null to continue
+  },
+  afterModelCallback: (ctx, response) => {
+    console.log("LLM responded:", response.content);
+  },
+  beforeToolCallback: (tool, args, ctx) => {
+    console.log(`Calling tool: ${tool.name}`);
+    // Return modified args or null to continue with original
+  },
+  afterToolCallback: (tool, args, ctx, response) => {
+    console.log(`Tool ${tool.name} returned:`, response);
+  },
 });
 ```
 
-## Putting It Together
+## Complete Configuration Example
 
-A typical LLM agent configuration combines identity (name, description, model), a clear instruction, optional tools, and—when needed—generation controls, schemas, context management, planning, or code execution.
+Here's a comprehensive example showing an LLM agent with all major configuration options:
 
 ```ts
-import { LlmAgent, createTool } from "@iqai/adk";
+import {
+  LlmAgent,
+  FunctionTool,
+  WebSearchTool,
+  PythonCodeExecutor,
+  PlanReActPlanner,
+  VectorMemoryService,
+  LocalArtifactService,
+} from "@iqai/adk";
 import { z } from "zod";
-import dedent from "dedent";
 
-// Tool
-const getCapitalCity = createTool({
-  name: "get_capital_city",
-  description: "Retrieves the capital city for a given country",
-  schema: z.object({ country: z.string() }),
-  fn: async ({ country }) =>
-    ({ france: "Paris", japan: "Tokyo" }[country.toLowerCase()] || "Unknown"),
+// Define schemas
+const InputSchema = z.object({
+  query: z.string(),
+  priority: z.enum(["low", "medium", "high"]),
 });
 
-// Output schema
-const CapitalOutput = z.object({ capital: z.string() });
+const OutputSchema = z.object({
+  response: z.string(),
+  confidence: z.number(),
+  sources: z.array(z.string()),
+});
 
-// Agent
-const capitalAgent = new LlmAgent({
-  name: "capital_agent",
-  model: "gemini-2.5-flash",
-  description: "Provides capital cities with tool assistance",
-  instruction: dedent`
-    Identify the country and provide its capital.
-    Prefer tool lookups when uncertain. Respond clearly.
+// Define tools
+const searchDatabase = async (query: string) => {
+  // Custom database search logic
+  return { results: ["result1", "result2"], count: 2 };
+};
+
+const calculateMetrics = (data: number[]) => {
+  const sum = data.reduce((a, b) => a + b, 0);
+  return { sum, average: sum / data.length, count: data.length };
+};
+
+// Create sub-agents
+const researchAgent = new LlmAgent({
+  name: "research_specialist",
+  model: "gemini-2.0-flash-exp",
+  description: "Specializes in data research and analysis",
+  tools: [new WebSearchTool()],
+});
+
+const analysisAgent = new LlmAgent({
+  name: "analysis_specialist",
+  model: "gemini-2.0-flash-exp",
+  description: "Performs statistical analysis and calculations",
+  codeExecutor: new PythonCodeExecutor(),
+});
+
+// Main agent with comprehensive configuration
+const comprehensiveAgent = new LlmAgent({
+  // === REQUIRED OPTIONS ===
+  name: "advanced_assistant",
+
+  // === IDENTITY & BASIC CONFIG ===
+  description:
+    "Advanced AI assistant with research, analysis, and planning capabilities",
+  model: "gemini-2.0-flash-exp",
+
+  // === INSTRUCTIONS ===
+  instruction: (ctx) => `
+    You are an advanced AI assistant helping ${
+      ctx.session.state.username || "the user"
+    }.
+    
+    **Your capabilities:**
+    - Research information using web search and database tools
+    - Perform data analysis and statistical calculations  
+    - Create and execute plans for complex tasks
+    - Remember important information across conversations
+    - Generate structured outputs with confidence scores
+    
+    **Guidelines:**
+    - Always provide sources for factual claims
+    - Use sub-agents for specialized tasks (research_specialist, analysis_specialist)
+    - Execute code for accurate calculations
+    - Store important findings in memory for future reference
+    - Be thorough but concise in responses
   `,
-  tools: [getCapitalCity],
-  generateContentConfig: { temperature: 0.2, maxOutputTokens: 200 },
-  outputSchema: CapitalOutput,
-  outputKey: "found_capital",
+
+  globalInstruction:
+    "Always prioritize accuracy and user safety. Verify information before presenting it as fact.",
+
+  // === TOOLS & CAPABILITIES ===
+  tools: [
+    FunctionTool.fromFunction(
+      searchDatabase,
+      "Search internal database for relevant information"
+    ),
+    FunctionTool.fromFunction(
+      calculateMetrics,
+      "Calculate statistical metrics from numerical data"
+    ),
+    new WebSearchTool(),
+  ],
+
+  subAgents: [researchAgent, analysisAgent],
+
+  // === ADVANCED FEATURES ===
+  codeExecutor: new PythonCodeExecutor(),
+  planner: new PlanReActPlanner(),
+  memoryService: new VectorMemoryService({
+    apiKey: process.env.OPENAI_API_KEY,
+  }),
+  artifactService: new LocalArtifactService({
+    baseDir: "./user_files",
+  }),
+
+  // === SCHEMA VALIDATION ===
+  inputSchema: InputSchema,
+  outputSchema: OutputSchema,
+
+  // === GENERATION CONTROL ===
+  generateContentConfig: {
+    temperature: 0.3, // Balanced creativity
+    maxOutputTokens: 1500, // Detailed responses
+    topP: 0.95,
+    topK: 40,
+  },
+
+  // === CONTEXT & STATE MANAGEMENT ===
+  includeContents: "default",
+  outputKey: "assistant_response",
+  disallowTransferToParent: false,
+  disallowTransferToPeers: false,
+
+  // === SESSION MANAGEMENT ===
+  userId: "user_12345",
+  appName: "advanced_assistant_app",
+
+  // === CALLBACK HOOKS ===
+  beforeAgentCallback: (ctx) => {
+    console.log(
+      `[${new Date().toISOString()}] Starting agent: ${ctx.agent.name}`
+    );
+    // Could return content to skip agent execution
+  },
+
+  afterAgentCallback: (ctx) => {
+    console.log(
+      `[${new Date().toISOString()}] Completed agent: ${ctx.agent.name}`
+    );
+    // Could return modified content
+  },
+
+  beforeModelCallback: (ctx, request) => {
+    console.log(`Calling LLM with ${request.parts.length} message parts`);
+    // Could return LlmResponse to skip model call
+    return null; // Continue with original request
+  },
+
+  afterModelCallback: (ctx, response) => {
+    console.log(
+      `LLM response length: ${
+        response.content.parts[0]?.text?.length || 0
+      } characters`
+    );
+    // Could return modified response
+    return null; // Use original response
+  },
+
+  beforeToolCallback: (tool, args, ctx) => {
+    console.log(`Executing tool: ${tool.name}`);
+    // Could return modified args
+    return null; // Use original args
+  },
+
+  afterToolCallback: (tool, args, ctx, response) => {
+    console.log(`Tool ${tool.name} completed successfully`);
+    // Could return modified response
+    return null; // Use original response
+  },
 });
+
+// Usage example with AgentBuilder
+const { agent, runner } = await AgentBuilder.withAgent(
+  comprehensiveAgent
+).build();
+
+// Structured input matching schema
+const response = await runner.ask({
+  query: "What are the latest developments in renewable energy?",
+  priority: "high",
+});
+
+// Response will match OutputSchema format:
+// {
+//   response: "Based on recent research...",
+//   confidence: 0.95,
+//   sources: ["https://example.com/article1", "research_database_entry_123"]
+// }
 ```
+
+This comprehensive example demonstrates:
+
+- **All configuration options** with clear organization by category
+- **Structured I/O** with Zod schemas for validation
+- **Multi-modal capabilities** combining tools, sub-agents, code execution, and planning
+- **Production features** like memory, artifacts, and comprehensive logging
+- **Callback integration** for monitoring, analytics, and custom processing
+- **Dynamic instructions** that adapt to user context
+- **Hierarchical architecture** with specialized sub-agents
+
+<Callout type="warn" title="Important Notes">
+  - When `outputSchema` is set, the agent **cannot use tools**, it can only
+  generate structured responses - Callbacks should return `null` or `undefined`
+  to continue with original behavior - The `model` field inherits from parent
+  agents if not explicitly set - Global instructions only take effect when set
+  on the **root agent**
+</Callout>
 
 ## Related Topics
 
 <Cards>
   <Card
-    title="Generation Control"
-    description="Configure temperature, max tokens, sampling, and safety policies"
+    title="🤖 Models & Providers"
+    description="Configure LLM models, providers, and generation settings"
     href="/docs/framework/agents/models"
   />
-
   <Card
-    title="Structured Data"
-    description="Define input/output schemas and persist outputs via state keys"
-  />
-
-  <Card
-    title="Context Management"
-    description="Control conversation history inclusion for stateless or stateful tasks"
-  />
-
-  <Card
-    title="Tools"
+    title="🛠️ Tools"
     description="Available tools, agent tools, and how to create custom tools"
     href="/docs/framework/tools"
   />
-
   <Card
-    title="Multi-Agent Systems"
+    title="🧠 Sessions & Memory"
+    description="Manage conversation state, memory, and session persistence"
+    href="/docs/framework/sessions"
+  />
+  <Card
+    title="👥 Multi-Agent Systems"
     description="Coordinate agents, delegate tasks, and use system-wide instructions"
     href="/docs/framework/agents/multi-agents"
   />
-
   <Card
-    title="Callbacks"
+    title="📋 Callbacks"
     description="Hook into agent execution for monitoring and control"
     href="/docs/framework/callbacks"
+  />
+  <Card
+    title="🔧 Agent Builder"
+    description="Fluent API for rapid agent creation and configuration"
+    href="/docs/framework/agents/agent-builder"
   />
 </Cards>
