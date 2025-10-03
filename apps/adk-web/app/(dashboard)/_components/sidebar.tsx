@@ -84,10 +84,11 @@ export function Sidebar({
 		localSessionId ?? null,
 	);
 
-	const { data: graph, isLoading: graphLoading } = useAgentGraph(
-		finalApiUrl,
-		selectedAgent,
-	);
+	const {
+		data: graph,
+		isLoading: graphLoading,
+		error: graphError,
+	} = useAgentGraph(finalApiUrl, selectedAgent);
 
 	const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 
@@ -202,7 +203,9 @@ export function Sidebar({
 								? "Sessions"
 								: selectedPanel === "events"
 									? "Events"
-									: "State"}
+									: selectedPanel === "graph"
+										? "Graph"
+										: "State"}
 						</h2>
 						<Button
 							variant="ghost"
@@ -243,8 +246,12 @@ export function Sidebar({
 							/>
 						)}
 						{selectedPanel === "graph" && (
-							<div className="p-2">
-								<GraphPanel data={graph} isLoading={!!graphLoading} />
+							<div className="h-full w-full">
+								<GraphPanel
+									data={graph}
+									isLoading={!!graphLoading}
+									error={graphError ?? null}
+								/>
 							</div>
 						)}
 					</div>

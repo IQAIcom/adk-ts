@@ -35,17 +35,9 @@ export class AgentGraphService {
 		opts?: { includeTools?: boolean; format?: "json" | "dot" },
 	): Promise<AgentGraph> {
 		const includeTools = opts?.includeTools ?? true;
-
-		// Ensure the agent is loaded so we can introspect the instance
-		if (!this.agentManager.getLoadedAgents().has(agentPath)) {
-			await this.agentManager.startAgent(agentPath);
-		}
+		const registry = this.agentManager.getAgents();
 		const loaded = this.agentManager.getLoadedAgents().get(agentPath);
-		const agent =
-			loaded?.agent ?? this.agentManager.getAgents().get(agentPath)?.instance;
-		if (!agent) {
-			throw new Error("Agent not loaded");
-		}
+		const agent = loaded?.agent ?? registry.get(agentPath)?.instance;
 
 		const nodes: GraphNode[] = [];
 		const edges: GraphEdge[] = [];
@@ -134,7 +126,47 @@ export class AgentGraphService {
 			}
 		};
 
-		await traverse(agent);
+		if (agent) {
+			// Preferred path: we have an actual agent instance to introspect
+			await traverse(agent);
+		} else {
+			// Fallback: build a directory-based graph from the registry without loading the agent
+			const root = registry.get(agentPath);
+			if (!root) {
+				// Unknown agent id; return empty graph instead of 500
+				return { nodes: [], edges: [] };
+			}
+
+			const rootNode: GraphNode = {
+				id: `agent:${root.name}`,
+				label: `🤖 ${root.name}`,
+				kind: "agent",
+				type: "Agent",
+				shape: "ellipse",
+			};
+			nodes.push(rootNode);
+			seen.add(rootNode.id);
+
+			const prefix = root.relativePath.endsWith("/")
+				? root.relativePath
+				: `${root.relativePath}/`;
+			for (const [rel, entry] of registry.entries()) {
+				if (!rel.startsWith(prefix)) continue;
+				if (rel === root.relativePath) continue;
+				const childNode: GraphNode = {
+					id: `agent:${entry.name}`,
+					label: `🤖 ${entry.name}`,
+					kind: "agent",
+					type: "Agent",
+					shape: "ellipse",
+				};
+				if (!seen.has(childNode.id)) {
+					nodes.push(childNode);
+					seen.add(childNode.id);
+				}
+				edges.push({ from: rootNode.id, to: childNode.id });
+			}
+		}
 
 		let dot: string | undefined;
 		if (opts?.format === "dot") {

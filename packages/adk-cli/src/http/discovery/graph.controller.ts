@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
+import { Controller, Get, Inject, Logger, Param, Query } from "@nestjs/common";
 import {
 	ApiOkResponse,
 	ApiOperation,
@@ -16,6 +16,8 @@ export class GraphController {
 	constructor(
 		@Inject(AgentGraphService) private readonly graph: AgentGraphService,
 	) {}
+
+	private readonly logger = new Logger("graph-controller");
 
 	@Get("graph")
 	@ApiOperation({
@@ -42,8 +44,19 @@ export class GraphController {
 		@Query("includeTools") includeTools?: string,
 		@Query("format") format?: "json" | "dot",
 	): Promise<AgentGraph> {
-		const agentPath = decodeURIComponent(id);
-		const include = includeTools == null ? true : includeTools === "true";
-		return this.graph.getGraph(agentPath, { includeTools: include, format });
+		try {
+			const agentPath = decodeURIComponent(id);
+			const include = includeTools == null ? true : includeTools === "true";
+			return await this.graph.getGraph(agentPath, {
+				includeTools: include,
+				format,
+			});
+		} catch (e) {
+			this.logger.error(
+				`Failed to build graph for id='${id}': ${e instanceof Error ? e.message : String(e)}`,
+			);
+			// Do not fail the request; return an empty graph so UI can handle gracefully
+			return { nodes: [], edges: [] };
+		}
 	}
 }
