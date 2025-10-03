@@ -1,87 +1,149 @@
 ---
 title: Agents
-description: Build AI agents that can reason, use tools, and coordinate with other agents
+description: Build autonomous AI agents for reasoning, tool usage, and multi-agent coordination in ADK-TS
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
-Agents are the core abstraction in ADK TypeScript. They encapsulate AI models, instructions, tools, and coordination logic to create autonomous programs that can understand instructions and complete complex tasks.
+Agents are the foundational building blocks of the ADK-TS framework. They represent autonomous AI programs that can understand instructions, make decisions, use tools, and coordinate with other agents to accomplish complex tasks. Every agent extends from the `BaseAgent` class and implements specific execution patterns for different use cases.
 
-## Agent Types
+## What You'll Learn in This Section
 
-ADK TypeScript provides different types of agents for different use cases:
+This section covers everything you need to know about building and working with agents in ADK-TS:
+
+- **Core agent types** - From simple LLM agents to complex multi-agent systems
+- **Orchestration patterns** - How to coordinate multiple agents using workflows
+- **Agent architecture** - Understanding the base classes and inheritance hierarchy
+- **Practical implementation** - Using AgentBuilder for rapid development
+- **Advanced patterns** - Custom agents, multi-agent coordination, and specialized behaviors
+
+## Agent Types Overview
+
+ADK-TS provides several agent types, each optimized for specific use cases:
 
 <Cards>
   <Card
     title="🤖 LLM Agents"
-    description="Use language models for reasoning, decision-making, and tool usage"
+    description="AI-powered agents that use language models for reasoning, conversation, tool usage, and complex decision-making"
     href="/docs/framework/agents/llm-agents"
   />
-
   <Card
-    title="🔗 Sequential Agents"
-    description="Execute sub-agents in order for predictable workflows"
-    href="/docs/framework/agents/workflow-agents/sequential-agents"
+    title="⚡ Workflow Agents"
+    description="Orchestration agents for structured processes: Sequential pipelines, Parallel execution, and Loop patterns"
+    href="/docs/framework/agents/workflow-agents"
   />
-
-  <Card
-    title="⚡ Parallel Agents"
-    description="Run multiple agents simultaneously for faster processing"
-    href="/docs/framework/agents/workflow-agents/parallel-agents"
-  />
-
-  <Card
-    title="🔄 Loop Agents"
-    description="Repeat agent execution until conditions are met"
-    href="/docs/framework/agents/workflow-agents/loop-agents"
-  />
-
   <Card
     title="🏗️ Custom Agents"
-    description="Build specialized agents with custom logic and behavior"
+    description="Build highly specialized agents with custom business logic by extending the BaseAgent class"
     href="/docs/framework/agents/custom-agents"
   />
-
   <Card
-    title="👥 Multi-Agent Systems"
-    description="Coordinate multiple agents for complex distributed tasks"
+    title="🌐 Multi-Agent Systems"
+    description="Coordinate teams of specialized agents with delegation, communication, and distributed task management"
     href="/docs/framework/agents/multi-agents"
   />
 </Cards>
 
-## Models & Configuration
+## Essential Tools & Configuration
 
 <Cards>
   <Card
-    title="🧠 Model Support"
-    description="Configure and use different LLM models with your agents"
+    title="🔧 Agent Builder"
+    description="Fluent, chainable API for rapid agent creation with built-in session management and configuration"
+    href="/docs/framework/agents/agent-builder"
+  />
+  <Card
+    title="🧠 Models & Providers"
+    description="Configure LLM models from Google Gemini, OpenAI, Anthropic, and more with flexible integration options"
     href="/docs/framework/agents/models"
   />
 </Cards>
 
-## Choosing the Right Agent Type
+## Understanding Agent Architecture
 
-<Callout type="info" title="Agent Selection Guide">
-- **LLM Agents**: Best for reasoning, conversation, and tool usage
-- **Sequential Agents**: Use for step-by-step workflows and pipelines
-- **Parallel Agents**: Ideal for independent tasks that can run simultaneously
-- **Loop Agents**: Perfect for iterative improvement and retry logic
-- **Custom Agents**: When you need specific behavior or integration patterns
-- **Multi-Agent**: For complex coordination and specialized task distribution
+All agents in ADK-TS follow a common architecture:
+
+- **BaseAgent** - Abstract foundation providing lifecycle management, callbacks, and hierarchy support
+- **Agent Hierarchy** - Agents can have sub-agents, creating parent-child relationships for delegation
+- **Event-Driven Execution** - Agents communicate through events in the ADK-TS runtime
+- **Tool Integration** - Agents can use tools to extend their capabilities beyond text generation
+
+<Callout type="info" title="Key Concepts">
+  - **Agent Names** must be unique identifiers (no spaces, start with letter/underscore)
+  - **Sub-agents** enable delegation and specialization within your agent system
+  - **Callbacks** provide hooks into agent execution for monitoring and control
+  - **Sessions** maintain conversation state and memory across agent interactions
 </Callout>
 
-## Getting Started
+## Choosing the Right Agent Type
 
-New to agents? Start with these foundational concepts:
+Selecting the appropriate agent type depends on your specific use case and requirements. Most developers start with **LLM Agents** for conversational AI and reasoning tasks, then move to more specialized types as their needs grow.
 
-1. **[LLM Agents](/docs/framework/agents/llm-agents)** - Learn the most common agent type
-2. **[Workflow Agents](/docs/framework/agents/workflow-agents)** - Understand orchestration patterns
-3. **[Models](/docs/framework/agents/models)** - Configure LLM models and settings
+**Decision Framework:**
 
-## Advanced Topics
+- **Need AI reasoning and conversation?** → **LLM Agent** (most common choice)
+- **Sequential processing** → **Sequential Agent** (one step after another)
+- **Independent parallel tasks** → **Parallel Agent** (simultaneous execution)
+- **Iterative improvement** → **Loop Agent** (retry until success/condition)
+- **Complex coordination** → **Multi-Agent System** (specialized roles)
+- **Custom business logic** → **Custom Agent** (extend BaseAgent directly)
 
-Once you're comfortable with the basics:
+### Common Patterns by Use Case
 
-- **[Custom Agents](/docs/framework/agents/custom-agents)** - Build specialized agent types
-- **[Multi-Agent Systems](/docs/framework/agents/multi-agents)** - Coordinate multiple agents
+The following table maps real-world scenarios to the most appropriate agent types. This helps you quickly identify which agent pattern fits your specific requirements:
+
+| Use Case           | Recommended Agent Type | Why                                        |
+| ------------------ | ---------------------- | ------------------------------------------ |
+| Chatbot/Assistant  | LLM Agent              | Conversational AI with reasoning           |
+| Data Pipeline      | Sequential Agent       | Step-by-step data processing               |
+| Content Generation | Parallel Agent         | Generate multiple pieces simultaneously    |
+| Quality Assurance  | Loop Agent             | Iterate until quality standards met        |
+| Customer Support   | Multi-Agent            | Route to specialized departments           |
+| API Integration    | Custom Agent           | Specific business logic and error handling |
+
+### Development Pattern
+
+Once you've chosen your agent type, most development follows this pattern:
+
+1. **Configure the agent** with models, instructions, and tools
+2. **Add sub-agents** if you need specialization or delegation
+3. **Test and iterate** using the built-in evaluation tools
+4. **Scale up** by adding more agents or switching to multi-agent patterns
+
+## Next Steps
+
+Ready to start building agents? Here's the recommended learning path:
+
+<Cards>
+  <Card
+    title="🚀 Build Your First LLM Agent"
+    description="Master the fundamentals with hands-on examples using the most popular agent type"
+    href="/docs/framework/agents/llm-agents"
+  />
+  <Card
+    title="⚡ Master the Agent Builder"
+    description="Learn the fluent API for rapid agent creation, configuration, and deployment"
+    href="/docs/framework/agents/agent-builder"
+  />
+  <Card
+    title="🧠 Set Up Models & Providers"
+    description="Configure Gemini, OpenAI, Claude, and other LLM providers with environment setup"
+    href="/docs/framework/agents/models"
+  />
+  <Card
+    title="⚡ Create Workflow Orchestration"
+    description="Build sequential pipelines, parallel processing, and loop patterns for complex workflows"
+    href="/docs/framework/agents/workflow-agents"
+  />
+  <Card
+    title="🌐 Design Multi-Agent Systems"
+    description="Coordinate specialized agents with delegation, routing, and distributed task management"
+    href="/docs/framework/agents/multi-agents"
+  />
+  <Card
+    title="🎯 Develop Custom Agent Types"
+    description="Extend BaseAgent to create specialized agents for unique business requirements"
+    href="/docs/framework/agents/custom-agents"
+  />
+</Cards>
