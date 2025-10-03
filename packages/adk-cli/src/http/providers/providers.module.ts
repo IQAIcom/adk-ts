@@ -1,6 +1,7 @@
 import { InMemorySessionService } from "@iqai/adk";
 import { Module } from "@nestjs/common";
 import { TOKENS } from "../../common/tokens";
+import { AgentGraphService } from "./agent-graph.service";
 import { AgentLoader } from "./agent-loader.service";
 import { AgentManager } from "./agent-manager.service";
 import { AgentScanner } from "./agent-scanner.service";
@@ -30,7 +31,14 @@ import { AgentScanner } from "./agent-scanner.service";
 			useFactory: (sessionService: InMemorySessionService, quiet: boolean) =>
 				new AgentManager(sessionService, quiet),
 		},
+		AgentGraphService,
 	],
-	exports: [InMemorySessionService, AgentScanner, AgentLoader, AgentManager],
+	exports: [
+		InMemorySessionService,
+		AgentScanner,
+		AgentLoader,
+		AgentManager,
+		AgentGraphService,
+	],
 })
 export class ProvidersModule {}
