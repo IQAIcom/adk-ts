@@ -5,18 +5,20 @@ import { GraphPanel } from "@/components/graph-panel";
 import { SessionsPanel } from "@/components/sessions-panel";
 import { StatePanel } from "@/components/state-panel";
 import { Button } from "@/components/ui/button";
+import { useAgentGraph } from "@/hooks/useAgentGraph";
 import { useEvents } from "@/hooks/useEvents";
 import { useSessions } from "@/hooks/useSessions";
 import { cn } from "@/lib/utils";
 import { Activity, Archive, Database, Share2, X } from "lucide-react";
-import { useAgentGraph } from "@/hooks/useAgentGraph";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 interface SidebarProps {
 	selectedPanel: "sessions" | "events" | "state" | "graph" | null;
-	onPanelSelect: (panel: "sessions" | "events" | "state" | "graph" | null) => void;
+	onPanelSelect: (
+		panel: "sessions" | "events" | "state" | "graph" | null,
+	) => void;
 	className?: string;
 	selectedAgent?: any | null;
 	currentSessionId?: string | null;
@@ -82,7 +84,10 @@ export function Sidebar({
 		localSessionId ?? null,
 	);
 
-	const { data: graph, isLoading: graphLoading } = useAgentGraph(finalApiUrl, selectedAgent);
+	const { data: graph, isLoading: graphLoading } = useAgentGraph(
+		finalApiUrl,
+		selectedAgent,
+	);
 
 	const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 

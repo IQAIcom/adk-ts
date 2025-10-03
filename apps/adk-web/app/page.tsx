@@ -73,7 +73,9 @@ function HomeContent() {
 	}, [finalApiUrl, queryClient, refreshAgents]);
 
 	// Panel action handlers
-	const handlePanelSelect = (panel: "sessions" | "events" | "state" | "graph" | null) => {
+	const handlePanelSelect = (
+		panel: "sessions" | "events" | "state" | "graph" | null,
+	) => {
 		setSelectedPanel(panel);
 	};
 	// Auto-select first agent if none selected and agents are available
