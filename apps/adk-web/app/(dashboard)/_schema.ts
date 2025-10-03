@@ -35,7 +35,7 @@ export interface Event {
 }
 
 export interface PanelType {
-	type: "sessions" | "events" | "state" | null;
+	type: "sessions" | "events" | "state" | "graph" | null;
 }
 
 // Agent status tracking removed; agents are always available on-demand

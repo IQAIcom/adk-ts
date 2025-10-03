@@ -1,20 +1,22 @@
 "use client";
 
 import { EventsPanel } from "@/components/events-panel";
+import { GraphPanel } from "@/components/graph-panel";
 import { SessionsPanel } from "@/components/sessions-panel";
 import { StatePanel } from "@/components/state-panel";
 import { Button } from "@/components/ui/button";
 import { useEvents } from "@/hooks/useEvents";
 import { useSessions } from "@/hooks/useSessions";
 import { cn } from "@/lib/utils";
-import { Activity, Archive, Database, X } from "lucide-react";
+import { Activity, Archive, Database, Share2, X } from "lucide-react";
+import { useAgentGraph } from "@/hooks/useAgentGraph";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 interface SidebarProps {
-	selectedPanel: "sessions" | "events" | "state" | null;
-	onPanelSelect: (panel: "sessions" | "events" | "state" | null) => void;
+	selectedPanel: "sessions" | "events" | "state" | "graph" | null;
+	onPanelSelect: (panel: "sessions" | "events" | "state" | "graph" | null) => void;
 	className?: string;
 	selectedAgent?: any | null;
 	currentSessionId?: string | null;
@@ -45,6 +47,11 @@ export function Sidebar({
 			label: "State",
 			icon: Archive,
 		},
+		{
+			id: "graph" as const,
+			label: "Graph",
+			icon: Share2,
+		},
 	];
 
 	// Determine API URL from search params (same logic as page.tsx)
@@ -74,6 +81,8 @@ export function Sidebar({
 		selectedAgent,
 		localSessionId ?? null,
 	);
+
+	const { data: graph, isLoading: graphLoading } = useAgentGraph(finalApiUrl, selectedAgent);
 
 	const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 
@@ -227,6 +236,11 @@ export function Sidebar({
 								selectedAgent={selectedAgent}
 								currentSessionId={localSessionId}
 							/>
+						)}
+						{selectedPanel === "graph" && (
+							<div className="p-2">
+								<GraphPanel data={graph} isLoading={!!graphLoading} />
+							</div>
 						)}
 					</div>
 				</div>
