@@ -342,7 +342,7 @@ const result = await runner.ask("Analyze this document...");
 
 **Type:** `BaseAgent`
 
-Wraps an existing agent instance with AgentBuilder's session management and runner interface:
+Wraps an existing agent instance with AgentBuilder's session management and runner interface. This is useful when you have pre-configured agents but want AgentBuilder's automatic session management and convenient runner interface.
 
 ```typescript
 const existingAgent = new LlmAgent({
@@ -358,24 +358,6 @@ const { runner } = await AgentBuilder.withAgent(existingAgent).build();
   or `withTools()` are ignored. The existing agent's configuration is used
   as-is.
 </Callout>
-
-## Working with Existing Agents
-
-AgentBuilder can wrap existing agent instances to provide session management and the fluent runner interface:
-
-```typescript
-const existingAgent = new LlmAgent({
-  name: "my-agent",
-  model: "gemini-2.5-flash",
-  instruction: "You are a helpful assistant",
-});
-
-const { runner } = await AgentBuilder.withAgent(existingAgent).build();
-
-const response = await runner.ask("Hello!");
-```
-
-This is useful when you have pre-configured agents but want AgentBuilder's automatic session management and convenient runner interface.
 
 ## When to Use AgentBuilder vs LLM Agents
 
@@ -413,12 +395,6 @@ const { agent, runner, session } = await AgentBuilder.create("advanced-agent")
   .withTools(new WebSearchTool(), new CalculatorTool())
   .withCodeExecutor(new PythonCodeExecutor())
   .withMemory(new VectorMemoryService())
-  .withOutputSchema(
-    z.object({
-      summary: z.string(),
-      sources: z.array(z.string()),
-    })
-  )
   .build();
 
 const result = await runner.ask("Research quantum computing trends");

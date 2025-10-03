@@ -170,7 +170,7 @@ const agent = new LlmAgent({
       // Function tool
       name: "calculate",
       description: "Perform mathematical calculations",
-      func: (expression: string) => eval(expression),
+            func: (expression: string) => eval(expression), // WARNING: In production, use a safe math parser instead of eval() due to security risks.  
     }),
     async (query: string) => {
       // Raw function (auto-wrapped)
