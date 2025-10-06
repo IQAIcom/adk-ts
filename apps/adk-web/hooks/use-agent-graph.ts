@@ -2,27 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { Api } from "../Api";
+import { Api, type GraphResponseDto } from "../Api";
 import { useApiUrl } from "./use-api-url";
-
-export interface GraphNode {
-	id: string;
-	label: string;
-	kind: "agent" | "tool";
-	type?: string;
-	shape?: string;
-	group?: string;
-}
-
-export interface GraphEdge {
-	from: string;
-	to: string;
-}
-
-export interface GraphResponse {
-	nodes: GraphNode[];
-	edges: GraphEdge[];
-}
 
 export function useAgentGraph(selectedAgent: { relativePath: string } | null) {
 	const apiUrl = useApiUrl();
@@ -33,7 +14,7 @@ export function useAgentGraph(selectedAgent: { relativePath: string } | null) {
 		[apiUrl],
 	);
 
-	return useQuery<GraphResponse, Error>({
+	return useQuery<GraphResponseDto, Error>({
 		queryKey: ["graph", apiUrl, agentId],
 		enabled: !!apiUrl && !!agentId,
 		queryFn: async () => {
@@ -41,7 +22,7 @@ export function useAgentGraph(selectedAgent: { relativePath: string } | null) {
 			const res = await apiClient.api.graphControllerGetGraph(
 				encodeURIComponent(agentId!),
 			);
-			return res.data as GraphResponse;
+			return res.data;
 		},
 		staleTime: 30_000,
 	});

@@ -1,10 +1,5 @@
 "use client";
 
-import type {
-	GraphEdge,
-	GraphNode,
-	GraphResponse,
-} from "@/hooks/use-agent-graph";
 import {
 	Background,
 	ConnectionLineType,
@@ -16,6 +11,11 @@ import {
 	ReactFlow,
 } from "@xyflow/react";
 import { useMemo } from "react";
+import type {
+	GraphEdgeDto as GraphEdge,
+	GraphNodeDto as GraphNode,
+	GraphResponseDto as GraphResponse,
+} from "../Api";
 import "@xyflow/react/dist/style.css";
 import { Bot, Wrench } from "lucide-react";
 
