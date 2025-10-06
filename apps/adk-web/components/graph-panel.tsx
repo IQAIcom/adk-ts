@@ -52,80 +52,82 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 	// At this point, data is defined
 	const { nodes: graphNodes, edges: graphEdges } = data as GraphResponse;
 
-	// Convert our graph data to React Flow format with simple layout
+	// Convert our graph data to React Flow format with a top-to-bottom tree layout
 	const flowNodes: Node[] = useMemo(() => {
-		// Create a simple hierarchical layout
-		const agentNodes = graphNodes.filter((n: GraphNode) => n.kind === "agent");
-		const toolNodes = graphNodes.filter((n: GraphNode) => n.kind === "tool");
-
-		// Build adjacency map for layout
+		// Build adjacency (children) map
 		const childrenMap = new Map<string, string[]>();
 		for (const edge of graphEdges) {
-			if (!childrenMap.has(edge.from)) {
-				childrenMap.set(edge.from, []);
-			}
+			if (!childrenMap.has(edge.from)) childrenMap.set(edge.from, []);
 			childrenMap.get(edge.from)!.push(edge.to);
 		}
 
-		// Find root nodes (no incoming edges)
+		// Compute incoming edge counts to identify roots
 		const incomingCount = new Map<string, number>();
-		for (const node of graphNodes) {
-			incomingCount.set(node.id, 0);
-		}
+		for (const node of graphNodes) incomingCount.set(node.id, 0);
 		for (const edge of graphEdges) {
 			incomingCount.set(edge.to, (incomingCount.get(edge.to) || 0) + 1);
 		}
-		const rootNodes = graphNodes.filter(
-			(n: GraphNode) => incomingCount.get(n.id) === 0,
+		const roots = graphNodes.filter(
+			(n: GraphNode) => (incomingCount.get(n.id) || 0) === 0,
 		);
 
-		// Simple layered positioning
-		const positioned = new Set<string>();
-		const positions = new Map<string, { x: number; y: number }>();
+		// Levelize graph using BFS from all roots
+		const visited = new Set<string>();
+		const levels: string[][] = [];
 
-		// Position root nodes
-		if (rootNodes.length === 1) {
-			positions.set(rootNodes[0].id, { x: 200, y: 50 });
-			positioned.add(rootNodes[0].id);
-		} else {
-			rootNodes.forEach((node: GraphNode, i: number) => {
-				positions.set(node.id, { x: 50, y: i * 150 + 50 });
-				positioned.add(node.id);
-			});
-		}
+		// If no roots (cyclic graph), fall back to arbitrary starting node to avoid empty layout
+		const frontier: string[] =
+			roots.length > 0
+				? roots.map((r) => r.id)
+				: ([graphNodes[0]?.id].filter(Boolean) as string[]);
+		if (frontier.length === 0) return [];
 
-		// Position children in layers
-		let currentLayer = [...rootNodes.map((n: GraphNode) => n.id)];
-		let layerX = rootNodes.length === 1 ? 200 : 250;
-
-		while (currentLayer.length > 0) {
-			const nextLayer: string[] = [];
-			let layerY = rootNodes.length === 1 ? 150 : 50;
-
-			for (const nodeId of currentLayer) {
-				const children = childrenMap.get(nodeId) || [];
-				children.forEach((childId, i) => {
-					if (!positioned.has(childId)) {
-						positions.set(childId, { x: layerX, y: layerY + i * 120 });
-						positioned.add(childId);
-						nextLayer.push(childId);
-						layerY += 120;
-					}
-				});
+		let current = frontier;
+		while (current.length > 0) {
+			const level: string[] = [];
+			const next: string[] = [];
+			for (const id of current) {
+				if (visited.has(id)) continue;
+				visited.add(id);
+				level.push(id);
+				const children = childrenMap.get(id) || [];
+				for (const c of children) if (!visited.has(c)) next.push(c);
 			}
-
-			currentLayer = nextLayer;
-			layerX += 200;
+			if (level.length) levels.push(level);
+			current = next;
 		}
 
-		// Create flow nodes
+		// Include any isolated or back-referenced nodes not reached (defensive)
+		const remaining = graphNodes
+			.filter((n) => !visited.has(n.id))
+			.map((n) => n.id);
+		if (remaining.length) levels.push(remaining);
+
+		// Compute positions: vertical layers (y increases with depth), horizontal spacing within a layer
+		const layerGapY = 150; // vertical distance between layers
+		const nodeGapX = 220; // horizontal distance between nodes in same layer
+		const positions = new Map<string, { x: number; y: number }>();
+		const maxWidthCount = Math.max(...levels.map((l) => l.length));
+
+		levels.forEach((level, depth) => {
+			const count = level.length;
+			const layerWidth = (count - 1) * nodeGapX;
+			// Center each layer horizontally relative to the widest layer
+			const maxLayerWidth = (maxWidthCount - 1) * nodeGapX;
+			const offsetX = (maxLayerWidth - layerWidth) / 2;
+			level.forEach((id, i) => {
+				positions.set(id, {
+					x: offsetX + i * nodeGapX,
+					y: 40 + depth * layerGapY,
+				});
+			});
+		});
+
+		// Create flow nodes with computed positions
 		return graphNodes.map((node: GraphNode) => ({
 			id: node.id,
 			type: node.kind, // 'agent' or 'tool'
-			position: positions.get(node.id) || {
-				x: Math.random() * 400,
-				y: Math.random() * 300,
-			},
+			position: positions.get(node.id) || { x: 0, y: 0 },
 			data: {
 				label: node.label,
 				type: node.type,
@@ -156,14 +158,15 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 				strokeLinecap: "round",
 				filter: isTool ? "drop-shadow(0 0 1px rgba(0,0,0,0.5))" : undefined,
 			};
-			return {
+			const e: Edge = {
 				id: `edge-${index}`,
 				source: edge.from,
 				target: edge.to,
 				type: "smoothstep",
 				animated: false,
 				style,
-			} as Edge;
+			};
+			return e;
 		});
 	}, [graphEdges, graphNodes]);
 
@@ -222,12 +225,12 @@ function AgentNode({ data }: { data: any }) {
 			{/* Handles for edge rendering */}
 			<Handle
 				type="target"
-				position={Position.Left}
+				position={Position.Top}
 				className="!w-2 !h-2 !bg-primary !border-2 !border-background"
 			/>
 			<Handle
 				type="source"
-				position={Position.Right}
+				position={Position.Bottom}
 				className="!w-2 !h-2 !bg-primary !border-2 !border-background"
 			/>
 		</div>
@@ -247,12 +250,12 @@ function ToolNode({ data }: { data: any }) {
 			{/* Handles for edge rendering */}
 			<Handle
 				type="target"
-				position={Position.Left}
+				position={Position.Top}
 				className="!w-2 !h-2 !bg-secondary !border-2 !border-background"
 			/>
 			<Handle
 				type="source"
-				position={Position.Right}
+				position={Position.Bottom}
 				className="!w-2 !h-2 !bg-secondary !border-2 !border-background"
 			/>
 		</div>
