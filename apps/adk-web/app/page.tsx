@@ -40,7 +40,7 @@ function HomeContent() {
 		selectAgent,
 		refreshAgents,
 		isSendingMessage,
-	} = useAgents(finalApiUrl, currentSessionId);
+	} = useAgents(currentSessionId);
 
 	// Subscribe to server-side hot-reload stream (SSE) and refresh data on change
 	useEffect(() => {

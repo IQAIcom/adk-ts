@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { Api } from "../Api";
 import type { Agent } from "../app/(dashboard)/_schema";
+import { useApiUrl } from "./useApiUrl";
 
 interface Event {
 	id: string;
@@ -23,10 +24,10 @@ interface EventsResponse {
 }
 
 export function useEvents(
-	apiUrl: string,
 	selectedAgent: Agent | null,
 	sessionId: string | null,
 ) {
+	const apiUrl = useApiUrl();
 	const queryClient = useQueryClient();
 	const apiClient = useMemo(
 		() => (apiUrl ? new Api({ baseUrl: apiUrl }) : null),

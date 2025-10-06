@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Api } from "../Api";
 import type { Agent } from "../app/(dashboard)/_schema";
+import { useApiUrl } from "./useApiUrl";
 
 interface StateResponse {
 	agentState: Record<string, any>;
@@ -16,15 +17,12 @@ interface StateResponse {
 }
 
 export function useStatePanel(
-	apiUrl: string,
 	selectedAgent: Agent | null,
 	currentSessionId: string | null,
 ) {
 	const queryClient = useQueryClient();
-	const apiClient = useMemo(
-		() => (apiUrl ? new Api({ baseUrl: apiUrl }) : null),
-		[apiUrl],
-	);
+	const apiUrl = useApiUrl();
+	const apiClient = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
 
 	const {
 		data: currentState,

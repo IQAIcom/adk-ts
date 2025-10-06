@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { Api } from "../Api";
 import type { Agent } from "../app/(dashboard)/_schema";
+import { useApiUrl } from "./useApiUrl";
 
 interface Session {
 	id: string;
@@ -25,7 +26,8 @@ interface CreateSessionRequest {
 	sessionId?: string;
 }
 
-export function useSessions(apiUrl: string, selectedAgent: Agent | null) {
+export function useSessions(selectedAgent: Agent | null) {
+	const apiUrl = useApiUrl();
 	const queryClient = useQueryClient();
 	const apiClient = useMemo(
 		() => (apiUrl ? new Api({ baseUrl: apiUrl }) : null),

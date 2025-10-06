@@ -40,13 +40,8 @@ export function Sidebar({
 	currentSessionId: initialSessionId,
 	onSessionChange,
 }: SidebarProps) {
-	// Determine API URL from search params (same logic as page.tsx)
+	// API URL now resolved inside hooks via useApiUrl
 	const searchParams = useSearchParams();
-	const apiUrl = searchParams.get("apiUrl");
-	const port = searchParams.get("port");
-
-	const finalApiUrl =
-		apiUrl || (port ? `http://localhost:${port}` : "http://localhost:8042");
 
 	// Local session state should be declared before hooks that depend on it
 	const [localSessionId, setLocalSessionId] = useState<string | null>(
@@ -60,10 +55,9 @@ export function Sidebar({
 		createSession,
 		deleteSession,
 		switchSession,
-	} = useSessions(finalApiUrl, selectedAgent);
+	} = useSessions(selectedAgent);
 
 	const { events, isLoading: eventsLoading } = useEvents(
-		finalApiUrl,
 		selectedAgent,
 		localSessionId ?? null,
 	);
@@ -72,7 +66,7 @@ export function Sidebar({
 		data: graph,
 		isLoading: graphLoading,
 		error: graphError,
-	} = useAgentGraph(finalApiUrl, selectedAgent);
+	} = useAgentGraph(selectedAgent);
 
 	// Track previous agent to detect actual agent switch
 	const prevAgentRef = useRef<string | null>(null);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useApiUrl } from "./useApiUrl";
 
 export interface GraphNode {
 	id: string;
@@ -21,10 +22,8 @@ export interface GraphResponse {
 	edges: GraphEdge[];
 }
 
-export function useAgentGraph(
-	apiUrl: string | null,
-	selectedAgent: { relativePath: string } | null,
-) {
+export function useAgentGraph(selectedAgent: { relativePath: string } | null) {
+	const apiUrl = useApiUrl();
 	const agentId = selectedAgent?.relativePath;
 
 	return useQuery<GraphResponse, Error>({

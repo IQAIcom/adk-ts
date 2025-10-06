@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Api } from "../Api";
 import type { Agent, Message } from "../app/(dashboard)/_schema";
+import { useApiUrl } from "./useApiUrl";
 
 interface AgentApiResponse {
 	agents: Agent[];
@@ -22,12 +23,10 @@ interface EventsResponse {
 	totalCount: number;
 }
 
-export function useAgents(apiUrl: string, currentSessionId?: string | null) {
+export function useAgents(currentSessionId?: string | null) {
 	const queryClient = useQueryClient();
-	const apiClient = useMemo(() => {
-		if (!apiUrl) return null;
-		return new Api({ baseUrl: apiUrl });
-	}, [apiUrl]);
+	const apiUrl = useApiUrl();
+	const apiClient = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
 	const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
 	const [messages, setMessages] = useState<Message[]>([]);
 
