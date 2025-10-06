@@ -31,14 +31,9 @@ interface Event {
 interface EventsPanelProps {
 	events: Event[];
 	isLoading?: boolean;
-	onSelectEvent?: (event: Event) => void;
 }
 
-export function EventsPanel({
-	events,
-	isLoading = false,
-	onSelectEvent,
-}: EventsPanelProps) {
+export function EventsPanel({ events, isLoading = false }: EventsPanelProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [authorFilter, setAuthorFilter] = useState<string>("all");
 	const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
@@ -183,7 +178,6 @@ export function EventsPanel({
 								event={event}
 								onClick={() => {
 									setDrillEvent(event);
-									onSelectEvent?.(event);
 								}}
 							/>
 						))

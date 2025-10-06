@@ -1,6 +1,5 @@
 "use client";
 
-// No card here; we render edge-to-edge inside the sidebar
 import type {
 	GraphEdge,
 	GraphNode,
@@ -24,59 +23,6 @@ interface GraphPanelProps {
 	data?: GraphResponse;
 	isLoading?: boolean;
 	error?: Error | null;
-}
-
-// Custom node component for agents
-function AgentNode({ data }: { data: any }) {
-	return (
-		<div className="relative px-4 py-2 shadow-md rounded-md bg-card border-2 border-primary min-w-[150px]">
-			<div className="flex items-center gap-2">
-				<Bot className="w-4 h-4 text-primary" />
-				<div className="font-medium text-sm text-card-foreground">
-					{data.label?.replace("🤖 ", "") || data.id}
-				</div>
-			</div>
-			{data.type && (
-				<div className="text-xs text-muted-foreground mt-1">{data.type}</div>
-			)}
-			{/* Handles for edge rendering */}
-			<Handle
-				type="target"
-				position={Position.Left}
-				className="!w-2 !h-2 !bg-primary !border-2 !border-background"
-			/>
-			<Handle
-				type="source"
-				position={Position.Right}
-				className="!w-2 !h-2 !bg-primary !border-2 !border-background"
-			/>
-		</div>
-	);
-}
-
-// Custom node component for tools
-function ToolNode({ data }: { data: any }) {
-	return (
-		<div className="relative px-3 py-2 shadow-md rounded-md bg-card border-2 border-accent min-w-[120px]">
-			<div className="flex items-center gap-2">
-				<Wrench className="w-3 h-3 text-accent-foreground" />
-				<div className="font-medium text-xs text-card-foreground">
-					{data.label?.replace("🔧 ", "") || data.id}
-				</div>
-			</div>
-			{/* Handles for edge rendering */}
-			<Handle
-				type="target"
-				position={Position.Left}
-				className="!w-2 !h-2 !bg-accent !border-2 !border-background"
-			/>
-			<Handle
-				type="source"
-				position={Position.Right}
-				className="!w-2 !h-2 !bg-accent !border-2 !border-background"
-			/>
-		</div>
-	);
 }
 
 const nodeTypes = {
@@ -245,6 +191,59 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 				<Background color="var(--color-muted-foreground)" gap={20} size={1} />
 				<Controls position="bottom-left" />
 			</ReactFlow>
+		</div>
+	);
+}
+
+// Custom node component for agents
+function AgentNode({ data }: { data: any }) {
+	return (
+		<div className="relative px-4 py-2 shadow-md rounded-md bg-card border-2 border-primary min-w-[150px]">
+			<div className="flex items-center gap-2">
+				<Bot className="w-4 h-4 text-primary" />
+				<div className="font-medium text-sm text-card-foreground">
+					{data.label?.replace("🤖 ", "") || data.id}
+				</div>
+			</div>
+			{data.type && (
+				<div className="text-xs text-muted-foreground mt-1">{data.type}</div>
+			)}
+			{/* Handles for edge rendering */}
+			<Handle
+				type="target"
+				position={Position.Left}
+				className="!w-2 !h-2 !bg-primary !border-2 !border-background"
+			/>
+			<Handle
+				type="source"
+				position={Position.Right}
+				className="!w-2 !h-2 !bg-primary !border-2 !border-background"
+			/>
+		</div>
+	);
+}
+
+// Custom node component for tools
+function ToolNode({ data }: { data: any }) {
+	return (
+		<div className="relative px-3 py-2 shadow-md rounded-md bg-card border-2 border-accent min-w-[120px]">
+			<div className="flex items-center gap-2">
+				<Wrench className="w-3 h-3 text-accent-foreground" />
+				<div className="font-medium text-xs text-card-foreground">
+					{data.label?.replace("🔧 ", "") || data.id}
+				</div>
+			</div>
+			{/* Handles for edge rendering */}
+			<Handle
+				type="target"
+				position={Position.Left}
+				className="!w-2 !h-2 !bg-accent !border-2 !border-background"
+			/>
+			<Handle
+				type="source"
+				position={Position.Right}
+				className="!w-2 !h-2 !bg-accent !border-2 !border-background"
+			/>
 		</div>
 	);
 }

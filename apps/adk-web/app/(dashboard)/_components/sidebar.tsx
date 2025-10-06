@@ -90,8 +90,6 @@ export function Sidebar({
 		error: graphError,
 	} = useAgentGraph(finalApiUrl, selectedAgent);
 
-	const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-
 	// Track previous agent to detect actual agent switch
 	const prevAgentRef = useRef<string | null>(null);
 	useEffect(() => {
@@ -231,13 +229,7 @@ export function Sidebar({
 							/>
 						)}
 						{selectedPanel === "events" && (
-							<EventsPanel
-								events={events || []}
-								isLoading={!!eventsLoading}
-								onSelectEvent={(e) => {
-									setSelectedEvent(e);
-								}}
-							/>
+							<EventsPanel events={events || []} isLoading={!!eventsLoading} />
 						)}
 						{selectedPanel === "state" && (
 							<StatePanel
