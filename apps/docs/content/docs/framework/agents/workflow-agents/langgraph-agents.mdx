@@ -1,0 +1,414 @@
+---
+title: LangGraph Agents
+description: Complex workflows with conditional branching and dynamic routing
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+LangGraph agents orchestrate sophisticated workflows with conditional branching, dynamic routing, and state-dependent decisions. Think of them as the master conductors for complex, multi-path processes where the next step depends on the results of previous steps.
+
+Unlike simple workflow patterns ([sequential](/docs/framework/agents/workflow-agents/sequential-agents), [parallel](/docs/framework/agents/workflow-agents/parallel-agents), [loop](/docs/framework/agents/workflow-agents/loop-agents)), LangGraph agents handle complex decision trees, conditional flows, and dynamic routing based on content analysis, user preferences, or business rules.
+
+<Callout type="info" title="Advanced Orchestration">
+  - **Power:** Handle complex branching logic and conditional workflows
+  - **Flexibility:** Dynamic routing based on content, context, or business rules
+  - **Best for:** Sophisticated processes that require intelligent
+  decision-making
+</Callout>
+
+## Quick Start Example
+
+Here's a customer support system that intelligently routes inquiries based on analysis:
+
+```typescript
+import { LlmAgent, LangGraphAgent } from "@iqai/adk";
+
+// Step 1: Analyze incoming inquiry
+const inquiryAnalyzer = new LlmAgent({
+  name: "inquiry-analyzer",
+  model: "gemini-2.5-flash",
+  instruction: `
+    Analyze the customer inquiry and determine:
+    - Category: technical, billing, general, complaint, refund
+    - Urgency: low, medium, high, critical
+    - Complexity: simple, moderate, complex
+    - Sentiment: positive, neutral, negative, angry
+    
+    Output as JSON with these fields.
+  `,
+  outputKey: "analysis",
+});
+
+// Specialized handlers for different types
+const technicalSupport = new LlmAgent({
+  name: "technical-support",
+  model: "gemini-2.5-flash",
+  instruction:
+    "Handle technical issues with step-by-step troubleshooting guidance.",
+  outputKey: "technical_response",
+});
+
+const billingSupport = new LlmAgent({
+  name: "billing-support",
+  model: "gemini-2.5-flash",
+  instruction:
+    "Handle billing inquiries with account-specific information and resolution steps.",
+  outputKey: "billing_response",
+});
+
+const escalationHandler = new LlmAgent({
+  name: "escalation-handler",
+  model: "gemini-2.5-flash",
+  instruction:
+    "Handle escalated issues requiring human intervention with empathy and next steps.",
+  outputKey: "escalation_response",
+});
+
+const generalSupport = new LlmAgent({
+  name: "general-support",
+  model: "gemini-2.5-flash",
+  instruction:
+    "Handle general inquiries with helpful information and guidance.",
+  outputKey: "general_response",
+});
+
+// Define the workflow graph with conditional routing
+const supportWorkflow = new LangGraphAgent({
+  name: "customer-support-workflow",
+  description: "Intelligent customer support routing and handling",
+  nodes: [
+    {
+      id: "analyze",
+      agent: inquiryAnalyzer,
+      next: (ctx) => {
+        const analysis = JSON.parse(ctx.session.state.get("analysis", "{}"));
+
+        // Route based on analysis results
+        if (analysis.urgency === "critical" || analysis.sentiment === "angry") {
+          return "escalate";
+        }
+
+        switch (analysis.category) {
+          case "technical":
+            return "technical";
+          case "billing":
+          case "refund":
+            return "billing";
+          default:
+            return "general";
+        }
+      },
+    },
+    {
+      id: "technical",
+      agent: technicalSupport,
+      next: () => "end",
+    },
+    {
+      id: "billing",
+      agent: billingSupport,
+      next: (ctx) => {
+        // Check if billing issue was resolved
+        const response = ctx.session.state.get("billing_response", "");
+        return response.includes("unresolved") ? "escalate" : "end";
+      },
+    },
+    {
+      id: "escalate",
+      agent: escalationHandler,
+      next: () => "end",
+    },
+    {
+      id: "general",
+      agent: generalSupport,
+      next: () => "end",
+    },
+  ],
+  startNode: "analyze",
+});
+
+// Usage: Intelligent routing based on inquiry content
+const result = await supportWorkflow.run({
+  message:
+    "My billing is completely wrong and I'm very frustrated! I need this fixed immediately!",
+});
+// → Routes to escalation due to angry sentiment and billing category
+```
+
+### Visual Flow
+
+<Mermaid
+  chart="
+flowchart TD
+  Start[Customer Inquiry] --> Analyze[Analyze Inquiry]
+  
+  Analyze --> Decision{Analysis Results}
+  
+  Decision -->|Critical/Angry| Escalate[Escalation Handler]
+  Decision -->|Technical| Tech[Technical Support]
+  Decision -->|Billing/Refund| Billing[Billing Support]
+  Decision -->|General| General[General Support]
+  
+  Billing --> BillingCheck{Resolved?}
+  BillingCheck -->|No| Escalate
+  BillingCheck -->|Yes| End[Complete]
+  
+  Tech --> End
+  Escalate --> End
+  General --> End
+"
+/>
+
+## How LangGraph Processing Works
+
+LangGraph agents enable sophisticated workflow orchestration through conditional routing and state-dependent decisions:
+
+**🌐 Node-Based Architecture**
+
+- **Nodes:** Individual processing steps (typically agents)
+- **Edges:** Conditional transitions between nodes
+- **State:** Shared context that influences routing decisions
+- **Dynamic routing:** Next step determined by current state and results
+
+**🧠 Intelligent Decision Making**
+
+1. **Execute current node** - Run the agent at current workflow position
+2. **Evaluate state** - Analyze results and current context
+3. **Determine next step** - Use conditional logic to choose next node
+4. **Route dynamically** - Move to appropriate next node or terminate
+
+**🔀 Conditional Flows**
+
+```typescript
+next: (ctx) => {
+  const analysis = ctx.session.state.get("analysis");
+
+  if (analysis.urgency === "critical") return "escalate";
+  if (analysis.category === "technical") return "tech-support";
+  return "general-support";
+};
+```
+
+**📊 State Management**
+
+- All nodes share the same session state
+- Previous results influence future routing decisions
+- Context accumulates throughout the workflow
+- Decisions can reference any previous step's output
+
+<Callout type="info" title="Graph Design Patterns">
+  - **Start simple:** Begin with basic routing logic, add complexity gradually
+  - **Plan thoroughly:** Map out all possible paths before implementation
+  - **Handle edge cases:** Always have fallback routes for unexpected conditions
+</Callout>
+
+## Advanced Patterns
+
+### Multi-Stage Decision Trees
+
+```typescript
+const nodes = [
+  {
+    id: "initial-triage",
+    agent: triageAgent,
+    next: (ctx) => {
+      const triage = ctx.session.state.get("triage");
+      return triage.requiresHuman ? "human-review" : "automated-processing";
+    },
+  },
+  {
+    id: "automated-processing",
+    agent: automatedProcessor,
+    next: (ctx) => {
+      const result = ctx.session.state.get("automated_result");
+      return result.confidence > 0.9 ? "finalize" : "human-review";
+    },
+  },
+  {
+    id: "human-review",
+    agent: humanReviewAgent,
+    next: () => "finalize",
+  },
+  {
+    id: "finalize",
+    agent: finalizationAgent,
+    next: () => "end",
+  },
+];
+```
+
+### Loop Within Graph
+
+```typescript
+{
+  id: "quality-check",
+  agent: qualityAssessor,
+  next: (ctx) => {
+    const quality = ctx.session.state.get("quality_score");
+    const attempts = ctx.session.state.get("improvement_attempts", 0);
+
+    if (quality >= 8) return "approve";
+    if (attempts >= 3) return "escalate";
+    return "improve"; // Loop back for another improvement cycle
+  }
+}
+```
+
+### Parallel Processing Integration
+
+```typescript
+{
+  id: "parallel-analysis",
+  agent: parallelAnalysisAgent, // This could be a ParallelAgent
+  next: (ctx) => {
+    const results = ctx.session.state.get("parallel_results");
+    const consensus = analyzeConsensus(results);
+    return consensus.agreement > 0.8 ? "proceed" : "additional-review";
+  }
+}
+```
+
+## Real-World Use Cases
+
+**🏥 Medical Diagnosis Workflow**  
+Symptoms → Initial Assessment → Specialist Routing → Tests → Diagnosis → Treatment Plan
+
+**⚖️ Legal Document Review**  
+Document Analysis → Risk Assessment → Complexity Routing → Specialist Review → Approval Flow
+
+**💼 Loan Application Processing**  
+Application Review → Risk Assessment → Manual/Auto Route → Verification → Decision → Notification
+
+**📱 App Feature Requests**  
+Request Analysis → Category Assignment → Feasibility Check → Priority Routing → Development Queue
+
+**🎯 Content Moderation**  
+Content Analysis → Risk Scoring → Auto-Approve/Review Route → Human Review → Action Decision
+
+**🔍 Fraud Detection**  
+Transaction Analysis → Risk Scoring → Investigation Routing → Evidence Gathering → Resolution
+
+## When to Choose LangGraph Agents
+
+<Callout type="success" title="Perfect for Complex Decision Trees">
+  - **Use when:** You need sophisticated branching logic and conditional
+  workflows
+  - **Benefit:** Handle complex processes that simple linear or
+  parallel patterns can't address
+</Callout>
+
+### ✅ Choose LangGraph When:
+
+- **Complex routing logic** - Next step depends on content analysis or business rules
+- **Multi-path workflows** - Different paths through the process based on conditions
+- **State-dependent decisions** - Routing changes based on accumulated context
+- **Exception handling** - Need sophisticated error handling and escalation paths
+- **Adaptive processes** - Workflow adapts based on intermediate results
+- **Integration of patterns** - Combining sequential, parallel, and loop behaviors
+
+### ❌ Don't Use LangGraph When:
+
+- Simple linear workflows are sufficient (use Sequential)
+- All tasks can run independently (use Parallel)
+- Simple iteration is needed (use Loop)
+- Workflow complexity outweighs the benefits
+- Debugging and maintenance overhead is too high
+
+## Design Best Practices
+
+### 1. Start with Flow Mapping
+
+```
+Before coding, map out:
+- All possible entry points
+- Decision criteria at each branch
+- All possible exit conditions
+- Error handling and fallback paths
+```
+
+### 2. Keep Nodes Focused
+
+```typescript
+// Good: Single responsibility
+const riskAssessor = new LlmAgent({
+  instruction: "Assess financial risk only",
+});
+
+// Avoid: Multiple responsibilities
+const everythingAgent = new LlmAgent({
+  instruction: "Assess risk, make decisions, and format output",
+});
+```
+
+### 3. Handle Edge Cases
+
+```typescript
+next: (ctx) => {
+  const analysis = ctx.session.state.get("analysis");
+
+  // Always handle missing or malformed data
+  if (!analysis) return "error-handler";
+
+  // Provide fallback for unexpected values
+  switch (analysis.category) {
+    case "technical":
+      return "tech-support";
+    case "billing":
+      return "billing-support";
+    default:
+      return "general-support"; // Fallback
+  }
+};
+```
+
+### 4. Test All Paths
+
+```
+Ensure every possible route through your graph:
+- Has been tested with real data
+- Handles expected and edge case scenarios
+- Has appropriate error handling
+- Can reach a terminal state
+```
+
+<Callout type="warn" title="Graph Complexity Warning">
+  - **Start simple:** Complex graphs are hard to debug and maintain
+  - **Document thoroughly:** Clear documentation is crucial for complex flows
+  - **Test extensively:** Every path and edge case should be tested
+</Callout>
+
+## Related Documentation
+
+<Cards>
+  <Card
+    title="🔄 Sequential Agents"
+    description="Building blocks that can be nodes within LangGraph workflows"
+    href="/docs/framework/agents/workflow-agents/sequential-agents"
+  />
+
+{" "}
+<Card
+  title="⚡ Parallel Agents"
+  description="Can be integrated as nodes for concurrent processing steps"
+  href="/docs/framework/agents/workflow-agents/parallel-agents"
+/>
+
+{" "}
+<Card
+  title="🔁 Loop Agents"
+  description="Can be used as nodes for iterative processing within graphs"
+  href="/docs/framework/agents/workflow-agents/loop-agents"
+/>
+<Card
+  title="🏗️ Agent Builder"
+  description="Fluent API for creating LangGraph workflows with asLangGraph()"
+  href="/docs/framework/agents/agent-builder"
+/>
+
+  <Card
+    title="🤖 LLM Agents"
+    description="Individual agents that serve as nodes in LangGraph workflows"
+    href="/docs/framework/agents/llm-agents"
+  />
+</Cards>
