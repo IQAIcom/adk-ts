@@ -13,6 +13,7 @@
     "callbacks",
     "context",
     "deploy",
-    "events"
+    "events",
+    "guides"
   ]
 }

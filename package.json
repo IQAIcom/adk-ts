@@ -14,10 +14,11 @@
 		"changeset": "changeset",
 		"version-packages": "changeset version",
 		"publish-packages": "turbo run build lint && changeset version && changeset publish",
-		"prepare": "husky"
+		"prepare": "husky",
+		"test": "turbo run test --filter=@iqai/adk --concurrency 50"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
+		"@biomejs/biome": "2.0.6",
 		"@changesets/cli": "^2.27.1",
 		"husky": "9.1.7",
 		"lint-staged": "^15.4.3",
