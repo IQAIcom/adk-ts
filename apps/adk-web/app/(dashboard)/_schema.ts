@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export interface Agent {
 	path: string;
 	name: string;
@@ -34,8 +36,15 @@ export interface Event {
 	isFinalResponse: boolean;
 }
 
+// Centralized Panel ID schema for type-safe usage across the app
+export const PanelIdSchema = z.enum(["sessions", "events", "state", "graph"]);
+export type PanelId = z.infer<typeof PanelIdSchema>;
+export const PANEL_IDS = PanelIdSchema.options;
+export const isPanelId = (value: unknown): value is PanelId =>
+	PanelIdSchema.safeParse(value).success;
+
 export interface PanelType {
-	type: "sessions" | "events" | "state" | "graph" | null;
+	type: PanelId | null;
 }
 
 // Agent status tracking removed; agents are always available on-demand
@@ -43,7 +52,7 @@ export interface PanelType {
 export interface ChatState {
 	messages: Message[];
 	selectedAgent: Agent | null;
-	selectedPanel: PanelType["type"];
+	selectedPanel: PanelId | null;
 	currentSessionId: string | null;
 }
 

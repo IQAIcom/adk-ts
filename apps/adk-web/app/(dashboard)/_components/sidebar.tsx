@@ -13,17 +13,24 @@ import { Activity, Archive, Database, Share2, X } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { PanelId, PanelIdSchema } from "../_schema";
 
 interface SidebarProps {
-	selectedPanel: "sessions" | "events" | "state" | "graph" | null;
-	onPanelSelect: (
-		panel: "sessions" | "events" | "state" | "graph" | null,
-	) => void;
+	selectedPanel: PanelId | null;
+	onPanelSelect: (panel: PanelId | null) => void;
 	className?: string;
 	selectedAgent?: any | null;
 	currentSessionId?: string | null;
 	onSessionChange?: (sessionId: string | null) => void;
 }
+
+const navigationItems: { id: PanelId; label: string; icon: typeof Database }[] =
+	[
+		{ id: PanelIdSchema.enum.sessions, label: "Sessions", icon: Database },
+		{ id: PanelIdSchema.enum.events, label: "Events", icon: Activity },
+		{ id: PanelIdSchema.enum.state, label: "State", icon: Archive },
+		{ id: PanelIdSchema.enum.graph, label: "Graph", icon: Share2 },
+	];
 
 export function Sidebar({
 	selectedPanel,
@@ -33,29 +40,6 @@ export function Sidebar({
 	currentSessionId: initialSessionId,
 	onSessionChange,
 }: SidebarProps) {
-	const navigationItems = [
-		{
-			id: "sessions" as const,
-			label: "Sessions",
-			icon: Database,
-		},
-		{
-			id: "events" as const,
-			label: "Events",
-			icon: Activity,
-		},
-		{
-			id: "state" as const,
-			label: "State",
-			icon: Archive,
-		},
-		{
-			id: "graph" as const,
-			label: "Graph",
-			icon: Share2,
-		},
-	];
-
 	// Determine API URL from search params (same logic as page.tsx)
 	const searchParams = useSearchParams();
 	const apiUrl = searchParams.get("apiUrl");
