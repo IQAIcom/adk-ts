@@ -10,7 +10,7 @@ import {
 	Position,
 	ReactFlow,
 } from "@xyflow/react";
-import { useMemo } from "react";
+import { type CSSProperties, useMemo } from "react";
 import type {
 	GraphEdgeDto as GraphEdge,
 	GraphNodeDto as GraphNode,
@@ -143,15 +143,26 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		}
 		return graphEdges.map((edge: GraphEdge, index: number) => {
 			const targetKind = kindById.get(edge.to);
-			const stroke =
-				targetKind === "tool" ? "var(--color-accent)" : "var(--color-primary)";
+			const isTool = targetKind === "tool";
+			// Use high-contrast foreground for tool edges to ensure visibility across themes
+			const stroke = isTool
+				? "var(--color-secondary-foreground)"
+				: "var(--color-primary)";
+			const style: CSSProperties = {
+				stroke,
+				strokeWidth: isTool ? 2.75 : 2.25,
+				opacity: 1,
+				...(isTool ? { strokeDasharray: "10 6" } : {}),
+				strokeLinecap: "round",
+				filter: isTool ? "drop-shadow(0 0 1px rgba(0,0,0,0.5))" : undefined,
+			};
 			return {
 				id: `edge-${index}`,
 				source: edge.from,
 				target: edge.to,
 				type: "smoothstep",
 				animated: false,
-				style: { stroke, strokeWidth: 2, opacity: 0.9 },
+				style,
 			} as Edge;
 		});
 	}, [graphEdges, graphNodes]);
@@ -226,10 +237,10 @@ function AgentNode({ data }: { data: any }) {
 // Custom node component for tools
 function ToolNode({ data }: { data: any }) {
 	return (
-		<div className="relative px-3 py-2 shadow-md rounded-md bg-card border-2 border-accent min-w-[120px]">
+		<div className="relative px-3 py-2 shadow-md rounded-sm bg-secondary border-2 border-secondary min-w-[120px]">
 			<div className="flex items-center gap-2">
-				<Wrench className="w-3 h-3 text-accent-foreground" />
-				<div className="font-medium text-xs text-card-foreground">
+				<Wrench className="w-3 h-3 text-secondary-foreground" />
+				<div className="font-medium text-xs text-secondary-foreground">
 					{data.label?.replace("🔧 ", "") || data.id}
 				</div>
 			</div>
@@ -237,12 +248,12 @@ function ToolNode({ data }: { data: any }) {
 			<Handle
 				type="target"
 				position={Position.Left}
-				className="!w-2 !h-2 !bg-accent !border-2 !border-background"
+				className="!w-2 !h-2 !bg-secondary !border-2 !border-background"
 			/>
 			<Handle
 				type="source"
 				position={Position.Right}
-				className="!w-2 !h-2 !bg-accent !border-2 !border-background"
+				className="!w-2 !h-2 !bg-secondary !border-2 !border-background"
 			/>
 		</div>
 	);
