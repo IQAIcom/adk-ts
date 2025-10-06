@@ -1,7 +1,11 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { BaseAgent } from "@iqai/adk";
 import { Agents as AdkAgents } from "@iqai/adk";
 import type { BaseTool } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
+import { AgentLoader } from "./agent-loader.service";
 import { AgentManager } from "./agent-manager.service";
 
 export interface GraphNode {
@@ -160,10 +164,79 @@ export class AgentGraphService {
 					seen.add(childNode.id);
 				}
 				edges.push({ from: rootNode.id, to: childNode.id });
+
+				// Best-effort: try to load sub-agent module directly to discover tools
+				try {
+					const loader = new AgentLoader(true);
+					// Resolve agent file path
+					let filePath = join(entry.absolutePath, "agent.ts");
+					if (!existsSync(filePath)) {
+						filePath = join(entry.absolutePath, "agent.js");
+					}
+					if (existsSync(filePath)) {
+						// Load env from the project before import
+						loader.loadEnvironmentVariables(filePath);
+						let mod: Record<string, unknown> = {};
+						try {
+							if (filePath.endsWith(".ts")) {
+								mod = await loader.importTypeScriptFile(
+									filePath,
+									(entry as any).projectRoot,
+								);
+							} else {
+								mod = (await import(pathToFileURL(filePath).href)) as Record<
+									string,
+									unknown
+								>;
+							}
+						} catch (e) {
+							this.logger.warn(
+								`Failed to import sub-agent module at ${filePath}: ${e instanceof Error ? e.message : String(e)}`,
+							);
+						}
+
+						// Try to find a function export that returns a LlmAgent instance (no build)
+						let subAgentInstance: BaseAgent | undefined;
+						for (const [k, v] of Object.entries(mod)) {
+							if (typeof v !== "function") continue;
+							// Heuristic: names containing 'agent'
+							if (!/agent/i.test(k)) continue;
+							try {
+								const result = await Promise.resolve((v as any)());
+								if (result && result instanceof AdkAgents.LlmAgent) {
+									subAgentInstance = result as BaseAgent;
+									break;
+								}
+							} catch {}
+						}
+
+						if (
+							subAgentInstance &&
+							subAgentInstance instanceof AdkAgents.LlmAgent
+						) {
+							try {
+								const tools = await (
+									subAgentInstance as InstanceType<typeof AdkAgents.LlmAgent>
+								).canonicalTools();
+								for (const t of tools) {
+									const n = toolNode(t as BaseTool);
+									if (!seen.has(n.id)) {
+										nodes.push(n);
+										seen.add(n.id);
+									}
+									edges.push({ from: childNode.id, to: n.id });
+								}
+							} catch (e) {
+								this.logger.warn(
+									`Failed to resolve tools for sub-agent ${entry.name}: ${e instanceof Error ? e.message : String(e)}`,
+								);
+							}
+						}
+					}
+				} catch {}
 			}
 		}
 
 		return { nodes, edges };
 	}
-
 }

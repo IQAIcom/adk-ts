@@ -28,9 +28,7 @@ export class GraphController {
 	@ApiParam({ name: "id", description: "Agent identifier (relative path)" })
 
 	@ApiOkResponse({ type: GraphResponseDto })
-	async getGraph(
-		@Param("id") id: string,
-	): Promise<AgentGraph> {
+	async getGraph(@Param("id") id: string): Promise<AgentGraph> {
 		try {
 			const agentPath = decodeURIComponent(id);
 			return await this.graph.getGraph(agentPath);
