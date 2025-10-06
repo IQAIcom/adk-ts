@@ -19,7 +19,6 @@ export interface GraphEdge {
 export interface GraphResponse {
 	nodes: GraphNode[];
 	edges: GraphEdge[];
-	dot?: string;
 }
 
 export function useAgentGraph(
@@ -33,9 +32,7 @@ export function useAgentGraph(
 		enabled: !!apiUrl && !!agentId,
 		queryFn: async () => {
 			const id = encodeURIComponent(agentId!);
-			const res = await fetch(
-				`${apiUrl}/api/agents/${id}/graph?includeTools=true&format=json`,
-			);
+			const res = await fetch(`${apiUrl}/api/agents/${id}/graph`);
 			if (!res.ok) {
 				throw new Error(`Failed to load graph: ${res.status}`);
 			}

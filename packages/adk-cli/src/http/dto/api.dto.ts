@@ -117,5 +117,4 @@ export class GraphEdgeDto {
 export class GraphResponseDto {
 	@ApiProperty({ type: [GraphNodeDto] }) nodes!: GraphNodeDto[];
 	@ApiProperty({ type: [GraphEdgeDto] }) edges!: GraphEdgeDto[];
-	@ApiProperty({ required: false }) dot?: string;
 }

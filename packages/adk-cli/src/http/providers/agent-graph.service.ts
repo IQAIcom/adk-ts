@@ -21,7 +21,6 @@ export interface GraphEdge {
 export interface AgentGraph {
 	nodes: GraphNode[];
 	edges: GraphEdge[];
-	dot?: string; // optional Graphviz DOT
 }
 
 @Injectable()
@@ -30,11 +29,7 @@ export class AgentGraphService {
 
 	constructor(private readonly agentManager: AgentManager) {}
 
-	async getGraph(
-		agentPath: string,
-		opts?: { includeTools?: boolean; format?: "json" | "dot" },
-	): Promise<AgentGraph> {
-		const includeTools = opts?.includeTools ?? true;
+	async getGraph(agentPath: string): Promise<AgentGraph> {
 		const registry = this.agentManager.getAgents();
 		const loaded = this.agentManager.getLoadedAgents().get(agentPath);
 		const agent = loaded?.agent ?? registry.get(agentPath)?.instance;
@@ -106,8 +101,8 @@ export class AgentGraphService {
 			for (const sub of ag.subAgents || []) {
 				await traverse(sub, ag);
 			}
-			// Tools for LlmAgent
-			if (includeTools && ag instanceof AdkAgents.LlmAgent) {
+			// Tools for LlmAgent (always include)
+			if (ag instanceof AdkAgents.LlmAgent) {
 				try {
 					const tools = await ag.canonicalTools();
 					for (const t of tools) {
@@ -168,27 +163,7 @@ export class AgentGraphService {
 			}
 		}
 
-		let dot: string | undefined;
-		if (opts?.format === "dot") {
-			dot = this.toDot(nodes, edges);
-		}
-
-		return { nodes, edges, dot };
+		return { nodes, edges };
 	}
 
-	private toDot(nodes: GraphNode[], edges: GraphEdge[]): string {
-		const header =
-			'digraph G {\n  rankdir=LR;\n  bgcolor="#333537";\n  node [fontcolor="#cccccc", color="#cccccc"];\n';
-		const bodyNodes = nodes
-			.map((n) => {
-				const shape = n.shape ?? (n.kind === "agent" ? "ellipse" : "box");
-				const label = n.label.replace(/\"/g, '\\"');
-				return `  "${n.id}" [label="${label}", shape=${shape}];`;
-			})
-			.join("\n");
-		const bodyEdges = edges
-			.map((e) => `  "${e.from}" -> "${e.to}" [color=\"#cccccc\"];`)
-			.join("\n");
-		return `${header}${bodyNodes}\n${bodyEdges}\n}`;
-	}
 }

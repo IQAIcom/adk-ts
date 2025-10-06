@@ -23,34 +23,17 @@ export class GraphController {
 	@ApiOperation({
 		summary: "Get agent graph",
 		description:
-			"Returns the agent graph (nodes and edges) for the selected root agent. Optionally include tools and DOT format.",
+			"Returns the agent graph (nodes and edges) for the selected root agent. Tools are always included.",
 	})
 	@ApiParam({ name: "id", description: "Agent identifier (relative path)" })
-	@ApiQuery({
-		name: "includeTools",
-		required: false,
-		type: Boolean,
-		description: "Include tool nodes for LlmAgents (default: true)",
-	})
-	@ApiQuery({
-		name: "format",
-		required: false,
-		enum: ["json", "dot"],
-		description: "If 'dot', include Graphviz DOT in response",
-	})
+
 	@ApiOkResponse({ type: GraphResponseDto })
 	async getGraph(
 		@Param("id") id: string,
-		@Query("includeTools") includeTools?: string,
-		@Query("format") format?: "json" | "dot",
 	): Promise<AgentGraph> {
 		try {
 			const agentPath = decodeURIComponent(id);
-			const include = includeTools == null ? true : includeTools === "true";
-			return await this.graph.getGraph(agentPath, {
-				includeTools: include,
-				format,
-			});
+			return await this.graph.getGraph(agentPath);
 		} catch (e) {
 			this.logger.error(
 				`Failed to build graph for id='${id}': ${e instanceof Error ? e.message : String(e)}`,
