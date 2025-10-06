@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Api } from "../Api";
 import type { Agent, Message } from "../app/(dashboard)/_schema";
-import { useApiUrl } from "./useApiUrl";
+import { useApiUrl } from "./use-api-url";
 
 interface AgentApiResponse {
 	agents: Agent[];

@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { StateCard } from "@/components/state-card";
-import { useJsonEditor } from "@/hooks/useJsonEditor";
-import { useStatePanel } from "@/hooks/useStatePanel";
+import { useJsonEditor } from "@/hooks/use-json-editor";
+import { useStatePanel } from "@/hooks/use-state-pannel";
 import CodeEditor from "@uiw/react-textarea-code-editor";
 import { Code2, Edit, Plus, Settings, Wand2 } from "lucide-react";
 import { useState } from "react";

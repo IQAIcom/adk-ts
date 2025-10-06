@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Api } from "../Api";
 import type { Agent } from "../app/(dashboard)/_schema";
-import { useApiUrl } from "./useApiUrl";
+import { useApiUrl } from "./use-api-url";
 
 interface StateResponse {
 	agentState: Record<string, any>;

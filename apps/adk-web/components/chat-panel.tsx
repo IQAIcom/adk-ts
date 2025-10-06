@@ -21,7 +21,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Response } from "@/components/ai-elements/response";
 import { Button } from "@/components/ui/button";
-import { useChatAttachments } from "@/hooks/useChatAttachments";
+import { useChatAttachments } from "@/hooks/use-chat-attachments";
 import { cn } from "@/lib/utils";
 import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";

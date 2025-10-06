@@ -4,7 +4,7 @@ import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
 import { ChatPanel } from "@/components/chat-panel";
 import { Navbar } from "@/components/navbar";
 import { ErrorState, LoadingState } from "@/components/ui/states";
-import { useAgents } from "@/hooks/useAgents";
+import { useAgents } from "@/hooks/use-agent";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";

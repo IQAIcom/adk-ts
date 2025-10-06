@@ -4,7 +4,7 @@ import type {
 	GraphEdge,
 	GraphNode,
 	GraphResponse,
-} from "@/hooks/useAgentGraph";
+} from "@/hooks/use-agent-graph";
 import {
 	Background,
 	ConnectionLineType,

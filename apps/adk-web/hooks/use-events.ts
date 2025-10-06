@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { Api } from "../Api";
 import type { Agent } from "../app/(dashboard)/_schema";
-import { useApiUrl } from "./useApiUrl";
+import { useApiUrl } from "./use-api-url";
 
 interface Event {
 	id: string;
