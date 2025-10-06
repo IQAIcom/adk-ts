@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { BaseAgent } from "@iqai/adk";
-import { Agents as AdkAgents } from "@iqai/adk";
 import type { BaseTool } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import { AgentLoader } from "./agent-loader.service";
@@ -36,16 +35,48 @@ export class AgentGraphService {
 	async getGraph(agentPath: string): Promise<AgentGraph> {
 		const registry = this.agentManager.getAgents();
 		const loaded = this.agentManager.getLoadedAgents().get(agentPath);
-		const agent = loaded?.agent ?? registry.get(agentPath)?.instance;
+		let agent = loaded?.agent ?? registry.get(agentPath)?.instance;
 
 		const nodes: GraphNode[] = [];
 		const edges: GraphEdge[] = [];
 		const seen = new Set<string>();
 
+		if (!agent) {
+			// Try to load the agent module just-in-time for richer introspection
+			const root = registry.get(agentPath);
+			if (root) {
+				try {
+					const loader = new AgentLoader(true);
+					let filePath = join(root.absolutePath, "agent.ts");
+					if (!existsSync(filePath)) {
+						filePath = join(root.absolutePath, "agent.js");
+					}
+					if (existsSync(filePath)) {
+						loader.loadEnvironmentVariables(filePath);
+						let mod: Record<string, unknown> = {};
+						try {
+							mod = filePath.endsWith(".ts")
+								? await loader.importTypeScriptFile(filePath, root.projectRoot)
+								: ((await import(pathToFileURL(filePath).href)) as Record<
+										string,
+										unknown
+									>);
+							agent = await loader.resolveAgentExport(mod);
+						} catch (e) {
+							this.logger.warn(
+								`Failed to load agent for graph at ${filePath}: ${e instanceof Error ? e.message : String(e)}`,
+							);
+						}
+					}
+				} catch {}
+			}
+		}
+
 		if (agent) {
 			// Preferred path: we have an actual agent instance to introspect
 			await this.traverseAgentGraph(agent, nodes, edges, seen);
 		} else {
+			this.logger.debug("Graph fallback: agent instance not available");
 			// Fallback: build a directory-based graph from the registry without loading the agent
 			const root = registry.get(agentPath);
 			if (!root) {
@@ -58,29 +89,32 @@ export class AgentGraphService {
 		return { nodes, edges };
 	}
 
+	// Cross-package safe detection using constructor name instead of instanceof
+	// Rationale: Users' agents are compiled with esbuild and may load their own
+	// copy of @iqai/adk. instanceof would fail across module boundaries, so we
+	// use duck typing and constructor.name to classify.
 	private getNodeMetaForAgent(
 		ag: BaseAgent,
 	): Pick<GraphNode, "type" | "shape" | "group"> {
-		if (ag instanceof AdkAgents.LlmAgent) {
+		const typeName = ag?.constructor?.name ?? "BaseAgent";
+		if (typeName === "LlmAgent") {
 			return { type: "LlmAgent", shape: "ellipse", group: undefined };
 		}
-		if (ag instanceof AdkAgents.SequentialAgent) {
+		if (typeName === "SequentialAgent") {
 			return { type: "SequentialAgent", shape: "ellipse", group: "sequential" };
 		}
-		if (
-			(AdkAgents as any).LoopAgent &&
-			ag instanceof (AdkAgents as any).LoopAgent
-		) {
+		if (typeName === "LoopAgent") {
 			return { type: "LoopAgent", shape: "ellipse", group: "loop" };
 		}
-		if (ag instanceof AdkAgents.ParallelAgent) {
+		if (typeName === "ParallelAgent") {
 			return { type: "ParallelAgent", shape: "ellipse", group: "parallel" };
 		}
-		return {
-			type: ag.constructor?.name ?? "BaseAgent",
-			shape: "ellipse",
-			group: undefined,
-		};
+		return { type: typeName, shape: "ellipse", group: undefined };
+	}
+
+	// Narrowing helper for LoopAgent without importing concrete class
+	private isLoopAgent(agent: BaseAgent): boolean {
+		return agent?.constructor?.name === "LoopAgent";
 	}
 
 	private createToolNode(tool: BaseTool): GraphNode {
@@ -129,12 +163,12 @@ export class AgentGraphService {
 		for (const sub of ag.subAgents || []) {
 			await this.traverseAgentGraph(sub, nodes, edges, seen, ag);
 		}
-		// Tools for LlmAgent (always include)
-		if (ag instanceof AdkAgents.LlmAgent) {
+		// Tools: prefer duck typing to avoid cross-realm instanceof issues
+		if (typeof (ag as any)?.canonicalTools === "function") {
 			try {
-				const tools = await ag.canonicalTools();
-				for (const t of tools) {
-					const n = this.createToolNode(t as BaseTool);
+				const tools = await (ag as any).canonicalTools();
+				for (const t of tools as BaseTool[]) {
+					const n = this.createToolNode(t);
 					if (!seen.has(n.id)) {
 						nodes.push(n);
 						seen.add(n.id);
@@ -218,7 +252,7 @@ export class AgentGraphService {
 						);
 					}
 
-					// Try to find a function export that returns a LlmAgent instance (no build)
+					// Try to find a function export that returns an agent with canonicalTools (no build)
 					let subAgentInstance: BaseAgent | undefined;
 					for (const [k, v] of Object.entries(mod)) {
 						if (typeof v !== "function") continue;
@@ -226,21 +260,19 @@ export class AgentGraphService {
 						if (!/agent/i.test(k)) continue;
 						try {
 							const result = await Promise.resolve((v as any)());
-							if (result && result instanceof AdkAgents.LlmAgent) {
+							if (
+								result &&
+								typeof (result as any)?.canonicalTools === "function"
+							) {
 								subAgentInstance = result as BaseAgent;
 								break;
 							}
 						} catch {}
 					}
 
-					if (
-						subAgentInstance &&
-						subAgentInstance instanceof AdkAgents.LlmAgent
-					) {
+					if (subAgentInstance) {
 						try {
-							const tools = await (
-								subAgentInstance as InstanceType<typeof AdkAgents.LlmAgent>
-							).canonicalTools();
+							const tools = await (subAgentInstance as any).canonicalTools();
 							for (const t of tools) {
 								const n = this.createToolNode(t as BaseTool);
 								if (!seen.has(n.id)) {
