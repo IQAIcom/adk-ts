@@ -15,7 +15,15 @@
 		"type": "git",
 		"url": "git+https://github.com/IQAICOM/adk-discord-bot.git"
 	},
-	"keywords": ["ai", "agent", "mcp", "adk-ts", "IQAI", "discord", "bot"],
+	"keywords": [
+		"ai",
+		"agent",
+		"mcp",
+		"adk-ts",
+		"IQAI",
+		"discord",
+		"bot"
+	],
 	"author": "IQAI",
 	"license": "MIT",
 	"bugs": {
@@ -24,6 +32,7 @@
 	"homepage": "https://github.com/IQAICOM/adk-discord-bot#readme",
 	"dependencies": {
 		"@iqai/adk": "^0.3.2",
+		"better-sqlite3": "^12.4.1",
 		"dotenv": "^17.2.2",
 		"zod": "^4.1.5"
 	},
