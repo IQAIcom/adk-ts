@@ -1,6 +1,6 @@
 "use client";
 
-import type { Agent, Message as ChatMessage } from "@/app/(dashboard)/_schema";
+import type { Message as ChatMessage } from "@/app/(dashboard)/_schema";
 import {
 	Conversation,
 	ConversationContent,
@@ -25,6 +25,7 @@ import { useChatAttachments } from "@/hooks/use-chat-attachments";
 import { cn } from "@/lib/utils";
 import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { AgentListItemDto as Agent } from "../Api";
 
 interface ChatPanelProps {
 	selectedAgent: Agent | null;

@@ -15,18 +15,7 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, ArrowLeft, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-
-interface Event {
-	id: string;
-	author: string;
-	timestamp: number;
-	content: any;
-	actions: any;
-	functionCalls: any[];
-	functionResponses: any[];
-	branch?: string;
-	isFinalResponse: boolean;
-}
+import type { EventItemDto as Event } from "../Api";
 
 interface EventsPanelProps {
 	events: Event[];

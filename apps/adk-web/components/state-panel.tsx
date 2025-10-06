@@ -19,7 +19,7 @@ import CodeEditor from "@uiw/react-textarea-code-editor";
 import { Code2, Edit, Plus, Settings, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Agent } from "../app/(dashboard)/_schema";
+import type { AgentListItemDto as Agent } from "../Api";
 
 interface StatePanelProps {
 	selectedAgent: Agent | null;

@@ -1,39 +1,11 @@
 import { z } from "zod";
-
-export interface Agent {
-	path: string;
-	name: string;
-	directory: string;
-	relativePath: string;
-}
+import type { AgentListItemDto as Agent } from "../../Api";
 
 export interface Message {
 	id: number;
 	type: "user" | "assistant" | "system";
 	content: string;
 	timestamp: Date;
-}
-
-export interface Session {
-	id: string;
-	appName: string;
-	userId: string;
-	state: Record<string, any>;
-	eventCount: number;
-	lastUpdateTime: number;
-	createdAt: number;
-}
-
-export interface Event {
-	id: string;
-	author: string;
-	timestamp: number;
-	content: any;
-	actions: any;
-	functionCalls: any[];
-	functionResponses: any[];
-	branch?: string;
-	isFinalResponse: boolean;
 }
 
 // Centralized Panel ID schema for type-safe usage across the app

@@ -1,20 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Api } from "../Api";
-import type { Agent } from "../app/(dashboard)/_schema";
+import type { AgentListItemDto as Agent, StateResponseDto } from "../Api";
 import { useApiUrl } from "./use-api-url";
-
-interface StateResponse {
-	agentState: Record<string, any>;
-	userState: Record<string, any>;
-	sessionState: Record<string, any>;
-	metadata: {
-		lastUpdated: number;
-		changeCount: number;
-		totalKeys: number;
-		sizeBytes: number;
-	};
-}
 
 export function useStatePanel(
 	selectedAgent: Agent | null,
@@ -28,7 +16,7 @@ export function useStatePanel(
 		data: currentState,
 		isLoading,
 		error,
-	} = useQuery<StateResponse>({
+	} = useQuery<StateResponseDto>({
 		queryKey: ["state", apiUrl, selectedAgent?.relativePath, currentSessionId],
 		queryFn: async () => {
 			if (!apiClient || !selectedAgent || !currentSessionId) {
@@ -38,7 +26,7 @@ export function useStatePanel(
 				encodeURIComponent(selectedAgent.relativePath),
 				currentSessionId,
 			);
-			return res.data as StateResponse;
+			return res.data as StateResponseDto;
 		},
 		enabled: !!apiClient && !!selectedAgent && !!currentSessionId,
 	});

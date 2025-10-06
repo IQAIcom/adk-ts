@@ -33,6 +33,7 @@ export interface EventLike {
 	actions: any;
 	functionCalls: any[];
 	functionResponses: any[];
+	branch?: string | null;
 	isFinalResponse: boolean;
 }
 

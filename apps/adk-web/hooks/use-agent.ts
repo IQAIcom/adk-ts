@@ -4,30 +4,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Api } from "../Api";
-import type { Agent, Message } from "../app/(dashboard)/_schema";
+import type {
+	AgentListItemDto,
+	AgentsListResponseDto,
+	EventItemDto,
+	EventsResponseDto,
+} from "../Api";
+import type { Message } from "../app/(dashboard)/_schema";
 import { useApiUrl } from "./use-api-url";
-
-interface AgentApiResponse {
-	agents: Agent[];
-}
-
-interface EventItem {
-	id: string;
-	author: string;
-	timestamp: number;
-	content: any;
-}
-
-interface EventsResponse {
-	events: EventItem[];
-	totalCount: number;
-}
 
 export function useAgents(currentSessionId?: string | null) {
 	const queryClient = useQueryClient();
 	const apiUrl = useApiUrl();
 	const apiClient = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
-	const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+	const [selectedAgent, setSelectedAgent] = useState<AgentListItemDto | null>(
+		null,
+	);
 	const [messages, setMessages] = useState<Message[]>([]);
 
 	// Fetch available agents
@@ -38,10 +30,10 @@ export function useAgents(currentSessionId?: string | null) {
 		refetch: refreshAgents,
 	} = useQuery({
 		queryKey: ["agents", apiUrl],
-		queryFn: async (): Promise<Agent[]> => {
+		queryFn: async (): Promise<AgentListItemDto[]> => {
 			if (!apiClient) throw new Error("API URL is required");
 			const res = await apiClient.api.agentsControllerListAgents();
-			const data: AgentApiResponse = res.data;
+			const data: AgentsListResponseDto = res.data;
 			return data.agents;
 		},
 		enabled: !!apiClient,
@@ -57,7 +49,7 @@ export function useAgents(currentSessionId?: string | null) {
 			selectedAgent?.relativePath,
 			currentSessionId,
 		],
-		queryFn: async (): Promise<EventsResponse> => {
+		queryFn: async (): Promise<EventsResponseDto> => {
 			if (!apiClient || !selectedAgent || !currentSessionId) {
 				return { events: [], totalCount: 0 };
 			}
@@ -65,7 +57,7 @@ export function useAgents(currentSessionId?: string | null) {
 				encodeURIComponent(selectedAgent.relativePath),
 				currentSessionId,
 			);
-			return res.data as EventsResponse;
+			return res.data as EventsResponseDto;
 		},
 		enabled: !!apiClient && !!selectedAgent && !!currentSessionId,
 		staleTime: 10000,
@@ -75,9 +67,10 @@ export function useAgents(currentSessionId?: string | null) {
 	useEffect(() => {
 		if (sessionEvents?.events && selectedAgent) {
 			const asMessages: Message[] = sessionEvents.events
-				.map((ev, index) => {
-					const textParts = Array.isArray(ev.content?.parts)
-						? ev.content.parts
+				.map((ev: EventItemDto, index: number) => {
+					const content = ev.content as any;
+					const textParts = Array.isArray(content?.parts)
+						? content.parts
 								.filter(
 									(p: any) =>
 										typeof p === "object" &&
@@ -94,7 +87,7 @@ export function useAgents(currentSessionId?: string | null) {
 						timestamp: new Date(ev.timestamp * 1000),
 					} as Message;
 				})
-				.filter((m) => m.content.length > 0);
+				.filter((m: Message) => m.content.length > 0);
 
 			setMessages(asMessages);
 			if (asMessages.length > 0) {
@@ -108,7 +101,7 @@ export function useAgents(currentSessionId?: string | null) {
 			agent,
 			message,
 			attachments,
-		}: { agent: Agent; message: string; attachments?: File[] }) => {
+		}: { agent: AgentListItemDto; message: string; attachments?: File[] }) => {
 			const userMessage: Message = {
 				id: Date.now(),
 				type: "user",
@@ -215,7 +208,7 @@ export function useAgents(currentSessionId?: string | null) {
 	});
 
 	const selectAgent = useCallback(
-		(agent: Agent) => {
+		(agent: AgentListItemDto) => {
 			// Cancel in-flight queries tied to the previous agent to avoid races
 			if (selectedAgent) {
 				try {

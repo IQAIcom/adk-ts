@@ -1,11 +1,14 @@
 "use client";
 
+import { AgentListItemDto } from "@/Api";
 import { useCallback, useState } from "react";
-import type { Agent, Message } from "../_schema";
+import type { Message } from "../_schema";
 
 export function useChat() {
 	const [messages, setMessages] = useState<Message[]>([]);
-	const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+	const [selectedAgent, setSelectedAgent] = useState<AgentListItemDto | null>(
+		null,
+	);
 
 	const addMessage = useCallback((type: Message["type"], content: string) => {
 		setMessages((prev) => [
@@ -19,7 +22,7 @@ export function useChat() {
 		]);
 	}, []);
 
-	const selectAgent = useCallback((agent: Agent) => {
+	const selectAgent = useCallback((agent: AgentListItemDto) => {
 		setSelectedAgent(agent);
 		setMessages([
 			{

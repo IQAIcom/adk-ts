@@ -2,29 +2,11 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
-import { Api } from "../Api";
-import type { Agent } from "../app/(dashboard)/_schema";
+import { type AgentListItemDto, Api, type EventsResponseDto } from "../Api";
 import { useApiUrl } from "./use-api-url";
 
-interface Event {
-	id: string;
-	author: string;
-	timestamp: number;
-	content: any;
-	actions: any;
-	functionCalls: any[];
-	functionResponses: any[];
-	branch?: string;
-	isFinalResponse: boolean;
-}
-
-interface EventsResponse {
-	events: Event[];
-	totalCount: number;
-}
-
 export function useEvents(
-	selectedAgent: Agent | null,
+	selectedAgent: AgentListItemDto | null,
 	sessionId: string | null,
 ) {
 	const apiUrl = useApiUrl();
@@ -39,16 +21,16 @@ export function useEvents(
 		isLoading,
 		error,
 		refetch: refetchEvents,
-	} = useQuery<EventsResponse>({
+	} = useQuery<EventsResponseDto>({
 		queryKey: ["events", apiUrl, selectedAgent?.relativePath, sessionId],
 		queryFn: async () => {
 			if (!apiClient || !selectedAgent || !sessionId)
-				return { events: [], totalCount: 0 } as EventsResponse;
+				return { events: [], totalCount: 0 } as EventsResponseDto;
 			const res = await apiClient.api.eventsControllerGetEvents(
 				encodeURIComponent(selectedAgent.relativePath),
 				sessionId,
 			);
-			return res.data as EventsResponse;
+			return res.data as EventsResponseDto;
 		},
 		enabled: !!apiClient && !!selectedAgent && !!sessionId,
 		staleTime: 10000,
