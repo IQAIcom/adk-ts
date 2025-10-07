@@ -3,127 +3,230 @@ title: Loop Agents
 description: Repeat agent execution until conditions are met
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-Loop agents repeatedly execute sub‑agents until a stopping condition is met, enabling iterative improvement and progressive refinement workflows.
+Loop agents create powerful iterative workflows that keep improving until they reach the desired outcome. Think of it as your AI perfectionist - it won't stop until the work meets quality standards or maximum attempts are reached.
 
-## The `LoopAgent`
+Perfect for scenarios where "good enough" isn't good enough. Whether you're refining content, debugging code, or iterating on creative work, loop agents ensure continuous improvement through repeated cycles of execution and evaluation.
 
-The `LoopAgent` executes its `subAgents` in a loop. It repeatedly runs a sequence of agents for a specified number of iterations or until a termination condition is met.
+Unlike [sequential agents](/docs/framework/agents/workflow-agents/sequential-agents) that run once, or [parallel agents](/docs/framework/agents/workflow-agents/parallel-agents) that run simultaneously, loop agents focus on iterative refinement and progressive enhancement.
 
-Use the `LoopAgent` when your workflow involves repetition or iterative refinement (for example, revising drafts or retrying approaches).
+<Callout type="info" title="Iterative Excellence">
+  - **Key benefit:** Keep improving until you hit quality standards or resource
+  limits.
+  - **Perfect for:** Content refinement, problem solving, creative
+  iteration, and quality convergence.
+</Callout>
 
-As with other workflow agents, the `LoopAgent` is not powered by an LLM and is deterministic in how it orchestrates. Sub‑agents can be any type, including `LlmAgent`.
+## Quick Start Example
 
-### Visual
-
-<Mermaid
-  chart="
-flowchart TD
-  U[User or Upstream] --> L[LoopAgent]
-  L --> A[Agent A]
-  A --> B[Agent B]
-  B -->|escalate? no| L
-  B -->|escalate? yes| E[Exit Loop]
-  A -. updates state .-> L
-  B -. checks state / sets escalate .-> L
-"
-/>
-
-## Quick Example
-
-Here's how to create a problem‑solving loop that tries different approaches until finding a working solution:
+Here's a content refinement system that iteratively improves writing until it meets quality standards:
 
 ```typescript
 import { LlmAgent, LoopAgent, Event, EventActions } from "@iqai/adk";
 
-// Problem-solving agent (pseudo tools omitted here)
-const solverAgent = new LlmAgent({
-  name: "code_problem_solver",
-  description: "Attempts solutions iteratively",
+// Step 1: Content improver that refines the current draft
+const contentImprover = new LlmAgent({
+  name: "content-improver",
   model: "gemini-2.5-flash",
-  instruction: `Try an approach; if tests pass, state 'PASS'. Otherwise, adapt and try again.`,
-  outputKey: "solver_status",
+  instruction: `
+    Improve the current content by:
+    - Enhancing clarity and readability
+    - Strengthening arguments and evidence
+    - Improving flow and structure
+    - Fixing grammar and style issues
+    
+    Provide the improved version as your output.
+  `,
+  outputKey: "current_draft",
 });
 
-// Checker agent to stop the loop when PASS
-class StopOnPass extends LlmAgent {}
-const stopChecker = new (class extends LlmAgent {
-  constructor() { super({ name: "stop_checker", description: "Stops on PASS" }); }
-  // Delegate to Event emission: if status is PASS, escalate
+// Step 2: Quality evaluator that decides if we're done
+const qualityEvaluator = new LlmAgent({
+  name: "quality-evaluator",
+  model: "gemini-2.5-flash",
+  instruction: `
+    Evaluate the current draft quality on a scale of 1-10:
+    - Clarity and readability (1-10)
+    - Argument strength (1-10) 
+    - Professional tone (1-10)
+    - Grammar and style (1-10)
+    
+    If ALL scores are 8 or higher, respond with "QUALITY_ACHIEVED".
+    Otherwise, provide specific feedback for improvement.
+  `,
+  outputKey: "quality_assessment",
+});
+
+// Step 3: Stop condition checker
+const stopConditionChecker = new (class extends LlmAgent {
+  constructor() {
+    super({
+      name: "stop-checker",
+      description: "Stops loop when quality is achieved",
+    });
+  }
+
   protected async *runAsyncImpl(ctx: any) {
-    const status = String(ctx.session.state.get("solver_status", "")).toUpperCase();
-    const done = status.includes("PASS");
-    yield new Event({ author: this.name, actions: new EventActions({ escalate: done }) });
+    const assessment = ctx.session.state.get("quality_assessment", "");
+    const qualityAchieved = assessment.includes("QUALITY_ACHIEVED");
+
+    yield new Event({
+      author: this.name,
+      actions: new EventActions({ escalate: qualityAchieved }),
+    });
   }
 })();
 
-// Loop up to 8 attempts
-const persistentSolver = new LoopAgent({
-  name: "persistent_solver",
-  description: "Keeps trying until success or limit",
-  subAgents: [solverAgent, stopChecker],
-  maxIterations: 8,
+// Iterative refinement loop - up to 5 improvement cycles
+const contentRefinementLoop = new LoopAgent({
+  name: "content-refinement-loop",
+  description: "Iteratively improves content until quality standards are met",
+  subAgents: [contentImprover, qualityEvaluator, stopConditionChecker],
+  maxIterations: 5,
+});
+
+// Usage: Transform rough draft into polished content
+const result = await contentRefinementLoop.run({
+  message:
+    "Please refine this draft: 'AI is good for business because it helps with stuff.'",
 });
 ```
 
-## How it Works
+### Visual Flow
 
-When the `LoopAgent` runs, it performs the following actions:
+<Mermaid
+  chart="
+flowchart TD
+  U[User Input] --> L[LoopAgent]
+  L --> I[Content Improver]
+  I --> E[Quality Evaluator]
+  E --> S[Stop Checker]
+  S -->|Quality < 8| L
+  S -->|Quality >= 8| End[Complete]
+  I -. improved draft .-> L
+  E -. quality scores .-> L
+  S -. stop decision .-> L
+"
+/>
 
-1. Sub‑Agent Execution: Iterates through `subAgents` in order; each sub‑agent’s run method is called per iteration.
-2. Termination Check: The loop itself does not inherently decide when to stop. You must implement a termination mechanism to prevent infinite loops. Common strategies:
-   - Max Iterations: Set `maxIterations` on the `LoopAgent`. The loop terminates after that many iterations.
-   - Escalation from sub‑agent: Design one or more sub‑agents to evaluate a condition (e.g., “Is the quality good enough?”). If the condition is met, the sub‑agent signals termination by yielding an `Event` with `EventActions({ escalate: true })`.
+## How Loop Processing Works
 
-## Key Benefits
+Loop agents create iterative cycles where each iteration can build upon and improve previous results:
 
-- **Iterative Improvement**: Each cycle builds on previous results for progressive refinement
-- **Automatic Retry**: Keep trying until success or limits are reached
-- **Quality Convergence**: Gradually approach desired quality standards
-- **Flexible Stopping**: Multiple ways to determine when to stop
+**🔄 Iteration Cycle**
 
-## When to Use
+1. **Execute sub-agents** - Run all agents in sequence (like sequential agents)
+2. **Evaluate conditions** - Check if stopping criteria are met
+3. **Continue or stop** - Either start next iteration or exit loop
+4. **Progressive improvement** - Each cycle can reference and improve previous results
 
-<Callout type="info" title="Convergence Required">
-Use loop agents when you expect the process to converge toward a solution or when you have clear stopping criteria.
+**🚪 Termination Strategies**
+
+**Maximum Iterations** (Safety Net)
+
+```typescript
+maxIterations: 5; // Prevents infinite loops
+```
+
+**Quality-Based Stopping** (Smart Exit)
+
+```typescript
+// Agent evaluates quality and signals when done
+yield new Event({
+  actions: new EventActions({ escalate: qualityMet }),
+});
+```
+
+**📊 Progressive Enhancement**
+Each iteration sees the full session history, allowing agents to:
+
+- Reference previous attempts
+- Learn from past iterations
+- Build incrementally toward the goal
+- Avoid repeating unsuccessful approaches
+
+<Callout type="info" title="Loop Safety">
+  Always set `maxIterations` as a safety net! Even with smart stopping
+  conditions, having a maximum prevents runaway loops and unexpected resource
+  consumption.
 </Callout>
 
-**Ideal for:**
-- Content refinement (improve writing until quality standards are met)
-- Problem solving (try different approaches until solution found)
-- Research deepening (iterate to build comprehensive understanding)
-- Code optimization (refine until performance goals achieved)
+## Real-World Use Cases
 
-**Avoid when:**
-- Single execution is sufficient
-- No clear improvement path exists
-- Infinite loops are possible without proper stopping conditions
+**📝 Content Refinement Loop**  
+Draft → Improve → Evaluate → Repeat until quality standards met
 
+**🔍 Research Deep-Dive**  
+Initial Research → Analyze Gaps → Research More → Repeat until comprehensive
 
-<Callout type="warn" title="Loop Safety">
-Always set reasonable maximum iteration limits to prevent infinite loops and monitor resource usage during extended execution.
+**🛠️ Code Optimization**  
+Generate Code → Test Performance → Optimize → Repeat until benchmarks hit
+
+**🎨 Creative Iteration**  
+Generate Ideas → Evaluate Creativity → Refine → Repeat until breakthrough
+
+**🐛 Problem Debugging**  
+Try Solution → Test → Debug Issues → Repeat until tests pass
+
+**🎯 Marketing Copy Testing**  
+Write Copy → A/B Test → Analyze Results → Improve → Repeat
+
+## When to Choose Loop Agents
+
+<Callout type="success" title="Perfect For Iterative Improvement">
+  - **Use when:** You need progressive refinement and have clear quality criteria
+  - **Benefit:** Achieve higher quality results through iterative enhancement
+</Callout>
+
+### ✅ Choose Loop When:
+
+- **Quality matters more than speed** - Need excellent results, not just "good enough"
+- **Clear success criteria** - You can define "done" or "good enough"
+- **Improvable processes** - Each iteration can meaningfully build on the last
+- **Resource tolerance** - Can afford multiple processing cycles
+- **Learning from attempts** - Previous tries inform better approaches
+
+### ❌ Don't Use Loop When:
+
+- Single execution produces sufficient results
+- No clear improvement path exists between iterations
+- Time/cost constraints prevent multiple cycles
+- Risk of infinite loops without proper safeguards
+- Tasks are already optimized and won't benefit from repetition
+
+<Callout type="warn" title="Always Set Limits">
+  - **Critical:** Always set `maxIterations` to prevent runaway loops.
+  - **Monitor:** Watch resource usage during extended iterations.
+  - **Test:** Validate your stopping conditions work reliably.
 </Callout>
 
 ## Related Topics
 
 <Cards>
   <Card
-    title="Sequential Agents"
-    description="Execute agents in order for pipeline workflows"
+    title="🔄 Sequential Agents"
+    description="Building blocks that loop agents execute in each iteration"
     href="/docs/framework/agents/workflow-agents/sequential-agents"
   />
 
-  <Card
-    title="Parallel Agents"
-    description="Run multiple agents simultaneously"
-    href="/docs/framework/agents/workflow-agents/parallel-agents"
-  />
+{" "}
+<Card
+  title="⚡ Parallel Agents"
+  description="Alternative for concurrent processing without iteration"
+  href="/docs/framework/agents/workflow-agents/parallel-agents"
+/>
 
   <Card
-    title="Agent Builder"
-    description="Fluent API for creating and configuring agents"
+    title="🏗️ Agent Builder"
+    description="Fluent API for creating loop workflows with asLoop()"
     href="/docs/framework/agents/agent-builder"
+  />
+  
+  <Card
+    title="🤖 LLM Agents"
+    description="Individual agents that power iterative loop workflows"
+    href="/docs/framework/agents/llm-agents"
   />
 </Cards>

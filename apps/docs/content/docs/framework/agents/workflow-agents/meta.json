@@ -1,4 +1,10 @@
 {
   "title": "Workflow Agents",
-  "icon": "GitBranch"
+  "icon": "GitBranch",
+  "pages": [
+    "sequential-agents",
+    "parallel-agents",
+    "loop-agents",
+    "langgraph-agents"
+  ]
 }

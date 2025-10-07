@@ -1,5 +1,12 @@
 {
   "title": "Agents",
   "icon": "Bot",
-  "pages": ["llm-agents", "models", "agent-builder", "multi-agents", "custom-agents", "workflow-agents"]
+  "pages": [
+    "llm-agents",
+    "models",
+    "agent-builder",
+    "workflow-agents",
+    "custom-agents",
+    "multi-agents"
+  ]
 }
