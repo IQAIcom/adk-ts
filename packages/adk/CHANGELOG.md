@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.3.7
+
+### Patch Changes
+
+- 737cb0f: Adds support for gpt 5 models
+
 ## 0.3.6
 
 ### Patch Changes
