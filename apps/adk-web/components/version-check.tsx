@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { coerce as semverCoerce, satisfies as semverSatisfies } from "semver";
 import { toast } from "sonner";
-import { satisfies as semverSatisfies, coerce as semverCoerce } from "semver";
 import { useApiUrl } from "@/hooks/use-api-url";
 import pkg from "../package.json";
 
