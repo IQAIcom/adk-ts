@@ -43,16 +43,16 @@ const templates: Template[] = [
 		source: "github:IQAIcom/adk-ts/apps/starter-templates/hono-server",
 	},
 	{
-		value: "shade-agent",
-		label: "🌓 Near Shade Agent",
-		hint: "Starter that uses Near Shade Agent",
-		source: "github:IQAIcom/adk-ts/apps/starter-templates/shade-agent",
-	},
-	{
 		value: "mcp-starter",
 		label: "🔌 MCP Integration",
 		hint: "Model Context Protocol server",
 		source: "github:IQAIcom/adk-ts/apps/starter-templates/mcp-starter",
+	},
+	{
+		value: "shade-agent",
+		label: "🌓 Near Shade Agent",
+		hint: "Starter that uses Near Shade Agent",
+		source: "github:IQAIcom/adk-ts/apps/starter-templates/shade-agent",
 	},
 ];
 
@@ -257,7 +257,7 @@ export class NewCommand extends CommandRunner {
 	@Option({
 		flags: "-t, --template <template>",
 		description:
-			"Template to use (simple-agent, discord-bot, telegram-bot, hono-server, mcp-starter)",
+			"Template to use (simple-agent, discord-bot, telegram-bot, hono-server, mcp-starter, shade-agent)",
 	})
 	parseTemplate(val: string): string {
 		return val;
