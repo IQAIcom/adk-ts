@@ -15,30 +15,14 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, ArrowLeft, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-
-interface Event {
-	id: string;
-	author: string;
-	timestamp: number;
-	content: any;
-	actions: any;
-	functionCalls: any[];
-	functionResponses: any[];
-	branch?: string;
-	isFinalResponse: boolean;
-}
+import type { EventItemDto as Event } from "../Api";
 
 interface EventsPanelProps {
 	events: Event[];
 	isLoading?: boolean;
-	onSelectEvent?: (event: Event) => void;
 }
 
-export function EventsPanel({
-	events,
-	isLoading = false,
-	onSelectEvent,
-}: EventsPanelProps) {
+export function EventsPanel({ events, isLoading = false }: EventsPanelProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [authorFilter, setAuthorFilter] = useState<string>("all");
 	const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
@@ -183,7 +167,6 @@ export function EventsPanel({
 								event={event}
 								onClick={() => {
 									setDrillEvent(event);
-									onSelectEvent?.(event);
 								}}
 							/>
 						))

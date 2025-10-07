@@ -3,29 +3,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
-import { Api } from "../Api";
-import type { Agent } from "../app/(dashboard)/_schema";
-
-interface Session {
-	id: string;
-	appName: string;
-	userId: string;
-	state: Record<string, any>;
-	eventCount: number;
-	lastUpdateTime: number;
-	createdAt: number;
-}
-
-interface SessionsResponse {
-	sessions: Session[];
-}
+import {
+	type AgentListItemDto,
+	Api,
+	type SessionResponseDto,
+	type SessionsResponseDto,
+} from "../Api";
+import { useApiUrl } from "./use-api-url";
 
 interface CreateSessionRequest {
 	state?: Record<string, any>;
 	sessionId?: string;
 }
 
-export function useSessions(apiUrl: string, selectedAgent: Agent | null) {
+export function useSessions(selectedAgent: AgentListItemDto | null) {
+	const apiUrl = useApiUrl();
 	const queryClient = useQueryClient();
 	const apiClient = useMemo(
 		() => (apiUrl ? new Api({ baseUrl: apiUrl }) : null),
@@ -40,12 +32,12 @@ export function useSessions(apiUrl: string, selectedAgent: Agent | null) {
 		refetch: refetchSessions,
 	} = useQuery({
 		queryKey: ["sessions", apiUrl, selectedAgent?.relativePath],
-		queryFn: async (): Promise<Session[]> => {
+		queryFn: async (): Promise<SessionResponseDto[]> => {
 			if (!apiClient || !selectedAgent) return [];
 			const res = await apiClient.api.sessionsControllerListSessions(
 				encodeURIComponent(selectedAgent.relativePath),
 			);
-			const data: SessionsResponse = res.data as any;
+			const data: SessionsResponseDto = res.data as any;
 			return data.sessions;
 		},
 		enabled: !!apiClient && !!selectedAgent,
@@ -58,7 +50,7 @@ export function useSessions(apiUrl: string, selectedAgent: Agent | null) {
 		mutationFn: async ({
 			state,
 			sessionId,
-		}: CreateSessionRequest): Promise<Session> => {
+		}: CreateSessionRequest): Promise<SessionResponseDto> => {
 			if (!apiClient || !selectedAgent)
 				throw new Error("API URL and agent required");
 			try {
@@ -66,7 +58,7 @@ export function useSessions(apiUrl: string, selectedAgent: Agent | null) {
 					encodeURIComponent(selectedAgent.relativePath),
 					{ state, sessionId },
 				);
-				return res.data as Session;
+				return res.data as SessionResponseDto;
 			} catch (e: any) {
 				toast.error("Failed to create session. Please try again.");
 				throw new Error(e?.message || "Failed to create session");

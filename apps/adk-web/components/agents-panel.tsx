@@ -1,4 +1,3 @@
-import type { Agent } from "@/app/(dashboard)/_schema";
 import {
 	Card,
 	CardContent,
@@ -9,6 +8,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Bot } from "lucide-react";
+import type { AgentListItemDto as Agent } from "../Api";
 
 interface AgentsPanelProps {
 	agents: Agent[];

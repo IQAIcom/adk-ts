@@ -26,16 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Database, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-interface Session {
-	id: string;
-	appName: string;
-	userId: string;
-	state: Record<string, any>;
-	eventCount: number;
-	lastUpdateTime: number;
-	createdAt: number;
-}
+import type { SessionResponseDto as Session } from "../Api";
 
 interface SessionsPanelProps {
 	sessions: Session[];

@@ -3,9 +3,8 @@
 	"paths": {
 		"/api/agents": {
 			"get": {
-				"operationId": "AgentsController_listAgents",
-				"summary": "List discovered agents",
 				"description": "Returns all agent entries found by scanning the agents directory. Each agent includes name, absolute, and relative paths.",
+				"operationId": "AgentsController_listAgents",
 				"parameters": [],
 				"responses": {
 					"200": {
@@ -19,14 +18,14 @@
 						}
 					}
 				},
+				"summary": "List discovered agents",
 				"tags": ["agents"]
 			}
 		},
 		"/api/agents/refresh": {
 			"post": {
-				"operationId": "AgentsController_refreshAgents",
-				"summary": "Rescan and list agents",
 				"description": "Triggers a fresh scan of the agents directory and returns the updated agent list.",
+				"operationId": "AgentsController_refreshAgents",
 				"parameters": [],
 				"responses": {
 					"200": {
@@ -40,14 +39,45 @@
 						}
 					}
 				},
+				"summary": "Rescan and list agents",
+				"tags": ["agents"]
+			}
+		},
+		"/api/agents/{id}/graph": {
+			"get": {
+				"description": "Returns the agent graph (nodes and edges) for the selected root agent. Tools are always included.",
+				"operationId": "GraphController_getGraph",
+				"parameters": [
+					{
+						"name": "id",
+						"required": true,
+						"in": "path",
+						"description": "Agent identifier (relative path)",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GraphResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Get agent graph",
 				"tags": ["agents"]
 			}
 		},
 		"/api/agents/{id}/messages": {
 			"get": {
-				"operationId": "MessagingController_getAgentMessages",
-				"summary": "Get message history",
 				"description": "Returns ordered chat transcript for the agent, including user and assistant messages.",
+				"operationId": "MessagingController_getAgentMessages",
 				"parameters": [
 					{
 						"name": "id",
@@ -71,14 +101,14 @@
 						}
 					}
 				},
+				"summary": "Get message history",
 				"tags": ["messaging"]
 			}
 		},
 		"/api/agents/{id}/message": {
 			"post": {
-				"operationId": "MessagingController_postAgentMessage",
-				"summary": "Send a message to the agent",
 				"description": "Adds a user message (with optional base64 attachments) and returns the assistant response.",
+				"operationId": "MessagingController_postAgentMessage",
 				"parameters": [
 					{
 						"name": "id",
@@ -122,14 +152,14 @@
 						}
 					}
 				},
+				"summary": "Send a message to the agent",
 				"tags": ["messaging"]
 			}
 		},
 		"/api/agents/{id}/sessions": {
 			"get": {
-				"operationId": "SessionsController_listSessions",
-				"summary": "List sessions for an agent",
 				"description": "Returns all active sessions for the specified agent including metadata.",
+				"operationId": "SessionsController_listSessions",
 				"parameters": [
 					{
 						"name": "id",
@@ -153,12 +183,12 @@
 						}
 					}
 				},
+				"summary": "List sessions for an agent",
 				"tags": ["sessions"]
 			},
 			"post": {
-				"operationId": "SessionsController_createSession",
-				"summary": "Create a new session",
 				"description": "Creates a session for the agent. Optional state and custom sessionId may be provided.",
+				"operationId": "SessionsController_createSession",
 				"parameters": [
 					{
 						"name": "id",
@@ -198,14 +228,14 @@
 						}
 					}
 				},
+				"summary": "Create a new session",
 				"tags": ["sessions"]
 			}
 		},
 		"/api/agents/{id}/sessions/{sessionId}": {
 			"delete": {
-				"operationId": "SessionsController_deleteSession",
-				"summary": "Delete a session",
 				"description": "Stops and removes the session if it exists.",
+				"operationId": "SessionsController_deleteSession",
 				"parameters": [
 					{
 						"name": "id",
@@ -238,14 +268,14 @@
 						}
 					}
 				},
+				"summary": "Delete a session",
 				"tags": ["sessions"]
 			}
 		},
 		"/api/agents/{id}/sessions/{sessionId}/switch": {
 			"post": {
-				"operationId": "SessionsController_switchSession",
-				"summary": "Switch active session",
 				"description": "Marks the specified session as active (implementation specific).",
+				"operationId": "SessionsController_switchSession",
 				"parameters": [
 					{
 						"name": "id",
@@ -278,14 +308,14 @@
 						}
 					}
 				},
+				"summary": "Switch active session",
 				"tags": ["sessions"]
 			}
 		},
 		"/api/agents/{id}/sessions/{sessionId}/events": {
 			"get": {
-				"operationId": "EventsController_getEvents",
-				"summary": "Get session events",
 				"description": "Returns chronological events for a specific agent session including actions, function calls, and responses.",
+				"operationId": "EventsController_getEvents",
 				"parameters": [
 					{
 						"name": "id",
@@ -318,14 +348,14 @@
 						}
 					}
 				},
+				"summary": "Get session events",
 				"tags": ["events"]
 			}
 		},
 		"/api/agents/{id}/sessions/{sessionId}/state": {
 			"get": {
-				"operationId": "StateController_getState",
-				"summary": "Get current session state",
 				"description": "Retrieves combined agent, user, and session state along with metadata such as last update time and size metrics.",
+				"operationId": "StateController_getState",
 				"parameters": [
 					{
 						"name": "id",
@@ -358,12 +388,12 @@
 						}
 					}
 				},
+				"summary": "Get current session state",
 				"tags": ["state"]
 			},
 			"put": {
-				"operationId": "StateController_updateState",
-				"summary": "Update a state path",
 				"description": "Updates a nested state value for the session given a dot/JSON path and value payload.",
+				"operationId": "StateController_updateState",
 				"parameters": [
 					{
 						"name": "id",
@@ -410,6 +440,7 @@
 						}
 					}
 				},
+				"summary": "Update a state path",
 				"tags": ["state"]
 			}
 		},
@@ -421,14 +452,14 @@
 					"200": {
 						"description": ""
 					}
-				}
+				},
+				"tags": ["Reload"]
 			}
 		},
 		"/health": {
 			"get": {
-				"operationId": "HealthController_health",
-				"summary": "Health check",
 				"description": "Basic liveness probe returning status: ok when the service is up.",
+				"operationId": "HealthController_health",
 				"parameters": [],
 				"responses": {
 					"200": {
@@ -442,6 +473,7 @@
 						}
 					}
 				},
+				"summary": "Health check",
 				"tags": ["health"]
 			}
 		}
@@ -511,6 +543,61 @@
 				},
 				"required": ["agents"]
 			},
+			"GraphNodeDto": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"label": {
+						"type": "string"
+					},
+					"kind": {
+						"type": "string",
+						"enum": ["agent", "tool"]
+					},
+					"type": {
+						"type": "string"
+					},
+					"shape": {
+						"type": "string"
+					},
+					"group": {
+						"type": "string"
+					}
+				},
+				"required": ["id", "label", "kind"]
+			},
+			"GraphEdgeDto": {
+				"type": "object",
+				"properties": {
+					"from": {
+						"type": "string"
+					},
+					"to": {
+						"type": "string"
+					}
+				},
+				"required": ["from", "to"]
+			},
+			"GraphResponseDto": {
+				"type": "object",
+				"properties": {
+					"nodes": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/GraphNodeDto"
+						}
+					},
+					"edges": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/GraphEdgeDto"
+						}
+					}
+				},
+				"required": ["nodes", "edges"]
+			},
 			"MessageItemDto": {
 				"type": "object",
 				"properties": {
@@ -529,7 +616,7 @@
 					},
 					"timestamp": {
 						"type": "string",
-						"example": "2025-09-05T06:41:53.630Z"
+						"example": "2025-10-06T08:53:52.205Z"
 					}
 				},
 				"required": ["id", "type", "content", "timestamp"]
@@ -577,11 +664,11 @@
 					},
 					"lastUpdateTime": {
 						"type": "number",
-						"example": 1757054513630
+						"example": 1759740832206
 					},
 					"createdAt": {
 						"type": "number",
-						"example": 1757054513630
+						"example": 1759740832206
 					}
 				},
 				"required": [
@@ -627,7 +714,7 @@
 					},
 					"timestamp": {
 						"type": "number",
-						"example": 1757054513630
+						"example": 1759740832207
 					},
 					"content": {
 						"type": "object",
@@ -690,7 +777,7 @@
 				"properties": {
 					"lastUpdated": {
 						"type": "number",
-						"example": 1757054513630
+						"example": 1759740832207
 					},
 					"changeCount": {
 						"type": "number",

@@ -4,7 +4,7 @@ import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
 import { ChatPanel } from "@/components/chat-panel";
 import { Navbar } from "@/components/navbar";
 import { ErrorState, LoadingState } from "@/components/ui/states";
-import { useAgents } from "@/hooks/useAgents";
+import { useAgents } from "@/hooks/use-agent";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -23,7 +23,7 @@ function HomeContent() {
 
 	// Panel and session state
 	const [selectedPanel, setSelectedPanel] = useState<
-		"sessions" | "events" | "state" | null
+		"sessions" | "events" | "state" | "graph" | null
 	>(null);
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
@@ -40,7 +40,7 @@ function HomeContent() {
 		selectAgent,
 		refreshAgents,
 		isSendingMessage,
-	} = useAgents(finalApiUrl, currentSessionId);
+	} = useAgents(currentSessionId);
 
 	// Subscribe to server-side hot-reload stream (SSE) and refresh data on change
 	useEffect(() => {
@@ -73,7 +73,9 @@ function HomeContent() {
 	}, [finalApiUrl, queryClient, refreshAgents]);
 
 	// Panel action handlers
-	const handlePanelSelect = (panel: "sessions" | "events" | "state" | null) => {
+	const handlePanelSelect = (
+		panel: "sessions" | "events" | "state" | "graph" | null,
+	) => {
 		setSelectedPanel(panel);
 	};
 	// Auto-select first agent if none selected and agents are available

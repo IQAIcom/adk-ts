@@ -1,6 +1,5 @@
 "use client";
 
-import type { Agent } from "@/app/(dashboard)/_schema";
 import { ConnectionStatus } from "@/components/connection-status";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -11,6 +10,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Bot } from "lucide-react";
+import type { AgentListItemDto as Agent } from "../Api";
 
 interface NavbarProps {
 	apiUrl: string;

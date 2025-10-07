@@ -22,7 +22,7 @@ interface EventLike {
 	actions: any;
 	functionCalls: any[];
 	functionResponses: any[];
-	branch?: string;
+	branch?: string | null;
 	isFinalResponse: boolean;
 }
 
