@@ -616,7 +616,7 @@
 					},
 					"timestamp": {
 						"type": "string",
-						"example": "2025-10-06T08:53:52.205Z"
+						"example": "2025-10-07T09:08:35.093Z"
 					}
 				},
 				"required": ["id", "type", "content", "timestamp"]
@@ -664,11 +664,11 @@
 					},
 					"lastUpdateTime": {
 						"type": "number",
-						"example": 1759740832206
+						"example": 1759828115094
 					},
 					"createdAt": {
 						"type": "number",
-						"example": 1759740832206
+						"example": 1759828115094
 					}
 				},
 				"required": [
@@ -714,7 +714,7 @@
 					},
 					"timestamp": {
 						"type": "number",
-						"example": 1759740832207
+						"example": 1759828115094
 					},
 					"content": {
 						"type": "object",
@@ -777,7 +777,7 @@
 				"properties": {
 					"lastUpdated": {
 						"type": "number",
-						"example": 1759740832207
+						"example": 1759828115094
 					},
 					"changeCount": {
 						"type": "number",
@@ -818,6 +818,10 @@
 					"status": {
 						"type": "string",
 						"example": "ok"
+					},
+					"version": {
+						"type": "string",
+						"example": "0.3.11"
 					}
 				},
 				"required": ["status"]

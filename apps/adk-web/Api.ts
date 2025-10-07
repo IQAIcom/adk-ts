@@ -47,7 +47,7 @@ export interface MessageItemDto {
   type: "user" | "assistant";
   /** @example "Hello" */
   content: string;
-  /** @example "2025-10-06T08:53:52.205Z" */
+  /** @example "2025-10-07T09:08:35.093Z" */
   timestamp: string;
 }
 
@@ -67,9 +67,9 @@ export interface SessionResponseDto {
   state: object;
   /** @example 3 */
   eventCount: number;
-  /** @example 1759740832206 */
+  /** @example 1759828115094 */
   lastUpdateTime: number;
-  /** @example 1759740832206 */
+  /** @example 1759828115094 */
   createdAt: number;
 }
 
@@ -85,7 +85,7 @@ export interface SuccessResponseDto {
 export interface EventItemDto {
   id: string;
   author: string;
-  /** @example 1759740832207 */
+  /** @example 1759828115094 */
   timestamp: number;
   /** Raw event content */
   content: object;
@@ -104,7 +104,7 @@ export interface EventsResponseDto {
 }
 
 export interface StateMetadataDto {
-  /** @example 1759740832207 */
+  /** @example 1759828115094 */
   lastUpdated: number;
   /** @example 0 */
   changeCount: number;
@@ -124,6 +124,8 @@ export interface StateResponseDto {
 export interface HealthResponseDto {
   /** @example "ok" */
   status: string;
+  /** @example "0.3.11" */
+  version?: string;
 }
 
 export type QueryParamsType = Record<string | number, any>;
