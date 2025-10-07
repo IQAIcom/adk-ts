@@ -13,6 +13,16 @@ export class HealthController {
 	})
 	@ApiOkResponse({ type: HealthResponseDto })
 	health() {
-		return { status: "ok" };
+		// Read version from this package.json at runtime; fallback to env or unknown
+		let version: string | undefined;
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const pkg = require("../../package.json");
+			if (pkg && typeof pkg.version === "string") {
+				version = pkg.version;
+			}
+		} catch {}
+		version = version ?? process.env.ADK_CLI_VERSION ?? undefined;
+		return { status: "ok", version };
 	}
 }

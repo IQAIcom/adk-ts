@@ -4,6 +4,7 @@ import "./globals.css";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { VersionCheck } from "@/components/version-check";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -82,6 +83,7 @@ export default function RootLayout({
 					enableSystem
 					disableTransitionOnChange
 				>
+					<VersionCheck />
 					<QueryProvider>{children}</QueryProvider>
 				</ThemeProvider>
 				<Toaster />

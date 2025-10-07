@@ -97,6 +97,7 @@ export class StateResponseDto {
 // Health
 export class HealthResponseDto {
 	@ApiProperty({ example: "ok" }) status!: string;
+	@ApiProperty({ example: "0.3.11", required: false }) version?: string;
 }
 
 // Graph
