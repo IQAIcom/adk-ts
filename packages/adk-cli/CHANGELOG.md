@@ -1,5 +1,11 @@
 # @iqai/adk-cli
 
+## 0.3.12
+
+### Patch Changes
+
+- b56741c: Add graph panel to sidebar component to showcase agent architecture
+
 ## 0.3.11
 
 ### Patch Changes
