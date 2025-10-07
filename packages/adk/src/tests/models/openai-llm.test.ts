@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { OpenAiLlm } from "../../models/openai-llm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LlmResponse } from "../../models/llm-response";
+import { OpenAiLlm } from "../../models/openai-llm";
 
 vi.mock("@adk/helpers/logger", () => ({
 	Logger: vi.fn(() => ({
@@ -46,6 +46,7 @@ describe("OpenAiLlm", () => {
 			"gpt-3.5-.*",
 			"gpt-4.*",
 			"gpt-4o.*",
+			"gpt-5.*",
 			"o1-.*",
 			"o3-.*",
 		]);
