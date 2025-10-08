@@ -121,10 +121,10 @@ function HomeContent() {
 	}
 
 	if (!connected || error || compatError) {
-		const errorMessage = compatError 
+		const errorMessage = compatError
 			? `Failed to check CLI compatibility: ${compatError.message || compatError}`
 			: `Failed to connect to ADK server at ${finalApiUrl}. Make sure the server is running.`;
-		
+
 		return (
 			<ErrorState
 				title="ADK-TS Web"
