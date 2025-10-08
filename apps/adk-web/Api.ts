@@ -47,7 +47,7 @@ export interface MessageItemDto {
   type: "user" | "assistant";
   /** @example "Hello" */
   content: string;
-  /** @example "2025-10-06T08:53:52.205Z" */
+  /** @example "2025-10-08T08:46:39.149Z" */
   timestamp: string;
 }
 
@@ -69,9 +69,9 @@ export interface SessionResponseDto {
   state: object;
   /** @example 3 */
   eventCount: number;
-  /** @example 1759740832206 */
+  /** @example 1759913199150 */
   lastUpdateTime: number;
-  /** @example 1759740832206 */
+  /** @example 1759913199150 */
   createdAt: number;
 }
 
@@ -87,7 +87,7 @@ export interface SuccessResponseDto {
 export interface EventItemDto {
   id: string;
   author: string;
-  /** @example 1759740832207 */
+  /** @example 1759913199150 */
   timestamp: number;
   /** Raw event content */
   content: object;
@@ -106,7 +106,7 @@ export interface EventsResponseDto {
 }
 
 export interface StateMetadataDto {
-  /** @example 1759740832207 */
+  /** @example 1759913199150 */
   lastUpdated: number;
   /** @example 0 */
   changeCount: number;

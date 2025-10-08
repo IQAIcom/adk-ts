@@ -616,7 +616,7 @@
 					},
 					"timestamp": {
 						"type": "string",
-						"example": "2025-10-06T08:53:52.205Z"
+						"example": "2025-10-08T08:46:39.149Z"
 					}
 				},
 				"required": ["id", "type", "content", "timestamp"]
@@ -668,11 +668,11 @@
 					},
 					"lastUpdateTime": {
 						"type": "number",
-						"example": 1759740832206
+						"example": 1759913199150
 					},
 					"createdAt": {
 						"type": "number",
-						"example": 1759740832206
+						"example": 1759913199150
 					}
 				},
 				"required": [
@@ -718,7 +718,7 @@
 					},
 					"timestamp": {
 						"type": "number",
-						"example": 1759740832207
+						"example": 1759913199150
 					},
 					"content": {
 						"type": "object",
@@ -781,7 +781,7 @@
 				"properties": {
 					"lastUpdated": {
 						"type": "number",
-						"example": 1759740832207
+						"example": 1759913199150
 					},
 					"changeCount": {
 						"type": "number",
