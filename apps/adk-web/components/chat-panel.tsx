@@ -119,7 +119,7 @@ export function ChatPanel({
 												message.type === "user") && (
 												<div className="px-2 pb-1 text-[11px] w-full uppercase tracking-wide text-muted-foreground">
 													{message.type === "assistant"
-														? (message as any).author ||
+														? message.author ||
 															selectedAgent.name ||
 															"Assistant"
 														: "You"}
@@ -140,7 +140,7 @@ export function ChatPanel({
 											name={
 												message.type === "user"
 													? "You"
-													: (message as any).author ||
+													: message.author ||
 														selectedAgent.name ||
 														"Assistant"
 											}
