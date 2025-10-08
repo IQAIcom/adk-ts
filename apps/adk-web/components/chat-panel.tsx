@@ -95,7 +95,7 @@ export function ChatPanel({
 					contentClassName="max-w-4xl mx-auto"
 					messageCount={messages.length}
 					resetKey={selectedAgent?.name ?? ""}
-					jumpOffsetClassName="bottom-16"
+					jumpOffsetClassName="bottom-4"
 				>
 					{messages.length === 0 ? (
 						<div className="flex flex-col items-center justify-center min-h-[400px] text-center text-muted-foreground">
