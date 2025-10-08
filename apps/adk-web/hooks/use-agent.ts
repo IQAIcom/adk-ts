@@ -3,13 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import type {
-	AgentListItemDto,
-	AgentsListResponseDto,
-	EventItemDto,
-	EventsResponseDto,
+import {
+	type AgentListItemDto,
+	type AgentsListResponseDto,
+	Api,
+	type EventItemDto,
+	type EventsResponseDto,
 } from "../Api";
-import { Api } from "../Api";
 import type { Message } from "../app/(dashboard)/_schema";
 import { useApiUrl } from "./use-api-url";
 
