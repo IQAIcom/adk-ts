@@ -1,13 +1,15 @@
 "use client";
 
-import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
-import { ChatPanel } from "@/components/chat-panel";
-import { Navbar } from "@/components/navbar";
-import { ErrorState, LoadingState } from "@/components/ui/states";
-import { useAgents } from "@/hooks/use-agent";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
+import { ChatPanel } from "@/components/chat-panel";
+import { Navbar } from "@/components/navbar";
+import { IncompatibleState } from "@/components/ui/incompatible-state";
+import { ErrorState, LoadingState } from "@/components/ui/states";
+import { useAgents } from "@/hooks/use-agent";
+import { useCompatibility } from "@/hooks/use-compatibility";
 
 function HomeContent() {
 	const searchParams = useSearchParams();
@@ -28,6 +30,13 @@ function HomeContent() {
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
 	const queryClient = useQueryClient();
+	const {
+		compatible,
+		loading: compatLoading,
+		error: compatError,
+		cliVersion,
+		minCliVersion,
+	} = useCompatibility();
 
 	const {
 		agents,
@@ -98,7 +107,7 @@ function HomeContent() {
 	}, [selectedAgent]);
 	// (Session and events lifecycle + management moved into Sidebar)
 
-	if (loading) {
+	if (loading || compatLoading) {
 		return <LoadingState message="Connecting to ADK server..." />;
 	}
 
@@ -111,13 +120,26 @@ function HomeContent() {
 		);
 	}
 
-	if (!connected || error) {
+	if (!connected || error || compatError) {
+		const errorMessage = compatError
+			? `Failed to check CLI compatibility: ${compatError.message || compatError}`
+			: `Failed to connect to ADK server at ${finalApiUrl}. Make sure the server is running.`;
+
 		return (
 			<ErrorState
 				title="ADK-TS Web"
-				message={`Failed to connect to ADK server at ${finalApiUrl}. Make sure the server is running.`}
+				message={errorMessage}
 				actionLabel="Retry Connection"
 				onAction={refreshAgents}
+			/>
+		);
+	}
+
+	if (!compatible) {
+		return (
+			<IncompatibleState
+				cliVersion={cliVersion}
+				minCliVersion={minCliVersion}
 			/>
 		);
 	}

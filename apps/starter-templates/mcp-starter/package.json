@@ -8,7 +8,9 @@
 	"bin": {
 		"mcp-weather-server": "dist/index.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsc && shx chmod +x dist/index.js",
 		"watch": "tsc --watch",

@@ -140,9 +140,7 @@ export function ChatPanel({
 											name={
 												message.type === "user"
 													? "You"
-													: message.author ||
-														selectedAgent.name ||
-														"Assistant"
+													: message.author || selectedAgent.name || "Assistant"
 											}
 										/>
 									</Message>
