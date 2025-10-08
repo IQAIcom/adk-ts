@@ -3,12 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Api } from "../Api";
-import type {
-	AgentListItemDto,
-	AgentsListResponseDto,
-	EventItemDto,
-	EventsResponseDto,
+import {
+	type AgentListItemDto,
+	type AgentsListResponseDto,
+	Api,
+	type EventItemDto,
+	type EventsResponseDto,
 } from "../Api";
 import type { Message } from "../app/(dashboard)/_schema";
 import { useApiUrl } from "./use-api-url";
@@ -85,6 +85,7 @@ export function useAgents(currentSessionId?: string | null) {
 						type: ev.author === "user" ? "user" : "assistant",
 						content: text,
 						timestamp: new Date(ev.timestamp * 1000),
+						author: ev.author,
 					} as Message;
 				})
 				.filter((m: Message) => m.content.length > 0);
@@ -101,7 +102,11 @@ export function useAgents(currentSessionId?: string | null) {
 			agent,
 			message,
 			attachments,
-		}: { agent: AgentListItemDto; message: string; attachments?: File[] }) => {
+		}: {
+			agent: AgentListItemDto;
+			message: string;
+			attachments?: File[];
+		}) => {
 			const userMessage: Message = {
 				id: Date.now(),
 				type: "user",

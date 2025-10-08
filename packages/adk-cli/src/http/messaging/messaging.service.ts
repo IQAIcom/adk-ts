@@ -1,6 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type {
-	LoadedAgent,
 	MessageRequest,
 	MessageResponse,
 	MessagesResponse,
@@ -34,6 +33,27 @@ export class MessagingService {
 			message,
 			attachments,
 		);
-		return { response: responseText };
+		// Determine the producing agent by inspecting the latest session events
+		let agentName = agentPath;
+		try {
+			const loaded = await this.sessionsService.ensureAgentLoaded(agentPath);
+			if (loaded) {
+				const eventsResp = await this.sessionsService.getSessionEvents(
+					loaded,
+					loaded.sessionId,
+				);
+				const events = eventsResp.events || [];
+				// Prefer the last event marked as final response from a non-user author
+				const lastFinal = [...events]
+					.reverse()
+					.find((e) => e.author !== "user" && e.isFinalResponse);
+				const lastAssistant =
+					lastFinal ?? [...events].reverse().find((e) => e.author !== "user");
+				agentName = lastAssistant?.author ?? loaded.agent?.name ?? agentPath;
+			}
+		} catch {
+			// Best-effort only; fall back to path
+		}
+		return { response: responseText, agentName };
 	}
 }

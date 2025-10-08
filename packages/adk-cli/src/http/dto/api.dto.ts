@@ -42,6 +42,8 @@ export class MessagesResponseDto {
 export class MessageResponseDto {
 	@ApiProperty({ example: "Hi there!" })
 	response!: string;
+	@ApiProperty({ example: "ResearchAgent" })
+	agentName!: string;
 }
 
 // Sessions
