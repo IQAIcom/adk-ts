@@ -1,5 +1,7 @@
 "use client";
 
+import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
+import { useRef, useState } from "react";
 import type { Message as ChatMessage } from "@/app/(dashboard)/_schema";
 import {
 	Conversation,
@@ -23,8 +25,6 @@ import { Response } from "@/components/ai-elements/response";
 import { Button } from "@/components/ui/button";
 import { useChatAttachments } from "@/hooks/use-chat-attachments";
 import { cn } from "@/lib/utils";
-import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import type { AgentListItemDto as Agent } from "../Api";
 
 interface ChatPanelProps {
@@ -110,6 +110,16 @@ export function ChatPanel({
 										key={message.id}
 									>
 										<MessageContent>
+											{(message.type === "assistant" ||
+												message.type === "user") && (
+												<div className="px-2 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+													{message.type === "assistant"
+														? (message as any).author ||
+															selectedAgent.name ||
+															"Assistant"
+														: (message as any).author || "You"}
+												</div>
+											)}
 											<Response key={message.id} className="px-2">
 												{message.content}
 											</Response>
@@ -123,7 +133,11 @@ export function ChatPanel({
 												)
 											}
 											name={
-												message.type === "user" ? "You" : selectedAgent.name
+												message.type === "user"
+													? (message as any).author || "You"
+													: (message as any).author ||
+														selectedAgent.name ||
+														"Assistant"
 											}
 										/>
 									</Message>
@@ -178,11 +192,12 @@ export function ChatPanel({
 							</div>
 						</div>
 					)}
-					<div
+					<section
 						className={cn(
 							"relative w-full max-w-4xl mx-auto transition-all duration-200",
 							isDragOver && "bg-accent/10 border-accent rounded-lg p-2",
 						)}
+						aria-label="Message input drop zone"
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}
@@ -229,7 +244,7 @@ export function ChatPanel({
 								</div>
 							</div>
 						)}
-					</div>
+					</section>
 					{/* Hidden file input */}
 					<input
 						ref={fileInputRef}

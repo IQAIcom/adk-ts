@@ -639,9 +639,13 @@
 					"response": {
 						"type": "string",
 						"example": "Hi there!"
+					},
+					"agentName": {
+						"type": "string",
+						"example": "ResearchAgent"
 					}
 				},
-				"required": ["response"]
+				"required": ["response", "agentName"]
 			},
 			"SessionResponseDto": {
 				"type": "object",

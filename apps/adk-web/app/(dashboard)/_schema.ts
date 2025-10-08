@@ -6,6 +6,7 @@ export interface Message {
 	type: "user" | "assistant" | "system";
 	content: string;
 	timestamp: Date;
+	author?: string; // originating agent or 'user'
 }
 
 // Centralized Panel ID schema for type-safe usage across the app

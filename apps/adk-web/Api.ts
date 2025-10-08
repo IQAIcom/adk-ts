@@ -58,6 +58,8 @@ export interface MessagesResponseDto {
 export interface MessageResponseDto {
   /** @example "Hi there!" */
   response: string;
+  /** @example "ResearchAgent" */
+  agentName: string;
 }
 
 export interface SessionResponseDto {
