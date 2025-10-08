@@ -1,5 +1,12 @@
 # @iqai/adk-cli
 
+## 0.3.14
+
+### Patch Changes
+
+- 9f8b3e5: Adds check for ADK web to check server compatibility
+- 46cee30: Adds agent name in adk web
+
 ## 0.3.13
 
 ### Patch Changes
