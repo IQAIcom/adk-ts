@@ -1,5 +1,6 @@
 import { Controller, Get } from "@nestjs/common";
 import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import pkg from "../../../package.json";
 import { HealthResponseDto } from "../dto/api.dto";
 
 @ApiTags("health")
@@ -12,7 +13,7 @@ export class HealthController {
 			"Basic liveness probe returning status: ok when the service is up.",
 	})
 	@ApiOkResponse({ type: HealthResponseDto })
-	health() {
-		return { status: "ok" };
+	health(): HealthResponseDto {
+		return { status: "ok", version: pkg.version };
 	}
 }
