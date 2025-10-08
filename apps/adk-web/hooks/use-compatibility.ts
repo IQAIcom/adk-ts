@@ -1,67 +1,56 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Api } from "@/Api";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { gte } from "semver";
+import { Api, type HealthResponseDto } from "@/Api";
 import compat from "../VERSION_COMPATIBILITY.json";
 import { useApiUrl } from "./use-api-url";
-
-// Simple semver compare (major.minor.patch) - returns true if a >= b
-function isSemverGte(a: string, b: string): boolean {
-	const pa = a.split(".").map((n) => Number.parseInt(n, 10));
-	const pb = b.split(".").map((n) => Number.parseInt(n, 10));
-	const len = Math.max(pa.length, pb.length);
-	for (let i = 0; i < len; i++) {
-		const ai = pa[i] ?? 0;
-		const bi = pb[i] ?? 0;
-		if (ai > bi) return true;
-		if (ai < bi) return false;
-	}
-	return true;
-}
 
 export function useCompatibility() {
 	const apiUrl = useApiUrl();
 	const api = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
-	const [cliVersion, setCliVersion] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState<boolean>(true);
+	const minCliVersion = compat.minCliVersion;
 
-	useEffect(() => {
-		let mounted = true;
-		async function check() {
-			if (!apiUrl) {
-				setLoading(false);
-				return;
-			}
-			setLoading(true);
-			setError(null);
-			try {
-				const res = await api.health.healthControllerHealth();
-				const version = (res.data as any)?.version as string | undefined;
-				if (mounted) setCliVersion(version ?? null);
-			} catch (e: any) {
-				if (mounted) setError(e?.message ?? "Failed to fetch health/version");
-			} finally {
-				if (mounted) setLoading(false);
-			}
-		}
-		check();
-		return () => {
-			mounted = false;
-		};
-	}, [api, apiUrl]);
+	// Fetch CLI version from health endpoint
+	const {
+		data: healthData,
+		isLoading: loading,
+		error,
+	} = useQuery({
+		queryKey: ["health", apiUrl],
+		queryFn: async (): Promise<HealthResponseDto> => {
+			if (!apiUrl) throw new Error("API URL is required");
+			const res = await api.health.healthControllerHealth();
+			return res.data;
+		},
+		enabled: !!apiUrl,
+		staleTime: 60000, // Cache for 1 minute
+		retry: 2,
+		retryDelay: 1000,
+	});
 
-	const minCli = (compat as any)?.minCliVersion as string | undefined;
+	const cliVersion = healthData?.version ?? null;
+
+	// Check compatibility using proper semver comparison
 	const compatible = useMemo(() => {
-		if (!minCli || !cliVersion) return true; // if unknown, don't block
-		return isSemverGte(cliVersion, minCli);
-	}, [cliVersion, minCli]);
+		if (!minCliVersion || !cliVersion) {
+			// If we don't know the versions, assume compatible (fail-open)
+			return true;
+		}
+		try {
+			return gte(cliVersion, minCliVersion);
+		} catch {
+			// If semver parsing fails, assume compatible to avoid blocking
+			return true;
+		}
+	}, [cliVersion, minCliVersion]);
 
 	return {
 		loading,
 		error,
 		cliVersion,
-		minCliVersion: minCli ?? null,
+		minCliVersion,
 		compatible,
 	};
 }

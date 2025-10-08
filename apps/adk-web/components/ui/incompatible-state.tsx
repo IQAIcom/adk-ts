@@ -20,7 +20,9 @@ export function IncompatibleState({
 			await navigator.clipboard.writeText(cmd);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 1500);
-		} catch {}
+		} catch (err) {
+			console.error("Failed to copy command:", err);
+		}
 	};
 
 	return (

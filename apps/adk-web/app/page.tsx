@@ -33,6 +33,7 @@ function HomeContent() {
 	const {
 		compatible,
 		loading: compatLoading,
+		error: compatError,
 		cliVersion,
 		minCliVersion,
 	} = useCompatibility();
@@ -119,11 +120,15 @@ function HomeContent() {
 		);
 	}
 
-	if (!connected || error) {
+	if (!connected || error || compatError) {
+		const errorMessage = compatError 
+			? `Failed to check CLI compatibility: ${compatError.message || compatError}`
+			: `Failed to connect to ADK server at ${finalApiUrl}. Make sure the server is running.`;
+		
 		return (
 			<ErrorState
 				title="ADK-TS Web"
-				message={`Failed to connect to ADK server at ${finalApiUrl}. Make sure the server is running.`}
+				message={errorMessage}
 				actionLabel="Retry Connection"
 				onAction={refreshAgents}
 			/>

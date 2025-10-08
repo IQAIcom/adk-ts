@@ -126,6 +126,8 @@ export interface StateResponseDto {
 export interface HealthResponseDto {
   /** @example "ok" */
   status: string;
+  /** @example "0.3.13" */
+  version: string;
 }
 
 export type QueryParamsType = Record<string | number, any>;
