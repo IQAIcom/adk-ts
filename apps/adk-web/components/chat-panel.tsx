@@ -94,7 +94,7 @@ export function ChatPanel({
 					scrollerClassName="max-h-[calc(100vh-203px)] w-full mx-auto bg-repeat heropattern-jigsaw-red-100"
 					contentClassName="max-w-4xl mx-auto"
 					messageCount={messages.length}
-					resetKey={selectedAgent?.id ?? selectedAgent?.name ?? ""}
+					resetKey={selectedAgent?.name ?? ""}
 					jumpOffsetClassName="bottom-16"
 				>
 					{messages.length === 0 ? (
