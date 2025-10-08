@@ -41,6 +41,7 @@ export interface MessageRequest {
 
 export interface MessageResponse {
 	response: string;
+	agentName: string;
 }
 
 export interface MessagesResponse {

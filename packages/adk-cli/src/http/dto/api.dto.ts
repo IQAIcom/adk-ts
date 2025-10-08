@@ -42,6 +42,8 @@ export class MessagesResponseDto {
 export class MessageResponseDto {
 	@ApiProperty({ example: "Hi there!" })
 	response!: string;
+	@ApiProperty({ example: "ResearchAgent" })
+	agentName!: string;
 }
 
 // Sessions
@@ -97,4 +99,25 @@ export class StateResponseDto {
 // Health
 export class HealthResponseDto {
 	@ApiProperty({ example: "ok" }) status!: string;
+	@ApiProperty({ example: "0.3.13" }) version!: string;
+}
+
+// Graph
+export class GraphNodeDto {
+	@ApiProperty() id!: string;
+	@ApiProperty() label!: string;
+	@ApiProperty({ enum: ["agent", "tool"] }) kind!: "agent" | "tool";
+	@ApiProperty({ required: false }) type?: string;
+	@ApiProperty({ required: false }) shape?: string;
+	@ApiProperty({ required: false }) group?: string;
+}
+
+export class GraphEdgeDto {
+	@ApiProperty() from!: string;
+	@ApiProperty() to!: string;
+}
+
+export class GraphResponseDto {
+	@ApiProperty({ type: [GraphNodeDto] }) nodes!: GraphNodeDto[];
+	@ApiProperty({ type: [GraphEdgeDto] }) edges!: GraphEdgeDto[];
 }

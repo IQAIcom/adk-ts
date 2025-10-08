@@ -239,9 +239,9 @@ export class AgentLoader {
 				setup(build: {
 					onResolve: (
 						options: { filter: RegExp },
-						callback: (args: { path: string }) =>
-							| { path: string; external: boolean }
-							| undefined,
+						callback: (args: {
+							path: string;
+						}) => { path: string; external: boolean } | undefined,
 					) => void;
 				}) {
 					build.onResolve({ filter: /.*/ }, (args: { path: string }) => {

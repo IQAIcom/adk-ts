@@ -13,14 +13,13 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { StateCard } from "@/components/state-card";
-import { useJsonEditor } from "@/hooks/useJsonEditor";
-import { useStatePanel } from "@/hooks/useStatePanel";
+import { useJsonEditor } from "@/hooks/use-json-editor";
+import { useStatePanel } from "@/hooks/use-state-pannel";
 import CodeEditor from "@uiw/react-textarea-code-editor";
 import { Code2, Edit, Plus, Settings, Wand2 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Agent } from "../app/(dashboard)/_schema";
+import type { AgentListItemDto as Agent } from "../Api";
 
 interface StatePanelProps {
 	selectedAgent: Agent | null;
@@ -31,15 +30,7 @@ export function StatePanel({
 	selectedAgent,
 	currentSessionId,
 }: StatePanelProps) {
-	const searchParams = useSearchParams();
-	const apiUrlParam = searchParams.get("apiUrl");
-	const portParam = searchParams.get("port");
-	const apiUrl =
-		apiUrlParam ||
-		(portParam ? `http://localhost:${portParam}` : "http://localhost:8042");
-
 	const { currentState, updateState, isLoading, error } = useStatePanel(
-		apiUrl,
 		selectedAgent,
 		currentSessionId,
 	);

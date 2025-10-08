@@ -1,5 +1,25 @@
 # @iqai/adk-cli
 
+## 0.3.14
+
+### Patch Changes
+
+- 9f8b3e5: Adds check for ADK web to check server compatibility
+- 46cee30: Adds agent name in adk web
+
+## 0.3.13
+
+### Patch Changes
+
+- Updated dependencies [737cb0f]
+  - @iqai/adk@0.3.7
+
+## 0.3.12
+
+### Patch Changes
+
+- b56741c: Add graph panel to sidebar component to showcase agent architecture
+
 ## 0.3.11
 
 ### Patch Changes

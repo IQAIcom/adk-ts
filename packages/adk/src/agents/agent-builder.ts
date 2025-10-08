@@ -582,8 +582,10 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * Configure runtime behavior for runs
 	 */
 	withRunConfig(config: RunConfig | Partial<RunConfig>): this {
-this.runConfig =
-			config instanceof RunConfig ? config : new RunConfig({ ...(this.runConfig || {}), ...config });
+		this.runConfig =
+			config instanceof RunConfig
+				? config
+				: new RunConfig({ ...(this.runConfig || {}), ...config });
 		return this;
 	}
 

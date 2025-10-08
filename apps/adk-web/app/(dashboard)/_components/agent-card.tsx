@@ -1,10 +1,10 @@
+import { AgentListItemDto } from "@/Api";
 import { cn } from "@/lib/utils";
-import type { Agent } from "../_schema";
 
 interface AgentCardProps {
-	agent: Agent;
+	agent: AgentListItemDto;
 	isSelected: boolean;
-	onSelect: (agent: Agent) => void;
+	onSelect: (agent: AgentListItemDto) => void;
 }
 
 export function AgentCard({ agent, isSelected, onSelect }: AgentCardProps) {

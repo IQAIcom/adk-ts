@@ -24,7 +24,7 @@ export class OpenAiLlm extends BaseLlm {
 	 * Provides the list of supported models
 	 */
 	static override supportedModels(): string[] {
-		return ["gpt-3.5-.*", "gpt-4.*", "gpt-4o.*", "o1-.*", "o3-.*"];
+		return ["gpt-3.5-.*", "gpt-4.*", "gpt-4o.*", "gpt-5.*", "o1-.*", "o3-.*"];
 	}
 
 	/**

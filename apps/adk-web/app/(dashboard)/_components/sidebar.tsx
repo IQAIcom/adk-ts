@@ -1,25 +1,36 @@
 "use client";
 
 import { EventsPanel } from "@/components/events-panel";
+import { GraphPanel } from "@/components/graph-panel";
 import { SessionsPanel } from "@/components/sessions-panel";
 import { StatePanel } from "@/components/state-panel";
 import { Button } from "@/components/ui/button";
-import { useEvents } from "@/hooks/useEvents";
-import { useSessions } from "@/hooks/useSessions";
+import { useAgentGraph } from "@/hooks/use-agent-graph";
+import { useEvents } from "@/hooks/use-events";
+import { useSessions } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
-import { Activity, Archive, Database, X } from "lucide-react";
+import { Activity, Archive, Database, Share2, X } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { PanelId, PanelIdSchema } from "../_schema";
 
 interface SidebarProps {
-	selectedPanel: "sessions" | "events" | "state" | null;
-	onPanelSelect: (panel: "sessions" | "events" | "state" | null) => void;
+	selectedPanel: PanelId | null;
+	onPanelSelect: (panel: PanelId | null) => void;
 	className?: string;
 	selectedAgent?: any | null;
 	currentSessionId?: string | null;
 	onSessionChange?: (sessionId: string | null) => void;
 }
+
+const navigationItems: { id: PanelId; label: string; icon: typeof Database }[] =
+	[
+		{ id: PanelIdSchema.enum.sessions, label: "Sessions", icon: Database },
+		{ id: PanelIdSchema.enum.events, label: "Events", icon: Activity },
+		{ id: PanelIdSchema.enum.state, label: "State", icon: Archive },
+		{ id: PanelIdSchema.enum.graph, label: "Graph", icon: Share2 },
+	];
 
 export function Sidebar({
 	selectedPanel,
@@ -29,31 +40,8 @@ export function Sidebar({
 	currentSessionId: initialSessionId,
 	onSessionChange,
 }: SidebarProps) {
-	const navigationItems = [
-		{
-			id: "sessions" as const,
-			label: "Sessions",
-			icon: Database,
-		},
-		{
-			id: "events" as const,
-			label: "Events",
-			icon: Activity,
-		},
-		{
-			id: "state" as const,
-			label: "State",
-			icon: Archive,
-		},
-	];
-
-	// Determine API URL from search params (same logic as page.tsx)
+	// API URL now resolved inside hooks via useApiUrl
 	const searchParams = useSearchParams();
-	const apiUrl = searchParams.get("apiUrl");
-	const port = searchParams.get("port");
-
-	const finalApiUrl =
-		apiUrl || (port ? `http://localhost:${port}` : "http://localhost:8042");
 
 	// Local session state should be declared before hooks that depend on it
 	const [localSessionId, setLocalSessionId] = useState<string | null>(
@@ -67,15 +55,18 @@ export function Sidebar({
 		createSession,
 		deleteSession,
 		switchSession,
-	} = useSessions(finalApiUrl, selectedAgent);
+	} = useSessions(selectedAgent);
 
 	const { events, isLoading: eventsLoading } = useEvents(
-		finalApiUrl,
 		selectedAgent,
 		localSessionId ?? null,
 	);
 
-	const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+	const {
+		data: graph,
+		isLoading: graphLoading,
+		error: graphError,
+	} = useAgentGraph(selectedAgent);
 
 	// Track previous agent to detect actual agent switch
 	const prevAgentRef = useRef<string | null>(null);
@@ -188,7 +179,9 @@ export function Sidebar({
 								? "Sessions"
 								: selectedPanel === "events"
 									? "Events"
-									: "State"}
+									: selectedPanel === "graph"
+										? "Graph"
+										: "State"}
 						</h2>
 						<Button
 							variant="ghost"
@@ -214,19 +207,22 @@ export function Sidebar({
 							/>
 						)}
 						{selectedPanel === "events" && (
-							<EventsPanel
-								events={events || []}
-								isLoading={!!eventsLoading}
-								onSelectEvent={(e) => {
-									setSelectedEvent(e);
-								}}
-							/>
+							<EventsPanel events={events || []} isLoading={!!eventsLoading} />
 						)}
 						{selectedPanel === "state" && (
 							<StatePanel
 								selectedAgent={selectedAgent}
 								currentSessionId={localSessionId}
 							/>
+						)}
+						{selectedPanel === "graph" && (
+							<div className="h-full w-full">
+								<GraphPanel
+									data={graph}
+									isLoading={!!graphLoading}
+									error={graphError ?? null}
+								/>
+							</div>
 						)}
 					</div>
 				</div>

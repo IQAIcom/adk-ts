@@ -15,7 +15,13 @@
 		"type": "git",
 		"url": "git+https://github.com/IQAICOM/adk-agent-starter.git"
 	},
-	"keywords": ["ai", "agent", "mcp", "adk-ts", "IQAI"],
+	"keywords": [
+		"ai",
+		"agent",
+		"mcp",
+		"adk-ts",
+		"IQAI"
+	],
 	"author": "IQAI",
 	"license": "MIT",
 	"bugs": {

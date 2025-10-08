@@ -21,6 +21,25 @@ export interface AgentsListResponseDto {
   agents: AgentListItemDto[];
 }
 
+export interface GraphNodeDto {
+  id: string;
+  label: string;
+  kind: "agent" | "tool";
+  type?: string;
+  shape?: string;
+  group?: string;
+}
+
+export interface GraphEdgeDto {
+  from: string;
+  to: string;
+}
+
+export interface GraphResponseDto {
+  nodes: GraphNodeDto[];
+  edges: GraphEdgeDto[];
+}
+
 export interface MessageItemDto {
   /** @example 1 */
   id: number;
@@ -28,7 +47,7 @@ export interface MessageItemDto {
   type: "user" | "assistant";
   /** @example "Hello" */
   content: string;
-  /** @example "2025-09-05T06:41:53.630Z" */
+  /** @example "2025-10-08T08:46:39.149Z" */
   timestamp: string;
 }
 
@@ -39,6 +58,8 @@ export interface MessagesResponseDto {
 export interface MessageResponseDto {
   /** @example "Hi there!" */
   response: string;
+  /** @example "ResearchAgent" */
+  agentName: string;
 }
 
 export interface SessionResponseDto {
@@ -48,9 +69,9 @@ export interface SessionResponseDto {
   state: object;
   /** @example 3 */
   eventCount: number;
-  /** @example 1757054513630 */
+  /** @example 1759913199150 */
   lastUpdateTime: number;
-  /** @example 1757054513630 */
+  /** @example 1759913199150 */
   createdAt: number;
 }
 
@@ -66,7 +87,7 @@ export interface SuccessResponseDto {
 export interface EventItemDto {
   id: string;
   author: string;
-  /** @example 1757054513630 */
+  /** @example 1759913199150 */
   timestamp: number;
   /** Raw event content */
   content: object;
@@ -85,7 +106,7 @@ export interface EventsResponseDto {
 }
 
 export interface StateMetadataDto {
-  /** @example 1757054513630 */
+  /** @example 1759913199150 */
   lastUpdated: number;
   /** @example 0 */
   changeCount: number;
@@ -105,6 +126,8 @@ export interface StateResponseDto {
 export interface HealthResponseDto {
   /** @example "ok" */
   status: string;
+  /** @example "0.3.13" */
+  version: string;
 }
 
 export type QueryParamsType = Record<string | number, any>;
@@ -335,9 +358,10 @@ export class HttpClient<SecurityDataType = unknown> {
       r.data = null as unknown as T;
       r.error = null as unknown as E;
 
+      const responseToParse = responseFormat ? response.clone() : response;
       const data = !responseFormat
         ? r
-        : await response[responseFormat]()
+        : await responseToParse[responseFormat]()
             .then((data) => {
               if (r.ok) {
                 r.data = data;
@@ -400,6 +424,22 @@ export class Api<
       this.request<AgentsListResponseDto, any>({
         path: `/api/agents/refresh`,
         method: "POST",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the agent graph (nodes and edges) for the selected root agent. Tools are always included.
+     *
+     * @tags agents
+     * @name GraphControllerGetGraph
+     * @summary Get agent graph
+     * @request GET:/api/agents/{id}/graph
+     */
+    graphControllerGetGraph: (id: string, params: RequestParams = {}) =>
+      this.request<GraphResponseDto, any>({
+        path: `/api/agents/${id}/graph`,
+        method: "GET",
         format: "json",
         ...params,
       }),
@@ -590,6 +630,7 @@ export class Api<
     /**
      * No description
      *
+     * @tags Reload
      * @name ReloadControllerStream
      * @request GET:/reload/stream
      */

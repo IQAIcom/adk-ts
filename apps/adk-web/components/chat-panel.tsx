@@ -1,11 +1,9 @@
 "use client";
 
-import type { Agent, Message as ChatMessage } from "@/app/(dashboard)/_schema";
-import {
-	Conversation,
-	ConversationContent,
-	ConversationScrollButton,
-} from "@/components/ai-elements/conversation";
+import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
+import { useRef, useState } from "react";
+import type { Message as ChatMessage } from "@/app/(dashboard)/_schema";
+import { ConversationAutoScroll } from "@/components/ai-elements/conversation-auto-scroll";
 import {
 	Message,
 	MessageAvatar,
@@ -21,10 +19,9 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Response } from "@/components/ai-elements/response";
 import { Button } from "@/components/ui/button";
-import { useChatAttachments } from "@/hooks/useChatAttachments";
+import { useChatAttachments } from "@/hooks/use-chat-attachments";
 import { cn } from "@/lib/utils";
-import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import type { AgentListItemDto as Agent } from "../Api";
 
 interface ChatPanelProps {
 	selectedAgent: Agent | null;
@@ -41,6 +38,7 @@ export function ChatPanel({
 }: ChatPanelProps) {
 	const [inputMessage, setInputMessage] = useState("");
 	const inputRef = useRef<HTMLTextAreaElement | null>(null);
+	// Scroll handled by ConversationAutoScroll
 	const {
 		attachedFiles,
 		fileInputRef,
@@ -68,6 +66,8 @@ export function ChatPanel({
 		});
 	};
 
+	// Scroll logic moved to ConversationAutoScroll
+
 	// Close dropdown when clicking outside (handled by backdrop now)
 
 	if (!selectedAgent) {
@@ -89,64 +89,83 @@ export function ChatPanel({
 						backgroundSize: "40px 40px, 40px 40px, 40px 40px, 40px 40px",
 					}}
 				/>
-				<Conversation className="max-h-[calc(100vh-203px)] w-full mx-auto bg-repeat heropattern-jigsaw-red-100">
-					<ConversationContent className="max-w-4xl mx-auto">
-						{messages.length === 0 ? (
-							<div className="flex flex-col items-center justify-center min-h-[400px] text-center text-muted-foreground">
-								<MessageSquare className="h-12 w-12 mb-4 opacity-50" />
-								<h3 className="text-lg font-medium mb-2">
-									Start a conversation
-								</h3>
-								<p className="text-sm">
-									Send a message to {selectedAgent.name} to get started
-								</p>
-							</div>
-						) : (
-							<>
-								{messages.map((message) => (
-									<Message
-										from={message.type === "user" ? "user" : "assistant"}
-										key={message.id}
+				{/* Scroll container for conversation */}
+				<ConversationAutoScroll
+					scrollerClassName="max-h-[calc(100vh-203px)] w-full mx-auto bg-repeat heropattern-jigsaw-red-100"
+					contentClassName="max-w-4xl mx-auto"
+					messageCount={messages.length}
+					resetKey={selectedAgent?.name ?? ""}
+					jumpOffsetClassName="bottom-4"
+				>
+					{messages.length === 0 ? (
+						<div className="flex flex-col items-center justify-center min-h-[400px] text-center text-muted-foreground">
+							<MessageSquare className="h-12 w-12 mb-4 opacity-50" />
+							<h3 className="text-lg font-medium mb-2">Start a conversation</h3>
+							<p className="text-sm">
+								Send a message to {selectedAgent.name} to get started
+							</p>
+						</div>
+					) : (
+						<>
+							{messages.map((message) => (
+								<Message
+									from={message.type === "user" ? "user" : "assistant"}
+									key={message.id}
+								>
+									<MessageContent
+										className={cn(
+											"md:min-w-[140px]",
+											message.type === "user" ? "text-right" : "",
+										)}
 									>
-										<MessageContent>
-											<Response key={message.id} className="px-2">
-												{message.content}
-											</Response>
-										</MessageContent>
-										<MessageAvatar
-											icon={
-												message.type === "user" ? (
-													<UserIcon className="size-4" />
-												) : (
-													<Bot className="size-4" />
-												)
-											}
-											name={
-												message.type === "user" ? "You" : selectedAgent.name
-											}
-										/>
-									</Message>
-								))}
+										{(message.type === "assistant" ||
+											message.type === "user") && (
+											<div className="px-2 pb-1 text-[11px] w-full uppercase tracking-wide text-muted-foreground">
+												{message.type === "assistant"
+													? message.author || selectedAgent.name || "Assistant"
+													: "You"}
+											</div>
+										)}
+										<Response key={message.id} className="px-2">
+											{message.content}
+										</Response>
+									</MessageContent>
+									<MessageAvatar
+										icon={
+											message.type === "user" ? (
+												<UserIcon className="size-4" />
+											) : (
+												<Bot className="size-4" />
+											)
+										}
+										name={
+											message.type === "user"
+												? "You"
+												: message.author || selectedAgent.name || "Assistant"
+										}
+									/>
+								</Message>
+							))}
 
-								{/* In-conversation loading indicator (appears after user's last message) */}
-								{isSendingMessage && (
-									<Message from="assistant" key="loading">
-										<MessageContent>
-											<Response className="px-2 italic animate-pulse text-sm text-muted-foreground">
-												Typing...
-											</Response>
-										</MessageContent>
-										<MessageAvatar
-											icon={<Bot className="size-4" />}
-											name={selectedAgent.name}
-										/>
-									</Message>
-								)}
-							</>
-						)}
-					</ConversationContent>
-					<ConversationScrollButton />
-				</Conversation>
+							{/* In-conversation loading indicator (appears after user's last message) */}
+							{isSendingMessage && (
+								<Message from="assistant" key="loading">
+									<MessageContent>
+										<Response className="px-2 italic animate-pulse text-sm text-muted-foreground">
+											Typing...
+										</Response>
+									</MessageContent>
+									<MessageAvatar
+										icon={<Bot className="size-4" />}
+										name={selectedAgent.name}
+									/>
+								</Message>
+							)}
+
+							{/* Bottom sentinel handled by ConversationAutoScroll */}
+						</>
+					)}
+				</ConversationAutoScroll>
 			</div>
 
 			<div className="border-t">
@@ -177,11 +196,12 @@ export function ChatPanel({
 							</div>
 						</div>
 					)}
-					<div
+					<section
 						className={cn(
 							"relative w-full max-w-4xl mx-auto transition-all duration-200",
 							isDragOver && "bg-accent/10 border-accent rounded-lg p-2",
 						)}
+						aria-label="Message input drop zone"
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}
@@ -228,7 +248,7 @@ export function ChatPanel({
 								</div>
 							</div>
 						)}
-					</div>
+					</section>
 					{/* Hidden file input */}
 					<input
 						ref={fileInputRef}

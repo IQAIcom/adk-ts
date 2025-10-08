@@ -1,41 +1,23 @@
-export interface Agent {
-	path: string;
-	name: string;
-	directory: string;
-	relativePath: string;
-}
+import { z } from "zod";
+import type { AgentListItemDto as Agent } from "../../Api";
 
 export interface Message {
 	id: number;
 	type: "user" | "assistant" | "system";
 	content: string;
 	timestamp: Date;
+	author?: string; // originating agent or 'user'
 }
 
-export interface Session {
-	id: string;
-	appName: string;
-	userId: string;
-	state: Record<string, any>;
-	eventCount: number;
-	lastUpdateTime: number;
-	createdAt: number;
-}
-
-export interface Event {
-	id: string;
-	author: string;
-	timestamp: number;
-	content: any;
-	actions: any;
-	functionCalls: any[];
-	functionResponses: any[];
-	branch?: string;
-	isFinalResponse: boolean;
-}
+// Centralized Panel ID schema for type-safe usage across the app
+export const PanelIdSchema = z.enum(["sessions", "events", "state", "graph"]);
+export type PanelId = z.infer<typeof PanelIdSchema>;
+export const PANEL_IDS = PanelIdSchema.options;
+export const isPanelId = (value: unknown): value is PanelId =>
+	PanelIdSchema.safeParse(value).success;
 
 export interface PanelType {
-	type: "sessions" | "events" | "state" | null;
+	type: PanelId | null;
 }
 
 // Agent status tracking removed; agents are always available on-demand
@@ -43,7 +25,7 @@ export interface PanelType {
 export interface ChatState {
 	messages: Message[];
 	selectedAgent: Agent | null;
-	selectedPanel: PanelType["type"];
+	selectedPanel: PanelId | null;
 	currentSessionId: string | null;
 }
 

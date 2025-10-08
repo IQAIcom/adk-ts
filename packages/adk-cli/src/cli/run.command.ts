@@ -125,8 +125,11 @@ class AgentChatClient {
 				throw new Error(`Failed to send message: ${errorText}`);
 			}
 
-			const result = await response.json();
-			s.stop("🤖 Assistant:");
+			const result = (await response.json()) as {
+				response?: string;
+				agentName?: string;
+			};
+			s.stop(`🤖 ${result.agentName ?? "Assistant"}:`);
 
 			if (result.response) {
 				const formattedResponse = await render(result.response);
