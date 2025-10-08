@@ -109,15 +109,20 @@ export function ChatPanel({
 										from={message.type === "user" ? "user" : "assistant"}
 										key={message.id}
 									>
-										<MessageContent>
+										<MessageContent
+											className={cn(
+												"md:min-w-[140px]",
+												message.type === "user" ? "text-right" : "",
+											)}
+										>
 											{(message.type === "assistant" ||
 												message.type === "user") && (
-												<div className="px-2 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+												<div className="px-2 pb-1 text-[11px] w-full uppercase tracking-wide text-muted-foreground">
 													{message.type === "assistant"
 														? (message as any).author ||
 															selectedAgent.name ||
 															"Assistant"
-														: (message as any).author || "You"}
+														: "You"}
 												</div>
 											)}
 											<Response key={message.id} className="px-2">
@@ -134,7 +139,7 @@ export function ChatPanel({
 											}
 											name={
 												message.type === "user"
-													? (message as any).author || "You"
+													? "You"
 													: (message as any).author ||
 														selectedAgent.name ||
 														"Assistant"
