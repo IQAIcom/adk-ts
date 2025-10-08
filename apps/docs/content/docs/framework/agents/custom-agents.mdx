@@ -1,249 +1,824 @@
 ---
 title: Custom Agents
-description: Build specialized agents with custom logic and behavior
+description: Build agents with completely custom orchestration logic
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-Custom agents provide ultimate flexibility by allowing you to define arbitrary orchestration logic. They go beyond predefined workflow patterns to enable highly specific and complex agent behaviors.
+Custom agents give you complete control over execution flow by extending `BaseAgent` and implementing your own orchestration logic. Think of them as the Swiss Army knife of agent development - when the built-in workflow patterns don't fit your exact needs, custom agents let you build any logic you can imagine.
 
-<Callout type="warn" title="Advanced Concept">
-Building custom agents requires implementing core execution logic directly. We recommend understanding LLM agents and workflow agents first before tackling custom orchestration.
+Unlike [workflow agents](/docs/framework/agents/workflow-agents) that follow predictable patterns (sequential, parallel, loop), custom agents let you implement conditional branching, dynamic agent selection, external API integration, complex state machines, and any other orchestration logic your application requires.
+
+<Callout type="info" title="Ultimate Control">
+  **When to build custom agents:** You need conditional logic, dynamic
+  workflows, external integrations, or orchestration patterns that don't fit
+  standard workflow agents. Custom agents are the foundation that all other
+  agent types build upon.
 </Callout>
 
-## What Are Custom Agents?
+## Quick Start Example
 
-Custom agents inherit from `BaseAgent` and implement their own control flow by defining the `runAsyncImpl` method. You have complete control over:
+Here's a smart document processor that adapts its workflow based on the document type and language:
 
-- How sub-agents are called and orchestrated
-- State management and data flow
-- Conditional logic and decision making
-- External integrations and API calls
+```typescript
+import {
+  BaseAgent,
+  InvocationContext,
+  Event,
+  EventActions,
+  LlmAgent,
+} from "@iqai/adk";
 
-## When to Use Custom Agents
+export class SmartDocumentProcessor extends BaseAgent {
+  private analyzer: LlmAgent;
+  private translator: LlmAgent;
+  private summarizer: LlmAgent;
+  private technicalReviewer: LlmAgent;
 
-Consider custom agents when you need:
+  constructor() {
+    super({
+      name: "smart-document-processor",
+      description: "Intelligently processes documents with adaptive workflows",
+    });
 
-- **Conditional Logic**: Different execution paths based on runtime conditions
-- **Complex State Management**: Intricate logic for maintaining workflow state
-- **External Integrations**: Direct API calls, database operations, or custom libraries
-- **Dynamic Agent Selection**: Choosing sub-agents based on runtime evaluation
-- **Unique Patterns**: Orchestration logic that doesn't fit standard patterns
+    // Initialize specialist agents
+    this.analyzer = new LlmAgent({
+      name: "document-analyzer",
+      model: "gemini-2.5-flash",
+      instruction:
+        "Analyze document language, type, complexity, and technical level",
+      outputKey: "document_analysis",
+    });
 
-<Callout type="info" title="Design Decision">
-Use custom agents when predefined workflow agents (Sequential, Parallel, Loop) cannot express your required logic patterns.
-</Callout>
+    this.translator = new LlmAgent({
+      name: "translator",
+      model: "gemini-2.5-flash",
+      instruction:
+        "Translate document to English while preserving technical terms",
+      outputKey: "translated_content",
+    });
 
-## Core Implementation
+    this.summarizer = new LlmAgent({
+      name: "summarizer",
+      model: "gemini-2.5-flash",
+      instruction:
+        "Create executive summary with key points and recommendations",
+      outputKey: "executive_summary",
+    });
 
-### The `runAsyncImpl` method (TypeScript)
+    this.technicalReviewer = new LlmAgent({
+      name: "technical-reviewer",
+      model: "gemini-2.5-flash",
+      instruction: "Review technical accuracy and provide expert commentary",
+      outputKey: "technical_review",
+    });
+  }
 
-This is the heart of every custom agent in TypeScript:
+  protected async *runAsyncImpl(ctx: InvocationContext) {
+    // Step 1: Always analyze the document first
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "🔍 Analyzing document..." }] },
+    });
 
-- Asynchronous generator that yields `Event` objects back to the runner
-- Receives `InvocationContext` (`ctx`) for session/state access and configuration
-- Forwards events from sub-agents, and can add its own events and `EventActions`
-- Implements any required control flow (branching, loops, retries, transfers)
+    for await (const event of this.analyzer.runAsync(ctx)) {
+      yield event;
+    }
 
-```ts
-import { BaseAgent, Event } from "@iqai/adk";
+    // Step 2: Get analysis results and make decisions
+    const analysis = this.parseAnalysis(
+      ctx.session.state.get("document_analysis", "{}")
+    );
+
+    // Step 3: Conditional translation
+    if (analysis.language !== "english") {
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{ text: `🌐 Translating from ${analysis.language}...` }],
+        },
+      });
+
+      for await (const event of this.translator.runAsync(ctx)) {
+        yield event;
+      }
+    }
+
+    // Step 4: Always create summary
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "📝 Creating executive summary..." }] },
+    });
+
+    for await (const event of this.summarizer.runAsync(ctx)) {
+      yield event;
+    }
+
+    // Step 5: Technical review only for complex documents
+    if (analysis.complexity === "high" || analysis.type === "technical") {
+      yield new Event({
+        author: this.name,
+        content: { parts: [{ text: "🔬 Conducting technical review..." }] },
+      });
+
+      for await (const event of this.technicalReviewer.runAsync(ctx)) {
+        yield event;
+      }
+    }
+
+    // Step 6: Final processing report
+    const processingReport = {
+      document_type: analysis.type,
+      original_language: analysis.language,
+      complexity_level: analysis.complexity,
+      was_translated: analysis.language !== "english",
+      included_technical_review:
+        analysis.complexity === "high" || analysis.type === "technical",
+      processing_completed_at: new Date().toISOString(),
+    };
+
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "✅ Document processing complete!" }] },
+      actions: new EventActions({
+        stateDelta: { processing_report: processingReport },
+      }),
+    });
+  }
+
+  private parseAnalysis(raw: string): any {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return { language: "english", type: "general", complexity: "medium" };
+    }
+  }
+}
+
+// Usage
+const processor = new SmartDocumentProcessor();
+const result = await processor.run({
+  message:
+    "Process this technical specification document: [document content here]",
+});
+```
+
+### What Makes This Custom
+
+This agent demonstrates key custom agent capabilities:
+
+- **🎯 Conditional Logic**: Only translates non-English documents
+- **🧠 Dynamic Decisions**: Technical review only for complex/technical documents
+- **📊 State Management**: Tracks processing decisions and results
+- **🔄 Adaptive Flow**: Different execution paths based on document analysis
+- **⚡ Efficiency**: Skips unnecessary steps based on content type
+
+## How Custom Agents Work
+
+Custom agents are built by extending `BaseAgent` and implementing the `runAsyncImpl` method - your custom orchestration logic:
+
+**🔄 The Execution Flow**
+
+1. **Decision Making**: Analyze input and context to determine execution path
+2. **Agent Orchestration**: Call sub-agents in the order and conditions you define
+3. **State Management**: Read/write session state to coordinate between steps
+4. **Event Streaming**: Yield events to provide real-time feedback to users
+5. **Dynamic Adaptation**: Change behavior based on intermediate results
+
+```typescript
+import { BaseAgent, InvocationContext, Event } from "@iqai/adk";
 
 export class MyCustomAgent extends BaseAgent {
   constructor() {
-    super({ name: "my_custom_agent", description: "Custom orchestration" });
+    super({
+      name: "my-custom-agent",
+      description: "My custom orchestration logic",
+    });
   }
 
-  protected async *runAsyncImpl(ctx: any) {
-    // Announce start
-    yield new Event({ author: this.name, content: { parts: [{ text: "Starting…" }] } });
+  // This is where your magic happens
+  protected async *runAsyncImpl(ctx: InvocationContext) {
+    // 1. Read context and make decisions
+    const userType = ctx.session.state.get("user_type", "standard");
 
-    // ... your orchestration logic here ...
+    // 2. Yield progress events
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "Starting custom processing..." }] },
+    });
 
-    // Announce done
-    yield new Event({ author: this.name, content: { parts: [{ text: "Done" }] } });
+    // 3. Conditional logic - this is what makes it "custom"
+    if (userType === "premium") {
+      yield* this.handlePremiumUser(ctx);
+    } else {
+      yield* this.handleStandardUser(ctx);
+    }
+
+    // 4. Final state update
+    ctx.session.state.set("processing_complete", true);
+
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "Custom processing complete!" }] },
+    });
+  }
+
+  private async *handlePremiumUser(ctx: InvocationContext) {
+    // Premium users get enhanced processing
+  }
+
+  private async *handleStandardUser(ctx: InvocationContext) {
+    // Standard processing flow
   }
 }
 ```
 
-### Key capabilities in `runAsyncImpl`
+### Core Capabilities
 
-<Cards>
-  <Card title="Sub-agent orchestration" description="Call and coordinate sub-agents with custom logic" />
-  <Card title="State management" description="Share data via session state and EventActions" />
-  <Card title="Control flow" description="Implement conditional, iterative, and retry logic" />
-  <Card title="External integration" description="Call APIs, databases, or services as needed" />
-</Cards>
+**🧠 Intelligent Decisions**  
+Use session state, input analysis, or external data to determine execution paths
 
-#### Orchestrating sub-agents
+**🎯 Precise Control**  
+Execute sub-agents exactly when and how you need them
 
-```ts
-// Forward events from a child agent
-for await (const event of someChild.runAsync(ctx)) {
-  // optionally inspect/transform event here
-  yield event;
+**📊 State Coordination**  
+Share data between agents and persist results across steps
+
+**⚡ Real-time Feedback**  
+Stream progress events to keep users informed during long operations
+
+**🔄 Error Recovery**  
+Implement retry logic, fallbacks, and graceful error handling
+
+## Building Custom Logic
+
+### Session State Management
+
+Coordinate between agents and make decisions based on previous results. See [Sessions & State](/docs/framework/sessions) for detailed state management patterns.
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  // Read previous results
+  const userPrefs = ctx.session.state.get("user_preferences", {});
+  const previousAnalysis = ctx.session.state.get("analysis_results");
+
+  // Make decisions based on state
+  if (previousAnalysis?.complexity === "high") {
+    yield* this.handleComplexCase(ctx);
+  }
+
+  // Save results for next steps
+  ctx.session.state.set("processing_stage", "analysis_complete");
+  ctx.session.state.set("confidence_score", 0.92);
 }
 ```
 
-#### Reading/writing session state
+### Conditional Agent Orchestration
 
-```ts
-// Read data set by a previous step
-const status = ctx.session.state.get("status", "pending");
+Route to different agents based on runtime analysis - context, user preferences, or data characteristics. This enables dynamic processing paths beyond fixed [workflow patterns](/docs/framework/agents/workflow-agents).
 
-// Write data for downstream steps (often also done via outputKey of child agents)
-ctx.session.state.set("processing_started_at", Date.now());
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  const inputType = this.analyzeInputType(ctx.session.state.get("user_input"));
+
+  // Route to appropriate specialist
+  let selectedAgent;
+  switch (inputType) {
+    case "technical":
+      selectedAgent = this.findAgent("technical-specialist");
+      break;
+    case "creative":
+      selectedAgent = this.findAgent("creative-specialist");
+      break;
+    default:
+      selectedAgent = this.findAgent("general-processor");
+  }
+
+  // Execute selected agent
+  if (selectedAgent) {
+    for await (const event of selectedAgent.runAsync(ctx)) {
+      yield event;
+    }
+  }
+}
 ```
 
-#### Using EventActions (stateDelta, escalate, transfer)
+### External Service Integration
 
-```ts
-import { Event, EventActions } from "@iqai/adk";
+Connect with external APIs, databases, or services to fetch data, validate information, or trigger external actions.
 
-// Save a value via stateDelta on a yielded event
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  // Use framework services if available
+  if (ctx.memoryService) {
+    const memories = await ctx.memoryService.searchMemory({
+      query: "relevant context",
+      appName: ctx.appName,
+      userId: ctx.userId
+    });
+  }
+
+  // Call external APIs
+  try {
+    const response = await fetch('https://api.example.com/data');
+    const externalData = await response.json();
+
+    // Use the data in your logic
+    ctx.session.state.set("external_data", externalData);
+
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "External data retrieved successfully" }] }
+    });
+  } catch (error) {
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "Failed to retrieve external data, using fallback" }] }
+    });
+  }
+}
+```
+
+## Advanced Patterns
+
+### State Machine Pattern
+
+Implement workflows with distinct phases and transition rules. Ideal for approval processes, multi-stage processing, or any workflow requiring progress tracking through defined states.
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  let currentState = ctx.session.state.get("workflow_state", "initialized");
+
+  while (currentState !== "completed") {
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: `Processing state: ${currentState}` }] }
+    });
+
+    switch (currentState) {
+      case "initialized":
+        currentState = await this.handleInitialization(ctx);
+        break;
+      case "analyzing":
+        currentState = await this.handleAnalysis(ctx);
+        break;
+      case "processing":
+        currentState = await this.handleProcessing(ctx);
+        break;
+      case "validating":
+        currentState = await this.handleValidation(ctx);
+        break;
+      default:
+        currentState = "error";
+    }
+
+    ctx.session.state.set("workflow_state", currentState);
+  }
+}
+```
+
+### Dynamic Agent Selection
+
+Select agents based on runtime analysis rather than hardcoded paths. Create adaptive systems that route to specialists or adjust processing based on complexity, user tier, or system state.
+
+```typescript
+private selectOptimalAgent(ctx: InvocationContext): BaseAgent {
+  const complexity = this.analyzeComplexity(ctx.session.state.get("user_input", ""));
+  const userTier = ctx.session.state.get("user_tier", "basic");
+
+  // Route based on complexity and user tier
+  if (complexity > 0.8 && userTier === "premium") {
+    return this.findAgent("expert-specialist");
+  } else if (complexity > 0.5) {
+    return this.findAgent("intermediate-processor");
+  } else {
+    return this.findAgent("basic-processor");
+  }
+}
+```
+
+### Error Handling and Recovery
+
+Implement retry logic, graceful degradation, and fallback strategies when coordinating multiple systems and external services.
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  const maxRetries = 3;
+  let attempt = 0;
+
+  while (attempt < maxRetries) {
+    try {
+      yield* this.executeMainLogic(ctx);
+      return; // Success - exit retry loop
+
+    } catch (error) {
+      attempt++;
+
+      yield new Event({
+        author: this.name,
+        content: { parts: [{ text: `Attempt ${attempt} failed: ${(error as Error).message}` }] }
+      });
+
+      if (attempt < maxRetries) {
+        yield new Event({
+          author: this.name,
+          content: { parts: [{ text: `Retrying in 2 seconds... (${attempt}/${maxRetries})` }] }
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } else {
+        // Final attempt failed - try fallback
+        yield new Event({
+          author: this.name,
+          content: { parts: [{ text: "All attempts failed, switching to fallback method" }] }
+        });
+
+        yield* this.executeFallbackLogic(ctx);
+      }
+    }
+  }
+}
+```
+
+## Event Communication
+
+### Progress Events
+
+Provide regular feedback during long-running operations. See [Events](/docs/framework/events) for detailed event patterns.
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  const totalSteps = 5;
+
+  for (let step = 1; step <= totalSteps; step++) {
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: `Step ${step}/${totalSteps}: Processing...` }] },
+      metadata: { progress: step / totalSteps }
+    });
+
+    // Execute step logic
+    await this.executeStep(step, ctx);
+  }
+}
+```
+
+### State Updates
+
+Update session state through EventActions for better auditability and transparency. See [EventActions](/docs/framework/events#event-actions) for complete API reference.
+
+```typescript
 yield new Event({
   author: this.name,
-  actions: new EventActions({ stateDelta: { current_stage: "validated" } }),
+  content: { parts: [{ text: "Analysis complete" }] },
+  actions: new EventActions({
+    stateDelta: {
+      analysis_results: analysisData,
+      confidence_score: 0.95,
+      next_recommended_action: "proceed_to_synthesis",
+    },
+  }),
 });
-
-// Escalate to signal termination to a LoopAgent or parent logic
-yield new Event({ author: this.name, actions: new EventActions({ escalate: true }) });
-
-// Transfer to another agent by name (within the known hierarchy)
-yield new Event({ author: this.name, actions: new EventActions({ transferToAgent: "target_agent" }) });
 ```
 
-#### Error handling and reporting
+### Agent Transfer
 
-```ts
-try {
-  // risky operation
-} catch (err) {
+Delegate control to specialized agents or escalate to supervisors while maintaining conversation flow.
+
+```typescript
+// Conditional transfer based on analysis
+if (requiresSpecialistReview) {
   yield new Event({
     author: this.name,
-    content: { parts: [{ text: `Error: ${err instanceof Error ? err.message : String(err)}` }] },
+    content: {
+      parts: [{ text: "Transferring to specialist for expert review" }],
+    },
+    actions: new EventActions({
+      transferToAgent: "specialist-reviewer",
+    }),
   });
 }
 ```
 
-## Design Patterns
-
-### Conditional Workflows
-Execute different agent paths based on runtime conditions or previous results.
-
-### State-Driven Orchestration
-Use session state to coordinate complex data flows between multiple agents.
-
-### External Service Integration
-Combine agent capabilities with external APIs and data sources.
-
-### Dynamic Agent Selection
-Choose which agents to execute based on input analysis or environment conditions.
-
-## Managing Sub-Agents
-
-### Agent Hierarchy
-- Store sub-agents as instance attributes during initialization
-- Declare sub-agents in the `subAgents` list (constructor `super({ subAgents: [...] })`) for framework awareness
-- Use direct method calls for orchestration within your custom logic
-
-### State Coordination
-- Use `ctx.session.state` for data sharing between agents
-- Leverage `output_key` parameters for structured data flow
-- Implement state validation and error handling
-
-### Event Processing
-- Yield events from sub-agents to maintain streaming behavior
-- Optionally inspect, filter, or transform events
-- Handle error events and implement recovery logic
-
-## Best Practices
-
-<Callout type="warn" title="Design Considerations">
-- Keep custom logic focused and well-documented
-- Design clear interfaces between sub-agents
-- Implement proper error handling and recovery
-- Test complex workflows thoroughly with various scenarios
-</Callout>
-
-### Architecture Design
-- Break complex workflows into logical sub-agents
-- Use clear naming conventions for state keys
-- Document the expected data flow and dependencies
-- Design for testability and maintainability
-
-### Error Handling
-- Implement graceful degradation for agent failures
-- Use try-catch blocks around critical operations
-- Provide meaningful error messages and logging
-- Consider retry logic for transient failures
-
-### Performance Considerations
-- Minimize unnecessary state operations
-- Consider async/await patterns for external calls
-- Implement timeouts for long-running operations
-- Monitor resource usage in complex workflows
-
 ## Testing Custom Agents
 
 ### Unit Testing
-- Test individual logic components separately
-- Mock sub-agents for isolated testing
-- Verify state management logic
-- Test error conditions and edge cases
+
+Test custom orchestration logic in isolation by mocking sub-agents and external dependencies.
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { InvocationContext, Session } from "@iqai/adk";
+
+describe("SmartDocumentProcessor", () => {
+  it("should skip translation for English documents", async () => {
+    const processor = new SmartDocumentProcessor();
+
+    const mockContext: InvocationContext = {
+      invocationId: "test-123",
+      agent: processor,
+      session: {
+        id: "session-123",
+        state: new Map([
+          [
+            "document_analysis",
+            JSON.stringify({
+              language: "english",
+              type: "general",
+              complexity: "medium",
+            }),
+          ],
+        ]),
+      } as Session,
+      // ... other required properties
+    };
+
+    const events = [];
+    for await (const event of processor.runAsync(mockContext)) {
+      events.push(event);
+    }
+
+    // Should not contain translation events
+    const translationEvents = events.filter((e) =>
+      e.content?.parts[0].text?.includes("Translating")
+    );
+    expect(translationEvents).toHaveLength(0);
+  });
+
+  it("should include technical review for complex documents", async () => {
+    const processor = new SmartDocumentProcessor();
+
+    const mockContext: InvocationContext = {
+      invocationId: "test-456",
+      agent: processor,
+      session: {
+        id: "session-456",
+        state: new Map([
+          [
+            "document_analysis",
+            JSON.stringify({
+              language: "english",
+              type: "technical",
+              complexity: "high",
+            }),
+          ],
+        ]),
+      } as Session,
+      // ... other required properties
+    };
+
+    const events = [];
+    for await (const event of processor.runAsync(mockContext)) {
+      events.push(event);
+    }
+
+    // Should contain technical review events
+    const reviewEvents = events.filter((e) =>
+      e.content?.parts[0].text?.includes("technical review")
+    );
+    expect(reviewEvents.length).toBeGreaterThan(0);
+  });
+});
+```
 
 ### Integration Testing
-- Test complete workflows end-to-end
-- Verify state flow between agents
-- Test with realistic data scenarios
-- Validate error handling and recovery
+
+Verify end-to-end workflows with real sub-agents and dependencies to ensure proper state flow and event generation.
+
+```typescript
+describe("Integration Tests", () => {
+  it("should process documents end-to-end", async () => {
+    const processor = new SmartDocumentProcessor();
+
+    const result = await processor.run({
+      message: "Analyze this document: [sample technical document]",
+    });
+
+    expect(result.session.state.get("processing_report")).toBeDefined();
+    expect(result.session.state.get("executive_summary")).toBeDefined();
+  });
+});
+```
 
 ### Performance Testing
-- Measure execution times for complex workflows
-- Test resource usage under load
-- Verify timeout and limit behaviors
-- Monitor memory usage patterns
+
+Test execution times, resource usage, and behavior under load to identify bottlenecks in multi-agent orchestration.
+
+```typescript
+describe("Performance Tests", () => {
+  it("should complete processing within acceptable time limits", async () => {
+    const processor = new SmartDocumentProcessor();
+    const startTime = Date.now();
+
+    const result = await processor.run({
+      message: "Process this large document: [large document content]",
+    });
+
+    const executionTime = Date.now() - startTime;
+    expect(executionTime).toBeLessThan(30000); // Should complete within 30 seconds
+  });
+
+  it("should handle concurrent processing efficiently", async () => {
+    const processor = new SmartDocumentProcessor();
+    const concurrentRequests = 5;
+
+    const startTime = Date.now();
+    const promises = Array.from({ length: concurrentRequests }, (_, i) =>
+      processor.run({
+        message: `Process document ${i + 1}: [document content]`,
+      })
+    );
+
+    const results = await Promise.all(promises);
+    const totalTime = Date.now() - startTime;
+
+    // All requests should complete
+    expect(results).toHaveLength(concurrentRequests);
+    results.forEach((result) => {
+      expect(result.session.state.get("processing_report")).toBeDefined();
+    });
+
+    // Should be more efficient than sequential processing
+    expect(totalTime).toBeLessThan(concurrentRequests * 10000); // Less than 10s per request
+  });
+
+  it("should not leak memory during repeated operations", async () => {
+    const processor = new SmartDocumentProcessor();
+    const initialMemory = process.memoryUsage().heapUsed;
+
+    // Run multiple operations
+    for (let i = 0; i < 10; i++) {
+      await processor.run({
+        message: `Process document ${i}: [document content]`,
+      });
+    }
+
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+    }
+
+    const finalMemory = process.memoryUsage().heapUsed;
+    const memoryIncrease = finalMemory - initialMemory;
+
+    // Memory increase should be reasonable (less than 50MB)
+    expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024);
+  });
+
+  it("should handle timeouts gracefully", async () => {
+    const slowProcessor = new (class extends SmartDocumentProcessor {
+      protected async *runAsyncImpl(ctx: InvocationContext) {
+        // Simulate slow processing
+        yield new Event({
+          author: this.name,
+          content: { parts: [{ text: "Starting slow processing..." }] },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // 5 second delay
+
+        yield new Event({
+          author: this.name,
+          content: { parts: [{ text: "Processing complete" }] },
+        });
+      }
+    })();
+
+    // Test with timeout
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), 3000)
+    );
+
+    const processingPromise = slowProcessor.run({
+      message: "Process with timeout test",
+    });
+
+    await expect(
+      Promise.race([processingPromise, timeoutPromise])
+    ).rejects.toThrow("Timeout");
+  });
+});
+```
+
+## Best Practices
+
+### Design Principles
+
+<Callout type="info" title="Keep It Focused">
+  Design custom agents with a single, clear responsibility. If your agent is
+  doing too many different things, consider breaking it into multiple agents or
+  using workflow agents to orchestrate simpler custom agents.
+</Callout>
+
+**🎯 Single Responsibility**  
+Each custom agent should have one clear purpose and well-defined scope
+
+**📊 Clear State Management**  
+Use consistent, descriptive keys for session state and document your data flow
+
+**🔄 Predictable Patterns**  
+Make your custom logic easy to understand and debug
+
+**⚡ Efficient Execution**  
+Skip unnecessary work and provide meaningful progress feedback
+
+### Common Pitfalls
+
+**❌ Avoid These Mistakes:**
+
+```typescript
+// Don't: Vague error handling
+catch (error) {
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: "Error occurred" }] }
+  });
+}
+
+// Don't: Unclear state keys
+ctx.session.state.set("data", someValue);
+ctx.session.state.set("flag", true);
+
+// Don't: Silent failures
+if (someCondition) {
+  // Agent silently does nothing
+}
+```
+
+**✅ Do This Instead:**
+
+```typescript
+// Do: Specific error handling
+catch (error) {
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: `Document analysis failed: ${(error as Error).message}` }] }
+  });
+}
+
+// Do: Descriptive state keys
+ctx.session.state.set("document_analysis_results", analysisData);
+ctx.session.state.set("translation_required", needsTranslation);
+
+// Do: Communicate decisions
+if (skipProcessing) {
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: "Skipping advanced processing - document complexity is low" }] }
+  });
+}
+```
 
 ## Common Use Cases
 
-### Multi-Stage Content Generation
-Create content through generation, critique, revision, and validation stages with conditional regeneration.
+### Business Process Automation
+
+Create agents that mirror real business workflows:
+
+- **Document Approval**: Route documents through different approval chains based on content, value, or department
+- **Customer Support**: Triage support tickets and route to appropriate specialists
+- **Content Moderation**: Apply different review processes based on content type and risk level
 
 ### Data Processing Pipelines
-Implement complex ETL workflows with conditional transformations and quality checks.
+
+Build intelligent ETL workflows:
+
+- **Data Validation**: Check data quality and route to appropriate cleaning processes
+- **Format Conversion**: Convert between formats based on target system requirements
+- **Data Enrichment**: Enhance data with external sources based on availability and relevance
 
 ### Decision Support Systems
-Build agents that analyze data, consult multiple sources, and provide structured recommendations.
 
-### Quality Assurance Workflows
-Implement multi-step validation processes with conditional approval and revision cycles.
+Implement complex decision trees:
 
-## Related Topics
+- **Risk Assessment**: Analyze multiple factors and escalate based on risk levels
+- **Recommendation Engines**: Provide personalized recommendations based on user profiles
+- **Resource Allocation**: Distribute work based on capacity, expertise, and priorities
+
+## Related Documentation
 
 <Cards>
   <Card
     title="🤖 LLM Agents"
-    description="Understand the foundation for building sub-agents"
+    description="The building blocks that custom agents orchestrate"
     href="/docs/framework/agents/llm-agents"
   />
 
-  <Card
-    title="🔄 Workflow Agents"
-    description="Learn standard patterns before building custom logic"
-    href="/docs/framework/agents/workflow-agents"
-  />
+<Card
+  title="🔄 Workflow Agents"
+  description="Standard patterns to use before building custom logic"
+  href="/docs/framework/agents/workflow-agents"
+/>
+
+<Card
+  title="📡 Events & Actions"
+  description="Communication system for agent coordination"
+  href="/docs/framework/events"
+/>
 
   <Card
-    title="💾 Sessions"
-    description="Manage state and context in custom workflows"
+    title="🧠 Sessions & State"
+    description="Managing data flow and persistence"
     href="/docs/framework/sessions"
-  />
-
-  <Card
-    title="📊 Examples"
-    description="See working examples of custom agent implementations"
-    href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples"
-    target="_blank"
-    rel="noopener noreferrer"
   />
 </Cards>
