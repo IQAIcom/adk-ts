@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { Command, CommandRunner, Option } from "nest-commander";
 import { startHttpServer } from "../http/bootstrap";
+import { createGracefulShutdownHandler } from "../utils/graceful-shutdown";
 
 interface WebCommandOptions {
 	port?: number;
@@ -44,37 +45,10 @@ export class WebCommand extends CommandRunner {
 		console.log(chalk.cyan("Press Ctrl+C to stop the API server"));
 
 		// Graceful shutdown with single-invocation guard and force-exit fallback
-		let shuttingDown = false;
-		const cleanup = async () => {
-			if (shuttingDown) {
-				// Ignore repeated signals while shutting down
-				return;
-			}
-			shuttingDown = true;
-			console.log(chalk.yellow("\n🛑 Stopping API server..."));
-
-			// Force-exit fallback in case something hangs
-			const FORCE_EXIT_MS = Number(process.env.ADK_FORCE_EXIT_MS || 5000);
-			const timeout = setTimeout(() => {
-				console.error(
-					chalk.red(
-						`Force exiting after ${FORCE_EXIT_MS}ms. Some resources may not have closed cleanly.`,
-					),
-				);
-				// Using exit to ensure process terminates if something keeps the event loop alive
-				process.exit(1);
-			}, FORCE_EXIT_MS);
-			timeout.unref?.();
-
-			try {
-				await server.stop();
-			} catch (e) {
-				console.error(chalk.red("Error during shutdown:"), e);
-			} finally {
-				clearTimeout(timeout);
-				process.exit(0);
-			}
-		};
+		const cleanup = createGracefulShutdownHandler(server, {
+			quiet: false, // web command always shows output
+			name: "API server",
+		});
 
 		process.on("SIGINT", cleanup);
 		process.on("SIGTERM", cleanup);

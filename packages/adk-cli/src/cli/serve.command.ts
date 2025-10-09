@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { Command, CommandRunner, Option } from "nest-commander";
 import { startHttpServer } from "../http/bootstrap";
+import { createGracefulShutdownHandler } from "../utils/graceful-shutdown";
 
 interface ServeCommandOptions {
 	port?: number;
@@ -48,38 +49,10 @@ export class ServeCommand extends CommandRunner {
 		}
 
 		// Graceful shutdown with single-invocation guard and force-exit fallback
-		let shuttingDown = false;
-		const cleanup = async () => {
-			if (shuttingDown) return;
-			shuttingDown = true;
-			if (!quiet) {
-				console.log(chalk.yellow("\n🛑 Stopping server..."));
-			}
-
-			const FORCE_EXIT_MS = Number(process.env.ADK_FORCE_EXIT_MS || 5000);
-			const timeout = setTimeout(() => {
-				if (!quiet) {
-					console.error(
-						chalk.red(
-							`Force exiting after ${FORCE_EXIT_MS}ms. Some resources may not have closed cleanly.`,
-						),
-					);
-				}
-				process.exit(1);
-			}, FORCE_EXIT_MS);
-			timeout.unref?.();
-
-			try {
-				await server.stop();
-			} catch (e) {
-				if (!quiet) {
-					console.error(chalk.red("Error during shutdown:"), e);
-				}
-			} finally {
-				clearTimeout(timeout);
-				process.exit(0);
-			}
-		};
+		const cleanup = createGracefulShutdownHandler(server, {
+			quiet,
+			name: "server",
+		});
 
 		process.on("SIGINT", cleanup);
 		process.on("SIGTERM", cleanup);
