@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { Command, CommandRunner, Option } from "nest-commander";
 import { startHttpServer } from "../http/bootstrap";
+import { createGracefulShutdownHandler } from "../utils/graceful-shutdown";
 
 interface WebCommandOptions {
 	port?: number;
@@ -43,11 +44,11 @@ export class WebCommand extends CommandRunner {
 		console.log(chalk.gray(`   API Server: http://${host}:${apiPort}`));
 		console.log(chalk.cyan("Press Ctrl+C to stop the API server"));
 
-		const cleanup = async () => {
-			console.log(chalk.yellow("\n🛑 Stopping API server..."));
-			await server.stop();
-			process.exit(0);
-		};
+		// Graceful shutdown with single-invocation guard and force-exit fallback
+		const cleanup = createGracefulShutdownHandler(server, {
+			quiet: false, // web command always shows output
+			name: "API server",
+		});
 
 		process.on("SIGINT", cleanup);
 		process.on("SIGTERM", cleanup);

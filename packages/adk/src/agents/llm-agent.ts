@@ -41,10 +41,10 @@ export type ToolUnion = BaseTool | ((...args: any[]) => any);
 /**
  * Single before model callback type
  */
-export type SingleBeforeModelCallback = (
-	callbackContext: CallbackContext,
-	llmRequest: LlmRequest,
-) => LlmResponse | null | Promise<LlmResponse | null>;
+export type SingleBeforeModelCallback = (args: {
+	callbackContext: CallbackContext;
+	llmRequest: LlmRequest;
+}) => LlmResponse | null | Promise<LlmResponse | null>;
 
 /**
  * Before model callback type (single or array)
@@ -56,10 +56,10 @@ export type BeforeModelCallback =
 /**
  * Single after model callback type
  */
-export type SingleAfterModelCallback = (
-	callbackContext: CallbackContext,
-	llmResponse: LlmResponse,
-) => LlmResponse | null | Promise<LlmResponse | null>;
+export type SingleAfterModelCallback = (args: {
+	callbackContext: CallbackContext;
+	llmResponse: LlmResponse;
+}) => LlmResponse | null | Promise<LlmResponse | null>;
 
 /**
  * After model callback type (single or array)
@@ -467,7 +467,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	 * The resolved tools field as a list of BaseTool based on the context
 	 * This method is only for use by Agent Development Kit
 	 */
-	async canonicalTools(ctx?: ReadonlyContext): Promise<BaseTool[]> {
+	async canonicalTools(_ctx?: ReadonlyContext): Promise<BaseTool[]> {
 		const resolvedTools: BaseTool[] = [];
 
 		for (const toolUnion of this.tools) {

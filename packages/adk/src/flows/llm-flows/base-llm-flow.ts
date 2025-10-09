@@ -10,9 +10,9 @@ import { Logger } from "@adk/logger";
 import { LogFormatter } from "@adk/logger/log-formatter";
 import {
 	type BaseLlm,
+	type FunctionDeclaration,
 	LlmRequest,
 	type LlmResponse,
-	type FunctionDeclaration,
 } from "@adk/models";
 import { traceLlmCall } from "@adk/telemetry";
 import { ToolContext } from "@adk/tools";
@@ -80,12 +80,10 @@ export abstract class BaseLlmFlow {
 		const llmRequest = new LlmRequest();
 
 		// Preprocessing phase
-		let preprocessEventCount = 0;
 		for await (const event of this._preprocessAsync(
 			invocationContext,
 			llmRequest,
 		)) {
-			preprocessEventCount++;
 			yield event;
 		}
 
@@ -102,14 +100,11 @@ export abstract class BaseLlmFlow {
 			branch: invocationContext.branch,
 		});
 
-		let llmResponseCount = 0;
 		for await (const llmResponse of this._callLlmAsync(
 			invocationContext,
 			llmRequest,
 			modelResponseEvent,
 		)) {
-			llmResponseCount++;
-
 			for await (const event of this._postprocessAsync(
 				invocationContext,
 				llmRequest,
