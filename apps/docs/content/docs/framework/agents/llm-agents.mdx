@@ -55,6 +55,8 @@ A unique identifier for your agent that follows JavaScript identifier rules (sta
 In multi-agent systems, the LLM uses these names to route tasks to specialists, so choose descriptive names like "customer_support_agent" or "data_analyst".
 
 ```ts
+import { LlmAgent } from "@iqai/adk";
+
 const agent = new LlmAgent({
   name: "customer_support_agent", // ✅ Valid
   // name: "user", // ❌ Reserved keyword
@@ -170,7 +172,8 @@ const agent = new LlmAgent({
       // Function tool
       name: "calculate",
       description: "Perform mathematical calculations",
-            func: (expression: string) => eval(expression), // WARNING: In production, use a safe math parser instead of eval() due to security risks.  
+      func: (expression: string) => eval(expression),
+      // WARNING: In production, use a safe math parser instead of eval() due to security risks.
     }),
     async (query: string) => {
       // Raw function (auto-wrapped)

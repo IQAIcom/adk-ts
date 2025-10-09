@@ -102,7 +102,7 @@ ADK-TS provides foundational building blocks that enable sophisticated multi-age
 
 Multi-agent systems in ADK-TS are organized as tree structures where agents have parent-child relationships through the `subAgents` parameter.
 
-**Creating Hierarchy:** When you create an agent with `subAgents`, ADK automatically establishes the parent-child relationships and sets the `parentAgent` property on each child.
+**Creating Hierarchy:** When you create an agent with `subAgents`, ADK-TS automatically establishes the parent-child relationships and sets the `parentAgent` property on each child.
 
 **Single Parent Rule:** Each agent instance can only belong to one parent. This constraint ensures clear organizational boundaries and prevents circular dependencies or ambiguous ownership.
 
@@ -123,7 +123,7 @@ const coordinator = new LlmAgent({
   subAgents: [billingAgent], // Creates parent-child relationship
 });
 
-// ADK automatically sets: billingAgent.parentAgent === coordinator
+// ADK-TS automatically sets: billingAgent.parentAgent === coordinator
 // Navigate: coordinator.findAgent("billing_specialist") returns billingAgent
 // Access root: billingAgent.rootAgent === coordinator
 ```
@@ -334,7 +334,7 @@ const pipeline = new SequentialAgent({
 
 ADK-TS enables intelligent, LLM-driven routing where agents can dynamically transfer control to other agents based on the context and user needs.
 
-**How It Works:** When an agent has sub-agents, ADK automatically enables `AutoFlow`, which provides a `transfer_to_agent()` function. The LLM can call this function to transfer control to an appropriate specialist agent.
+**How It Works:** When an agent has sub-agents, ADK-TS automatically enables `AutoFlow`, which provides a `transfer_to_agent()` function. The LLM can call this function to transfer control to an appropriate specialist agent.
 
 **Transfer Scope:** Agents can transfer to:
 
@@ -1084,22 +1084,19 @@ const approvalWorkflow = new SequentialAgent({
     description="The building blocks of multi-agent systems"
     href="/docs/framework/agents/llm-agents"
   />
-
-{" "}
+ 
 <Card
   title="🏗️ Agent Builder"
   description="Fluent API for creating multi-agent workflows"
   href="/docs/framework/agents/agent-builder"
 />
-
-{" "}
+ 
 <Card
   title="🛠️ Tools"
   description="Extend agent capabilities with custom tools"
   href="/docs/framework/tools"
 />
-
-{" "}
+ 
 <Card
   title="💾 Sessions"
   description="State management across agent interactions"
