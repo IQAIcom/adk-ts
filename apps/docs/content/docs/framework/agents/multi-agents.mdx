@@ -891,7 +891,7 @@ class QualityGate extends BaseAgent {
   }
 
   protected async *runAsyncImpl(ctx: InvocationContext) {
-    const score = parseInt(ctx.session.state.get("quality_score", "0"));
+    const score = parseInt(ctx.session.state.get("quality_score", "0"), 10);
     const iteration = ctx.session.state.get("iteration_count", 0) + 1;
 
     // Track iterations

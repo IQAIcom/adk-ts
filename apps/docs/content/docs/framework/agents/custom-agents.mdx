@@ -89,7 +89,7 @@ export class CustomWorkflowAgent extends BaseAgent {
     if (complexity === "high") {
       yield new Event({
         author: this.name,
-        content: { parts: [{ text: "� Using advanced processing..." }] },
+        content: { parts: [{ text: "⚙️ Using advanced processing..." }] },
       });
     }
 
@@ -321,7 +321,8 @@ export class StoryWorkflowAgent extends BaseAgent {
 
       // Step 4: Custom conditional logic
       const qualityScore = parseInt(
-        ctx.session.state.get("quality_score", "0")
+        ctx.session.state.get("quality_score", "0"),
+        10
       );
       const tone = ctx.session.state.get("tone_result", "neutral");
 
@@ -394,7 +395,7 @@ export class IntelligentRouter extends BaseAgent {
   protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event> {
     // Analyze input to determine routing
     const complexity = this.analyzeComplexity(
-      ctx.session.state.get("user_input")
+      ctx.session.state.get("user_input", "")
     );
     const userTier = ctx.session.state.get("user_tier", "standard");
 
@@ -629,7 +630,7 @@ export class WorkflowStateMachine extends BaseAgent {
   }
 
   private canStartAnalysis(ctx: InvocationContext): boolean {
-    return !!ctx.session.state.get("user_input");
+    return !!ctx.session.state.get("user_input", "");
   }
 
   private async performAnalysis(
