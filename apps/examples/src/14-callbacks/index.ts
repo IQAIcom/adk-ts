@@ -1,6 +1,7 @@
 import { env } from "node:process";
 import {
 	AgentBuilder,
+	BaseTool,
 	type CallbackContext,
 	createTool,
 	LlmAgent,
@@ -63,7 +64,7 @@ const blockKeywordGuardrail = ({
 	// Find the last user message text
 	const lastUser = [...(llmRequest.contents || [])]
 		.reverse()
-		.find((c: any) => c.role === "user");
+		.find((c) => c.role === "user");
 	const lastText: string = lastUser?.parts?.[0]?.text || "";
 
 	if (lastText.toUpperCase().includes("BLOCK")) {
@@ -87,7 +88,7 @@ const blockKeywordGuardrail = ({
 
 // Tool-argument guardrail: block get_weather for Paris
 const blockParisToolGuardrail = (
-	tool: any,
+	tool: BaseTool,
 	args: Record<string, any>,
 	toolContext: ToolContext,
 ): Record<string, any> | null => {
