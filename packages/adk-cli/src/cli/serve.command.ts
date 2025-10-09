@@ -24,7 +24,7 @@ export class ServeCommand extends CommandRunner {
 		const host = options?.host ?? "localhost";
 		const agentsDir = options?.dir ?? process.cwd();
 		const quiet = !!options?.quiet;
-		let swagger: boolean | undefined = undefined;
+		let swagger: boolean | undefined;
 		if (options?.swagger) swagger = true;
 		else if (options?.noSwagger) swagger = false;
 
@@ -47,12 +47,38 @@ export class ServeCommand extends CommandRunner {
 			console.log(chalk.cyan("Press Ctrl+C to stop the server"));
 		}
 
+		// Graceful shutdown with single-invocation guard and force-exit fallback
+		let shuttingDown = false;
 		const cleanup = async () => {
+			if (shuttingDown) return;
+			shuttingDown = true;
 			if (!quiet) {
 				console.log(chalk.yellow("\n🛑 Stopping server..."));
 			}
-			await server.stop();
-			process.exit(0);
+
+			const FORCE_EXIT_MS = Number(process.env.ADK_FORCE_EXIT_MS || 5000);
+			const timeout = setTimeout(() => {
+				if (!quiet) {
+					console.error(
+						chalk.red(
+							`Force exiting after ${FORCE_EXIT_MS}ms. Some resources may not have closed cleanly.`,
+						),
+					);
+				}
+				process.exit(1);
+			}, FORCE_EXIT_MS);
+			timeout.unref?.();
+
+			try {
+				await server.stop();
+			} catch (e) {
+				if (!quiet) {
+					console.error(chalk.red("Error during shutdown:"), e);
+				}
+			} finally {
+				clearTimeout(timeout);
+				process.exit(0);
+			}
 		};
 
 		process.on("SIGINT", cleanup);
