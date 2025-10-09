@@ -8,7 +8,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Multi-Agent Systems let you build sophisticated applications by composing specialized agents rather than creating monolithic solutions. Think of it as building a team where each agent has expertise in a specific domain - research, analysis, writing, validation - and they coordinate to solve complex problems that no single agent could handle effectively.
 
-Unlike single agents that try to do everything, multi-agent systems promote modularity, reusability, and maintainability. Each agent focuses on what it does best, and you compose them using [workflow patterns](/docs/framework/agents/workflow-agents) or [custom orchestration](/docs/framework/agents/custom-agents) to create powerful distributed systems.
+Unlike single agents that try to do everything, multi-agent systems promote modularity, reusability, and maintainability. Each agent focuses on what it does best, and you compose them with agents that use [large language models](/docs/framework/agents/llm-agents), [workflow patterns](/docs/framework/agents/workflow-agents) or [custom orchestration](/docs/framework/agents/custom-agents) to create powerful distributed systems.
 
 <Callout type="info" title="Team Approach">
   **When to use multi-agent systems:** Complex tasks requiring multiple
@@ -173,183 +173,109 @@ const refinementLoop = new LoopAgent({
 
 ### Communication Mechanisms
 
-Three primary patterns for agent interaction:
+#### Shared Session State with outputKey
 
-**Shared Session State**: Asynchronous data passing via persistent state
+Save outputs to session state for downstream agents.
 
-- Producers use `outputKey` to save results
-- Consumers reference `{state_key}` in instructions
-- Works across all workflow patterns and hierarchy levels
+- Set `outputKey` on a producer; reference `{key}` in consumer instructions
+- Prefer flat, consistent key names (e.g., `result`, `summary`, `status`)
+- Validate presence and format before consuming; consider schemas on the producer
 
-**LLM-Driven Delegation**: Dynamic routing via transfer decisions
+```ts
+import { LlmAgent, SequentialAgent } from "@iqai/adk";
 
-- LLM generates `transfer_to_agent(agent_name)` function calls
-- Framework handles routing within hierarchy scope
-- Requires clear agent descriptions and routing instructions
-
-**Explicit Invocation**: Synchronous calls via `AgentTool`
-
-- Wrap agents as tools for deterministic invocation
-- Results flow back to caller with state updates
-- Provides structured contracts and explicit control flow
-
-```typescript
-// State-based communication
-const producer = new LlmAgent({
-  outputKey: "analysis_results", // Saves to session state
-});
-const consumer = new LlmAgent({
-  instruction: "Use {analysis_results} to generate report", // Reads state
+const agentA = new LlmAgent({
+  name: "agent_a",
+  description: "Finds capital",
+  instruction: "Find the capital of France.",
+  outputKey: "capital_city",
 });
 
-// Transfer-based delegation
+const agentB = new LlmAgent({
+  name: "agent_b",
+  description: "Describes city",
+  instruction: "Tell me about {capital_city}.",
+});
+
+const cityInfo = new SequentialAgent({
+  name: "city_info",
+  description: "City info pipeline",
+  subAgents: [agentA, agentB],
+});
+```
+
+#### LLM-Driven Delegation (Transfer)
+
+Let an `LlmAgent` decide when to hand off to a more suitable sub-agent.
+
+- Works automatically with `AutoFlow` when sub-agents exist and transfers aren’t disallowed
+- Write coordinator instructions that clearly map intents to target agent names
+- Minimize ambiguity by giving sub-agents precise, non-overlapping `description`s
+
+```ts
+import { LlmAgent } from "@iqai/adk";
+
+const billing = new LlmAgent({
+  name: "billing",
+  description: "Handles billing issues",
+});
+const support = new LlmAgent({
+  name: "support",
+  description: "Handles technical issues",
+});
+
 const router = new LlmAgent({
-  instruction: "Route billing to billing-agent, tech to support-agent",
-  subAgents: [billingAgent, supportAgent], // Available for transfer
-});
-
-// Tool-based invocation
-const coordinator = new LlmAgent({
-  tools: [new AgentTool({ name: "search_tool", agent: webSearcher })],
-});
-```
-
-## Communication Patterns
-
-### Shared Session State
-
-The foundational communication mechanism where agents pass data through persistent session state. When agents share the same `InvocationContext`, they access the same session state.
-
-**Key Concepts:**
-
-- **Persistent State**: Data survives across agent executions and workflow steps
-- **Temporary State**: Context-specific data using `temp:` prefix for current turn only
-- **State Interpolation**: Reference state values in instructions using `{key}` syntax
-- **Producer-Consumer Pattern**: Use `outputKey` to save, reference keys to consume
-
-```typescript
-// Producer saves data to state
-const dataProducer = new LlmAgent({
-  name: "profile-fetcher",
-  instruction: "Fetch comprehensive user profile information",
-  outputKey: "user_profile", // Saves final response to state['user_profile']
-});
-
-// Consumer reads from state
-const personalizer = new LlmAgent({
-  name: "content-personalizer",
-  instruction: "Create personalized content for user: {user_profile}",
-  outputKey: "personalized_content",
-});
-
-// Pipeline ensures sequential execution
-const personalizationPipeline = new SequentialAgent({
-  name: "personalization-workflow",
-  subAgents: [dataProducer, personalizer],
-});
-```
-
-**Best Practices:**
-
-- Use consistent, descriptive state keys (`user_data`, `analysis_result`, `validation_status`)
-- Validate state presence before consumption
-- Consider state key conflicts in parallel branches
-
-### LLM-Driven Delegation (Transfer)
-
-Dynamic routing where LLM agents analyze requests and transfer control to appropriate specialists within their hierarchy scope.
-
-**How It Works:**
-
-- LLM generates `transfer_to_agent(agent_name='target')` function calls
-- Framework intercepts calls and routes to target using `findAgent(name)`
-- Transfer scope includes parent, sub-agents, and siblings based on configuration
-- Target agent receives original context and continues execution
-
-```typescript
-const billingSpecialist = new LlmAgent({
-  name: "billing-specialist",
-  description: "Expert in billing, payments, and invoice issues",
-  instruction: "Handle all billing-related inquiries with precision",
-});
-
-const technicalSupport = new LlmAgent({
-  name: "tech-support",
-  description: "Handles technical issues, account access, and system problems",
-  instruction: "Resolve technical problems and system issues",
-});
-
-const customerService = new LlmAgent({
-  name: "customer-service-router",
+  name: "helpdesk_coordinator",
   model: "gemini-2.5-flash",
-  instruction: `
-    You are a customer service coordinator. Analyze requests and transfer appropriately:
-    - Billing/payment issues → transfer to billing-specialist
-    - Technical problems → transfer to tech-support
-    - General inquiries → handle directly
-  `,
-  subAgents: [billingSpecialist, technicalSupport],
+  description: "Routes requests to appropriate specialists",
+  instruction:
+    "Use 'billing' for payment issues, 'support' for login/tech problems.",
+  subAgents: [billing, support],
 });
-
-// Usage: "My payment was declined" → transfers to billing-specialist
-// Usage: "Can't log into my account" → transfers to tech-support
+// With AutoFlow, the model can transfer to sub-agents via generated transfer calls
 ```
 
-**Best Practices:**
+#### Explicit Invocation (AgentTool)
 
-- Write clear transfer instructions with specific routing rules
-- Use distinctive, non-overlapping agent descriptions
-- Test routing decisions with representative inputs
+Wrap an agent as a tool for explicit, synchronous calls with clear contracts.
 
-### Explicit Invocation (AgentTool)
+- Deterministic invocation (no routing ambiguity), explicit schemas via tools
+- Returned content and state deltas flow back to the caller’s session
+- Name tools distinctly (e.g., `research_assistant_tool`) for clarity in traces
 
-Deterministic agent invocation with structured contracts, treating agents as callable tools with defined interfaces.
+```ts
+import { AgentTool, LlmAgent } from "@iqai/adk";
 
-**How It Works:**
-
-- Wrap target agent in `AgentTool` and include in parent's `tools` array
-- LLM generates function calls targeting the wrapped agent
-- Framework executes agent, captures response, and forwards state changes
-- Results return to parent agent as tool execution results
-
-```typescript
-const webSearcher = new LlmAgent({
-  name: "web-researcher",
-  description: "Searches web for current, authoritative information",
-  instruction: "Search for factual, recent information and summarize findings",
+const webSearch = new LlmAgent({
+  name: "web_search",
+  description: "Searches the web",
+});
+const summarizer = new LlmAgent({
+  name: "summarizer",
+  description: "Summarizes text",
 });
 
-const academicSearcher = new LlmAgent({
-  name: "academic-researcher",
-  description: "Finds academic papers and research studies",
-  instruction: "Locate peer-reviewed academic sources and extract key findings",
-});
-
-// Wrap agents as reusable tools
-const researchCoordinator = new LlmAgent({
-  name: "research-coordinator",
-  model: "gemini-2.5-flash",
-  instruction: `
-    You coordinate research activities. Use available tools to gather information:
-    - Use web-researcher for current events and general information  
-    - Use academic-researcher for scientific and academic topics
-    Synthesize findings from multiple sources when appropriate.
-  `,
+const researchAssistant = new LlmAgent({
+  name: "research_assistant",
+  description: "Finds and summarizes information",
   tools: [
-    new AgentTool({ name: "web_search", agent: webSearcher }),
-    new AgentTool({ name: "academic_search", agent: academicSearcher }),
+    new AgentTool({ name: "web_search_tool", agent: webSearch }),
+    new AgentTool({ name: "summarizer_tool", agent: summarizer }),
   ],
 });
 
-// Usage: coordinator can explicitly call either research tool
-// Results flow back with state updates and structured responses
+const reportWriter = new LlmAgent({
+  name: "report_writer",
+  instruction:
+    "Use the research assistant tool to gather information before writing.",
+  tools: [
+    new AgentTool({
+      name: "research_assistant_tool",
+      agent: researchAssistant,
+    }),
+  ],
+});
 ```
-
-**Best Practices:**
-
-- Name tools clearly to indicate their purpose (`research_tool`, `analysis_tool`)
-- Use AgentTool for reusable capabilities across multiple parents
-- Consider tool schemas for structured input/output contracts
 
 ## Common Multi-Agent Patterns
 
@@ -575,7 +501,9 @@ const generateAndReview = new SequentialAgent({
 Continuously improve results through repeated refinement cycles until quality criteria are met.
 
 **Structure**: LoopAgent with refinement and quality assessment agents
+
 **Communication**: Persistent state across iterations with escalation control
+
 **Best for**: Code improvement, iterative design, optimization workflows
 
 ```typescript
@@ -621,16 +549,14 @@ const iterativeRefinement = new LoopAgent({
 });
 ```
 
-## Advanced Patterns
-
-Building on the common patterns, these advanced techniques address specific enterprise and production needs.
-
 ### Human-in-the-Loop Pattern
 
 Integrate human oversight and approval into automated agent workflows using custom tools that interface with external systems.
 
 **Structure**: Custom tools that pause execution and request human input
+
 **Communication**: External system integration with approval workflows
+
 **Best for**: Compliance requirements, quality gates, creative approval processes
 
 ```typescript
@@ -689,246 +615,6 @@ const complianceWorkflow = new SequentialAgent({
   ],
 });
 ```
-
-### Iterative Refinement
-
-Use loop agents for continuous improvement workflows.
-
-```typescript
-import { LoopAgent } from "@iqai/adk";
-
-const refiner = new LlmAgent({
-  name: "code-refiner",
-  instruction: "Improve code quality based on feedback",
-  outputKey: "refined_code",
-});
-
-const reviewer = new LlmAgent({
-  name: "code-reviewer",
-  instruction: "Review code and provide improvement suggestions",
-  outputKey: "review_feedback",
-});
-
-const refinementLoop = new LoopAgent({
-  name: "code-improvement-loop",
-  maxIterations: 3,
-  subAgents: [refiner, reviewer],
-});
-```
-
-````
-
-#### Parallel Fan-Out
-
-Execute independent tasks concurrently.
-
-- Ideal when child tasks are independent (API calls, retrieval, analysis variants)
-- Use unique state keys per child to avoid collisions; events arrive interleaved
-- Aggregate in a follow-up step (often a `SequentialAgent` right after)
-
-```ts
-import { LlmAgent, ParallelAgent } from "@iqai/adk";
-
-const fetchWeather = new LlmAgent({
-  name: "weather_fetcher",
-  description: "Gets weather",
-  outputKey: "weather",
-});
-const fetchNews = new LlmAgent({
-  name: "news_fetcher",
-  description: "Gets news",
-  outputKey: "news",
-});
-
-const gatherer = new ParallelAgent({
-  name: "info_gatherer",
-  description: "Runs children in parallel",
-  subAgents: [fetchWeather, fetchNews],
-});
-````
-
-### Communication Mechanisms
-
-#### Shared Session State with outputKey
-
-Save outputs to session state for downstream agents.
-
-- Set `outputKey` on a producer; reference `{key}` in consumer instructions
-- Prefer flat, consistent key names (e.g., `result`, `summary`, `status`)
-- Validate presence and format before consuming; consider schemas on the producer
-
-```ts
-import { LlmAgent, SequentialAgent } from "@iqai/adk";
-
-const agentA = new LlmAgent({
-  name: "agent_a",
-  description: "Finds capital",
-  instruction: "Find the capital of France.",
-  outputKey: "capital_city",
-});
-
-const agentB = new LlmAgent({
-  name: "agent_b",
-  description: "Describes city",
-  instruction: "Tell me about {capital_city}.",
-});
-
-const cityInfo = new SequentialAgent({
-  name: "city_info",
-  description: "City info pipeline",
-  subAgents: [agentA, agentB],
-});
-```
-
-#### LLM-Driven Delegation (Transfer)
-
-Let an `LlmAgent` decide when to hand off to a more suitable sub-agent.
-
-- Works automatically with `AutoFlow` when sub-agents exist and transfers aren’t disallowed
-- Write coordinator instructions that clearly map intents to target agent names
-- Minimize ambiguity by giving sub-agents precise, non-overlapping `description`s
-
-```ts
-import { LlmAgent } from "@iqai/adk";
-
-const billing = new LlmAgent({
-  name: "billing",
-  description: "Handles billing issues",
-});
-const support = new LlmAgent({
-  name: "support",
-  description: "Handles technical issues",
-});
-
-const router = new LlmAgent({
-  name: "helpdesk_coordinator",
-  model: "gemini-2.5-flash",
-  description: "Routes requests to appropriate specialists",
-  instruction:
-    "Use 'billing' for payment issues, 'support' for login/tech problems.",
-  subAgents: [billing, support],
-});
-// With AutoFlow, the model can transfer to sub-agents via generated transfer calls
-```
-
-#### Explicit Invocation (AgentTool)
-
-Wrap an agent as a tool for explicit, synchronous calls with clear contracts.
-
-- Deterministic invocation (no routing ambiguity), explicit schemas via tools
-- Returned content and state deltas flow back to the caller’s session
-- Name tools distinctly (e.g., `research_assistant_tool`) for clarity in traces
-
-```ts
-import { AgentTool, LlmAgent } from "@iqai/adk";
-
-const webSearch = new LlmAgent({
-  name: "web_search",
-  description: "Searches the web",
-});
-const summarizer = new LlmAgent({
-  name: "summarizer",
-  description: "Summarizes text",
-});
-
-const researchAssistant = new LlmAgent({
-  name: "research_assistant",
-  description: "Finds and summarizes information",
-  tools: [
-    new AgentTool({ name: "web_search_tool", agent: webSearch }),
-    new AgentTool({ name: "summarizer_tool", agent: summarizer }),
-  ],
-});
-
-const reportWriter = new LlmAgent({
-  name: "report_writer",
-  instruction:
-    "Use the research assistant tool to gather information before writing.",
-  tools: [
-    new AgentTool({
-      name: "research_assistant_tool",
-      agent: researchAssistant,
-    }),
-  ],
-});
-```
-
-### Pattern Recipes
-
-#### Coordinator / Dispatcher
-
-Route requests to specialists based on user intent.
-
-- Coordinator holds specialists in `subAgents`; rely on transfer for routing
-- Keep mapping rules explicit in coordinator’s `instruction`
-- Prefer `AgentTool` where you need strict, schema-bound contracts instead of routing
-
-```ts
-import { LlmAgent } from "@iqai/adk";
-
-const billing = new LlmAgent({
-  name: "billing",
-  description: "Billing inquiries and payments",
-});
-const support = new LlmAgent({
-  name: "support",
-  description: "Tech support and login issues",
-});
-
-const coordinator = new LlmAgent({
-  name: "coordinator",
-  model: "gemini-2.5-flash",
-  instruction: "Delegate billing vs support appropriately.",
-  description: "Main help desk router",
-  subAgents: [billing, support],
-});
-```
-
-#### Sequential Data Pipeline
-
-Validate → process → report with predictable state transitions.
-
-- Producer sets `outputKey` (e.g., `validation_status`, `result`); consumers read `{key}`
-- Normalize and sanitize inputs as early as possible
-- Consider failure branches or retries for robustness
-
-```ts
-import { LlmAgent, SequentialAgent } from "@iqai/adk";
-
-const validator = new LlmAgent({
-  name: "validate_input",
-  description: "Validates input",
-  instruction: "Validate the input.",
-  outputKey: "validation_status",
-});
-
-const processor = new LlmAgent({
-  name: "process_data",
-  description: "Processes validated data",
-  instruction: "Process data if {validation_status} is 'valid'.",
-  outputKey: "result",
-});
-
-const reporter = new LlmAgent({
-  name: "report_result",
-  description: "Reports final result",
-  instruction: "Report the result from {result}.",
-});
-
-const dataPipeline = new SequentialAgent({
-  name: "data_pipeline",
-  description: "Validation, processing, reporting",
-  subAgents: [validator, processor, reporter],
-});
-```
-
-#### Parallel Fan-Out / Gather
-
-Fan out concurrent work, then gather and synthesize.
-
-- Assign distinct `outputKey`s (e.g., `api1_data`, `api2_data`) and read both in the gatherer
-- Watch rate limits and error aggregation; recover per-branch where possible
-- Good precursor to a summarization/synthesis step
 
 ## Best Practices
 
@@ -1020,15 +706,11 @@ Fan out concurrent work, then gather and synthesize.
     href="/docs/framework/sessions"
   />
 
-{" "}
-
 <Card
   title="Workflow Agents"
   description="Learn orchestration patterns"
   href="/docs/framework/agents/workflow-agents"
 />
-
-{" "}
 
 <Card
   title="Callbacks"
