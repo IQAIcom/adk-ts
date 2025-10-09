@@ -178,7 +178,7 @@ const marketPipeline = new SequentialAgent({
 - **Concurrent Execution:** All sub-agents run at the same time, reducing total execution time
 - **Branch Isolation:** Each sub-agent gets a unique branch identifier (`ParentName.ChildName`) for isolated execution tracking
 - **Shared State:** Despite branch isolation, all agents share the same session state for data exchange
-- **Synchronization:** The ParallelAgent waits for all sub-agents to complete before continuing
+- **Synchronization:** The `ParallelAgent` waits for all sub-agents to complete before continuing
 - **Conflict Prevention:** Use distinct `outputKey` values to avoid state overwrites
 
 ```typescript
@@ -1052,14 +1052,6 @@ const approvalWorkflow = new SequentialAgent({
 
 **Tool vs Transfer:** Use `AgentTool` when you need explicit control and predictable results. Use agent transfer when you want dynamic, context-aware routing.
 
-### Production Considerations
-
-**Error Handling:** Design fallback strategies for failed agents. In sequential workflows, decide whether errors should halt execution or trigger alternative paths.
-
-**Performance Optimization:** Use `ParallelAgent` to reduce latency when tasks are independent. Monitor resource usage and set reasonable concurrency limits.
-
-**Monitoring:** Implement logging for state transitions, routing decisions, and performance metrics. This is crucial for debugging complex multi-agent interactions.
-
 ### Development Tips
 
 **Start Simple:** Begin with sequential workflows before moving to parallel or loop patterns. Add complexity gradually as you understand the interactions.
@@ -1069,6 +1061,14 @@ const approvalWorkflow = new SequentialAgent({
 **State Debugging:** Use clear state key names and log state transitions to make debugging easier when agents don't receive expected data.
 
 **Agent Builder Usage:** Leverage `AgentBuilder` for rapid prototyping and testing. It provides a clean API for creating and experimenting with multi-agent patterns.
+
+### Production Considerations
+
+**Error Handling:** Design fallback strategies for failed agents. In sequential workflows, decide whether errors should halt execution or trigger alternative paths.
+
+**Performance Optimization:** Use `ParallelAgent` to reduce latency when tasks are independent. Monitor resource usage and set reasonable concurrency limits.
+
+**Monitoring:** Implement logging for state transitions, routing decisions, and performance metrics. This is crucial for debugging complex multi-agent interactions.
 
 ## Related Topics
 

@@ -6,12 +6,12 @@ description: Fluent API for rapid agent creation with automatic session manageme
 import { Callout } from "fumadocs-ui/components/callout";
 import { Cards, Card } from "fumadocs-ui/components/card";
 
-AgentBuilder provides a fluent, chainable API for rapid agent creation and configuration. While [LLM Agents](/docs/framework/agents/llm-agents) give you maximum control and are recommended for most use cases, AgentBuilder shines when you need quick prototyping, automatic session management, or want to create multi-agent workflows without boilerplate.
+`AgentBuilder` provides a fluent, chainable API for rapid agent creation and configuration. While [LLM Agents](/docs/framework/agents/llm-agents) give you maximum control and are recommended for most use cases, `AgentBuilder` shines when you need quick prototyping, automatic session management, or want to create multi-agent workflows without boilerplate.
 
-Unlike direct agent instantiation, AgentBuilder handles session creation, memory management, and configuration defaults automatically, letting you focus on building great agent experiences rather than infrastructure setup.
+Unlike direct agent instantiation, `AgentBuilder` handles session creation, memory management, and configuration defaults automatically, letting you focus on building great agent experiences rather than infrastructure setup.
 
 <Callout type="info" title="When to Use AgentBuilder">
-  Use AgentBuilder for rapid prototyping, automatic session management,
+  Use `AgentBuilder` for rapid prototyping, automatic session management,
   multi-agent workflows, or when you want smart defaults. Use [LLM
   Agents](/docs/framework/agents/llm-agents) directly when you need maximum
   control over configuration, memory, sessions, or production systems with
@@ -43,7 +43,7 @@ const response = await runner.ask("What is quantum computing?");
 
 ## Configuration Options
 
-All AgentBuilder configuration methods and their requirements:
+All `AgentBuilder` configuration methods and their requirements:
 
 | Method                         | Type                                 | Description                      |
 | ------------------------------ | ------------------------------------ | -------------------------------- |
@@ -65,7 +65,7 @@ All AgentBuilder configuration methods and their requirements:
 
 ### Requirement Patterns
 
-AgentBuilder supports three different usage patterns, each with different requirements:
+`AgentBuilder` supports three different usage patterns, each with different requirements:
 
 **✅ Pattern 1: Named Agent (Recommended)**
 
@@ -174,7 +174,7 @@ AgentBuilder.withInstruction(
 
 Adds tools that dramatically extend your agent's capabilities beyond text generation, enabling interaction with external systems, API calls, calculations, and code execution. You can provide multiple tools in a single call, mixing different tool types.
 
-Accepts BaseTool instances (built-in or custom), FunctionTool wrappers for easy integration, or raw async functions that get automatically wrapped. The agent's LLM intelligently decides when and how to use each tool based on context. See [Tools documentation](/docs/framework/tools) for available tools and creating custom ones.
+Accepts `BaseTool` instances (built-in or custom), `FunctionTool` wrappers for easy integration, or raw async functions that get automatically wrapped. The agent's LLM intelligently decides when and how to use each tool based on context. See [Tools documentation](/docs/framework/tools) for available tools and creating custom ones.
 
 ```typescript
 AgentBuilder.withTools(
@@ -195,7 +195,7 @@ AgentBuilder.withTools(
 
 ### Multi-Agent Workflow Types
 
-AgentBuilder offers four distinct approaches for creating multi-agent systems, each designed for specific workflow patterns. These methods transform your builder from creating a single agent into orchestrating multiple agents that work together to solve complex problems.
+`AgentBuilder` offers four distinct approaches for creating multi-agent systems, each designed for specific workflow patterns. These methods transform your builder from creating a single agent into orchestrating multiple agents that work together to solve complex problems.
 
 Choose the workflow type that best matches your use case - whether you need linear processing, concurrent execution, iterative refinement, or complex branching logic. Each agent type method creates a specialized coordinator that manages agent interactions, data flow, and execution patterns.
 
@@ -247,7 +247,7 @@ AgentBuilder.asLangGraph(workflowNodes, "start-node");
 
 <Callout type="info" title="Choosing Agent Types">
   **You can only use ONE agent type method per builder.** If you don't use any
-  agent type method, AgentBuilder creates a single LLM agent with your
+  agent type method, `AgentBuilder` creates a single LLM agent with your
   configuration.
 </Callout>
 
@@ -271,7 +271,7 @@ AgentBuilder.withMemory(
 
 **Type:** `BaseSessionService` | **Default:** Auto-created in-memory session
 
-Provides custom session management for conversation state, message history, and ephemeral data during a single session. AgentBuilder creates in-memory sessions automatically, but you can customize this for persistence or multi-tenant applications.
+Provides custom session management for conversation state, message history, and ephemeral data during a single session. `AgentBuilder` creates in-memory sessions automatically, but you can customize this for persistence or multi-tenant applications.
 
 Sessions are lighter-weight than memory and typically reset between conversations. See [Sessions & Memory](/docs/framework/sessions) for session configuration.
 
@@ -342,7 +342,7 @@ const result = await runner.ask("Analyze this document...");
 
 **Type:** `BaseAgent`
 
-Wraps an existing agent instance with AgentBuilder's session management and runner interface. This is useful when you have pre-configured agents but want AgentBuilder's automatic session management and convenient runner interface.
+Wraps an existing agent instance with `AgentBuilder`'s session management and runner interface. This is useful when you have pre-configured agents but want `AgentBuilder`'s automatic session management and convenient runner interface.
 
 ```typescript
 const existingAgent = new LlmAgent({
@@ -359,9 +359,9 @@ const { runner } = await AgentBuilder.withAgent(existingAgent).build();
   as-is.
 </Callout>
 
-## When to Use AgentBuilder vs LLM Agents
+## When to Use `AgentBuilder` vs LLM Agents
 
-### Use AgentBuilder When
+### Use `AgentBuilder` When
 
 - **Rapid prototyping** - Need to test ideas quickly without configuration overhead
 - **Automatic session management** - Want sessions handled automatically with smart defaults
@@ -378,14 +378,14 @@ const { runner } = await AgentBuilder.withAgent(existingAgent).build();
 - **Advanced features** - Need access to all configuration options and callbacks
 
 <Callout type="info" title="Migration Path">
-  Start with AgentBuilder for rapid development, then migrate to direct LLM
-  Agents when you need more control. AgentBuilder essentially creates LLM agents
-  under the hood with smart defaults.
+  Start with `AgentBuilder` for rapid development, then migrate to direct LLM
+  Agents when you need more control. `AgentBuilder` essentially creates LLM
+  agents under the hood with smart defaults.
 </Callout>
 
 ## Complete Configuration Example
 
-Here's AgentBuilder with multiple configuration options:
+Here's `AgentBuilder` with multiple configuration options:
 
 ```typescript
 const { agent, runner, session } = await AgentBuilder.create("advanced-agent")
@@ -416,15 +416,11 @@ const result = await runner.ask("Research quantum computing trends");
     href="/docs/framework/tools"
   />
 
-{" "}
-
 <Card
   title="🔗 Sequential Agents"
   description="Execute agents in order for pipeline workflows"
   href="/docs/framework/agents/workflow-agents/sequential-agents"
 />
-
-{" "}
 
 <Card
   title="⚡ Parallel Agents"
