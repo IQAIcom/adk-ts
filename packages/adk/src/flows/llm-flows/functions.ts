@@ -2,13 +2,13 @@ import type { Content, FunctionCall, Part } from "@google/genai";
 import { context, trace } from "@opentelemetry/api";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
-import { Event } from "../../events/event";
-import { EventActions } from "../../events/event-actions";
 import type { AuthConfig } from "../../auth/auth-config";
 import type { AuthToolArguments } from "../../auth/auth-tool";
+import { Event } from "../../events/event";
+import { EventActions } from "../../events/event-actions";
+import { telemetryService } from "../../telemetry";
 import type { BaseTool } from "../../tools/base/base-tool";
 import { ToolContext } from "../../tools/tool-context";
-import { telemetryService } from "../../telemetry";
 
 export const AF_FUNCTION_CALL_ID_PREFIX = "adk-";
 export const REQUEST_EUC_FUNCTION_CALL_NAME = "adk_request_credential";
@@ -146,7 +146,6 @@ export async function handleFunctionCallsAsync(
 
 		const { tool, toolContext } = getToolAndContext(
 			invocationContext,
-			functionCallEvent,
 			functionCall,
 			toolsDict,
 		);
@@ -162,11 +161,53 @@ export async function handleFunctionCallsAsync(
 		try {
 			// Execute tool within the span context
 			const functionResponse = await context.with(spanContext, async () => {
-				const result = await callToolAsync(tool, functionArgs, toolContext);
+				const argsForTool = { ...functionArgs };
+
+				// BEFORE TOOL CALLBACKS: allow guardrails/arg mutation or override result
+				if (isLlmAgent(agent)) {
+					for (const cb of agent.canonicalBeforeToolCallbacks) {
+						const maybeOverride = await cb(tool, argsForTool, toolContext);
+						if (maybeOverride !== null && maybeOverride !== undefined) {
+							// Build event directly from override and skip actual tool
+							const overriddenEvent = buildResponseEvent(
+								tool,
+								maybeOverride,
+								toolContext,
+								invocationContext,
+							);
+
+							telemetryService.traceToolCall(
+								tool,
+								argsForTool,
+								overriddenEvent,
+							);
+							return { result: maybeOverride, event: overriddenEvent };
+						}
+					}
+				}
+
+				// Execute the actual tool if not overridden
+				let result = await callToolAsync(tool, argsForTool, toolContext);
 
 				// Handle long running tools
 				if (tool.isLongRunning && !result) {
 					return null;
+				}
+
+				// AFTER TOOL CALLBACKS: allow result modification/override
+				if (isLlmAgent(agent)) {
+					for (const cb of agent.canonicalAfterToolCallbacks) {
+						const maybeModified = await cb(
+							tool,
+							argsForTool,
+							toolContext,
+							result,
+						);
+						if (maybeModified !== null && maybeModified !== undefined) {
+							result = maybeModified;
+							break;
+						}
+					}
 				}
 
 				// Build function response event
@@ -181,7 +222,7 @@ export async function handleFunctionCallsAsync(
 				// This must be called within the span context so the span is active
 				telemetryService.traceToolCall(
 					tool,
-					functionArgs,
+					argsForTool,
 					functionResponseEvent,
 				);
 
@@ -233,7 +274,6 @@ export async function handleFunctionCallsLive(
  */
 function getToolAndContext(
 	invocationContext: InvocationContext,
-	functionCallEvent: Event,
 	functionCall: FunctionCall,
 	toolsDict: Record<string, BaseTool>,
 ): { tool: BaseTool; toolContext: ToolContext } {

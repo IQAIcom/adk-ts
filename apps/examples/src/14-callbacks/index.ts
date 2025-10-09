@@ -1,11 +1,11 @@
 import { env } from "node:process";
 import {
 	AgentBuilder,
-	LlmAgent,
 	type CallbackContext,
+	createTool,
+	LlmAgent,
 	type LlmRequest,
 	LlmResponse,
-	createTool,
 	type ToolContext,
 } from "@iqai/adk";
 import dedent from "dedent";
@@ -122,8 +122,7 @@ async function main() {
 		tools: [getWeatherTool],
 		// Store a short summary of the last response in session state
 		outputKey: "last_weather_report",
-		// Cast due to current typing vs. runtime invocation shape
-		beforeModelCallback: blockKeywordGuardrail as unknown as any,
+		beforeModelCallback: blockKeywordGuardrail,
 		beforeToolCallback: blockParisToolGuardrail,
 	});
 
