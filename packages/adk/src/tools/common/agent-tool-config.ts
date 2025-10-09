@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parse as parseYAML } from "yaml";
 import { z } from "zod";
 import {
@@ -50,10 +51,11 @@ export async function agentToolFromConfigObject(
 	let functionDeclaration: any | undefined;
 	if (cfg.function_declaration?.code) {
 		const [moduleId, exportNameRaw] = cfg.function_declaration.code.split("#");
-		const mod =
+		const mod = await import(
 			moduleId.startsWith("./") || moduleId.startsWith("../")
-				? await import(resolve(baseDir, moduleId))
-				: await import(moduleId);
+				? pathToFileURL(resolve(baseDir, moduleId)).href
+				: moduleId,
+		);
 		const exportName = exportNameRaw ?? "default";
 		functionDeclaration = (mod as any)[exportName];
 		if (!functionDeclaration) {

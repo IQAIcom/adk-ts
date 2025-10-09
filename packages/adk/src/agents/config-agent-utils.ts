@@ -40,12 +40,7 @@ function isFunction(v: unknown): v is (...args: any[]) => any {
 }
 
 function isBaseAgentInstance(v: unknown): v is BaseAgent {
-	return (
-		!!v &&
-		typeof v === "object" &&
-		typeof (v as BaseAgent).name === "string" &&
-		typeof (v as BaseAgent).runAsync === "function"
-	);
+	return v instanceof BaseAgent;
 }
 
 /**
@@ -154,7 +149,7 @@ async function loadAndValidateConfig(
 		const yamlMod: any = await import("yaml");
 		const parse = yamlMod?.parse || yamlMod?.default?.parse;
 		if (!parse) {
-			throw new Error("Failed to load YAML parser: parse() not found");
+			throw new Error("Failed to load YAML parser: parse() not found. Ensure the 'yaml' package is correctly installed and exports a parse function.");
 		}
 		rawObj = parse(rawText);
 	} catch (e) {
