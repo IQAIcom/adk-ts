@@ -13,7 +13,7 @@ import {
 	SequentialAgentConfigSchema,
 	validateAnyAgentConfig,
 } from "./agent-config";
-import type { BaseAgent } from "./base-agent";
+import { BaseAgent } from "./base-agent";
 import { LlmAgent } from "./llm-agent";
 import { LoopAgent } from "./loop-agent";
 import { ParallelAgent } from "./parallel-agent";
@@ -149,7 +149,9 @@ async function loadAndValidateConfig(
 		const yamlMod: any = await import("yaml");
 		const parse = yamlMod?.parse || yamlMod?.default?.parse;
 		if (!parse) {
-			throw new Error("Failed to load YAML parser: parse() not found. Ensure the 'yaml' package is correctly installed and exports a parse function.");
+			throw new Error(
+				"Failed to load YAML parser: parse() not found. Ensure the 'yaml' package is correctly installed and exports a parse function.",
+			);
 		}
 		rawObj = parse(rawText);
 	} catch (e) {
