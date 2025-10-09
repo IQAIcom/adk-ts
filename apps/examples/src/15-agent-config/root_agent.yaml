@@ -1,0 +1,7 @@
+# Simple composition: run weather agent then joke agent
+agent_class: SequentialAgent
+name: root_agent
+description: "Runs weather then joke agent"
+sub_agents:
+  - config_path: "./weather_agent.yaml"
+  - config_path: "./joke_agent.yaml"

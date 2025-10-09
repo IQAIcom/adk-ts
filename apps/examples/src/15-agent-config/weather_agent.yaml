@@ -1,0 +1,10 @@
+agent_class: LlmAgent
+name: weather_agent
+description: "Provides simple current weather for a given location using a tool."
+instruction: |
+  You are a helpful weather assistant.
+  - When the user asks about weather, call the get_weather tool with a location parsed from the user's request.
+  - Keep responses short and friendly.
+model: gemini-2.0-flash
+tools:
+  - code: "./tools.mjs#get_weather"
