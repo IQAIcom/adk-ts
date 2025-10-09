@@ -1,8 +1,9 @@
 import { Logger } from "@adk/logger";
 import { type Part, Type } from "@google/genai";
 import { v4 as uuidv4 } from "uuid";
+import type { BaseAgent } from "../../agents/base-agent";
 import { InvocationContext } from "../../agents/invocation-context";
-import type { LlmAgent } from "../../agents/llm-agent";
+import { LlmAgent } from "../../agents/llm-agent";
 import type { Event } from "../../events/event";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
@@ -11,13 +12,13 @@ import type { ToolContext } from "../tool-context";
 /**
  * Type for agents that can be used as tools
  */
-export type BaseAgentType = LlmAgent;
+export type BaseAgentType = BaseAgent;
 
 /**
  * Type guard to check if an agent is an LlmAgent
  */
 function isLlmAgent(agent: BaseAgentType): agent is LlmAgent {
-	return true;
+	return agent instanceof LlmAgent;
 }
 
 /**
@@ -161,12 +162,6 @@ export class AgentTool extends BaseTool {
 			// Use the first parameter value if input is not provided
 			// This allows support for custom schema parameters
 			const input = params.input || Object.values(params)[0];
-
-			if (!isLlmAgent(this.agent)) {
-				throw new Error(
-					`Agent ${this.name} does not support running as a tool`,
-				);
-			}
 
 			// Access the parent invocation context through the protected property
 			const parentInvocation = (context as any)._invocationContext;

@@ -59,6 +59,7 @@
 		"socket.io": "^4.8.1",
 		"ts-node": "^10.9.2",
 		"uuid": "^13.0.0",
+		"yaml": "^2.8.1",
 		"zod": "^4.1.5"
 	},
 	"peerDependencies": {
