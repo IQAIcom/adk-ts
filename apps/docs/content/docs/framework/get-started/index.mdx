@@ -43,7 +43,7 @@ const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
 #### Tool-Enhanced Agents
 
 ```typescript
-// Research agent with web search
+// Research agent with web search and file operations
 const agent = new LlmAgent({
   name: "researcher",
   model: "gemini-2.5-flash",

@@ -10,7 +10,7 @@ Parallel agents unleash the power of concurrent processing, running multiple age
 
 Unlike [sequential agents](/docs/framework/agents/workflow-agents/sequential-agents) that process step-by-step, parallel agents maximize speed and efficiency by utilizing multiple processing streams. Perfect when you have independent tasks that don't need to wait for each other.
 
-<Callout type="success" title="Speed Through Parallelism">
+<Callout type="info" title="Speed Through Parallelism">
   - **Key benefit:** Process multiple independent tasks simultaneously instead of waiting for each one to finish.
   - **Performance boost:** 3 tasks that take 10 seconds each = 10 seconds total (not 30!)
 </Callout>
@@ -133,7 +133,8 @@ Parallel agents maximize efficiency by running all sub-agents simultaneously:
 Each agent writes to unique keys in shared session state. Later agents (or your application) can access all results together for final processing.
 
 <Callout type="info" title="State Management">
-  Use unique `outputKey` values for each agent to prevent conflicts. Results are available immediately as each agent completes - perfect for real-time updates!
+  Use unique `outputKey` values for each agent to prevent conflicts. Results are
+  available immediately as each agent completes - perfect for real-time updates!
 </Callout>
 
 ## Real-World Use Cases
@@ -188,12 +189,11 @@ Format Check + Business Rules + Data Quality + Duplicate Detection
     href="/docs/framework/agents/workflow-agents/sequential-agents"
   />
 
-{" "}
-<Card
-  title="🔁 Loop Agents"
-  description="Iterative processing with retry logic and refinement"
-  href="/docs/framework/agents/workflow-agents/loop-agents"
-/>
+  <Card
+    title="🔁 Loop Agents"
+    description="Iterative processing with retry logic and refinement"
+    href="/docs/framework/agents/workflow-agents/loop-agents"
+  />
 
   <Card
     title="🏗️ Agent Builder"

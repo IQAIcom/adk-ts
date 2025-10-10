@@ -1,6 +1,5 @@
 {
   "title": "Workflow Agents",
-  "icon": "GitBranch",
   "pages": [
     "sequential-agents",
     "parallel-agents",

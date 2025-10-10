@@ -55,6 +55,8 @@ A unique identifier for your agent that follows JavaScript identifier rules (sta
 In multi-agent systems, the LLM uses these names to route tasks to specialists, so choose descriptive names like "customer_support_agent" or "data_analyst".
 
 ```ts
+import { LlmAgent } from "@iqai/adk";
+
 const agent = new LlmAgent({
   name: "customer_support_agent", // ✅ Valid
   // name: "user", // ❌ Reserved keyword
@@ -82,7 +84,7 @@ const agent = new LlmAgent({
 
 **Type:** `string | BaseLlm | LanguageModel` | **Default:** Inherited from parent
 
-Choose the LLM that powers your agent's reasoning and text generation. You can provide a string identifier ("gemini-2.0-flash"), BaseLlm instance, or LanguageModel object.
+Choose the LLM that powers your agent's reasoning and text generation. You can provide a string identifier ("gemini-2.0-flash"), `BaseLlm` instance, or `LanguageModel` object.
 
 Your agent inherits the model from its parent if you omit this. Your model choice significantly affects its quality, speed, and cost, so choose wisely. See [Models & Providers](/docs/framework/agents/models) for details.
 
@@ -156,7 +158,7 @@ const rootAgent = new LlmAgent({
 
 An array of tools that extend your agent's capabilities beyond text generation, enabling API calls, calculations, external systems, and code execution.
 
-You can provide BaseTool instances, FunctionTool wrappers, or raw functions. The LLM decides when to use tools based on context. See [Tools documentation](/docs/framework/tools).
+You can provide `BaseTool` instances, `FunctionTool` wrappers, or raw functions. The LLM decides when to use tools based on context. See [Tools documentation](/docs/framework/tools).
 
 ```ts
 import { WebSearchTool, FunctionTool } from "@iqai/adk";
@@ -170,7 +172,8 @@ const agent = new LlmAgent({
       // Function tool
       name: "calculate",
       description: "Perform mathematical calculations",
-            func: (expression: string) => eval(expression), // WARNING: In production, use a safe math parser instead of eval() due to security risks.  
+      func: (expression: string) => eval(expression),
+      // WARNING: In production, use a safe math parser instead of eval() due to security risks.
     }),
     async (query: string) => {
       // Raw function (auto-wrapped)
@@ -265,7 +268,7 @@ const agent = new LlmAgent({
 
 Manages conversation state, message history, and ephemeral data during a single session. It handles the LLM context and tracks intermediate results between agent calls.
 
-AgentBuilder provides this automatically, but you can customize it for multi-tenant apps or custom storage needs. See [Sessions & Memory](/docs/framework/sessions).
+`AgentBuilder` provides this automatically, but you can customize it for multi-tenant apps or custom storage needs. See [Sessions & Memory](/docs/framework/sessions).
 
 ```ts
 import { InMemorySessionService } from "@iqai/adk";
@@ -372,9 +375,9 @@ const translatorAgent = new LlmAgent({
 
 **Type:** `GenerateContentConfig` | **Default:** `undefined`
 
-Fine-tune LLM parameters including temperature (creativity vs consistency), maxOutputTokens (response length), topP/topK (randomness), and safety settings.
+Fine-tune LLM parameters including `temperature` (creativity vs consistency), `maxOutputTokens` (response length), `topP`/`topK` (randomness), and safety settings.
 
-Use temperature 0.1 for factual responses or 0.9 for creative writing. Proper parameter tuning can dramatically improve your agent's response quality.
+Use `temperature` 0.1 for factual responses or 0.9 for creative writing. Proper parameter tuning can dramatically improve your agent's response quality.
 
 ```ts
 const creativeAgent = new LlmAgent({
@@ -420,7 +423,7 @@ const restrictedAgent = new LlmAgent({
 
 Provides user and application identifiers that enable session management, analytics, personalization, and multi-tenancy capabilities.
 
-The userId enables user-specific customization and privacy compliance while appName enables application-level configuration and billing separation.
+The `userId` enables user-specific customization and privacy compliance while `appName` enables application-level configuration and billing separation.
 
 ```ts
 const agent = new LlmAgent({
