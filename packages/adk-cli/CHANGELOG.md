@@ -1,5 +1,13 @@
 # @iqai/adk-cli
 
+## 0.3.15
+
+### Patch Changes
+
+- 2fdd83f: Refactor graceful shutdown handling for server commands
+- Updated dependencies [c538a1a]
+  - @iqai/adk@0.4.0
+
 ## 0.3.14
 
 ### Patch Changes

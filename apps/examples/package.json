@@ -1,6 +1,6 @@
 {
 	"name": "@iqai/examples",
-	"version": "0.0.30",
+	"version": "0.0.31",
 	"description": "Agent Development Kit for TypeScript with multi-provider LLM support",
 	"scripts": {
 		"start": "tsx ./src/index.ts",
