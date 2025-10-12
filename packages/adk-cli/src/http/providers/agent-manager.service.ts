@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, normalize } from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "node:util";
 import type { FullMessage, InMemorySessionService, Session } from "@iqai/adk";
@@ -96,9 +96,10 @@ export class AgentManager {
 
 	private async loadAgentModule(agent: Agent): Promise<any> {
 		// Try both .js and .ts files, prioritizing .js if it exists
-		let agentFilePath = join(agent.absolutePath, "agent.js");
+		// Normalize paths for cross-platform compatibility
+		let agentFilePath = normalize(join(agent.absolutePath, "agent.js"));
 		if (!existsSync(agentFilePath)) {
-			agentFilePath = join(agent.absolutePath, "agent.ts");
+			agentFilePath = normalize(join(agent.absolutePath, "agent.ts"));
 		}
 
 		if (!existsSync(agentFilePath)) {
