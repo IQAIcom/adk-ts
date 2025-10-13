@@ -97,7 +97,7 @@ const sessionService = createSqliteSessionService('sessions.db');
 
 // Or auto-detect (both forms are supported)
 const sessionService = createDatabaseSessionService('sqlite://sessions.db');
-const sessionService = createDatabaseSessionService('sessions.db');
+const sessionService2 = createDatabaseSessionService('sessions.db');
 ```
 
 Once you have a `sessionService`, use it the same way regardless of the database:
@@ -158,13 +158,13 @@ Pick in-memory for local dev, database for most production apps, and cloud for m
 
 Here’s a simplified flow of how `Session` and `SessionService` work together during a conversation turn:
 
-1.  **Start or Resume:** Your application needs to use the `SessionService` to either `create_session` (for a new chat) or use an existing session id.
+1.  **Start or Resume:** Your application needs to use the `SessionService` to either `createSession` (for a new chat) or use an existing session id.
 2.  **Context Provided:** The `Runner` gets the appropriate `Session` object from the appropriate service method, providing the agent with access to the corresponding Session's `state` and `events`.
 3.  **Agent Processing:** The user prompts the agent with a query. The agent analyzes the query and potentially the session `state` and `events` history to determine the response.
 4.  **Response & State Update:** The agent generates a response (and potentially flags data to be updated in the `state`). The `Runner` packages this as an `Event`.
-5.  **Save Interaction:** The `Runner` calls `sessionService.append_event(session, event)` with the `session` and the new `event` as the arguments. The service adds the `Event` to the history and updates the session's `state` in storage based on information within the event. The session's `last_update_time` also get updated.
+5.  **Save Interaction:** The `Runner` calls `sessionService.appendEvent(session, event)` with the `session` and the new `event` as the arguments. The service adds the `Event` to the history and updates the session's `state` in storage based on information within the event. The session's `lastUpdateTime` also get updated.
 6.  **Ready for Next:** The agent's response goes to the user. The updated `Session` is now stored by the `SessionService`, ready for the next turn (which restarts the cycle at step 1, usually with the continuation of the conversation in the current session).
-7.  **End Conversation:** When the conversation is over, your application calls `sessionService.delete_session(...)` to clean up the stored session data if it is no longer required.
+7.  **End Conversation:** When the conversation is over, your application calls `sessionService.deleteSession(...)` to clean up the stored session data if it is no longer required.
 
 This cycle highlights how the `SessionService` ensures conversational continuity by managing the history and state associated with each `Session` object.
 

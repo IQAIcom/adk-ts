@@ -14,6 +14,12 @@ interface BaseMemoryService {
   addSessionToMemory(session: Session): Promise<void>;
   searchMemory(params: { appName: string; userId: string; query: string }): Promise<{ memories: MemoryEntry[] }>;
 }
+
+interface MemoryEntry {
+  content: Content;      // Content from events with parts (text, data, etc.)
+  author?: string;       // Event author (user, assistant, system)
+  timestamp?: string;    // ISO 8601 formatted timestamp
+}
 ```
 
 ## Choosing the Right Memory Service
@@ -62,7 +68,11 @@ const results = await memoryService.searchMemory({
   query: 'luxury accommodations in romantic European cities',
 });
 
-console.log(results.memories.length);
+// Results are ranked by semantic similarity
+results.memories.forEach((memory, index) => {
+  console.log(`Result ${index + 1}:`, memory.content.parts[0]?.text);
+  console.log(`  Author: ${memory.author}, Time: ${memory.timestamp}`);
+});
 ```
 
 ## How It Works
