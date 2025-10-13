@@ -279,7 +279,7 @@ export class AgentLoader {
 			const plugins = [pathMappingPlugin, plugin];
 
 			await build({
-				entryPoints: [normalizedFilePath],
+				entryPoints: [this.normalizePath(normalizedFilePath)],
 				outfile: outFile,
 				bundle: true,
 				format: "cjs",
