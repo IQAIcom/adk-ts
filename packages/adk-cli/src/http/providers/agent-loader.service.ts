@@ -256,10 +256,12 @@ export class AgentLoader {
 					) => void;
 				}) {
 					build.onResolve({ filter: /.*/ }, (args: { path: string }) => {
+						const isWindowsAbsolutePath = /^[a-zA-Z]:/.test(args.path);
 						if (
 							args.path.startsWith(".") ||
 							args.path.startsWith("/") ||
-							args.path.startsWith("..")
+							args.path.startsWith("..") ||
+							isWindowsAbsolutePath
 						) {
 							return;
 						}
