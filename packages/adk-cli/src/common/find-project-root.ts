@@ -1,28 +1,41 @@
 import { existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, parse, resolve } from "node:path";
 
 /**
- * Discover the project root by traversing up from a given directory
- * looking for package.json, tsconfig.json, .env, or .git files.
+ * Finds the root directory of a project by walking upward from a starting path.
  */
 export function findProjectRoot(startDir: string) {
-	let projectRoot = resolve(startDir);
+	const normalizedStart = normalizePath(resolve(startDir));
+	let current = normalizedStart;
+	const { root } = parse(current);
 
-	while (projectRoot !== "/" && projectRoot !== dirname(projectRoot)) {
+	while (true) {
+		// Check if current directory contains a marker file or folder
 		if (
 			["package.json", "tsconfig.json", ".env", ".git"].some((marker) =>
-				existsSync(join(projectRoot, marker)),
+				existsSync(join(current, marker)),
 			)
 		) {
+			return current;
+		}
+
+		const parent = normalizePath(dirname(current));
+
+		// Stop if we've reached filesystem root (e.g., "/" or "C:\")
+		if (parent === current || parent === normalizePath(root)) {
 			break;
 		}
-		projectRoot = dirname(projectRoot);
+
+		current = parent;
 	}
 
-	// If no markers found, fall back to startDir
-	if (projectRoot === "/" || projectRoot === dirname(projectRoot)) {
-		projectRoot = resolve(startDir);
-	}
+	// Fallback to the normalized starting path if no project markers were found
+	return normalizedStart;
+}
 
-	return projectRoot;
+/**
+ * Normalizes path separators to forward slashes for cross-platform comparison.
+ */
+function normalizePath(p: string) {
+	return p.replace(/\\/g, "/");
 }

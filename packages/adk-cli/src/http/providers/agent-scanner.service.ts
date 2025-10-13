@@ -1,6 +1,5 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
-import { format } from "node:util";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, normalize, relative, resolve } from "node:path";
 import { Injectable, Logger } from "@nestjs/common";
 import { findProjectRoot } from "../../common/find-project-root";
 import type { Agent, LoadedAgent } from "../../common/types";
@@ -44,7 +43,9 @@ export class AgentScanner {
 
 		// Use current directory if agentsDir doesn't exist or is empty
 		const scanDir =
-			!agentsDir || !existsSync(agentsDir) ? process.cwd() : resolve(agentsDir);
+			!agentsDir || !existsSync(agentsDir)
+				? process.cwd()
+				: normalize(resolve(agentsDir));
 
 		// Find the actual project root (where tsconfig.json, package.json live)
 		const projectRoot = this.findProjectRoot(scanDir);
@@ -64,7 +65,7 @@ export class AgentScanner {
 			try {
 				const items = readdirSync(dir);
 				for (const item of items) {
-					const fullPath = join(dir, item);
+					const fullPath = normalize(join(dir, item));
 					const stat = statSync(fullPath);
 
 					if (stat.isDirectory()) {
@@ -76,11 +77,8 @@ export class AgentScanner {
 						AGENT_FILENAMES.includes(item as (typeof AGENT_FILENAMES)[number])
 					) {
 						// Calculate relative path from PROJECT ROOT to agent directory
-						// This ensures consistent agent keys regardless of scan directory
-						let relativePath = relative(projectRoot, dir);
-
-						// Normalize path separators
-						relativePath = relativePath.replace(/\\/g, "/");
+						// Normalize to use forward slashes for consistency across platforms
+						let relativePath = relative(projectRoot, dir).replace(/\\/g, "/");
 
 						// Handle case where agent is directly in the project root
 						if (!relativePath || relativePath === ".") {
@@ -100,7 +98,7 @@ export class AgentScanner {
 						} else {
 							// Try to quickly extract name from agent file if not loaded
 							try {
-								const agentFilePath = join(dir, item);
+								const agentFilePath = normalize(join(dir, item));
 								agentName =
 									this.extractAgentNameFromFile(agentFilePath) || agentName;
 							} catch (error) {
@@ -119,8 +117,8 @@ export class AgentScanner {
 							agents.set(relativePath, {
 								relativePath,
 								name: agentName,
-								absolutePath: resolve(dir),
-								projectRoot, // Add project root to the agent info
+								absolutePath: normalize(resolve(dir)),
+								projectRoot,
 								instance: loadedAgent?.agent,
 							});
 
@@ -173,7 +171,7 @@ export class AgentScanner {
 			}
 
 			return null;
-		} catch (error) {
+		} catch (_error) {
 			// Return null instead of throwing to allow fallback to directory name
 			return null;
 		}

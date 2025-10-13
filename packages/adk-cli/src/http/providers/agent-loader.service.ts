@@ -6,10 +6,9 @@ import {
 	unlinkSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { BaseAgent, BuiltAgent } from "@iqai/adk";
-import type { AgentBuilder } from "@iqai/adk";
+import type { AgentBuilder, BaseAgent, BuiltAgent } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import { findProjectRoot } from "../../common/find-project-root";
 
@@ -96,6 +95,13 @@ export class AgentLoader {
 	}
 
 	/**
+	 * Normalize path to use forward slashes (cross-platform)
+	 */
+	private normalizePath(path: string): string {
+		return path.replace(/\\/g, "/");
+	}
+
+	/**
 	 * Parse TypeScript path mappings from tsconfig.json
 	 */
 	private parseTsConfigPaths(projectRoot: string): {
@@ -134,6 +140,7 @@ export class AgentLoader {
 			: projectRoot;
 		const logger = this.logger;
 		const quiet = this.quiet;
+		const normalizePath = this.normalizePath.bind(this);
 
 		return {
 			name: "typescript-path-mapping",
@@ -156,7 +163,9 @@ export class AgentLoader {
 									if (match[1] && mapping.includes("*")) {
 										resolvedPath = mapping.replace("*", match[1]);
 									}
-									const fullPath = resolve(resolvedBaseUrl, resolvedPath);
+									const fullPath = normalize(
+										resolve(resolvedBaseUrl, resolvedPath),
+									);
 									const extensions = [".ts", ".js", ".tsx", ".jsx", ""];
 									for (const ext of extensions) {
 										const pathWithExt = ext ? fullPath + ext : fullPath;
@@ -164,7 +173,7 @@ export class AgentLoader {
 											logger.debug(
 												`Path mapping resolved: ${args.path} -> ${pathWithExt}`,
 											);
-											return { path: pathWithExt };
+											return { path: normalizePath(pathWithExt) };
 										}
 									}
 								}
@@ -176,12 +185,12 @@ export class AgentLoader {
 						const envPath = resolve(resolvedBaseUrl, "env");
 						const extensions = [".ts", ".js"];
 						for (const ext of extensions) {
-							const pathWithExt = envPath + ext;
+							const pathWithExt = normalize(envPath + ext);
 							if (existsSync(pathWithExt)) {
 								logger.debug(
 									`Direct env import resolved: ${args.path} -> ${pathWithExt}`,
 								);
-								return { path: pathWithExt };
+								return { path: normalizePath(pathWithExt) };
 							}
 						}
 					}
@@ -191,12 +200,12 @@ export class AgentLoader {
 						const fullPath = resolve(resolvedBaseUrl, relativePath);
 						const extensions = [".ts", ".js", ".tsx", ".jsx", ""];
 						for (const ext of extensions) {
-							const pathWithExt = ext ? fullPath + ext : fullPath;
+							const pathWithExt = normalize(ext ? fullPath + ext : fullPath);
 							if (existsSync(pathWithExt)) {
 								logger.debug(
 									`Relative import resolved via baseUrl: ${args.path} -> ${pathWithExt}`,
 								);
-								return { path: pathWithExt };
+								return { path: normalizePath(pathWithExt) };
 							}
 						}
 					}
@@ -213,12 +222,14 @@ export class AgentLoader {
 		filePath: string,
 		providedProjectRoot?: string,
 	): Promise<Record<string, unknown>> {
+		// Normalize the input file path
+		const normalizedFilePath = normalize(resolve(filePath));
 		const projectRoot =
-			providedProjectRoot ?? findProjectRoot(dirname(filePath));
+			providedProjectRoot ?? findProjectRoot(dirname(normalizedFilePath));
 
 		if (!this.quiet) {
 			this.logger.log(
-				`Using project root: ${projectRoot} for agent: ${filePath}`,
+				`Using project root: ${projectRoot} for agent: ${normalizedFilePath}`,
 			);
 		}
 
@@ -228,7 +239,7 @@ export class AgentLoader {
 			if (!existsSync(cacheDir)) {
 				mkdirSync(cacheDir, { recursive: true });
 			}
-			const outFile = join(cacheDir, `agent-${Date.now()}.cjs`);
+			const outFile = normalize(join(cacheDir, `agent-${Date.now()}.cjs`));
 			this.trackCacheFile(outFile, projectRoot);
 
 			const ALWAYS_EXTERNAL_SCOPES = ["@iqai/"];
@@ -245,10 +256,12 @@ export class AgentLoader {
 					) => void;
 				}) {
 					build.onResolve({ filter: /.*/ }, (args: { path: string }) => {
+						const isWindowsAbsolutePath = /^[a-zA-Z]:/.test(args.path);
 						if (
 							args.path.startsWith(".") ||
 							args.path.startsWith("/") ||
-							args.path.startsWith("..")
+							args.path.startsWith("..") ||
+							isWindowsAbsolutePath
 						) {
 							return;
 						}
@@ -268,10 +281,10 @@ export class AgentLoader {
 			const plugins = [pathMappingPlugin, plugin];
 
 			await build({
-				entryPoints: [filePath],
+				entryPoints: [this.normalizePath(normalizedFilePath)],
 				outfile: outFile,
 				bundle: true,
-				format: "cjs", // match Nest's default compilation output
+				format: "cjs",
 				platform: "node",
 				target: ["node22"],
 				sourcemap: false,
@@ -313,11 +326,13 @@ export class AgentLoader {
 				): v is null | undefined | string | number | boolean =>
 					v == null || ["string", "number", "boolean"].includes(typeof v);
 				if (!isPrimitive(agentExport)) {
-					this.logger.log(`TS agent imported via esbuild: ${filePath} ✅`);
+					this.logger.log(
+						`TS agent imported via esbuild: ${normalizedFilePath} ✅`,
+					);
 					return { agent: agentExport as unknown };
 				}
 				this.logger.log(
-					`Ignoring primitive 'agent' export in ${filePath}; scanning module for factory...`,
+					`Ignoring primitive 'agent' export in ${normalizedFilePath}; scanning module for factory...`,
 				);
 			}
 			return mod;
@@ -325,7 +340,7 @@ export class AgentLoader {
 			const msg = e instanceof Error ? e.message : String(e);
 			if (/Cannot find module/.test(msg)) {
 				this.logger.error(
-					`Module resolution failed while loading agent file '${filePath}'.\n> ${msg}\nThis usually means the dependency is declared in a parent workspace package (e.g. @iqai/adk) and got externalized,\nbut is not installed in the agent project's own node_modules (common with PNPM isolated hoisting).\nFix: add it to the agent project's package.json or run: pnpm add <missing-pkg> -F <agent-workspace>.`,
+					`Module resolution failed while loading agent file '${normalizedFilePath}'.\n> ${msg}\nThis usually means the dependency is declared in a parent workspace package (e.g. @iqai/adk) and got externalized,\nbut is not installed in the agent project's own node_modules (common with PNPM isolated hoisting).\nFix: add it to the agent project's package.json or run: pnpm add <missing-pkg> -F <agent-workspace>.`,
 				);
 			}
 			throw new Error(`Failed to import TS agent via esbuild: ${msg}`);
@@ -333,8 +348,9 @@ export class AgentLoader {
 	}
 
 	loadEnvironmentVariables(agentFilePath: string): void {
-		// Load environment variables from the project directory before importing
-		const projectRoot = findProjectRoot(dirname(agentFilePath));
+		// Normalize the path first
+		const normalizedAgentPath = normalize(resolve(agentFilePath));
+		const projectRoot = findProjectRoot(dirname(normalizedAgentPath));
 
 		// Check for multiple env files in priority order
 		const envFiles = [
@@ -438,15 +454,13 @@ export class AgentLoader {
 	 */
 	private async extractBaseAgent(item: unknown): Promise<BaseAgent | null> {
 		if (this.isLikelyAgentInstance(item)) {
-			return item as BaseAgent; // Already a BaseAgent
+			return item as BaseAgent;
 		}
 		if (this.isAgentBuilder(item)) {
-			// Build the AgentBuilder to get BuiltAgent, then extract agent
 			const built = await (item as AgentBuilder).build();
 			return built.agent;
 		}
 		if (this.isBuiltAgent(item)) {
-			// Extract agent from BuiltAgent
 			return (item as BuiltAgent).agent;
 		}
 		return null;
@@ -468,7 +482,6 @@ export class AgentLoader {
 				return baseAgent;
 			}
 
-			// Handle static container object: export const container = { agent: <BaseAgent> }
 			if (value && typeof value === "object" && "agent" in (value as any)) {
 				const container = value as Record<string, unknown>;
 				const containerAgent = await this.extractBaseAgent(
@@ -479,7 +492,6 @@ export class AgentLoader {
 				}
 			}
 
-			// Handle function exports that might return agents
 			if (
 				typeof value === "function" &&
 				(() => {
@@ -512,7 +524,7 @@ export class AgentLoader {
 							return containerAgent;
 						}
 					}
-				} catch (e) {
+				} catch (_e) {
 					// Swallow and continue searching
 				}
 			}
@@ -521,7 +533,6 @@ export class AgentLoader {
 		return null;
 	}
 
-	// Enhanced resolution logic for agent exports: always returns BaseAgent
 	async resolveAgentExport(mod: Record<string, unknown>): Promise<BaseAgent> {
 		const moduleDefault = (mod as any)?.default as
 			| Record<string, unknown>
@@ -532,7 +543,6 @@ export class AgentLoader {
 			moduleDefault ??
 			mod;
 
-		// Try to extract from the initial candidate
 		const directResult = await this.tryResolvingDirectCandidate(
 			candidateToResolve,
 			mod,
@@ -541,13 +551,11 @@ export class AgentLoader {
 			return directResult;
 		}
 
-		// Search through module exports if no direct candidate found
 		const exportResult = await this.scanModuleExports(mod);
 		if (exportResult) {
 			return exportResult;
 		}
 
-		// Final attempt: handle function candidate
 		if (typeof candidateToResolve === "function") {
 			const functionResult =
 				await this.tryResolvingFunctionCandidate(candidateToResolve);
@@ -568,7 +576,6 @@ export class AgentLoader {
 		candidateToResolve: unknown,
 		mod: Record<string, unknown>,
 	): Promise<BaseAgent | null> {
-		// Skip if candidate is primitive or represents the whole module
 		if (
 			this.isPrimitive(candidateToResolve) ||
 			(candidateToResolve && candidateToResolve === (mod as unknown))
@@ -576,13 +583,11 @@ export class AgentLoader {
 			return null;
 		}
 
-		// Try direct extraction
 		const directAgent = await this.extractBaseAgent(candidateToResolve);
 		if (directAgent) {
 			return directAgent;
 		}
 
-		// Check if it's a container object
 		if (
 			candidateToResolve &&
 			typeof candidateToResolve === "object" &&
@@ -606,13 +611,11 @@ export class AgentLoader {
 				functionCandidate as () => unknown,
 			);
 
-			// Try direct extraction from function result
 			const directAgent = await this.extractBaseAgent(functionResult);
 			if (directAgent) {
 				return directAgent;
 			}
 
-			// Check if function result is a container
 			if (
 				functionResult &&
 				typeof functionResult === "object" &&
