@@ -2,35 +2,40 @@ import { existsSync } from "node:fs";
 import { dirname, join, parse, resolve } from "node:path";
 
 /**
- * Cross-platform safe project root discovery.
- * Works consistently on Windows (C:\) and Unix (/)
+ * Finds the root directory of a project by walking upward from a starting path.
  */
-export function findProjectRoot(startDir: string): string {
-	let currentDir = fixPath(resolve(startDir));
-	const { root } = parse(currentDir);
+export function findProjectRoot(startDir: string) {
+	const normalizedStart = normalizePath(resolve(startDir));
+	let current = normalizedStart;
+	const { root } = parse(current);
 
 	while (true) {
+		// Check if current directory contains a marker file or folder
 		if (
 			["package.json", "tsconfig.json", ".env", ".git"].some((marker) =>
-				existsSync(join(currentDir, marker)),
+				existsSync(join(current, marker)),
 			)
 		) {
-			return currentDir;
+			return current;
 		}
 
-		const parentDir = fixPath(dirname(currentDir));
-		if (parentDir === currentDir || parentDir === fixPath(root)) {
+		const parent = normalizePath(dirname(current));
+
+		// Stop if we've reached filesystem root (e.g., "/" or "C:\")
+		if (parent === current || parent === normalizePath(root)) {
 			break;
 		}
-		currentDir = parentDir;
+
+		current = parent;
 	}
 
-	return fixPath(resolve(startDir));
+	// Fallback to the normalized starting path if no project markers were found
+	return normalizedStart;
 }
 
 /**
- * Force forward slashes for consistent cross-platform path comparison.
+ * Normalizes path separators to forward slashes for cross-platform comparison.
  */
-function fixPath(p: string): string {
+function normalizePath(p: string) {
 	return p.replace(/\\/g, "/");
 }
