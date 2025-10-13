@@ -1,139 +1,41 @@
 ---
 title: Session Management
-description: Track and manage individual conversation threads with comprehensive session lifecycle
+description: Track and manage a single conversation thread with a simple, consistent lifecycle
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Sessions track individual conversation threads, providing the foundation for maintaining context across multi-turn interactions. Like conversation threads in messaging apps, sessions ensure agents have access to the complete history and context of each interaction.
+Sessions represent one conversation thread. They keep the message history and scoped state needed to maintain context across turns—much like a chat thread in a messaging app.
 
 ## The Session Object
 
-A Session acts as a container for everything related to one specific conversation thread between a user and your agent application.
+When a user starts interacting with your agent, the `SessionService` creates a `Session` object (`google.adk.sessions.Session`). This object acts as the container holding everything related to that _one specific chat thread_. Here are its key properties:
 
-### Core Properties
+-   **Identification (`id`, `appName`, `userId`):** Unique labels for the conversation.
+    -   `id`: A unique identifier for _this specific_ conversation thread, essential for retrieving it later. A SessionService object can handle multiple `Session`(s). This field identifies which particular session object are we referring to. For example, "test\_id\_modification".
+    -   `app_name`: Identifies which agent application this conversation belongs to. For example, "id\_modifier\_workflow".
+    -   `userId`: Links the conversation to a particular user.
+-   **History (`events`):** A chronological sequence of all interactions (`Event` objects – user messages, agent responses, tool actions) that have occurred within this specific thread.
+-   **Session State (`state`):** A place to store temporary data relevant _only_ to this specific, ongoing conversation. This acts as a scratchpad for the agent during the interaction. We will cover how to use and manage `state` in detail in the next section.
+-   **Activity Tracking (`lastUpdateTime`):** A timestamp indicating the last time an event occurred in this conversation thread.
 
-- **Identification**: Unique identifiers (`id`, `appName`, `userId`) for conversation tracking
-- **History**: Chronological sequence of all interactions (`Event` objects)
-- **Session State**: Key-value data relevant to this specific conversation
-- **Lifecycle Tracking**: Timestamps and metadata for session lifecycle management
+## Managing Sessions with a `SessionService`
 
-### Session Structure
+As seen above, you don't typically create or manage `Session` objects directly. Instead, you use a **`SessionService`**. This service acts as the central manager responsible for the entire lifecycle of your conversation sessions.
 
-```typescript
-interface Session {
-  id: string;                    // Unique conversation identifier
-  appName: string;               // Agent application identifier
-  userId: string;                // User identifier
-  state: Record<string, any>;    // Session-specific data with scope prefixes
-  events: Event[];               // Chronological interaction history
-  lastUpdateTime: number;        // Unix timestamp of last update
-}
-```
+Its core responsibilities include:
 
-<Callout type="info" title="Conversation Container">
-Think of a Session as a complete record of one conversation thread - everything the agent needs to understand the context and continue the interaction intelligently.
-</Callout>
-
-## Session Lifecycle
-
-### Lifecycle Stages
-
-1. **Creation**: New session initialized when user starts interaction
-2. **Active Use**: Events added as conversation progresses through agent responses
-3. **State Updates**: Session data modified based on interactions and user preferences
-4. **Persistence**: Changes automatically saved to configured storage backend
-5. **Completion**: Session archived, transferred to memory, or deleted when conversation ends
-
-### Event-Driven Evolution
-
-Sessions evolve through structured events:
-
-- **User Messages**: Input from users with content and metadata
-- **Agent Responses**: Generated responses and reasoning from LLM agents
-- **Tool Executions**: Function calls, results, and tool interactions
-- **State Changes**: Updates to session state through EventActions
-- **System Events**: Metadata, errors, and lifecycle events
-
-## SessionService Architecture
-
-The SessionService manages the complete lifecycle of conversation sessions, providing a unified interface across different storage backends while handling state scoping automatically.
-
-### Core Responsibilities
-
-<Cards>
-  <Card
-    title="🆕 Session Creation"
-    description="Initialize new conversation threads with proper state scoping"
-  />
-
-  <Card
-    title="📖 Session Retrieval"
-    description="Access existing conversation history with filtering and pagination"
-  />
-
-  <Card
-    title="💾 Event Management"
-    description="Append new interactions and update session state atomically"
-  />
-
-  <Card
-    title="🗂️ Session Listing"
-    description="Find and manage multiple user sessions efficiently"
-  />
-
-  <Card
-    title="🧹 Cleanup"
-    description="Delete completed or expired sessions with proper cleanup"
-  />
-</Cards>
-
-### Service Interface
-
-All SessionService implementations provide consistent methods:
-
-```typescript
-abstract class BaseSessionService {
-  // Create new conversation thread
-  abstract createSession(
-    appName: string,
-    userId: string,
-    state?: Record<string, any>,
-    sessionId?: string
-  ): Promise<Session>;
-
-  // Retrieve existing session with optional filtering
-  abstract getSession(
-    appName: string,
-    userId: string,
-    sessionId: string,
-    config?: GetSessionConfig
-  ): Promise<Session | undefined>;
-
-  // List sessions for a user
-  abstract listSessions(
-    appName: string,
-    userId: string
-  ): Promise<ListSessionsResponse>;
-
-  // Remove session and associated data
-  abstract deleteSession(
-    appName: string,
-    userId: string,
-    sessionId: string
-  ): Promise<void>;
-
-  // Add events with automatic state handling
-  async appendEvent(session: Session, event: Event): Promise<Event>;
-}
-```
+-   **Starting New Conversations:** Creating fresh `Session` objects when a user begins an interaction.
+-   **Resuming Existing Conversations:** Retrieving a specific `Session` (using its ID) so the agent can continue where it left off.
+-   **Saving Progress:** Appending new interactions (`Event` objects) to a session's history. This is also the mechanism through which session `state` gets updated (more in the `State` section).
+-   **Listing Conversations:** Finding the active session threads for a particular user and application.
+-   **Cleaning Up:** Deleting `Session` objects and their associated data when conversations are finished or no longer needed.
 
 ## Implementation Options
 
-### In-Memory Sessions
+### In-memory (development)
 
-Fast, simple sessions for development and testing:
+Fast and simple for development/testing.
 
 ```typescript
 import { InMemorySessionService } from '@iqai/adk';
@@ -151,38 +53,20 @@ const session = await sessionService.createSession(
 );
 ```
 
-**Characteristics:**
-- **Storage**: Application memory only
-- **Persistence**: None - data lost on restart
-- **Performance**: Fastest access and updates
-- **State Scoping**: Full prefix support (app:, user:, temp:) maintained in memory
-- **Use Cases**: Development, testing, temporary interactions
+Use when you don't need persistence between restarts.
 
-**Best For:**
-- Quick prototyping and development
-- Testing and experimentation
-- Short-lived interactions
-- Scenarios where persistence isn't required
+### Database (production-ready persistence)
 
-### Database Sessions
-
-Persistent session storage using relational databases:
+Persistent storage using SQLite, PostgreSQL, or MySQL. Quick-start with the factory helpers:
 
 ```typescript
-import { DatabaseSessionService } from '@iqai/adk';
-import { Kysely } from 'kysely';
+import { createDatabaseSessionService, createSqliteSessionService } from '@iqai/adk';
 
-// Configure your database (example with SQLite)
-const db = new Kysely<Database>({
-  dialect: new SqliteDialect({
-    database: new Database('sessions.db')
-  })
-});
+// Easiest: SQLite (install peer dep: better-sqlite3)
+const sessionService = createSqliteSessionService('sessions.db');
 
-const sessionService = new DatabaseSessionService({
-  db: db,
-  skipTableCreation: false // Automatically create required tables
-});
+// Or auto-detect from URL (install appropriate peer dep: pg/mysql2/better-sqlite3)
+// const sessionService = createDatabaseSessionService('postgres://user:pass@host:5432/db');
 
 // Create session
 const session = await sessionService.createSession(
@@ -196,22 +80,17 @@ const session = await sessionService.createSession(
 );
 ```
 
-**Characteristics:**
-- **Storage**: SQLite, PostgreSQL, MySQL, or other Kysely-supported databases
-- **Persistence**: Survives application restarts and system failures
-- **State Scoping**: Automatic separation into `app_states`, `user_states`, and `sessions` tables
-- **Scalability**: Depends on database configuration and optimization
-- **Control**: Full control over data storage, backup, and migration
+Notes:
+- Tables are created automatically by default
+- Prefixes are handled for you: `app:` → app_states, `user:` → user_states, unprefixed → sessions
 
-**Features:**
-- **ACID Transactions**: Reliable data consistency across concurrent operations
-- **Query Capabilities**: Complex session queries and analytics support
-- **Backup/Restore**: Standard database backup and recovery procedures
-- **Schema Management**: Automatic table creation and migration support
+<Callout type="info" title="Database peer dependencies">
+Install one of: `better-sqlite3` (SQLite), `pg` (PostgreSQL), or `mysql2` (MySQL), depending on your database.
+</Callout>
 
-### Cloud Sessions
+### Cloud (Vertex AI Agent Engine)
 
-Scalable cloud-managed session storage with Google Cloud integration:
+Scalable, managed storage on Google Cloud.
 
 ```typescript
 import { VertexAiSessionService } from '@iqai/adk';
@@ -222,7 +101,7 @@ const sessionService = new VertexAiSessionService({
   agentEngineId: 'your-agent-engine-id' // Optional: can use appName as reasoning engine ID
 });
 
-// Create session (sessionId cannot be provided - auto-generated)
+// Create session (sessionId is auto-generated)
 const session = await sessionService.createSession(
   'projects/your-project/locations/us-central1/reasoningEngines/12345',
   'user123',
@@ -233,336 +112,26 @@ const session = await sessionService.createSession(
 );
 ```
 
-**Characteristics:**
-- **Storage**: Google Cloud Vertex AI Agent Engine infrastructure
-- **Persistence**: Enterprise-grade managed persistence and backup
-- **State Scoping**: Handled by Google Cloud services with proper isolation
-- **Scalability**: Automatic scaling and high availability
-- **Integration**: Native integration with other Google Cloud AI services
+Use when you want fully managed persistence and scale.
 
-**Benefits:**
-- **Managed Infrastructure**: No database maintenance or scaling concerns
-- **Global Scale**: Handle massive session volumes across regions
-- **Cloud Integration**: Seamless integration with Vertex AI, BigQuery, and other GCP services
-- **Enterprise Reliability**: SLA-backed availability and disaster recovery
-
-<Callout type="warn" title="Implementation Choice">
-Choose your SessionService implementation based on your scalability, persistence, operational requirements, and cloud integration needs.
+<Callout type="warn" title="Choosing an implementation">
+Pick in-memory for local dev, database for most production apps, and cloud for managed, enterprise scale.
 </Callout>
 
-## Session Configuration Options
 
-### GetSessionConfig
+## Session Lifecycle
 
-Control how sessions are retrieved with optional filtering:
+Here’s a simplified flow of how `Session` and `SessionService` work together during a conversation turn:
 
-```typescript
-interface GetSessionConfig {
-  // Limit number of events returned (most recent)
-  numRecentEvents?: number;
+1.  **Start or Resume:** Your application needs to use the `SessionService` to either `create_session` (for a new chat) or use an existing session id.
+2.  **Context Provided:** The `Runner` gets the appropriate `Session` object from the appropriate service method, providing the agent with access to the corresponding Session's `state` and `events`.
+3.  **Agent Processing:** The user prompts the agent with a query. The agent analyzes the query and potentially the session `state` and `events` history to determine the response.
+4.  **Response & State Update:** The agent generates a response (and potentially flags data to be updated in the `state`). The `Runner` packages this as an `Event`.
+5.  **Save Interaction:** The `Runner` calls `sessionService.append_event(session, event)` with the `session` and the new `event` as the arguments. The service adds the `Event` to the history and updates the session's `state` in storage based on information within the event. The session's `last_update_time` also get updated.
+6.  **Ready for Next:** The agent's response goes to the user. The updated `Session` is now stored by the `SessionService`, ready for the next turn (which restarts the cycle at step 1, usually with the continuation of the conversation in the current session).
+7.  **End Conversation:** When the conversation is over, your application calls `sessionService.delete_session(...)` to clean up the stored session data if it is no longer required.
 
-  // Only include events after this timestamp (Unix seconds)
-  afterTimestamp?: number;
-}
-
-// Examples
-const recentSession = await sessionService.getSession(
-  'my-app', 'user123', 'session456',
-  { numRecentEvents: 10 }
-);
-
-const incrementalSession = await sessionService.getSession(
-  'my-app', 'user123', 'session456',
-  { afterTimestamp: 1640995200 } // Only events after Jan 1, 2022
-);
-```
-
-### ListSessionsResponse
-
-Structure for session listing operations:
-
-```typescript
-interface ListSessionsResponse {
-  sessions: Session[]; // Sessions without events/state populated
-}
-
-const userSessions = await sessionService.listSessions('my-app', 'user123');
-console.log(`User has ${userSessions.sessions.length} sessions`);
-```
-
-## Session Operations
-
-### Creating Sessions
-
-New sessions are created when users start interactions:
-
-```typescript
-// Automatic session ID generation
-const session = await sessionService.createSession(
-  'travel-booking-app',
-  'user123',
-  {
-    flow_type: 'vacation_planning',
-    'user:preferred_destinations': ['paris', 'tokyo'],
-    'app:booking_version': '3.1'
-  }
-);
-
-// Custom session ID (not supported by VertexAiSessionService)
-const customSession = await sessionService.createSession(
-  'travel-booking-app',
-  'user123',
-  { flow_type: 'business_travel' },
-  'custom-session-id-456'
-);
-```
-
-**Session Creation Features:**
-- **Automatic ID Generation**: UUIDs generated when sessionId not provided
-- **State Initialization**: Initial state with proper scope prefix handling
-- **Identity Management**: Associate sessions with users and applications
-- **Timestamp Tracking**: Automatic lastUpdateTime assignment
-
-### Retrieving Sessions
-
-Access existing sessions for continued conversations:
-
-```typescript
-// Full session retrieval
-const session = await sessionService.getSession(
-  'travel-booking-app',
-  'user123',
-  'session-abc-123'
-);
-
-if (session) {
-  console.log(`Session has ${session.events.length} events`);
-  console.log(`Current step: ${session.state.current_step}`);
-  console.log(`User theme: ${session.state['user:theme']}`);
-}
-
-// Retrieve with event filtering
-const lightSession = await sessionService.getSession(
-  'travel-booking-app',
-  'user123',
-  'session-abc-123',
-  { numRecentEvents: 5 }
-);
-```
-
-**Error Handling:**
-- **Missing Sessions**: Returns `undefined` for non-existent sessions
-- **Access Control**: Proper user/app isolation prevents cross-user access
-- **Event Filtering**: Efficient retrieval of relevant conversation segments
-
-### Updating Sessions
-
-Sessions evolve through event appending with automatic state management:
-
-```typescript
-import { Event, EventActions } from '@iqai/adk';
-
-// Create event with state changes
-const event = new Event({
-  author: 'user',
-  content: { parts: [{ text: 'I want to book a flight to Tokyo' }] },
-  actions: new EventActions({
-    stateDelta: {
-      'destination': 'tokyo',
-      'user:recent_searches': ['tokyo', 'paris'],
-      'temp:search_timestamp': Date.now()
-    }
-  }),
-  timestamp: Date.now() / 1000
-});
-
-// Append event with automatic persistence
-await sessionService.appendEvent(session, event);
-
-// Session state automatically updated
-console.log(session.state.destination); // 'tokyo'
-console.log(session.state['user:recent_searches']); // ['tokyo', 'paris']
-// temp: state handled according to implementation
-```
-
-**Event Append Features:**
-- **Atomic Operations**: State and event updates happen atomically
-- **State Processing**: Automatic handling of state scope prefixes
-- **Event Ordering**: Maintains chronological order of interactions
-- **Concurrency Control**: Prevents race conditions in concurrent updates
-
-### Session Cleanup
-
-Manage session lifecycle and storage efficiently:
-
-```typescript
-// Delete specific session
-await sessionService.deleteSession(
-  'travel-booking-app',
-  'user123',
-  'session-abc-123'
-);
-
-// List and cleanup old sessions
-const userSessions = await sessionService.listSessions('travel-booking-app', 'user123');
-const oldSessions = userSessions.sessions.filter(s =>
-  s.lastUpdateTime < (Date.now() / 1000 - 30 * 24 * 60 * 60) // 30 days old
-);
-
-for (const oldSession of oldSessions) {
-  await sessionService.deleteSession('travel-booking-app', 'user123', oldSession.id);
-}
-```
-
-**Cleanup Considerations:**
-- **Data Retention**: Implement appropriate retention policies
-- **Memory Transfer**: Archive valuable sessions to MemoryService before deletion
-- **Bulk Operations**: Efficient batch deletion for maintenance
-- **Compliance**: Meet data protection and privacy requirements
-
-## State Management Integration
-
-Sessions and state work together for comprehensive context management with automatic scope handling:
-
-### State Scoping in Practice
-
-```typescript
-// State automatically separated by implementation
-const session = await sessionService.createSession('app', 'user123', {
-  'app:global_setting': 'value1',        // → app-wide storage
-  'user:preference': 'value2',           // → user-specific storage
-  'session_data': 'value3',              // → session-specific storage
-  'temp:calculation': 'value4'           // → temporary/non-persistent
-});
-
-// Retrieved session merges all scopes
-console.log(session.state['app:global_setting']);  // 'value1'
-console.log(session.state['user:preference']);     // 'value2'
-console.log(session.state.session_data);           // 'value3'
-// temp: state behavior depends on implementation
-```
-
-### Event-Driven State Updates
-
-```typescript
-// State changes through events for auditability
-const stateUpdateEvent = new Event({
-  author: 'system',
-  actions: new EventActions({
-    stateDelta: {
-      'user:last_booking': 'tokyo-flight-456',
-      'booking_status': 'confirmed',
-      'temp:confirmation_code': 'ABC123'
-    }
-  }),
-  content: { parts: [{ text: 'Booking confirmed' }] },
-  timestamp: Date.now() / 1000
-});
-
-await sessionService.appendEvent(session, stateUpdateEvent);
-```
-
-## Performance Considerations
-
-### Optimization Strategies
-
-- **Event Pagination**: Use `GetSessionConfig` to load recent events first for large sessions
-- **State Efficiency**: Leverage scope prefixes to minimize cross-session data loading
-- **Connection Pooling**: Database implementations automatically manage connection pooling
-- **Lazy Loading**: Load complete session data only when necessary
-
-### Monitoring and Metrics
-
-```typescript
-// Track session metrics
-const metrics = {
-  sessionCreationRate: 0,
-  averageEventsPerSession: 0,
-  stateSize: 0,
-  operationLatency: 0
-};
-
-// Monitor session operations
-const startTime = Date.now();
-const session = await sessionService.getSession('app', 'user', 'session');
-metrics.operationLatency = Date.now() - startTime;
-```
-
-### Scaling Considerations
-
-- **Concurrent Access**: All implementations handle multiple simultaneous session operations
-- **Storage Growth**: Plan for session data growth over time with appropriate cleanup
-- **Geographic Distribution**: Cloud implementations support multi-region deployment
-- **Load Balancing**: Distribute session operations across application instances
-
-## Security and Privacy
-
-### Data Protection
-
-- **Encryption**: All implementations encrypt session data at rest and in transit
-- **Access Control**: User/app isolation prevents unauthorized session access
-- **Audit Logging**: Event system provides complete audit trail of session modifications
-- **Data Retention**: Implement appropriate data retention policies per business requirements
-
-### Privacy Compliance
-
-- **User Consent**: Obtain proper consent for session data storage, especially user: scope data
-- **Data Minimization**: Store only necessary session information
-- **Right to Deletion**: Provide mechanisms for user data deletion across all scopes
-- **Cross-Border Compliance**: Handle international data transfer requirements appropriately
-
-## Best Practices
-
-### Session Design
-
-- **Clear Boundaries**: Define when sessions should start and end based on user intent
-- **Appropriate Scope**: Keep sessions focused on specific tasks or conversation topics
-- **State Organization**: Use consistent patterns for session state structure with proper prefixes
-- **Error Recovery**: Implement robust error handling for all session operations
-
-### Production Deployment
-
-- **Backup Strategy**: Implement regular session data backups for persistent implementations
-- **Migration Planning**: Plan for service upgrades and data migration between implementations
-- **Monitoring**: Comprehensive monitoring of session service health and performance
-- **Disaster Recovery**: Prepare for session service failure scenarios with appropriate failover
-
-### Development Workflow
-
-- **Testing Strategy**: Test session operations across different implementations and scenarios
-- **Development Environment**: Use InMemorySessionService for fast development iteration
-- **Data Migration**: Plan migration paths between different SessionService implementations
-- **Performance Testing**: Test session performance under realistic loads and usage patterns
-
-## Advanced Usage Patterns
-
-### Session Branching
-
-```typescript
-// Create branched conversation from existing session
-const originalSession = await sessionService.getSession('app', 'user', 'original');
-const branchedSession = await sessionService.createSession(
-  'app',
-  'user',
-  {
-    ...originalSession.state,
-    'branch_from': 'original',
-    'branch_timestamp': Date.now()
-  },
-  'branched-session-id'
-);
-```
-
-### Session Merging and Transfer
-
-```typescript
-// Transfer session to memory service before deletion
-import { MemoryService } from '@iqai/adk';
-
-const memoryService = new MemoryService();
-await memoryService.addSessionToMemory(completedSession);
-await sessionService.deleteSession('app', 'user', completedSession.id);
-```
+This cycle highlights how the `SessionService` ensures conversational continuity by managing the history and state associated with each `Session` object.
 
 ## Related Topics
 
