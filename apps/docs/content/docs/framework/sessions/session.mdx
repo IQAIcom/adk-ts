@@ -57,18 +57,53 @@ Use when you don't need persistence between restarts.
 
 ### Database (production-ready persistence)
 
-Persistent storage using SQLite, PostgreSQL, or MySQL. Quick-start with the factory helpers:
+Persistent storage using PostgreSQL, MySQL, or SQLite. Choose a specific factory or use the generic auto-detect helper.
+
+#### PostgreSQL
 
 ```typescript
-import { createDatabaseSessionService, createSqliteSessionService } from '@iqai/adk';
+import { createPostgresSessionService, createDatabaseSessionService } from '@iqai/adk';
 
-// Easiest: SQLite (install peer dep: better-sqlite3)
+// Direct (requires peer dep: pg)
+const sessionService = createPostgresSessionService(
+  'postgres://user:pass@host:5432/db'
+);
+
+// Or auto-detect
+const sessionService = createDatabaseSessionService('postgres://user:pass@host:5432/db');
+```
+
+#### MySQL
+
+```typescript
+import { createMysqlSessionService, createDatabaseSessionService } from '@iqai/adk';
+
+// Direct (requires peer dep: mysql2)
+const sessionService = createMysqlSessionService(
+  'mysql://user:pass@host:3306/db'
+);
+
+// Or auto-detect
+const sessionService = createDatabaseSessionService('mysql://user:pass@host:3306/db');
+```
+
+#### SQLite
+
+```typescript
+import { createSqliteSessionService, createDatabaseSessionService } from '@iqai/adk';
+
+// Direct (requires peer dep: better-sqlite3)
 const sessionService = createSqliteSessionService('sessions.db');
 
-// Or auto-detect from URL (install appropriate peer dep: pg/mysql2/better-sqlite3)
-// const sessionService = createDatabaseSessionService('postgres://user:pass@host:5432/db');
+// Or auto-detect (both forms are supported)
+const sessionService = createDatabaseSessionService('sqlite://sessions.db');
+const sessionService = createDatabaseSessionService('sessions.db');
+```
 
-// Create session
+Once you have a `sessionService`, use it the same way regardless of the database:
+
+```typescript
+// Create a session
 const session = await sessionService.createSession(
   'my-app',
   'user123',
