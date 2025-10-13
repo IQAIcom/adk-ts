@@ -1,5 +1,11 @@
 # @iqai/adk-cli
 
+## 0.3.16
+
+### Patch Changes
+
+- 4123905: fix cross platform (windows) adk-cli run issues (path resolution)
+
 ## 0.3.15
 
 ### Patch Changes
