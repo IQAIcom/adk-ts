@@ -1,7 +1,6 @@
 {
   "icon": "MessageSquare",
   "pages": [
-    "index",
     "session",
     "state",
     "memory"
