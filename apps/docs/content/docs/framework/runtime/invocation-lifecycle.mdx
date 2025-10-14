@@ -7,11 +7,66 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 An invocation represents everything that happens in response to a single user query, from initial receipt until the agent finishes processing.
 
-## Visual Overview
+<Mermaid
+  chart="
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant R as Runner
+  participant S as SessionService
+  participant A as Agent
+  participant L as LLM
+  participant T as MyTool
 
-![Invocation Flow Diagram](/invocation-flow.png)
+  U->>R: Send Query (What’s the capital of France?)
+  R->>S: Load Session (app, userId, sessionId)
+  S-->>R: Return Session
+  R->>S: Add User Query Event to History
+  S-->>R: Event Recorded OK
+  Note over R: Prepare InvocationContext (ctx)
+  R->>A: agent.run_async(ctx)
+  activate A
 
-*Complete invocation lifecycle from user query to response completion*
+  %% LLM suggests a tool; Agent decides and invokes it
+  Note over A: Determines need for tool
+  A->>L: Prepare request (potentially suggesting MyTool)
+  L-->>A: Respond with FunctionCall(MyTool)
+  Note over A: Wrap FunctionCall in Event
+  A-->>R: yield Event(FunctionCall)
+  Note over A: Execution Paused (after yield)
+  R->>S: Record FunctionCall Event
+  S-->>R: Event Recorded OK
+  R-->>U: Emit Event (FunctionCall)
+  R->>A: Signal Resume (implicit via next())
+  Note over A: Execution Resumed
+  A->>T: Execute Tool
+  T-->>A: Tool Result ({result: 'Paris'})
+  Note over A: Wrap Tool Result in Event (FunctionResponse)
+  A-->>R: yield Event(FunctionResponse)
+  Note over A: Execution Paused (after yield)
+  R->>S: Record FunctionResponse Event
+  S-->>R: Event Recorded, State Updated OK
+  R-->>U: Emit Event (FunctionResponse)
+  R->>A: Signal Resume (implicit via next())
+  Note over A: Execution Resumed
+
+  %% Continue with LLM using tool result, stream output
+  A->>L: Send tool result for final answer
+  L-->>A: Return final text response ('Capital of france is paris')
+  A-->>R: yield Event(partial text)
+  R-->>U: Stream partial (no persistence)
+  Note over A: Wrap Final Text in Event
+  A-->>R: yield Event(final text)
+  Note over A: Execution Paused (persisting final event)
+  R->>S: Record Final Text Event
+  S-->>R: Event Recorded OK
+  R->>A: Signal Resume (implicit via next())
+  Note over A: Execution Resumed
+  R-->>U: Final Response (The capital of France is Paris.)
+  deactivate A
+
+  Note over R: Invocation Completed
+"/>
 
 ### Core Characteristics
 
