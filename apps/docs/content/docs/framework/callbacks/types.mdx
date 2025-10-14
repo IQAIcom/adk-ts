@@ -204,8 +204,8 @@ const afterModelCallback = ({ callbackContext, llmResponse }: {
 
 These callbacks are also specific to `LlmAgent` and trigger around the execution of tools (including `FunctionTool`, agent tools, etc.) that the LLM might request.
 
-<Callout type="warning">
-Tool execution callbacks are not yet fully implemented in the current TypeScript version of ADK. The callback infrastructure exists but tool-specific callback invocation is coming soon.
+<Callout type="info">
+Status: Tool execution callbacks are implemented in the current TypeScript ADK. You can use them today to validate/modify arguments, short-circuit execution, and post-process tool results.
 </Callout>
 
 ### Before Tool Callback
@@ -214,23 +214,18 @@ Tool execution callbacks are not yet fully implemented in the current TypeScript
 
 **Purpose:** Allows inspection and modification of tool arguments, performing authorization checks before execution, logging tool usage attempts, or implementing tool-level caching.
 
-**Signature (Coming Soon):**
+**Signature:**
 ```typescript
-type BeforeToolCallback = ({
-  toolContext,
-  toolArgs
-}: {
-  toolContext: ToolContext;
-  toolArgs: Record<string, any>;
-}) => Promise<Record<string, any> | undefined> | Record<string, any> | undefined;
+type BeforeToolCallback = (
+  tool: BaseTool,
+  toolArgs: Record<string, any>,
+  toolContext: ToolContext
+) => Promise<Record<string, any> | undefined> | Record<string, any> | undefined;
 ```
 
-**Example (Coming Soon):**
+**Example:**
 ```typescript
-const beforeToolCallback = ({ toolContext, toolArgs }: {
-  toolContext: ToolContext;
-  toolArgs: Record<string, any>;
-}): Record<string, any> | undefined => {
+const beforeToolCallback: BeforeToolCallback = (tool, toolArgs, toolContext) => {
   // Check authentication
   const hasAuth = toolContext.state.get('api_token');
   if (!hasAuth) {
@@ -264,23 +259,24 @@ const beforeToolCallback = ({ toolContext, toolArgs }: {
 
 **Purpose:** Allows inspection and modification of the tool's result before it's sent back to the LLM. Useful for logging tool results, post-processing or formatting results, or saving specific parts of the result to the session state.
 
-**Signature (Coming Soon):**
+**Signature:**
 ```typescript
-type AfterToolCallback = ({
-  toolContext,
-  toolResult
-}: {
-  toolContext: ToolContext;
-  toolResult: Record<string, any>;
-}) => Promise<Record<string, any> | undefined> | Record<string, any> | undefined;
+type AfterToolCallback = (
+  tool: BaseTool,
+  toolArgs: Record<string, any>,
+  toolContext: ToolContext,
+  toolResult: Record<string, any>
+) => Promise<Record<string, any> | undefined> | Record<string, any> | undefined;
 ```
 
-**Example (Coming Soon):**
+**Example:**
 ```typescript
-const afterToolCallback = ({ toolContext, toolResult }: {
-  toolContext: ToolContext;
-  toolResult: Record<string, any>;
-}): Record<string, any> | undefined => {
+const afterToolCallback: AfterToolCallback = (
+  tool,
+  toolArgs,
+  toolContext,
+  toolResult
+) => {
   // Log tool result
   console.log(`Tool completed with function call ID: ${toolContext.functionCallId}`);
 
