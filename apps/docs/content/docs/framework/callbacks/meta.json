@@ -3,6 +3,6 @@
   "pages": [
     "index",
     "types",
-    "context-patterns"
+    "callback-patterns"
   ]
 }
