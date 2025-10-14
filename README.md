@@ -77,7 +77,6 @@ For detailed documentation on how to use ADK-TS, please visit our [official docu
 - **🔐 [Flexible Authentication](https://adk.iqai.com/docs/framework/events/event-actions#authentication-requests)** - Secure agent API access with multiple auth mechanisms
 - **💾 [Persistent Memory Systems](https://adk.iqai.com/docs/framework/sessions/state)** - Context retention and learning from past interactions
 - **🔄 [Multi-Agent Orchestration](https://adk.iqai.com/docs/framework/agents/workflow-agents)** - Sequential, parallel, and loop-based agent workflows
-- **📊 [Built-in Telemetry](https://adk.iqai.com/docs/framework/runtime/performance#telemetry-integration)** - Comprehensive monitoring and analytics capabilities
 - **🖥️ [Prebuilt MCP servers](https://adk.iqai.com/docs/mcp-servers)** - Easily deploy and manage your agents with our prebuilt MCP servers
 
 ## 🧪 Examples

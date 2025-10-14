@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.4.1
+
+### Patch Changes
+
+- 1b00e47: Add export to VertexAiRagMemoryService
+
 ## 0.4.0
 
 ### Minor Changes
