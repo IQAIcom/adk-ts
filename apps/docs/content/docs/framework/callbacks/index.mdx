@@ -41,6 +41,14 @@ flowchart TB
   AG -.-> ML
 "/>
 
+**Why use them?** Callbacks unlock significant flexibility and enable advanced agent capabilities:
+
+-   **Observe & Debug:** Log detailed information at critical steps for monitoring and troubleshooting.
+-   **Customize & Control:** Modify data flowing through the agent (like LLM requests or tool results) or even bypass certain steps entirely based on your logic.
+-   **Implement Guardrails:** Enforce safety rules, validate inputs/outputs, or prevent disallowed operations.
+-   **Manage State:** Read or dynamically update the agent's session state during execution.
+-   **Integrate & Enhance:** Trigger external actions (API calls, notifications) or add features like caching.
+
 ## How Callbacks Work
 
 ### Callback Registration
