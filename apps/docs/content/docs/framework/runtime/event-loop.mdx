@@ -26,22 +26,25 @@ Agent execution pauses after yielding events until the Runner completes processi
 
 ### Runner Role (Orchestrator)
 
-The Runner acts as the central coordinator:
+The Runner acts as the central coordinator for a single user invocation. Its responsibilities in the loop are:
 
-- **Query Processing**: Receives user queries and initializes sessions
-- **Event Coordination**: Processes events from execution logic
-- **Service Integration**: Coordinates with SessionService, ArtifactService, MemoryService
-- **Upstream Communication**: Forwards processed events to user interfaces
-- **State Management**: Ensures consistent state across the entire system
+- **Initiation**: Receives the end user's query (new_message) and typically appends it to the session history via the SessionService.
+- **Kick-off**: Starts the event generation process by calling the main agent's execution method (e.g., agent_to_run.run_async(...)).
+- **Receive & Process**: Waits for the agent logic to yield or emit an Event. Upon receiving an event, the Runner promptly processes it. This involves:
+  - Using configured Services (SessionService, ArtifactService, MemoryService) to commit changes indicated in event.actions (like state_delta, artifact_delta).
+  - Performing other internal bookkeeping.
+- **Yield Upstream**: Forwards the processed event onwards (e.g., to the calling application or UI for rendering).
+- **Iterate**: Signals the agent logic that processing is complete for the yielded event, allowing it to resume and generate the next event.
 
-### Agent Role (Execution Logic)
+### Execution Logic Role (Agent, Tool, Callback)
 
-Agents and other execution components:
+Your code within agents, tools, and callbacks is responsible for the actual computation and decision-making. Its interaction with the loop involves:
 
-- **Computation**: Perform reasoning and decision-making
-- **Event Generation**: Yield events to communicate results or needs
-- **Cooperative Execution**: Pause execution until Runner processes events
-- **Context Awareness**: Resume with updated state and context
+- **Execute**: Runs its logic based on the current InvocationContext, including the session state as it was when execution resumed.
+- **Yield**: When the logic needs to communicate (send a message, call a tool, report a state change), it constructs an Event containing the relevant content and actions, and then yields this event back to the Runner.
+- **Pause**: Crucially, execution of the agent logic pauses immediately after the yield statement. It waits for the Runner to complete step 3 (processing and committing).
+- **Resume**: Only after the Runner has processed the yielded event does the agent logic resume execution from the statement immediately following the yield.
+- **See Updated State**: Upon resumption, the agent logic can now reliably access the session state (ctx.session.state) reflecting the changes that were committed by the Runner from the previously yielded event.
 
 ## Event Flow Example
 
@@ -288,26 +291,3 @@ for await (const event of agent.runLive?.(invocationContext) ||
   }
 }
 ```
-
-## Best Practices
-
-### Event Design
-
-- **Single Responsibility**: Each event should represent one logical operation
-- **Immutable Content**: Event content should not be modified after creation
-- **Descriptive Authors**: Use clear agent names for event attribution
-- **Appropriate Granularity**: Balance between too many and too few events
-
-### Performance Optimization
-
-- **Batch State Changes**: Group related state changes in single events
-- **Minimize Event Overhead**: Avoid excessive event generation
-- **Use Partial Events**: Stream content for better user experience
-- **Efficient Serialization**: Keep event payloads reasonably sized
-
-### Error Recovery
-
-- **Graceful Failures**: Handle service failures without breaking the flow
-- **Event Validation**: Validate events before processing
-- **Rollback Support**: Design for operation rollback on failures
-- **Circuit Breakers**: Prevent cascading failures
