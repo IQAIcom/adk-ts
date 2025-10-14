@@ -45,7 +45,6 @@ export class AgentManager {
 
 	async startAgent(agentPath: string): Promise<void> {
 		this.logger.log(format("Starting agent: %s", agentPath));
-
 		const agent = this.validateAndGetAgent(agentPath);
 
 		if (this.loadedAgents.has(agentPath)) {
@@ -53,7 +52,16 @@ export class AgentManager {
 		}
 
 		try {
-			const exportedAgent = await this.loadAgentModule(agent);
+			// Load agent module safely without stack traces on failure
+			let exportedAgent: any;
+			try {
+				exportedAgent = await this.loadAgentModule(agent);
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : String(e);
+				this.logger.error(`❌ Failed to import agent: ${msg}`);
+				throw new Error(msg);
+			}
+
 			const sessionToUse = await this.getOrCreateSession(
 				agentPath,
 				exportedAgent,
@@ -63,6 +71,7 @@ export class AgentManager {
 				sessionToUse,
 				agentPath,
 			);
+
 			await this.storeLoadedAgent(
 				agentPath,
 				exportedAgent,
@@ -72,12 +81,15 @@ export class AgentManager {
 			);
 		} catch (error) {
 			const agentName = agent?.name ?? agentPath;
-			this.logger.error(
-				`Failed to load agent "${agentName}": ${error instanceof Error ? error.message : String(error)}`,
-			);
-			throw new Error(
-				`Failed to load agent: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			const message = error instanceof Error ? error.message : String(error);
+
+			// log without stack
+			this.logger.error(`Failed to load agent "${agentName}": ${message}`);
+
+			// rethrow without stack
+			const cleanError = new Error(`Failed to load agent: ${message}`);
+			cleanError.stack = undefined;
+			throw cleanError;
 		}
 	}
 
@@ -95,40 +107,40 @@ export class AgentManager {
 	}
 
 	private async loadAgentModule(agent: Agent): Promise<any> {
-		// Try both .js and .ts files, prioritizing .js if it exists
-		// Normalize paths for cross-platform compatibility
 		let agentFilePath = normalize(join(agent.absolutePath, "agent.js"));
 		if (!existsSync(agentFilePath)) {
 			agentFilePath = normalize(join(agent.absolutePath, "agent.ts"));
 		}
-
 		if (!existsSync(agentFilePath)) {
 			throw new Error(
 				`No agent.js or agent.ts file found in ${agent.absolutePath}`,
 			);
 		}
 
-		// Load environment variables from the project directory before importing
 		this.loader.loadEnvironmentVariables(agentFilePath);
-
 		const agentFileUrl = pathToFileURL(agentFilePath).href;
 
-		// Use dynamic import to load the agent
-		// For TS files, pass the project root to avoid redundant project root discovery
-		const agentModule: Record<string, unknown> = agentFilePath.endsWith(".ts")
-			? await this.loader.importTypeScriptFile(agentFilePath, agent.projectRoot)
-			: ((await import(agentFileUrl)) as Record<string, unknown>);
+		try {
+			const agentModule: Record<string, unknown> = agentFilePath.endsWith(".ts")
+				? await this.loader.importTypeScriptFile(
+						agentFilePath,
+						agent.projectRoot,
+					)
+				: ((await import(agentFileUrl)) as Record<string, unknown>);
 
-		const exportedAgent = await this.loader.resolveAgentExport(agentModule);
+			const exportedAgent = await this.loader.resolveAgentExport(agentModule);
 
-		// Validate basic shape
-		if (!exportedAgent?.name) {
-			throw new Error(
-				`Invalid agent export in ${agentFilePath}. Expected a BaseAgent instance with a name property.`,
-			);
+			if (!exportedAgent?.name) {
+				throw new Error(
+					`Invalid agent export in ${agentFilePath}. Expected a BaseAgent instance with a name property.`,
+				);
+			}
+
+			return exportedAgent;
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e);
+			throw new Error(msg);
 		}
-
-		return exportedAgent;
 	}
 
 	private async getOrCreateSession(
@@ -138,14 +150,12 @@ export class AgentManager {
 		const userId = `${USER_ID_PREFIX}${agentPath}`;
 		const appName = DEFAULT_APP_NAME;
 
-		// Try to find existing sessions for this agent/user combination
 		const existingSessions = await this.sessionService.listSessions(
 			appName,
 			userId,
 		);
 
 		if (existingSessions.sessions.length > 0) {
-			// Use the most recently updated session
 			const mostRecentSession = existingSessions.sessions.reduce(
 				(latest, current) =>
 					current.lastUpdateTime > latest.lastUpdateTime ? current : latest,
@@ -158,12 +168,11 @@ export class AgentManager {
 						? Object.keys(mostRecentSession.state)
 						: [],
 					lastUpdateTime: mostRecentSession.lastUpdateTime,
-					totalExistingSessions: existingSessions.sessions.length,
 				}),
 			);
 			return mostRecentSession;
 		}
-		// No existing sessions found, create a new one
+
 		this.logger.log("No existing sessions found, creating new session");
 		const agentBuilder = AgentBuilder.create(exportedAgent.name).withAgent(
 			exportedAgent,
@@ -174,14 +183,15 @@ export class AgentManager {
 			state: undefined,
 		});
 		const { session } = await agentBuilder.build();
+
 		this.logger.log(
 			format("New session created: %o", {
 				sessionId: session.id,
 				hasState: !!session.state,
 				stateKeys: session.state ? Object.keys(session.state) : [],
-				stateContent: session.state,
 			}),
 		);
+
 		return session;
 	}
 
@@ -193,7 +203,6 @@ export class AgentManager {
 		const userId = `${USER_ID_PREFIX}${agentPath}`;
 		const appName = DEFAULT_APP_NAME;
 
-		// Always create a fresh runner with the selected session
 		const agentBuilder = AgentBuilder.create(exportedAgent.name).withAgent(
 			exportedAgent,
 		);
@@ -201,7 +210,7 @@ export class AgentManager {
 			userId,
 			appName,
 			state: undefined,
-			sessionId: sessionToUse.id, // Use the selected session ID
+			sessionId: sessionToUse.id,
 		});
 		const { runner } = await agentBuilder.build();
 		return runner;
@@ -217,23 +226,22 @@ export class AgentManager {
 		const userId = `${USER_ID_PREFIX}${agentPath}`;
 		const appName = DEFAULT_APP_NAME;
 
-		// Store the loaded agent with its runner and the selected session
 		const loadedAgent: LoadedAgent = {
 			agent: exportedAgent,
-			runner: runner,
+			runner,
 			sessionId: sessionToUse.id,
 			userId,
 			appName,
 		};
+
 		this.loadedAgents.set(agentPath, loadedAgent);
 		agent.instance = exportedAgent;
 		agent.name = exportedAgent.name;
 
-		// Ensure the session is stored in the session service
 		try {
 			const existingSession = await this.sessionService.getSession(
-				loadedAgent.appName,
-				loadedAgent.userId,
+				appName,
+				userId,
 				sessionToUse.id,
 			);
 			if (!existingSession) {
@@ -241,26 +249,19 @@ export class AgentManager {
 					format("Creating session in sessionService: %s", sessionToUse.id),
 				);
 				await this.sessionService.createSession(
-					loadedAgent.appName,
-					loadedAgent.userId,
+					appName,
+					userId,
 					sessionToUse.state,
 					sessionToUse.id,
 				);
-			} else {
-				this.logger.log(
-					format(
-						"Session already exists in sessionService: %s",
-						sessionToUse.id,
-					),
-				);
 			}
 		} catch (error) {
-			this.logger.error("Error ensuring session exists: %o", error);
+			const msg = error instanceof Error ? error.message : String(error);
+			this.logger.error(`Error ensuring session exists: ${msg}`);
 		}
 	}
 
 	async stopAgent(agentPath: string): Promise<void> {
-		// Deprecated: explicit stop not needed; keep method no-op for backward compatibility
 		this.loadedAgents.delete(agentPath);
 		const agent = this.agents.get(agentPath);
 		if (agent) {
@@ -273,7 +274,6 @@ export class AgentManager {
 		message: string,
 		attachments?: Array<{ name: string; mimeType: string; data: string }>,
 	): Promise<string> {
-		// Auto-start the agent if it's not already running
 		if (!this.loadedAgents.has(agentPath)) {
 			await this.startAgent(agentPath);
 		}
@@ -284,7 +284,6 @@ export class AgentManager {
 		}
 
 		try {
-			// Build FullMessage (text + optional attachments)
 			const fullMessage: FullMessage = {
 				parts: [
 					{ text: message },
@@ -294,7 +293,6 @@ export class AgentManager {
 				],
 			};
 
-			// Always run against the CURRENT loadedAgent.sessionId (switchable)
 			let accumulated = "";
 			for await (const event of loadedAgent.runner.runAsync({
 				userId: loadedAgent.userId,
@@ -312,12 +310,9 @@ export class AgentManager {
 			}
 			return accumulated.trim();
 		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(
-				`Error sending message to agent ${agentPath}: ${errorMessage}`,
-			);
-			throw new Error(`Failed to send message to agent: ${errorMessage}`);
+			const msg = error instanceof Error ? error.message : String(error);
+			this.logger.error(`Error sending message to agent ${agentPath}: ${msg}`);
+			throw new Error(`Failed to send message to agent: ${msg}`);
 		}
 	}
 
