@@ -67,22 +67,19 @@ builder
     }
     return res;
   })
-  .withBeforeToolCallback(async (toolCtx, call) => {
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
     // Validate or enrich tool args; return a result to short-circuit execution
-    if (call.tool.name === 'searchApi' && typeof call.args.query !== 'string') {
+    if (tool.name === 'searchApi' && typeof args.query !== 'string') {
       return { error: 'query must be a string' };
     }
 
     // Enrich args from shared state
-    call.args = {
-      ...call.args,
-      locale: toolCtx.state['locale'] ?? 'en',
-    };
+    args.locale = toolCtx.state['locale'] ?? 'en';
   })
-  .withAfterToolCallback(async (toolCtx, result) => {
+  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
     // Persist useful values into state for later steps
     if (result && typeof result === 'object' && 'top_hit' in result) {
-      toolCtx.state['last_top_hit'] = (result as any).top_hit;
+      toolCtx.state['last_top_hit'] = (result as { top_hit: any }).top_hit;
     }
     return result;
   });
@@ -103,15 +100,15 @@ builder
     const forbidden = ['forbidden-topic', 'profanity'];
     const text = (req.contents ?? [])
       .filter((c) => c.type === 'text')
-      .map((c: any) => c.text)
+      .map((c: { text: string }) => c.text)
       .join('\n');
     if (forbidden.some((k) => text.includes(k))) {
       return { contents: [{ type: 'text', text: 'Sorry, I can’t help with that.' }] };
     }
     return req;
   })
-  .withBeforeToolCallback(async (toolCtx, call) => {
-    if (call.tool.name === 'transferFunds' && toolCtx.state['user_tier'] !== 'pro') {
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    if (tool.name === 'transferFunds' && toolCtx.state['user_tier'] !== 'pro') {
       return { error: 'This operation requires a pro account.' };
     }
   });
@@ -124,10 +121,10 @@ builder
 
 ```ts
 builder
-  .withAfterToolCallback(async (toolCtx, result) => {
+  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
     // Save transaction id for later use
     if (result && typeof result === 'object' && 'transaction_id' in result) {
-      toolCtx.state['last_transaction_id'] = (result as any).transaction_id;
+      toolCtx.state['last_transaction_id'] = (result as { transaction_id: any }).transaction_id;
     }
     return result;
   })
@@ -144,9 +141,9 @@ builder
 
 ```ts
 builder
-  .withBeforeToolCallback(async (toolCtx, call) => {
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
     toolCtx.logger?.info?.(
-      `Before Tool: ${call.tool.name} (invocation: ${toolCtx.invocationId}) args=${JSON.stringify(call.args)}`
+      `Before Tool: ${tool.name} (invocation: ${toolCtx.invocationId}) args=${JSON.stringify(args)}`
     );
   })
   .withAfterModelCallback(async (ctx, res) => {
@@ -162,13 +159,13 @@ builder
 
 ```ts
 builder
-  .withBeforeToolCallback(async (toolCtx, call) => {
-    const key = `cache:search:${call.args.query}`;
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    const key = `cache:search:${args.query}`;
     const hit = toolCtx.state[key];
     if (hit) return hit; // short-circuit tool
   })
-  .withAfterToolCallback(async (toolCtx, result) => {
-    const key = `cache:search:${(result as any)?.query ?? ''}`;
+  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
+    const key = `cache:search:${args.query}`;
     toolCtx.state[key] = result;
     return result;
   });
@@ -189,7 +186,7 @@ builder
   })
   .withAfterModelCallback(async (ctx, res) => {
     const contents = res.contents ?? [];
-    res.contents = contents.map((c: any) => (c.type === 'text' ? { ...c, text: c.text.replaceAll('\n\n', '\n') } : c));
+    res.contents = contents.map((c: { type: string; text?: string }) => (c.type === 'text' ? { ...c, text: c.text?.replaceAll('\n\n', '\n') } : c));
     return res;
   });
 ```
@@ -212,7 +209,7 @@ builder
     }
     return req;
   })
-  .withBeforeToolCallback(async (toolCtx, call) => {
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
     if (toolCtx.state['api_quota_exceeded']) {
       return { error: 'API quota exceeded' };
     }
@@ -225,16 +222,16 @@ builder
 
 ```ts
 builder
-  .withBeforeToolCallback(async (toolCtx, call) => {
-    if (call.tool.name === 'searchApi') {
-      call.args.headers = {
-        ...(call.args.headers ?? {}),
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    if (tool.name === 'searchApi') {
+      args.headers = {
+        ...(args.headers ?? {}),
         Authorization: `Bearer ${toolCtx.state['api_token'] ?? ''}`,
       };
     }
   })
-  .withAfterToolCallback(async (toolCtx, result) => {
-    if (toolCtx.tool?.name === 'searchApi' && toolCtx.state['summarize'] === true) {
+  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
+    if (tool.name === 'searchApi' && toolCtx.state['summarize'] === true) {
       // Example: mark for summarization in subsequent steps
       toolCtx.state['needs_summary'] = true;
     }
