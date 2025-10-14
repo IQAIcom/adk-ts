@@ -16,7 +16,7 @@ Callbacks are a cornerstone feature of ADK, providing a powerful mechanism to ho
 -   The `After Agent` callback executes _right after_ the agent has finished all its steps for that request and has prepared the final result, but just before the result is returned.
 -   This "main work" encompasses the agent's _entire_ process for handling that single request. This might involve deciding to call an LLM, actually calling the LLM, deciding to use a tool, using the tool, processing the results, and finally putting together the answer. These callbacks essentially wrap the whole sequence from receiving the input to producing the final output for that one interaction.
 -   **Before sending a request to, or after receiving a response from, the Large Language Model (LLM):** These callbacks (`Before Model`, `After Model`) allow you to inspect or modify the data going to and coming from the LLM specifically.
--   **Before executing a tool (like a Python function or another agent) or after it finishes:** Similarly, `Before Tool` and `After Tool` callbacks give you control points specifically around the execution of tools invoked by the agent.
+-   **Before executing a tool (a function or another agent) or after it finishes:** Similarly, `Before Tool` and `After Tool` callbacks give you control points specifically around the execution of tools invoked by the agent.
 
 <Mermaid
   chart="
@@ -58,230 +58,60 @@ Callbacks are registered during agent creation:
 ```typescript
 import { LlmAgent, CallbackContext, LlmRequest, LlmResponse } from '@iqai/adk';
 
-// Define callback functions
+// Define callback function
 const beforeModelCallback = ({ callbackContext, llmRequest }: {
   callbackContext: CallbackContext;
   llmRequest: LlmRequest;
-}): LlmResponse | undefined => {
+}): LlmResponse | null => {
   console.log(`Processing request for agent: ${callbackContext.agentName}`);
 
-  // Return undefined to proceed normally
+  // Return null to proceed normally
   // Return LlmResponse to skip LLM call
-  return undefined;
+  return null;
 };
 
-const afterAgentCallback = (callbackContext: CallbackContext) => {
-  console.log(`Agent ${callbackContext.agentName} completed processing`);
-  return undefined; // Allow normal completion
-};
-
-// Create agent with callbacks
+// Create agent with callback
 const agent = new LlmAgent({
   name: "callback_agent",
   model: "gemini-2.5-flash",
   description: "Agent with callbacks",
   instruction: "You are helpful",
   beforeModelCallback,
-  afterAgentCallback
 });
 ```
 
-### Control Flow
+## The Callback Mechanism: Interception and Control
+When the ADK framework reaches a callback point (for example, just before calling the LLM), it checks whether the agent was configured with a corresponding callback and, if so, executes it.
 
-Callbacks control execution through their return values:
+**Context is key:** Your callback receives a context object to understand and affect the current run:
 
-**Return `undefined`**: Allow normal execution to continue
-**Return specific object**: Override or skip the default behavior
+- `CallbackContext` for agent/model-level callbacks
+- `ToolContext` (extends `CallbackContext`) for tool callbacks
 
-- `beforeAgentCallback` → `Content`: Skip agent execution, use returned content
-- `beforeModelCallback` → `LlmResponse`: Skip LLM call, use returned response
-- `afterAgentCallback` → `Content`: Replace agent's output
-- `afterModelCallback` → `LlmResponse`: Replace LLM response
+These include invocation/session info, a delta-aware `state`, and helper methods like `saveArtifact`, `loadArtifact`, `listArtifacts`, and `searchMemory`.
 
-## Callback Types
+**Controlling the flow:** In TypeScript, the value you return determines whether ADK proceeds or overrides behavior. The exact “continue vs override” sentinel differs by callback kind:
 
-The framework provides different callback types for various execution stages:
+1) Continue with default behavior
 
-<Cards>
-  <Card
-    title="🚀 Agent Lifecycle"
-    description="Before and after complete agent processing with CallbackContext"
-    href="/docs/framework/callbacks/types#agent-lifecycle-callbacks"
-  />
+- before_agent / after_agent: return `undefined`
+- before_model / after_model: return `null`
+- before_tool / after_tool: return `null`
 
-  <Card
-    title="🧠 Model Interactions"
-    description="Before and after LLM communications with request/response access"
-    href="/docs/framework/callbacks/types#llm-interaction-callbacks"
-  />
+You can still mutate mutable inputs in-place (for example, tweak `llmRequest` in a before_model callback or adjust `args` in a before_tool callback) and then return the sentinel to proceed.
 
-  <Card
-    title="🔧 Tool Execution"
-    description="Before and after tool invocations with ToolContext"
-    href="/docs/framework/callbacks/types#tool-execution-callbacks"
-  />
-</Cards>
+2) Override default behavior by returning a specific object
 
-## Documentation Structure
+- before_agent → return `Content` (from `@google/genai`) to skip the agent’s run and immediately reply.
+- after_agent → return `Content` to replace the agent’s produced reply.
+- before_model → return `LlmResponse` to skip the external LLM call (great for guardrails or caching).
+- after_model → return `LlmResponse` to replace the received LLM response.
+- before_tool → return `Record<string, any>` to skip actual tool execution and use this as the tool result.
+- after_tool → return `Record<string, any>` to replace the tool’s result before it’s sent back to the LLM.
 
-<Cards>
-  <Card
-    title="📋 Callback Types"
-    description="Detailed reference for all callback types and their contexts"
-    href="/docs/framework/callbacks/types"
-  />
+Notes
 
-  <Card
-    title="🎨 Design Patterns"
-    description="Common patterns for guardrails, caching, logging, and more"
-    href="/docs/framework/callbacks/design-patterns"
-  />
-
-  <Card
-    title="🔧 Context Patterns"
-    description="Working with CallbackContext and ToolContext effectively"
-    href="/docs/framework/callbacks/context-patterns"
-  />
-</Cards>
-
-## Quick Example
-
-Here's a simple callback that adds logging and implements a basic guardrail:
-
-```typescript
-import { LlmAgent, CallbackContext, LlmRequest, LlmResponse, Content } from '@iqai/adk';
-
-// Before model callback with guardrail
-const guardrailCallback = ({ callbackContext, llmRequest }: {
-  callbackContext: CallbackContext;
-  llmRequest: LlmRequest;
-}): LlmResponse | undefined => {
-  // Log the request
-  console.log(`[${callbackContext.invocationId}] Processing LLM request`);
-
-  // Check for blocked content in the last user message
-  const lastContent = llmRequest.contents?.[llmRequest.contents.length - 1];
-  const lastMessage = lastContent?.parts?.[0]?.text || "";
-
-  if (lastMessage.toLowerCase().includes("blocked")) {
-    // Return response to skip LLM call
-    return new LlmResponse({
-      content: {
-        role: "model",
-        parts: [{ text: "I cannot process requests containing blocked content." }]
-      }
-    });
-  }
-
-  return undefined; // Proceed with normal LLM call
-};
-
-// After agent callback for state management
-const stateManagementCallback = (callbackContext: CallbackContext): Content | undefined => {
-  // Update interaction count in state
-  const currentCount = callbackContext.state.get('interaction_count') || 0;
-  callbackContext.state.set('interaction_count', currentCount + 1);
-
-  console.log(`Interaction count: ${currentCount + 1}`);
-  return undefined; // Use agent's original output
-};
-
-const agent = new LlmAgent({
-  name: "guarded_agent",
-  model: "gemini-2.5-flash",
-  description: "Agent with guardrails and state tracking",
-  instruction: "You are a helpful assistant",
-  beforeModelCallback: guardrailCallback,
-  afterAgentCallback: stateManagementCallback
-});
-```
-
-## Context Objects
-
-Callbacks receive different context objects depending on their type:
-
-### CallbackContext
-
-Used in agent lifecycle and LLM interaction callbacks:
-
-- **State Management**: Read/write session state with automatic delta tracking
-- **Artifact Operations**: Save and load files with `saveArtifact()` and `loadArtifact()`
-- **Invocation Metadata**: Access to invocation ID, agent name, user content
-- **Event Actions**: Control event generation and side effects
-
-### ToolContext
-
-Used in tool execution callbacks, extends CallbackContext with:
-
-- **Function Call ID**: Identifier for the specific tool invocation
-- **Authentication**: Credential management with `requestCredential()`
-- **Artifact Listing**: Enumerate session artifacts with `listArtifacts()`
-- **Memory Search**: Query memory service with `searchMemory()`
-- **Summarization Control**: Skip LLM summarization of tool results
-
-## Common Use Cases
-
-### Security & Compliance
-
-- **Input Validation**: Check user inputs for safety and compliance
-- **Output Filtering**: Remove sensitive information from responses
-- **Access Control**: Verify user permissions before tool execution
-- **Audit Logging**: Track all interactions for compliance
-
-### Performance Optimization
-
-- **Response Caching**: Cache LLM responses to avoid redundant calls
-- **Request Batching**: Combine multiple requests for efficiency
-- **Resource Management**: Monitor and control resource usage
-- **Early Termination**: Stop processing when conditions are met
-
-### User Experience
-
-- **Dynamic Instructions**: Adapt agent behavior based on user context
-- **Progress Tracking**: Update users on long-running operations
-- **Error Recovery**: Provide graceful fallbacks for failures
-- **Personalization**: Customize responses based on user preferences
-
-## Best Practices
-
-### Design Principles
-
-- **Single Responsibility**: Each callback should have one clear purpose
-- **Performance Awareness**: Avoid blocking operations in callbacks
-- **Error Handling**: Use try-catch blocks and graceful degradation
-- **State Management**: Be deliberate about state changes and their scope
-
-### Implementation Guidelines
-
-- **Type Safety**: Use proper TypeScript types for all callback parameters
-- **Testing**: Unit test callbacks with mock context objects
-- **Documentation**: Document callback behavior and side effects clearly
-- **Idempotency**: Design callbacks to be safe for retry scenarios
-
-## Related Topics
-
-<Cards>
-  <Card
-    title="🤖 Agents"
-    description="Learn how agents integrate callbacks into their execution"
-    href="/docs/framework/agents"
-  />
-
-  <Card
-    title="📊 Runtime"
-    description="Understanding callback integration with runtime execution"
-    href="/docs/framework/runtime"
-  />
-
-  <Card
-    title="💬 Sessions"
-    description="Session state management through callbacks"
-    href="/docs/framework/sessions"
-  />
-
-  <Card
-    title="🔧 Tools"
-    description="Tool execution control through callbacks"
-    href="/docs/framework/tools"
-  />
-</Cards>
+- Agent callbacks are typed to return `Content | undefined`.
+- Model callbacks are typed to return `LlmResponse | null`.
+- Tool callbacks are typed to return `Record<string, any> | null`.
+- All callbacks may be `async` and you can configure a single callback or an array; when multiple are provided, they’re invoked in order until one returns a non-sentinel value.
