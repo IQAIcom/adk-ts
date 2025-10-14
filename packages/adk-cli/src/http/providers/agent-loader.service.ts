@@ -236,9 +236,7 @@ export class AgentLoader {
 					): issue is z.core.$ZodIssue & {
 						code: "invalid_type";
 						received: unknown;
-					} =>
-						issue.code === "invalid_type" &&
-						(issue as any).received === "undefined",
+					} => issue.code === "invalid_type" && issue.expected !== "undefined",
 				)
 				.map((issue) => issue.path?.[0])
 				.filter((v): v is string => !!v);
@@ -483,9 +481,14 @@ export class AgentLoader {
 			try {
 				mod = dynamicRequire(outFile) as Record<string, unknown>;
 			} catch (loadErr) {
+				console.log(JSON.stringify(loadErr, null, 2));
 				const error =
 					loadErr instanceof Error ? loadErr : new Error(String(loadErr));
+
+				// Check for missing env errors BEFORE logging the warning
 				const envCheck = this.isMissingEnvError(error);
+
+				console.log(envCheck);
 
 				if (envCheck.isMissing) {
 					// Enhanced handling for missing environment variables
@@ -539,10 +542,13 @@ export class AgentLoader {
 					}
 				}
 
-				// Not an env error, try fallback
-				this.logger.warn(
-					`Primary require failed for built agent '${outFile}': ${error.message}. Falling back to dynamic import...`,
-				);
+				// Not an env error OR only optional vars missing - try fallback
+				// Only log warning if it's NOT an env-related issue
+				if (!envCheck.isMissing) {
+					this.logger.warn(
+						`Primary require failed for built agent '${outFile}': ${error.message}. Falling back to dynamic import...`,
+					);
+				}
 
 				try {
 					mod = (await import(pathToFileURL(outFile).href)) as Record<
