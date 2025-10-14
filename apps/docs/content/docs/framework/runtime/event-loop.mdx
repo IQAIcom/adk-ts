@@ -36,6 +36,42 @@ The Runner acts as the central coordinator for a single user invocation. Its res
 - **Yield Upstream**: Forwards the processed event onwards (e.g., to the calling application or UI for rendering).
 - **Iterate**: Signals the agent logic that processing is complete for the yielded event, allowing it to resume and generate the next event.
 
+```typescript
+// Simplified view of Runner's main loop logic
+async function* runAsync(userId: string, sessionId: string, newMessage: Content): AsyncGenerator<Event> {
+  // 1. Get or create session
+  const session = await sessionService.getSession(appName, userId, sessionId);
+
+  // 2. Create invocation context
+  const invocationContext = new InvocationContext({ /* ... */ });
+
+  // 3. Append new message to session (if provided)
+  if (newMessage) {
+    await appendNewMessageToSession(session, newMessage, invocationContext);
+  }
+
+  // 4. Find the agent to run for this session
+  const agentToRun = findAgentToRun(session, rootAgent);
+
+  // 5. Get agent's async generator
+  const agentGenerator = agentToRun.runAsync(invocationContext);
+
+  // 6. Process events from agent
+  for await (const event of agentGenerator) {
+    // 7. For non-partial events, commit changes to session and memory
+    if (!event.partial) {
+      await sessionService.appendEvent(session, event);
+      if (memoryService) {
+        await memoryService.addSessionToMemory(session);
+      }
+    }
+
+    // 8. Yield event for upstream processing (e.g., UI rendering)
+    yield event;
+  }
+}
+```
+
 ### Execution Logic Role (Agent, Tool, Callback)
 
 Your code within agents, tools, and callbacks is responsible for the actual computation and decision-making. Its interaction with the loop involves:
@@ -46,44 +82,38 @@ Your code within agents, tools, and callbacks is responsible for the actual comp
 - **Resume**: Only after the Runner has processed the yielded event does the agent logic resume execution from the statement immediately following the yield.
 - **See Updated State**: Upon resumption, the agent logic can now reliably access the session state (ctx.session.state) reflecting the changes that were committed by the Runner from the previously yielded event.
 
-## Event Flow Example
-
-Here's how events flow through the system:
-
 ```typescript
-import { LlmAgent, Runner, InMemorySessionService, Event } from '@iqai/adk';
+// Simplified view of logic inside Agent.run_async, callbacks, or tools
 
-async function demonstrateEventFlow() {
-  const agent = new LlmAgent({
-    name: "demo_agent",
-    model: "gemini-2.5-flash",
-    description: "Demonstrates event flow",
-    instruction: "You are helpful and explain your thinking"
-  });
+// ... previous code runs based on current state ...
 
-  const sessionService = new InMemorySessionService();
-  const session = await sessionService.createSession("demo", "user1");
+// 1. Determine a change or output is needed, construct the event
+// Example: Updating state
+const updateData = { 'field_1': 'value_2' };
+const eventWithStateChange = new Event({
+  author: this.name,
+  actions: new EventActions({ stateDelta: updateData }),
+  content: { parts: [{ text: "State updated." }] }
+  // ... other event fields ...
+});
 
-  const runner = new Runner({
-    appName: "demo",
-    agent,
-    sessionService
-  });
+// 2. Yield the event to the Runner for processing & commit
+yield eventWithStateChange;
+// <<<<<<<<<<<< EXECUTION PAUSES HERE >>>>>>>>>>>>
 
-  // Each iteration represents one event in the flow
-  for await (const event of runner.runAsync({
-    userId: "user1",
-    sessionId: session.id,
-    newMessage: { parts: [{ text: "What's 2+2?" }] }
-  })) {
-    console.log(`Event from ${event.author}:`, {
-      content: event.content?.parts?.map(p => p.text).join(' '),
-      hasActions: !!event.actions,
-      isFinal: event.isFinalResponse()
-    });
-  }
-}
+// <<<<<<<<<<<< RUNNER PROCESSES & COMMITS THE EVENT >>>>>>>>>>>>
+
+// 3. Resume execution ONLY after Runner is done processing the above event.
+// Now, the state committed by the Runner is reliably reflected.
+// Subsequent code can safely assume the change from the yielded event happened.
+const val = ctx.session.state['field_1'];
+// here `val` is guaranteed to be "value_2" (assuming Runner committed successfully)
+console.log(`Resumed execution. Value of field_1 is now: ${val}`);
+
+// ... subsequent code continues ...
+// Maybe yield another event later...
 ```
+
 
 ## Event Types and Processing
 
@@ -277,17 +307,3 @@ yield new Event({
 });
 ```
 
-### Live Mode
-
-For real-time interactions, the Runtime supports live mode:
-
-```typescript
-// Live mode processing (voice/video)
-for await (const event of agent.runLive?.(invocationContext) ||
-                          agent.runAsync(invocationContext)) {
-  // Handle real-time events
-  if (event.content) {
-    sendToUserInterface(event);
-  }
-}
-```
