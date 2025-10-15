@@ -1,19 +1,19 @@
 {
-  "title": "Docs",
-  "icon": "Building",
-  "root": true,
-  "pages": [
-    "get-started",
-    "agents",
-    "tools",
-    "runtime",
-    "sessions",
-    "evaluation",
-    "artifacts",
-    "callbacks",
-    "context",
-    "deploy",
-    "events",
-    "guides"
-  ]
+	"title": "Docs",
+	"icon": "Building",
+	"root": true,
+	"pages": [
+		"get-started",
+		"agents",
+		"tools",
+		"runtime",
+		"sessions",
+		"evaluation",
+		"artifacts",
+		"callbacks",
+		"context",
+		"deploy",
+		"events",
+		"guides"
+	]
 }
