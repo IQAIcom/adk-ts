@@ -215,7 +215,7 @@ AgentBuilder.create("financial-analyst").withDescription(
 
 Defines the agent's behavior, decision-making patterns, and interaction style. This is your most important configuration as it transforms a generic LLM into a specialized agent with distinct expertise and personality.
 
-Instructions can be static strings for consistent behavior or dynamic functions that adapt based on context. See [Agent Instructions Guide](/docs/guides/agent-instructions) for comprehensive guidance on writing effective instructions.
+Instructions can be static strings for consistent behavior or dynamic functions that adapt based on context. See [Agent Instructions Guide](/docs/framework/guides/agent-instructions) for comprehensive guidance on writing effective instructions.
 
 ```typescript
 // Static instruction
@@ -477,7 +477,7 @@ const researchAgent = new LlmAgent({
 });
 
 const analysisAgent = new LlmAgent({
-  name: "analyst", 
+  name: "analyst",
   model: "gemini-2.5-flash",
   instruction: "Specialize in data analysis",
 });
@@ -813,7 +813,7 @@ const result = await runner.ask("Research AI trends");
     description="Direct agent configuration with maximum control"
     href="/docs/framework/agents/llm-agents"
   />
-  
+
   <Card
     title="🛠️ Tools"
     description="Available tools and creating custom ones"
@@ -837,7 +837,7 @@ const result = await runner.ask("Research AI trends");
     description="Repeat agent execution until conditions are met"
     href="/docs/framework/agents/workflow-agents/loop-agents"
   />
-  
+
   <Card
     title="🧠 Sessions & Memory"
     description="Manage conversation state and long-term memory"
