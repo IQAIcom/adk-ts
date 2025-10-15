@@ -43,7 +43,11 @@ const response = await runner.ask("What is quantum computing?");
 
 ## Configuration Options
 
-All `AgentBuilder` configuration methods and their requirements:
+`AgentBuilder` provides a comprehensive set of configuration methods organized by functionality. All methods are **optional** except where noted in the usage patterns below.
+
+### Core Configuration
+
+Basic agent setup and behavior:
 
 | Method                         | Type                                 | Description                      |
 | ------------------------------ | ------------------------------------ | -------------------------------- |
@@ -51,30 +55,72 @@ All `AgentBuilder` configuration methods and their requirements:
 | `withModel(model)`             | `string \| BaseLlm \| LanguageModel` | Sets the LLM model               |
 | `withDescription(desc)`        | `string`                             | Adds agent description           |
 | `withInstruction(instruction)` | `string \| InstructionProvider`      | Sets behavior instructions       |
+| `withAgent(agent)`             | `BaseAgent`                          | Wraps existing agent             |
+
+### Input/Output Configuration
+
+Data validation, schemas, and response formatting:
+
+| Method                         | Type                                 | Description                      |
+| ------------------------------ | ------------------------------------ | -------------------------------- |
 | `withInputSchema(schema)`      | `ZodSchema`                          | Input validation schema          |
 | `withOutputSchema(schema)`     | `ZodSchema`                          | Structured output format         |
+| `withOutputKey(outputKey)`     | `string`                             | Sets output key in session state |
+
+### Tools & Execution
+
+External capabilities and code execution:
+
+| Method                         | Type                                 | Description                      |
+| ------------------------------ | ------------------------------------ | -------------------------------- |
 | `withTools(...tools)`          | `ToolUnion[]`                        | Adds tools to the agent          |
 | `withPlanner(planner)`         | `BasePlanner`                        | Sets the planner for the agent   |
 | `withCodeExecutor(executor)`   | `BaseCodeExecutor`                   | Enables code execution           |
-| `withOutputKey(outputKey)`     | `string`                             | Sets output key in session state |
 | `withSubAgents(subAgents)`     | `BaseAgent[]`                        | Adds sub-agents to the agent     |
+
+### Callback Methods
+
+Monitoring and execution hooks for logging, analytics, and custom processing:
+
+| Method                         | Type                                 | Description                      |
+| ------------------------------ | ------------------------------------ | -------------------------------- |
 | `withBeforeAgentCallback(cb)`  | `BeforeAgentCallback`                | Before agent execution callback  |
 | `withAfterAgentCallback(cb)`   | `AfterAgentCallback`                 | After agent execution callback   |
 | `withBeforeModelCallback(cb)`  | `BeforeModelCallback`                | Before model interaction callback|
 | `withAfterModelCallback(cb)`   | `AfterModelCallback`                 | After model interaction callback |
 | `withBeforeToolCallback(cb)`   | `BeforeToolCallback`                 | Before tool execution callback   |
 | `withAfterToolCallback(cb)`    | `AfterToolCallback`                  | After tool execution callback    |
+
+### Session & Memory
+
+State management and persistence:
+
+| Method                         | Type                                 | Description                      |
+| ------------------------------ | ------------------------------------ | -------------------------------- |
 | `withMemory(service)`          | `BaseMemoryService`                  | Adds long-term memory            |
 | `withSessionService(service)`  | `BaseSessionService`                 | Custom session management        |
 | `withSession(session)`         | `Session`                            | Uses existing session instance   |
 | `withQuickSession(options)`    | `SessionOptions`                     | In-memory session with custom IDs|
 | `withArtifactService(service)` | `BaseArtifactService`                | File storage capability          |
 | `withRunConfig(config)`        | `RunConfig \| Partial<RunConfig>`    | Configures runtime behavior      |
-| `withAgent(agent)`             | `BaseAgent`                          | Wraps existing agent             |
+
+### Multi-Agent Workflows
+
+Agent orchestration patterns *(mutually exclusive - choose one)*:
+
+| Method                         | Type                                 | Description                      |
+| ------------------------------ | ------------------------------------ | -------------------------------- |
 | `asSequential(agents)`         | `BaseAgent[]`                        | Creates sequential workflow      |
 | `asParallel(agents)`           | `BaseAgent[]`                        | Creates parallel execution       |
 | `asLoop(agents, max)`          | `BaseAgent[], number`                | Creates iterative execution      |
 | `asLangGraph(nodes, start)`    | `LangGraphNode[], string`            | Creates complex workflows        |
+
+### Build Methods
+
+Final agent construction *(choose one to complete the configuration)*:
+
+| Method                         | Type                                 | Description                      |
+| ------------------------------ | ------------------------------------ | -------------------------------- |
 | `build()`                      | `Promise<BuiltAgent>`                | Builds the configured agent      |
 | `buildWithSchema<T>()`         | `Promise<BuiltAgent<T>>`             | Type-safe build with schema      |
 | `ask(message)`                 | `Promise<string \| T>`               | Quick execution helper           |
