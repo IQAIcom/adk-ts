@@ -25,6 +25,12 @@ import { LoopAgent } from "./loop-agent.js";
 import { ParallelAgent } from "./parallel-agent.js";
 import { RunConfig } from "./run-config.js";
 import { SequentialAgent } from "./sequential-agent.js";
+import type {
+	BeforeModelCallback,
+	AfterModelCallback,
+	BeforeToolCallback,
+	AfterToolCallback,
+} from "./llm-agent.js";
 
 /**
  * Configuration options for the AgentBuilder
@@ -40,6 +46,10 @@ export interface AgentBuilderConfig {
 	subAgents?: BaseAgent[];
 	beforeAgentCallback?: BeforeAgentCallback;
 	afterAgentCallback?: AfterAgentCallback;
+	beforeModelCallback?: BeforeModelCallback;
+	afterModelCallback?: AfterModelCallback;
+	beforeToolCallback?: BeforeToolCallback;
+	afterToolCallback?: AfterToolCallback;
 	maxIterations?: number;
 	nodes?: LangGraphNode[];
 	rootNode?: string;
@@ -385,6 +395,50 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	}
 
 	/**
+	 * Set the before model callback for LLM interaction
+	 * @param callback Callback to invoke before calling the LLM
+	 * @returns This builder instance for chaining
+	 */
+	withBeforeModelCallback(callback: BeforeModelCallback): this {
+		this.warnIfLocked("withBeforeModelCallback");
+		this.config.beforeModelCallback = callback;
+		return this;
+	}
+
+	/**
+	 * Set the after model callback for LLM interaction
+	 * @param callback Callback to invoke after receiving LLM response
+	 * @returns This builder instance for chaining
+	 */
+	withAfterModelCallback(callback: AfterModelCallback): this {
+		this.warnIfLocked("withAfterModelCallback");
+		this.config.afterModelCallback = callback;
+		return this;
+	}
+
+	/**
+	 * Set the before tool callback for tool execution
+	 * @param callback Callback to invoke before running a tool
+	 * @returns This builder instance for chaining
+	 */
+	withBeforeToolCallback(callback: BeforeToolCallback): this {
+		this.warnIfLocked("withBeforeToolCallback");
+		this.config.beforeToolCallback = callback;
+		return this;
+	}
+
+	/**
+	 * Set the after tool callback for tool execution
+	 * @param callback Callback to invoke after running a tool
+	 * @returns This builder instance for chaining
+	 */
+	withAfterToolCallback(callback: AfterToolCallback): this {
+		this.warnIfLocked("withAfterToolCallback");
+		this.config.afterToolCallback = callback;
+		return this;
+	}
+
+	/**
 	 * Provide an already constructed agent instance. Further definition-mutating calls
 	 * (model/tools/instruction/etc.) will be ignored with a dev warning.
 	 */
@@ -698,6 +752,10 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 					subAgents: this.config.subAgents,
 					beforeAgentCallback: this.config.beforeAgentCallback,
 					afterAgentCallback: this.config.afterAgentCallback,
+					beforeModelCallback: this.config.beforeModelCallback,
+					afterModelCallback: this.config.afterModelCallback,
+					beforeToolCallback: this.config.beforeToolCallback,
+					afterToolCallback: this.config.afterToolCallback,
 					memoryService: this.memoryService,
 					artifactService: this.artifactService,
 					outputKey: this.config.outputKey,
