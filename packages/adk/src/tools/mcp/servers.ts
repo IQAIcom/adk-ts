@@ -171,25 +171,24 @@ function createMcpConfig(
 		env.PATH = process.env.PATH || "";
 	}
 
-	// Detect if packageNameOrUrl is a URL
-	const isUrl =
-		packageNameOrUrl.startsWith("http://") ||
-		packageNameOrUrl.startsWith("https://");
+	// Detect if packageNameOrUrl is a URL using URL constructor for robustness
+	let isUrl: boolean;
+	try {
+		const url = new URL(packageNameOrUrl);
+		isUrl = url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		isUrl = false;
+	}
 
 	// Configure transport based on whether it's a URL or package name
-	const transport = isUrl
-		? {
-				mode: "stdio" as const,
-				command: "npx",
-				args: ["-y", "mcp-remote@latest", packageNameOrUrl],
-				env,
-			}
-		: {
-				mode: "stdio" as const,
-				command: "npx",
-				args: ["-y", packageNameOrUrl],
-				env,
-			};
+	const transport = {
+		mode: "stdio" as const,
+		command: "npx",
+		args: isUrl
+			? ["-y", "mcp-remote@latest", packageNameOrUrl]
+			: ["-y", packageNameOrUrl],
+		env,
+	};
 
 	return {
 		name,
