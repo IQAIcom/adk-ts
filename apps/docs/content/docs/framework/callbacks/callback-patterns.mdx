@@ -1,0 +1,253 @@
+---
+title: Callback Patterns
+description: Design patterns and best practices for agent, model, and tool callbacks in the TypeScript ADK
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Callbacks give you precise control over the agent lifecycle, LLM requests/responses, and tool execution. This guide presents callback-centric patterns using the TypeScript ADK, with examples built around `AgentBuilder` and references to `CallbackContext` and `ToolContext`.
+
+## Callback & Context Overview
+
+- `CallbackContext` is passed to agent and model callbacks.
+  - Key fields commonly used: `state` (mutable session state), `invocationId`, `agent` (current agent), `logger` (if configured).
+- `ToolContext` is passed to tool callbacks.
+  - Key fields commonly used: `state`, `invocationId`, `tool` (current tool), `logger`.
+
+State writes inside callbacks are tracked and persisted by the `SessionService`. This makes it simple to pass information across the agent run.
+
+<Callout>
+These examples use the TypeScript ADK API. Configure callbacks via `AgentBuilder` chain methods and rely on canonicalization to support single callbacks or arrays.
+</Callout>
+
+## Builder Setup
+
+```ts
+import { AgentBuilder } from '@iqai/adk';
+import { BaseTool } from '@iqai/adk';
+
+// Example tool (shape depends on your tool implementation)
+const searchApi: BaseTool = /* ... */;
+
+// Create builder using static method and chain configuration
+const { agent, runner } = await AgentBuilder
+  .create('context-patterns-agent')
+  .withModel('<your-model-id>')
+  .withTools(searchApi)
+  .withBeforeAgentCallback(async (ctx) => {
+    // Warm up state; skip agent run by returning Content if desired
+    ctx.state['start_time'] = Date.now();
+  })
+  .withAfterAgentCallback(async (ctx) => {
+    // Post-run logging or final content override by returning Content
+    ctx.logger?.info?.(`Invocation ${ctx.invocationId} completed`);
+  })
+  .withBeforeModelCallback(async (ctx, req) => {
+    // Inspect/mutate LLM request; optionally return a response to short-circuit
+    if (ctx.state['block_llm'] === true) {
+      // Returning a response here skips the LLM call
+      return { contents: [{ type: 'text', text: 'LLM call blocked by policy.' }] };
+    }
+
+    // Example mutation: add system instruction dynamically
+    req.config = {
+      ...req.config,
+      systemInstruction: `${req.config?.systemInstruction ?? ''}\nUser tier: ${ctx.state['user_tier'] ?? 'free'}`,
+    };
+    return req;
+  })
+  .withAfterModelCallback(async (ctx, res) => {
+    // Modify/shape LLM response (e.g., trim text or add metadata)
+    const first = res.contents?.[0];
+    if (first?.type === 'text') {
+      first.text = first.text.trim();
+    }
+    return res;
+  })
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    // Validate or enrich tool args; return a result to short-circuit execution
+    if (tool.name === 'searchApi' && typeof args.query !== 'string') {
+      return { error: 'query must be a string' };
+    }
+
+    // Enrich args from shared state
+    args.locale = toolCtx.state['locale'] ?? 'en';
+  })
+  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
+    // Persist useful values into state for later steps
+    if (result && typeof result === 'object' && 'top_hit' in result) {
+      toolCtx.state['last_top_hit'] = (result as { top_hit: any }).top_hit;
+    }
+    return result;
+  })
+  .build();
+
+// Now you can use the agent and runner
+export { agent, runner };
+```
+
+## Design Patterns
+
+### 1. Guardrails & Policy Enforcement
+
+- Use `withBeforeModelCallback` to inspect `req.contents` and block unsafe prompts by returning a response.
+- Use `withBeforeToolCallback` to validate `call.args` and return an error result when needed.
+
+```ts
+builder
+  .withBeforeModelCallback(async (ctx, req) => {
+    const forbidden = ['forbidden-topic', 'profanity'];
+    const text = (req.contents ?? [])
+      .filter((c) => c.type === 'text')
+      .map((c: { text: string }) => c.text)
+      .join('\n');
+    if (forbidden.some((k) => text.includes(k))) {
+      return { contents: [{ type: 'text', text: 'Sorry, I can’t help with that.' }] };
+    }
+    return req;
+  })
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    if (tool.name === 'transferFunds' && toolCtx.state['user_tier'] !== 'pro') {
+      return { error: 'This operation requires a pro account.' };
+    }
+  });
+```
+
+### 2. Dynamic State Management
+
+- Read/write `ctx.state` and `toolCtx.state` to carry data between steps.
+- Changes are tracked automatically and persisted.
+
+```ts
+builder
+  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
+    // Save transaction id for later use
+    if (result && typeof result === 'object' && 'transaction_id' in result) {
+      toolCtx.state['last_transaction_id'] = (result as { transaction_id: any }).transaction_id;
+    }
+    return result;
+  })
+  .withBeforeAgentCallback(async (ctx) => {
+    // Personalize behavior based on prior state
+    const tier = ctx.state['user_tier'] ?? 'free';
+    ctx.logger?.info?.(`Running agent for tier: ${tier}`);
+  });
+```
+
+### 3. Logging and Monitoring
+
+- Add structured logs in `before/after` callbacks for observability.
+
+```ts
+builder
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    toolCtx.logger?.info?.(
+      `Before Tool: ${tool.name} (invocation: ${toolCtx.invocationId}) args=${JSON.stringify(args)}`
+    );
+  })
+  .withAfterModelCallback(async (ctx, res) => {
+    ctx.logger?.info?.(`After Model: ${ctx.agent.name} (invocation: ${ctx.invocationId})`);
+    return res;
+  });
+```
+
+### 4. Caching
+
+- Avoid redundant calls by checking a cache key in `state`.
+- If found, return directly from a `before_` callback; otherwise, persist in the corresponding `after_` callback.
+
+```ts
+builder
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    const key = `cache:search:${args.query}`;
+    const hit = toolCtx.state[key];
+    if (hit) return hit; // short-circuit tool
+  })
+  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
+    const key = `cache:search:${args.query}`;
+    toolCtx.state[key] = result;
+    return result;
+  });
+```
+
+### 5. Request/Response Modification
+
+- Mutate the outgoing LLM request or the returned response to fit your UX.
+
+```ts
+builder
+  .withBeforeModelCallback(async (ctx, req) => {
+    req.config = {
+      ...req.config,
+      systemInstruction: `${req.config?.systemInstruction ?? ''}\nSession: ${ctx.invocationId}`,
+    };
+    return req;
+  })
+  .withAfterModelCallback(async (ctx, res) => {
+    const contents = res.contents ?? [];
+    res.contents = contents.map((c: { type: string; text?: string }) => (c.type === 'text' ? { ...c, text: c.text?.replaceAll('\n\n', '\n') } : c));
+    return res;
+  });
+```
+
+### 6. Conditional Skipping of Steps
+
+- Return a value from a `before_` callback to skip the normal operation.
+
+```ts
+builder
+  .withBeforeAgentCallback(async (ctx) => {
+    if (ctx.state['maintenance_mode'] === true) {
+      // Returning Content here completes the run immediately
+      return [{ type: 'text', text: 'Agent is under maintenance.' }];
+    }
+  })
+  .withBeforeModelCallback(async (ctx, req) => {
+    if (ctx.state['use_cached_response']) {
+      return { contents: [{ type: 'text', text: 'Cached response' }] };
+    }
+    return req;
+  })
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    if (toolCtx.state['api_quota_exceeded']) {
+      return { error: 'API quota exceeded' };
+    }
+  });
+```
+
+### 7. Tool-Specific Actions (Auth & Summarization Control)
+
+- Implement per-tool behaviors like auth injection, summarization toggles, or rate-limiting.
+
+```ts
+builder
+  .withBeforeToolCallback(async (tool, args, toolCtx) => {
+    if (tool.name === 'searchApi') {
+      args.headers = {
+        ...(args.headers ?? {}),
+        Authorization: `Bearer ${toolCtx.state['api_token'] ?? ''}`,
+      };
+    }
+  })
+  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
+    if (tool.name === 'searchApi' && toolCtx.state['summarize'] === true) {
+      // Example: mark for summarization in subsequent steps
+      toolCtx.state['needs_summary'] = true;
+    }
+    return result;
+  });
+```
+
+## Best Practices
+
+- Keep callbacks focused: one responsibility per callback.
+- Prefer state keys with clear, stable naming (e.g., `cache:*`, `flags:*`).
+- Use arrays of callbacks when you need strictly ordered operations.
+- Log invocation IDs to correlate events across callbacks.
+- Return from `before_` callbacks sparingly and with clear UX messaging.
+
+## Troubleshooting
+
+- If a callback isn't firing, confirm you built an agent with callbacks configured (`await builder.build()`).
+- Check that your callbacks use the TypeScript ADK signatures and return types.
+- Validate that state mutations use plain serializable values; avoid non-serializable objects.
