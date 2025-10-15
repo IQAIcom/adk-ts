@@ -29,14 +29,11 @@ import { BaseTool } from '@iqai/adk';
 // Example tool (shape depends on your tool implementation)
 const searchApi: BaseTool = /* ... */;
 
-const builder = new AgentBuilder({
-  name: 'context-patterns-agent',
-  model: '<your-model-id>',
-  tools: [searchApi],
-});
-
-// Add callbacks (single or arrays)
-builder
+// Create builder using static method and chain configuration
+const { agent, runner } = await AgentBuilder
+  .create('context-patterns-agent')
+  .withModel('<your-model-id>')
+  .withTools(searchApi)
   .withBeforeAgentCallback(async (ctx) => {
     // Warm up state; skip agent run by returning Content if desired
     ctx.state['start_time'] = Date.now();
@@ -85,9 +82,11 @@ builder
       toolCtx.state['last_top_hit'] = (result as any).top_hit;
     }
     return result;
-  });
+  })
+  .build();
 
-export const agent = builder.createAgent('llm');
+// Now you can use the agent and runner
+export { agent, runner };
 ```
 
 ## Design Patterns
@@ -252,6 +251,6 @@ builder
 
 ## Troubleshooting
 
-- If a callback isn’t firing, confirm you created an `llm` agent (`builder.createAgent('llm')`).
+- If a callback isn't firing, confirm you built an agent with callbacks configured (`await builder.build()`).
 - Check that your callbacks use the TypeScript ADK signatures and return types.
 - Validate that state mutations use plain serializable values; avoid non-serializable objects.

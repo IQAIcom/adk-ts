@@ -94,7 +94,9 @@ Attach a memory service at runtime:
 import { AgentBuilder, Runner, InMemoryMemoryService } from '@iqai/adk';
 
 // Via AgentBuilder
-const { runner } = await new AgentBuilder()
+const { runner } = await AgentBuilder
+  .create('memory-agent')
+  .withModel('your-model-id')
   .withMemory(new InMemoryMemoryService())
   .build();
 
