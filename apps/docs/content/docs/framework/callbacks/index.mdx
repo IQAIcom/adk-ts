@@ -112,6 +112,6 @@ You can still mutate mutable inputs in-place (for example, tweak `llmRequest` in
 Notes
 
 - Agent callbacks are typed to return `Content | undefined`.
-- Model callbacks are typed to return `LlmResponse | null`.
-- Tool callbacks are typed to return `Record<string, any> | null`.
+- Model callbacks are typed to return `LlmResponse | null | undefined`.
+- Tool callbacks are typed to return `Record<string, any> | null | undefined`.
 - All callbacks may be `async` and you can configure a single callback or an array; when multiple are provided, they’re invoked in order until one returns a non-sentinel value.
