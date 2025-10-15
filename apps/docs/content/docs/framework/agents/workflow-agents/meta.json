@@ -1,9 +1,9 @@
 {
-  "title": "Workflow Agents",
-  "pages": [
-    "sequential-agents",
-    "parallel-agents",
-    "loop-agents",
-    "langgraph-agents"
-  ]
+	"title": "Workflow Agents",
+	"pages": [
+		"sequential-agents",
+		"parallel-agents",
+		"loop-agents",
+		"langgraph-agents"
+	]
 }

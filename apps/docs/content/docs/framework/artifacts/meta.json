@@ -1,13 +1,13 @@
 {
-  "icon": "FileText",
-  "pages": [
-    "index",
-    "runner-configuration",
-    "context-integration",
-    "scoping-and-versioning",
-    "service-implementations",
-    "best-practices",
-    "troubleshooting",
-    "recipes"
-  ]
+	"icon": "FileText",
+	"pages": [
+		"index",
+		"runner-configuration",
+		"context-integration",
+		"scoping-and-versioning",
+		"service-implementations",
+		"best-practices",
+		"troubleshooting",
+		"recipes"
+	]
 }

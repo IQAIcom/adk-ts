@@ -1,10 +1,10 @@
 {
-  "icon": "TestTube",
-  "pages": [
-    "index",
-    "evaluation-concepts",
-    "testing-agents",
-    "metrics-and-scoring",
-    "evaluation-patterns"
-  ]
+	"icon": "TestTube",
+	"pages": [
+		"index",
+		"evaluation-concepts",
+		"testing-agents",
+		"metrics-and-scoring",
+		"evaluation-patterns"
+	]
 }

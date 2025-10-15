@@ -1,8 +1,4 @@
 {
-  "icon": "GitBranch",
-  "pages": [
-    "index",
-    "types",
-    "callback-patterns"
-  ]
+	"icon": "GitBranch",
+	"pages": ["index", "types", "callback-patterns"]
 }
