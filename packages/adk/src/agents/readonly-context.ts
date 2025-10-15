@@ -33,6 +33,27 @@ export class ReadonlyContext {
 	}
 
 	/**
+	 * The application name for this invocation. READONLY field.
+	 */
+	get appName(): string {
+		return this._invocationContext.appName;
+	}
+
+	/**
+	 * The user ID for this invocation. READONLY field.
+	 */
+	get userId(): string {
+		return this._invocationContext.userId;
+	}
+
+	/**
+	 * The session ID for this invocation. READONLY field.
+	 */
+	get sessionId(): string {
+		return this._invocationContext.session.id;
+	}
+
+	/**
 	 * The state of the current session. READONLY field.
 	 */
 	get state(): Readonly<Record<string, any>> {

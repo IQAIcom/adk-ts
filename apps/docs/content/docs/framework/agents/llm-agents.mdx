@@ -12,37 +12,80 @@ Unlike deterministic workflow agents that follow predefined paths, LLM agents ar
 
 ## Configuration Options
 
-All LLM agent configuration options and their requirements:
+All LLM agent configuration options organized by category. All options are optional unless marked as required.
 
-| Option                     | Required | Type                                 | Description                                                   |
-| -------------------------- | -------- | ------------------------------------ | ------------------------------------------------------------- |
-| `name`                     | ✅       | `string`                             | Unique identifier for your agent                              |
-| `description`              | ❌       | `string`                             | Brief description of your agent's capabilities                |
-| `model`                    | ❌\*     | `string \| BaseLlm \| LanguageModel` | LLM model you want to use (\*inherits from parent if not set) |
-| `instruction`              | ❌       | `string \| InstructionProvider`      | Primary behaviour instructions                                |
-| `globalInstruction`        | ❌       | `string \| InstructionProvider`      | Global instructions for your entire agent tree                |
-| `tools`                    | ❌       | `ToolUnion[]`                        | Tools available for your agent                                |
-| `subAgents`                | ❌       | `BaseAgent[]`                        | Sub-agents for delegation                                     |
-| `codeExecutor`             | ❌       | `BaseCodeExecutor`                   | Code execution capability                                     |
-| `planner`                  | ❌       | `BasePlanner`                        | Planning and reasoning strategy                               |
-| `memoryService`            | ❌       | `BaseMemoryService`                  | Long-term memory storage                                      |
-| `sessionService`           | ❌       | `BaseSessionService`                 | Conversation management                                       |
-| `artifactService`          | ❌       | `BaseArtifactService`                | File storage and management                                   |
-| `includeContents`          | ❌       | `"default" \| "none"`                | Context inclusion behaviour                                   |
-| `outputKey`                | ❌       | `string`                             | Session state key for your agent's output                     |
-| `inputSchema`              | ❌       | `ZodSchema`                          | Input validation schema                                       |
-| `outputSchema`             | ❌       | `ZodSchema`                          | Output validation schema                                      |
-| `generateContentConfig`    | ❌       | `GenerateContentConfig`              | LLM generation parameters                                     |
-| `disallowTransferToParent` | ❌       | `boolean`                            | Disable parent agent transfers                                |
-| `disallowTransferToPeers`  | ❌       | `boolean`                            | Disable peer agent transfers                                  |
-| `userId`                   | ❌       | `string`                             | User identifier for sessions                                  |
-| `appName`                  | ❌       | `string`                             | Application identifier                                        |
-| `beforeAgentCallback`      | ❌       | `BeforeAgentCallback`                | Pre-execution hooks                                           |
-| `afterAgentCallback`       | ❌       | `AfterAgentCallback`                 | Post-execution hooks                                          |
-| `beforeModelCallback`      | ❌       | `BeforeModelCallback`                | Pre-LLM call hooks                                            |
-| `afterModelCallback`       | ❌       | `AfterModelCallback`                 | Post-LLM call hooks                                           |
-| `beforeToolCallback`       | ❌       | `BeforeToolCallback`                 | Pre-tool execution hooks                                      |
-| `afterToolCallback`        | ❌       | `AfterToolCallback`                  | Post-tool execution hooks                                     |
+### Core Configuration
+
+| Option        | Required | Type                                 | Description                                                   |
+| ------------- | -------- | ------------------------------------ | ------------------------------------------------------------- |
+| `name`        | ✅       | `string`                             | Unique identifier for your agent                              |
+| `description` | ❌       | `string`                             | Brief description of your agent's capabilities                |
+| `model`       | ❌\*     | `string \| BaseLlm \| LanguageModel` | LLM model you want to use (\*inherits from parent if not set) |
+
+### Instructions
+
+| Option              | Required | Type                            | Description                                     |
+| ------------------- | -------- | ------------------------------- | ----------------------------------------------- |
+| `instruction`       | ❌       | `string \| InstructionProvider` | Primary behaviour instructions                  |
+| `globalInstruction` | ❌       | `string \| InstructionProvider` | Global instructions for your entire agent tree |
+
+### Tools & Execution
+
+| Option         | Required | Type                | Description                         |
+| -------------- | -------- | ------------------- | ----------------------------------- |
+| `tools`        | ❌       | `ToolUnion[]`       | Tools available for your agent      |
+| `codeExecutor` | ❌       | `BaseCodeExecutor`  | Code execution capability           |
+| `planner`      | ❌       | `BasePlanner`       | Planning and reasoning strategy     |
+
+### Multi-Agent Configuration
+
+Configure agent hierarchies and delegation behavior.
+
+| Option                     | Required | Type           | Description                       |
+| -------------------------- | -------- | -------------- | --------------------------------- |
+| `subAgents`                | ❌       | `BaseAgent[]`  | Sub-agents for delegation         |
+| `disallowTransferToParent` | ❌       | `boolean`      | Disable parent agent transfers    |
+| `disallowTransferToPeers`  | ❌       | `boolean`      | Disable peer agent transfers      |
+
+### Input/Output Configuration
+
+Control data validation, response formatting, and LLM generation parameters.
+
+| Option                  | Required | Type                      | Description                                |
+| ----------------------- | -------- | ------------------------- | ------------------------------------------ |
+| `inputSchema`           | ❌       | `ZodSchema`               | Input validation schema                    |
+| `outputSchema`          | ❌       | `ZodSchema`               | Output validation schema                   |
+| `outputKey`             | ❌       | `string`                  | Session state key for your agent's output |
+| `includeContents`       | ❌       | `"default" \| "none"`     | Context inclusion behaviour                |
+| `generateContentConfig` | ❌       | `GenerateContentConfig`   | LLM generation parameters                  |
+
+### Services
+
+| Option            | Required | Type                   | Description                     |
+| ----------------- | -------- | ---------------------- | ------------------------------- |
+| `memoryService`   | ❌       | `BaseMemoryService`    | Long-term memory storage        |
+| `sessionService`  | ❌       | `BaseSessionService`   | Conversation management         |
+| `artifactService` | ❌       | `BaseArtifactService`  | File storage and management     |
+
+### Session Management
+
+| Option    | Required | Type     | Description                       |
+| --------- | -------- | -------- | --------------------------------- |
+| `userId`  | ❌       | `string` | User identifier for sessions      |
+| `appName` | ❌       | `string` | Application identifier            |
+
+### Callback Hooks
+
+Hooks for monitoring, logging, analytics, and custom processing at key execution points.
+
+| Option                | Required | Type                    | Description           |
+| --------------------- | -------- | ----------------------- | --------------------- |
+| `beforeAgentCallback` | ❌       | `BeforeAgentCallback`   | Pre-execution hooks   |
+| `afterAgentCallback`  | ❌       | `AfterAgentCallback`    | Post-execution hooks  |
+| `beforeModelCallback` | ❌       | `BeforeModelCallback`   | Pre-LLM call hooks    |
+| `afterModelCallback`  | ❌       | `AfterModelCallback`    | Post-LLM call hooks   |
+| `beforeToolCallback`  | ❌       | `BeforeToolCallback`    | Pre-tool execution hooks |
+| `afterToolCallback`   | ❌       | `AfterToolCallback`     | Post-tool execution hooks |
 
 ## Configuration Details
 
@@ -110,7 +153,7 @@ const agent2 = new LlmAgent({
 
 Primary instructions that shape how your agent responds, makes decisions, and interacts. This is your most important configuration that transforms a generic LLM into a specialized agent.
 
-Instructions can be static strings or dynamic functions that define role, communication style, and tool usage. See [Agent Instructions Guide](/docs/guides/agent-instructions) for best practices.
+Instructions can be static strings or dynamic functions that define role, communication style, and tool usage. See [Agent Instructions Guide](/docs/framework/guides/agent-instructions) for best practices.
 
 ```ts
 // Static instruction
@@ -537,14 +580,14 @@ const comprehensiveAgent = new LlmAgent({
     You are an advanced AI assistant helping ${
       ctx.session.state.username || "the user"
     }.
-    
+
     **Your capabilities:**
     - Research information using web search and database tools
-    - Perform data analysis and statistical calculations  
+    - Perform data analysis and statistical calculations
     - Create and execute plans for complex tasks
     - Remember important information across conversations
     - Generate structured outputs with confidence scores
-    
+
     **Guidelines:**
     - Always provide sources for factual claims
     - Use sub-agents for specialized tasks (research_specialist, analysis_specialist)

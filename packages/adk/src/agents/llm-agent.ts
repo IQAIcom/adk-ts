@@ -44,7 +44,7 @@ export type ToolUnion = BaseTool | ((...args: any[]) => any);
 export type SingleBeforeModelCallback = (args: {
 	callbackContext: CallbackContext;
 	llmRequest: LlmRequest;
-}) => LlmResponse | null | Promise<LlmResponse | null>;
+}) => LlmResponse | null | undefined | Promise<LlmResponse | null | undefined>;
 
 /**
  * Before model callback type (single or array)
@@ -59,7 +59,7 @@ export type BeforeModelCallback =
 export type SingleAfterModelCallback = (args: {
 	callbackContext: CallbackContext;
 	llmResponse: LlmResponse;
-}) => LlmResponse | null | Promise<LlmResponse | null>;
+}) => LlmResponse | null | undefined | Promise<LlmResponse | null | undefined>;
 
 /**
  * After model callback type (single or array)
@@ -75,7 +75,11 @@ export type SingleBeforeToolCallback = (
 	tool: BaseTool,
 	args: Record<string, any>,
 	toolContext: ToolContext,
-) => Record<string, any> | null | Promise<Record<string, any> | null>;
+) =>
+	| Record<string, any>
+	| null
+	| undefined
+	| Promise<Record<string, any> | null | undefined>;
 
 /**
  * Before tool callback type (single or array)
@@ -92,7 +96,11 @@ export type SingleAfterToolCallback = (
 	args: Record<string, any>,
 	toolContext: ToolContext,
 	toolResponse: Record<string, any>,
-) => Record<string, any> | null | Promise<Record<string, any> | null>;
+) =>
+	| Record<string, any>
+	| null
+	| undefined
+	| Promise<Record<string, any> | null | undefined>;
 
 /**
  * After tool callback type (single or array)
