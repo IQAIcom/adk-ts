@@ -1,678 +1,770 @@
 ---
-title: Events
-description: Understanding ADK's event system for communication, control flow, and state management between components
+title: Overview
+description: Understanding ADK's event system for communication and control flow between components
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Card, Cards } from 'fumadocs-ui/components/card';
 
-Events are the fundamental units of information flow within the Agent Development Kit (ADK). They represent every significant occurrence during an agent's interaction lifecycle, from initial user input to the final response and all the steps in between. Understanding events is crucial because they are the primary way components communicate, state is managed, and control flow is directed.
+# Events Overview
 
-## What Events Are and Why They Matter
+Events are the fundamental building blocks of communication in the Agent Development Kit (ADK). Every interaction, from a user's initial message to the agent's final response, flows through a series of structured events. Understanding events is essential for building, debugging, and orchestrating sophisticated agent systems.
 
-An `Event` in ADK is an immutable record representing a specific point in the agent's execution. It captures user messages, agent replies, requests to use tools (function calls), tool results, state changes, control signals, and errors.
+## What Are Events?
 
-Technically, it's an instance of the `Event` class, which builds upon the basic `LlmResponse` structure by adding essential ADK-specific metadata and an `actions` payload.
+An `Event` in ADK represents a single, immutable moment in your agent's execution timeline. Think of events as snapshots that capture everything happening at a specific point: user messages, agent responses, tool calls, state changes, and control signals.
 
-```typescript path=null start=null
-// Conceptual Structure of an Event (TypeScript)
+<Mermaid
+  chart="
+graph LR
+    A[User Input] -->|Event| B[Agent Processing]
+    B -->|Event| C[Tool Call]
+    C -->|Event| D[Tool Result]
+    D -->|Event| E[Agent Response]
+    E -->|Event| F[Final Output]
+
+    style A fill:#e1f5ff
+    style F fill:#d4edda
+"/>
+
+Events serve three critical functions in ADK:
+
+1. **Communication Protocol**: Events are the universal language between components—users, agents, LLMs, and tools all communicate through events
+2. **State Management**: Events carry instructions for state modifications and track artifact changes, ensuring persistence
+3. **Control Flow**: Special event properties determine which agent runs next, when loops terminate, and how execution proceeds
+
+<Callout type="info">
+The complete sequence of events is stored in `session.events`, providing a chronological audit trail invaluable for debugging and understanding agent behavior.
+</Callout>
+
+## Event Anatomy
+
+Every event extends the base `LlmResponse` structure with ADK-specific metadata and actions. Here's what makes up an event:
+
+```typescript
 import { Event, EventActions } from '@iqai/adk';
 
-class Event extends LlmResponse { // Simplified view
-  // --- LlmResponse fields ---
-  content?: any;                 // Event payload (text, function calls, etc.)
-  partial?: boolean;             // True for streaming chunks
-  // ... other response fields ...
-
-  // --- ADK specific additions ---
-  author: string;                // 'user' or agent name
-  invocationId: string;          // ID for the whole interaction run
-  id: string;                    // Unique ID for this specific event
-  timestamp: number;             // Creation time (milliseconds since epoch)
-  actions: EventActions;         // Important for side-effects & control
-  branch?: string;               // Hierarchy path
-  // ...
-}
-```
-
-Events are central to ADK's operation for several key reasons:
-
-1. **Communication:** They serve as the standard message format between the user interface, the `Runner`, agents, the LLM, and tools. Everything flows as an `Event`.
-
-2. **Signaling State & Artifact Changes:** Events carry instructions for state modifications and track artifact updates. The `SessionService` uses these signals to ensure persistence. Changes are signaled via `event.actions.stateDelta` and `event.actions.artifactDelta`.
-
-3. **Control Flow:** Specific fields like `event.actions.transferToAgent` or `event.actions.escalate` act as signals that direct the framework, determining which agent runs next or if a loop should terminate.
-
-4. **History & Observability:** The sequence of events recorded in `session.events` provides a complete, chronological history of an interaction, invaluable for debugging, auditing, and understanding agent behavior step-by-step.
-
-In essence, the entire process, from a user's query to the agent's final answer, is orchestrated through the generation, interpretation, and processing of `Event` objects.
-
-## Understanding and Using Events
-
-As a developer, you'll primarily interact with the stream of events yielded by the `Runner`. Here's how to understand and extract information from them:
-
-<Callout type="info">
-The specific parameters or method names may vary slightly by implementation. Refer to the TypeScript API documentation for exact method signatures.
-</Callout>
-
-### Identifying Event Origin and Type
-
-Quickly determine what an event represents by checking:
-
-- **Who sent it? (`event.author`)**
-  - `'user'`: Indicates input directly from the end-user.
-  - `'AgentName'`: Indicates output or action from a specific agent (e.g., `'WeatherAgent'`, `'SummarizerAgent'`).
-- **What's the main payload? (`event.content` and `event.content.parts`)**
-  - **Text:** Indicates a conversational message. Check if `event.content.parts[0].text` exists.
-  - **Tool Call Request:** Check `event.getFunctionCalls()`. If not empty, the LLM is asking to execute one or more tools. Each item in the list has `.name` and `.args`.
-  - **Tool Result:** Check `event.getFunctionResponses()`. If not empty, this event carries the result(s) from tool execution(s). Each item has `.name` and `.response` (the dictionary returned by the tool).
-- **Is it streaming output? (`event.partial`)**
-  Indicates whether this is an incomplete chunk of text from the LLM.
-  - `true`: More text will follow.
-  - `false` or `undefined`: This part of the content is complete (though the overall turn might not be finished if `turnComplete` is also false).
-
-```typescript path=null start=null
-// Basic event identification
-for await (const event of runner.runAsync(query, session)) {
-  console.log(`Event from: ${event.author}`);
-
-  if (event.content?.parts) {
-    if (event.getFunctionCalls().length > 0) {
-      console.log("Type: Tool Call Request");
-    } else if (event.getFunctionResponses().length > 0) {
-      console.log("Type: Tool Result");
-    } else if (event.content.parts[0]?.text) {
-      if (event.partial) {
-        console.log("Type: Streaming Text Chunk");
-      } else {
-        console.log("Type: Complete Text Message");
-      }
-    } else {
-      console.log("Type: Other Content (e.g., code result)");
-    }
-  } else if (event.actions && (event.actions.stateDelta || event.actions.artifactDelta)) {
-    console.log("Type: State/Artifact Update");
-  } else {
-    console.log("Type: Control Signal or Other");
-  }
-}
-```
-
-### Extracting Key Information
-
-Once you know the event type, access the relevant data:
-
-#### Text Content
-
-Always check for the presence of content and parts before accessing text:
-
-```typescript path=null start=null
-const text = event.content?.parts?.[0]?.text;
-if (text) {
-  console.log("Message:", text);
-}
-```
-
-#### Function Call Details
-
-```typescript path=null start=null
-const calls = event.getFunctionCalls();
-if (calls.length > 0) {
-  for (const call of calls) {
-    const toolName = call.name;
-    const arguments = call.args; // This is usually an object
-    console.log(`Tool: ${toolName}`, arguments);
-    // Application might dispatch execution based on this
-  }
-}
-```
-
-#### Function Response Details
-
-```typescript path=null start=null
-const responses = event.getFunctionResponses();
-if (responses.length > 0) {
-  for (const response of responses) {
-    const toolName = response.name;
-    const resultDict = response.response; // The object returned by the tool
-    console.log(`Tool Result: ${toolName}`, resultDict);
-  }
-}
-```
-
-#### Identifiers
-
-- `event.id`: Unique ID for this specific event instance.
-- `event.invocationId`: ID for the entire user-request-to-final-response cycle this event belongs to. Useful for logging and tracing.
-
-### Detecting Actions and Side Effects
-
-The `event.actions` object signals changes that occurred or should occur. Always check if `event.actions` and its fields exist before accessing them.
-
-#### State Changes
-
-Gives you a collection of key-value pairs that were modified in the session state during the step that produced this event.
-
-```typescript path=null start=null
-if (event.actions?.stateDelta && Object.keys(event.actions.stateDelta).length > 0) {
-  console.log("State changes:", event.actions.stateDelta);
-  // Update local UI or application state if necessary
-}
-```
-
-#### Artifact Saves
-
-Gives you a collection indicating which artifacts were saved and their new version information.
-
-```typescript path=null start=null
-if (event.actions?.artifactDelta && Object.keys(event.actions.artifactDelta).length > 0) {
-  console.log("Artifacts saved:", event.actions.artifactDelta);
-  // UI might refresh an artifact list
-}
-```
-
-#### Control Flow Signals
-
-Check boolean flags or string values:
-
-```typescript path=null start=null
-if (event.actions) {
-  if (event.actions.transferToAgent) {
-    console.log(`Signal: Transfer to ${event.actions.transferToAgent}`);
-  }
-  if (event.actions.escalate) {
-    console.log("Signal: Escalate (terminate loop)");
-  }
-  if (event.actions.skipSummarization) {
-    console.log("Signal: Skip summarization for tool result");
-  }
-}
-```
-
-### Determining if an Event is a "Final" Response
-
-Use the built-in helper method `event.isFinalResponse()` to identify events suitable for display as the agent's complete output for a turn.
-
-**Purpose:** Filters out intermediate steps (like tool calls, partial streaming text, internal state updates) from the final user-facing message(s).
-
-**When `true`?**
-1. The event contains a tool result (`function_response`) and `skipSummarization` is `true`.
-2. The event contains a tool call (`function_call`) for a tool marked as long-running.
-3. OR, **all** of the following are met:
-   - No function calls (`getFunctionCalls()` is empty).
-   - No function responses (`getFunctionResponses()` is empty).
-   - Not a partial stream chunk (`partial` is not `true`).
-   - Doesn't end with a code execution result that might need further processing/display.
-
-**Usage:** Filter the event stream in your application logic.
-
-```typescript path=null start=null
-// Handling final responses in application
-let fullResponseText = "";
-for await (const event of runner.runAsync(query, session)) {
-  // Accumulate streaming text if needed...
-  if (event.partial && event.content?.parts?.[0]?.text) {
-    fullResponseText += event.content.parts[0].text;
-  }
-
-  // Check if it's a final, displayable event
-  if (event.isFinalResponse()) {
-    console.log("\n--- Final Output Detected ---");
-    if (event.content?.parts?.[0]?.text) {
-      // If it's the final part of a stream, use accumulated text
-      const finalText = fullResponseText + (event.content.parts[0].text || "");
-      console.log(`Display to user: ${finalText.trim()}`);
-      fullResponseText = ""; // Reset accumulator
-    } else if (event.actions?.skipSummarization && event.getFunctionResponses().length > 0) {
-      // Handle displaying the raw tool result if needed
-      const responseData = event.getFunctionResponses()[0].response;
-      console.log(`Display raw tool result:`, responseData);
-    } else if (event.longRunningToolIds?.size) {
-      console.log("Display message: Tool is running in background...");
-    } else {
-      // Handle other types of final responses if applicable
-      console.log("Display: Final non-textual response or signal.");
-    }
-  }
-}
-```
-
-By carefully examining these aspects of an event, you can build robust applications that react appropriately to the rich information flowing through the ADK system.
-
-## How Events Flow: Generation and Processing
-
-Events are created at different points and processed systematically by the framework. Understanding this flow helps clarify how actions and history are managed.
-
-### Generation Sources
-
-- **User Input:** The `Runner` typically wraps initial user messages or mid-conversation inputs into an `Event` with `author='user'`.
-- **Agent Logic:** Agents (`BaseAgent`, `LlmAgent`) explicitly `yield Event(...)` objects (setting `author=this.name`) to communicate responses or signal actions.
-- **LLM Responses:** The ADK model integration layer translates raw LLM output (text, function calls, errors) into `Event` objects, authored by the calling agent.
-- **Tool Results:** After a tool executes, the framework generates an `Event` containing the `function_response`. The `author` is typically the agent that requested the tool, while the `role` inside the `content` is set to `'user'` for the LLM history.
-
-### Processing Flow
-
-1. **Yield/Return:** An event is generated and yielded by its source.
-2. **Runner Receives:** The main `Runner` executing the agent receives the event.
-3. **SessionService Processing:** The `Runner` sends the event to the configured `SessionService`. This is a critical step:
-   - **Applies Deltas:** The service merges `event.actions.stateDelta` into `session.state` and updates internal records based on `event.actions.artifactDelta`. (Note: The actual artifact *saving* usually happened earlier when `context.saveArtifact` was called).
-   - **Finalizes Metadata:** Assigns a unique `event.id` if not present, may update `event.timestamp`.
-   - **Persists to History:** Appends the processed event to the `session.events` list.
-4. **External Yield:** The `Runner` yields the processed event outwards to the calling application (e.g., the code that invoked `runner.runAsync`).
-
-This flow ensures that state changes and history are consistently recorded alongside the communication content of each event.
-
-## Event Actions and State Management
-
-The `EventActions` class represents the actions attached to an event. It contains instructions for state changes, artifact management, control flow, and tool behavior.
-
-### EventActions Structure
-
-```typescript path=null start=null
-class EventActions {
-  // Control tool response processing
-  skipSummarization?: boolean;
-
-  // State management
-  stateDelta: Record<string, any> = {};
-
-  // Artifact versioning
-  artifactDelta: Record<string, number> = {};
-
-  // Flow control
-  transferToAgent?: string;
-  escalate?: boolean;
-
-  // Authentication
-  requestedAuthConfigs?: Record<string, any>;
-}
-```
-
-### State Management
-
-State deltas track changes to session state:
-
-<Tabs items={['Usage', 'Example']}>
-<Tab value="Usage">
-```typescript path=null start=null
-const actions = new EventActions({
-  stateDelta: {
-    'user_preference': 'dark_mode',
-    'last_activity': Date.now(),
-    'temp_calculation': 42  // Will be filtered out (temp_ prefix)
-  }
-});
-
-const event = new Event({
-  author: 'MyAgent',
-  actions: actions,
-  content: { parts: [{ text: 'Updated preferences' }] }
-});
-```
-</Tab>
-
-<Tab value="Example">
-```typescript path=null start=null
-// In a tool or agent callback
-context.state['user_preference'] = 'dark_mode';
-context.state['app:global_setting'] = 'enabled';
-context.state['temp_intermediate_result'] = calculation;
-
-// These changes automatically populate the next event's stateDelta
-```
-</Tab>
-</Tabs>
-
-<Callout type="info">
-State keys with `temp_` prefix are excluded from persistence to avoid cluttering permanent session state.
-</Callout>
-
-### State Scope Patterns
-
-Use prefixes to indicate state scope:
-
-- **`app:`** - Application-wide settings
-- **`user:`** - User-specific preferences across sessions
-- **`temp_`** - Temporary values (filtered from persistence)
-- **No prefix** - Session-specific state
-
-```typescript path=null start=null
-context.state['app:theme'] = 'dark';           // App setting
-context.state['user:language'] = 'en';         // User preference
-context.state['temp_calculation'] = result;    // Temporary (not persisted)
-context.state['current_task'] = 'processing';  // Session state
-```
-
-### Control Flow Actions
-
-#### Agent Transfer
-
-Transfer control to another agent:
-
-```typescript path=null start=null
-const actions = new EventActions({
-  transferToAgent: 'BillingAgent'
-});
-
-// The framework will route the next turn to BillingAgent
-```
-
-#### Escalation
-
-Signal that a loop or process should terminate:
-
-```typescript path=null start=null
-const actions = new EventActions({
-  escalate: true
-});
-
-// Useful in loop agents or error handling
-```
-
-#### Skip Summarization
-
-Prevent the LLM from summarizing tool results:
-
-```typescript path=null start=null
-const actions = new EventActions({
-  skipSummarization: true
-});
-
-// Tool result will be displayed directly without LLM processing
-```
-
-## Event Streaming and Real-Time Processing
-
-ADK's event streaming enables real-time interaction with agents, allowing your applications to process and display responses as they're generated rather than waiting for complete responses.
-
-### Understanding Streaming Events
-
-Streaming events allow for progressive content delivery, improving user experience by showing partial results immediately.
-
-Key properties that control streaming behavior:
-
-```typescript path=null start=null
 interface Event {
-  partial?: boolean;      // True for incomplete streaming chunks
-  turnComplete?: boolean; // True when the agent's turn is finished
-  content?: any;          // Contains the partial or complete content
-  // ... other properties
+  // Core Identification
+  id: string;                    // Unique identifier for this event
+  invocationId: string;          // Groups all events in a single interaction
+  author: string;                // 'user' or agent name (e.g., 'WeatherAgent')
+  timestamp: number;             // Unix timestamp (seconds since epoch)
+
+  // Content Payload
+  content?: Content;             // Message text, function calls, or responses
+  partial?: boolean;             // True for streaming chunks
+  turnComplete?: boolean;        // True when agent's turn ends
+
+  // Action Signals
+  actions: EventActions;         // State changes, control flow, artifacts
+
+  // Advanced Features
+  branch?: string;               // Hierarchical path for multi-agent systems
+  longRunningToolIds?: Set<string>; // Background tool execution tracking
+
+  // Error Handling
+  errorCode?: string;
+  errorMessage?: string;
+}
+```
+<Callout title="Clarification" icon="💡"> `turnComplete` is a **conceptual field**, not part of the concrete `EventOpts` type. It’s used as a logical marker in documentation and streaming examples to indicate when an agent has finished a turn of reasoning or output. While not emitted as a typed field by default, some runtime visualizers or logs may simulate it for readability. </Callout>
+
+### Understanding Event Authors
+
+The `author` field tells you who generated the event:
+
+- **`'user'`**: Events originating from end-user input
+- **Agent names**: Events from specific agents (e.g., `'TravelAgent'`, `'SummarizerAgent'`)
+
+This distinction is crucial for building conversation history and understanding execution flow.
+
+### Content Types
+
+Events can carry different types of content in their payload:
+
+```typescript
+// Text message event
+{
+  content: {
+    parts: [{ text: "How can I help you today?" }]
+  }
+}
+
+// Tool call request
+{
+  content: {
+    parts: [{
+      functionCall: {
+        name: "searchFlights",
+        args: { destination: "London", date: "2025-11-01" }
+      }
+    }]
+  }
+}
+
+// Tool result
+{
+  content: {
+    role: "user", // For LLM history formatting
+    parts: [{
+      functionResponse: {
+        name: "searchFlights",
+        response: { flights: [...], count: 5 }
+      }
+    }]
+  }
 }
 ```
 
-### Basic Streaming Patterns
+<Callout type="warn">
+Always check for the presence of content and parts before accessing nested properties. TypeScript's optional chaining (`?.`) is your friend here.
+</Callout>
 
-Handle streaming text responses:
+## Event Categories
 
-```typescript path=null start=null
-async function handleStreamingResponse(runner, query, session) {
-  let accumulatedText = '';
+ADK events fall into distinct categories based on their purpose:
 
-  for await (const event of runner.runAsync(query, session)) {
-    if (event.content?.parts?.[0]?.text) {
-      if (event.partial) {
-        // Partial chunk - accumulate and display
-        accumulatedText += event.content.parts[0].text;
-        displayPartialText(accumulatedText);
-      } else {
-        // Complete chunk
-        accumulatedText += event.content.parts[0].text;
-        if (event.isFinalResponse()) {
-          displayFinalText(accumulatedText);
-          accumulatedText = ''; // Reset for next response
+### User Events
+
+Events with `author: 'user'` represent direct input from end-users. These trigger the agent execution cycle.
+
+```typescript
+// User initiates a request
+const userEvent: Event = {
+  id: 'evt_user_123',
+  invocationId: 'inv_abc',
+  author: 'user',
+  timestamp: Date.now() / 1000,
+  content: {
+    parts: [{ text: 'Book a flight to London' }]
+  },
+  actions: {}
+};
+```
+
+### Agent Events
+
+Events authored by agents contain responses, tool calls, or state updates:
+
+```typescript
+// Agent responds with text
+const agentEvent: Event = {
+  id: 'evt_agent_456',
+  invocationId: 'inv_abc',
+  author: 'TravelAgent',
+  timestamp: Date.now() / 1000,
+  content: {
+    parts: [{ text: 'I can help you find flights. What date would you like to travel?' }]
+  },
+  partial: false,
+  turnComplete: true,
+  actions: {}
+};
+```
+
+### Tool Interaction Events
+
+Events representing tool calls and their results form the bridge between agents and external capabilities:
+
+```typescript
+// Tool call request
+const toolCallEvent: Event = {
+  author: 'TravelAgent',
+  content: {
+    parts: [{
+      functionCall: {
+        name: 'searchFlights',
+        args: { destination: 'London', departureDate: '2025-11-01' }
+      }
+    }]
+  },
+  actions: {}
+};
+
+// Tool result event
+const toolResultEvent: Event = {
+  author: 'TravelAgent',
+  content: {
+    role: 'user', // Format for LLM history
+    parts: [{
+      functionResponse: {
+        name: 'searchFlights',
+        response: {
+          flights: [
+            { id: 'FL123', price: 450, departure: '08:00' },
+            { id: 'FL456', price: 520, departure: '14:30' }
+          ]
+        }
+      }
+    }]
+  },
+  actions: {
+    skipSummarization: false // LLM should process this result
+  }
+};
+```
+
+### Control Events
+
+Events carrying state changes, control flow signals, or configuration updates:
+
+```typescript
+// State update event
+const stateEvent: Event = {
+  author: 'BookingAgent',
+  content: null,
+  actions: {
+    stateDelta: {
+      'user:preferredAirline': 'British Airways',
+      'temp:searchResults': { count: 5 }
+    }
+  }
+};
+
+// Agent transfer signal
+const transferEvent: Event = {
+  author: 'OrchestratorAgent',
+  content: {
+    parts: [{
+      functionCall: {
+        name: 'transfer_to_agent',
+        args: { agentName: 'PaymentAgent' }
+      }
+    }]
+  },
+  actions: {
+    transferToAgent: 'PaymentAgent'
+  }
+};
+```
+
+## Event Actions: Side Effects and Control
+
+The `actions` property is where events signal state changes, artifact updates, and control flow decisions. This is crucial for making your agents stateful and coordinated.
+
+```typescript
+interface EventActions {
+  // State management
+  stateDelta?: Record<string, any>;      // Key-value pairs to merge into session state
+
+  // Artifact tracking
+  artifactDelta?: Record<string, Part>;  // Saved artifacts with version info
+
+  // Control flow
+  transferToAgent?: string;              // Pass control to named agent
+  escalate?: boolean;                    // Terminate current loop
+  skipSummarization?: boolean;           // Skip LLM processing of tool result
+}
+```
+
+### State Delta Pattern
+
+State changes are communicated incrementally through deltas rather than full state snapshots:
+
+```typescript
+// Agent updates multiple state keys
+const event: Event = {
+  author: 'CheckoutAgent',
+  content: { parts: [{ text: 'Processing your order...' }] },
+  actions: {
+    stateDelta: {
+      'user:cartTotal': 125.50,
+      'user:orderStatus': 'processing',
+      'temp:processingStartTime': Date.now()
+    }
+  }
+};
+
+// The SessionService automatically merges these changes
+// into the persistent session state
+```
+
+<Callout>
+State keys can use prefixes to indicate scope:
+- `app:` - Application-wide settings
+- `user:` - User-specific preferences (across sessions)
+- `temp:` - Temporary session-only data
+- No prefix - Default session scope
+</Callout>
+
+### Artifact Delta Pattern
+
+When agents save files or binary data, artifact updates are tracked through events:
+
+```typescript
+// Agent saves a generated document
+await context.saveArtifact('report.pdf', pdfBuffer);
+
+// This generates an event with artifact delta
+const event: Event = {
+  author: 'ReportAgent',
+  actions: {
+    artifactDelta: {
+      'report.pdf': {
+        inlineData: {
+          mimeType: 'application/pdf',
+          data: '...' // Base64 encoded
         }
       }
     }
   }
-}
+};
 ```
 
-## Common Event Examples
+### Control Flow Signals
 
-Here are concise examples of typical events you might see in the stream:
+Events can direct the orchestration of agent execution:
 
-### User Input
-```typescript path=null start=null
-{
-  "author": "user",
-  "invocationId": "e-xyz...",
-  "content": {"parts": [{"text": "Book a flight to London for next Tuesday"}]}
-  // actions usually empty
-}
-```
-
-### Agent Final Text Response
-(`isFinalResponse() == true`)
-```typescript path=null start=null
-{
-  "author": "TravelAgent",
-  "invocationId": "e-xyz...",
-  "content": {"parts": [{"text": "Okay, I can help with that. Could you confirm the departure city?"}]},
-  "partial": false,
-  "turnComplete": true
-  // actions might have state delta, etc.
-}
-```
-
-### Agent Streaming Text Response
-(`isFinalResponse() == false`)
-```typescript path=null start=null
-{
-  "author": "SummaryAgent",
-  "invocationId": "e-abc...",
-  "content": {"parts": [{"text": "The document discusses three main points:"}]},
-  "partial": true,
-  "turnComplete": false
-}
-// ... more partial=true events follow ...
-```
-
-### Tool Call Request
-(`isFinalResponse() == false`)
-```typescript path=null start=null
-{
-  "author": "TravelAgent",
-  "invocationId": "e-xyz...",
-  "content": {"parts": [{"function_call": {"name": "find_airports", "args": {"city": "London"}}}]}
-  // actions usually empty
-}
-```
-
-### Tool Result Provided
-(`isFinalResponse()` depends on `skipSummarization`)
-```typescript path=null start=null
-{
-  "author": "TravelAgent", // Author is agent that requested the call
-  "invocationId": "e-xyz...",
-  "content": {
-    "role": "user", // Role for LLM history
-    "parts": [{"function_response": {"name": "find_airports", "response": {"result": ["LHR", "LGW", "STN"]}}}]
+```typescript
+// Agent requests transfer to specialist
+const transferEvent: Event = {
+  actions: {
+    transferToAgent: 'SpecialistAgent'
   }
-  // actions might have skipSummarization=true
+};
+
+// Agent signals loop termination
+const escalateEvent: Event = {
+  actions: {
+    escalate: true
+  }
+};
+
+// Tool result should be displayed directly
+const skipSummaryEvent: Event = {
+  actions: {
+    skipSummarization: true
+  }
+};
+```
+
+## Event Flow Through ADK
+
+Understanding how events move through the system helps you build more effective agents and debug issues:
+
+<Mermaid
+  chart="
+sequenceDiagram
+    participant User
+    participant Runner
+    participant Agent
+    participant LLM
+    participant Tool
+    participant SessionService
+
+    User->>Runner: Input message
+    Runner->>SessionService: Create user event
+    SessionService->>Runner: Processed event
+    Runner->>Agent: Execute with event
+    Agent->>LLM: Generate response
+    LLM->>Agent: Response with tool call
+    Agent->>Tool: Execute tool
+    Tool->>Agent: Tool result
+    Agent->>SessionService: Tool result event
+    SessionService->>SessionService: Apply state deltas
+    SessionService->>Runner: Processed event
+    Runner->>User: Stream event
+"/>
+
+### Event Generation
+
+Events are created at specific points in the execution flow:
+
+1. **User Input**: The `Runner` wraps user messages into events with `author: 'user'`
+2. **Agent Logic**: Agents explicitly create events using `yield Event(...)` or returning event objects
+3. **LLM Responses**: The model integration layer translates raw LLM output into events
+4. **Tool Results**: After tool execution, the framework generates result events
+
+### Event Processing
+
+Each event goes through a consistent processing pipeline:
+
+```typescript
+// 1. Event is generated/yielded by source
+const event: Event = {
+  author: 'MyAgent',
+  content: { ... },
+  actions: { stateDelta: { key: 'value' } }
+};
+
+// 2. Runner receives event
+for await (const event of runner.runAsync(query, session)) {
+
+  // 3. SessionService processes event
+  //    - Merges state deltas into session.state
+  //    - Records artifact updates
+  //    - Assigns unique event.id
+  //    - Appends to session.events
+
+  // 4. Event is yielded to application
+  console.log('Received event:', event);
 }
 ```
 
-## Advanced Event Processing Patterns
+<Callout type="info">
+The `SessionService` is the gatekeeper for state persistence. It ensures that every state change and artifact update is properly recorded and tied to the event history.
+</Callout>
 
-### Event Filtering
+## Identifying Final Responses
 
-Create filters for specific event types:
+Not all events are meant for display to end users. ADK provides the `isFinalResponse()` method to filter out intermediate steps:
 
-```typescript path=null start=null
-// Filter by author
-const agentEvents = events.filter(event => event.author !== 'user');
-const userEvents = events.filter(event => event.author === 'user');
+```typescript
+// Process events and extract final responses
+const finalResponses: string[] = [];
+let streamBuffer = '';
 
-// Filter by content type
-const textEvents = events.filter(event =>
-  event.content?.parts?.[0]?.text && !event.partial
-);
-
-const toolEvents = events.filter(event =>
-  event.getFunctionCalls().length > 0 ||
-  event.getFunctionResponses().length > 0
-);
-
-// Filter by time range
-const recentEvents = events.filter(event =>
-  event.timestamp > (Date.now() - 3600000) // Last hour
-);
-```
-
-### Event Aggregation
-
-Combine related events for analysis:
-
-```typescript path=null start=null
-class EventAggregator {
-  private events: Event[] = [];
-
-  addEvent(event: Event) {
-    this.events.push(event);
-  }
-
-  getConversationSummary(invocationId: string) {
-    const conversationEvents = this.events.filter(
-      event => event.invocationId === invocationId
-    );
-
-    return {
-      totalEvents: conversationEvents.length,
-      userMessages: conversationEvents.filter(e => e.author === 'user').length,
-      agentResponses: conversationEvents.filter(e => e.author !== 'user').length,
-      toolCalls: conversationEvents.reduce(
-        (sum, e) => sum + e.getFunctionCalls().length, 0
-      ),
-      duration: this.getConversationDuration(conversationEvents)
-    };
+for await (const event of runner.runAsync(query, session)) {
+  // Accumulate streaming text
+  if (event.partial && event.content?.parts?.[0]?.text) {
+    streamBuffer += event.content.parts[0].text;
   }
 
-  private getConversationDuration(events: Event[]): number {
-    if (events.length < 2) return 0;
-    const sorted = events.sort((a, b) => a.timestamp - b.timestamp);
-    return sorted[sorted.length - 1].timestamp - sorted[0].timestamp;
-  }
-}
-```
-
-### Error Event Handling
-
-Handle errors gracefully:
-
-```typescript path=null start=null
-function processEventSafely(event: Event) {
-  try {
-    // Check for error conditions
-    if (event.errorCode) {
-      handleEventError(event);
-      return;
+  // Detect final responses ready for display
+  if (event.isFinalResponse()) {
+    if (event.content?.parts?.[0]?.text) {
+      const finalText = streamBuffer + (event.content.parts[0].text || '');
+      finalResponses.push(finalText.trim());
+      streamBuffer = ''; // Reset
     }
 
-    // Normal processing
-    processEvent(event);
-
-  } catch (error) {
-    console.error('Error processing event:', error);
-    logEventError(event, error);
-  }
-}
-
-function handleEventError(event: Event) {
-  console.error(`Event error: ${event.errorCode}`);
-  console.error(`Message: ${event.errorMessage}`);
-
-  // Show user-friendly error message
-  switch (event.errorCode) {
-    case 'SAFETY_FILTER_TRIGGERED':
-      showSafetyWarning();
-      break;
-    case 'RATE_LIMIT_EXCEEDED':
-      showRateLimitMessage();
-      break;
-    default:
-      showGenericError(event.errorMessage);
+    // Handle other final response types
+    if (event.actions?.skipSummarization && event.getFunctionResponses().length > 0) {
+      const toolResult = event.getFunctionResponses()[0].response;
+      console.log('Direct tool result:', toolResult);
+    }
   }
 }
 ```
 
-## Additional Context and Event Details
+### What Makes an Event "Final"?
 
-Beyond the core concepts, here are a few specific details about context and events that are important for certain use cases:
+An event is considered a final response when:
 
-1. **`ToolContext.functionCallId` (Linking Tool Actions):**
-   - When an LLM requests a tool (FunctionCall), that request has an ID. The `ToolContext` provided to your tool function includes this `functionCallId`.
-   - **Importance:** This ID is crucial for linking actions like authentication back to the specific tool request that initiated them, especially if multiple tools are called in one turn. The framework uses this ID internally.
+1. It contains a tool result with `skipSummarization: true`, OR
+2. It contains a long-running tool call (check `longRunningToolIds`), OR
+3. ALL of the following conditions are met:
+   - No pending function calls (`getFunctionCalls()` is empty)
+   - No function responses being processed
+   - Not a partial streaming chunk (`partial` is not true)
+   - Doesn't end with code execution requiring further processing
 
-2. **How State/Artifact Changes are Recorded:**
-   - When you modify state or save an artifact using `CallbackContext` or `ToolContext`, these changes aren't immediately written to persistent storage.
-   - Instead, they populate the `stateDelta` and `artifactDelta` fields within the `EventActions` object.
-   - This `EventActions` object is attached to the *next event* generated after the change (e.g., the agent's response or a tool result event).
-   - The `SessionService.appendEvent` method reads these deltas from the incoming event and applies them to the session's persistent state and artifact records. This ensures changes are tied chronologically to the event stream.
+## TypeScript-Specific Features
 
-3. **Error Events:**
-   - An `Event` can represent an error. Check the `event.errorCode` and `event.errorMessage` fields (inherited from `LlmResponse`).
-   - Errors might originate from the LLM (e.g., safety filters, resource limits) or potentially be packaged by the framework if a tool fails critically.
+Our TypeScript implementation offers several advantages over the Python/Java versions:
 
-```typescript path=null start=null
-// Example Error Event (conceptual)
-{
-  "author": "LLMAgent",
-  "invocationId": "e-err...",
-  "content": null,
-  "errorCode": "SAFETY_FILTER_TRIGGERED",
-  "errorMessage": "Response blocked due to safety settings.",
-  "actions": {}
-}
+### Strong Typing
+
+Full type safety across the event system:
+
+```typescript
+import { Event, EventActions, Content, Part } from '@iqai/adk';
+
+// TypeScript ensures correct property access
+const processEvent = (event: Event): void => {
+  // Type-safe content access
+  const text = event.content?.parts?.[0]?.text;
+
+  // Type-safe actions
+  if (event.actions?.stateDelta) {
+    Object.entries(event.actions.stateDelta).forEach(([key, value]) => {
+      console.log(`${key}: ${value}`);
+    });
+  }
+};
 ```
 
-These details provide a more complete picture for advanced use cases involving tool authentication, state persistence scope, and error handling within the event stream.
+### Async Iteration
 
-## Best Practices for Working with Events
+Native async/await support for event streams:
 
-To use events effectively in your ADK applications:
+```typescript
+// Clean async iteration
+for await (const event of runner.runAsync(query, session)) {
+  await handleEvent(event);
+}
 
-### Clear Authorship
+// Or use reactive patterns
+runner.runAsync(query, session)
+  .pipe(
+    filter(event => event.isFinalResponse()),
+    map(event => event.content?.parts?.[0]?.text)
+  )
+  .subscribe(text => console.log(text));
+```
 
-When building custom agents, ensure correct attribution for agent actions in the history. The framework generally handles authorship correctly for LLM/tool events.
+### Utility Methods
 
-```typescript path=null start=null
-// Use proper authorship in BaseAgent subclasses
-yield new Event({
-  author: this.name,
-  // ...
+Additional helper methods for common patterns:
+
+```typescript
+// Check if event contains text
+if (event.hasText()) {
+  console.log(event.getText());
+}
+
+// Extract all tool calls
+const calls = event.getFunctionCalls();
+calls.forEach(call => {
+  console.log(`Tool: ${call.name}`, call.args);
+});
+
+// Extract tool results
+const results = event.getFunctionResponses();
+results.forEach(result => {
+  console.log(`Result from ${result.name}:`, result.response);
 });
 ```
 
-### Semantic Content & Actions
+## Practical Examples
 
-Use `event.content` for the core message/data (text, function call/response). Use `event.actions` specifically for signaling side effects (state/artifact deltas) or control flow (`transferToAgent`, `escalate`, `skipSummarization`).
+### Building a Conversation Display
 
-### Use `isFinalResponse()`
+```typescript
+import { LlmAgent, Event } from '@iqai/adk';
 
-Rely on this helper method in your application/UI layer to identify complete, user-facing text responses. Avoid manually replicating its logic.
+const displayConversation = async (agent: LlmAgent, message: string) => {
+  const messages: { author: string; text: string }[] = [];
+  let currentText = '';
 
-### Leverage History
+  for await (const event of agent.run(message)) {
+    // Track streaming text
+    if (event.partial && event.content?.parts?.[0]?.text) {
+      currentText += event.content.parts[0].text;
+      // Update UI with streaming text
+      updateUI(event.author, currentText);
+    }
 
-The session's event list is your primary debugging tool. Examine the sequence of authors, content, and actions to trace execution and diagnose issues.
+    // Capture final responses
+    if (event.isFinalResponse() && !event.partial) {
+      messages.push({
+        author: event.author,
+        text: currentText || event.content?.parts?.[0]?.text || ''
+      });
+      currentText = '';
+    }
 
-### Use Metadata
+    // Show state changes
+    if (event.actions?.stateDelta) {
+      console.log('State updated:', event.actions.stateDelta);
+    }
+  }
 
-Use `invocationId` to correlate all events within a single user interaction. Use `event.id` to reference specific, unique occurrences.
+  return messages;
+};
+```
 
-### Performance Considerations
+### Handling Tool Execution
 
-- **Filter early**: Apply filters before processing heavy operations
-- **Batch updates**: Group related state changes when possible
-- **Cleanup**: Remove event listeners and clear large event arrays when done
-- **Memory management**: Only keep necessary events in memory
+```typescript
+const executeWithToolMonitoring = async (agent: LlmAgent, query: string) => {
+  for await (const event of agent.run(query)) {
+    // Monitor tool calls
+    const calls = event.getFunctionCalls();
+    if (calls.length > 0) {
+      calls.forEach(call => {
+        console.log(`🔧 Calling tool: ${call.name}`);
+        console.log(`   Arguments:`, call.args);
+      });
+    }
 
-### Error Handling
+    // Monitor tool results
+    const results = event.getFunctionResponses();
+    if (results.length > 0) {
+      results.forEach(result => {
+        console.log(`✅ Tool ${result.name} completed`);
+        console.log(`   Result:`, result.response);
+      });
+    }
 
-- **Graceful degradation**: Continue processing other events if one fails
-- **User feedback**: Provide clear error messages for failed operations
-- **Logging**: Record detailed error information for debugging
-- **Idempotent handlers**: Design handlers to be safely retried
+    // Check for errors
+    if (event.errorCode) {
+      console.error(`❌ Error: ${event.errorMessage}`);
+    }
+  }
+};
+```
 
-Treating events as structured messages with clear purposes for their content and actions is key to building, debugging, and managing complex agent behaviors in ADK.
+### State Management Pattern
 
-Events provide the foundation for building responsive, interactive agent applications that can handle complex workflows, maintain state consistency, and provide excellent user experiences.
+```typescript
+const statefulAgent = async (agent: LlmAgent, query: string, session: Session) => {
+  // Track state changes throughout execution
+  const stateChanges: Record<string, any>[] = [];
+
+  for await (const event of agent.run(query, { session })) {
+    if (event.actions?.stateDelta) {
+      stateChanges.push({
+        timestamp: event.timestamp,
+        changes: event.actions.stateDelta
+      });
+
+      // Session state is automatically updated by SessionService
+      // Access current state via session.state
+      console.log('Current state:', session.state);
+    }
+  }
+
+  return {
+    finalState: session.state,
+    changeHistory: stateChanges
+  };
+};
+```
+
+## Debugging with Events
+
+The event history is your primary debugging tool. Here's how to leverage it:
+
+```typescript
+// Inspect full event history
+const debugSession = async (agent: LlmAgent, query: string, session: Session) => {
+  await agent.run(query, { session });
+
+  // Analyze event sequence
+  console.log(`\n=== Event History (${session.events.length} events) ===`);
+
+  session.events.forEach((event, index) => {
+    console.log(`\n[${index}] ${event.author} (${event.id})`);
+
+    if (event.content?.parts?.[0]?.text) {
+      console.log(`  Text: ${event.content.parts[0].text.slice(0, 100)}...`);
+    }
+
+    if (event.getFunctionCalls().length > 0) {
+      console.log(`  Tool Calls:`, event.getFunctionCalls().map(c => c.name));
+    }
+
+    if (event.actions?.stateDelta) {
+      console.log(`  State Changes:`, Object.keys(event.actions.stateDelta));
+    }
+
+    if (event.actions?.transferToAgent) {
+      console.log(`  Transfer to: ${event.actions.transferToAgent}`);
+    }
+  });
+};
+```
+
+## Best Practices
+
+### 1. Always Check for Presence
+
+Use optional chaining to safely access nested properties:
+
+```typescript
+// ❌ Unsafe
+const text = event.content.parts[0].text;
+
+// ✅ Safe
+const text = event.content?.parts?.[0]?.text;
+```
+
+### 2. Use Helper Methods
+
+Leverage built-in methods instead of manual checks:
+
+```typescript
+// ❌ Manual checking
+const hasCalls = event.content?.parts?.some(p => p.functionCall);
+
+// ✅ Use helper
+const calls = event.getFunctionCalls();
+if (calls.length > 0) { ... }
+```
+
+### 3. Distinguish Content from Actions
+
+Keep your logic clean by separating concerns:
+
+```typescript
+// Content = what to communicate
+event.content = { parts: [{ text: 'Response' }] };
+
+// Actions = what to change
+event.actions = { stateDelta: { key: 'value' } };
+```
+
+### 4. Leverage Invocation IDs
+
+Use `invocationId` for logging and tracing:
+
+```typescript
+for await (const event of agent.run(query)) {
+  logger.info({
+    invocationId: event.invocationId,
+    eventId: event.id,
+    author: event.author,
+    message: 'Event processed'
+  });
+}
+```
+
+### 5. Handle Streaming Properly
+
+Accumulate partial content for display:
+
+```typescript
+let buffer = '';
+for await (const event of agent.run(query)) {
+  if (event.partial) {
+    buffer += event.content?.parts?.[0]?.text || '';
+    updateStreamingUI(buffer);
+  } else if (event.isFinalResponse()) {
+    displayFinalMessage(buffer);
+    buffer = '';
+  }
+}
+```
+
+## Error Events
+
+Events can represent errors from the LLM or framework:
+
+```typescript
+for await (const event of agent.run(query)) {
+  if (event.errorCode) {
+    console.error(`Error ${event.errorCode}: ${event.errorMessage}`);
+
+    // Handle specific error types
+    switch (event.errorCode) {
+      case 'SAFETY_FILTER_TRIGGERED':
+        // Handle safety filter
+        break;
+      case 'RESOURCE_EXHAUSTED':
+        // Handle rate limits
+        break;
+      default:
+        // Generic error handling
+    }
+  }
+}
+```
+
+## Next Steps
+
+Now that you understand events, explore how to use them effectively in different scenarios:
+
+<Cards>
+  <Card
+    title="Event Actions"
+    description="Deep dive into state management, artifact tracking, and control flow signals"
+    href="/docs/framework/events/event-actions"
+  />
+  <Card
+    title="Working with Events"
+    description="Practical patterns for processing and handling events in your applications"
+    href="/docs/framework/events/working-with-events"
+  />
+  <Card
+    title="Event Streaming"
+    description="Real-time event processing and streaming patterns for responsive UIs"
+    href="/docs/framework/events/streaming"
+  />
+  <Card
+    title="Multi-Agent Events"
+    description="Understanding event flow in complex multi-agent systems"
+    href="/docs/framework/multi-agent/events"
+  />
+</Cards>
