@@ -45,7 +45,7 @@
 		"hono": "^4.9.6",
 		"rss-parser": "^3.13.0",
 		"viem": "^2.37.5",
-		"zod": "^4.1.5"
+		"zod": "^4.1.7"
 	},
 	"devDependencies": {
 		"@types/node": "^24.3.1",

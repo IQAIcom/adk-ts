@@ -31,7 +31,7 @@ importers:
     dependencies:
       '@ai-sdk/react':
         specifier: ^2.0.39
-        version: 2.0.39(react@19.1.1)(zod@4.1.5)
+        version: 2.0.39(react@19.1.1)(zod@4.1.12)
       '@icons-pack/react-simple-icons':
         specifier: ^13.7.0
         version: 13.7.0(react@19.1.1)
@@ -88,7 +88,7 @@ importers:
         version: 12.8.6(@types/react@19.1.12)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       ai:
         specifier: ^5.0.39
-        version: 5.0.39(zod@4.1.5)
+        version: 5.0.39(zod@4.1.12)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -156,8 +156,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1(react@19.1.1)
       zod:
-        specifier: ^4.1.5
-        version: 4.1.5
+        specifier: ^4.1.7
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.13
@@ -279,7 +279,7 @@ importers:
     dependencies:
       '@ai-sdk/google':
         specifier: ^2.0.13
-        version: 2.0.13(zod@4.1.5)
+        version: 2.0.13(zod@4.1.12)
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
@@ -308,8 +308,8 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       zod:
-        specifier: ^4.1.5
-        version: 4.1.5
+        specifier: ^4.1.7
+        version: 4.1.12
     devDependencies:
       '@iqai/tsconfig':
         specifier: workspace:*
@@ -379,7 +379,7 @@ importers:
         version: 2.8.19
       ai:
         specifier: ^5.0.39
-        version: 5.0.39(zod@4.1.5)
+        version: 5.0.39(zod@4.1.12)
       axios:
         specifier: ^1.11.0
         version: 1.11.0
@@ -409,7 +409,7 @@ importers:
         version: 0.28.5
       openai:
         specifier: ^5.20.0
-        version: 5.20.0(ws@8.18.3)(zod@4.1.5)
+        version: 5.20.0(ws@8.18.3)(zod@4.1.12)
       socket.io:
         specifier: ^4.8.1
         version: 4.8.1
@@ -420,8 +420,8 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       zod:
-        specifier: ^4.1.5
-        version: 4.1.5
+        specifier: ^4.1.7
+        version: 4.1.12
     devDependencies:
       '@iqai/tsconfig':
         specifier: workspace:*
@@ -6677,8 +6677,8 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.1.5:
-    resolution: {integrity: sha512-rcUUZqlLJgBC33IT3PNMgsCq6TzLQEG/Ei/KTCU0PedSWRMAXoOUN+4t/0H+Q8bdnLPdqUYnvboJT0bn/229qg==}
+  zod@4.1.12:
+    resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
 
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
@@ -6700,38 +6700,38 @@ packages:
 
 snapshots:
 
-  '@ai-sdk/gateway@1.0.20(zod@4.1.5)':
+  '@ai-sdk/gateway@1.0.20(zod@4.1.12)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.5)
-      zod: 4.1.5
+      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.12)
+      zod: 4.1.12
 
-  '@ai-sdk/google@2.0.13(zod@4.1.5)':
+  '@ai-sdk/google@2.0.13(zod@4.1.12)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.5)
-      zod: 4.1.5
+      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.12)
+      zod: 4.1.12
 
-  '@ai-sdk/provider-utils@3.0.8(zod@4.1.5)':
+  '@ai-sdk/provider-utils@3.0.8(zod@4.1.12)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@standard-schema/spec': 1.0.0
       eventsource-parser: 3.0.6
-      zod: 4.1.5
+      zod: 4.1.12
 
   '@ai-sdk/provider@2.0.0':
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@2.0.39(react@19.1.1)(zod@4.1.5)':
+  '@ai-sdk/react@2.0.39(react@19.1.1)(zod@4.1.12)':
     dependencies:
-      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.5)
-      ai: 5.0.39(zod@4.1.5)
+      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.12)
+      ai: 5.0.39(zod@4.1.12)
       react: 19.1.1
       swr: 2.3.6(react@19.1.1)
       throttleit: 2.1.0
     optionalDependencies:
-      zod: 4.1.5
+      zod: 4.1.12
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -9339,13 +9339,13 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ai@5.0.39(zod@4.1.5):
+  ai@5.0.39(zod@4.1.12):
     dependencies:
-      '@ai-sdk/gateway': 1.0.20(zod@4.1.5)
+      '@ai-sdk/gateway': 1.0.20(zod@4.1.12)
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.5)
+      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.12)
       '@opentelemetry/api': 1.9.0
-      zod: 4.1.5
+      zod: 4.1.12
 
   ajv@6.12.6:
     dependencies:
@@ -10347,7 +10347,7 @@ snapshots:
       xsschema: 0.3.5(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76)
       yargs: 18.0.0
       zod: 3.25.76
-      zod-to-json-schema: 3.24.6(zod@4.1.5)
+      zod-to-json-schema: 3.24.6(zod@4.1.12)
     transitivePeerDependencies:
       - '@valibot/to-json-schema'
       - arktype
@@ -11986,10 +11986,10 @@ snapshots:
       regex: 6.0.1
       regex-recursion: 6.0.2
 
-  openai@5.20.0(ws@8.18.3)(zod@4.1.5):
+  openai@5.20.0(ws@8.18.3)(zod@4.1.12):
     optionalDependencies:
       ws: 8.18.3
-      zod: 4.1.5
+      zod: 4.1.12
 
   ora@5.4.1:
     dependencies:
@@ -13570,7 +13570,7 @@ snapshots:
   xsschema@0.3.5(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76):
     optionalDependencies:
       zod: 3.25.76
-      zod-to-json-schema: 3.24.6(zod@4.1.5)
+      zod-to-json-schema: 3.24.6(zod@4.1.12)
 
   xtend@4.0.2: {}
 
@@ -13625,13 +13625,13 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  zod-to-json-schema@3.24.6(zod@4.1.5):
+  zod-to-json-schema@3.24.6(zod@4.1.12):
     dependencies:
-      zod: 4.1.5
+      zod: 4.1.12
 
   zod@3.25.76: {}
 
-  zod@4.1.5: {}
+  zod@4.1.12: {}
 
   zustand@4.5.7(@types/react@19.1.12)(react@19.1.1):
     dependencies:
