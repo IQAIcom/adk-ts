@@ -14,7 +14,7 @@
 		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"target": "ES2022",
 		"module": "CommonJS",
-		"moduleResolution": "node",
+		"moduleResolution": "nodenext",
 		"outDir": "dist",
 		"rootDir": "src",
 		"resolveJsonModule": true,
