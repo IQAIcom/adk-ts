@@ -1,0 +1,1618 @@
+---
+title: Event Actions
+description: Understanding state management, control flow, and side effects through EventActions
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+# Event Actions
+
+Event Actions are ADK's mechanism for signaling side effects, managing state, and controlling execution flow. While event `content` carries the communication payload (messages, tool calls), the `actions` property carries the instructions for *what should happen* as a result of that event.
+
+## Understanding Event Actions
+
+Think of `EventActions` as a set of declarative instructions attached to an event. When an agent modifies session state, saves a file, or wants to transfer control to another agent, these intentions are captured in the event's `actions` object rather than executed immediately. This design allows the framework to:
+
+1. **Track Changes**: Record exactly what changed and when in the event history
+2. **Ensure Consistency**: Apply changes atomically through the `SessionService`
+3. **Enable Observability**: Make side effects visible and auditable
+4. **Coordinate Flow**: Direct multi-agent orchestration and loop control
+
+<Mermaid
+  chart="
+graph TD
+    A[Agent Logic] -->|Modifies| B[Context State]
+    A -->|Saves| C[Artifacts]
+    A -->|Signals| D[Control Flow]
+    B --> E[EventActions]
+    C --> E
+    D --> E
+    E -->|Attached to| F[Event]
+    F -->|Processed by| G[SessionService]
+    G -->|Applies| H[Session State]
+    G -->|Records| I[Event History]
+
+    style E fill:#e1f5ff
+    style G fill:#fff3cd
+    style H fill:#d4edda
+"/>
+
+<Callout type="info">
+EventActions follow a declarative pattern: agents describe *what* should change, and the framework handles *how* and *when* to apply those changes.
+</Callout>
+
+## EventActions Structure
+
+Every event has an `actions` property that can contain multiple types of instructions:
+
+```typescript
+import { EventActions, Part } from '@iqai/adk';
+
+interface EventActions {
+  // State Management
+  stateDelta?: Record<string, any>;           // Key-value pairs to merge into session state
+
+  // Artifact Tracking
+  artifactDelta?: Record<string, Part>;       // Saved artifacts with their Part representation
+
+  // Control Flow Signals
+  transferToAgent?: string;                   // Name of agent to transfer control to
+  escalate?: boolean;                         // Signal to terminate current loop/process
+
+  // Tool Behavior Control
+  skipSummarization?: boolean;                // Skip LLM processing of tool result
+
+  // Authentication
+  requestedAuthConfigs?: Record<string, any>; // Authentication requirements for tools
+}
+```
+
+### Why Separate Actions from Content?
+
+This separation provides clear boundaries between communication and side effects:
+
+```typescript
+// Content = What to communicate
+event.content = {
+  parts: [{ text: 'I found 5 matching flights and saved the results.' }]
+};
+
+// Actions = What changed as a result
+event.actions = {
+  stateDelta: {
+    'user:lastSearch': 'London flights',
+    'searchResults': flightData
+  },
+  artifactDelta: {
+    'flight_results.json': jsonPart
+  }
+};
+```
+
+This makes it easy to:
+- Audit state changes separately from conversations
+- Replay actions for testing or debugging
+- Filter events by action type
+- Track side effects in monitoring systems
+
+## State Management Actions
+
+State deltas are the primary way to modify session state across turns. They represent incremental changes rather than full state snapshots.
+
+### Basic State Delta Pattern
+
+```typescript
+import { Event, EventActions } from '@iqai/adk';
+
+// Agent modifies state during execution
+const event = new Event({
+  author: 'PreferenceAgent',
+  content: {
+    parts: [{ text: 'Updated your preferences' }]
+  },
+  actions: {
+    stateDelta: {
+      'user:theme': 'dark',
+      'user:language': 'en',
+      'user:notifications': true,
+      'lastUpdated': Date.now()
+    }
+  }
+});
+
+// SessionService automatically merges these into session.state
+// Result: session.state now contains these key-value pairs
+```
+
+<Callout type="warn">
+State deltas are merged, not replaced. If `session.state` already has `user:theme: 'light'`, the delta `{user:theme: 'dark'}` will update it to `'dark'`, but other existing keys remain unchanged.
+</Callout>
+
+### State Scope Prefixes
+
+ADK uses conventional prefixes to indicate the intended scope and persistence of state keys:
+
+```typescript
+const actions = {
+  stateDelta: {
+    // Application-wide configuration (persists across all users/sessions)
+    'app:apiEndpoint': 'https://api.example.com',
+    'app:featureFlags': { newUI: true },
+
+    // User-specific data (persists across sessions for this user)
+    'user:preferredAirline': 'British Airways',
+    'user:loyaltyNumber': 'BA123456',
+
+    // Temporary/transient data (not persisted, session-only)
+    'temp_intermediateResult': calculationData,
+    'temp_processingStartTime': Date.now(),
+
+    // Session-specific data (default scope)
+    'currentBooking': bookingDetails,
+    'searchFilters': { maxPrice: 500, direct: true }
+  }
+};
+```
+
+#### Prefix Semantics
+
+| Prefix | Scope | Persistence | Use Case |
+|--------|-------|-------------|----------|
+| `app:` | Application | Long-term | Global settings, configuration, feature flags |
+| `user:` | User | Long-term | User preferences, profile data, history |
+| `temp_` | Session | None | Intermediate calculations, processing flags |
+| *(none)* | Session | Session | Conversation context, current task state |
+
+<Callout>
+The actual persistence behavior depends on your `SessionService` implementation. The prefixes are conventions that help organize state and indicate intent.
+</Callout>
+
+### Reading State Changes in Event Streams
+
+When processing events, check for state changes to update your application:
+
+```typescript
+const monitorStateChanges = async (agent: LlmAgent, query: string, session: Session) => {
+  const stateLog: Array<{ timestamp: number; changes: Record<string, any> }> = [];
+
+  for await (const event of agent.run(query, { session })) {
+    // Detect state modifications
+    if (event.actions?.stateDelta && Object.keys(event.actions.stateDelta).length > 0) {
+      const delta = event.actions.stateDelta;
+
+      console.log(`[${event.author}] State changes detected:`);
+      Object.entries(delta).forEach(([key, value]) => {
+        console.log(`  ${key}: ${JSON.stringify(value)}`);
+      });
+
+      // Log for audit trail
+      stateLog.push({
+        timestamp: event.timestamp,
+        changes: delta
+      });
+
+      // Update local application state if needed
+      if (delta['user:theme']) {
+        updateUITheme(delta['user:theme']);
+      }
+    }
+  }
+
+  // Access final merged state
+  console.log('\nFinal session state:', session.state);
+
+  return {
+    finalState: session.state,
+    changeHistory: stateLog
+  };
+};
+```
+
+### Setting State in Agent Logic
+
+Within agents and tools, modify state through the context object:
+
+```typescript
+import { BaseAgent, InvocationContext, Event } from '@iqai/adk';
+
+export class BookingAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    // Modify state directly via context
+    context.state['user:lastBookingDate'] = new Date().toISOString();
+    context.state['bookingStep'] = 'payment';
+    context.state['temp_validationResult'] = await this.validateBooking();
+
+    // These changes automatically populate the next event's stateDelta
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{ text: 'Proceeding to payment...' }]
+      }
+      // stateDelta is automatically populated by the framework
+    });
+  }
+}
+```
+
+```typescript
+// In a tool function
+import { createTool, ToolContext } from '@iqai/adk';
+
+export const searchFlights = createTool({
+  name: 'search_flights',
+  description: 'Search for available flights',
+  schema: z.object({
+    destination: z.string(),
+    date: z.string()
+  }),
+  fn: async (args, context: ToolContext) => {
+    const results = await flightAPI.search(args);
+
+    // Update state to track search history
+    context.state['user:lastSearch'] = {
+      destination: args.destination,
+      date: args.date,
+      timestamp: Date.now()
+    };
+    context.state['searchResultCount'] = results.length;
+
+    return { flights: results };
+    // State changes appear in the tool result event's actions
+  }
+});
+```
+
+<Callout type="info">
+The framework automatically collects state changes made during execution and includes them in the `stateDelta` of the next emitted event. You don't need to manually construct the `stateDelta` object.
+</Callout>
+
+## Artifact Management Actions
+
+Artifact deltas track when files or binary data are saved, providing version awareness and audit trails.
+
+### How Artifact Tracking Works
+
+When you save an artifact using `context.saveArtifact()`, two things happen:
+
+1. The artifact is stored (implementation depends on your `SessionService`)
+2. An `artifactDelta` entry is added to the next event's actions
+
+```typescript
+import { BaseAgent, InvocationContext, Event } from '@iqai/adk';
+
+export class ReportAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    // Generate a report
+    const reportContent = await this.generateReport(context.query);
+    const pdfBuffer = await this.convertToPDF(reportContent);
+
+    // Save the artifact
+    await context.saveArtifact('monthly_report.pdf', pdfBuffer, 'application/pdf');
+
+    // The next event will automatically include artifactDelta
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{ text: 'Report generated and saved as monthly_report.pdf' }]
+      }
+      // artifactDelta is populated automatically:
+      // {
+      //   'monthly_report.pdf': {
+      //     inlineData: {
+      //       mimeType: 'application/pdf',
+      //       data: '<base64-encoded-pdf>'
+      //     }
+      //   }
+      // }
+    });
+  }
+}
+```
+
+### Detecting Artifact Updates
+
+Monitor artifact changes in the event stream:
+
+```typescript
+const trackArtifacts = async (agent: LlmAgent, query: string, session: Session) => {
+  const savedArtifacts: Array<{
+    filename: string;
+    timestamp: number;
+    author: string;
+  }> = [];
+
+  for await (const event of agent.run(query, { session })) {
+    if (event.actions?.artifactDelta) {
+      Object.entries(event.actions.artifactDelta).forEach(([filename, part]) => {
+        console.log(`📁 Artifact saved: ${filename}`);
+        console.log(`   MIME type: ${part.inlineData?.mimeType || 'unknown'}`);
+        console.log(`   Size: ${part.inlineData?.data?.length || 0} bytes (base64)`);
+
+        savedArtifacts.push({
+          filename,
+          timestamp: event.timestamp,
+          author: event.author
+        });
+
+        // Trigger UI update
+        notifyArtifactSaved(filename);
+      });
+    }
+  }
+
+  return savedArtifacts;
+};
+```
+
+### Artifact Versioning Pattern
+
+For applications that need version tracking:
+
+```typescript
+export class VersionedDocumentAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    const documentId = context.state['currentDocumentId'];
+    const currentVersion = context.state['documentVersion'] || 0;
+    const newVersion = currentVersion + 1;
+
+    // Save with version in filename
+    const filename = `document_${documentId}_v${newVersion}.md`;
+    await context.saveArtifact(filename, documentContent, 'text/markdown');
+
+    // Update version in state
+    context.state['documentVersion'] = newVersion;
+
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{ text: `Saved version ${newVersion} of document` }]
+      }
+      // Both artifactDelta (for file) and stateDelta (for version) included
+    });
+  }
+}
+```
+
+## Control Flow Actions
+
+Control flow actions direct the orchestration of agent execution, enabling sophisticated multi-agent coordination and loop management.
+
+### Agent Transfer
+
+The `transferToAgent` action signals that control should pass to a different agent:
+
+```typescript
+import { Event, EventActions } from '@iqai/adk';
+
+// Agent determines it needs specialist help
+const transferEvent = new Event({
+  author: 'RoutingAgent',
+  content: {
+    parts: [{
+      functionCall: {
+        name: 'transfer_to_agent',
+        args: { agentName: 'TechnicalSupportAgent' }
+      }
+    }]
+  },
+  actions: {
+    transferToAgent: 'TechnicalSupportAgent'
+  }
+});
+
+// The Runner will route subsequent execution to TechnicalSupportAgent
+```
+
+#### Transfer Pattern in Orchestration
+
+```typescript
+export class OrchestratorAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    const userIntent = await this.classifyIntent(context.query);
+
+    let targetAgent: string;
+
+    switch (userIntent) {
+      case 'booking':
+        targetAgent = 'BookingAgent';
+        break;
+      case 'support':
+        targetAgent = 'SupportAgent';
+        break;
+      case 'billing':
+        targetAgent = 'BillingAgent';
+        break;
+      default:
+        targetAgent = 'GeneralAgent';
+    }
+
+    // Signal transfer
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{ text: `Routing to ${targetAgent} for assistance` }]
+      },
+      actions: {
+        transferToAgent: targetAgent
+      }
+    });
+  }
+}
+```
+
+<Callout>
+Agent transfers are processed by the `Runner`. When it encounters a `transferToAgent` action, it hands control to the specified agent while maintaining the same session and conversation history.
+</Callout>
+
+### Escalation Signal
+
+The `escalate` action signals that a loop or iterative process should terminate:
+
+```typescript
+export class ValidationAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    const maxRetries = 3;
+    const retryCount = context.state['validationRetries'] || 0;
+
+    const isValid = await this.validateInput(context.query);
+
+    if (!isValid && retryCount < maxRetries) {
+      // Increment retry counter
+      context.state['validationRetries'] = retryCount + 1;
+
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{ text: 'Validation failed. Please provide correct information.' }]
+        }
+      });
+    } else if (!isValid) {
+      // Max retries reached - escalate
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{ text: 'Maximum validation attempts exceeded.' }]
+        },
+        actions: {
+          escalate: true
+        }
+      });
+    } else {
+      // Validation successful
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{ text: 'Validation successful!' }]
+        }
+      });
+    }
+  }
+}
+```
+
+#### Handling Escalation in Loops
+
+```typescript
+const runWithEscalationHandling = async (
+  agent: LlmAgent,
+  query: string,
+  session: Session
+) => {
+  for await (const event of agent.run(query, { session })) {
+    // Detect escalation signal
+    if (event.actions?.escalate) {
+      console.log('⚠️ Escalation signal received');
+      console.log(`Reason: ${event.content?.parts?.[0]?.text}`);
+
+      // Take appropriate action
+      await handleEscalation(session);
+      break; // Exit the loop
+    }
+
+    // Normal event processing
+    if (event.isFinalResponse()) {
+      displayResponse(event);
+    }
+  }
+};
+```
+
+### Combining Control Flow Actions
+
+Multiple control signals can work together:
+
+```typescript
+export class ErrorHandlerAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    try {
+      await this.processTask(context.query);
+    } catch (error) {
+      const errorCount = context.state['errorCount'] || 0;
+
+      if (errorCount >= 3) {
+        // Escalate after multiple failures
+        yield new Event({
+          author: this.name,
+          content: {
+            parts: [{ text: 'Multiple errors occurred. Escalating to supervisor.' }]
+          },
+          actions: {
+            escalate: true,
+            transferToAgent: 'SupervisorAgent',
+            stateDelta: {
+              'lastError': error.message,
+              'errorCount': errorCount + 1
+            }
+          }
+        });
+      } else {
+        // Retry with state tracking
+        context.state['errorCount'] = errorCount + 1;
+        yield new Event({
+          author: this.name,
+          content: {
+            parts: [{ text: `Error occurred. Retry ${errorCount + 1}/3` }]
+          }
+        });
+      }
+    }
+  }
+}
+```
+
+## Tool Behavior Control
+
+### Skip Summarization
+
+The `skipSummarization` flag prevents the LLM from processing tool results, useful when you want raw data displayed directly:
+
+```typescript
+import { createTool, ToolContext } from '@iqai/adk';
+
+export const queryDatabase = createTool({
+  name: 'query_database',
+  description: 'Execute SQL query and return results',
+  schema: z.object({
+    query: z.string()
+  }),
+  fn: async (args, context: ToolContext) => {
+    const results = await db.query(args.query);
+
+    // For data queries, skip LLM summarization
+    // Return raw results for direct display
+    return {
+      results,
+      _meta: {
+        skipSummarization: true
+      }
+    };
+  }
+});
+```
+
+The framework recognizes the `_meta.skipSummarization` flag and sets the action:
+
+```typescript
+// Resulting event will have:
+{
+  author: 'DatabaseAgent',
+  content: {
+    role: 'user',
+    parts: [{
+      functionResponse: {
+        name: 'queryDatabase',
+        response: { results: [...] }
+      }
+    }]
+  },
+  actions: {
+    skipSummarization: true
+  }
+}
+```
+
+#### When to Skip Summarization
+
+✅ **Use skipSummarization when:**
+- Returning structured data (tables, charts, JSON)
+- Results are already formatted for display
+- LLM processing would lose information
+- User wants raw, unfiltered output
+
+❌ **Don't skip summarization when:**
+- Results need natural language explanation
+- Data requires context or interpretation
+- Results contain technical jargon needing simplification
+
+### Detecting Skip Summarization
+
+```typescript
+for await (const event of agent.run(query)) {
+  const responses = event.getFunctionResponses();
+
+  if (responses.length > 0 && event.actions?.skipSummarization) {
+    // Display raw tool result directly
+    const rawResult = responses[0].response;
+    displayRawData(rawResult);
+  } else if (event.isFinalResponse()) {
+    // Display LLM-processed response
+    displayFormattedResponse(event.content?.parts?.[0]?.text);
+  }
+}
+```
+
+### Authentication Requests
+
+Tools can signal authentication requirements through actions:
+
+```typescript
+import { createTool, ToolContext } from '@iqai/adk';
+
+export const sendEmail = createTool({
+  name: 'send_email',
+  description: 'Send email via Gmail',
+  schema: z.object({
+    to: z.string(),
+    subject: z.string(),
+    body: z.string()
+  }),
+  fn: async (args, context: ToolContext) => {
+    // Check if authenticated
+    const hasAuth = context.authState?.['gmail'];
+
+    if (!hasAuth) {
+      // Request authentication
+      return {
+        error: 'Authentication required',
+        _meta: {
+          requestedAuthConfigs: {
+            'gmail': {
+              type: 'oauth2',
+              provider: 'google',
+              scopes: ['https://www.googleapis.com/auth/gmail.send']
+            }
+          }
+        }
+      };
+    }
+
+    // Proceed with authenticated request
+    await gmailAPI.sendEmail(args, context.authState['gmail']);
+    return { success: true, messageId: '...' };
+  }
+});
+```
+
+## Working with Actions Across Components
+
+### In Custom Agents
+
+Create events with explicit actions:
+
+```typescript
+import { BaseAgent, Event, EventActions } from '@iqai/adk';
+
+export class CustomAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    // Perform logic...
+    const result = await this.doWork(context.query);
+
+    // Create event with actions
+    const actions = new EventActions();
+    actions.stateDelta = {
+      'taskStatus': 'completed',
+      'resultCount': result.items.length
+    };
+    actions.transferToAgent = 'ReviewAgent';
+
+    yield new Event({
+      author: this.name,
+      invocationId: context.invocationId,
+      content: {
+        parts: [{ text: `Completed task with ${result.items.length} items` }]
+      },
+      actions
+    });
+  }
+}
+```
+
+### In Event Handlers
+
+React to actions in your application:
+
+```typescript
+const handleEventStream = async (runner: Runner, query: string, session: Session) => {
+  for await (const event of runner.runAsync(query, session)) {
+    const actions = event.actions;
+
+    if (!actions) continue;
+
+    // Handle state changes
+    if (actions.stateDelta && Object.keys(actions.stateDelta).length > 0) {
+      await updateDatabase(session.id, actions.stateDelta);
+      notifyStateChange(actions.stateDelta);
+    }
+
+    // Handle artifact saves
+    if (actions.artifactDelta && Object.keys(actions.artifactDelta).length > 0) {
+      Object.entries(actions.artifactDelta).forEach(([filename, part]) => {
+        notifyFileAvailable(filename, part);
+      });
+    }
+
+    // Handle control flow
+    if (actions.transferToAgent) {
+      logAgentTransfer(event.author, actions.transferToAgent);
+    }
+
+    if (actions.escalate) {
+      await handleEscalation(session, event);
+    }
+
+    // Handle authentication
+    if (actions.requestedAuthConfigs) {
+      await promptUserAuth(actions.requestedAuthConfigs);
+    }
+  }
+};
+```
+
+## Advanced Patterns
+
+### Atomic Multi-Action Updates
+
+Combine multiple actions for atomic state transitions:
+
+```typescript
+yield new Event({
+  author: this.name,
+  content: {
+    parts: [{ text: 'Order completed and transferred to fulfillment' }]
+  },
+  actions: {
+    stateDelta: {
+      'orderStatus': 'completed',
+      'orderTotal': 299.99,
+      'user:orderHistory': [...existingHistory, newOrder],
+      'temp_processingTime': performance.now() - startTime
+    },
+    artifactDelta: {
+      'receipt.pdf': receiptPart,
+      'invoice.pdf': invoicePart
+    },
+    transferToAgent: 'FulfillmentAgent'
+  }
+});
+```
+
+### Conditional Actions
+
+Actions can be built conditionally based on runtime logic:
+
+```typescript
+const actions: EventActions = { stateDelta: {} };
+
+if (needsReview) {
+  actions.transferToAgent = 'ReviewAgent';
+  actions.stateDelta!['reviewRequired'] = true;
+}
+
+if (criticalError) {
+  actions.escalate = true;
+  actions.stateDelta!['errorSeverity'] = 'critical';
+}
+
+if (dataQuery) {
+  actions.skipSummarization = true;
+}
+
+yield new Event({
+  author: this.name,
+  content: { parts: [{ text: responseText }] },
+  actions
+});
+```
+
+### Action Chaining
+
+Actions in one event can trigger subsequent actions:
+
+```typescript
+// Event 1: Agent requests transfer
+yield new Event({
+  actions: {
+    stateDelta: { 'transferReason': 'specialist_needed' },
+    transferToAgent: 'SpecialistAgent'
+  }
+});
+
+// Event 2 (in SpecialistAgent): Specialist completes and escalates
+yield new Event({
+  actions: {
+    stateDelta: {
+      'specialistReview': 'completed',
+      'requiresManualIntervention': true
+    },
+    escalate: true
+  }
+});
+```
+
+## Best Practices
+
+### Action Design Principles
+
+<Tabs items={['Do', 'Don\'t']}>
+<Tab value="Do">
+```typescript
+// ✅ Clear, semantic actions
+yield new Event({
+  actions: {
+    stateDelta: {
+      'user:preferences': updatedPreferences,
+      'lastModified': timestamp
+    },
+    transferToAgent: 'PreferenceAgent'
+  }
+});
+
+// ✅ Combine related changes
+actions.stateDelta = {
+  'booking:id': bookingId,
+  'booking:status': 'confirmed',
+  'booking:confirmationCode': code
+};
+
+// ✅ Document complex actions
+yield new Event({
+  actions: {
+    escalate: true, // Max retries exceeded (3/3)
+    stateDelta: {
+      'errorLog': [...errors, newError]
+    }
+  }
+});
+```
+</Tab>
+
+<Tab value="Don't">
+```typescript
+// ❌ Too many unrelated actions
+yield new Event({
+  actions: {
+    stateDelta: { ...everythingAtOnce },
+    transferToAgent: 'Agent1',
+    escalate: true,
+    skipSummarization: true
+  }
+});
+
+// ❌ Storing large objects in state
+actions.stateDelta = {
+  'fullDatabase': hugeDataObject // Store reference instead
+};
+
+// ❌ Unclear action purpose
+actions.stateDelta = {
+  'flag1': true,
+  'flag2': false,
+  'temp': someValue
+};
+```
+</Tab>
+</Tabs>
+
+### State Management Guidelines
+
+1. **Minimize State Size**: Only store what's needed across turns
+2. **Use Appropriate Prefixes**: Indicate scope clearly (`app:`, `user:`, `temp_`)
+3. **Avoid Duplication**: Don't store derivable data
+4. **Clean Up Temporary State**: Remove `temp_` values when done
+5. **Version Important Data**: Track versions for auditing
+
+```typescript
+// Good state management
+context.state['user:preferences'] = { theme: 'dark' };        // User pref
+context.state['currentTask'] = 'booking';                     // Session data
+context.state['temp_calculation'] = intermediate;             // Temporary
+
+// Not recommended
+context.state['everything'] = { ...allPossibleData };         // Too broad
+context.state['cache'] = largeDataStructure;                  // Too large
+```
+
+### Control Flow Best Practices
+
+1. **Single Responsibility**: One primary control action per event
+2. **Clear Agent Names**: Use descriptive names for transfers
+3. **Document Escalations**: Explain why escalation occurs
+4. **Combine with State**: Track control flow decisions in state
+
+```typescript
+// Good control flow
+if (maxRetriesReached) {
+  yield new Event({
+    content: { parts: [{ text: 'Max retries exceeded' }] },
+    actions: {
+      escalate: true,
+      stateDelta: {
+        'escalationReason': 'max_retries',
+        'retryCount': 3
+      }
+    }
+  });
+}
+```
+
+### Testing Actions
+
+Write tests that verify action behavior:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+
+describe('CustomAgent Actions', () => {
+  it('should set correct state delta on success', async () => {
+    const agent = new CustomAgent();
+    const events = [];
+
+    for await (const event of agent.run('test query')) {
+      events.push(event);
+    }
+
+    const finalEvent = events[events.length - 1];
+    expect(finalEvent.actions?.stateDelta).toEqual({
+      'taskStatus': 'completed',
+      'resultCount': expect.any(Number)
+    });
+  });
+
+  it('should escalate after max retries', async () => {
+    const agent = new RetryAgent();
+    const session = createSession({ validationRetries: 3 });
+
+    const events = [];
+    for await (const event of agent.run('invalid input', { session })) {
+      events.push(event);
+    }
+
+    const escalationEvent = events.find(e => e.actions?.escalate);
+    expect(escalationEvent).toBeDefined();
+    expect(escalationEvent?.actions?.escalate).toBe(true);
+  });
+});
+```
+
+## Debugging Actions
+
+Use event history to trace action flow:
+
+```typescript
+const debugActions = (session: Session) => {
+  console.log('\n=== Action History ===\n');
+
+  session.events.forEach((event, index) => {
+    const actions = event.actions;
+    if (!actions) return;
+
+    console.log(`[${index}] ${event.author} at ${new Date(event.timestamp * 1000).toISOString()}`);
+
+    if (actions.stateDelta && Object.keys(actions.stateDelta).length > 0) {
+      console.log('  State changes:');
+      Object.entries(actions.stateDelta).forEach(([key, value]) => {
+        console.log(`    ${key}: ${JSON.stringify(value).slice(0, 50)}`);
+      });
+    }
+
+    if (actions.artifactDelta && Object.keys(actions.artifactDelta).length > 0) {
+      console.log('  Artifacts:', Object.keys(actions.artifactDelta));
+    }
+
+    if (actions.transferToAgent) {
+      console.log(`  → Transfer to: ${actions.transferToAgent}`);
+    }
+
+    if (actions.escalate) {
+      console.log('  ⚠️ Escalation signal');
+    }
+
+    if (actions.skipSummarization) {
+      console.log('  ⏭️ Skip summarization');
+    }
+
+    console.log('');
+  });
+};
+```
+
+## TypeScript Advantages
+
+Our TypeScript implementation provides enhanced type safety for actions:
+
+```typescript
+import { EventActions, Event } from '@iqai/adk';
+
+// Type-safe action construction
+const actions: EventActions = {
+  stateDelta: {
+    'user:preference': 'value'  // Type-checked keys and values
+  },
+  transferToAgent: 'AgentName',  // String literal type
+  escalate: true                 // Boolean type
+};
+
+// Type inference for actions
+const event = new Event({
+  author: 'MyAgent',
+  actions: {
+    stateDelta: { key: 'value' }  // Inferred as Record<string, any>
+  }
+});
+
+// Compile-time checks prevent errors
+// event.actions.invalidProperty = true;  // ❌ TypeScript error
+```
+
+### Generic Action Types
+
+Define custom action schemas for specific use cases:
+
+```typescript
+import { EventActions } from '@iqai/adk';
+
+// Define domain-specific action types
+interface BookingActions extends EventActions {
+  stateDelta?: {
+    'booking:id'?: string;
+    'booking:status'?: 'pending' | 'confirmed' | 'cancelled';
+    'booking:total'?: number;
+  };
+}
+
+// Type-safe usage
+const createBookingEvent = (bookingId: string, total: number): Event => {
+  const actions: BookingActions = {
+    stateDelta: {
+      'booking:id': bookingId,
+      'booking:status': 'confirmed',  // Autocomplete suggests valid values
+      'booking:total': total
+    }
+  };
+
+  return new Event({
+    author: 'BookingAgent',
+    content: { parts: [{ text: 'Booking confirmed' }] },
+    actions
+  });
+};
+```
+
+## Real-World Examples
+
+### E-commerce Checkout Flow
+
+A complete example showing state management, artifact tracking, and control flow:
+
+```typescript
+import { BaseAgent, Event, InvocationContext } from '@iqai/adk';
+
+export class CheckoutAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    const cart = context.state['user:cart'];
+    const userProfile = context.state['user:profile'];
+
+    // Step 1: Validate cart
+    const validation = await this.validateCart(cart);
+
+    if (!validation.valid) {
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{ text: `Cart validation failed: ${validation.error}` }]
+        },
+        actions: {
+          stateDelta: {
+            'checkout:status': 'failed',
+            'checkout:error': validation.error
+          },
+          escalate: true  // Can't proceed with invalid cart
+        }
+      });
+      return;
+    }
+
+    // Step 2: Process payment
+    context.state['checkout:status'] = 'processing_payment';
+
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{ text: 'Processing payment...' }]
+      }
+    });
+
+    const payment = await this.processPayment(cart.total, userProfile.paymentMethod);
+
+    if (!payment.success) {
+      // Payment failed - transfer to support
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{ text: 'Payment failed. Transferring to support agent.' }]
+        },
+        actions: {
+          stateDelta: {
+            'checkout:status': 'payment_failed',
+            'checkout:paymentError': payment.error
+          },
+          transferToAgent: 'PaymentSupportAgent'
+        }
+      });
+      return;
+    }
+
+    // Step 3: Create order and generate documents
+    const order = await this.createOrder(cart, payment);
+
+    // Generate receipt PDF
+    const receiptPdf = await this.generateReceipt(order);
+    await context.saveArtifact(`receipt_${order.id}.pdf`, receiptPdf, 'application/pdf');
+
+    // Generate invoice JSON
+    const invoiceJson = JSON.stringify(order.invoice, null, 2);
+    await context.saveArtifact(`invoice_${order.id}.json`, Buffer.from(invoiceJson), 'application/json');
+
+    // Step 4: Complete checkout with comprehensive state update
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{
+          text: `Order ${order.id} confirmed! Your receipt has been generated. Transferring to fulfillment.`
+        }]
+      },
+      actions: {
+        stateDelta: {
+          // Update order state
+          'checkout:status': 'completed',
+          'checkout:orderId': order.id,
+          'checkout:completedAt': Date.now(),
+
+          // Update user history
+          'user:lastOrderId': order.id,
+          'user:totalOrders': (context.state['user:totalOrders'] || 0) + 1,
+          'user:lifetimeSpent': (context.state['user:lifetimeSpent'] || 0) + order.total,
+
+          // Clear temporary checkout data
+          'user:cart': [],
+          'temp_validationResult': null,
+          'temp_paymentProcessingTime': payment.processingTime
+        },
+        transferToAgent: 'FulfillmentAgent'
+      }
+    });
+  }
+}
+```
+
+### Multi-Step Validation Loop
+
+Example of using escalation in an iterative process:
+
+```typescript
+export class DataValidationAgent extends BaseAgent {
+  private readonly MAX_VALIDATION_ATTEMPTS = 3;
+
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    const attemptCount = context.state['validation:attempts'] || 0;
+    const data = context.state['validation:data'];
+
+    // Validate the data
+    const validation = await this.validateData(data);
+
+    if (validation.isValid) {
+      // Success - clear validation state and proceed
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{ text: 'Data validation successful!' }]
+        },
+        actions: {
+          stateDelta: {
+            'validation:status': 'passed',
+            'validation:attempts': 0,  // Reset counter
+            'data:validated': true,
+            'data:validatedAt': Date.now()
+          }
+        }
+      });
+    } else if (attemptCount < this.MAX_VALIDATION_ATTEMPTS) {
+      // Validation failed but can retry
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{
+            text: `Validation failed: ${validation.errors.join(', ')}. Please correct and try again. (Attempt ${attemptCount + 1}/${this.MAX_VALIDATION_ATTEMPTS})`
+          }]
+        },
+        actions: {
+          stateDelta: {
+            'validation:attempts': attemptCount + 1,
+            'validation:lastErrors': validation.errors,
+            'validation:status': 'retry'
+          }
+        }
+      });
+    } else {
+      // Max attempts reached - escalate
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{
+            text: `Maximum validation attempts (${this.MAX_VALIDATION_ATTEMPTS}) exceeded. Escalating to manual review.`
+          }]
+        },
+        actions: {
+          escalate: true,
+          stateDelta: {
+            'validation:status': 'failed',
+            'validation:attempts': attemptCount + 1,
+            'validation:finalErrors': validation.errors,
+            'validation:escalatedAt': Date.now()
+          },
+          transferToAgent: 'ManualReviewAgent'
+        }
+      });
+    }
+  }
+}
+```
+
+### Report Generation with Skip Summarization
+
+Example of returning structured data directly:
+
+```typescript
+export const generateAnalyticsReport = createTool({
+  name: 'generate_analytics_report',
+  description: 'Generate detailed analytics report with charts and metrics',
+  schema: z.object({
+    dateRange: z.object({
+      start: z.string(),
+      end: z.string()
+    }),
+    metrics: z.array(z.string())
+  }),
+  fn: async (args, context: ToolContext) => {
+    // Generate comprehensive report
+    const data = await analyticsService.getMetrics(args.dateRange, args.metrics);
+
+    // Create visualizations
+    const charts = await chartGenerator.createCharts(data);
+
+    // Structure the report
+    const report = {
+      summary: {
+        totalUsers: data.users.total,
+        activeUsers: data.users.active,
+        conversionRate: data.conversions.rate,
+        revenue: data.revenue.total
+      },
+      charts: charts.map(c => ({
+        type: c.type,
+        title: c.title,
+        data: c.data
+      })),
+      detailedMetrics: data.metrics,
+      recommendations: await generateRecommendations(data)
+    };
+
+    // Save as artifact
+    const reportJson = JSON.stringify(report, null, 2);
+    await context.saveArtifact(
+      `analytics_${args.dateRange.start}_${args.dateRange.end}.json`,
+      Buffer.from(reportJson),
+      'application/json'
+    );
+
+    // Return structured data without LLM summarization
+    return {
+      report,
+      _meta: {
+        skipSummarization: true
+      }
+    };
+  }
+});
+```
+
+### Conditional Multi-Agent Orchestration
+
+Complex orchestration using multiple action types:
+
+```typescript
+export class SmartRoutingAgent extends BaseAgent {
+  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
+    const query = context.query;
+    const userTier = context.state['user:tier'] || 'standard';
+    const complexity = await this.assessComplexity(query);
+
+    // Store analysis in state
+    context.state['routing:complexity'] = complexity;
+    context.state['routing:timestamp'] = Date.now();
+
+    let targetAgent: string;
+    let reasoning: string;
+    let additionalState: Record<string, any> = {};
+
+    if (complexity === 'simple') {
+      // Simple queries go to fast agent
+      targetAgent = 'FastResponseAgent';
+      reasoning = 'Query classified as simple - using fast response agent';
+
+    } else if (complexity === 'moderate' && userTier === 'premium') {
+      // Premium users get specialist even for moderate queries
+      targetAgent = 'SpecialistAgent';
+      reasoning = 'Premium user detected - routing to specialist';
+      additionalState['routing:premiumPath'] = true;
+
+    } else if (complexity === 'complex') {
+      // Complex queries need research
+      const requiresExternalData = await this.checkExternalDataNeeds(query);
+
+      if (requiresExternalData) {
+        targetAgent = 'ResearchAgent';
+        reasoning = 'Complex query requiring external research';
+        additionalState['routing:researchRequired'] = true;
+      } else {
+        targetAgent = 'SpecialistAgent';
+        reasoning = 'Complex query - routing to specialist';
+      }
+
+    } else {
+      // Default fallback
+      targetAgent = 'GeneralAgent';
+      reasoning = 'Using general agent for standard query';
+    }
+
+    // Generate routing event with comprehensive state
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{ text: `Routing query: ${reasoning}` }]
+      },
+      actions: {
+        transferToAgent: targetAgent,
+        stateDelta: {
+          'routing:targetAgent': targetAgent,
+          'routing:reasoning': reasoning,
+          'routing:userTier': userTier,
+          ...additionalState
+        }
+      }
+    });
+  }
+}
+```
+
+## Integration Patterns
+
+### React UI Integration
+
+Integrate actions with React state management:
+
+```typescript
+import { useState, useEffect } from 'react';
+import { Event, Runner, Session } from '@iqai/adk';
+
+export function useAgentActions(runner: Runner, query: string, session: Session) {
+  const [state, setState] = useState<Record<string, any>>({});
+  const [artifacts, setArtifacts] = useState<string[]>([]);
+  const [currentAgent, setCurrentAgent] = useState<string>('');
+
+  useEffect(() => {
+    const processEvents = async () => {
+      for await (const event of runner.runAsync(query, session)) {
+        // Update local state from deltas
+        if (event.actions?.stateDelta) {
+          setState(prev => ({
+            ...prev,
+            ...event.actions.stateDelta
+          }));
+        }
+
+        // Track artifacts
+        if (event.actions?.artifactDelta) {
+          const newArtifacts = Object.keys(event.actions.artifactDelta);
+          setArtifacts(prev => [...prev, ...newArtifacts]);
+        }
+
+        // Track agent transfers
+        if (event.actions?.transferToAgent) {
+          setCurrentAgent(event.actions.transferToAgent);
+        }
+
+        // Handle escalation
+        if (event.actions?.escalate) {
+          console.warn('Escalation detected:', event.content);
+          // Show error modal or notification
+        }
+      }
+    };
+
+    processEvents();
+  }, [runner, query, session]);
+
+  return { state, artifacts, currentAgent };
+}
+```
+
+### Event Logging and Analytics
+
+Comprehensive action logging for analytics:
+
+```typescript
+import { Event } from '@iqai/adk';
+
+export class ActionLogger {
+  private events: Event[] = [];
+
+  logEvent(event: Event): void {
+    this.events.push(event);
+
+    if (event.actions) {
+      this.logToAnalytics({
+        eventId: event.id,
+        author: event.author,
+        timestamp: event.timestamp,
+        hasStateDelta: !!event.actions.stateDelta,
+        stateKeysChanged: Object.keys(event.actions.stateDelta || {}),
+        hasArtifactDelta: !!event.actions.artifactDelta,
+        artifactsSaved: Object.keys(event.actions.artifactDelta || {}),
+        transferredTo: event.actions.transferToAgent,
+        escalated: event.actions.escalate,
+        skippedSummarization: event.actions.skipSummarization
+      });
+    }
+  }
+
+  generateReport() {
+    const report = {
+      totalEvents: this.events.length,
+      stateChanges: this.countStateChanges(),
+      artifactsSaved: this.countArtifacts(),
+      agentTransfers: this.countTransfers(),
+      escalations: this.countEscalations(),
+      averageEventsPerTurn: this.calculateAverageEvents()
+    };
+
+    return report;
+  }
+
+  private countStateChanges(): number {
+    return this.events.filter(e =>
+      e.actions?.stateDelta && Object.keys(e.actions.stateDelta).length > 0
+    ).length;
+  }
+
+  private countArtifacts(): number {
+    return this.events.reduce((total, e) => {
+      return total + Object.keys(e.actions?.artifactDelta || {}).length;
+    }, 0);
+  }
+
+  private countTransfers(): number {
+    return this.events.filter(e => e.actions?.transferToAgent).length;
+  }
+
+  private countEscalations(): number {
+    return this.events.filter(e => e.actions?.escalate).length;
+  }
+
+  private logToAnalytics(data: any): void {
+    // Send to your analytics service
+    analytics.track('agent_action', data);
+  }
+}
+```
+
+## Common Pitfalls and Solutions
+
+### Pitfall 1: Not Checking for Action Presence
+
+```typescript
+// ❌ Unsafe - will throw if actions is undefined
+const stateKeys = Object.keys(event.actions.stateDelta);
+
+// ✅ Safe - check for presence
+if (event.actions?.stateDelta) {
+  const stateKeys = Object.keys(event.actions.stateDelta);
+}
+```
+
+### Pitfall 2: Mutating Actions After Creation
+
+```typescript
+// ❌ Don't mutate actions after event creation
+const event = new Event({ ... });
+event.actions.stateDelta['newKey'] = 'value';  // May not be persisted
+
+// ✅ Create complete actions before event
+const actions = {
+  stateDelta: { key: 'value' }
+};
+const event = new Event({ actions });
+```
+
+### Pitfall 3: Storing Sensitive Data in State
+
+```typescript
+// ❌ Don't store sensitive data in state
+context.state['user:password'] = password;
+context.state['user:creditCard'] = cardNumber;
+
+// ✅ Store references or encrypted tokens
+context.state['user:hasPassword'] = true;
+context.state['user:paymentMethodId'] = tokenId;
+```
+
+### Pitfall 4: Over-Using Escalation
+
+```typescript
+// ❌ Escalating too early
+if (!result) {
+  yield new Event({ actions: { escalate: true } });
+}
+
+// ✅ Escalate only after exhausting options
+const retries = context.state['retries'] || 0;
+if (!result && retries >= MAX_RETRIES) {
+  yield new Event({
+    actions: {
+      escalate: true,
+      stateDelta: { 'escalationReason': 'max_retries_exceeded' }
+    }
+  });
+}
+```
+
+## Summary
+
+EventActions are the backbone of ADK's state management and control flow system. Key takeaways:
+
+✅ **State Deltas**: Incremental state changes tracked in `stateDelta`
+✅ **Artifact Tracking**: File saves recorded in `artifactDelta`
+✅ **Control Flow**: Agent transfers via `transferToAgent`, loop termination via `escalate`
+✅ **Tool Behavior**: Control LLM processing with `skipSummarization`
+✅ **Declarative Pattern**: Describe what should happen, framework handles execution
+✅ **TypeScript Safety**: Strong typing prevents common errors
+✅ **Audit Trail**: All actions visible in event history
+
+## Next Steps
+
+Explore related topics to deepen your understanding:
+
+<Cards>
+  <Card
+    title="Events Overview"
+    description="Comprehensive guide to the event system and architecture"
+    href="/docs/framework/events/overview"
+  />
+  <Card
+    title="Working with Events"
+    description="Practical patterns for processing events in your applications"
+    href="/docs/framework/events/working-with-events"
+  />
+  <Card
+    title="State Management"
+    description="Deep dive into session state and persistence patterns"
+    href="/docs/framework/state-management"
+  />
+  <Card
+    title="Multi-Agent Systems"
+    description="Orchestrating agents with transfers and control flow"
+    href="/docs/framework/multi-agent/overview"
+  />
+</Cards>
