@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { Api } from "../Api";
 import type { AgentListItemDto as Agent, StateResponseDto } from "../Api";
+import { Api } from "../Api";
 import { useApiUrl } from "./use-api-url";
 
 export function useStatePanel(
@@ -29,6 +29,9 @@ export function useStatePanel(
 			return res.data as StateResponseDto;
 		},
 		enabled: !!apiClient && !!selectedAgent && !!currentSessionId,
+		staleTime: 10000,
+		retry: 2,
+		refetchInterval: 30000,
 	});
 
 	const updateStateMutation = useMutation({
