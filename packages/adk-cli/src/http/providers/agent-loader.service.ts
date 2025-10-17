@@ -10,6 +10,7 @@ import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { AgentBuilder, BaseAgent, BuiltAgent } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
+import z, { ZodError } from "zod";
 import { findProjectRoot } from "../../common/find-project-root";
 
 const ADK_CACHE_DIR = ".adk-cache";
@@ -216,6 +217,130 @@ export class AgentLoader {
 	}
 
 	/**
+	 * Check if error is related to missing environment variables (Zod validation)
+	 * Enhanced to distinguish between required and optional variables
+	 */
+	private isMissingEnvError(error: unknown): {
+		isMissing: boolean;
+		varName?: string;
+		allMissing?: string[];
+		requiredMissing?: string[];
+		optionalMissing?: string[];
+		hasOnlyOptionalMissing?: boolean;
+	} {
+		if (error instanceof ZodError) {
+			const allMissingVars = error.issues
+				.filter(
+					(
+						issue,
+					): issue is z.core.$ZodIssue & {
+						code: "invalid_type";
+						received: unknown;
+					} => issue.code === "invalid_type" && issue.expected !== "undefined",
+				)
+				.map((issue) => issue.path?.[0])
+				.filter((v): v is string => !!v);
+
+			// Categorize as required vs optional based on common patterns
+			// This is a heuristic since we don't have schema info here
+			const requiredMissing: string[] = [];
+			const optionalMissing: string[] = [];
+
+			// Common patterns for optional environment variables
+			const optionalPatterns = [
+				/^.*_DEBUG$/i,
+				/^.*_ENABLED$/i,
+				/^PORT$/i,
+				/^HOST$/i,
+				/^NODE_ENV$/i,
+				/^ADK_/i,
+			];
+
+			for (const varName of allMissingVars) {
+				const isLikelyOptional = optionalPatterns.some((pattern) =>
+					pattern.test(varName),
+				);
+				if (isLikelyOptional) {
+					optionalMissing.push(varName);
+				} else {
+					requiredMissing.push(varName);
+				}
+			}
+
+			if (allMissingVars.length > 0) {
+				return {
+					isMissing: true,
+					varName: allMissingVars[0],
+					allMissing: allMissingVars,
+					requiredMissing,
+					optionalMissing,
+					hasOnlyOptionalMissing:
+						requiredMissing.length === 0 && optionalMissing.length > 0,
+				};
+			}
+		}
+
+		return { isMissing: false };
+	}
+
+	/**
+	 * Find which .env files exist in the project
+	 */
+	private findExistingEnvFiles(projectRoot: string): string[] {
+		const envFiles = [
+			".env.local",
+			".env.development.local",
+			".env.production.local",
+			".env.development",
+			".env.production",
+			".env",
+		];
+
+		return envFiles.filter((file) => existsSync(join(projectRoot, file)));
+	}
+
+	/**
+	 * Generate helpful error message for missing environment variables
+	 */
+	private generateEnvErrorMessage(
+		projectRoot: string,
+		varName?: string,
+		allMissing?: string[],
+	): string {
+		const existingEnvFiles = this.findExistingEnvFiles(projectRoot);
+		const missingVars = allMissing || (varName ? [varName] : []);
+
+		let message = `\n❌ MISSING ENVIRONMENT VARIABLE${missingVars.length > 1 ? "S" : ""}\n\n`;
+
+		if (missingVars.length > 0) {
+			if (missingVars.length === 1) {
+				message += `Required: ${missingVars[0]}\n`;
+			} else {
+				message += `Required: ${missingVars.join(", ")}\n`;
+			}
+		}
+
+		message += `Project: ${projectRoot}\n\n`;
+
+		if (existingEnvFiles.length > 0) {
+			message += `📝 Found: ${existingEnvFiles.join(", ")}\n`;
+			message += `💡 Add missing variable${missingVars.length > 1 ? "s" : ""} to one of these files\n\n`;
+		} else {
+			message += "💡 Create a .env file with:\n";
+			if (missingVars.length > 0) {
+				for (const v of missingVars) {
+					message += `   ${v}=your_value_here\n`;
+				}
+			}
+			message += "\n";
+		}
+
+		message += "Tip: Use .env.local (git-ignored) for sensitive values\n";
+
+		return message;
+	}
+
+	/**
 	 * Import a TypeScript file by compiling it on-demand
 	 */
 	async importTypeScriptFile(
@@ -300,18 +425,125 @@ export class AgentLoader {
 			try {
 				mod = dynamicRequire(outFile) as Record<string, unknown>;
 			} catch (loadErr) {
-				this.logger.warn(
-					`Primary require failed for built agent '${outFile}': ${loadErr instanceof Error ? loadErr.message : String(loadErr)}. Falling back to dynamic import...`,
-				);
+				const error =
+					loadErr instanceof Error ? loadErr : new Error(String(loadErr));
+
+				const envCheck = this.isMissingEnvError(error);
+
+				if (envCheck.isMissing) {
+					if (envCheck.hasOnlyOptionalMissing) {
+						this.logger.warn(
+							`⚠️  Missing optional environment variables: ${envCheck.optionalMissing?.join(", ")}`,
+						);
+					} else if (
+						envCheck.requiredMissing &&
+						envCheck.requiredMissing.length > 0
+					) {
+						this.logger.error(
+							this.generateEnvErrorMessage(
+								projectRoot,
+								envCheck.varName,
+								envCheck.requiredMissing,
+							),
+						);
+						const varsList = envCheck.requiredMissing.join(", ");
+						const cleanError = new Error(
+							`Missing required environment variable${
+								envCheck.requiredMissing.length > 1 ? "s" : ""
+							}: ${varsList}`,
+						);
+						cleanError.stack = undefined;
+						throw cleanError;
+					} else {
+						this.logger.error(
+							this.generateEnvErrorMessage(
+								projectRoot,
+								envCheck.varName,
+								envCheck.allMissing,
+							),
+						);
+						const varsList =
+							envCheck.allMissing?.join(", ") || envCheck.varName || "";
+						const cleanError = new Error(
+							`Missing environment variable${
+								envCheck.allMissing && envCheck.allMissing.length > 1 ? "s" : ""
+							}${varsList ? `: ${varsList}` : "s"}`,
+						);
+						cleanError.stack = undefined;
+						throw cleanError;
+					}
+				}
+
+				if (!envCheck.isMissing) {
+					this.logger.warn("Failed to load agent, attempting fallback...");
+				}
+
 				try {
 					mod = (await import(pathToFileURL(outFile).href)) as Record<
 						string,
 						unknown
 					>;
 				} catch (fallbackErr) {
-					throw new Error(
-						`Both require() and import() failed for built agent file '${outFile}': ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`,
+					const fallbackError =
+						fallbackErr instanceof Error
+							? fallbackErr
+							: new Error(String(fallbackErr));
+					const fallbackEnvCheck = this.isMissingEnvError(fallbackError);
+
+					if (fallbackEnvCheck.isMissing) {
+						if (fallbackEnvCheck.hasOnlyOptionalMissing) {
+							this.logger.warn(
+								`⚠️  Missing optional environment variables: ${fallbackEnvCheck.optionalMissing?.join(", ")}`,
+							);
+						} else if (
+							fallbackEnvCheck.requiredMissing &&
+							fallbackEnvCheck.requiredMissing.length > 0
+						) {
+							this.logger.error(
+								this.generateEnvErrorMessage(
+									projectRoot,
+									fallbackEnvCheck.varName,
+									fallbackEnvCheck.requiredMissing,
+								),
+							);
+							const varsList = fallbackEnvCheck.requiredMissing.join(", ");
+							const cleanError = new Error(
+								`Missing required environment variable${
+									fallbackEnvCheck.requiredMissing.length > 1 ? "s" : ""
+								}: ${varsList}`,
+							);
+							cleanError.stack = undefined;
+							throw cleanError;
+						} else {
+							this.logger.error(
+								this.generateEnvErrorMessage(
+									projectRoot,
+									fallbackEnvCheck.varName,
+									fallbackEnvCheck.allMissing,
+								),
+							);
+							const varsList =
+								fallbackEnvCheck.allMissing?.join(", ") ||
+								fallbackEnvCheck.varName ||
+								"";
+							const cleanError = new Error(
+								`Missing environment variable${
+									fallbackEnvCheck.allMissing &&
+									fallbackEnvCheck.allMissing.length > 1
+										? "s"
+										: ""
+								}${varsList ? `: ${varsList}` : "s"}`,
+							);
+							cleanError.stack = undefined;
+							throw cleanError;
+						}
+					}
+
+					const cleanError = new Error(
+						`Failed to load agent: ${fallbackError.message}`,
 					);
+					cleanError.stack = undefined;
+					throw cleanError;
 				}
 			}
 			let agentExport = (mod as any)?.agent;
@@ -362,6 +594,7 @@ export class AgentLoader {
 			".env",
 		];
 
+		let loadedAny = false;
 		for (const envFile of envFiles) {
 			const envPath = join(projectRoot, envFile);
 			if (existsSync(envPath)) {
@@ -381,6 +614,7 @@ export class AgentLoader {
 							}
 						}
 					}
+					loadedAny = true;
 				} catch (error) {
 					this.logger.warn(
 						`Warning: Could not load ${envFile} file: ${
@@ -389,6 +623,13 @@ export class AgentLoader {
 					);
 				}
 			}
+		}
+
+		if (!loadedAny && !this.quiet) {
+			this.logger.warn(
+				`No .env files found in project root: ${projectRoot}\n` +
+					"If your agent requires environment variables, please create a .env file.",
+			);
 		}
 	}
 
