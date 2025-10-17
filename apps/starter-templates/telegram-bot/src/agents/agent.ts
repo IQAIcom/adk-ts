@@ -1,6 +1,4 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { AgentBuilder, createDatabaseSessionService } from "@iqai/adk";
+import { AgentBuilder } from "@iqai/adk";
 import { env } from "../env";
 import { getJokeAgent } from "./joke-agent/agent";
 import { getWeatherAgent } from "./weather-agent/agent";
@@ -26,26 +24,6 @@ export const getRootAgent = () => {
 			"Use the joke sub-agent for humor requests and the weather sub-agent for weather-related queries. Route user requests to the appropriate sub-agent.",
 		)
 		.withModel(env.LLM_MODEL)
-		.withSessionService(
-			createDatabaseSessionService(getSqliteConnectionString("telegram_bot")),
-		)
 		.withSubAgents([jokeAgent, weatherAgent])
 		.build();
 };
-
-/**
- * Generates a SQLite connection string and ensures the database directory exists.
- *
- * Creates the data directory if it doesn't exist and returns a properly formatted
- * SQLite connection string for the specified database name.
- *
- * @param dbName - Name of the database file (without .db extension)
- * @returns SQLite connection string in the format "sqlite://path/to/database.db"
- */
-function getSqliteConnectionString(dbName: string): string {
-	const dbPath = path.join(__dirname, "data", `${dbName}.db`);
-	if (!fs.existsSync(path.dirname(dbPath))) {
-		fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-	}
-	return `sqlite://${dbPath}`;
-}
