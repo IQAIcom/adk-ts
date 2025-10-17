@@ -1,231 +1,827 @@
 ---
 title: Function Tools
-description: Create custom tools for your specific application needs
+description: Create custom tools from TypeScript functions
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
-Function tools enable you to create custom functionality tailored to your specific requirements. When built-in tools don't meet your needs, function tools provide the flexibility to implement custom logic, connect to proprietary systems, or create specialized algorithms.
+Function tools provide a simple yet powerful way to create custom tools directly from TypeScript functions. They're perfect for when you need to extend your agent with custom logic without complex setup. Function tools automatically convert your TypeScript functions to LLM-compatible tools, handling parameter extraction, type conversion, and schema generation.
 
-## What Are Function Tools?
+This guide covers:
 
-Function tools transform regular TypeScript functions into tools that agents can use. They bridge the gap between your application's specific requirements and the agent's capabilities.
+- [Function Tools](#function-tools) - Convert standard TypeScript functions to tools with minimal setup
+- [Long Running Function Tools](#long-running-function-tools) - Handle time-consuming operations
+- [Agents-as-a-Tool](#agents-as-a-tool) - Use specialized agents as tools for complex tasks
 
-### Key Benefits
+## Function Tools
 
-- **Custom Logic**: Implement specialized algorithms or business rules
-- **System Integration**: Connect to proprietary databases or internal APIs
-- **Flexibility**: Adapt to unique requirements that built-in tools can't address
-- **Performance**: Optimize for your specific use case and data patterns
+Function tools make it easy to turn regular TypeScript functions into AI-compatible tools. Simply create a function, add proper JSDoc comments and TypeScript type hints, and ADK-TS handles the rest.
 
-<Callout type="info" title="When to Use Function Tools">
-Create function tools when you need custom logic, specific integrations, or when built-in tools don't meet your requirements.
+### How Function Tools Work
+
+When you create a function tool, ADK-TS:
+
+1. Analyzes your function's signature and JSDoc comments
+2. Extracts parameter names, types, and default values
+3. Creates a JSON schema the LLM can understand
+4. Handles type conversion between the LLM and your function
+5. Provides automatic access to ToolContext when needed
+
+### Defining Function Signatures
+
+A well-defined function signature is crucial for the LLM to use your tool correctly.
+
+#### Parameters
+
+You can define functions with required parameters, optional parameters with defaults, and different data types. Here's how each is handled:
+
+##### Required Parameters
+
+A parameter is considered required if it has a type hint but no default value. The LLM must provide a value for this argument when it calls the tool.
+
+**Example: Required Parameters**
+
+```typescript
+/**
+ * Retrieves the weather for a city in the specified unit.
+ *
+ * @param city - The city name
+ * @param unit - The temperature unit, either 'Celsius' or 'Fahrenheit'
+ */
+function getWeather(
+  city: string,
+  unit: string
+): { status: string; report: string } {
+  // ... function logic ...
+  return { status: "success", report: `Weather for ${city} is sunny.` };
+}
+```
+
+In this example, both `city` and `unit` are mandatory. If the LLM tries to call `getWeather` without one of them, the ADK-TS will return an error to the LLM, prompting it to correct the call.
+
+##### Optional Parameters with Default Values
+
+A parameter is considered optional if you provide a default value. This is the standard TypeScript way to define optional arguments. The ADK-TS correctly interprets these and does not list them in the required field of the tool schema sent to the LLM.
+
+**Example: Optional Parameter with Default Value**
+
+```typescript
+/**
+ * Searches for flights.
+ *
+ * @param destination - The destination city
+ * @param departureDate - The desired departure date
+ * @param flexibleDays - Number of flexible days for the search (defaults to 0)
+ */
+function searchFlights(
+  destination: string,
+  departureDate: string,
+  flexibleDays: number = 0
+): { status: string; report: string } {
+  // ... function logic ...
+  if (flexibleDays > 0) {
+    return {
+      status: "success",
+      report: `Found flexible flights to ${destination}.`,
+    };
+  }
+  return {
+    status: "success",
+    report: `Found flights to ${destination} on ${departureDate}.`,
+  };
+}
+```
+
+Here, `flexibleDays` is optional. The LLM can choose to provide it, but it's not required.
+
+##### Optional Parameters with Union Types
+
+You can also mark a parameter as optional using union types like `string | undefined` or by using optional property syntax. This signals that the parameter can be undefined. When combined with a default value, it behaves as a standard optional parameter.
+
+**Example: Union Type (Optional)**
+
+```typescript
+/**
+ * Creates a new user profile.
+ *
+ * @param username - The user's unique username
+ * @param bio - A short biography for the user (optional)
+ */
+function createUserProfile(
+  username: string,
+  bio?: string
+): { status: string; message: string } {
+  // ... function logic ...
+  if (bio) {
+    return {
+      status: "success",
+      message: `Profile for ${username} created with a bio.`,
+    };
+  }
+  return { status: "success", message: `Profile for ${username} created.` };
+}
+```
+
+<Callout type="warn" title="Variadic Parameters">
+  While you can include rest parameters (`...args`) in your function signature,
+  they are ignored by the ADK-TS framework when generating the tool schema for
+  the LLM. The LLM will not be aware of them and cannot pass arguments to them.
+  It's best to rely on explicitly defined parameters for all data you expect
+  from the LLM.
 </Callout>
 
-## Function Tool Types
+#### Return Type
 
-ADK TypeScript offers three approaches to creating function tools:
+Function tools work best when they return structured objects rather than simple values. This gives the LLM context about what each piece of returned data means. ADK-TS automatically handles different return types:
 
-<Cards>
-  <Card
-    title="⚡ Standard Function Tools"
-    description="Transform regular functions into agent tools"
-  />
+- **Object returns**: Used as-is, preserving all keys and values
+- **Simple values**: Wrapped in an object with a `result` key
+- **Undefined/null**: Converted to an empty object `{}`
 
-  <Card
-    title="⏱️ Long Running Function Tools"
-    description="Handle time-intensive operations with progress updates"
-  />
+For best results, include a `status` field in your return object to indicate success or failure. This helps the LLM understand whether the operation worked and how to respond.
 
-  <Card
-    title="🤖 Agent-as-a-Tool"
-    description="Use other agents as specialized tools"
-  />
-</Cards>
+**Example: Structured Return Values**
 
-## Standard Function Tools
+```typescript
+// ❌ Poor - Not descriptive
+function validateEmail(email: string): boolean {
+  return email.includes("@");
+}
 
-The most straightforward approach to creating custom tools.
+// ✅ Good - Descriptive with status
+function validateEmail(email: string): {
+  status: string;
+  isValid: boolean;
+  message: string;
+} {
+  const isValid = email.includes("@") && email.includes(".");
+  return {
+    status: isValid ? "success" : "error",
+    isValid,
+    message: isValid ? "Email format is valid" : "Email format is invalid",
+  };
+}
+```
 
-### Function Design
+#### JSDoc Comments
 
-- **Parameters**: Use JSON-serializable types (string, number, array, object)
-- **Return Type**: Prefer objects for structured responses
-- **Documentation**: Use JSDoc comments for LLM understanding
-- **Naming**: Choose descriptive, action-oriented function names
+JSDoc comments are crucial for function tools. ADK-TS extracts these comments to:
 
-### Best Practices
+1. Create the tool's description that helps the LLM understand when to use it
+2. Generate parameter descriptions from `@param` tags
+3. Extract type information when TypeScript types aren't specific enough
 
-<Callout type="warn" title="Function Design Guidelines">
-- Avoid default parameter values (LLM doesn't interpret them)
-- Use simple data types over complex classes
-- Include status indicators in return objects
-- Write clear JSDoc documentation for LLM guidance
-</Callout>
+Write clear JSDoc comments that explain your tool's purpose, when to use it, parameter meanings, and what it returns.
 
-### Return Value Structure
+**Example: Comprehensive JSDoc**
 
-- **Object Returns**: Provide structured key-value responses
-- **Automatic Wrapping**: Non-object returns are wrapped in `{result: value}`
-- **Status Keys**: Include clear success/error indicators
-- **Descriptive Content**: Make responses LLM-readable, not just code-readable
+```typescript
+/**
+ * Calculates the total price of an order including tax and shipping.
+ * Use this when you need to compute the final cost that a customer will pay.
+ *
+ * @param subtotal - The sum of all item prices before tax
+ * @param taxRate - The tax percentage to apply (e.g., 0.08 for 8%)
+ * @param shippingCost - The cost of shipping, defaults to free shipping if not specified
+ * @returns An object with the itemized breakdown and total amount due
+ */
+function calculateOrderTotal(
+  subtotal: number,
+  taxRate: number,
+  shippingCost: number = 0
+): {
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  total: number;
+} {
+  const tax = subtotal * taxRate;
+  const total = subtotal + tax + shippingCost;
+  return { subtotal, tax, shipping: shippingCost, total };
+}
+```
+
+### Sharing Data Between Tools
+
+Tools often need to share data. ADK-TS provides two main ways to pass information between tools:
+
+1. **Using ToolContext**: Access shared state through the automatically injected `toolContext` parameter
+2. **Return Values**: Return data from one tool that the LLM can pass to another
+
+ADK-TS's `ToolContext` gives you access to session state and other contextual data. All tools in a single agent turn share this context, making it perfect for passing information.
+
+**Example: Passing Data via Session State**
+
+```typescript
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
+
+// Tool 1: Fetch customer data
+const getCustomer = createTool({
+  name: "getCustomer",
+  description: "Retrieves customer information by ID",
+  schema: z.object({
+    customerId: z.string().describe("The customer's ID"),
+  }),
+  fn: async ({ customerId }, toolContext: ToolContext) => {
+    const customer = { id: customerId, name: "John Doe", tier: "premium" };
+
+    // Store customer data in session state for next tool to use
+    toolContext.state.set("temp:customer", customer);
+
+    return { status: "success", customer };
+  },
+});
+
+// Tool 2: Apply discount based on customer data
+const applyDiscount = createTool({
+  name: "applyDiscount",
+  description: "Applies a discount based on customer tier",
+  schema: z.object({
+    amount: z.number().describe("The order amount"),
+  }),
+  fn: async ({ amount }, toolContext: ToolContext) => {
+    // Retrieve customer data stored by previous tool
+    const customer = toolContext.state.get("temp:customer");
+
+    let discount = 0;
+    if (customer?.tier === "premium") {
+      discount = amount * 0.1; // 10% discount
+    }
+
+    return {
+      status: "success",
+      originalAmount: amount,
+      discount,
+      finalAmount: amount - discount,
+    };
+  },
+});
+```
+
+### Creating Function Tools
+
+You have two main options for creating function tools:
+
+#### Option 1: Direct Function Assignment
+
+The simplest approach is to directly provide a function to an agent's tools array:
+
+```typescript
+import { LlmAgent } from "@iqai/adk";
+
+/**
+ * Calculates the distance between two points
+ */
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  // Distance calculation logic here
+  const distance = Math.sqrt(
+    Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2)
+  );
+  return distance;
+}
+
+// The function is automatically converted to a FunctionTool
+const agent = new LlmAgent({
+  name: "mapAgent",
+  instruction: "Help with map-related requests",
+  tools: [calculateDistance],
+});
+```
+
+#### Option 2: Using FunctionTool Class
+
+For more control, use the `FunctionTool` class:
+
+```typescript
+import { LlmAgent, FunctionTool } from "@iqai/adk";
+
+const distanceTool = new FunctionTool(calculateDistance, {
+  name: "getDistance", // Override function name
+  description: "Calculate distance between geographic coordinates",
+  isLongRunning: false,
+  shouldRetryOnFailure: true,
+  maxRetryAttempts: 2,
+});
+
+const agent = new LlmAgent({
+  name: "mapAgent",
+  instruction: "Help with map-related requests",
+  tools: [distanceTool],
+});
+```
+
+### Function Tool Best Practices
+
+To create effective function tools:
+
+- **Keep It Simple**: Fewer parameters make tools easier for the LLM to use correctly
+- **Use Clear Types**: Primitive types (`string`, `number`, `boolean`) work best
+- **Descriptive Names**: Use action verbs for function names (`getWeather`, not `weather`)
+- **Use Async**: Async functions allow parallel tool execution for better performance
+- **Handle Errors**: Return meaningful error messages, not just error codes
+- **Validate Input**: Check parameters before processing to avoid runtime errors
 
 ## Long Running Function Tools
 
-Designed for operations that require significant processing time without blocking agent execution.
+ADK-TS supports long-running operations through the `isLongRunning` option. This is perfect for operations that take time to complete, like processing large files or getting human approval.
 
-### How They Work
+### Creating Long-Running Tools
 
-1. **Initiation**: LLM calls the tool to start the operation
-2. **Progress Updates**: Function yields intermediate results periodically
-3. **Continuation**: Agent can work on other tasks while tool runs
-4. **Completion**: Function returns final result when finished
+You can create long-running tools in two ways:
 
-### Use Cases
+```typescript
+// Option 1: Using FunctionTool constructor
+const approvalTool = new FunctionTool(requestHumanApproval, {
+  name: "requestApproval",
+  isLongRunning: true,
+});
 
-- **Human-in-the-Loop**: Operations requiring human approval
-- **File Processing**: Large file analysis or transformation
-- **External API Calls**: Time-intensive third-party integrations
-- **Complex Calculations**: CPU-intensive computational tasks
+// Option 2: Using createTool with isLongRunning flag
+const approvalTool = createTool({
+  name: "requestApproval",
+  schema: z.object({
+    purpose: z.string(),
+    amount: z.number(),
+  }),
+  isLongRunning: true,
+  fn: async ({ purpose, amount }) => {
+    // Long-running operation logic
+  },
+});
+```
 
-### Implementation Pattern
+### When to Use Long-Running Tools
 
-- Use TypeScript async generator functions (`async function*`)
-- **Yield** intermediate updates for progress reporting
-- **Return** final results when operation completes
-- Framework handles all communication with the LLM
+Long-running tools are ideal for:
 
-### Progress Reporting
+- **Human-in-the-Loop Processes**: Get human approval or input during agent execution
+- **Large File Processing**: Handle document analysis, image processing, or data transformation
+- **External API Integration**: Work with APIs that may take time to respond
+- **Background Processing**: Run intensive calculations without blocking user interaction
 
-Include meaningful update information:
+### How Long-Running Tools Work
 
-- **Status**: Current operation state
-- **Progress**: Percentage or step completion
-- **Messages**: User-friendly progress descriptions
-- **Estimates**: Time remaining if calculable
+When an agent executes a long-running tool:
 
-## Agent-as-a-Tool
+1. The tool initiates the operation and returns immediately with a status like `{ status: "pending" }`
+2. The agent pauses execution until the operation completes
+3. Your application updates the tool status when the operation finishes
+4. The agent continues with the updated result
 
-Leverage other agents as specialized tools within your system.
+Here's a complete example:
 
-### Key Concept
+```typescript
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
 
-Transform agents into callable tools for delegation and specialization:
+// Create a long-running tool for expense approval
+const requestExpenseApproval = createTool({
+  name: "requestExpenseApproval",
+  description: "Request approval for an expense",
+  isLongRunning: true, // Mark as long-running
+  schema: z.object({
+    description: z.string().describe("Expense description"),
+    amount: z.number().describe("Expense amount in dollars"),
+  }),
+  fn: async ({ description, amount }, toolContext) => {
+    // Generate a request ID for tracking
+    const requestId = `exp-${Date.now()}`;
 
-- **Delegation**: Assign specific tasks to specialized agents
-- **Control Flow**: Calling agent retains control and continues execution
-- **Response Integration**: Tool agent's response is returned to calling agent
+    // In a real app, you'd store this in a database
+    console.log(
+      `New expense approval request ${requestId}: ${description} ($${amount})`
+    );
+
+    // Return pending status - agent will pause here
+    return {
+      status: "pending",
+      requestId,
+      message: "Your expense approval request has been submitted",
+    };
+  },
+});
+```
+
+### Best Practices for Long-Running Tools
+
+For effective long-running tools:
+
+- **Provide Clear Status**: Return status indicators (`pending`, `completed`, `failed`)
+- **Include Reference IDs**: Return ticket/request IDs so users can track operations
+- **Handle Timeouts**: Consider what happens if operations take too long
+- **Give Progress Updates**: When possible, report progress percentage or step completion
+
+<Callout type="info" title="ADK-TS Implementation Note">
+  The long-running tool itself should return quickly - it only initiates the
+  long-running process. The actual time-consuming work should happen in a
+  separate system (database job, external API, etc.). Your application is
+  responsible for updating the operation status and resuming the agent when
+  complete.
+</Callout>
+
+## Agents-as-a-Tool
+
+ADK-TS lets you use agents as tools, creating powerful combinations where specialized agents handle specific tasks. This is perfect for building modular, reusable AI systems.
+
+### Using Agents as Tools
+
+With the `AgentTool` class, you can:
+
+1. Create specialized agents for specific tasks
+2. Make those agents available as tools to other agents
+3. Build hierarchical agent systems with clear responsibilities
+
+The main benefits are:
+
+- **Specialization**: Create agents focused on specific domains or tasks
+- **Modularity**: Easily combine and reuse agent capabilities
+- **Controlled Delegation**: The main agent remains in control of the conversation
 
 ### Agent-as-Tool vs Sub-Agents
 
+It's important to distinguish an Agent-as-Tool from a Sub-Agent:
+
 <Callout type="info" title="Important Distinction">
-**Agent-as-Tool**: Response is passed back to the calling agent, which retains control.
-**Sub-Agent**: Control is transferred completely to the called agent.
+**Agent-as-Tool**: When Agent A calls Agent B as a tool, Agent B's response is passed back to Agent A, which retains control and continues processing. Agent A remains the primary agent.
+
+**Sub-Agent**: When Agent A delegates to Agent B as a sub-agent, control is completely transferred to Agent B. Agent A is effectively out of the loop.
+
 </Callout>
 
 ### Use Cases
 
-- **Specialized Processing**: Dedicated agents for specific tasks (summarization, analysis)
+- **Specialized Processing**: Dedicated agents for specific tasks (summarization, analysis, translation)
 - **Modular Architecture**: Break complex operations into specialized components
 - **Reusable Logic**: Share agent capabilities across different workflows
 - **Domain Expertise**: Leverage specialized knowledge in focused agents
 
+### Example: Summarization Agent-as-Tool
+
+```typescript
+import { LlmAgent, AgentTool, createTool } from "@iqai/adk";
+
+// Create a specialized summarization agent
+const summaryAgent = new LlmAgent({
+  name: "summaryAgent",
+  description: "Summarizes long text into concise summaries",
+  instruction: `You are a text summarization expert. 
+  When given text, create a clear, concise summary that captures the key points.
+  Keep summaries to 2-3 paragraphs maximum.
+  Maintain objectivity and accuracy.`,
+});
+
+// Create a main agent that uses the summary agent as a tool
+const mainAgent = new LlmAgent({
+  name: "mainAgent",
+  description: "Main agent that delegates summarization tasks",
+  instruction: `You are a helpful assistant.
+  When users provide long documents or text, use the 'summarize' tool to create summaries.
+  For short texts, answer directly without using the tool.`,
+  tools: [
+    new AgentTool({
+      agent: summaryAgent,
+      skip_summarization: false, // LLM will process summary before responding
+    }),
+  ],
+});
+```
+
 ### Configuration Options
 
-- **Skip Summarization**: Bypass LLM processing when tool response is ready
-- **Custom Instructions**: Tailor tool behavior for specific contexts
-- **Error Handling**: Configure how tool failures are handled
+The `AgentTool` class provides these options:
 
-## Tool Context Integration
+- **skip_summarization** (`boolean`): If `true`, bypasses LLM processing of the tool agent's response. Useful when the response is already well-formatted
+- **agent** (`BaseAgent`): The agent to use as a tool
 
-Function tools can access rich contextual information:
+### How It Works
 
-### Available Context
+1. **Recognition**: The main agent recognizes the tool request matches an AgentTool
+2. **Delegation**: The main agent calls the tool agent with the request
+3. **Processing**: The tool agent processes according to its instructions
+4. **Response**: The tool agent's response is passed back to the main agent
+5. **Integration**: The main agent incorporates the response into its output
 
-- **Session State**: Read and modify persistent data
-- **Event Actions**: Control agent flow after tool execution
-- **Authentication**: Access credentials and auth responses
-- **Artifacts**: Manage files and documents
-- **Memory**: Search long-term user memory
+## Using ToolContext
 
-### State Management
+Function tools receive a `ToolContext` object that provides access to session data, artifacts, and flow control. This is automatically injected as the second parameter of your function tool.
 
-- **State Prefixes**: Different scopes (app, user, session, temp)
-- **Data Persistence**: Changes tracked and saved automatically
-- **Cross-Tool Communication**: Share data between different tools
+### Accessing ToolContext
 
-### Flow Control
+ADK-TS automatically detects when your function accepts a ToolContext parameter:
 
-Tools can influence subsequent agent behavior:
+```typescript
+// Simple function with ToolContext
+function getPreference(key: string, toolContext: ToolContext) {
+  const value = toolContext.state.get(`user:${key}`);
+  return { value };
+}
 
-- **Transfer Control**: Hand off to specialized agents
-- **Skip Processing**: Bypass unnecessary LLM calls
-- **Loop Termination**: End workflow loops conditionally
-- **Error Escalation**: Bubble up critical failures
+// Async function with ToolContext
+async function updateProfile(
+  name: string,
+  bio: string,
+  toolContext: ToolContext
+) {
+  await toolContext.state.set("user:profile", { name, bio });
+  return { status: "success" };
+}
+```
 
-## Implementation Best Practices
+You don't need to pass ToolContext when calling the tool - ADK-TS injects it automatically.
 
-### Function Design
+### ToolContext Features
 
-- **Simplicity**: Minimize parameters and complexity
-- **Clarity**: Use meaningful names and documentation
-- **Reliability**: Handle errors gracefully with informative messages
-- **Performance**: Optimize for your specific use case
+ToolContext gives your tools access to:
 
-### Error Handling
+1. **Function Call ID**: A unique identifier for the current tool call
+2. **State Management**: Read/write access to different storage scopes
+3. **Artifacts**: List and access files uploaded by users
+4. **Memory**: Search the user's conversation memory
+5. **Actions**: Control agent flow with events
 
-- **Status Indicators**: Clear success/error flags in responses
-- **Error Messages**: Human-readable error descriptions
-- **Graceful Degradation**: Continue operation when possible
-- **Recovery Strategies**: Provide actionable error guidance
+#### State Management Example
 
-### Testing Strategy
+Use state to store and retrieve data across tool calls:
 
-- **Unit Testing**: Test functions independently
-- **Integration Testing**: Verify tool behavior with agents
-- **Error Scenarios**: Test failure modes and edge cases
-- **Performance Testing**: Validate performance under load
+```typescript
+const userPreferenceTool = createTool({
+  name: "updateUserPreference",
+  schema: z.object({
+    key: z.string(),
+    value: z.string(),
+  }),
+  fn: async ({ key, value }, toolContext: ToolContext) => {
+    // Store in user scope (persists across sessions)
+    toolContext.state.set(`user:preference_${key}`, value);
 
-## Advanced Patterns
+    return { status: "success", message: "Preference saved" };
+  },
+});
+```
 
-### Tool Composition
+<Callout type="info" title="ToolContext Properties">
+The ToolContext object in ADK-TS provides:
 
-Combine multiple function tools for complex workflows:
+- `functionCallId`: A unique identifier for the current tool invocation
+- `actions`: Flow control actions like transferToAgent
+- `state`: State management with get/set methods
+- `listArtifacts()`: List files uploaded to the session
+- `searchMemory()`: Search user's conversation history
 
-- **Sequential Processing**: Chain tools for multi-step operations
-- **Conditional Logic**: Use tool results to determine next steps
-- **Parallel Execution**: Run independent tools simultaneously
-- **Error Recovery**: Implement fallback strategies
+</Callout>
 
-### Dynamic Tool Selection
+## Best Practices for Function Tools
 
-Create tools that adapt behavior based on context:
+To build effective function tools that work reliably with LLMs, follow these best practices:
 
-- **Runtime Configuration**: Adjust tool behavior based on session state
-- **Conditional Execution**: Different logic paths based on input
-- **Environment Adaptation**: Behavior changes based on deployment context
+### Function Design Principles
+
+**Simplicity First**
+
+- Minimize the number of parameters
+- Favor primitive data types over complex classes
+- Single responsibility - one tool, one job
+
+**Meaningful Naming**
+
+- Use action-oriented names: `getWeather`, `calculateTotal`, `sendNotification`
+- Parameter names should clearly indicate their purpose
+- Avoid generic names like `do_stuff` or `process_data`
+
+**Example: Good Function Design**
+
+```typescript
+// ❌ Poor - Too complex, unclear purpose
+function process(input: any, option1?: any, option2?: any): any {
+  return { result: input };
+}
+
+// ✅ Good - Clear, focused, well-named
+function calculateOrderTotal(
+  subtotal: number,
+  taxRate: number = 0
+): {
+  subtotal: number;
+  tax: number;
+  total: number;
+} {
+  const tax = subtotal * taxRate;
+  return {
+    subtotal,
+    tax,
+    total: subtotal + tax,
+  };
+}
+```
+
+### Handle Errors Gracefully
+
+Don't throw exceptions that will crash your agent. Instead, return structured error responses:
+
+```typescript
+function processOrder(orderId: string) {
+  try {
+    // Validate input
+    if (!orderId || orderId.length < 5) {
+      return {
+        status: "error",
+        code: "INVALID_ORDER_ID",
+        message: "Order ID must be at least 5 characters",
+      };
+    }
+
+    // Process the order (could throw an error)
+    const result = processOrderInDatabase(orderId);
+
+    return {
+      status: "success",
+      orderId,
+      processed: true,
+    };
+  } catch (error) {
+    // Log the error for developers
+    console.error(`Order processing failed:`, error);
+
+    // Return user-friendly error for the LLM
+    return {
+      status: "error",
+      code: "PROCESSING_FAILED",
+      message: "Unable to process order. Please try again.",
+    };
+  }
+}
+```
+
+### Write Clear JSDoc Comments
+
+The JSDoc description becomes the tool's description for the LLM, so make it detailed and specific:
+
+```typescript
+/**
+ * Send an email notification to a user.
+ *
+ * This tool handles email sending with proper validation and error tracking.
+ * Use for transactional emails like order confirmations or account alerts.
+ *
+ * @param to - Recipient email address (must be valid format)
+ * @param subject - Email subject line (max 80 characters)
+ * @param body - Email content in plain text
+ * @param priority - Importance level (affects delivery speed)
+ * @returns Object with send status and tracking information
+ */
+function sendEmail(
+  to: string,
+  subject: string,
+  body: string,
+  priority: "normal" | "high" = "normal"
+) {
+  // Validation and sending logic would go here
+  return {
+    status: "success",
+    messageId: `msg-${Date.now()}`,
+    sentAt: new Date().toISOString(),
+  };
+}
+```
+
+### Dynamic Tool Behavior
+
+Create tools that adapt based on input or context:
+
+```typescript
+function processData(data: string, format: "json" | "csv" | "auto" = "auto") {
+  // Detect format if set to auto
+  let actualFormat = format;
+  if (format === "auto") {
+    actualFormat = data.startsWith("{") ? "json" : "csv";
+  }
+
+  // Process based on detected format
+  if (actualFormat === "json") {
+    // JSON processing
+    return { format: "json", processed: true };
+  } else {
+    // CSV processing
+    return { format: "csv", processed: true };
+  }
+}
+```
+
+### Input Validation
+
+Always validate inputs to prevent errors:
+
+```typescript
+function transferMoney(
+  fromAccount: string,
+  toAccount: string,
+  amount: number
+) {
+  // Validation
+  if (amount <= 0) {
+    return {
+      status: "error",
+      code: "INVALID_AMOUNT",
+      message: "Amount must be greater than zero"
+    };
+  }
+
+  if (fromAccount === toAccount) {
+    return {
+      status: "error",
+      code: "SAME_ACCOUNT",
+      message: "Source and destination accounts must be different"
+    };
+  }
+
+  // Transfer logic would go here
+  return {
+    status: "success",
+    transferId: `t-${Date.now()}`,
+    amount,
+    fromAccount,
+    toAccount
+  };
+}
+});
+
+// Agent uses both tools in sequence
+const agent = new LlmAgent({
+  name: "orderProcessor",
+  instruction: "Process customer orders with appropriate discounts",
+  tools: [getCustomerInfo, calculateDiscount],
+});
+```
+
+### Return Structured Responses
+
+Always return objects with descriptive properties. Include a `status` field to help the LLM understand if the operation succeeded:
+
+```typescript
+// ❌ Poor - Lacks clarity and structure
+function checkAvailability(item: string): boolean {
+  // Simplified example
+  return item === "widget";
+}
+
+// ✅ Better - Clear structure with status indicator
+function checkAvailability(item: string): {
+  status: string;
+  available: boolean;
+  quantity?: number;
+  nextRestock?: string;
+} {
+  // Simplified example
+  const isAvailable = item === "widget";
+
+  return {
+    status: isAvailable ? "success" : "out_of_stock",
+    available: isAvailable,
+    quantity: isAvailable ? 42 : 0,
+    nextRestock: isAvailable ? undefined : "2023-10-30",
+  };
+}
+```
 
 ## Related Topics
 
 <Cards>
   <Card
-    title="⚡ Built-in Tools"
-    description="Explore ready-made tools for common tasks"
-    href="/docs/framework/tools/built-in-tools"
+    title="📋 createTool"
+    description="Alternative approach using Zod schema validation"
+    href="/docs/framework/tools/create-tool"
   />
 
-  <Card
-    title="🔐 Authentication"
-    description="Secure your custom tool integrations"
-    href="/docs/framework/tools/authentication"
-  />
+{" "}
 
-  <Card
-    title="🤖 Agents"
-    description="Learn how agents use and coordinate tools"
-    href="/docs/framework/agents"
-  />
+<Card
+  title="⚡ Built-in Tools"
+  description="Ready-made tools for common tasks"
+  href="/docs/framework/tools/built-in-tools"
+/>
+
+{" "}
+
+<Card
+  title="🔐 Authentication"
+  description="Secure your custom tool integrations"
+  href="/docs/framework/tools/authentication"
+/>
+
+{" "}
+
+<Card
+  title="🤖 Agents"
+  description="Learn how agents use and coordinate tools"
+  href="/docs/framework/agents"
+/>
 
   <Card
     title="💾 Sessions"
