@@ -11,7 +11,7 @@ Before you begin, ensure you have:
 - **DockerHub Account**: To push your Docker image (optional if using GitHub CI).
 - **Railway Account**: Sign up at railway.app.
 - **ADK-TS Project**: Set up with a `.env` file containing required variables (e.g., `DISCORD_TOKEN`, `GOOGLE_API_KEY`).
-- **GitHub Repository**: Your project pushed to GitHub (e.g., MarvelNwachukwu/adk-discord-bot).
+- **GitHub Repository**: Your project pushed to GitHub (e.g., your-username/your-repo).
 
 ## Steps
 
@@ -61,19 +61,13 @@ Before you begin, ensure you have:
 
    Syntax:
    ```bash
-   docker build -t your_docker_username/your_agent:tag .
-   ```
-
-   For this example, we'd be using marvelcodes' discord-adk-bot
-
-   ```bash
-   docker build -t your_docker_username/your_agent:tag .
+   docker build -t your_docker_username/your_agent_name:tag .
    ```
 
    For cross-platform compatibility:
 
    ```bash
-   docker buildx build --platform linux/amd64 -t marvelcodes/discord-adk-bot:latest .
+   docker buildx build --platform linux/amd64 -t your_docker_username/your_agent_name:tag .
    ```
 
 3. **Push to DockerHub**\
@@ -81,7 +75,7 @@ Before you begin, ensure you have:
 
    ```bash
    docker login
-   docker push marvelcodes/discord-adk-bot:latest
+   docker push your_docker_username/your_agent_name:tag
    ```
 
    **Alternative: GitHub CI with Railway**\
@@ -96,7 +90,7 @@ Before you begin, ensure you have:
 
 2. **Configure the Docker Image**
 
-   - For DockerHub: Enter the image name `marvelcodes/discord-adk-bot:latest`.
+   - For DockerHub: Enter the image name `your_docker_username/your_agent_name:tag`.
    - For GitHub CI: Select your repo and branch; Railway will use the `Dockerfile` from the repository.
 
 3. **Add Environment Variables**
