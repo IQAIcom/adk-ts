@@ -1,8 +1,4 @@
 {
-  "icon": "MessageSquare",
-  "pages": [
-    "session",
-    "state",
-    "memory"
-  ]
+	"icon": "MessageSquare",
+	"pages": ["session", "state", "memory"]
 }

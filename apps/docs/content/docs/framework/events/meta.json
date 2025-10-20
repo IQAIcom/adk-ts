@@ -1,11 +1,11 @@
 {
-  "title": "Events",
-  "icon": "Bell",
-  "pages": [
-    "index",
-    "event-actions",
-    "working-with-events",
-    "streaming",
-    "patterns"
-  ]
+	"title": "Events",
+	"icon": "Bell",
+	"pages": [
+		"index",
+		"event-actions",
+		"working-with-events",
+		"streaming",
+		"patterns"
+	]
 }

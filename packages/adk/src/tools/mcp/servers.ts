@@ -73,6 +73,24 @@ import type { McpConfig, SamplingHandler } from "./types";
  *
  * @example
  * ```typescript
+ * // Using remote MCP endpoints (CoinGecko):
+ * const coinGeckoTools = await McpCoinGecko().getTools();
+ *
+ * const coinGeckoProTools = await McpCoinGeckoPro({
+ *   env: {
+ *     COINGECKO_PRO_API_KEY: env.COINGECKO_PRO_API_KEY
+ *   }
+ * }).getTools();
+ *
+ * const cryptoAgent = new LlmAgent({
+ *   name: "crypto_assistant",
+ *   model: "gemini-2.5-flash",
+ *   tools: [...coinGeckoTools, ...coinGeckoProTools],
+ * });
+ * ```
+ *
+ * @example
+ * ```typescript
  * // Using MCP servers with sampling handlers:
  * import { createSamplingHandler, LlmResponse } from "@iqai/adk";
  *
@@ -125,10 +143,11 @@ export interface McpServerConfig {
 
 /**
  * Creates a base MCP configuration from server config
+ * Automatically detects URLs and uses mcp-remote for remote endpoints
  */
 function createMcpConfig(
 	name: string,
-	packageName: string,
+	packageNameOrUrl: string,
 	config: McpServerConfig = {},
 ): McpConfig {
 	const {
@@ -152,17 +171,31 @@ function createMcpConfig(
 		env.PATH = process.env.PATH || "";
 	}
 
+	// Detect if packageNameOrUrl is a URL using URL constructor for robustness
+	let isUrl: boolean;
+	try {
+		const url = new URL(packageNameOrUrl);
+		isUrl = url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		isUrl = false;
+	}
+
+	// Configure transport based on whether it's a URL or package name
+	const transport = {
+		mode: "stdio" as const,
+		command: "npx",
+		args: isUrl
+			? ["-y", "mcp-remote@latest", packageNameOrUrl]
+			: ["-y", packageNameOrUrl],
+		env,
+	};
+
 	return {
 		name,
 		description: description || `Client for ${name}`,
 		debug: debug || false,
 		retryOptions: retryOptions || { maxRetries: 2, initialDelay: 200 },
-		transport: {
-			mode: "stdio",
-			command: "npx",
-			args: ["-y", packageName],
-			env,
-		},
+		transport,
 		samplingHandler,
 	};
 }
@@ -304,14 +337,29 @@ export function McpDiscord(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
- * MCP CoinGecko - Access cryptocurrency market data and analytics
+ * MCP CoinGecko - Access cryptocurrency market data and analytics via remote endpoint
  *
- * Optional env vars: COINGECKO_PRO_API_KEY, COINGECKO_DEMO_API_KEY, COINGECKO_ENVIRONMENT
+ * Uses the public CoinGecko MCP API endpoint. No API key required for basic functionality.
  */
 export function McpCoinGecko(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"CoinGecko MCP Client",
-		"@coingecko/coingecko-mcp",
+		"https://mcp.api.coingecko.com/mcp",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP CoinGecko Pro - Access premium cryptocurrency market data and analytics via remote endpoint
+ *
+ * Uses the professional CoinGecko MCP API endpoint with enhanced features and higher rate limits.
+ * Requires a CoinGecko Pro API subscription.
+ */
+export function McpCoinGeckoPro(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"CoinGecko Pro MCP Client",
+		"https://mcp.pro-api.coingecko.com/mcp",
 		config,
 	);
 	return new McpToolset(mcpConfig);
