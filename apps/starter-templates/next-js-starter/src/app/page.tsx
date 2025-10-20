@@ -17,10 +17,9 @@ export default function Home() {
 								Agent Development Kit for TypeScript
 							</span>
 						</div>
-
 						<h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 tracking-tight leading-tight">
 							Build{" "}
-							<span className="bg-gradient-to-r from-primary to-pink-400 bg-clip-text text-transparent">
+							<span className="bg-linear-to-r from-primary to-pink-400 bg-clip-text text-transparent">
 								Intelligent Agents
 							</span>{" "}
 							with ADK-TS
@@ -33,12 +32,16 @@ export default function Home() {
 						</p>
 
 						<div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center flex-wrap">
+							<div className="w-full sm:w-auto">
+								<Demo />
+							</div>
 							<Link
 								href="https://adk.iqai.com/docs/framework/get-started"
 								target="_blank"
 								rel="noopener noreferrer"
 								className={buttonVariants({
 									size: "lg",
+									variant: "outline",
 									className:
 										"flex items-center gap-2 w-full sm:w-auto justify-center",
 								})}
@@ -61,10 +64,6 @@ export default function Home() {
 								<Code2 className="w-5 h-5" />
 								View Documentation
 							</Link>
-
-							<div className="w-full sm:w-auto">
-								<Demo />
-							</div>
 						</div>
 					</div>
 				</main>

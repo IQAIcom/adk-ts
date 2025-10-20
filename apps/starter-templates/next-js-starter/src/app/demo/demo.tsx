@@ -29,8 +29,8 @@ export const Demo = () => {
 	const generateId = () =>
 		crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 10);
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
+	const handleSubmit = async (e?: React.FormEvent) => {
+		e?.preventDefault();
 		if (!input.trim() || isLoading) return;
 
 		const userMessage: Message = {
@@ -66,6 +66,7 @@ export const Demo = () => {
 		}
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Trigger when messages update
 	useEffect(() => {
 		if (chatRef.current) {
 			chatRef.current.scrollTo({
@@ -73,15 +74,22 @@ export const Demo = () => {
 				behavior: "smooth",
 			});
 		}
-	}, []);
+	}, [messages]);
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			handleSubmit();
+		}
+	};
 
 	return (
 		<Sheet>
 			<SheetTrigger asChild>
 				<Button
 					size="lg"
-					variant="outline"
-					className="flex w-full sm:w-auto items-center gap-2 border-primary hover:bg-accent/80 transition-all duration-200 hover:scale-[1.02]"
+					variant="default"
+					className="flex w-full sm:w-auto items-center gap-2 border-primary transition-all duration-200 hover:scale-[1.02]"
 				>
 					<Bot className="w-5 h-5" />
 					Try Demo
@@ -104,7 +112,7 @@ export const Demo = () => {
 
 				<div
 					ref={chatRef}
-					className="flex-1 overflow-y-auto mt-4 sm:mt-6 px-3 sm:px-5 space-y-3 sm:space-y-4 border border-border/50 rounded-lg bg-muted/10 p-3 sm:p-4 mx-2 sm:mx-5"
+					className="flex-1 overflow-y-auto mt-4 sm:mt-6 px-3 sm:px-5 space-y-3 sm:space-y-4 border border-border/50 rounded-lg bg-muted/10 p-3 sm:p-4 mx-2 sm:mx-5 scroll-smooth"
 				>
 					{messages.length === 0 && (
 						<p className="text-center text-sm text-muted-foreground mt-4 sm:mt-6">
@@ -165,6 +173,7 @@ export const Demo = () => {
 					<Textarea
 						value={input}
 						onChange={(e) => setInput(e.target.value)}
+						onKeyDown={handleKeyDown}
 						placeholder="Type your message..."
 						disabled={isLoading}
 						className="min-h-[70px] sm:min-h-[80px] resize-none border-border focus:ring-2 focus:ring-primary transition-all text-sm sm:text-base"
