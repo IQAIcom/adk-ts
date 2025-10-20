@@ -1,9 +1,4 @@
 {
-  "icon": "Cpu",
-  "pages": [
-    "index",
-    "event-loop",
-    "invocation-lifecycle",
-    "run-config"
-  ]
+	"icon": "Cpu",
+	"pages": ["index", "event-loop", "invocation-lifecycle", "run-config"]
 }
