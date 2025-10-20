@@ -10,8 +10,6 @@
 
 _Next.js • React • TypeScript • Tailwind CSS_
 
----
-
 </div>
 
 This template provides a solid foundation for creating a web-based UI to interact with agents built using the Agent Development Kit (ADK) for TypeScript. It's pre-configured with Next.js, TypeScript, and Tailwind CSS.
@@ -52,7 +50,6 @@ Key ADK resources:
 * [ADK CLI](https://www.npmjs.com/package/@iqai/adk-cli)
 * [Starter Templates](https://github.com/IQAIcom/adk-ts/tree/main/apps/starter-templates)
 
----
 
 ## 📘 Learn More (Next.js & Tools)
 
@@ -63,7 +60,6 @@ If you’re new to Next.js or the supporting tools, check out:
 * [Vercel Fonts: Geist](https://vercel.com/font)
 * [Tailwind CSS Docs](https://tailwindcss.com/docs)
 
----
 
 ## ☁️ Deploy on Vercel
 
