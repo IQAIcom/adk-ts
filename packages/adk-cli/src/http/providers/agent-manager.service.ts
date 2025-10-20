@@ -2,8 +2,14 @@ import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "node:util";
-import type { FullMessage, InMemorySessionService, Session } from "@iqai/adk";
-import { AgentBuilder } from "@iqai/adk";
+import {
+	AgentBuilder,
+	Event,
+	FullMessage,
+	InMemorySessionService,
+	Session,
+	State,
+} from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import type { Agent, LoadedAgent } from "../../common/types";
 import { AgentLoader } from "./agent-loader.service";
@@ -163,15 +169,26 @@ export class AgentManager {
 				// Get the default/initial state from the agent if available
 				const initialState = this.getInitialStateForAgent(exportedAgent);
 
-				console.log("initialState", initialState);
-
 				if (initialState) {
-					// Update the session with initial state
-					mostRecentSession.state = initialState;
-					await this.sessionService.createSession(
-						appName,
-						userId,
-						initialState,
+					const stateUpdateEvent = new Event({
+						author: "system",
+						actions: {
+							stateDelta: initialState,
+							artifactDelta: {},
+						},
+						content: {
+							parts: [
+								{
+									text: "Initialized session with default state from agent definition.",
+								},
+							],
+						},
+					});
+
+					// This updates both the session in storage and the local `mostRecentSession` object.
+					await this.sessionService.appendEvent(
+						mostRecentSession,
+						stateUpdateEvent,
 					);
 					this.logger.log(
 						format("Updated session with initial state: %o", {
@@ -226,7 +243,7 @@ export class AgentManager {
 	 * Extract initial state from the agent definition
 	 * This allows agents to define their default state
 	 */
-	private getInitialStateForAgent(exportedAgent: any): any {
+	private getInitialStateForAgent(exportedAgent: any) {
 		const sessions = exportedAgent?.sessionService?.sessions;
 		if (!sessions) return undefined;
 
@@ -246,7 +263,7 @@ export class AgentManager {
 						(state instanceof Map && state.size > 0) ||
 						(typeof state === "object" && stateKeys.length > 0)
 					) {
-						return state;
+						return state as State;
 					}
 				}
 			}

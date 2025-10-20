@@ -48,8 +48,6 @@ export function Sidebar({
 		initialSessionId ?? null,
 	);
 
-	console.log(selectedAgent);
-
 	// Manage sessions and events internally
 	const {
 		sessions,
