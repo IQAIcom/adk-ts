@@ -32,7 +32,6 @@
 	"homepage": "https://github.com/IQAICOM/adk-telegram-bot#readme",
 	"dependencies": {
 		"@iqai/adk": "^0.3.2",
-		"better-sqlite3": "^12.4.1",
 		"dotenv": "^17.2.2",
 		"zod": "^4.1.5"
 	},
