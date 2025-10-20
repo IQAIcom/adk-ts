@@ -1,17 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
 
-## Getting Started
+<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
 
-First, run the development server:
+<br/>
+
+# ADK Next.js Starter
+
+**A starter template for building a web interface for your AI agents using Next.js and the ADK framework.**
+
+_Next.js • React • TypeScript • Tailwind CSS_
+
+---
+
+</div>
+
+This template provides a solid foundation for creating a web-based UI to interact with agents built using the Agent Development Kit (ADK) for TypeScript. It's pre-configured with Next.js, TypeScript, and Tailwind CSS.
+
+## ✨ Features
+
+- **🚀 Next.js 14+**: Leverages the latest features of the Next.js App Router.
+- **🎨 Tailwind CSS**: A utility-first CSS framework for rapid UI development.
+- **🤖 Agent Interaction Ready**: Includes a basic setup for communicating with an ADK agent backend.
+- **⚡️ Hot Reload Development**: Fast, iterative development with `pnpm dev`.
+- **🧹 Code Formatting and Linting**: Pre-configured with ESLint and Prettier.
+- **🔧 TypeScript Support**: Full type-safety for a better developer experience.
+
+## 🚀 Quick Start
+
+The easiest way to create a new Next.js project using this template is with the ADK CLI:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+npm install -g @iqai/adk-cli # if you haven't already
+adk new --template next-js-starter my-nextjs-app
+cd my-nextjs-app
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -20,17 +42,32 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## 🧠 About ADK (Agent Development Kit)
 
-To learn more about Next.js, take a look at the following resources:
+The **Agent Development Kit (ADK)** is a TypeScript framework designed to help developers quickly build, deploy, and integrate AI agents across different platforms.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Key ADK resources:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+* [ADK Documentation](https://github.com/IQAIcom/adk-ts#readme)
+* [ADK CLI](https://www.npmjs.com/package/@iqai/adk-cli)
+* [Starter Templates](https://github.com/IQAIcom/adk-ts/tree/main/apps/starter-templates)
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📘 Learn More (Next.js & Tools)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If you’re new to Next.js or the supporting tools, check out:
+
+* [Next.js Documentation](https://nextjs.org/docs)
+* [Learn Next.js](https://nextjs.org/learn)
+* [Vercel Fonts: Geist](https://vercel.com/font)
+* [Tailwind CSS Docs](https://tailwindcss.com/docs)
+
+---
+
+## ☁️ Deploy on Vercel
+
+Deploy your project directly using [Vercel](https://vercel.com/new?utm_source=create-next-app&utm_campaign=create-next-app-readme), the creators of Next.js.
+
+More details:
+[Next.js deployment documentation →](https://nextjs.org/docs/app/building-your-application/deploying)
