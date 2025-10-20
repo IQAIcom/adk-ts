@@ -17,6 +17,7 @@ import { askAgent } from "./_actions";
 type Message = {
 	role: "user" | "agent";
 	content: string;
+	id: string;
 };
 
 export const Demo = () => {
@@ -25,24 +26,40 @@ export const Demo = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const chatRef = useRef<HTMLDivElement>(null);
 
+	const generateId = () =>
+		crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 10);
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!input.trim() || isLoading) return;
 
-		const userMessage: Message = { role: "user", content: input };
+		const userMessage: Message = {
+			id: generateId(),
+			role: "user",
+			content: input,
+		};
+
 		setMessages((prev) => [...prev, userMessage]);
 		setInput("");
 		setIsLoading(true);
 
 		try {
 			const result = await askAgent(input);
-			const agentMessage: Message = { role: "agent", content: result };
+			const agentMessage: Message = {
+				id: generateId(),
+				role: "agent",
+				content: result,
+			};
 			setMessages((prev) => [...prev, agentMessage]);
 		} catch (error) {
 			console.error("Error:", error);
 			setMessages((prev) => [
 				...prev,
-				{ role: "agent", content: "❌ Something went wrong." },
+				{
+					id: generateId(),
+					role: "agent",
+					content: "❌ Something went wrong.",
+				},
 			]);
 		} finally {
 			setIsLoading(false);
@@ -96,9 +113,9 @@ export const Demo = () => {
 						</p>
 					)}
 
-					{messages.map((msg, i) => (
+					{messages.map((msg) => (
 						<div
-							key={`msg-${i + 1}`}
+							key={msg.id}
 							className={`flex items-start gap-2 transition-opacity duration-300 ${
 								msg.role === "user" ? "justify-end" : "justify-start"
 							}`}

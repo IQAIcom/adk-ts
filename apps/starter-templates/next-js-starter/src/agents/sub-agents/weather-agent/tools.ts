@@ -19,8 +19,17 @@ export const weatherTool = createTool({
 			const response = await fetch(
 				`https://wttr.in/${encodeURIComponent(city)}?format=3`,
 			);
+
+			if (!response.ok) {
+				console.error(
+					`Failed to fetch weather for ${city}: ${response.statusText}`,
+				);
+				return `Weather unavailable for ${city}`;
+			}
+
 			return await response.text();
-		} catch {
+		} catch (error) {
+			console.error(`Error fetching weather for ${city}:`, error);
 			return `Weather unavailable for ${city}`;
 		}
 	},

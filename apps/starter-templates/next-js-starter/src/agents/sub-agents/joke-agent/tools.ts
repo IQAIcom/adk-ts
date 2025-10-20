@@ -15,8 +15,15 @@ export const jokeTool = createTool({
 			const response = await fetch(
 				"https://official-joke-api.appspot.com/random_joke",
 			);
+
+			if (!response.ok) {
+				console.error(`Failed to fetch joke: ${response.statusText}`);
+				return "Joke API is currently unavailable.";
+			}
+
 			return await response.text();
-		} catch {
+		} catch (error) {
+			console.error("Error fetching joke:", error);
 			return "Joke unavailable right now.";
 		}
 	},

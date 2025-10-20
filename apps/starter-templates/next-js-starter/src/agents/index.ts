@@ -17,7 +17,7 @@ export const getRootAgent = async () => {
 	const jokeAgent = getJokeAgent();
 	const weatherAgent = getWeatherAgent();
 
-	const rootagent = AgentBuilder.create("root_agent")
+	const rootAgent = AgentBuilder.create("root_agent")
 		.withDescription(
 			"Root agent that delegates tasks to sub-agents for telling jokes and providing weather information.",
 		)
@@ -28,7 +28,7 @@ export const getRootAgent = async () => {
 		.withSubAgents([jokeAgent, weatherAgent])
 		.build();
 
-	const { runner, session, sessionService } = await rootagent;
+	const { runner, session, sessionService } = await rootAgent;
 
 	return { runner, session, sessionService };
 };
