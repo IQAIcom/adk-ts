@@ -3,13 +3,13 @@ title: Event Actions
 description: Understanding state management, control flow, and side effects through EventActions
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Card, Cards } from 'fumadocs-ui/components/card';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 # Event Actions
 
-Event Actions are ADK's mechanism for signaling side effects, managing state, and controlling execution flow. While event `content` carries the communication payload (messages, tool calls), the `actions` property carries the instructions for *what should happen* as a result of that event.
+Event Actions are ADK's mechanism for signaling side effects, managing state, and controlling execution flow. While event `content` carries the communication payload (messages, tool calls), the `actions` property carries the instructions for _what should happen_ as a result of that event.
 
 ## Understanding Event Actions
 
@@ -37,10 +37,12 @@ graph TD
     style E fill:#e1f5ff
     style G fill:#fff3cd
     style H fill:#d4edda
+
 "/>
 
 <Callout type="info">
-EventActions follow a declarative pattern: agents describe *what* should change, and the framework handles *how* and *when* to apply those changes.
+  EventActions follow a declarative pattern: agents describe *what* should
+  change, and the framework handles *how* and *when* to apply those changes.
 </Callout>
 
 ## EventActions Structure
@@ -48,21 +50,21 @@ EventActions follow a declarative pattern: agents describe *what* should change,
 Every event has an `actions` property that can contain multiple types of instructions:
 
 ```typescript
-import { EventActions, Part } from '@iqai/adk';
+import { EventActions, Part } from "@iqai/adk";
 
 interface EventActions {
   // State Management
-  stateDelta?: Record<string, any>;           // Key-value pairs to merge into session state
+  stateDelta?: Record<string, any>; // Key-value pairs to merge into session state
 
   // Artifact Tracking
-  artifactDelta?: Record<string, Part>;       // Saved artifacts with their Part representation
+  artifactDelta?: Record<string, Part>; // Saved artifacts with their Part representation
 
   // Control Flow Signals
-  transferToAgent?: string;                   // Name of agent to transfer control to
-  escalate?: boolean;                         // Signal to terminate current loop/process
+  transferToAgent?: string; // Name of agent to transfer control to
+  escalate?: boolean; // Signal to terminate current loop/process
 
   // Tool Behavior Control
-  skipSummarization?: boolean;                // Skip LLM processing of tool result
+  skipSummarization?: boolean; // Skip LLM processing of tool result
 
   // Authentication
   requestedAuthConfigs?: Record<string, any>; // Authentication requirements for tools
@@ -76,22 +78,23 @@ This separation provides clear boundaries between communication and side effects
 ```typescript
 // Content = What to communicate
 event.content = {
-  parts: [{ text: 'I found 5 matching flights and saved the results.' }]
+  parts: [{ text: "I found 5 matching flights and saved the results." }],
 };
 
 // Actions = What changed as a result
 event.actions = {
   stateDelta: {
-    'user:lastSearch': 'London flights',
-    'searchResults': flightData
+    "user:lastSearch": "London flights",
+    searchResults: flightData,
   },
   artifactDelta: {
-    'flight_results.json': jsonPart
-  }
+    "flight_results.json": jsonPart,
+  },
 };
 ```
 
 This makes it easy to:
+
 - Audit state changes separately from conversations
 - Replay actions for testing or debugging
 - Filter events by action type
@@ -104,22 +107,22 @@ State deltas are the primary way to modify session state across turns. They repr
 ### Basic State Delta Pattern
 
 ```typescript
-import { Event, EventActions } from '@iqai/adk';
+import { Event, EventActions } from "@iqai/adk";
 
 // Agent modifies state during execution
 const event = new Event({
-  author: 'PreferenceAgent',
+  author: "PreferenceAgent",
   content: {
-    parts: [{ text: 'Updated your preferences' }]
+    parts: [{ text: "Updated your preferences" }],
   },
   actions: {
     stateDelta: {
-      'user:theme': 'dark',
-      'user:language': 'en',
-      'user:notifications': true,
-      'lastUpdated': Date.now()
-    }
-  }
+      "user:theme": "dark",
+      "user:language": "en",
+      "user:notifications": true,
+      lastUpdated: Date.now(),
+    },
+  },
 });
 
 // SessionService automatically merges these into session.state
@@ -138,35 +141,37 @@ ADK uses conventional prefixes to indicate the intended scope and persistence of
 const actions = {
   stateDelta: {
     // Application-wide configuration (persists across all users/sessions)
-    'app:apiEndpoint': 'https://api.example.com',
-    'app:featureFlags': { newUI: true },
+    "app:apiEndpoint": "https://api.example.com",
+    "app:featureFlags": { newUI: true },
 
     // User-specific data (persists across sessions for this user)
-    'user:preferredAirline': 'British Airways',
-    'user:loyaltyNumber': 'BA123456',
+    "user:preferredAirline": "British Airways",
+    "user:loyaltyNumber": "BA123456",
 
     // Temporary/transient data (not persisted, session-only)
-    'temp_intermediateResult': calculationData,
-    'temp_processingStartTime': Date.now(),
+    temp_intermediateResult: calculationData,
+    temp_processingStartTime: Date.now(),
 
     // Session-specific data (default scope)
-    'currentBooking': bookingDetails,
-    'searchFilters': { maxPrice: 500, direct: true }
-  }
+    currentBooking: bookingDetails,
+    searchFilters: { maxPrice: 500, direct: true },
+  },
 };
 ```
 
 #### Prefix Semantics
 
-| Prefix | Scope | Persistence | Use Case |
-|--------|-------|-------------|----------|
-| `app:` | Application | Long-term | Global settings, configuration, feature flags |
-| `user:` | User | Long-term | User preferences, profile data, history |
-| `temp_` | Session | None | Intermediate calculations, processing flags |
-| *(none)* | Session | Session | Conversation context, current task state |
+| Prefix   | Scope       | Persistence | Use Case                                      |
+| -------- | ----------- | ----------- | --------------------------------------------- |
+| `app:`   | Application | Long-term   | Global settings, configuration, feature flags |
+| `user:`  | User        | Long-term   | User preferences, profile data, history       |
+| `temp_`  | Session     | None        | Intermediate calculations, processing flags   |
+| _(none)_ | Session     | Session     | Conversation context, current task state      |
 
 <Callout>
-The actual persistence behavior depends on your `SessionService` implementation. The prefixes are conventions that help organize state and indicate intent.
+  The actual persistence behavior depends on your `SessionService`
+  implementation. The prefixes are conventions that help organize state and
+  indicate intent.
 </Callout>
 
 ### Reading State Changes in Event Streams
@@ -174,12 +179,20 @@ The actual persistence behavior depends on your `SessionService` implementation.
 When processing events, check for state changes to update your application:
 
 ```typescript
-const monitorStateChanges = async (agent: LlmAgent, query: string, session: Session) => {
-  const stateLog: Array<{ timestamp: number; changes: Record<string, any> }> = [];
+const monitorStateChanges = async (
+  agent: LlmAgent,
+  query: string,
+  session: Session
+) => {
+  const stateLog: Array<{ timestamp: number; changes: Record<string, any> }> =
+    [];
 
   for await (const event of agent.run(query, { session })) {
     // Detect state modifications
-    if (event.actions?.stateDelta && Object.keys(event.actions.stateDelta).length > 0) {
+    if (
+      event.actions?.stateDelta &&
+      Object.keys(event.actions.stateDelta).length > 0
+    ) {
       const delta = event.actions.stateDelta;
 
       console.log(`[${event.author}] State changes detected:`);
@@ -190,22 +203,22 @@ const monitorStateChanges = async (agent: LlmAgent, query: string, session: Sess
       // Log for audit trail
       stateLog.push({
         timestamp: event.timestamp,
-        changes: delta
+        changes: delta,
       });
 
       // Update local application state if needed
-      if (delta['user:theme']) {
-        updateUITheme(delta['user:theme']);
+      if (delta["user:theme"]) {
+        updateUITheme(delta["user:theme"]);
       }
     }
   }
 
   // Access final merged state
-  console.log('\nFinal session state:', session.state);
+  console.log("\nFinal session state:", session.state);
 
   return {
     finalState: session.state,
-    changeHistory: stateLog
+    changeHistory: stateLog,
   };
 };
 ```
@@ -215,21 +228,21 @@ const monitorStateChanges = async (agent: LlmAgent, query: string, session: Sess
 Within agents and tools, modify state through the context object:
 
 ```typescript
-import { BaseAgent, InvocationContext, Event } from '@iqai/adk';
+import { BaseAgent, InvocationContext, Event } from "@iqai/adk";
 
 export class BookingAgent extends BaseAgent {
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
     // Modify state directly via context
-    context.state['user:lastBookingDate'] = new Date().toISOString();
-    context.state['bookingStep'] = 'payment';
-    context.state['temp_validationResult'] = await this.validateBooking();
+    context.state["user:lastBookingDate"] = new Date().toISOString();
+    context.state["bookingStep"] = "payment";
+    context.state["temp_validationResult"] = await this.validateBooking();
 
     // These changes automatically populate the next event's stateDelta
     yield new Event({
       author: this.name,
       content: {
-        parts: [{ text: 'Proceeding to payment...' }]
-      }
+        parts: [{ text: "Proceeding to payment..." }],
+      },
       // stateDelta is automatically populated by the framework
     });
   }
@@ -238,34 +251,36 @@ export class BookingAgent extends BaseAgent {
 
 ```typescript
 // In a tool function
-import { createTool, ToolContext } from '@iqai/adk';
+import { createTool, ToolContext } from "@iqai/adk";
 
 export const searchFlights = createTool({
-  name: 'search_flights',
-  description: 'Search for available flights',
+  name: "search_flights",
+  description: "Search for available flights",
   schema: z.object({
     destination: z.string(),
-    date: z.string()
+    date: z.string(),
   }),
   fn: async (args, context: ToolContext) => {
     const results = await flightAPI.search(args);
 
     // Update state to track search history
-    context.state['user:lastSearch'] = {
+    context.state["user:lastSearch"] = {
       destination: args.destination,
       date: args.date,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    context.state['searchResultCount'] = results.length;
+    context.state["searchResultCount"] = results.length;
 
     return { flights: results };
     // State changes appear in the tool result event's actions
-  }
+  },
 });
 ```
 
 <Callout type="info">
-The framework automatically collects state changes made during execution and includes them in the `stateDelta` of the next emitted event. You don't need to manually construct the `stateDelta` object.
+  The framework automatically collects state changes made during execution and
+  includes them in the `stateDelta` of the next emitted event. You don't need to
+  manually construct the `stateDelta` object.
 </Callout>
 
 ## Artifact Management Actions
@@ -280,7 +295,7 @@ When you save an artifact using `context.saveArtifact()`, two things happen:
 2. An `artifactDelta` entry is added to the next event's actions
 
 ```typescript
-import { BaseAgent, InvocationContext, Event } from '@iqai/adk';
+import { BaseAgent, InvocationContext, Event } from "@iqai/adk";
 
 export class ReportAgent extends BaseAgent {
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
@@ -289,14 +304,18 @@ export class ReportAgent extends BaseAgent {
     const pdfBuffer = await this.convertToPDF(reportContent);
 
     // Save the artifact
-    await context.saveArtifact('monthly_report.pdf', pdfBuffer, 'application/pdf');
+    await context.saveArtifact(
+      "monthly_report.pdf",
+      pdfBuffer,
+      "application/pdf"
+    );
 
     // The next event will automatically include artifactDelta
     yield new Event({
       author: this.name,
       content: {
-        parts: [{ text: 'Report generated and saved as monthly_report.pdf' }]
-      }
+        parts: [{ text: "Report generated and saved as monthly_report.pdf" }],
+      },
       // artifactDelta is populated automatically:
       // {
       //   'monthly_report.pdf': {
@@ -316,7 +335,11 @@ export class ReportAgent extends BaseAgent {
 Monitor artifact changes in the event stream:
 
 ```typescript
-const trackArtifacts = async (agent: LlmAgent, query: string, session: Session) => {
+const trackArtifacts = async (
+  agent: LlmAgent,
+  query: string,
+  session: Session
+) => {
   const savedArtifacts: Array<{
     filename: string;
     timestamp: number;
@@ -325,20 +348,26 @@ const trackArtifacts = async (agent: LlmAgent, query: string, session: Session) 
 
   for await (const event of agent.run(query, { session })) {
     if (event.actions?.artifactDelta) {
-      Object.entries(event.actions.artifactDelta).forEach(([filename, part]) => {
-        console.log(`📁 Artifact saved: ${filename}`);
-        console.log(`   MIME type: ${part.inlineData?.mimeType || 'unknown'}`);
-        console.log(`   Size: ${part.inlineData?.data?.length || 0} bytes (base64)`);
+      Object.entries(event.actions.artifactDelta).forEach(
+        ([filename, part]) => {
+          console.log(`📁 Artifact saved: ${filename}`);
+          console.log(
+            `   MIME type: ${part.inlineData?.mimeType || "unknown"}`
+          );
+          console.log(
+            `   Size: ${part.inlineData?.data?.length || 0} bytes (base64)`
+          );
 
-        savedArtifacts.push({
-          filename,
-          timestamp: event.timestamp,
-          author: event.author
-        });
+          savedArtifacts.push({
+            filename,
+            timestamp: event.timestamp,
+            author: event.author,
+          });
 
-        // Trigger UI update
-        notifyArtifactSaved(filename);
-      });
+          // Trigger UI update
+          notifyArtifactSaved(filename);
+        }
+      );
     }
   }
 
@@ -353,22 +382,22 @@ For applications that need version tracking:
 ```typescript
 export class VersionedDocumentAgent extends BaseAgent {
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
-    const documentId = context.state['currentDocumentId'];
-    const currentVersion = context.state['documentVersion'] || 0;
+    const documentId = context.state["currentDocumentId"];
+    const currentVersion = context.state["documentVersion"] || 0;
     const newVersion = currentVersion + 1;
 
     // Save with version in filename
     const filename = `document_${documentId}_v${newVersion}.md`;
-    await context.saveArtifact(filename, documentContent, 'text/markdown');
+    await context.saveArtifact(filename, documentContent, "text/markdown");
 
     // Update version in state
-    context.state['documentVersion'] = newVersion;
+    context.state["documentVersion"] = newVersion;
 
     yield new Event({
       author: this.name,
       content: {
-        parts: [{ text: `Saved version ${newVersion} of document` }]
-      }
+        parts: [{ text: `Saved version ${newVersion} of document` }],
+      },
       // Both artifactDelta (for file) and stateDelta (for version) included
     });
   }
@@ -384,22 +413,24 @@ Control flow actions direct the orchestration of agent execution, enabling sophi
 The `transferToAgent` action signals that control should pass to a different agent:
 
 ```typescript
-import { Event, EventActions } from '@iqai/adk';
+import { Event, EventActions } from "@iqai/adk";
 
 // Agent determines it needs specialist help
 const transferEvent = new Event({
-  author: 'RoutingAgent',
+  author: "RoutingAgent",
   content: {
-    parts: [{
-      functionCall: {
-        name: 'transfer_to_agent',
-        args: { agentName: 'TechnicalSupportAgent' }
-      }
-    }]
+    parts: [
+      {
+        functionCall: {
+          name: "transfer_to_agent",
+          args: { agentName: "TechnicalSupportAgent" },
+        },
+      },
+    ],
   },
   actions: {
-    transferToAgent: 'TechnicalSupportAgent'
-  }
+    transferToAgent: "TechnicalSupportAgent",
+  },
 });
 
 // The Runner will route subsequent execution to TechnicalSupportAgent
@@ -415,35 +446,37 @@ export class OrchestratorAgent extends BaseAgent {
     let targetAgent: string;
 
     switch (userIntent) {
-      case 'booking':
-        targetAgent = 'BookingAgent';
+      case "booking":
+        targetAgent = "BookingAgent";
         break;
-      case 'support':
-        targetAgent = 'SupportAgent';
+      case "support":
+        targetAgent = "SupportAgent";
         break;
-      case 'billing':
-        targetAgent = 'BillingAgent';
+      case "billing":
+        targetAgent = "BillingAgent";
         break;
       default:
-        targetAgent = 'GeneralAgent';
+        targetAgent = "GeneralAgent";
     }
 
     // Signal transfer
     yield new Event({
       author: this.name,
       content: {
-        parts: [{ text: `Routing to ${targetAgent} for assistance` }]
+        parts: [{ text: `Routing to ${targetAgent} for assistance` }],
       },
       actions: {
-        transferToAgent: targetAgent
-      }
+        transferToAgent: targetAgent,
+      },
     });
   }
 }
 ```
 
 <Callout>
-Agent transfers are processed by the `Runner`. When it encounters a `transferToAgent` action, it hands control to the specified agent while maintaining the same session and conversation history.
+  Agent transfers are processed by the `Runner`. When it encounters a
+  `transferToAgent` action, it hands control to the specified agent while
+  maintaining the same session and conversation history.
 </Callout>
 
 ### Escalation Signal
@@ -454,38 +487,40 @@ The `escalate` action signals that a loop or iterative process should terminate:
 export class ValidationAgent extends BaseAgent {
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
     const maxRetries = 3;
-    const retryCount = context.state['validationRetries'] || 0;
+    const retryCount = context.state["validationRetries"] || 0;
 
     const isValid = await this.validateInput(context.query);
 
     if (!isValid && retryCount < maxRetries) {
       // Increment retry counter
-      context.state['validationRetries'] = retryCount + 1;
+      context.state["validationRetries"] = retryCount + 1;
 
       yield new Event({
         author: this.name,
         content: {
-          parts: [{ text: 'Validation failed. Please provide correct information.' }]
-        }
+          parts: [
+            { text: "Validation failed. Please provide correct information." },
+          ],
+        },
       });
     } else if (!isValid) {
       // Max retries reached - escalate
       yield new Event({
         author: this.name,
         content: {
-          parts: [{ text: 'Maximum validation attempts exceeded.' }]
+          parts: [{ text: "Maximum validation attempts exceeded." }],
         },
         actions: {
-          escalate: true
-        }
+          escalate: true,
+        },
       });
     } else {
       // Validation successful
       yield new Event({
         author: this.name,
         content: {
-          parts: [{ text: 'Validation successful!' }]
-        }
+          parts: [{ text: "Validation successful!" }],
+        },
       });
     }
   }
@@ -503,7 +538,7 @@ const runWithEscalationHandling = async (
   for await (const event of agent.run(query, { session })) {
     // Detect escalation signal
     if (event.actions?.escalate) {
-      console.log('⚠️ Escalation signal received');
+      console.log("⚠️ Escalation signal received");
       console.log(`Reason: ${event.content?.parts?.[0]?.text}`);
 
       // Take appropriate action
@@ -529,32 +564,34 @@ export class ErrorHandlerAgent extends BaseAgent {
     try {
       await this.processTask(context.query);
     } catch (error) {
-      const errorCount = context.state['errorCount'] || 0;
+      const errorCount = context.state["errorCount"] || 0;
 
       if (errorCount >= 3) {
         // Escalate after multiple failures
         yield new Event({
           author: this.name,
           content: {
-            parts: [{ text: 'Multiple errors occurred. Escalating to supervisor.' }]
+            parts: [
+              { text: "Multiple errors occurred. Escalating to supervisor." },
+            ],
           },
           actions: {
             escalate: true,
-            transferToAgent: 'SupervisorAgent',
+            transferToAgent: "SupervisorAgent",
             stateDelta: {
-              'lastError': error.message,
-              'errorCount': errorCount + 1
-            }
-          }
+              lastError: error.message,
+              errorCount: errorCount + 1,
+            },
+          },
         });
       } else {
         // Retry with state tracking
-        context.state['errorCount'] = errorCount + 1;
+        context.state["errorCount"] = errorCount + 1;
         yield new Event({
           author: this.name,
           content: {
-            parts: [{ text: `Error occurred. Retry ${errorCount + 1}/3` }]
-          }
+            parts: [{ text: `Error occurred. Retry ${errorCount + 1}/3` }],
+          },
         });
       }
     }
@@ -569,13 +606,13 @@ export class ErrorHandlerAgent extends BaseAgent {
 The `skipSummarization` flag prevents the LLM from processing tool results, useful when you want raw data displayed directly:
 
 ```typescript
-import { createTool, ToolContext } from '@iqai/adk';
+import { createTool, ToolContext } from "@iqai/adk";
 
 export const queryDatabase = createTool({
-  name: 'query_database',
-  description: 'Execute SQL query and return results',
+  name: "query_database",
+  description: "Execute SQL query and return results",
   schema: z.object({
-    query: z.string()
+    query: z.string(),
   }),
   fn: async (args, context: ToolContext) => {
     const results = await db.query(args.query);
@@ -585,10 +622,10 @@ export const queryDatabase = createTool({
     return {
       results,
       _meta: {
-        skipSummarization: true
-      }
+        skipSummarization: true,
+      },
     };
-  }
+  },
 });
 ```
 
@@ -616,12 +653,14 @@ The framework recognizes the `_meta.skipSummarization` flag and sets the action:
 #### When to Skip Summarization
 
 ✅ **Use skipSummarization when:**
+
 - Returning structured data (tables, charts, JSON)
 - Results are already formatted for display
 - LLM processing would lose information
 - User wants raw, unfiltered output
 
 ❌ **Don't skip summarization when:**
+
 - Results need natural language explanation
 - Data requires context or interpretation
 - Results contain technical jargon needing simplification
@@ -648,40 +687,40 @@ for await (const event of agent.run(query)) {
 Tools can signal authentication requirements through actions:
 
 ```typescript
-import { createTool, ToolContext } from '@iqai/adk';
+import { createTool, ToolContext } from "@iqai/adk";
 
 export const sendEmail = createTool({
-  name: 'send_email',
-  description: 'Send email via Gmail',
+  name: "send_email",
+  description: "Send email via Gmail",
   schema: z.object({
     to: z.string(),
     subject: z.string(),
-    body: z.string()
+    body: z.string(),
   }),
   fn: async (args, context: ToolContext) => {
     // Check if authenticated
-    const hasAuth = context.authState?.['gmail'];
+    const hasAuth = context.authState?.["gmail"];
 
     if (!hasAuth) {
       // Request authentication
       return {
-        error: 'Authentication required',
+        error: "Authentication required",
         _meta: {
           requestedAuthConfigs: {
-            'gmail': {
-              type: 'oauth2',
-              provider: 'google',
-              scopes: ['https://www.googleapis.com/auth/gmail.send']
-            }
-          }
-        }
+            gmail: {
+              type: "oauth2",
+              provider: "google",
+              scopes: ["https://www.googleapis.com/auth/gmail.send"],
+            },
+          },
+        },
       };
     }
 
     // Proceed with authenticated request
-    await gmailAPI.sendEmail(args, context.authState['gmail']);
-    return { success: true, messageId: '...' };
-  }
+    await gmailAPI.sendEmail(args, context.authState["gmail"]);
+    return { success: true, messageId: "..." };
+  },
 });
 ```
 
@@ -692,7 +731,7 @@ export const sendEmail = createTool({
 Create events with explicit actions:
 
 ```typescript
-import { BaseAgent, Event, EventActions } from '@iqai/adk';
+import { BaseAgent, Event, EventActions } from "@iqai/adk";
 
 export class CustomAgent extends BaseAgent {
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
@@ -702,18 +741,18 @@ export class CustomAgent extends BaseAgent {
     // Create event with actions
     const actions = new EventActions();
     actions.stateDelta = {
-      'taskStatus': 'completed',
-      'resultCount': result.items.length
+      taskStatus: "completed",
+      resultCount: result.items.length,
     };
-    actions.transferToAgent = 'ReviewAgent';
+    actions.transferToAgent = "ReviewAgent";
 
     yield new Event({
       author: this.name,
       invocationId: context.invocationId,
       content: {
-        parts: [{ text: `Completed task with ${result.items.length} items` }]
+        parts: [{ text: `Completed task with ${result.items.length} items` }],
       },
-      actions
+      actions,
     });
   }
 }
@@ -724,7 +763,11 @@ export class CustomAgent extends BaseAgent {
 React to actions in your application:
 
 ```typescript
-const handleEventStream = async (runner: Runner, query: string, session: Session) => {
+const handleEventStream = async (
+  runner: Runner,
+  query: string,
+  session: Session
+) => {
   for await (const event of runner.runAsync(query, session)) {
     const actions = event.actions;
 
@@ -737,7 +780,10 @@ const handleEventStream = async (runner: Runner, query: string, session: Session
     }
 
     // Handle artifact saves
-    if (actions.artifactDelta && Object.keys(actions.artifactDelta).length > 0) {
+    if (
+      actions.artifactDelta &&
+      Object.keys(actions.artifactDelta).length > 0
+    ) {
       Object.entries(actions.artifactDelta).forEach(([filename, part]) => {
         notifyFileAvailable(filename, part);
       });
@@ -770,21 +816,21 @@ Combine multiple actions for atomic state transitions:
 yield new Event({
   author: this.name,
   content: {
-    parts: [{ text: 'Order completed and transferred to fulfillment' }]
+    parts: [{ text: "Order completed and transferred to fulfillment" }],
   },
   actions: {
     stateDelta: {
-      'orderStatus': 'completed',
-      'orderTotal': 299.99,
-      'user:orderHistory': [...existingHistory, newOrder],
-      'temp_processingTime': performance.now() - startTime
+      orderStatus: "completed",
+      orderTotal: 299.99,
+      "user:orderHistory": [...existingHistory, newOrder],
+      temp_processingTime: performance.now() - startTime,
     },
     artifactDelta: {
-      'receipt.pdf': receiptPart,
-      'invoice.pdf': invoicePart
+      "receipt.pdf": receiptPart,
+      "invoice.pdf": invoicePart,
     },
-    transferToAgent: 'FulfillmentAgent'
-  }
+    transferToAgent: "FulfillmentAgent",
+  },
 });
 ```
 
@@ -796,13 +842,13 @@ Actions can be built conditionally based on runtime logic:
 const actions: EventActions = { stateDelta: {} };
 
 if (needsReview) {
-  actions.transferToAgent = 'ReviewAgent';
-  actions.stateDelta!['reviewRequired'] = true;
+  actions.transferToAgent = "ReviewAgent";
+  actions.stateDelta!["reviewRequired"] = true;
 }
 
 if (criticalError) {
   actions.escalate = true;
-  actions.stateDelta!['errorSeverity'] = 'critical';
+  actions.stateDelta!["errorSeverity"] = "critical";
 }
 
 if (dataQuery) {
@@ -812,7 +858,7 @@ if (dataQuery) {
 yield new Event({
   author: this.name,
   content: { parts: [{ text: responseText }] },
-  actions
+  actions,
 });
 ```
 
@@ -824,20 +870,20 @@ Actions in one event can trigger subsequent actions:
 // Event 1: Agent requests transfer
 yield new Event({
   actions: {
-    stateDelta: { 'transferReason': 'specialist_needed' },
-    transferToAgent: 'SpecialistAgent'
-  }
+    stateDelta: { transferReason: "specialist_needed" },
+    transferToAgent: "SpecialistAgent",
+  },
 });
 
 // Event 2 (in SpecialistAgent): Specialist completes and escalates
 yield new Event({
   actions: {
     stateDelta: {
-      'specialistReview': 'completed',
-      'requiresManualIntervention': true
+      specialistReview: "completed",
+      requiresManualIntervention: true,
     },
-    escalate: true
-  }
+    escalate: true,
+  },
 });
 ```
 
@@ -861,21 +907,22 @@ yield new Event({
 
 // ✅ Combine related changes
 actions.stateDelta = {
-  'booking:id': bookingId,
-  'booking:status': 'confirmed',
-  'booking:confirmationCode': code
+'booking:id': bookingId,
+'booking:status': 'confirmed',
+'booking:confirmationCode': code
 };
 
 // ✅ Document complex actions
 yield new Event({
-  actions: {
-    escalate: true, // Max retries exceeded (3/3)
-    stateDelta: {
-      'errorLog': [...errors, newError]
-    }
-  }
+actions: {
+escalate: true, // Max retries exceeded (3/3)
+stateDelta: {
+'errorLog': [...errors, newError]
+}
+}
 });
-```
+
+````
 </Tab>
 
 <Tab value="Don't">
@@ -901,7 +948,8 @@ actions.stateDelta = {
   'flag2': false,
   'temp': someValue
 };
-```
+````
+
 </Tab>
 </Tabs>
 
@@ -915,13 +963,13 @@ actions.stateDelta = {
 
 ```typescript
 // Good state management
-context.state['user:preferences'] = { theme: 'dark' };        // User pref
-context.state['currentTask'] = 'booking';                     // Session data
-context.state['temp_calculation'] = intermediate;             // Temporary
+context.state["user:preferences"] = { theme: "dark" }; // User pref
+context.state["currentTask"] = "booking"; // Session data
+context.state["temp_calculation"] = intermediate; // Temporary
 
 // Not recommended
-context.state['everything'] = { ...allPossibleData };         // Too broad
-context.state['cache'] = largeDataStructure;                  // Too large
+context.state["everything"] = { ...allPossibleData }; // Too broad
+context.state["cache"] = largeDataStructure; // Too large
 ```
 
 ### Control Flow Best Practices
@@ -935,14 +983,14 @@ context.state['cache'] = largeDataStructure;                  // Too large
 // Good control flow
 if (maxRetriesReached) {
   yield new Event({
-    content: { parts: [{ text: 'Max retries exceeded' }] },
+    content: { parts: [{ text: "Max retries exceeded" }] },
     actions: {
       escalate: true,
       stateDelta: {
-        'escalationReason': 'max_retries',
-        'retryCount': 3
-      }
-    }
+        escalationReason: "max_retries",
+        retryCount: 3,
+      },
+    },
   });
 }
 ```
@@ -952,34 +1000,34 @@ if (maxRetriesReached) {
 Write tests that verify action behavior:
 
 ```typescript
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
-describe('CustomAgent Actions', () => {
-  it('should set correct state delta on success', async () => {
+describe("CustomAgent Actions", () => {
+  it("should set correct state delta on success", async () => {
     const agent = new CustomAgent();
     const events = [];
 
-    for await (const event of agent.run('test query')) {
+    for await (const event of agent.run("test query")) {
       events.push(event);
     }
 
     const finalEvent = events[events.length - 1];
     expect(finalEvent.actions?.stateDelta).toEqual({
-      'taskStatus': 'completed',
-      'resultCount': expect.any(Number)
+      taskStatus: "completed",
+      resultCount: expect.any(Number),
     });
   });
 
-  it('should escalate after max retries', async () => {
+  it("should escalate after max retries", async () => {
     const agent = new RetryAgent();
     const session = createSession({ validationRetries: 3 });
 
     const events = [];
-    for await (const event of agent.run('invalid input', { session })) {
+    for await (const event of agent.run("invalid input", { session })) {
       events.push(event);
     }
 
-    const escalationEvent = events.find(e => e.actions?.escalate);
+    const escalationEvent = events.find((e) => e.actions?.escalate);
     expect(escalationEvent).toBeDefined();
     expect(escalationEvent?.actions?.escalate).toBe(true);
   });
@@ -992,23 +1040,30 @@ Use event history to trace action flow:
 
 ```typescript
 const debugActions = (session: Session) => {
-  console.log('\n=== Action History ===\n');
+  console.log("\n=== Action History ===\n");
 
   session.events.forEach((event, index) => {
     const actions = event.actions;
     if (!actions) return;
 
-    console.log(`[${index}] ${event.author} at ${new Date(event.timestamp * 1000).toISOString()}`);
+    console.log(
+      `[${index}] ${event.author} at ${new Date(
+        event.timestamp * 1000
+      ).toISOString()}`
+    );
 
     if (actions.stateDelta && Object.keys(actions.stateDelta).length > 0) {
-      console.log('  State changes:');
+      console.log("  State changes:");
       Object.entries(actions.stateDelta).forEach(([key, value]) => {
         console.log(`    ${key}: ${JSON.stringify(value).slice(0, 50)}`);
       });
     }
 
-    if (actions.artifactDelta && Object.keys(actions.artifactDelta).length > 0) {
-      console.log('  Artifacts:', Object.keys(actions.artifactDelta));
+    if (
+      actions.artifactDelta &&
+      Object.keys(actions.artifactDelta).length > 0
+    ) {
+      console.log("  Artifacts:", Object.keys(actions.artifactDelta));
     }
 
     if (actions.transferToAgent) {
@@ -1016,14 +1071,14 @@ const debugActions = (session: Session) => {
     }
 
     if (actions.escalate) {
-      console.log('  ⚠️ Escalation signal');
+      console.log("  ⚠️ Escalation signal");
     }
 
     if (actions.skipSummarization) {
-      console.log('  ⏭️ Skip summarization');
+      console.log("  ⏭️ Skip summarization");
     }
 
-    console.log('');
+    console.log("");
   });
 };
 ```
@@ -1033,23 +1088,23 @@ const debugActions = (session: Session) => {
 Our TypeScript implementation provides enhanced type safety for actions:
 
 ```typescript
-import { EventActions, Event } from '@iqai/adk';
+import { EventActions, Event } from "@iqai/adk";
 
 // Type-safe action construction
 const actions: EventActions = {
   stateDelta: {
-    'user:preference': 'value'  // Type-checked keys and values
+    "user:preference": "value", // Type-checked keys and values
   },
-  transferToAgent: 'AgentName',  // String literal type
-  escalate: true                 // Boolean type
+  transferToAgent: "AgentName", // String literal type
+  escalate: true, // Boolean type
 };
 
 // Type inference for actions
 const event = new Event({
-  author: 'MyAgent',
+  author: "MyAgent",
   actions: {
-    stateDelta: { key: 'value' }  // Inferred as Record<string, any>
-  }
+    stateDelta: { key: "value" }, // Inferred as Record<string, any>
+  },
 });
 
 // Compile-time checks prevent errors
@@ -1061,14 +1116,14 @@ const event = new Event({
 Define custom action schemas for specific use cases:
 
 ```typescript
-import { EventActions } from '@iqai/adk';
+import { EventActions } from "@iqai/adk";
 
 // Define domain-specific action types
 interface BookingActions extends EventActions {
   stateDelta?: {
-    'booking:id'?: string;
-    'booking:status'?: 'pending' | 'confirmed' | 'cancelled';
-    'booking:total'?: number;
+    "booking:id"?: string;
+    "booking:status"?: "pending" | "confirmed" | "cancelled";
+    "booking:total"?: number;
   };
 }
 
@@ -1076,16 +1131,16 @@ interface BookingActions extends EventActions {
 const createBookingEvent = (bookingId: string, total: number): Event => {
   const actions: BookingActions = {
     stateDelta: {
-      'booking:id': bookingId,
-      'booking:status': 'confirmed',  // Autocomplete suggests valid values
-      'booking:total': total
-    }
+      "booking:id": bookingId,
+      "booking:status": "confirmed", // Autocomplete suggests valid values
+      "booking:total": total,
+    },
   };
 
   return new Event({
-    author: 'BookingAgent',
-    content: { parts: [{ text: 'Booking confirmed' }] },
-    actions
+    author: "BookingAgent",
+    content: { parts: [{ text: "Booking confirmed" }] },
+    actions,
   });
 };
 ```
@@ -1097,12 +1152,12 @@ const createBookingEvent = (bookingId: string, total: number): Event => {
 A complete example showing state management, artifact tracking, and control flow:
 
 ```typescript
-import { BaseAgent, Event, InvocationContext } from '@iqai/adk';
+import { BaseAgent, Event, InvocationContext } from "@iqai/adk";
 
 export class CheckoutAgent extends BaseAgent {
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
-    const cart = context.state['user:cart'];
-    const userProfile = context.state['user:profile'];
+    const cart = context.state["user:cart"];
+    const userProfile = context.state["user:profile"];
 
     // Step 1: Validate cart
     const validation = await this.validateCart(cart);
@@ -1111,45 +1166,48 @@ export class CheckoutAgent extends BaseAgent {
       yield new Event({
         author: this.name,
         content: {
-          parts: [{ text: `Cart validation failed: ${validation.error}` }]
+          parts: [{ text: `Cart validation failed: ${validation.error}` }],
         },
         actions: {
           stateDelta: {
-            'checkout:status': 'failed',
-            'checkout:error': validation.error
+            "checkout:status": "failed",
+            "checkout:error": validation.error,
           },
-          escalate: true  // Can't proceed with invalid cart
-        }
+          escalate: true, // Can't proceed with invalid cart
+        },
       });
       return;
     }
 
     // Step 2: Process payment
-    context.state['checkout:status'] = 'processing_payment';
+    context.state["checkout:status"] = "processing_payment";
 
     yield new Event({
       author: this.name,
       content: {
-        parts: [{ text: 'Processing payment...' }]
-      }
+        parts: [{ text: "Processing payment..." }],
+      },
     });
 
-    const payment = await this.processPayment(cart.total, userProfile.paymentMethod);
+    const payment = await this.processPayment(
+      cart.total,
+      userProfile.paymentMethod
+    );
 
     if (!payment.success) {
       // Payment failed - transfer to support
       yield new Event({
         author: this.name,
         content: {
-          parts: [{ text: 'Payment failed. Transferring to support agent.' }]
+          parts: [{ text: "Payment failed. Transferring to support agent." }],
         },
         actions: {
           stateDelta: {
-            'checkout:status': 'payment_failed',
-            'checkout:paymentError': payment.error
+            "checkout:status": "payment_failed",
+            "checkout:paymentError": payment.error,
           },
-          transferToAgent: 'PaymentSupportAgent'
-        }
+          transferToAgent: "PaymentSupportAgent",
+        },
       });
       return;
     }
@@ -1159,39 +1217,50 @@ export class CheckoutAgent extends BaseAgent {
 
     // Generate receipt PDF
     const receiptPdf = await this.generateReceipt(order);
-    await context.saveArtifact(`receipt_${order.id}.pdf`, receiptPdf, 'application/pdf');
+    await context.saveArtifact(
+      `receipt_${order.id}.pdf`,
+      receiptPdf,
+      "application/pdf"
+    );
 
     // Generate invoice JSON
     const invoiceJson = JSON.stringify(order.invoice, null, 2);
-    await context.saveArtifact(`invoice_${order.id}.json`, Buffer.from(invoiceJson), 'application/json');
+    await context.saveArtifact(
+      `invoice_${order.id}.json`,
+      Buffer.from(invoiceJson),
+      "application/json"
+    );
 
     // Step 4: Complete checkout with comprehensive state update
     yield new Event({
       author: this.name,
       content: {
-        parts: [{
-          text: `Order ${order.id} confirmed! Your receipt has been generated. Transferring to fulfillment.`
-        }]
+        parts: [
+          {
+            text: `Order ${order.id} confirmed! Your receipt has been generated. Transferring to fulfillment.`,
+          },
+        ],
       },
       actions: {
         stateDelta: {
           // Update order state
-          'checkout:status': 'completed',
-          'checkout:orderId': order.id,
-          'checkout:completedAt': Date.now(),
+          "checkout:status": "completed",
+          "checkout:orderId": order.id,
+          "checkout:completedAt": Date.now(),
 
           // Update user history
-          'user:lastOrderId': order.id,
-          'user:totalOrders': (context.state['user:totalOrders'] || 0) + 1,
-          'user:lifetimeSpent': (context.state['user:lifetimeSpent'] || 0) + order.total,
+          "user:lastOrderId": order.id,
+          "user:totalOrders": (context.state["user:totalOrders"] || 0) + 1,
+          "user:lifetimeSpent":
+            (context.state["user:lifetimeSpent"] || 0) + order.total,
 
           // Clear temporary checkout data
-          'user:cart': [],
-          'temp_validationResult': null,
-          'temp_paymentProcessingTime': payment.processingTime
+          "user:cart": [],
+          temp_validationResult: null,
+          temp_paymentProcessingTime: payment.processingTime,
         },
-        transferToAgent: 'FulfillmentAgent'
-      }
+        transferToAgent: "FulfillmentAgent",
+      },
     });
   }
 }
@@ -1206,8 +1275,8 @@ export class DataValidationAgent extends BaseAgent {
   private readonly MAX_VALIDATION_ATTEMPTS = 3;
 
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
-    const attemptCount = context.state['validation:attempts'] || 0;
-    const data = context.state['validation:data'];
+    const attemptCount = context.state["validation:attempts"] || 0;
+    const data = context.state["validation:data"];
 
     // Validate the data
     const validation = await this.validateData(data);
@@ -1217,53 +1286,61 @@ export class DataValidationAgent extends BaseAgent {
       yield new Event({
         author: this.name,
         content: {
-          parts: [{ text: 'Data validation successful!' }]
+          parts: [{ text: "Data validation successful!" }],
         },
         actions: {
           stateDelta: {
-            'validation:status': 'passed',
-            'validation:attempts': 0,  // Reset counter
-            'data:validated': true,
-            'data:validatedAt': Date.now()
-          }
-        }
+            "validation:status": "passed",
+            "validation:attempts": 0, // Reset counter
+            "data:validated": true,
+            "data:validatedAt": Date.now(),
+          },
+        },
       });
     } else if (attemptCount < this.MAX_VALIDATION_ATTEMPTS) {
       // Validation failed but can retry
       yield new Event({
         author: this.name,
         content: {
-          parts: [{
-            text: `Validation failed: ${validation.errors.join(', ')}. Please correct and try again. (Attempt ${attemptCount + 1}/${this.MAX_VALIDATION_ATTEMPTS})`
-          }]
+          parts: [
+            {
+              text: `Validation failed: ${validation.errors.join(
+                ", "
+              )}. Please correct and try again. (Attempt ${attemptCount + 1}/${
+                this.MAX_VALIDATION_ATTEMPTS
+              })`,
+            },
+          ],
         },
         actions: {
           stateDelta: {
-            'validation:attempts': attemptCount + 1,
-            'validation:lastErrors': validation.errors,
-            'validation:status': 'retry'
-          }
-        }
+            "validation:attempts": attemptCount + 1,
+            "validation:lastErrors": validation.errors,
+            "validation:status": "retry",
+          },
+        },
       });
     } else {
       // Max attempts reached - escalate
       yield new Event({
         author: this.name,
         content: {
-          parts: [{
-            text: `Maximum validation attempts (${this.MAX_VALIDATION_ATTEMPTS}) exceeded. Escalating to manual review.`
-          }]
+          parts: [
+            {
+              text: `Maximum validation attempts (${this.MAX_VALIDATION_ATTEMPTS}) exceeded. Escalating to manual review.`,
+            },
+          ],
         },
         actions: {
           escalate: true,
           stateDelta: {
-            'validation:status': 'failed',
-            'validation:attempts': attemptCount + 1,
-            'validation:finalErrors': validation.errors,
-            'validation:escalatedAt': Date.now()
+            "validation:status": "failed",
+            "validation:attempts": attemptCount + 1,
+            "validation:finalErrors": validation.errors,
+            "validation:escalatedAt": Date.now(),
           },
-          transferToAgent: 'ManualReviewAgent'
-        }
+          transferToAgent: "ManualReviewAgent",
+        },
       });
     }
   }
@@ -1276,18 +1353,21 @@ Example of returning structured data directly:
 
 ```typescript
 export const generateAnalyticsReport = createTool({
-  name: 'generate_analytics_report',
-  description: 'Generate detailed analytics report with charts and metrics',
+  name: "generate_analytics_report",
+  description: "Generate detailed analytics report with charts and metrics",
   schema: z.object({
     dateRange: z.object({
       start: z.string(),
-      end: z.string()
+      end: z.string(),
     }),
-    metrics: z.array(z.string())
+    metrics: z.array(z.string()),
   }),
   fn: async (args, context: ToolContext) => {
     // Generate comprehensive report
-    const data = await analyticsService.getMetrics(args.dateRange, args.metrics);
+    const data = await analyticsService.getMetrics(
+      args.dateRange,
+      args.metrics
+    );
 
     // Create visualizations
     const charts = await chartGenerator.createCharts(data);
@@ -1298,15 +1378,15 @@ export const generateAnalyticsReport = createTool({
         totalUsers: data.users.total,
         activeUsers: data.users.active,
         conversionRate: data.conversions.rate,
-        revenue: data.revenue.total
+        revenue: data.revenue.total,
       },
-      charts: charts.map(c => ({
+      charts: charts.map((c) => ({
         type: c.type,
         title: c.title,
-        data: c.data
+        data: c.data,
       })),
       detailedMetrics: data.metrics,
-      recommendations: await generateRecommendations(data)
+      recommendations: await generateRecommendations(data),
     };
 
     // Save as artifact
@@ -1314,17 +1394,17 @@ export const generateAnalyticsReport = createTool({
     await context.saveArtifact(
       `analytics_${args.dateRange.start}_${args.dateRange.end}.json`,
       Buffer.from(reportJson),
-      'application/json'
+      "application/json"
     );
 
     // Return structured data without LLM summarization
     return {
       report,
       _meta: {
-        skipSummarization: true
-      }
+        skipSummarization: true,
+      },
     };
-  }
+  },
 });
 ```
 
@@ -1336,62 +1416,59 @@ Complex orchestration using multiple action types:
 export class SmartRoutingAgent extends BaseAgent {
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
     const query = context.query;
-    const userTier = context.state['user:tier'] || 'standard';
+    const userTier = context.state["user:tier"] || "standard";
     const complexity = await this.assessComplexity(query);
 
     // Store analysis in state
-    context.state['routing:complexity'] = complexity;
-    context.state['routing:timestamp'] = Date.now();
+    context.state["routing:complexity"] = complexity;
+    context.state["routing:timestamp"] = Date.now();
 
     let targetAgent: string;
     let reasoning: string;
     let additionalState: Record<string, any> = {};
 
-    if (complexity === 'simple') {
+    if (complexity === "simple") {
       // Simple queries go to fast agent
-      targetAgent = 'FastResponseAgent';
-      reasoning = 'Query classified as simple - using fast response agent';
-
-    } else if (complexity === 'moderate' && userTier === 'premium') {
+      targetAgent = "FastResponseAgent";
+      reasoning = "Query classified as simple - using fast response agent";
+    } else if (complexity === "moderate" && userTier === "premium") {
       // Premium users get specialist even for moderate queries
-      targetAgent = 'SpecialistAgent';
-      reasoning = 'Premium user detected - routing to specialist';
-      additionalState['routing:premiumPath'] = true;
-
-    } else if (complexity === 'complex') {
+      targetAgent = "SpecialistAgent";
+      reasoning = "Premium user detected - routing to specialist";
+      additionalState["routing:premiumPath"] = true;
+    } else if (complexity === "complex") {
       // Complex queries need research
       const requiresExternalData = await this.checkExternalDataNeeds(query);
 
       if (requiresExternalData) {
-        targetAgent = 'ResearchAgent';
-        reasoning = 'Complex query requiring external research';
-        additionalState['routing:researchRequired'] = true;
+        targetAgent = "ResearchAgent";
+        reasoning = "Complex query requiring external research";
+        additionalState["routing:researchRequired"] = true;
       } else {
-        targetAgent = 'SpecialistAgent';
-        reasoning = 'Complex query - routing to specialist';
+        targetAgent = "SpecialistAgent";
+        reasoning = "Complex query - routing to specialist";
       }
-
     } else {
       // Default fallback
-      targetAgent = 'GeneralAgent';
-      reasoning = 'Using general agent for standard query';
+      targetAgent = "GeneralAgent";
+      reasoning = "Using general agent for standard query";
     }
 
     // Generate routing event with comprehensive state
     yield new Event({
       author: this.name,
       content: {
-        parts: [{ text: `Routing query: ${reasoning}` }]
+        parts: [{ text: `Routing query: ${reasoning}` }],
       },
       actions: {
         transferToAgent: targetAgent,
         stateDelta: {
-          'routing:targetAgent': targetAgent,
-          'routing:reasoning': reasoning,
-          'routing:userTier': userTier,
-          ...additionalState
-        }
-      }
+          "routing:targetAgent": targetAgent,
+          "routing:reasoning": reasoning,
+          "routing:userTier": userTier,
+          ...additionalState,
+        },
+      },
     });
   }
 }
@@ -1404,29 +1481,33 @@ export class SmartRoutingAgent extends BaseAgent {
 Integrate actions with React state management:
 
 ```typescript
-import { useState, useEffect } from 'react';
-import { Event, Runner, Session } from '@iqai/adk';
+import { useState, useEffect } from "react";
+import { Event, Runner, Session } from "@iqai/adk";
 
-export function useAgentActions(runner: Runner, query: string, session: Session) {
+export function useAgentActions(
+  runner: Runner,
+  query: string,
+  session: Session
+) {
   const [state, setState] = useState<Record<string, any>>({});
   const [artifacts, setArtifacts] = useState<string[]>([]);
-  const [currentAgent, setCurrentAgent] = useState<string>('');
+  const [currentAgent, setCurrentAgent] = useState<string>("");
 
   useEffect(() => {
     const processEvents = async () => {
       for await (const event of runner.runAsync(query, session)) {
         // Update local state from deltas
         if (event.actions?.stateDelta) {
-          setState(prev => ({
+          setState((prev) => ({
             ...prev,
-            ...event.actions.stateDelta
+            ...event.actions.stateDelta,
           }));
         }
 
         // Track artifacts
         if (event.actions?.artifactDelta) {
           const newArtifacts = Object.keys(event.actions.artifactDelta);
-          setArtifacts(prev => [...prev, ...newArtifacts]);
+          setArtifacts((prev) => [...prev, ...newArtifacts]);
         }
 
         // Track agent transfers
@@ -1436,7 +1517,7 @@ export function useAgentActions(runner: Runner, query: string, session: Session)
 
         // Handle escalation
         if (event.actions?.escalate) {
-          console.warn('Escalation detected:', event.content);
+          console.warn("Escalation detected:", event.content);
           // Show error modal or notification
         }
       }
@@ -1454,7 +1535,7 @@ export function useAgentActions(runner: Runner, query: string, session: Session)
 Comprehensive action logging for analytics:
 
 ```typescript
-import { Event } from '@iqai/adk';
+import { Event } from "@iqai/adk";
 
 export class ActionLogger {
   private events: Event[] = [];
@@ -1473,7 +1554,7 @@ export class ActionLogger {
         artifactsSaved: Object.keys(event.actions.artifactDelta || {}),
         transferredTo: event.actions.transferToAgent,
         escalated: event.actions.escalate,
-        skippedSummarization: event.actions.skipSummarization
+        skippedSummarization: event.actions.skipSummarization,
       });
     }
   }
@@ -1485,15 +1566,16 @@ export class ActionLogger {
       artifactsSaved: this.countArtifacts(),
       agentTransfers: this.countTransfers(),
       escalations: this.countEscalations(),
-      averageEventsPerTurn: this.calculateAverageEvents()
+      averageEventsPerTurn: this.calculateAverageEvents(),
     };
 
     return report;
   }
 
   private countStateChanges(): number {
-    return this.events.filter(e =>
-      e.actions?.stateDelta && Object.keys(e.actions.stateDelta).length > 0
+    return this.events.filter(
+      (e) =>
+        e.actions?.stateDelta && Object.keys(e.actions.stateDelta).length > 0
     ).length;
   }
 
@@ -1504,16 +1586,16 @@ export class ActionLogger {
   }
 
   private countTransfers(): number {
-    return this.events.filter(e => e.actions?.transferToAgent).length;
+    return this.events.filter((e) => e.actions?.transferToAgent).length;
   }
 
   private countEscalations(): number {
-    return this.events.filter(e => e.actions?.escalate).length;
+    return this.events.filter((e) => e.actions?.escalate).length;
   }
 
   private logToAnalytics(data: any): void {
     // Send to your analytics service
-    analytics.track('agent_action', data);
+    analytics.track("agent_action", data);
   }
 }
 ```
@@ -1550,12 +1632,12 @@ const event = new Event({ actions });
 
 ```typescript
 // ❌ Don't store sensitive data in state
-context.state['user:password'] = password;
-context.state['user:creditCard'] = cardNumber;
+context.state["user:password"] = password;
+context.state["user:creditCard"] = cardNumber;
 
 // ✅ Store references or encrypted tokens
-context.state['user:hasPassword'] = true;
-context.state['user:paymentMethodId'] = tokenId;
+context.state["user:hasPassword"] = true;
+context.state["user:paymentMethodId"] = tokenId;
 ```
 
 ### Pitfall 4: Over-Using Escalation
@@ -1567,13 +1649,13 @@ if (!result) {
 }
 
 // ✅ Escalate only after exhausting options
-const retries = context.state['retries'] || 0;
+const retries = context.state["retries"] || 0;
 if (!result && retries >= MAX_RETRIES) {
   yield new Event({
     actions: {
       escalate: true,
-      stateDelta: { 'escalationReason': 'max_retries_exceeded' }
-    }
+      stateDelta: { escalationReason: "max_retries_exceeded" },
+    },
   });
 }
 ```
