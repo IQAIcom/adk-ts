@@ -54,6 +54,12 @@ const templates: Template[] = [
 		hint: "Starter that uses Near Shade Agent",
 		source: "github:IQAIcom/adk-ts/apps/starter-templates/shade-agent",
 	},
+	{
+		value: "next-js-starter",
+		label: "⚡ Next.js Starter",
+		hint: "Full-stack agent app using Next.js and Tailwind",
+		source: "github:IQAIcom/adk-ts/apps/starter-templates/next-js-starter",
+	},
 ];
 
 interface PackageManager {

@@ -25,6 +25,7 @@ This directory contains starter templates for ADK projects. These templates are 
 - `hono-server` - Hono server starter template  
 - `mcp-starter` - MCP (Model Context Protocol) starter template
 - `shade-agent` - Near Shade Agent starter template
+- `next-js-starter` - Next.js starter template
 
 ## Usage
 
