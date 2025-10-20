@@ -1,15 +1,12 @@
+// src/agent-loader/utils/error-handling-utils.ts
 import { pathToFileURL } from "node:url";
 import { Logger } from "@nestjs/common";
 import z, { ZodError } from "zod";
-
 import { EnvUtils } from "./env-utils";
 
 export class ErrorHandlingUtils {
 	constructor(private logger: Logger) {}
 
-	/**
-	 * Check if error is related to missing environment variables (Zod validation)
-	 */
 	isMissingEnvError(error: unknown): {
 		isMissing: boolean;
 		varName?: string;
@@ -59,9 +56,6 @@ export class ErrorHandlingUtils {
 		return { isMissing: false };
 	}
 
-	/**
-	 * Handles import failure from esbuild or require()
-	 */
 	async handleImportError(
 		error: unknown,
 		outFile: string,
@@ -84,7 +78,12 @@ export class ErrorHandlingUtils {
 					),
 				);
 				throw new Error(
-					`Missing required environment variable${envCheck.requiredMissing?.length && envCheck.requiredMissing.length > 1 ? "s" : ""}: ${(envCheck.requiredMissing ?? envCheck.allMissing)?.join(", ")}`,
+					`Missing required environment variable${
+						envCheck.requiredMissing?.length &&
+						envCheck.requiredMissing.length > 1
+							? "s"
+							: ""
+					}: ${(envCheck.requiredMissing ?? envCheck.allMissing)?.join(", ")}`,
 				);
 			}
 		}
@@ -103,5 +102,36 @@ export class ErrorHandlingUtils {
 				}`,
 			);
 		}
+	}
+
+	/**
+	 * Formats Zod or runtime errors into a human-readable string
+	 */
+	formatUserError(error: unknown): string {
+		if (error instanceof ZodError) {
+			const issues = error.issues.map((i) => {
+				const path = i.path?.length ? i.path.join(".") : "(root)";
+				return `• ${path}: ${i.message}`;
+			});
+			return [
+				"",
+				"❌ Zod validation failed:",
+				"",
+				...issues,
+				"",
+				"💡 Check your agent schema or configuration.",
+				"",
+			].join("\n");
+		}
+
+		if (error instanceof Error) {
+			return [
+				`❌ ${error.name}: ${error.message}`,
+				error.stack ? `\n${error.stack}` : "",
+				"",
+			].join("\n");
+		}
+
+		return `❌ Unknown error: ${String(error)}\n`;
 	}
 }

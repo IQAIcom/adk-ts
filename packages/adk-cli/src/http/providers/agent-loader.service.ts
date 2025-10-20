@@ -105,6 +105,7 @@ export class AgentLoader {
 			try {
 				mod = dynamicRequire(outFile);
 			} catch (error) {
+				// ✅ handle env-related import errors first
 				mod = await this.errorUtils.handleImportError(
 					error,
 					outFile,
@@ -118,6 +119,16 @@ export class AgentLoader {
 			return mod;
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
+
+			const envCheck = this.errorUtils.isMissingEnvError(e);
+			if (!envCheck.isMissing) {
+				if ("formatUserError" in this.errorUtils) {
+					this.logger.error(this.errorUtils.formatUserError(e));
+				} else {
+					this.logger.error(`❌ Error loading TypeScript agent: ${msg}`);
+				}
+			}
+
 			if (/Cannot find module/.test(msg)) {
 				this.logger.error(
 					`Module resolution failed while loading agent file '${filePath}'.\n> ${msg}\n` +
@@ -126,6 +137,7 @@ export class AgentLoader {
 						"Fix: add it to the agent project's package.json or run: pnpm add <missing-pkg> -F <agent-workspace>.",
 				);
 			}
+
 			throw new Error(`Failed to import TS agent via esbuild: ${msg}`);
 		}
 	}
