@@ -654,17 +654,13 @@ function processData(data: string, format: "json" | "csv" | "auto" = "auto") {
 Always validate inputs to prevent errors:
 
 ```typescript
-function transferMoney(
-  fromAccount: string,
-  toAccount: string,
-  amount: number
-) {
+function transferMoney(fromAccount: string, toAccount: string, amount: number) {
   // Validation
   if (amount <= 0) {
     return {
       status: "error",
       code: "INVALID_AMOUNT",
-      message: "Amount must be greater than zero"
+      message: "Amount must be greater than zero",
     };
   }
 
@@ -672,7 +668,7 @@ function transferMoney(
     return {
       status: "error",
       code: "SAME_ACCOUNT",
-      message: "Source and destination accounts must be different"
+      message: "Source and destination accounts must be different",
     };
   }
 
@@ -682,17 +678,9 @@ function transferMoney(
     transferId: `t-${Date.now()}`,
     amount,
     fromAccount,
-    toAccount
+    toAccount,
   };
 }
-});
-
-// Agent uses both tools in sequence
-const agent = new LlmAgent({
-  name: "orderProcessor",
-  instruction: "Process customer orders with appropriate discounts",
-  tools: [getCustomerInfo, calculateDiscount],
-});
 ```
 
 ### Return Structured Responses
