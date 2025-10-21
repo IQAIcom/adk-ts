@@ -4,11 +4,9 @@ import { pathToFileURL } from "node:url";
 import { format } from "node:util";
 import {
 	AgentBuilder,
-	Event,
 	FullMessage,
 	InMemorySessionService,
 	Session,
-	State,
 } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import type { Agent, LoadedAgent } from "../../common/types";
@@ -157,47 +155,7 @@ export class AgentManager {
 					current.lastUpdateTime > latest.lastUpdateTime ? current : latest,
 			);
 
-			// Check if the session has state, if not, initialize it
-			if (
-				!mostRecentSession.state ||
-				Object.keys(mostRecentSession.state).length === 0
-			) {
-				this.logger.log(
-					"Existing session has no state, will initialize with default state",
-				);
-
-				// Get the default/initial state from the agent if available
-				const initialState = this.getInitialStateForAgent(exportedAgent);
-
-				if (initialState) {
-					const stateUpdateEvent = new Event({
-						author: "system",
-						actions: {
-							stateDelta: initialState,
-							artifactDelta: {},
-						},
-						content: {
-							parts: [
-								{
-									text: "Initialized session with default state from agent definition.",
-								},
-							],
-						},
-					});
-
-					// This updates both the session in storage and the local `mostRecentSession` object.
-					await this.sessionService.appendEvent(
-						mostRecentSession,
-						stateUpdateEvent,
-					);
-					this.logger.log(
-						format("Updated session with initial state: %o", {
-							sessionId: mostRecentSession.id,
-							stateKeys: Object.keys(initialState),
-						}),
-					);
-				}
-			}
+			// Session exists and will be reused with its current state
 
 			this.logger.log(
 				format("Reusing existing session: %o", {
@@ -216,17 +174,17 @@ export class AgentManager {
 		// No existing sessions found, create a new one
 		this.logger.log("No existing sessions found, creating new session");
 
-		// Get initial state
-		const initialState = this.getInitialStateForAgent(exportedAgent);
-
+		// Create a fresh session without initial state
+		// Agents that need initial state should define it in their own implementation
 		const agentBuilder = AgentBuilder.create(exportedAgent.name).withAgent(
 			exportedAgent,
 		);
+
 		agentBuilder.withSessionService(this.sessionService, {
 			userId,
 			appName,
-			state: initialState,
 		});
+
 		const { session } = await agentBuilder.build();
 		this.logger.log(
 			format("New session created: %o", {
@@ -237,38 +195,6 @@ export class AgentManager {
 			}),
 		);
 		return session;
-	}
-
-	/**
-	 * Extract initial state from the agent definition
-	 * This allows agents to define their default state
-	 */
-	private getInitialStateForAgent(exportedAgent: any) {
-		const sessions = exportedAgent?.sessionService?.sessions;
-		if (!sessions) return undefined;
-
-		for (const [, userSessions] of sessions) {
-			for (const [, session] of userSessions) {
-				// session itself is a Map of actual session objects
-				for (const [, innerSession] of session) {
-					const state = innerSession?.state;
-					if (!state) continue;
-
-					const stateKeys =
-						state instanceof Map
-							? Array.from(state.keys())
-							: Object.keys(state);
-
-					if (
-						(state instanceof Map && state.size > 0) ||
-						(typeof state === "object" && stateKeys.length > 0)
-					) {
-						return state as State;
-					}
-				}
-			}
-		}
-		return undefined;
 	}
 
 	private async createRunnerWithSession(
@@ -284,11 +210,9 @@ export class AgentManager {
 			exportedAgent,
 		);
 
-		const initialState = this.getInitialStateForAgent(exportedAgent);
 		agentBuilder.withSessionService(this.sessionService, {
 			userId,
 			appName,
-			state: initialState,
 			sessionId: sessionToUse.id, // Use the selected session ID
 		});
 		const { runner } = await agentBuilder.build();
@@ -407,6 +331,18 @@ export class AgentManager {
 			);
 			throw new Error(`Failed to send message to agent: ${errorMessage}`);
 		}
+	}
+
+	/**
+	 * Get session info for all loaded agents before stopping
+	 * Used for preserving sessions during hot reload
+	 */
+	getLoadedAgentSessions(): Map<string, string> {
+		const sessions = new Map<string, string>();
+		for (const [agentPath, loadedAgent] of this.loadedAgents.entries()) {
+			sessions.set(agentPath, loadedAgent.sessionId);
+		}
+		return sessions;
 	}
 
 	stopAllAgents(): void {

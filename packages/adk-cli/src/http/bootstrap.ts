@@ -36,7 +36,7 @@ function loadGitignorePrefixes(rootDir: string): string[] {
 		for (const raw of lines) {
 			const line = raw.trim();
 			if (!line || line.startsWith("#")) continue;
-			if (/[?*\[\]]/.test(line)) continue; // skip complex glob lines
+			if (/[?*[\]]/.test(line)) continue; // skip complex glob lines
 			const normalized = line.replace(/\/+$/, "");
 			const abs = resolve(rootDir, normalized);
 			prefixes.push(abs + sep);
@@ -109,9 +109,47 @@ function setupHotReload(
 					}
 					const t = setTimeout(async () => {
 						try {
+							// Preserve session IDs before stopping agents
+							const preservedSessions = agentManager.getLoadedAgentSessions();
+							if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+								console.log(
+									`[hot-reload] Preserving ${preservedSessions.size} session(s)`,
+								);
+							}
+
 							// Clear running agents so next use reloads fresh code, then rescan
 							agentManager.stopAllAgents();
 							agentManager.scanAgents(config.agentsDir);
+
+							// Restore agents with their previous sessions
+							for (const [
+								agentPath,
+								sessionId,
+							] of preservedSessions.entries()) {
+								try {
+									await agentManager.startAgent(agentPath);
+									// Update the loaded agent to use the preserved session
+									const loadedAgent = agentManager
+										.getLoadedAgents()
+										.get(agentPath);
+									if (loadedAgent) {
+										(loadedAgent as any).sessionId = sessionId;
+										if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+											console.log(
+												`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
+											);
+										}
+									}
+								} catch (e) {
+									if (!config.quiet) {
+										console.error(
+											`[hot-reload] Failed to restore agent ${agentPath}:`,
+											e,
+										);
+									}
+								}
+							}
+
 							if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
 								console.log(
 									`[hot-reload] Reloaded agents after change in ${filename ?? p}`,
