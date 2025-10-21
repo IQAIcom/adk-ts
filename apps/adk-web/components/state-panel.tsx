@@ -1,7 +1,12 @@
 "use client";
 
+import CodeEditor from "@uiw/react-textarea-code-editor";
+import { Code2, Edit, Plus, Settings, Wand2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { StateCard } from "@/components/state-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -11,14 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-import { StateCard } from "@/components/state-card";
 import { useJsonEditor } from "@/hooks/use-json-editor";
-import { useStatePanel } from "@/hooks/use-state-pannel";
-import CodeEditor from "@uiw/react-textarea-code-editor";
-import { Code2, Edit, Plus, Settings, Wand2 } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { useStatePanel } from "@/hooks/use-state-panel";
 import type { AgentListItemDto as Agent } from "../Api";
 
 interface StatePanelProps {
@@ -53,7 +52,7 @@ export function StatePanel({
 		try {
 			await updateState(path, value);
 			toast.success("State updated successfully!");
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to update state. Please try again.");
 		}
 	};
@@ -191,7 +190,7 @@ export function StatePanel({
 											}
 											setIsDialogOpen(false);
 											jsonEditor.setError(null);
-										} catch (e) {
+										} catch (_e) {
 											toast.error(
 												"An unexpected error occurred while saving state.",
 											);
