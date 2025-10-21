@@ -148,7 +148,7 @@ export class SessionsService {
 						loadedAgent.userId,
 						s.id,
 					);
-				} catch (e) {
+				} catch {
 					fullSession = s;
 				}
 
