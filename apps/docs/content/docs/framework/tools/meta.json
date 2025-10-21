@@ -9,7 +9,6 @@
 		"third-party-tools",
 		"google-cloud-tools",
 		"openapi-tools",
-		"authentication",
-		"agentkit"
+		"authentication"
 	]
 }
