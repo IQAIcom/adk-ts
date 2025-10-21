@@ -5,11 +5,11 @@
 		"function-tools",
 		"create-tool",
 		"built-in-tools",
-		"google-cloud-tools",
 		"mcp-tools",
-		"agentkit",
-		"openapi-tools",
 		"third-party-tools",
-		"authentication"
+		"google-cloud-tools",
+		"openapi-tools",
+		"authentication",
+		"agentkit"
 	]
 }
