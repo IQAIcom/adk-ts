@@ -3,197 +3,19 @@ title: MCP Tools
 description: Model Context Protocol tools for standardized integrations
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
-Model Context Protocol (Mcp) tools provide standardized interfaces for connecting LLMs with external applications, data sources, and services. ADK TypeScript supports both consuming Mcp servers and exposing ADK tools as Mcp servers.
+Model Context Protocol (MCP) is an open standard for connecting LLMs with external systems, data sources, and services through standardized interfaces. ADK-TS lets you consume MCP servers in your agents, access tools from IQ AI's blockchain and AI services, or expose your own ADK-TS tools as MCP servers.
 
-## What is Model Context Protocol?
+## Quick Start
 
-Mcp is an open standard that standardizes how Large Language Models communicate with external systems. It acts as a universal connection mechanism that simplifies context sharing, action execution, and system interaction.
-
-### Key Components
-
-- **Data Sources**: Access to external resources and content
-- **Interactive Templates**: Dynamic prompts and conversation patterns
-- **Actionable Functions**: Tools and operations for system interaction
-- **Client-Server Architecture**: Standardized communication patterns
-
-<Callout type="info" title="Universal Standard">
-Mcp enables any LLM to work with any Mcp-compatible service, creating a universal ecosystem of AI-enabled tools and data sources.
-</Callout>
-
-## Integration Patterns
-
-ADK TypeScript supports two primary Mcp integration patterns:
-
-<Cards>
-  <Card
-    title="🔌 Mcp Client"
-    description="Use existing Mcp servers within ADK agents"
-  />
-
-  <Card
-    title="🖥️ Mcp Server"
-    description="Expose ADK tools via Mcp server for other clients"
-  />
-</Cards>
-
-## ADK as Mcp Client
-
-Connect your ADK agents to existing Mcp servers to leverage external tools and data sources.
-
-### Integration Options
-
-ADK TypeScript provides two ways to integrate with MCP servers:
-
-1. **Wrapper Functions** (Recommended) - Use dedicated functions like `McpAtp()`, `McpNearAgent()` for IQAI servers
-2. **McpToolset Class** (For Unsupported Servers) - Direct `McpToolset` usage for any MCP server
-
-### McpToolset Class
-
-The `McpToolset` class serves as the bridge between ADK agents and Mcp servers:
-
-- **Connection Management**: Establish connections to local or remote Mcp servers
-- **Tool Discovery**: Query servers for available tools and capabilities
-- **Schema Adaptation**: Convert Mcp schemas to ADK-compatible tools
-- **Call Proxying**: Forward tool calls to Mcp servers and return results
-- **Lifecycle Management**: Handle connection cleanup and resource management
-
-### Using Wrapper Functions (Recommended)
-
-For supported IQAI MCP servers, use the convenient wrapper functions:
+The fastest way to start using MCP tools is with wrapper functions for IQ AI's MCP servers:
 
 ```typescript
-import { McpAtp, AgentBuilder } from "@iqai/adk";
+import { McpAtp, LlmAgent } from "@iqai/adk";
 
-// Create ATP toolset with wrapper function
-const toolset = McpAtp({
-  env: {
-    ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
-    ATP_API_KEY: process.env.ATP_API_KEY,
-  },
-  debug: process.env.NODE_ENV === "development",
-  retryOptions: {
-    maxRetries: 2,
-    initialDelay: 200,
-  },
-});
-
-// Get available tools
-const mcpTools = await toolset.getTools();
-
-// Create agent with MCP tools using AgentBuilder
-const { runner } = await AgentBuilder.create("blockchain_agent")
-  .withModel("gemini-2.5-flash")
-  .withDescription("Agent for blockchain and DeFi operations")
-  .withTools(...mcpTools)
-  .build();
-
-// Use the agent
-const response = await runner.ask("Get ATP statistics for token 0x123...");
-
-// Clean up when done
-await toolset.close();
-```
-
-### Using McpToolset (For Unsupported Servers)
-
-When we don't have a wrapper function for a specific MCP server, use the `McpToolset` class:
-
-```typescript
-import { McpToolset, AgentBuilder, type McpConfig } from "@iqai/adk";
-
-// Configure MCP connection for unsupported server
-const mcpConfig: McpConfig = {
-  name: "Filesystem MCP Client",
-  description: "Client for filesystem operations",
-  debug: process.env.NODE_ENV === "development",
-  retryOptions: {
-    maxRetries: 3,
-    initialDelay: 200,
-  },
-  cacheConfig: {
-    enabled: true,
-  },
-  transport: {
-    mode: "stdio",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/directory"],
-    env: {
-      PATH: process.env.PATH || "",
-    },
-  },
-};
-
-// Initialize MCP toolset
-const mcpToolset = new McpToolset(mcpConfig);
-
-// Discover available tools
-const mcpTools = await mcpToolset.getTools();
-console.log(`Found ${mcpTools.length} MCP tools`);
-
-// Create agent with MCP tools using AgentBuilder
-const { runner } = await AgentBuilder.create("filesystem_agent")
-  .withModel("gemini-2.5-flash")
-  .withDescription("An agent that can perform filesystem operations")
-  .withInstruction("You can read, write, and manage files using MCP tools.")
-  .withTools(...mcpTools)
-  .build();
-
-// Use the agent
-const response = await runner.ask("List all .ts files in the src directory");
-
-// Clean up when done
-await mcpToolset.close();
-```
-
-### IQAI MCP Servers Integration
-
-IQAI provides specialized MCP servers for blockchain and AI operations:
-
-```typescript
-import { McpToolset, AgentBuilder } from "@iqai/adk";
-
-// Connect to IQAI ATP server
-const atpToolset = new McpToolset({
-  name: "ATP MCP Client",
-  description: "Client for AI Agent Tokenization Platform",
-  transport: {
-    mode: "stdio",
-    command: "pnpm",
-    args: ["dlx", "@iqai/mcp-atp"],
-    env: {
-      WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
-      ATP_API_KEY: process.env.ATP_API_KEY,
-      PATH: process.env.PATH || "",
-    },
-  },
-});
-
-// Get ATP tools
-const atpTools = await atpToolset.getTools();
-
-// Create specialized blockchain agent using AgentBuilder
-const { runner } = await AgentBuilder.create("blockchain_agent")
-  .withModel("gemini-2.5-flash")
-  .withDescription("Agent for blockchain and DeFi operations")
-  .withInstruction("You can interact with blockchain protocols, manage tokens, and access DeFi platforms.")
-  .withTools(...atpTools)
-  .build();
-
-// Example usage
-const stats = await runner.ask("Get statistics for agent token 0x123...");
-```
-
-### Multiple MCP Servers
-
-You can connect to multiple IQAI MCP servers simultaneously:
-
-```typescript
-import { McpAtp, McpFraxlend, McpNearAgent, AgentBuilder } from "@iqai/adk";
-
-// Connect to multiple servers with wrapper functions
+// Initialize ATP MCP toolset
 const atpToolset = McpAtp({
   env: {
     ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
@@ -201,12 +23,95 @@ const atpToolset = McpAtp({
   },
 });
 
-const fraxlendToolset = McpFraxlend({
+// Get ATP tools
+const tools = await atpToolset.getTools();
+
+// Create agent with MCP tools
+const agent = new LlmAgent({
+  name: "blockchain_agent",
+  model: "gemini-2.5-flash",
+  instruction:
+    "You can query blockchain data and interact with DeFi protocols.",
+  tools,
+});
+
+// Use the agent
+const result = await agent.ask("Get token statistics for contract 0x123...");
+
+// Clean up when done
+await atpToolset.close();
+```
+
+## Integration Approaches
+
+<Cards>
+  <Card
+    title="🔌 Wrapper Functions"
+    description="Use IQAI MCP servers with simple configuration"
+  />
+
+<Card
+  title="🛠️ McpToolset"
+  description="Connect to any MCP server with full control"
+/>
+
+  <Card
+    title="🤖 ADK-TS as MCP Server"
+    description="Expose ADK-TS tools via MCP protocol"
+  />
+</Cards>
+
+## Using Wrapper Functions
+
+For IQ AI MCP servers, wrapper functions provide simple configuration without verbose setup. These are pre-built adapters that handle all connection and configuration details, letting you focus on agent logic.
+
+### Available IQ AI MCP Wrappers
+
+IQ AI provides 14+ specialized MCP servers covering blockchain, DeFi, and AI operations:
+
+| Wrapper             | Purpose                                                                 | Required Env Vars                       | Module                 |
+| ------------------- | ----------------------------------------------------------------------- | --------------------------------------- | ---------------------- |
+| `McpAtp()`          | AI Agent Tokenization Platform - token stats, agent metrics, tokenomics | `ATP_WALLET_PRIVATE_KEY`, `ATP_API_KEY` | @iqai/mcp-atp          |
+| `McpAbi()`          | Smart contract ABI interactions for Ethereum-compatible blockchains     | `CONTRACT_ABI`, `CONTRACT_ADDRESS`      | @iqai/mcp-abi          |
+| `McpBamm()`         | Borrow Automated Market Maker operations on Fraxtal                     | `WALLET_PRIVATE_KEY`                    | @iqai/mcp-bamm         |
+| `McpFraxlend()`     | Fraxlend lending platform interactions                                  | `WALLET_PRIVATE_KEY`                    | @iqai/mcp-fraxlend     |
+| `McpIqWiki()`       | IQ.wiki data access and user activity management                        | None                                    | @iqai/mcp-iqwiki       |
+| `McpNearAgent()`    | NEAR blockchain with AI-driven event processing                         | `ACCOUNT_ID`, `ACCOUNT_KEY`             | @iqai/mcp-near-agent   |
+| `McpNearIntents()`  | NEAR Protocol intent swaps functionality                                | `ACCOUNT_ID`, `ACCOUNT_KEY`             | @iqai/mcp-near-intents |
+| `McpOdos()`         | DEX aggregation through ODOS protocol                                   | `WALLET_PRIVATE_KEY`                    | @iqai/mcp-odos         |
+| `McpTelegram()`     | Telegram bot and channel interactions                                   | `TELEGRAM_BOT_TOKEN`                    | @iqai/mcp-telegram     |
+| `McpDiscord()`      | Discord bot and server management                                       | `DISCORD_TOKEN`                         | @iqai/mcp-discord      |
+| `McpUpbit()`        | Upbit cryptocurrency exchange integration                               | `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`  | @iqai/mcp-upbit        |
+| `McpCoinGecko()`    | Free crypto market data (public endpoint)                               | None                                    | Remote SSE             |
+| `McpCoinGeckoPro()` | Premium crypto market data with higher limits                           | `COINGECKO_PRO_API_KEY`                 | Remote SSE             |
+
+### Third-Party MCP Servers
+
+| Wrapper           | Purpose                                  | Module                                  |
+| ----------------- | ---------------------------------------- | --------------------------------------- |
+| `McpFilesystem()` | File system operations (read/write/list) | @modelcontextprotocol/server-filesystem |
+| `McpMemory()`     | Memory and note-taking capabilities      | @modelcontextprotocol/server-memory     |
+| `McpGeneric()`    | Any npm-published MCP server             | Custom package                          |
+
+### Wrapper Configuration Example
+
+```typescript
+import { McpAtp, McpNearAgent, McpCoinGecko, LlmAgent } from "@iqai/adk";
+
+// IQ AI wrapper with blockchain credentials
+const atpToolset = McpAtp({
   env: {
-    WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    ATP_API_KEY: process.env.ATP_API_KEY,
+  },
+  debug: true,
+  retryOptions: {
+    maxRetries: 3,
+    initialDelay: 200,
   },
 });
 
+// NEAR blockchain wrapper
 const nearToolset = McpNearAgent({
   env: {
     ACCOUNT_ID: process.env.NEAR_ACCOUNT_ID,
@@ -215,355 +120,707 @@ const nearToolset = McpNearAgent({
   },
 });
 
-// Combine tools from multiple servers
-const atpTools = await atpToolset.getTools();
-const fraxlendTools = await fraxlendToolset.getTools();
-const nearTools = await nearToolset.getTools();
-const allTools = [...atpTools, ...fraxlendTools, ...nearTools];
+// Free crypto data - no auth needed
+const cryptoToolset = McpCoinGecko();
 
-// Create agent with combined tools
-const { runner } = await AgentBuilder.create("multi_mcp_assistant")
-  .withModel("gemini-2.5-flash")
-  .withDescription("An assistant with multiple MCP server capabilities")
-  .withTools(...allTools)
-  .build();
+// Get all tools
+const [atpTools, nearTools, cryptoTools] = await Promise.all([
+  atpToolset.getTools(),
+  nearToolset.getTools(),
+  cryptoToolset.getTools(),
+]);
+
+// Create agent with multiple wrapper tools
+const agent = new LlmAgent({
+  name: "defi_assistant",
+  model: "gemini-2.5-flash",
+  instruction: `You have access to multiple blockchain and market data sources:
+               - ATP tools for agent tokenomics and statistics
+               - NEAR Protocol tools for blockchain operations
+               - CoinGecko for real-time crypto market data
+               Use these tools to provide comprehensive DeFi insights.`,
+  tools: [...atpTools, ...nearTools, ...cryptoTools],
+});
+
+// Use the agent
+const result = await agent.ask(
+  "What's the current ATP token price and NEAR protocol stats?"
+);
+
+// Clean up when done
+await Promise.all([
+  atpToolset.close(),
+  nearToolset.close(),
+  cryptoToolset.close(),
+]);
 ```
 
-### Mixed Approach (Wrappers + McpToolset)
+## Using McpToolset for Custom Servers
 
-You can also combine wrapper functions with `McpToolset` for unsupported servers:
+When you need to connect to MCP servers not covered by wrapper functions (community servers, custom servers, or remote endpoints), use the `McpToolset` class directly. This gives you full control over connection configuration, tool discovery, and filtering.
+
+### How McpToolset Works
+
+McpToolset is the core integration layer that:
+
+1. **Establishes Connection**: Connects to your MCP server via stdio (local process) or SSE (remote HTTP)
+2. **Discovers Tools**: Queries the server for available tools and their schemas
+3. **Adapts Schemas**: Converts MCP tool definitions to ADK-compatible `BaseTool` instances
+4. **Proxies Calls**: Forwards your agent's tool calls to the MCP server and returns responses
+5. **Manages Lifecycle**: Handles graceful connection shutdown and resource cleanup
+
+### Connection Types
+
+McpToolset supports two connection modes:
+
+| Mode      | Use Case                               | Configuration                     |
+| --------- | -------------------------------------- | --------------------------------- |
+| **Stdio** | Local MCP servers running as processes | `mode: "stdio"` with command/args |
+| **SSE**   | Remote MCP servers over HTTP           | `mode: "sse"` with serverUrl      |
+
+### McpConfig Parameters
+
+| Parameter                   | Type             | Required | Description                                      |
+| --------------------------- | ---------------- | -------- | ------------------------------------------------ |
+| `name`                      | string           | Yes      | Display name for the MCP client                  |
+| `description`               | string           | Yes      | Description of the client's purpose              |
+| `transport`                 | McpTransportType | Yes      | Connection configuration (stdio or SSE)          |
+| `timeout`                   | number           | No       | Request timeout in milliseconds (default: 30000) |
+| `retryOptions.maxRetries`   | number           | No       | Max retry attempts (default: 3)                  |
+| `retryOptions.initialDelay` | number           | No       | Initial retry delay in ms (default: 200)         |
+| `retryOptions.maxDelay`     | number           | No       | Maximum delay between retries in ms              |
+| `cacheConfig.enabled`       | boolean          | No       | Cache tool definitions (default: true)           |
+| `cacheConfig.maxAge`        | number           | No       | Max cache age in milliseconds                    |
+| `cacheConfig.maxSize`       | number           | No       | Max number of tools to cache                     |
+| `debug`                     | boolean          | No       | Enable debug logging                             |
+| `samplingHandler`           | SamplingHandler  | No       | Handle MCP sampling requests                     |
+
+### Stdio Connection Example (Local MCP Server)
+
+Connect to file system operations locally:
 
 ```typescript
-import { McpAtp, McpToolset, AgentBuilder } from "@iqai/adk";
+import { McpToolset, LlmAgent, type McpConfig } from "@iqai/adk";
 
-// Use wrapper for supported server
-const atpToolset = McpAtp({
+// Configure for local filesystem MCP server
+const mcpConfig: McpConfig = {
+  name: "Filesystem MCP",
+  description: "Local file system operations",
+  debug: true,
+  timeout: 5000,
+  retryOptions: {
+    maxRetries: 3,
+    initialDelay: 200,
+  },
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: [
+      "-y",
+      "@modelcontextprotocol/server-filesystem",
+      "/home/user/documents", // Absolute path to allowed folder
+    ],
+    env: {
+      PATH: process.env.PATH || "",
+      DEBUG: "1", // Enable MCP server debug logging
+    },
+  },
+};
+
+// Initialize toolset
+const toolset = new McpToolset(mcpConfig);
+const tools = await toolset.getTools();
+
+console.log(`Discovered ${tools.length} tools from filesystem server`);
+tools.forEach((tool) => console.log(`  - ${tool.name}: ${tool.description}`));
+
+// Create agent with filesystem tools
+const agent = new LlmAgent({
+  name: "file_agent",
+  model: "gemini-2.5-flash",
+  instruction: `You can manage files in the documents folder. Available operations:
+               - Read and write text files
+               - List directory contents
+               - Search for specific files
+               
+               Always ask the user before modifying files.`,
+  tools,
+});
+
+// Use the agent
+const result = await agent.ask(
+  "List all TypeScript files in the src directory"
+);
+
+// Always cleanup
+await toolset.close();
+```
+
+### SSE Connection Example (Remote MCP Server)
+
+Connect to a remote MCP server via HTTP:
+
+```typescript
+import { McpToolset, LlmAgent, type McpConfig } from "@iqai/adk";
+
+const remoteConfig: McpConfig = {
+  name: "Remote Research Server",
+  description: "Remote MCP server with research tools",
+  timeout: 10000,
+  retryOptions: {
+    maxRetries: 5,
+    initialDelay: 500,
+  },
+  transport: {
+    mode: "sse",
+    serverUrl: "https://mcp-research-api.example.com/v1/mcp",
+    headers: {
+      Authorization: `Bearer ${process.env.MCP_AUTH_TOKEN}`,
+      "User-Agent": "ADK-MCP-Client/1.0",
+    },
+  },
+};
+
+const toolset = new McpToolset(remoteConfig);
+const tools = await toolset.getTools();
+
+const agent = new LlmAgent({
+  name: "research_agent",
+  model: "gemini-2.5-flash",
+  tools,
+});
+
+const result = await agent.ask(
+  "Search for the latest research papers on AI safety"
+);
+await toolset.close();
+```
+
+### Advanced Example: Multiple Stdio Servers
+
+Combine tools from multiple local MCP servers:
+
+```typescript
+import { McpToolset, LlmAgent } from "@iqai/adk";
+
+// Server 1: Filesystem operations
+const fsToolset = new McpToolset({
+  name: "Filesystem",
+  description: "File operations",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/data"],
+    env: { PATH: process.env.PATH || "" },
+  },
+  retryOptions: { maxRetries: 2, initialDelay: 200 },
+});
+
+// Server 2: Git operations
+const gitToolset = new McpToolset({
+  name: "Git",
+  description: "Git repository operations",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-git", "/repo"],
+    env: { PATH: process.env.PATH || "" },
+  },
+  retryOptions: { maxRetries: 2, initialDelay: 200 },
+});
+
+try {
+  // Get tools from both servers
+  const [fsTools, gitTools] = await Promise.all([
+    fsToolset.getTools(),
+    gitToolset.getTools(),
+  ]);
+
+  // Create agent with combined tools
+  const agent = new LlmAgent({
+    name: "repo_manager",
+    model: "gemini-2.5-flash",
+    instruction: `You can manage both files and git repositories.
+                 Use filesystem tools to read/write files.
+                 Use git tools to version control changes.`,
+    tools: [...fsTools, ...gitTools],
+  });
+
+  const result = await agent.ask(
+    "Read the main README file and create a git commit"
+  );
+} finally {
+  // Always cleanup both connections
+  await Promise.all([fsToolset.close(), gitToolset.close()]);
+}
+```
+
+## McpToolset vs Wrapper Functions
+
+**Why choose one over the other?**
+
+Wrapper functions abstract away boilerplate configuration, making code cleaner and shorter. McpToolset gives you direct control over every connection detail. Here's when to use each:
+
+**Use Wrapper Functions when:**
+
+- Connecting to IQ AI's pre-built blockchain/AI services (ATP, NEAR, Fraxlend, etc.)
+- You want automatic credential handling and connection management
+- Configuration is simple (mostly environment variables)
+- You need production-tested, optimized integrations
+
+**Use McpToolset when:**
+
+- Connecting to community MCP servers not in the wrapper list
+- You need fine-grained control over connection parameters (timeouts, retries, caching)
+- Building custom tool filtering or schema adaptation
+- Working with remote MCP endpoints requiring custom headers
+- Creating your own MCP server integrations
+
+**Comparison Example:**
+
+```typescript
+// ❌ McpToolset - Verbose for IQ AI servers (unnecessary complexity)
+const mcpConfig: McpConfig = {
+  name: "ATP MCP Client",
+  description: "AI Agent Tokenization Platform",
+  timeout: 30000,
+  retryOptions: { maxRetries: 2, initialDelay: 200 },
+  cacheConfig: { enabled: true },
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@iqai/mcp-atp"],
+    env: {
+      ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+      ATP_API_KEY: process.env.ATP_API_KEY,
+      PATH: process.env.PATH,
+    },
+  },
+};
+const toolset = new McpToolset(mcpConfig); // 15 lines!
+
+// ✅ Wrapper Function - Clean and simple
+const toolset = McpAtp({
+  env: {
+    ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    ATP_API_KEY: process.env.ATP_API_KEY,
+  },
+}); // 7 lines!
+```
+
+## Connection Types Overview
+
+Both wrapper functions and McpToolset use these connection types:
+
+### Stdio Transport (Local Processes)
+
+Perfect for:
+
+- Development and testing
+- Local MCP servers in the same environment
+- Tools bundled as npm/Python packages
+
+Example community servers:
+
+- `@modelcontextprotocol/server-filesystem` - File operations
+- `@modelcontextprotocol/server-memory` - Memory/notes
+- `@modelcontextprotocol/server-postgres` - Database queries
+
+```typescript
+transport: {
+  mode: "stdio",
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"],
+  env: {
+    PATH: process.env.PATH || "",
+    // Additional env vars your server needs
+  },
+}
+```
+
+### SSE Transport (Remote Servers)
+
+Perfect for:
+
+- Production deployments
+- Remote MCP services
+- Load-balanced or cloud-hosted servers
+
+Example remote servers:
+
+- CoinGecko MCP API: `https://mcp.api.coingecko.com/mcp`
+- Custom API endpoints with SSE support
+
+```typescript
+transport: {
+  mode: "sse",
+  serverUrl: "https://api.example.com/mcp",
+  headers: {
+    "Authorization": `Bearer ${process.env.MCP_TOKEN}`,
+    "X-Client-ID": "adk-agent",
+  },
+}
+```
+
+## ADK-TS as MCP Server
+
+Transform your ADK-TS tools into MCP-compatible services that other applications and clients can consume. This enables you to share agent capabilities across your organization and integrate with MCP-supporting tools and platforms.
+
+### Why Expose ADK-TS as MCP?
+
+- **Interoperability**: Make your ADK-TS tools available to any MCP client (not just ADK-TS agents)
+- **Code Reuse**: Share the same tool implementations across different applications
+- **Ecosystem Integration**: Connect with other tools and platforms using the MCP standard
+- **Distributed Architecture**: Run agent tools separately from consuming applications
+
+### Basic MCP Server Example
+
+```typescript
+import { createMcpServer } from "@iqai/adk";
+
+// Define your custom ADK-TS tools
+class CustomAnalysisTool {
+  name = "analyze_document";
+  description = "Analyzes a document and extracts key insights";
+
+  async execute(args: { content: string }) {
+    // Your analysis logic
+    return {
+      summary: "Key findings...",
+      topics: ["topic1", "topic2"],
+      sentiment: "positive",
+    };
+  }
+}
+
+// Create MCP server from ADK-TS tools
+const mcpServer = createMcpServer({
+  name: "ADK-TS Analysis Server",
+  description: "Exposes ADK-TS analysis tools via MCP protocol",
+  tools: [new CustomAnalysisTool()],
+});
+
+// Start server with stdio transport (local process communication)
+await mcpServer.start({
+  transport: {
+    mode: "stdio",
+  },
+});
+```
+
+### Production MCP Server Pattern
+
+For production deployments, use SSE (Server-Sent Events) for better scalability:
+
+```typescript
+import { createMcpServer } from "@iqai/adk";
+
+const mcpServer = createMcpServer({
+  name: "Production Tool Server",
+  description: "Production MCP server exposing ADK-TS tools",
+  tools: [new DocumentAnalyzer(), new DataProcessor(), new ReportGenerator()],
+});
+
+// Start with SSE for production (HTTP-based, scalable)
+await mcpServer.start({
+  transport: {
+    mode: "sse",
+    port: 8080,
+    host: "0.0.0.0",
+  },
+});
+
+// Now other applications can connect to:
+// https://your-domain.com:8080/mcp
+```
+
+### Using Your MCP Server in an ADK-TS Agent
+
+Once your MCP server is running, you can consume it in another ADK-TS agent:
+
+```typescript
+import { McpToolset, LlmAgent } from "@iqai/adk";
+
+// Connect to your MCP server
+const localServerTools = new McpToolset({
+  name: "Local Analysis Server",
+  description: "Connects to local MCP server",
+  transport: {
+    mode: "stdio",
+    command: "node",
+    args: ["./my-mcp-server.js"],
+  },
+});
+
+const tools = await localServerTools.getTools();
+
+// Use in your agent
+const agent = new LlmAgent({
+  name: "analysis_agent",
+  model: "gemini-2.5-flash",
+  instruction: "Use the analysis tools to process and understand documents.",
+  tools,
+});
+
+const result = await agent.ask("Analyze this document and provide insights");
+```
+
+## Best Practices
+
+<Callout type="warn" title="Resource Management">
+  Always close MCP toolsets and connections when done to prevent memory leaks
+  and zombie processes.
+</Callout>
+
+### 1. Resource Cleanup
+
+Properly manage the lifecycle of MCP connections to prevent resource leaks. Always use try/finally blocks to ensure cleanup happens regardless of success or failure.
+
+**Code Example:**
+
+```typescript
+import { McpToolset, LlmAgent } from "@iqai/adk";
+
+const toolset = McpAtp({
   env: {
     ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
     ATP_API_KEY: process.env.ATP_API_KEY,
   },
 });
 
-// Use McpToolset for unsupported server
-const customToolset = new McpToolset({
-  name: "Custom Client",
-  transport: {
-    mode: "stdio",
-    command: "pnpm",
-    args: ["dlx", "@custom/mcp-server"],
-    env: {
-      CUSTOM_API_KEY: process.env.CUSTOM_API_KEY,
-    },
-  },
-});
-
-// Combine tools from both approaches
-const atpTools = await atpToolset.getTools();
-const customTools = await customToolset.getTools();
-const allTools = [...atpTools, ...customTools];
-
-// Create agent with combined tools
-const { runner } = await AgentBuilder.create("mixed_mcp_assistant")
-  .withModel("gemini-2.5-flash")
-  .withDescription("An assistant with mixed MCP server capabilities")
-  .withTools(...allTools)
-  .build();
-```
-
-### Resource Cleanup
-
-Always clean up MCP resources when done:
-
-```typescript
 try {
-  // Use your agent and tools
-  const response = await runner.ask("Get ATP statistics for contract 0x123...");
+  const tools = await toolset.getTools();
+
+  const agent = new LlmAgent({
+    name: "assistant",
+    model: "gemini-2.5-flash",
+    tools,
+  });
+
+  const result = await agent.ask("Get token statistics");
+  console.log(result);
+} catch (error) {
+  console.error("Agent execution failed:", error);
+  // Handle error appropriately
 } finally {
-  // Clean up resources
+  // Always cleanup, even if errors occur
   await toolset.close();
 }
 ```
 
-## Integration with ADK TypeScript
+### 2. Error Handling and Resilience
 
-All IQAI MCP servers are designed to work seamlessly with:
-- **Wrapper functions** like `McpAtp()`, `McpNearAgent()`, etc. for supported servers
-- **`McpToolset` class** for connecting to any MCP server when no wrapper is available
+Handle different MCP error types gracefully and implement recovery strategies. Check error types to provide appropriate feedback and recovery actions.
 
-Both approaches provide:
-
-- **Automatic tool discovery** and registration
-- **Type-safe** tool usage
-- **Error handling** and retry logic
-- **Resource management** and cleanup
-
-## Connection Types
-
-<Cards>
-  <Card
-    title="🔧 Stdio Connection"
-    description="Connect to local MCP servers via standard input/output"
-  />
-
-  <Card
-    title="🌐 SSE Connection"
-    description="Connect to remote MCP servers via Server-Sent Events"
-  />
-</Cards>
-
-### Stdio Connection Example
-
-Most MCP servers use stdio transport for local connections:
+**Code Example:**
 
 ```typescript
-const mcpConfig: McpConfig = {
-  name: "Local MCP Server",
-  transport: {
-    mode: "stdio",
-    command: "node", // or "python", "pnpm", etc.
-    args: ["path/to/server.js"],
-    env: {
-      // Server-specific environment variables
-      API_KEY: process.env.API_KEY,
-      PATH: process.env.PATH || "",
-    },
-  },
-};
-```
+import { McpToolset, McpError, McpErrorType } from "@iqai/adk";
 
-### SSE Connection Example
-
-For remote MCP servers accessible via HTTP:
-
-```typescript
-const mcpConfig: McpConfig = {
-  name: "Remote MCP Server",
-  transport: {
-    mode: "sse",
-    url: "https://api.example.com/mcp",
-    headers: {
-      Authorization: `Bearer ${process.env.API_TOKEN}`,
-    },
-  },
-};
-```
-
-### Common MCP Servers
-
-Popular MCP servers you can integrate with:
-
-- **Filesystem Server**: File operations and management
-- **Database Server**: SQL database queries and operations
-- **Web Search Server**: Internet search capabilities
-- **Git Server**: Version control operations
-- **API Servers**: Various third-party service integrations
-
-### Integration Process
-
-1. **Server Setup**: Install and configure the MCP server
-2. **Connection Configuration**: Define connection parameters (stdio or SSE)
-3. **Toolset Creation**: Initialize toolset using wrapper functions or McpToolset
-4. **Tool Registration**: Add MCP tools to your agent's tool list using AgentBuilder
-5. **Agent Execution**: Use tools automatically based on agent logic via runner
-6. **Cleanup Management**: Properly close connections and clean up resources
-
-### Error Handling
-
-```typescript
-import { McpError } from "@iqai/adk";
+const toolset = new McpToolset(mcpConfig);
 
 try {
-  const toolset = new McpToolset(mcpConfig);
   const tools = await toolset.getTools();
-  // Use tools...
+  // Use tools with your agent...
 } catch (error) {
   if (error instanceof McpError) {
-    console.error(`MCP Error (${error.type}): ${error.message}`);
-    if (error.originalError) {
-      console.error("Original error:", error.originalError);
+    switch (error.type) {
+      case McpErrorType.CONNECTION_ERROR:
+        console.error("Cannot connect to MCP server - is it running?");
+        console.error("Details:", error.message);
+        // Implement fallback: use cached tools or skip MCP integration
+        break;
+
+      case McpErrorType.TIMEOUT_ERROR:
+        console.error("MCP server request timed out");
+        console.error("Consider increasing timeout in McpConfig");
+        // Retry with longer timeout or use circuit breaker
+        break;
+
+      case McpErrorType.TOOL_EXECUTION_ERROR:
+        console.error("Tool execution failed:", error.originalError?.message);
+        // Log for monitoring, notify user
+        break;
+
+      case McpErrorType.INVALID_SCHEMA_ERROR:
+        console.error("Invalid MCP tool schema - incompatible version?");
+        // Disable tool or request update
+        break;
+
+      default:
+        console.error("Unexpected MCP error:", error.message);
     }
   } else {
-    console.error("Unexpected error:", error);
+    console.error("Non-MCP error:", error);
   }
 } finally {
-  await toolset?.close();
+  await toolset.close();
 }
 ```
 
-## ADK as MCP Server
+### 3. Tool Filtering and Selection
 
-Expose your ADK tools and agents as MCP servers for consumption by other MCP clients.
+Load only the tools you need from an MCP server. This improves performance, reduces confusion, and can be used for security by restricting available operations.
 
-### Server Architecture
+**Code Example:**
 
-Transform ADK components into MCP-compatible services:
+```typescript
+import { McpToolset } from "@iqai/adk";
 
-- **Tool Exposure**: Make custom tools available via MCP protocol
-- **Agent Services**: Expose agent capabilities as MCP functions
-- **Resource Sharing**: Provide access to data and content through MCP
-- **Standard Compliance**: Follow MCP specifications for compatibility
+// Filter by specific tool names (whitelist approach)
+const toolset = new McpToolset(mcpConfig, ["read_file", "list_directory"]);
 
-### Benefits
+// Or use a function for dynamic filtering (blacklist approach)
+const restrictedToolset = new McpToolset(mcpConfig, (tool) => {
+  // Only include read operations, exclude write/delete for safety
+  return !tool.name.includes("write") && !tool.name.includes("delete");
+});
 
-- **Universal Access**: Make tools available to any MCP client
-- **Ecosystem Integration**: Join the broader MCP ecosystem
-- **Reusability**: Share functionality across different applications
-- **Standardization**: Use established protocols for tool sharing
+const tools = await toolset.getTools();
+console.log(`Loaded ${tools.length} tools from MCP server`);
+```
 
-### Implementation Considerations
+### 4. Development vs Production Configuration
 
-- **Protocol Compliance**: Ensure full MCP specification compliance
-- **Security**: Implement proper authentication and authorization
-- **Performance**: Optimize for network communication overhead
-- **Documentation**: Provide clear tool descriptions and usage patterns
+Use different connection strategies for development and production environments. Development prioritizes debugging and simplicity, while production prioritizes reliability and scalability.
 
-## Connection Management
+**Development Configuration:**
 
-### Local Connections (Stdio)
+```typescript
+import { McpToolset, type McpConfig } from "@iqai/adk";
 
-For local MCP servers running as separate processes:
+const devConfig: McpConfig = {
+  name: "Dev Server",
+  description: "Development MCP server",
+  debug: true, // Enable debug logging to see all requests/responses
+  timeout: 10000, // 10 seconds - generous for development
+  retryOptions: {
+    maxRetries: 2,
+    initialDelay: 200,
+  },
+  transport: {
+    mode: "stdio", // Use local process for simplicity
+    command: "npm",
+    args: ["run", "mcp:dev"],
+    env: { DEBUG: "true" }, // Pass debug flag to server
+  },
+};
 
-- **Process Management**: Handle server process lifecycle
-- **Communication**: Use stdin/stdout for bidirectional communication
-- **Error Handling**: Manage process failures and restarts
-- **Resource Cleanup**: Properly terminate server processes
+const devToolset = new McpToolset(devConfig);
+const tools = await devToolset.getTools();
+```
 
-### Remote Connections (SSE)
+**Production Configuration:**
 
-For remote MCP servers accessed over network:
+```typescript
+import { McpToolset, type McpConfig } from "@iqai/adk";
 
-- **Network Communication**: Handle HTTP/SSE connections
-- **Authentication**: Manage API keys and credentials
-- **Retry Logic**: Implement connection recovery and retries
-- **Load Balancing**: Distribute requests across multiple servers
+const prodConfig: McpConfig = {
+  name: "Production Server",
+  description: "Production MCP server",
+  debug: false, // Disable debug logging for performance
+  timeout: 30000, // 30 seconds - longer for production workloads
+  retryOptions: {
+    maxRetries: 5, // More retries for resilience
+    initialDelay: 500,
+    maxDelay: 5000, // Cap retry delay to prevent long waits
+  },
+  cacheConfig: {
+    enabled: true, // Cache tool definitions
+    maxAge: 3600000, // Cache for 1 hour
+  },
+  transport: {
+    mode: "sse", // Use HTTP for scalability
+    serverUrl: "https://mcp.example.com/api",
+    headers: {
+      Authorization: `Bearer ${process.env.MCP_TOKEN}`,
+      "User-Agent": "ADK-Agent/1.0",
+    },
+  },
+};
 
-## Tool Discovery and Adaptation
+const prodToolset = new McpToolset(prodConfig);
+const tools = await prodToolset.getTools();
+```
 
-### Discovery Process
+### 5. Tool Usage Best Practices
 
-1. **Connection Establishment**: Connect to MCP server
-2. **Capability Query**: Request available tools and resources
-3. **Schema Retrieval**: Get tool definitions and parameters
-4. **Validation**: Verify tool compatibility and requirements
+Ensure your agent has clear instructions about available tools, test behavior with different prompts, and monitor execution performance.
 
-### Schema Adaptation
+**Code Example:**
 
-MCP tool schemas are automatically converted to ADK-compatible formats:
+```typescript
+import { LlmAgent } from "@iqai/adk";
 
-- **Parameter Mapping**: Convert MCP parameters to TypeScript types
-- **Return Type Handling**: Adapt MCP responses to ADK expectations
-- **Error Translation**: Map MCP errors to ADK error patterns
-- **Documentation Integration**: Include MCP descriptions in tool metadata
+const agent = new LlmAgent({
+  name: "smart_assistant",
+  model: "gemini-2.5-flash",
+  instruction: `You have access to blockchain tools from ATP, NEAR, and market data from CoinGecko.
+               
+               Always use the appropriate tool for each query:
+               - ATP tools: for token statistics and agent metrics
+               - NEAR tools: for blockchain operations and state queries
+               - CoinGecko: for market prices, volume, and trends
+               
+               Before using a tool, check if you understand the parameters.
+               Always verify tool responses make sense before presenting to the user.
+               If a tool fails, explain to the user and suggest alternatives.`,
+  tools,
+});
 
-## Security and Authentication
+// Test with various prompts to ensure correct tool usage
+const testPrompts = [
+  "What's the current ATP token price?",
+  "List recent NEAR transactions",
+  "Compare Bitcoin and Ethereum market caps",
+];
 
-### Client Security
+for (const prompt of testPrompts) {
+  console.log(`Testing: ${prompt}`);
+  const result = await agent.ask(prompt);
+  console.log(`Result: ${result}\n`);
+}
+```
 
-When consuming MCP servers:
+## Troubleshooting
 
-- **Server Validation**: Verify server identity and trustworthiness
-- **Communication Security**: Use secure connection methods
-- **Access Controls**: Implement proper permission checks
-- **Data Privacy**: Protect sensitive data in transit
-
-### Server Security
-
-When exposing MCP servers:
-
-- **Client Authentication**: Verify client identity and permissions
-- **API Rate Limiting**: Prevent abuse and overuse
-- **Data Sanitization**: Validate and sanitize all inputs
-- **Audit Logging**: Track access and usage patterns
-
-## Performance Considerations
-
-### Optimization Strategies
-
-- **Connection Pooling**: Reuse connections for multiple operations
-- **Caching**: Cache tool definitions and frequent responses
-- **Async Operations**: Use non-blocking communication patterns
-- **Batch Processing**: Group multiple operations when possible
-
-### Monitoring and Debugging
-
-- **Connection Health**: Monitor server connectivity and responsiveness
-- **Performance Metrics**: Track latency and throughput
-- **Error Rates**: Monitor failure rates and error patterns
-- **Debug Logging**: Detailed logging for troubleshooting
-
-## Best Practices
-
-### Development
-
-<Callout type="warn" title="Connection Management">
-Always properly close MCP connections and clean up resources to prevent memory leaks and zombie processes.
-</Callout>
-
-- **Error Handling**: Implement robust error handling and recovery
-- **Resource Management**: Properly manage connections and cleanup
-- **Testing**: Test with various MCP servers and scenarios
-- **Documentation**: Document tool usage and requirements clearly
-
-### Production Deployment
-
-- **Health Checks**: Monitor MCP server availability
-- **Failover Strategies**: Implement backup servers and fallback options
-- **Scalability**: Design for horizontal scaling and load distribution
-- **Monitoring**: Comprehensive logging and metrics collection
-
-### Tool Design
-
-- **Clear Interfaces**: Design intuitive tool parameters and responses
-- **Comprehensive Documentation**: Provide detailed usage instructions
-- **Error Messages**: Return actionable error information
-- **Version Management**: Handle API versioning and compatibility
-
-## Common Use Cases
-
-### Data Integration
-
-- **Database Access**: Query databases through MCP database servers
-- **File Operations**: Manage files using filesystem MCP servers
-- **API Access**: Connect to web services via MCP API gateways
-- **Content Management**: Access CMS systems through MCP interfaces
-
-### Workflow Automation
-
-- **Process Orchestration**: Chain MCP tools for complex workflows
-- **Event Handling**: Respond to external events via MCP servers
-- **Data Processing**: Transform data using specialized MCP tools
-- **Integration Patterns**: Connect multiple systems through MCP
+| Issue                    | Cause                                            | Solution                                                                  |
+| ------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
+| Connection timeout       | MCP server not running or slow startup           | Check server is running, increase `timeout` in McpConfig                  |
+| Tool not available       | Tool name doesn't match or filtering excluded it | Verify tool name with `getTools()`, check `tool_filter` parameter         |
+| "npx: command not found" | Node.js/npm not installed or not in PATH         | Install Node.js, ensure npm/npx in your $PATH, set env.PATH               |
+| Memory leaks             | Connection not closed properly                   | Always use try/finally block, call `toolset.close()`                      |
+| Parameter mismatch       | Tool args don't match schema                     | Check McpConfig transport matches server requirements, review tool schema |
+| Authentication fails     | Wrong credentials or missing env vars            | Verify API keys, check environment variable names match exactly           |
 
 ## Related Topics
 
 <Cards>
   <Card
-    title="🔧 Function Tools"
-    description="Create custom tools for MCP integration"
-    href="/docs/framework/tools/function-tools"
-  />
-
-  <Card
-    title="🔐 Authentication"
-    description="Secure MCP connections and tool access"
-    href="/docs/framework/tools/authentication"
-  />
-
-  <Card
-    title="🌐 Third-Party Tools"
-    description="Integrate with external tool ecosystems"
-    href="/docs/framework/tools/third-party-tools"
-  />
-
-  <Card
-    title="🤖 Agents"
-    description="Learn how agents coordinate MCP tools"
-    href="/docs/framework/agents"
-  />
-
-  <Card
-    title="🖥️ MCP Servers"
-    description="Explore IQAI-built MCP servers"
+    title="IQ AI MCP Servers"
+    description="Explore IQ AI's suite of MCP server offerings"
     href="/docs/mcp-servers"
+  />
+
+{" "}
+
+<Card
+  title="🔧 Function Tools"
+  description="Create custom ADK-TS tools for MCP integration"
+  href="/docs/framework/tools/function-tools"
+/>
+
+{" "}
+
+<Card
+  title="🔐 Authentication"
+  description="Secure MCP connections with proper credential handling"
+  href="/docs/framework/tools/authentication"
+/>
+
+  <Card
+    title="📚 MCP"
+    description="Official Model Context Protocol documentation"
+    href="https://modelcontextprotocol.io/"
   />
 </Cards>
