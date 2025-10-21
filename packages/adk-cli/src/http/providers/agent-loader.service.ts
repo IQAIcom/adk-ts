@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
 	readFileSync,
 	rmSync,
+	statSync,
 	unlinkSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -239,8 +241,35 @@ export class AgentLoader {
 			if (!existsSync(cacheDir)) {
 				mkdirSync(cacheDir, { recursive: true });
 			}
-			const outFile = normalize(join(cacheDir, `agent-${Date.now()}.cjs`));
+
+			// Deterministic cache file path per source file to avoid unbounded cache growth
+			const cacheKey = createHash("sha1")
+				.update(this.normalizePath(normalizedFilePath))
+				.digest("hex");
+			const outFile = normalize(join(cacheDir, `agent-${cacheKey}.cjs`));
 			this.trackCacheFile(outFile, projectRoot);
+
+			// Decide if we need to rebuild: if cache miss or source/tsconfig is newer than built file
+			let needRebuild = true;
+			if (existsSync(outFile)) {
+				try {
+					const outStat = statSync(outFile);
+					const srcStat = statSync(normalizedFilePath);
+					const tsconfigPath = join(projectRoot, "tsconfig.json");
+					const tsconfigMtime = existsSync(tsconfigPath)
+						? statSync(tsconfigPath).mtimeMs
+						: 0;
+					needRebuild = !(
+						outStat.mtimeMs >= srcStat.mtimeMs &&
+						outStat.mtimeMs >= tsconfigMtime
+					);
+					if (!needRebuild && !this.quiet) {
+						this.logger.debug(`Reusing cached build: ${outFile}`);
+					}
+				} catch {
+					needRebuild = true;
+				}
+			}
 
 			const ALWAYS_EXTERNAL_SCOPES = ["@iqai/"];
 			const alwaysExternal = ["@iqai/adk"];
@@ -280,22 +309,35 @@ export class AgentLoader {
 			const pathMappingPlugin = this.createPathMappingPlugin(projectRoot);
 			const plugins = [pathMappingPlugin, plugin];
 
-			await build({
-				entryPoints: [this.normalizePath(normalizedFilePath)],
-				outfile: outFile,
-				bundle: true,
-				format: "cjs",
-				platform: "node",
-				target: ["node22"],
-				sourcemap: false,
-				logLevel: "silent",
-				plugins,
-				absWorkingDir: projectRoot,
-				external: [...alwaysExternal],
-				...(existsSync(tsconfigPath) ? { tsconfig: tsconfigPath } : {}),
-			});
+			if (needRebuild) {
+				await build({
+					entryPoints: [this.normalizePath(normalizedFilePath)],
+					outfile: outFile,
+					bundle: true,
+					format: "cjs",
+					platform: "node",
+					target: ["node22"],
+					sourcemap: false,
+					logLevel: "silent",
+					plugins,
+					absWorkingDir: projectRoot,
+					external: [...alwaysExternal],
+					...(existsSync(tsconfigPath) ? { tsconfig: tsconfigPath } : {}),
+				});
+			}
 
 			const dynamicRequire = createRequire(outFile);
+			// Bust require cache if we rebuilt the same outFile path
+			try {
+				if (needRebuild) {
+					const resolved = (dynamicRequire as any).resolve
+						? (dynamicRequire as any).resolve(outFile)
+						: outFile;
+					if ((dynamicRequire as any).cache?.[resolved]) {
+						delete (dynamicRequire as any).cache[resolved];
+					}
+				}
+			} catch {}
 			let mod: Record<string, unknown>;
 			try {
 				mod = dynamicRequire(outFile) as Record<string, unknown>;
