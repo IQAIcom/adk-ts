@@ -1,5 +1,9 @@
 "use client";
 
+import { Activity, Archive, Database, Share2, X } from "lucide-react";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { EventsPanel } from "@/components/events-panel";
 import { GraphPanel } from "@/components/graph-panel";
 import { SessionsPanel } from "@/components/sessions-panel";
@@ -9,10 +13,6 @@ import { useAgentGraph } from "@/hooks/use-agent-graph";
 import { useEvents } from "@/hooks/use-events";
 import { useSessions } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
-import { Activity, Archive, Database, Share2, X } from "lucide-react";
-import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 import { PanelId, PanelIdSchema } from "../_schema";
 
 interface SidebarProps {
@@ -41,7 +41,7 @@ export function Sidebar({
 	onSessionChange,
 }: SidebarProps) {
 	// API URL now resolved inside hooks via useApiUrl
-	const searchParams = useSearchParams();
+	const _searchParams = useSearchParams();
 
 	// Local session state should be declared before hooks that depend on it
 	const [localSessionId, setLocalSessionId] = useState<string | null>(

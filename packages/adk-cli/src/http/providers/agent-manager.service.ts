@@ -2,8 +2,14 @@ import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "node:util";
-import type { FullMessage, InMemorySessionService, Session } from "@iqai/adk";
-import { AgentBuilder } from "@iqai/adk";
+import {
+	AgentBuilder,
+	Event,
+	FullMessage,
+	InMemorySessionService,
+	Session,
+	State,
+} from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import type { Agent, LoadedAgent } from "../../common/types";
 import { AgentLoader } from "./agent-loader.service";
@@ -150,6 +156,49 @@ export class AgentManager {
 				(latest, current) =>
 					current.lastUpdateTime > latest.lastUpdateTime ? current : latest,
 			);
+
+			// Check if the session has state, if not, initialize it
+			if (
+				!mostRecentSession.state ||
+				Object.keys(mostRecentSession.state).length === 0
+			) {
+				this.logger.log(
+					"Existing session has no state, will initialize with default state",
+				);
+
+				// Get the default/initial state from the agent if available
+				const initialState = this.getInitialStateForAgent(exportedAgent);
+
+				if (initialState) {
+					const stateUpdateEvent = new Event({
+						author: "system",
+						actions: {
+							stateDelta: initialState,
+							artifactDelta: {},
+						},
+						content: {
+							parts: [
+								{
+									text: "Initialized session with default state from agent definition.",
+								},
+							],
+						},
+					});
+
+					// This updates both the session in storage and the local `mostRecentSession` object.
+					await this.sessionService.appendEvent(
+						mostRecentSession,
+						stateUpdateEvent,
+					);
+					this.logger.log(
+						format("Updated session with initial state: %o", {
+							sessionId: mostRecentSession.id,
+							stateKeys: Object.keys(initialState),
+						}),
+					);
+				}
+			}
+
 			this.logger.log(
 				format("Reusing existing session: %o", {
 					sessionId: mostRecentSession.id,
@@ -163,15 +212,20 @@ export class AgentManager {
 			);
 			return mostRecentSession;
 		}
+
 		// No existing sessions found, create a new one
 		this.logger.log("No existing sessions found, creating new session");
+
+		// Get initial state
+		const initialState = this.getInitialStateForAgent(exportedAgent);
+
 		const agentBuilder = AgentBuilder.create(exportedAgent.name).withAgent(
 			exportedAgent,
 		);
 		agentBuilder.withSessionService(this.sessionService, {
 			userId,
 			appName,
-			state: undefined,
+			state: initialState,
 		});
 		const { session } = await agentBuilder.build();
 		this.logger.log(
@@ -183,6 +237,38 @@ export class AgentManager {
 			}),
 		);
 		return session;
+	}
+
+	/**
+	 * Extract initial state from the agent definition
+	 * This allows agents to define their default state
+	 */
+	private getInitialStateForAgent(exportedAgent: any) {
+		const sessions = exportedAgent?.sessionService?.sessions;
+		if (!sessions) return undefined;
+
+		for (const [, userSessions] of sessions) {
+			for (const [, session] of userSessions) {
+				// session itself is a Map of actual session objects
+				for (const [, innerSession] of session) {
+					const state = innerSession?.state;
+					if (!state) continue;
+
+					const stateKeys =
+						state instanceof Map
+							? Array.from(state.keys())
+							: Object.keys(state);
+
+					if (
+						(state instanceof Map && state.size > 0) ||
+						(typeof state === "object" && stateKeys.length > 0)
+					) {
+						return state as State;
+					}
+				}
+			}
+		}
+		return undefined;
 	}
 
 	private async createRunnerWithSession(
@@ -197,10 +283,12 @@ export class AgentManager {
 		const agentBuilder = AgentBuilder.create(exportedAgent.name).withAgent(
 			exportedAgent,
 		);
+
+		const initialState = this.getInitialStateForAgent(exportedAgent);
 		agentBuilder.withSessionService(this.sessionService, {
 			userId,
 			appName,
-			state: undefined,
+			state: initialState,
 			sessionId: sessionToUse.id, // Use the selected session ID
 		});
 		const { runner } = await agentBuilder.build();
