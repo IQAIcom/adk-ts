@@ -120,9 +120,30 @@ class AgentChatClient {
 			);
 
 			if (!response.ok) {
-				const errorText = await response.text();
 				s.stop("❌ Failed to send message");
-				throw new Error(`Failed to send message: ${errorText}`);
+				const errorText = await response.text();
+
+				// Try to parse as JSON for pretty error
+				try {
+					const errorJson = JSON.parse(errorText);
+					if (errorJson.error && errorJson.message) {
+						// Pretty error from server
+						p.log.error(
+							`\n❌ ${errorJson.error}\n${"━".repeat(40)}\n${errorJson.message}`,
+						);
+						if (errorJson.details && Array.isArray(errorJson.details)) {
+							errorJson.details.forEach((detail: string) => {
+								p.log.message(`  ${detail}`);
+							});
+						}
+						return;
+					}
+				} catch {
+					// Not JSON, show raw error
+				}
+
+				p.log.error(errorText);
+				return;
 			}
 
 			const result = (await response.json()) as {

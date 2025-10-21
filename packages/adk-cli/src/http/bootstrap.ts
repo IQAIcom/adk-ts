@@ -8,6 +8,7 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 import { HttpModule } from "./http.module";
+import { PrettyErrorFilter } from "./filters/pretty-error.filter";
 import { AgentManager } from "./providers/agent-manager.service";
 import { DIRECTORIES_TO_SKIP } from "./providers/agent-scanner.service";
 import { HotReloadService } from "./reload/hot-reload.service";
@@ -36,7 +37,7 @@ function loadGitignorePrefixes(rootDir: string): string[] {
 		for (const raw of lines) {
 			const line = raw.trim();
 			if (!line || line.startsWith("#")) continue;
-			if (/[?*\[\]]/.test(line)) continue; // skip complex glob lines
+			if (/[?*[\]]/.test(line)) continue; // skip complex glob lines
 			const normalized = line.replace(/\/+$/, "");
 			const abs = resolve(rootDir, normalized);
 			prefixes.push(abs + sep);
@@ -185,6 +186,11 @@ export async function startHttpServer(
 					: ["error", "warn"],
 		},
 	);
+
+	// Apply global exception filter for pretty error formatting
+	const showStackTraces =
+		process.env.ADK_DEBUG_NEST === "1" || process.env.NODE_ENV !== "production";
+	app.useGlobalFilters(new PrettyErrorFilter(showStackTraces));
 
 	// CORS parity with previous Hono app.use("/*", cors())
 	app.enableCors({
