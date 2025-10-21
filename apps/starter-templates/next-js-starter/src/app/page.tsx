@@ -41,7 +41,7 @@ export default function Home() {
 								rel="noopener noreferrer"
 								className={buttonVariants({
 									size: "lg",
-									variant: "outline",
+									variant: "secondary",
 									className:
 										"flex items-center gap-2 w-full sm:w-auto justify-center",
 								})}
@@ -56,7 +56,7 @@ export default function Home() {
 								rel="noopener noreferrer"
 								className={buttonVariants({
 									size: "lg",
-									variant: "secondary",
+									variant: "outline",
 									className:
 										"flex items-center gap-2 w-full sm:w-auto justify-center",
 								})}
