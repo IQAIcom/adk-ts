@@ -2,6 +2,7 @@
 	"title": "Tools",
 	"icon": "Wrench",
 	"pages": [
+		"index",
 		"function-tools",
 		"create-tool",
 		"built-in-tools",
