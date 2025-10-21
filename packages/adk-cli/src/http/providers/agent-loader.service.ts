@@ -266,7 +266,14 @@ export class AgentLoader {
 					if (!needRebuild && !this.quiet) {
 						this.logger.debug(`Reusing cached build: ${outFile}`);
 					}
-				} catch {
+				} catch (error) {
+					if (!this.quiet) {
+						this.logger.warn(
+							`Failed to check cache freshness for ${outFile}: ${
+								error instanceof Error ? error.message : String(error)
+							}. Forcing rebuild.`,
+						);
+					}
 					needRebuild = true;
 				}
 			}
@@ -337,7 +344,15 @@ export class AgentLoader {
 						delete (dynamicRequire as any).cache[resolved];
 					}
 				}
-			} catch {}
+			} catch (error) {
+				if (!this.quiet) {
+					this.logger.warn(
+						`Failed to invalidate require cache for ${outFile}: ${
+							error instanceof Error ? error.message : String(error)
+						}. Stale code may be executed.`,
+					);
+				}
+			}
 			let mod: Record<string, unknown>;
 			try {
 				mod = dynamicRequire(outFile) as Record<string, unknown>;
