@@ -1,273 +1,592 @@
 ---
 title: Google Cloud Tools
-description: Google Cloud service integration and authentication patterns
+description: Google Cloud service integration and authentication patterns for building agents with Google Cloud capabilities
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps } from "fumadocs-ui/components/steps";
 
-Google Cloud tools provide authentication and integration patterns for Google Cloud Platform services. While comprehensive Google Cloud service integration is planned for future releases, ADK TypeScript currently focuses on authentication and foundational patterns for cloud connectivity.
-
-## Current Implementation
-
-ADK TypeScript provides foundational support for Google Cloud integration through authentication mechanisms and basic patterns for service connectivity.
-
-### Available Features
-
-- **Authentication**: Google Cloud credential management and authentication
-- **Service Patterns**: Base patterns for creating Google Cloud service tools
-- **Integration Guidelines**: Best practices for Google Cloud service integration
-- **Future Foundation**: Architecture prepared for comprehensive service integration
-
-<Callout type="info" title="Development Status">
-Comprehensive Google Cloud service tools are in development. Current implementation focuses on authentication and integration patterns.
+<Callout type="warn" title="Development Status">
+  Google Cloud tools in ADK-TS are being actively developed. The current
+  implementation provides robust authentication patterns, service integration
+  templates, and the GcsArtifactService for storage. Additional tools for
+  specific Google Cloud services will be added in upcoming releases.
 </Callout>
 
-## Authentication Support
+Google Cloud tools enable your agents to securely interact with Google Cloud Platform services and APIs. With ADK-TS's Google Cloud integration, you can build agents that leverage the power of Google's cloud infrastructure, data services, and machine learning capabilities.
+
+Google Cloud tools in ADK-TS give you the building blocks to:
+
+- **Authenticate** with Google Cloud services securely
+- **Store and retrieve data** in Google Cloud Storage
+- **Create custom tools** for any Google Cloud API
+- **Deploy agents** in Google Cloud environments
+- **Integrate with Vertex AI** for machine learning capabilities
+
+## Current Capabilities and Planned Features
+
+| Feature                  | Status           | Description                                                                                 |
+| ------------------------ | ---------------- | ------------------------------------------------------------------------------------------- |
+| Authentication           | ✅ Available     | Secure authentication with Google Cloud services using service accounts, OAuth 2.0, and ADC |
+| GcsArtifactService       | ✅ Available     | Ready-to-use service for storing agent artifacts in Google Cloud Storage                    |
+| Custom GCP Tool Patterns | ✅ Available     | Templates for building tools for any Google Cloud API                                       |
+| Vertex AI Integration    | ✅ Available     | Tooling for Vertex AI prediction service integration                                        |
+| Cloud Storage            | 🔄 Basic Support | Basic file operations with Cloud Storage                                                    |
+| BigQuery                 | 🚧 Planned       | Query and data analysis with BigQuery                                                       |
+| Firestore/Datastore      | 🚧 Planned       | Document storage and retrieval                                                              |
+| Cloud Functions          | 🚧 Planned       | Serverless function invocation                                                              |
+| Secret Manager           | 🚧 Planned       | Secure credential and secret storage                                                        |
+| Cloud SQL                | 🚧 Planned       | Relational database operations                                                              |
+
+## Authentication Mechanisms
+
+Authentication is the foundation for secure interaction with Google Cloud services. ADK-TS provides comprehensive support for three authentication approaches:
 
 <Cards>
   <Card
-    title="🔐 Service Accounts"
-    description="Service account credential management"
+    title="🔑 Application Default Credentials (ADC)"
+    description="Simplified credential discovery across development and production environments using Google Cloud's ADC mechanism"
   />
-
+  <Card
+    title="🔐 Service Accounts"
+    description="Server-to-server authentication for background services, scheduled jobs, and automated workloads where no user interaction is needed"
+  />
   <Card
     title="🎯 OAuth 2.0"
-    description="User-based authentication flows"
-  />
-
-  <Card
-    title="🔑 Credential Discovery"
-    description="Automatic credential discovery patterns"
+    description="User-based delegated authentication for applications that need to access user data with consent"
   />
 </Cards>
 
-## Authentication Patterns
+### Application Default Credentials (ADC)
+
+Application Default Credentials (ADC) provide the simplest way to authenticate with Google Cloud services. This mechanism automatically discovers and uses appropriate credentials based on the environment where your code is running.
+
+<Callout type="info" title="When to use ADC">
+  ADC is ideal for applications that need to run in multiple environments (local
+  development, testing, production) with minimal authentication configuration
+  changes.
+</Callout>
+
+#### How ADC Works
+
+ADC looks for credentials in the following order:
+
+1. **GOOGLE_APPLICATION_CREDENTIALS** environment variable pointing to a service account key file
+2. **User credentials** from `gcloud auth application-default login` (development environments)
+3. **Attached service account** when running on Google Cloud environments (Compute Engine, GKE, Cloud Run, etc.)
+4. **Workload Identity** when running on GKE with Workload Identity enabled
+
+#### Using ADC in ADK-TS
+
+```typescript
+import { GoogleAuth } from "google-auth-library";
+
+/**
+ * Creates an authenticated client using Application Default Credentials
+ * This abstraction automatically handles credential discovery based on environment
+ */
+async function getDefaultCredentials() {
+  // Create a new GoogleAuth instance with necessary scopes
+  const auth = new GoogleAuth({
+    // Request specific scopes based on the services you need to access
+    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+  });
+
+  // Automatically discovers credentials from the environment
+  const authClient = await auth.getClient();
+  return authClient;
+}
+
+// Example: List buckets in Google Cloud Storage using ADC
+async function listStorageBuckets() {
+  const authClient = await getDefaultCredentials();
+
+  try {
+    // Make an authenticated API request
+    const response = await authClient.request({
+      url: "https://storage.googleapis.com/storage/v1/b",
+      method: "GET",
+      params: { project: process.env.GOOGLE_CLOUD_PROJECT },
+    });
+
+    return {
+      success: true,
+      buckets: response.data.items || [],
+    };
+  } catch (error) {
+    console.error("Error listing storage buckets:", error);
+    return {
+      success: false,
+      error: `Failed to list buckets: ${error.message}`,
+    };
+  }
+}
+
+// Example: Implement as a tool for your agent
+import { BaseTool } from "@iqai/adk";
+
+class StorageBucketsTool extends BaseTool {
+  constructor() {
+    super({
+      name: "list_storage_buckets",
+      description: "Lists Google Cloud Storage buckets in your project",
+    });
+  }
+
+  async runAsync() {
+    return await listStorageBuckets();
+  }
+}
+```
+
+#### Setting Up ADC for Development
+
+To set up Application Default Credentials for local development:
+
+<Steps>
+
+### 1. Install Google Cloud CLI
+
+Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) following the instructions for your operating system.
+
+### 2. Login with Application Default Credentials
+
+Run the following command in your terminal:
+
+```bash
+gcloud auth application-default login
+```
+
+This will open a browser window for you to authenticate with your Google account.
+
+### 3. Set your default project
+
+```bash
+gcloud config set project YOUR_PROJECT_ID
+```
+
+Replace `YOUR_PROJECT_ID` with your actual Google Cloud project ID.
+
+### 4. Verify your setup
+
+```bash
+gcloud auth application-default print-access-token
+```
+
+This should print a valid access token.
+
+</Steps>
 
 ### Service Account Authentication
 
-For server-to-server authentication with Google Cloud services:
+Service accounts provide identity for server-to-server interactions without end-user involvement, ideal for background processes, automated jobs, and agent deployments in production environments.
+
+<Callout type="warning" title="Security Best Practice">
+  Store service account keys securely and follow the principle of least
+  privilege by granting only the permissions needed for the specific tasks your
+  agent performs. Regularly rotate keys in production environments.
+</Callout>
+
+#### Creating a Service Account
+
+1. **Create a service account** in the [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts)
+2. **Assign IAM roles** that grant the necessary permissions (e.g., `roles/storage.objectAdmin` for GCS access)
+3. **Create a key** in JSON format and download it
+4. **Store the key securely** and configure your application to access it
+
+#### Using Service Accounts in ADK-TS
 
 ```typescript
-import { GoogleAuth } from 'google-auth-library';
+import { GoogleAuth } from "google-auth-library";
 
-// Service account authentication
-async function createGoogleAuthClient() {
+/**
+ * Creates an authenticated client using a service account key file
+ * @param keyFilePath Path to the service account key JSON file
+ * @param scopes OAuth scopes defining access levels
+ */
+async function createServiceAccountClient(
+  keyFilePath: string,
+  scopes: string[] = ["https://www.googleapis.com/auth/cloud-platform"]
+) {
   const auth = new GoogleAuth({
-    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-    scopes: ['https://www.googleapis.com/auth/cloud-platform']
+    // Path to downloaded service account key JSON file
+    keyFilename: keyFilePath,
+    // Request appropriate scopes for your services
+    scopes: scopes,
   });
 
   return await auth.getClient();
 }
 
-// Usage in custom tools
-async function callGoogleCloudAPI(endpoint: string, data: any) {
-  const authClient = await createGoogleAuthClient();
-
-  const response = await authClient.request({
-    url: endpoint,
-    method: 'POST',
-    data
-  });
-
-  return response.data;
-}
-```
-
-### OAuth 2.0 User Authentication
-
-For user-based authentication flows:
-
-```typescript
-import { OAuth2Client } from 'google-auth-library';
-
-async function createOAuth2Client() {
-  const oauth2Client = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-  );
-
-  return oauth2Client;
-}
-
-// Generate authentication URL
-async function getAuthUrl() {
-  const oauth2Client = await createOAuth2Client();
-
-  const authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/cloud-platform']
-  });
-
-  return authUrl;
-}
-```
-
-### Application Default Credentials
-
-For environments with automatic credential discovery:
-
-```typescript
-import { GoogleAuth } from 'google-auth-library';
-
-async function getDefaultCredentials() {
-  const auth = new GoogleAuth({
-    scopes: ['https://www.googleapis.com/auth/cloud-platform']
-  });
-
-  // Automatically discovers credentials from:
-  // 1. GOOGLE_APPLICATION_CREDENTIALS environment variable
-  // 2. User credentials from gcloud SDK
-  // 3. Service account from compute metadata (on GCP)
-  const authClient = await auth.getClient();
-
-  return authClient;
-}
-```
-
-## Creating Google Cloud Tools
-
-### Basic Google Cloud Tool Pattern
-
-Create custom tools for specific Google Cloud services:
-
-```typescript
-import { BaseTool } from '@iqai/adk';
-import { GoogleAuth } from 'google-auth-library';
-
-interface GoogleCloudToolConfig {
-  serviceName: string;
-  apiVersion: string;
-  scopes: string[];
-}
-
-class GoogleCloudServiceTool extends BaseTool {
-  private auth: GoogleAuth;
-  private config: GoogleCloudToolConfig;
-
-  constructor(config: GoogleCloudToolConfig) {
-    super({
-      name: `google_${config.serviceName}`,
-      description: `Tool for Google Cloud ${config.serviceName} service`
-    });
-
-    this.config = config;
-    this.auth = new GoogleAuth({
-      scopes: config.scopes
-    });
+// Example: Using service account to publish a message to Pub/Sub
+async function publishToPubSub(
+  projectId: string,
+  topicName: string,
+  message: string
+) {
+  const keyPath = process.env.SERVICE_ACCOUNT_KEY_PATH;
+  if (!keyPath) {
+    throw new Error("SERVICE_ACCOUNT_KEY_PATH environment variable not set");
   }
 
-  async runAsync(args: {
-    operation: string;
-    parameters: Record<string, any>;
-  }) {
-    try {
-      const authClient = await this.auth.getClient();
+  const authClient = await createServiceAccountClient(keyPath, [
+    "https://www.googleapis.com/auth/pubsub",
+  ]);
 
-      // Build request URL
-      const baseUrl = `https://${this.config.serviceName}.googleapis.com`;
-      const url = `${baseUrl}/${this.config.apiVersion}/${args.operation}`;
+  const data = {
+    messages: [
+      {
+        data: Buffer.from(message).toString("base64"),
+      },
+    ],
+  };
 
-      const response = await authClient.request({
-        url,
-        method: 'POST',
-        data: args.parameters
-      });
+  const url = `https://pubsub.googleapis.com/v1/projects/${projectId}/topics/${topicName}:publish`;
 
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Google Cloud API error: ${error instanceof Error ? error.message : String(error)}`
-      };
-    }
-  }
+  try {
+    const response = await authClient.request({
+      url: url,
+      method: "POST",
+      data: data,
+    });
 
-  getDeclaration() {
     return {
-      name: this.name,
-      description: this.description,
-      parameters: {
-        type: 'object',
-        properties: {
-          operation: {
-            type: 'string',
-            description: 'Google Cloud service operation to perform'
-          },
-          parameters: {
-            type: 'object',
-            description: 'Parameters for the operation'
-          }
-        },
-        required: ['operation']
-      }
+      success: true,
+      messageId: response.data.messageIds[0],
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to publish message: ${error.message}`,
     };
   }
 }
 ```
 
-### Google Cloud Storage Example
+### OAuth 2.0 User Authentication
 
-Example implementation for Cloud Storage operations:
+OAuth 2.0 enables your agents to access user-specific Google Cloud resources with the user's consent. This authentication method is essential when you need to access personal user data or perform actions on behalf of users.
+
+<Callout type="info" title="When to use OAuth 2.0">
+  Use OAuth 2.0 when your agent needs to: - Access user-specific data (e.g., a
+  user's Google Drive files) - Perform actions on behalf of users (e.g., create
+  Calendar events) - Respect user permissions and consent
+</Callout>
+
+#### OAuth 2.0 Flow in ADK-TS
+
+Implementing OAuth 2.0 in your agent involves several steps:
+
+1. **Register your application** in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. **Configure consent screen** and request appropriate scopes
+3. **Generate authorization URL** and redirect users to consent
+4. **Process authorization code** to obtain access and refresh tokens
+5. **Use tokens** to make authenticated API requests
+6. **Handle token refresh** for long-lived access
+
+````typescript
+import { OAuth2Client } from "google-auth-library";
+
+/**
+ * Creates an OAuth2 client configured with your application credentials
+ */
+function createOAuth2Client() {
+  return new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
+}
+
+/**
+ * Generates a URL for user authorization
+ * @param scopes List of OAuth scopes to request
+ * @param userId Optional user ID for state tracking
+ */
+async function generateAuthUrl(
+  scopes = ["https://www.googleapis.com/auth/userinfo.profile"],
+  userId?: string
+) {
+  const oauth2Client = createOAuth2Client();
+
+  const authUrl = oauth2Client.generateAuthUrl({
+    // 'online' for short-lived access tokens
+    // 'offline' for refresh tokens (long-lived access)
+    access_type: "offline",
+
+    // 'consent' to show the consent screen every time (recommended for production)
+    // 'none' to only show if the user hasn't already granted permission
+    prompt: "consent",
+
+    // Scopes determine what resources your application can access
+    scope: scopes,
+
+    // Optional state parameter to prevent CSRF attacks and track user state
+    state: userId ? JSON.stringify({ userId }) : undefined,
+  });
+
+  return authUrl;
+}
+
+/**
+ * Exchanges authorization code for tokens after user consent
+ * @param code The authorization code received after user grants consent
+ */
+async function exchangeCodeForTokens(code: string) {
+  const oauth2Client = createOAuth2Client();
+  const { tokens } = await oauth2Client.getToken(code);
+
+  // Store these tokens securely (database, session, etc.)
+  return {
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: tokens.expiry_date,
+  };
+}
+
+/**
+ * Makes an authenticated request using the user's access token
+ * @param accessToken User's access token
+ * @param url API endpoint URL
+ */
+async function makeAuthenticatedRequest(accessToken: string, url: string) {
+  const oauth2Client = createOAuth2Client();
+  oauth2Client.setCredentials({ access_token: accessToken });
+
+  try {
+    const response = await oauth2Client.request({ url });
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `API request failed: ${error.message}`,
+    };
+  }
+}
+
+/**
+ * Refreshes an expired access token using a refresh token
+ * @param refreshToken The refresh token for the user
+ */
+async function refreshAccessToken(refreshToken: string) {
+  const oauth2Client = createOAuth2Client();
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+  try {
+    const response = await oauth2Client.refreshAccessToken();
+    const tokens = response.credentials;
+
+    return {
+      success: true,
+      accessToken: tokens.access_token,
+      expiresAt: tokens.expiry_date,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Token refresh failed: ${error.message}`,
+    };
+  }
+}## Building Custom Google Cloud Tools
+
+### Basic Google Cloud Tool Pattern
+
+Create reusable tools that interface with Google Cloud services by extending the BaseTool class:
 
 ```typescript
-import { BaseTool } from '@iqai/adk';
-import { Storage } from '@google-cloud/storage';
+import { BaseTool } from "@iqai/adk";
+import { GoogleAuth } from "google-auth-library";
 
+// Configuration interface for Google Cloud service tools
+interface GoogleCloudToolConfig {
+  serviceName: string; // Name of the GCP service (storage, bigquery, etc.)
+  apiVersion: string; // API version (v1, v2, etc.)
+  scopes: string[]; // OAuth scopes required for the service
+}
+
+// Base tool class for Google Cloud services
+class GoogleCloudServiceTool extends BaseTool {
+  private auth: GoogleAuth;
+  private config: GoogleCloudToolConfig;
+
+  constructor(config: GoogleCloudToolConfig) {
+    // Initialize the tool with a standardized name and description
+    super({
+      name: `google_${config.serviceName}`,
+      description: `Tool for Google Cloud ${config.serviceName} service`,
+    });
+
+    this.config = config;
+    // Initialize authentication with required scopes
+    this.auth = new GoogleAuth({
+      scopes: config.scopes,
+    });
+  }
+
+  // Handle tool execution with parameters passed from the agent
+  async runAsync(args: {
+    operation: string; // The specific API operation to call
+    parameters: Record<string, any>; // Parameters for the operation
+  }) {
+    try {
+      // Get authenticated client
+      const authClient = await this.auth.getClient();
+
+      // Build request URL for the specific service and operation
+      const baseUrl = `https://${this.config.serviceName}.googleapis.com`;
+      const url = `${baseUrl}/${this.config.apiVersion}/${args.operation}`;
+
+      // Make authenticated request to the service
+      const response = await authClient.request({
+        url,
+        method: "POST",
+        data: args.parameters,
+      });
+
+      // Return successful response
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      // Handle and format errors
+      return {
+        success: false,
+        error: `Google Cloud API error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      };
+    }
+  }
+
+  // Define the tool's schema for the agent to understand its capabilities
+  getDeclaration() {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: "object",
+        properties: {
+          operation: {
+            type: "string",
+            description: "Google Cloud service operation to perform",
+          },
+          parameters: {
+            type: "object",
+            description: "Parameters for the operation",
+          },
+        },
+        required: ["operation"],
+      },
+    };
+  }
+}
+
+// Example usage:
+// const storageTool = new GoogleCloudServiceTool({
+//   serviceName: 'storage',
+//   apiVersion: 'v1',
+//   scopes: ['https://www.googleapis.com/auth/devstorage.read_write']
+// });
+````
+
+### Cloud Storage Example Tool
+
+Google Cloud Storage is a highly scalable object storage service that's commonly used for storing and retrieving files in AI agent workflows. This example shows how to create a specialized tool for Cloud Storage operations.
+
+#### Required Dependencies
+
+First, install the Google Cloud Storage client library:
+
+```bash
+npm install @google-cloud/storage
+```
+
+#### Implementation
+
+This example creates a comprehensive Cloud Storage tool that supports common operations:
+
+```typescript
+import { BaseTool } from "@iqai/adk";
+import { Storage } from "@google-cloud/storage";
+
+/**
+ * Specialized tool for Google Cloud Storage operations
+ * Provides functionality to upload, download, list, and delete files
+ */
 class CloudStorageTool extends BaseTool {
   private storage: Storage;
 
   constructor() {
     super({
-      name: 'cloud_storage',
-      description: 'Tool for Google Cloud Storage operations'
+      name: "cloud_storage",
+      description:
+        "Tool for Google Cloud Storage operations with support for uploading, downloading, listing and deleting files",
     });
 
+    // Initialize the Storage client with Application Default Credentials
+    // This will use ADC configured on your system (gcloud auth application-default login)
     this.storage = new Storage({
-      // Uses Application Default Credentials
+      // No explicit credentials needed if ADC is properly set up
+      // For production, you might want to add projectId here
+      // projectId: 'your-project-id'
     });
   }
 
+  /**
+   * Handle common Cloud Storage operations
+   * @param args The operation parameters
+   * @returns Operation result with success/error status
+   */
   async runAsync(args: {
-    operation: 'upload' | 'download' | 'list' | 'delete';
-    bucket: string;
-    fileName?: string;
-    localPath?: string;
-    prefix?: string;
+    operation: "upload" | "download" | "list" | "delete"; // Supported operations
+    bucket: string; // GCS bucket name
+    fileName?: string; // File name within bucket
+    localPath?: string; // Local file path for upload/download
+    prefix?: string; // Prefix for listing files
   }) {
     try {
+      // Get reference to the specified bucket
       const bucket = this.storage.bucket(args.bucket);
 
       switch (args.operation) {
-        case 'upload':
+        case "upload":
+          // Upload a local file to Cloud Storage
           if (!args.fileName || !args.localPath) {
-            return { error: 'fileName and localPath required for upload' };
+            return { error: "fileName and localPath required for upload" };
           }
           await bucket.upload(args.localPath, { destination: args.fileName });
           return { success: true, message: `Uploaded ${args.fileName}` };
 
-        case 'download':
+        case "download":
+          // Download a file from Cloud Storage
           if (!args.fileName || !args.localPath) {
-            return { error: 'fileName and localPath required for download' };
+            return { error: "fileName and localPath required for download" };
           }
-          await bucket.file(args.fileName).download({ destination: args.localPath });
+          await bucket
+            .file(args.fileName)
+            .download({ destination: args.localPath });
           return { success: true, message: `Downloaded ${args.fileName}` };
 
-        case 'list':
+        case "list":
+          // List files in a bucket, optionally filtered by prefix
           const [files] = await bucket.getFiles({ prefix: args.prefix });
           return {
             success: true,
-            files: files.map(file => ({ name: file.name, size: file.metadata.size }))
+            files: files.map((file) => ({
+              name: file.name,
+              size: file.metadata.size,
+            })),
           };
 
-        case 'delete':
+        case "delete":
+          // Delete a file from Cloud Storage
           if (!args.fileName) {
-            return { error: 'fileName required for delete' };
+            return { error: "fileName required for delete" };
           }
           await bucket.file(args.fileName).delete();
           return { success: true, message: `Deleted ${args.fileName}` };
@@ -276,52 +595,66 @@ class CloudStorageTool extends BaseTool {
           return { error: `Unknown operation: ${args.operation}` };
       }
     } catch (error) {
+      // Handle errors with useful context
       return {
         success: false,
-        error: `Cloud Storage error: ${error instanceof Error ? error.message : String(error)}`
+        error: `Cloud Storage error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       };
     }
   }
 
+  // Define the tool's capabilities and expected parameters
   getDeclaration() {
     return {
       name: this.name,
       description: this.description,
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {
           operation: {
-            type: 'string',
-            description: 'Storage operation to perform',
-            enum: ['upload', 'download', 'list', 'delete']
+            type: "string",
+            description: "Storage operation to perform",
+            enum: ["upload", "download", "list", "delete"],
           },
           bucket: {
-            type: 'string',
-            description: 'Cloud Storage bucket name'
+            type: "string",
+            description: "Cloud Storage bucket name",
           },
           fileName: {
-            type: 'string',
-            description: 'Name of the file in the bucket'
+            type: "string",
+            description: "Name of the file in the bucket",
           },
           localPath: {
-            type: 'string',
-            description: 'Local file path for upload/download'
+            type: "string",
+            description: "Local file path for upload/download",
           },
           prefix: {
-            type: 'string',
-            description: 'Prefix filter for listing files'
-          }
+            type: "string",
+            description: "Prefix filter for listing files",
+          },
         },
-        required: ['operation', 'bucket']
-      }
+        required: ["operation", "bucket"],
+      },
     };
   }
 }
+
+// Usage example:
+// const storageTool = new CloudStorageTool();
+// await agent.executeTool(storageTool, {
+//   operation: 'list',
+//   bucket: 'my-app-assets',
+//   prefix: 'images/'
+// });
 ```
 
 ## Environment Configuration
 
 ### Required Environment Variables
+
+Set up these environment variables to configure Google Cloud authentication:
 
 ```typescript
 // Service Account Authentication
@@ -337,147 +670,738 @@ GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CLOUD_REGION=us-central1
 ```
 
-### Credential Setup
+### Credential Setup Steps
 
-1. **Service Account**: Create and download service account key from Google Cloud Console
-2. **OAuth 2.0**: Configure OAuth 2.0 credentials for user authentication
-3. **Project Access**: Ensure proper IAM roles and permissions
-4. **API Enablement**: Enable required Google Cloud APIs
+Follow these steps to set up Google Cloud credentials:
+
+1. **Service Account**:
+
+   - Create a service account in the Google Cloud Console
+   - Grant appropriate IAM roles to the service account
+   - Generate and download a JSON key file
+   - Set the path in the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+
+2. **OAuth 2.0**:
+
+   - Create OAuth credentials in the Google Cloud Console
+   - Configure authorized redirect URIs
+   - Store client ID and secret in environment variables
+   - Implement the OAuth flow in your application
+
+3. **Project Access**:
+
+   - Enable required APIs in the Google Cloud Console
+   - Configure IAM roles and permissions
+   - Set up appropriate firewall rules if needed
+
+4. **API Enablement**:
+   - Enable specific APIs needed for your tools
+   - Check quota limits for production workloads
 
 ## Security Best Practices
 
 ### Authentication Security
 
 <Callout type="warn" title="Security Requirements">
-Always follow Google Cloud security best practices for credential management and access control.
+  Always follow Google Cloud security best practices for credential management
+  and access control.
 </Callout>
 
-- **Credential Protection**: Never commit credentials to source code
-- **Least Privilege**: Grant minimum required permissions
-- **Regular Rotation**: Rotate service account keys regularly
-- **Monitoring**: Monitor credential usage and access patterns
+- **Credential Protection**: Never commit credentials to source code or expose them in client-side code
+- **Least Privilege**: Grant only the minimum permissions needed for each service account
+- **Regular Rotation**: Set up a process to rotate service account keys regularly
+- **Monitoring**: Monitor credential usage and set up alerts for unusual activity patterns
 
-### Access Control
+### Access Control with Scoped Authentication
+
+Use specific scopes to limit the access permissions of your tools:
 
 ```typescript
 // Example: Scoped authentication for specific services
+// This restricts what the service account or OAuth client can access
 const scopedAuth = new GoogleAuth({
   scopes: [
-    'https://www.googleapis.com/auth/devstorage.read_write', // Cloud Storage
-    'https://www.googleapis.com/auth/bigquery.readonly'     // BigQuery read-only
-  ]
+    "https://www.googleapis.com/auth/devstorage.read_write", // Cloud Storage read/write access
+    "https://www.googleapis.com/auth/bigquery.readonly", // BigQuery read-only access
+  ],
 });
+
+// Even if the service account has broader permissions,
+// this client will be limited to these specific scopes
 ```
 
-### Error Handling
+### Secure Error Handling
+
+Implement secure error handling to prevent information leakage:
 
 ```typescript
+// A secure wrapper for Google Cloud operations
 async function secureGoogleCloudCall(operation: () => Promise<any>) {
   try {
     return await operation();
   } catch (error: any) {
-    // Log error details without exposing sensitive information
-    console.error('Google Cloud operation failed:', {
+    // Log error details securely without exposing sensitive information
+    console.error("Google Cloud operation failed:", {
       timestamp: new Date().toISOString(),
       operation: operation.name,
-      error: error.message
+      error: error.message,
     });
 
-    // Return safe error message
+    // Return a generic error message to users
+    // This prevents leaking sensitive details about your cloud infrastructure
     return {
       success: false,
-      error: 'Google Cloud service temporarily unavailable'
+      error: "Google Cloud service temporarily unavailable",
     };
   }
 }
+
+// Example usage
+const result = await secureGoogleCloudCall(async () => {
+  return await storageClient.bucket("my-bucket").getFiles();
+});
 ```
 
-## Future Roadmap
+## Advanced Integration: Vertex AI
 
-<Callout type="info" title="Planned Google Cloud Tools">
-Future releases will include comprehensive tools for:
-- Cloud Storage (file operations and management)
-- Cloud SQL (database connectivity and operations)
-- Vertex AI (machine learning and AI services)
-- BigQuery (data analytics and querying)
-- Document AI (intelligent document processing)
-- Cloud Functions (serverless computing)
-</Callout>
+Google Cloud's Vertex AI provides a comprehensive platform for building, deploying, and scaling machine learning models. It offers a wide range of capabilities including:
 
-### Expected Features
+- Pre-trained APIs for vision, language, and structured data
+- AutoML for training custom models without code
+- Custom model training and deployment
+- MLOps tools for model lifecycle management
 
-- **Pre-built Service Tools**: Ready-to-use tools for major Google Cloud services
-- **Automatic Configuration**: Simplified setup and configuration
-- **Advanced Authentication**: Enhanced security and credential management
-- **Multi-Service Workflows**: Orchestrated workflows across multiple services
-- **Performance Optimization**: Built-in caching and connection pooling
+### Prerequisites
 
-## Integration Examples
+To use Vertex AI with ADK-TS:
 
-### Custom Vertex AI Tool
+1. Install the Vertex AI client library:
+
+   ```bash
+   npm install @google-cloud/aiplatform
+   ```
+
+2. Enable the Vertex AI API in your Google Cloud project:
+
+   ```bash
+   gcloud services enable aiplatform.googleapis.com
+   ```
+
+3. Set up authentication as described in the earlier sections (Service Account or ADC).
+
+### Custom Vertex AI Prediction Tool Example
+
+This example demonstrates how to integrate with Vertex AI's prediction service to use deployed models in your agents:
 
 ```typescript
-import { BaseTool } from '@iqai/adk';
-import { PredictionServiceClient } from '@google-cloud/aiplatform';
+import { BaseTool } from "@iqai/adk";
+import { PredictionServiceClient } from "@google-cloud/aiplatform";
 
+/**
+ * Tool for making predictions with deployed Vertex AI models
+ * This can be used with any model deployed to a Vertex AI endpoint
+ */
 class VertexAIPredictionTool extends BaseTool {
   private client: PredictionServiceClient;
+  private projectId: string;
+  private location: string;
 
-  constructor() {
+  constructor(projectId: string, location = "us-central1") {
     super({
-      name: 'vertex_ai_prediction',
-      description: 'Make predictions using Vertex AI models'
+      name: "vertex_ai_prediction",
+      description: "Make predictions using deployed Vertex AI models",
     });
 
+    this.projectId = projectId;
+    this.location = location;
+    // Initialize the Vertex AI client with Application Default Credentials
     this.client = new PredictionServiceClient();
   }
 
+  // Make predictions using deployed Vertex AI models
   async runAsync(args: {
-    endpoint: string;
-    instances: any[];
+    endpoint: string; // The Vertex AI endpoint resource name
+    instances: any[]; // Input instances for prediction in the format expected by the model
   }) {
     try {
+      // Call the Vertex AI predict API with the provided instances
       const [response] = await this.client.predict({
         endpoint: args.endpoint,
-        instances: args.instances
+        instances: args.instances,
       });
 
+      // Return prediction results
       return {
         success: true,
-        predictions: response.predictions
+        predictions: response.predictions,
       };
     } catch (error) {
       return {
         success: false,
-        error: `Vertex AI prediction failed: ${error instanceof Error ? error.message : String(error)}`
+        error: `Vertex AI prediction failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       };
     }
   }
 
+  // Define the tool's interface
   getDeclaration() {
     return {
       name: this.name,
       description: this.description,
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {
           endpoint: {
-            type: 'string',
-            description: 'Vertex AI model endpoint'
+            type: "string",
+            description: "Vertex AI model endpoint resource name",
           },
           instances: {
-            type: 'array',
-            description: 'Input instances for prediction'
-          }
+            type: "array",
+            description:
+              "Input instances for prediction in the format expected by the model",
+          },
         },
-        required: ['endpoint', 'instances']
-      }
+        required: ["endpoint", "instances"],
+      },
     };
+  }
+}
+
+}
+```
+
+### Real-world Usage Example
+
+This example shows how to register and use a Vertex AI prediction tool for image classification:
+
+```typescript
+import { LlmAgent, BaseTool } from "@iqai/adk";
+import { PredictionServiceClient } from "@google-cloud/aiplatform";
+
+// Create and configure the Vertex AI prediction tool
+const vertexTool = new VertexAIPredictionTool("my-gcp-project", "us-central1");
+
+// Initialize your agent
+const agent = new LlmAgent({
+  // Agent configuration...
+  model: "gemini-1.5-pro",
+  tools: [vertexTool],
+});
+
+// Example: Classify an image using a deployed image classification model
+async function classifyImage(imageBase64: string) {
+  try {
+    // Format the input according to your model's requirements
+    const input = {
+      // For an image classification model, the instance might look like:
+      instances: [
+        {
+          image: {
+            bytesBase64Encoded: imageBase64,
+          },
+        },
+      ],
+    };
+
+    // Execute the tool with the proper endpoint and formatted input
+    const result = await agent.executeTool("vertex_ai_prediction", {
+      endpoint:
+        "projects/my-gcp-project/locations/us-central1/endpoints/1234567890",
+      instances: input.instances,
+    });
+
+    if (result.success) {
+      console.log("Classification results:", result.predictions);
+      return result.predictions;
+    } else {
+      console.error("Classification failed:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("Error during classification:", error);
+    throw error;
   }
 }
 ```
 
-## Related Topics
+### Vertex AI Foundation Models
+
+You can also integrate with Vertex AI foundation models directly using the Vertex AI client library:
+
+```typescript
+import { BaseTool } from "@iqai/adk";
+import { VertexAI } from "@google-cloud/vertexai";
+
+class VertexAIGenerativeModelTool extends BaseTool {
+  private vertexAI: VertexAI;
+  private modelName: string;
+
+  constructor(
+    projectId: string,
+    location = "us-central1",
+    modelName = "gemini-1.0-pro"
+  ) {
+    super({
+      name: "vertex_ai_generative",
+      description: "Generate content using Vertex AI foundation models",
+    });
+
+    this.vertexAI = new VertexAI({ project: projectId, location });
+    this.modelName = modelName;
+  }
+
+  async runAsync(args: {
+    prompt: string;
+    parameters?: {
+      temperature?: number;
+      maxOutputTokens?: number;
+      topK?: number;
+      topP?: number;
+    };
+  }) {
+    try {
+      const generativeModel = this.vertexAI.getGenerativeModel({
+        model: this.modelName,
+      });
+
+      const result = await generativeModel.generateContent({
+        contents: [{ role: "user", parts: [{ text: args.prompt }] }],
+        generationConfig: args.parameters,
+      });
+
+      const response = result.response;
+      return {
+        success: true,
+        content: response.candidates[0].content,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Generation failed: ${error.message}`,
+      };
+    }
+  }
+}
+```
+
+## The GcsArtifactService
+
+ADK-TS includes a ready-to-use `GcsArtifactService` implementation for storing agent artifacts in Google Cloud Storage. This service allows your agents to persist and retrieve files, images, documents, and other artifacts during sessions.
+
+### Setup and Prerequisites
+
+1. Install the Google Cloud Storage client library:
+
+   ```bash
+   npm install @google-cloud/storage
+   ```
+
+2. Create a Google Cloud Storage bucket to store your artifacts:
+
+   ```bash
+   gsutil mb -l us-central1 gs://my-adk-artifacts-bucket/
+   ```
+
+3. Set up appropriate IAM permissions for your service account or user account:
+   - For development: `Storage Object Admin` role
+   - For production: Custom role with precise permissions for security
+
+### Basic Implementation
+
+```typescript
+import { GcsArtifactService, LlmAgent } from "@iqai/adk";
+import { Part } from "@google/genai";
+import { Storage } from "@google-cloud/storage";
+
+/**
+ * Initialize the artifact service with your bucket name
+ * @param bucketName The name of your GCS bucket
+ * @param options Optional StorageOptions from @google-cloud/storage
+ */
+const artifactService = new GcsArtifactService("my-artifacts-bucket", {
+  // Optional: explicit project ID if not using default credentials from ADC
+  projectId: "my-project-id",
+});
+
+// Example: Saving an artifact
+async function saveImageArtifact(
+  imageBase64: string,
+  appName: string,
+  userId: string,
+  sessionId: string
+) {
+  const artifact: Part = {
+    inlineData: {
+      data: imageBase64,
+      mimeType: "image/jpeg",
+    },
+  };
+
+  const version = await artifactService.saveArtifact({
+    appName,
+    userId,
+    sessionId,
+    filename: "my-image.jpg",
+    artifact,
+  });
+
+  console.log(`Artifact saved as version: ${version}`);
+  return version;
+}
+
+// Example: Loading an artifact
+async function loadImageArtifact(
+  appName: string,
+  userId: string,
+  sessionId: string,
+  filename: string
+) {
+  const part = await artifactService.loadArtifact({
+    appName,
+    userId,
+    sessionId,
+    filename,
+    // Optional: specific version, omit for latest
+    // version: 2
+  });
+
+  return part;
+}
+
+// Use with an agent
+const agent = new LlmAgent({
+  model: "gemini-1.5-pro",
+  artifactService: artifactService,
+  // ... other agent configuration
+});
+```
+
+### Storage Structure and Usage
+
+The `GcsArtifactService` organizes artifacts in a hierarchical structure with versioning support:
+
+```
+my-artifacts-bucket/
+├── appName/                           # Application name
+│   ├── userId/                        # User identifier
+│   │   ├── sessionId/                 # Session identifier
+│   │   │   ├── file1.jpg/             # Artifact filename
+│   │   │   │   ├── 0                  # Version 0
+│   │   │   │   └── 1                  # Version 1
+│   │   │   └── data.json/
+│   │   │       └── 0
+│   │   │
+│   │   └── user/                      # User namespace for user-specific artifacts
+│   │       └── user:profile.png/      # User-namespaced file
+│   │           ├── 0
+│   │           └── 1
+│   │
+│   └── anotherUser/
+│       └── ...
+```
+
+#### Key Features
+
+- **Versioned Storage**: Each artifact can have multiple versions, allowing for tracking changes over time
+- **Session Organization**: Artifacts are organized by app, user, and session for clear separation
+- **User Namespace**: Special `user:` prefix for artifacts that persist across sessions
+
+### API Reference
+
+The `GcsArtifactService` implements the `BaseArtifactService` interface and provides these core methods:
+
+#### saveArtifact
+
+Saves an artifact to Google Cloud Storage.
+
+```typescript
+async saveArtifact(args: {
+  appName: string;     // Application identifier
+  userId: string;      // User identifier
+  sessionId: string;   // Session identifier
+  filename: string;    // Name of the artifact
+  artifact: Part;      // The artifact data as a Part object
+}): Promise<number>;   // Returns the version number
+```
+
+#### loadArtifact
+
+Loads an artifact from Google Cloud Storage.
+
+```typescript
+async loadArtifact(args: {
+  appName: string;     // Application identifier
+  userId: string;      // User identifier
+  sessionId: string;   // Session identifier
+  filename: string;    // Name of the artifact
+  version?: number;    // Optional: specific version to load (latest if omitted)
+}): Promise<Part | null>; // Returns the artifact as a Part or null if not found
+```
+
+#### listArtifactKeys
+
+Lists all artifact keys (filenames) for a specific session.
+
+```typescript
+async listArtifactKeys(args: {
+  appName: string;     // Application identifier
+  userId: string;      // User identifier
+  sessionId: string;   // Session identifier
+}): Promise<string[]>; // Returns an array of artifact filenames
+```
+
+#### deleteArtifact
+
+Deletes an artifact and all its versions.
+
+```typescript
+async deleteArtifact(args: {
+  appName: string;     // Application identifier
+  userId: string;      // User identifier
+  sessionId: string;   // Session identifier
+  filename: string;    // Name of the artifact to delete
+}): Promise<void>;
+```
+
+#### listVersions
+
+Lists all versions of a specific artifact.
+
+```typescript
+async listVersions(args: {
+  appName: string;     // Application identifier
+  userId: string;      // User identifier
+  sessionId: string;   // Session identifier
+  filename: string;    // Name of the artifact
+}): Promise<number[]>; // Returns an array of version numbers
+```
+
+### Complete Usage Example
+
+Here's a full example of using the GcsArtifactService in an agent that handles image processing:
+
+```typescript
+import { LlmAgent, BaseTool, GcsArtifactService } from "@iqai/adk";
+import { Part } from "@google/genai";
+import * as fs from "fs";
+
+// Initialize the GCS Artifact Service
+const artifactService = new GcsArtifactService("my-artifacts-bucket", {
+  // This comes from StorageOptions interface from @google-cloud/storage
+  projectId: "my-project-id", // Optional: specify project ID if not using ADC
+});
+
+// Create an image processing tool
+class ImageProcessingTool extends BaseTool {
+  constructor() {
+    super({
+      name: "process_image",
+      description: "Process an image and store the result",
+    });
+  }
+
+  async runAsync(args: {
+    imageUrl: string;
+    processType: string;
+    appName: string;
+    userId: string;
+    sessionId: string;
+  }) {
+    try {
+      // Download the image (simplified example)
+      const imageData = await downloadImage(args.imageUrl);
+      const imageBuffer = Buffer.from(imageData);
+
+      // Process the image according to the specified process type
+      const processedImage = await this.processImage(
+        imageBuffer,
+        args.processType
+      );
+
+      // Create a Part object from the processed image
+      const imagePart: Part = {
+        inlineData: {
+          data: processedImage.toString("base64"),
+          mimeType: "image/jpeg",
+        },
+      };
+
+      // Store the processed image as an artifact
+      const artifactName = `processed_${Date.now()}.jpg`;
+      const version = await artifactService.saveArtifact({
+        appName: args.appName,
+        userId: args.userId,
+        sessionId: args.sessionId,
+        filename: artifactName,
+        artifact: imagePart,
+      });
+
+      // Return information about the stored artifact
+      return {
+        success: true,
+        artifactName: artifactName,
+        artifactVersion: version,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Image processing failed: ${error.message}`,
+      };
+    }
+  }
+
+  private async processImage(
+    imageBuffer: Buffer,
+    processType: string
+  ): Promise<Buffer> {
+    // Image processing logic would go here
+    // This is a placeholder for actual image processing code
+    return imageBuffer;
+  }
+}
+
+// Create an agent that uses this tool and artifact service
+const agent = new LlmAgent({
+  model: "gemini-1.5-pro",
+  artifactService: artifactService,
+  tools: [new ImageProcessingTool()],
+});
+
+// Helper function (simplified)
+async function downloadImage(url: string): Promise<ArrayBuffer> {
+  const response = await fetch(url);
+  return await response.arrayBuffer();
+}
+```
+
+## Integrating with Other Google Cloud Services
+
+The ADK-TS framework can be extended to work with a wide range of Google Cloud services. Here are some common integrations you might want to implement:
+
+### BigQuery
+
+For data analytics and large dataset queries:
+
+```typescript
+import { BigQuery } from "@google-cloud/bigquery";
+import { BaseTool } from "@iqai/adk";
+
+class BigQueryTool extends BaseTool {
+  private bigquery: BigQuery;
+
+  constructor() {
+    super({
+      name: "bigquery_tool",
+      description: "Run queries against BigQuery datasets",
+    });
+    this.bigquery = new BigQuery();
+  }
+
+  async runAsync(args: { query: string }) {
+    try {
+      const [rows] = await this.bigquery.query({ query: args.query });
+      return { results: rows };
+    } catch (error) {
+      return { error: `Query failed: ${error.message}` };
+    }
+  }
+}
+```
+
+### Cloud Translation
+
+For language translation capabilities:
+
+```typescript
+import { TranslationServiceClient } from "@google-cloud/translate";
+import { BaseTool } from "@iqai/adk";
+
+class TranslationTool extends BaseTool {
+  private translationClient: TranslationServiceClient;
+  private projectId: string;
+
+  constructor(projectId: string) {
+    super({
+      name: "translation_tool",
+      description: "Translate text between languages",
+    });
+    this.translationClient = new TranslationServiceClient();
+    this.projectId = projectId;
+  }
+
+  async runAsync(args: {
+    text: string;
+    targetLanguage: string;
+    sourceLanguage?: string;
+  }) {
+    try {
+      const request = {
+        parent: `projects/${this.projectId}/locations/global`,
+        contents: [args.text],
+        mimeType: "text/plain",
+        targetLanguageCode: args.targetLanguage,
+        sourceLanguageCode: args.sourceLanguage,
+      };
+
+      const [response] = await this.translationClient.translateText(request);
+      return {
+        translations: response.translations.map((t) => ({
+          translatedText: t.translatedText,
+          detectedLanguage: t.detectedLanguageCode,
+        })),
+      };
+    } catch (error) {
+      return { error: `Translation failed: ${error.message}` };
+    }
+  }
+}
+```
+
+### Cloud Vision
+
+For image analysis and recognition:
+
+```typescript
+import { ImageAnnotatorClient } from "@google-cloud/vision";
+import { BaseTool } from "@iqai/adk";
+
+class VisionTool extends BaseTool {
+  private visionClient: ImageAnnotatorClient;
+
+  constructor() {
+    super({
+      name: "vision_tool",
+      description: "Analyze images using Google Cloud Vision",
+    });
+    this.visionClient = new ImageAnnotatorClient();
+  }
+
+  async runAsync(args: {
+    imagePath: string;
+    features: Array<
+      | "LABEL_DETECTION"
+      | "TEXT_DETECTION"
+      | "FACE_DETECTION"
+      | "LANDMARK_DETECTION"
+    >;
+  }) {
+    try {
+      const [result] = await this.visionClient.annotateImage({
+        image: { source: { filename: args.imagePath } },
+        features: args.features.map((feature) => ({ type: feature })),
+      });
+
+      return { annotations: result };
+    } catch (error) {
+      return { error: `Image analysis failed: ${error.message}` };
+    }
+  }
+}
+```
+
+## Next Steps
 
 <Cards>
   <Card
@@ -486,17 +1410,21 @@ class VertexAIPredictionTool extends BaseTool {
     href="/docs/framework/tools/authentication"
   />
 
-  <Card
-    title="🔧 Function Tools"
-    description="Create custom tools for Google Cloud services"
-    href="/docs/framework/tools/function-tools"
-  />
+{" "}
 
-  <Card
-    title="⚡ Built-in Tools"
-    description="Explore other built-in tool capabilities"
-    href="/docs/framework/tools/built-in-tools"
-  />
+<Card
+  title="🔧 Function Tools"
+  description="Create custom tools for Google Cloud services"
+  href="/docs/framework/tools/function-tools"
+/>
+
+{" "}
+
+<Card
+  title="⚡ Built-in Tools"
+  description="Explore other built-in tool capabilities"
+  href="/docs/framework/tools/built-in-tools"
+/>
 
   <Card
     title="🤖 Agents"
