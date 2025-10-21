@@ -1,5 +1,12 @@
 # @iqai/adk-cli
 
+## 0.3.19
+
+### Patch Changes
+
+- 67a3547: Add next js starter template
+- 7a7c9b0: Fix root agent state load & add state polling
+
 ## 0.3.18
 
 ### Patch Changes
