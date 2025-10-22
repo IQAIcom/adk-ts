@@ -7,7 +7,11 @@ import { LlmAgent } from "./agents/llm-agent";
 import { RunConfig } from "./agents/run-config";
 import type { BaseArtifactService } from "./artifacts/base-artifact-service";
 import { InMemoryArtifactService } from "./artifacts/in-memory-artifact-service";
+import { runCompactionForSlidingWindow } from "./events/compaction";
+import type { EventsCompactionConfig } from "./events/compaction-config";
 import { Event } from "./events/event";
+import type { EventsSummarizer } from "./events/events-summarizer";
+import { LlmEventSummarizer } from "./events/llm-event-summarizer";
 import { Logger } from "./logger";
 import type { BaseMemoryService } from "./memory/base-memory-service";
 import { InMemoryMemoryService } from "./memory/in-memory-memory-service";
@@ -83,6 +87,11 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 	 */
 	memoryService?: BaseMemoryService;
 
+	/**
+	 * Configuration for event compaction.
+	 */
+	eventsCompactionConfig?: EventsCompactionConfig;
+
 	protected logger = new Logger({ name: "Runner" });
 
 	/**
@@ -94,18 +103,21 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		artifactService,
 		sessionService,
 		memoryService,
+		eventsCompactionConfig,
 	}: {
 		appName: string;
 		agent: T;
 		artifactService?: BaseArtifactService;
 		sessionService: BaseSessionService;
 		memoryService?: BaseMemoryService;
+		eventsCompactionConfig?: EventsCompactionConfig;
 	}) {
 		this.appName = appName;
 		this.agent = agent;
 		this.artifactService = artifactService;
 		this.sessionService = sessionService;
 		this.memoryService = memoryService;
+		this.eventsCompactionConfig = eventsCompactionConfig;
 	}
 
 	/**
@@ -240,6 +252,10 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 
 				yield event;
 			}
+
+			await context.with(spanContext, () =>
+				this._runCompaction(session, invocationContext),
+			);
 		} catch (error) {
 			this.logger.debug("Error running agent:", error);
 			span.recordException(error as Error);
@@ -394,6 +410,61 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			liveRequestQueue: null,
 			runConfig,
 		});
+	}
+
+	/**
+	 * Runs compaction if configured.
+	 */
+	private async _runCompaction(
+		session: Session,
+		_invocationContext: InvocationContext,
+	): Promise<void> {
+		if (!this.eventsCompactionConfig) {
+			return;
+		}
+
+		const summarizer = this._getOrCreateSummarizer();
+		if (!summarizer) {
+			this.logger.warn(
+				"Event compaction configured but no summarizer available",
+			);
+			return;
+		}
+
+		try {
+			await runCompactionForSlidingWindow(
+				this.eventsCompactionConfig,
+				session,
+				this.sessionService,
+				summarizer,
+			);
+		} catch (error) {
+			this.logger.error("Error running compaction:", error);
+		}
+	}
+
+	/**
+	 * Gets the configured summarizer or creates a default LLM-based one.
+	 */
+	private _getOrCreateSummarizer(): EventsSummarizer | undefined {
+		if (this.eventsCompactionConfig?.summarizer) {
+			return this.eventsCompactionConfig.summarizer;
+		}
+
+		if (this.agent instanceof LlmAgent) {
+			try {
+				const model = this.agent.canonicalModel;
+				return new LlmEventSummarizer(model);
+			} catch (error) {
+				this.logger.warn(
+					"Could not get canonical model for default summarizer:",
+					error,
+				);
+				return undefined;
+			}
+		}
+
+		return undefined;
 	}
 }
 
