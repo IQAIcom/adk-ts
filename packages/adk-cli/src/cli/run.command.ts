@@ -60,7 +60,7 @@ class ConsoleManager {
 			const shouldSilenceConsole = (level: string) => {
 				if (this.outputAllowed) return false;
 				// Always allow error and warn messages to prevent diagnostic issues
-				return !['error', 'warn'].includes(level);
+				return !["error", "warn"].includes(level);
 			};
 
 			const createConsoleFn = (level: string, original: Function) => {
@@ -71,11 +71,11 @@ class ConsoleManager {
 				}) as any;
 			};
 
-			console.log = createConsoleFn('log', this.originals.log);
-			console.info = createConsoleFn('info', this.originals.info);
-			console.warn = createConsoleFn('warn', this.originals.warn);
-			console.error = createConsoleFn('error', this.originals.error);
-			console.debug = createConsoleFn('debug', this.originals.debug);
+			console.log = createConsoleFn("log", this.originals.log);
+			console.info = createConsoleFn("info", this.originals.info);
+			console.warn = createConsoleFn("warn", this.originals.warn);
+			console.error = createConsoleFn("error", this.originals.error);
+			console.debug = createConsoleFn("debug", this.originals.debug);
 
 			// Smart stdout silencing - allow certain output patterns
 			const shouldSilenceStdout = (chunk: any) => {
@@ -95,14 +95,18 @@ class ConsoleManager {
 				}
 				// Allow error-like content through stderr
 				const str = String(chunk).toLowerCase();
-				if (str.includes('error') || str.includes('warning') || str.includes('failed')) {
+				if (
+					str.includes("error") ||
+					str.includes("warning") ||
+					str.includes("failed")
+				) {
 					return this.originalStderrWrite(chunk, encoding, callback);
 				}
 				return true;
 			}) as any;
 		} catch (error) {
 			// If console hooking fails, continue without it to avoid breaking the app
-			console.error('Failed to hook console:', error);
+			console.error("Failed to hook console:", error);
 		}
 	}
 
@@ -117,9 +121,9 @@ class ConsoleManager {
 			str.includes("Thinking") ||
 			str.includes("\r") ||
 			str.includes("\x1b") ||
-			str.toLowerCase().includes('error') ||
-			str.toLowerCase().includes('warning') ||
-			str.includes('?') // Interactive prompts
+			str.toLowerCase().includes("error") ||
+			str.toLowerCase().includes("warning") ||
+			str.includes("?") // Interactive prompts
 		);
 	}
 
@@ -135,51 +139,51 @@ class ConsoleManager {
 				args?: ReadonlyArray<string>,
 			): boolean => {
 				if (!command) return false;
-				
+
 				const cmd = command.toLowerCase();
-				const allArgs = (args || []).map(a => String(a).toLowerCase());
+				const allArgs = (args || []).map((a) => String(a).toLowerCase());
 				const fullCommand = [cmd, ...allArgs].join(" ");
-				
+
 				// Only silence specific known noisy processes
 				const silencePatterns = [
 					"mcp-remote",
 					"@iqai/mcp",
 					"modelcontextprotocol",
-					"@modelcontextprotocol"
+					"@modelcontextprotocol",
 				];
-				
-				return silencePatterns.some(pattern => fullCommand.includes(pattern));
+
+				return silencePatterns.some((pattern) => fullCommand.includes(pattern));
 			};
 
 			cp.spawn = ((command: any, args?: any, options?: any) => {
 				try {
 					const shouldSilence = shouldSilenceProcess(
-						command, 
-						Array.isArray(args) ? args : options?.args
+						command,
+						Array.isArray(args) ? args : options?.args,
 					);
-					
+
 					if (shouldSilence) {
 						// Determine the correct options object
-						const opts = Array.isArray(args) ? (options || {}) : (args || {});
-						
+						const opts = Array.isArray(args) ? options || {} : args || {};
+
 						// Create safer stdio configuration
 						const currentStdio = opts.stdio;
 						let newStdio: any;
-						
+
 						if (Array.isArray(currentStdio)) {
 							newStdio = [
 								currentStdio[0] || "pipe",
 								"pipe", // stdout to pipe (can be handled)
-								"pipe"  // stderr to pipe (allow error monitoring)
+								"pipe", // stderr to pipe (allow error monitoring)
 							];
-						} else if (typeof currentStdio === 'string') {
+						} else if (typeof currentStdio === "string") {
 							newStdio = ["pipe", "pipe", "pipe"];
 						} else {
 							newStdio = ["pipe", "pipe", "pipe"];
 						}
-						
+
 						const patchedOpts = { ...opts, stdio: newStdio };
-						
+
 						if (Array.isArray(args)) {
 							return this.originalSpawn!(command, args, patchedOpts);
 						}
@@ -187,20 +191,20 @@ class ConsoleManager {
 					}
 				} catch (error) {
 					// Log error and continue with original spawn to avoid breaking functionality
-					console.error('Error in child process hook:', error);
+					console.error("Error in child process hook:", error);
 				}
-				
+
 				return this.originalSpawn!(command, args, options);
 			}) as any;
 		} catch (error) {
-			console.error('Failed to hook child process:', error);
+			console.error("Failed to hook child process:", error);
 		}
 	}
 
 	restore(): void {
 		if (this.isDestroyed) return;
 		this.isDestroyed = true;
-		
+
 		try {
 			if (this.originals) {
 				console.log = this.originals.log;
@@ -226,7 +230,7 @@ class ConsoleManager {
 		} catch (error) {
 			// Use original console.error if available, fallback to process.stderr
 			if (this.originals?.error) {
-				this.originals.error('Error during ConsoleManager restore:', error);
+				this.originals.error("Error during ConsoleManager restore:", error);
 			} else {
 				process.stderr.write(`Error during ConsoleManager restore: ${error}\n`);
 			}
@@ -387,7 +391,8 @@ class AgentChatClient {
 				}
 			} catch (error) {
 				spinner.stop("❌ Error");
-				const errorMessage = error instanceof Error ? error.message : String(error);
+				const errorMessage =
+					error instanceof Error ? error.message : String(error);
 				this.consoleManager.error(`Failed to send message: ${errorMessage}`);
 				throw error;
 			}
@@ -432,7 +437,8 @@ class AgentChatClient {
 						await this.sendMessage(trimmed);
 					}
 				} catch (error) {
-					const errorMessage = error instanceof Error ? error.message : String(error);
+					const errorMessage =
+						error instanceof Error ? error.message : String(error);
 					this.consoleManager.error(`Error in chat: ${errorMessage}`);
 					process.exit(1);
 				}
@@ -557,7 +563,8 @@ export class RunCommand extends CommandRunner {
 				p.outro("Chat ended");
 			});
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			consoleManager.error(`Error: ${errorMessage}`);
 			process.exit(1);
 		} finally {
