@@ -104,14 +104,15 @@ We have **12 comprehensive examples** that cover the complete ADK feature set, o
 | **[07-code-execution](src/07-code-execution/)** | Code generation and execution capabilities | Code tools, sandboxed execution |
 | **[08-external-integrations](src/08-external-integrations/)** | API integrations and external services | HTTP tools, service integration |
 
-### 🚀 **Advanced Examples (09-12)**
+### 🚀 **Advanced Examples (09-13)**
 
 | Example | Description | Key Concepts |
 |---------|-------------|--------------|
 | **[09-observability](src/09-observability/)** | Monitoring, logging, and performance tracking | Telemetry, debugging, metrics |
 | **[10-advanced-workflows](src/10-advanced-workflows/)** | Complex multi-step workflows and automation | Advanced patterns, orchestration |
 | **[11-mcp-integrations](src/11-mcp-integrations/)** | Model Context Protocol with custom servers | MCP servers, sampling, FastMCP |
-| **[12-chat-bots](src/12-chat-bots/)** | Platform-specific chat bot implementations | Discord, Telegram, platform APIs |
+| **[12-event-compaction](src/12-event-compaction/)** | Managing long sessions with event summarization | Event compaction, token optimization |
+| **[13-chat-bots](src/13-chat-bots/)** | Platform-specific chat bot implementations | Discord, Telegram, platform APIs |
 
 ## 🤝 Contributing
 

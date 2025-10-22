@@ -5,6 +5,7 @@ import { type LanguageModel, generateId } from "ai";
 import type { ZodSchema, ZodType } from "zod";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service.js";
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor.js";
+import type { EventsCompactionConfig } from "../events/compaction-config.js";
 import type { Event } from "../events/event.js";
 import type { BaseMemoryService } from "../memory/base-memory-service.js";
 import type { BaseLlm } from "../models/base-llm.js";
@@ -148,6 +149,7 @@ interface RunnerConfig {
 	sessionService: BaseSessionService;
 	memoryService?: BaseMemoryService;
 	artifactService?: BaseArtifactService;
+	eventsCompactionConfig?: EventsCompactionConfig;
 }
 
 /**
@@ -200,6 +202,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	private sessionOptions?: SessionOptions;
 	private memoryService?: BaseMemoryService;
 	private artifactService?: BaseArtifactService;
+	private eventsCompactionConfig?: EventsCompactionConfig;
 	private agentType: AgentType = "llm";
 	private existingSession?: Session;
 	private existingAgent?: BaseAgent; // If provided, reuse directly
@@ -644,6 +647,27 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	}
 
 	/**
+	 * Configure event compaction for automatic history management
+	 * @param config Event compaction configuration
+	 * @returns This builder instance for chaining
+	 * @example
+	 * ```typescript
+	 * const { runner } = await AgentBuilder
+	 *   .create("assistant")
+	 *   .withModel("gemini-2.5-flash")
+	 *   .withEventsCompaction({
+	 *     compactionInterval: 10,  // Compact every 10 invocations
+	 *     overlapSize: 2,          // Include 2 prior invocations
+	 *   })
+	 *   .build();
+	 * ```
+	 */
+	withEventsCompaction(config: EventsCompactionConfig): this {
+		this.eventsCompactionConfig = config;
+		return this;
+	}
+
+	/**
 	 * Configure with an in-memory session with custom IDs
 	 * Note: In-memory sessions are created automatically by default, use this only if you need custom appName/userId
 	 * @param options Session configuration options (userId and appName)
@@ -686,6 +710,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 				sessionService: this.sessionService,
 				memoryService: this.memoryService,
 				artifactService: this.artifactService,
+				eventsCompactionConfig: this.eventsCompactionConfig,
 			};
 
 			const baseRunner = new Runner(runnerConfig);
