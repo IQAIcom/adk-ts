@@ -391,7 +391,6 @@ export class AgentManager {
 		// First try to extract from the builtAgent's session if available
 		if (agentResult.builtAgent?.session) {
 			const state = agentResult.builtAgent.session.state;
-			console.log("extractInitialState state", state);
 
 			if (state) {
 				const stateKeys = Object.keys(state);
@@ -441,8 +440,6 @@ export class AgentManager {
 			for (const [, session] of userSessions) {
 				for (const [, innerSession] of session) {
 					const state = innerSession?.state;
-
-					console.log("getInitialStateFromSessionService state", state);
 					if (!state) continue;
 
 					const stateKeys =

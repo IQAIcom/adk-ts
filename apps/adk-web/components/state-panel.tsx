@@ -4,8 +4,6 @@ import CodeEditor from "@uiw/react-textarea-code-editor";
 import { Code2, Edit, Plus, Settings, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { StateCard } from "./state-card";
-
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -19,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useJsonEditor } from "@/hooks/use-json-editor";
 import { useStatePanel } from "@/hooks/use-state-panel";
 import type { AgentListItemDto as Agent } from "../Api";
+import { StateCard } from "./state-card";
 
 interface StatePanelProps {
 	selectedAgent: Agent | null;
@@ -76,7 +75,7 @@ export function StatePanel({
 	};
 
 	return (
-		<div className="h-full flex flex-col bg-background">
+		<div className="h-full bg-background">
 			{/* Header */}
 			<div className="p-4 border-b">
 				<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

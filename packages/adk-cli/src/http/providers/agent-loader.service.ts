@@ -366,7 +366,6 @@ export class AgentLoader {
 					}
 				}
 			} catch (error) {
-				// FIXED ISSUE #2: Log warning about cache invalidation failure
 				if (!this.quiet) {
 					this.logger.warn(
 						`Failed to invalidate require cache for ${outFile}: ${
