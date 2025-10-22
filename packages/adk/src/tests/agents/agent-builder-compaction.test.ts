@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentBuilder } from "../../agents/agent-builder.js";
+import type { EventsCompactionConfig } from "../../events/compaction-config.js";
 import { Event } from "../../events/event.js";
 import { EventActions } from "../../events/event-actions.js";
-import type { EventsCompactionConfig } from "../../events/compaction-config.js";
 import type { EventsSummarizer } from "../../events/events-summarizer.js";
-import { LlmEventSummarizer } from "../../events/llm-event-summarizer.js";
 import { InMemorySessionService } from "../../sessions/in-memory-session-service.js";
 
 describe("AgentBuilder - Events Compaction", () => {
