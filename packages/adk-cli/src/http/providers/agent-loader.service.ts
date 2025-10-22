@@ -1,6 +1,8 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, statSync, unlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, normalize, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { BaseAgent } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import { findProjectRoot } from "../../common/find-project-root";
@@ -56,6 +58,49 @@ export class AgentLoader {
 		this.envUtils.loadEnvironmentVariables(agentFilePath);
 	}
 
+	/**
+	 * Check if a rebuild is needed based on file modification times
+	 */
+	private isRebuildNeeded(
+		outFile: string,
+		sourceFile: string,
+		tsconfigPath: string,
+	): boolean {
+		if (!existsSync(outFile)) {
+			return true;
+		}
+
+		try {
+			const outStat = statSync(outFile);
+			const srcStat = statSync(sourceFile);
+			const tsconfigMtime = existsSync(tsconfigPath)
+				? statSync(tsconfigPath).mtimeMs
+				: 0;
+
+			const needRebuild = !(
+				outStat.mtimeMs >= srcStat.mtimeMs && outStat.mtimeMs >= tsconfigMtime
+			);
+
+			if (!needRebuild && !this.quiet) {
+				this.logger.debug(`Reusing cached build: ${outFile}`);
+			}
+
+			return needRebuild;
+		} catch (error) {
+			if (!this.quiet) {
+				this.logger.warn(
+					`Failed to check cache freshness for ${outFile}: ${
+						error instanceof Error ? error.message : String(error)
+					}. Forcing rebuild.`,
+				);
+			}
+			return true;
+		}
+	}
+
+	/**
+	 * Import a TypeScript file by compiling it on-demand
+	 */
 	async importTypeScriptFile(
 		filePath: string,
 		providedProjectRoot?: string,
@@ -73,44 +118,111 @@ export class AgentLoader {
 		try {
 			const { build } = await import("esbuild");
 			const cacheDir = join(projectRoot, CACHE_DIR);
-			if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
+			if (!existsSync(cacheDir)) {
+				mkdirSync(cacheDir, { recursive: true });
+			}
 
-			const outFile = this.cacheUtils.createTempFilePath(projectRoot);
+			// Deterministic cache file path per source file
+			const cacheKey = createHash("sha1")
+				.update(this.pathUtils.normalizePath(normalizedFilePath))
+				.digest("hex");
+			const outFile = normalize(join(cacheDir, `agent-${cacheKey}.cjs`));
 			this.cacheUtils.trackCacheFile(outFile, projectRoot);
 
 			const tsconfigPath = join(projectRoot, "tsconfig.json");
+
+			// Check if we need to rebuild
+			const needRebuild = this.isRebuildNeeded(
+				outFile,
+				normalizedFilePath,
+				tsconfigPath,
+			);
+
 			const plugins = [
 				this.pathUtils.createPathMappingPlugin(projectRoot),
 				this.pathUtils.createExternalizePlugin(),
 			];
 
-			await build({
-				entryPoints: [this.pathUtils.normalizePath(normalizedFilePath)],
-				outfile: outFile,
-				bundle: true,
-				format: "cjs",
-				platform: "node",
-				target: ["node22"],
-				sourcemap: false,
-				logLevel: "silent",
-				plugins,
-				absWorkingDir: projectRoot,
-				external: ["@iqai/adk"],
-				...(existsSync(tsconfigPath) ? { tsconfig: tsconfigPath } : {}),
-			});
+			if (needRebuild) {
+				// Delete old cache file before rebuilding
+				try {
+					if (existsSync(outFile)) {
+						unlinkSync(outFile);
+						if (!this.quiet) {
+							this.logger.debug(`Deleted old cache file: ${outFile}`);
+						}
+					}
+				} catch (error) {
+					if (!this.quiet) {
+						this.logger.warn(
+							`Failed to delete old cache file ${outFile}: ${
+								error instanceof Error ? error.message : String(error)
+							}`,
+						);
+					}
+				}
+
+				await build({
+					entryPoints: [this.pathUtils.normalizePath(normalizedFilePath)],
+					outfile: outFile,
+					bundle: true,
+					format: "cjs",
+					platform: "node",
+					target: ["node22"],
+					sourcemap: false,
+					logLevel: "silent",
+					plugins,
+					absWorkingDir: projectRoot,
+					external: ["@iqai/adk"],
+					...(existsSync(tsconfigPath) ? { tsconfig: tsconfigPath } : {}),
+				});
+			}
 
 			const dynamicRequire = createRequire(outFile);
+
+			// Bust require cache if we rebuilt
+			try {
+				if (needRebuild) {
+					const resolved = (dynamicRequire as any).resolve
+						? (dynamicRequire as any).resolve(outFile)
+						: outFile;
+					if ((dynamicRequire as any).cache?.[resolved]) {
+						delete (dynamicRequire as any).cache[resolved];
+					}
+				}
+			} catch (error) {
+				if (!this.quiet) {
+					this.logger.warn(
+						`Failed to invalidate require cache for ${outFile}: ${
+							error instanceof Error ? error.message : String(error)
+						}. Stale code may be executed.`,
+					);
+				}
+			}
+
 			let mod: Record<string, unknown>;
 
 			try {
-				mod = dynamicRequire(outFile);
-			} catch (error) {
-				// ✅ handle env-related import errors first
-				mod = await this.errorUtils.handleImportError(
-					error,
-					outFile,
-					projectRoot,
+				mod = dynamicRequire(outFile) as Record<string, unknown>;
+			} catch (loadErr) {
+				this.logger.warn(
+					`Primary require failed for built agent '${outFile}': ${
+						loadErr instanceof Error ? loadErr.message : String(loadErr)
+					}. Falling back to dynamic import...`,
 				);
+				try {
+					mod = (await import(pathToFileURL(outFile).href)) as Record<
+						string,
+						unknown
+					>;
+				} catch (fallbackErr) {
+					// Handle env-related import errors
+					mod = await this.errorUtils.handleImportError(
+						fallbackErr,
+						outFile,
+						projectRoot,
+					);
+				}
 			}
 
 			this.logger.log(
