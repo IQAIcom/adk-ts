@@ -13,6 +13,17 @@ import { pathToFileURL } from "node:url";
 import type { AgentBuilder, BaseAgent, BuiltAgent } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import { findProjectRoot } from "../../common/find-project-root";
+import type {
+	AgentExportResult,
+	AgentExportValue,
+	ESBuildOnResolveArgs,
+	ESBuildPlugin,
+	ESBuildPluginSetup,
+	ModuleExport,
+	RequireLike,
+	TsConfigPaths,
+} from "./agent-loader.types";
+import { TsConfigSchema } from "./agent-loader.types";
 
 const ADK_CACHE_DIR = ".adk-cache";
 
@@ -106,10 +117,7 @@ export class AgentLoader {
 	/**
 	 * Parse TypeScript path mappings from tsconfig.json
 	 */
-	private parseTsConfigPaths(projectRoot: string): {
-		baseUrl?: string;
-		paths?: Record<string, string[]>;
-	} {
+	private parseTsConfigPaths(projectRoot: string): TsConfigPaths {
 		const tsconfigPath = join(projectRoot, "tsconfig.json");
 		if (!existsSync(tsconfigPath)) {
 			return {};
@@ -117,8 +125,13 @@ export class AgentLoader {
 
 		try {
 			const tsconfigContent = readFileSync(tsconfigPath, "utf-8");
-			const tsconfig = JSON.parse(tsconfigContent);
-			const compilerOptions = tsconfig.compilerOptions || {};
+			const tsconfigJson: unknown = JSON.parse(tsconfigContent);
+			const parsed = TsConfigSchema.safeParse(tsconfigJson);
+			if (!parsed.success) {
+				this.logger.warn("Invalid tsconfig.json structure");
+				return {};
+			}
+			const compilerOptions = parsed.data.compilerOptions || {};
 
 			return {
 				baseUrl: compilerOptions.baseUrl,
@@ -135,7 +148,7 @@ export class AgentLoader {
 	/**
 	 * Create an esbuild plugin to handle TypeScript path mappings and relative imports
 	 */
-	private createPathMappingPlugin(projectRoot: string) {
+	private createPathMappingPlugin(projectRoot: string): ESBuildPlugin {
 		const { baseUrl, paths } = this.parseTsConfigPaths(projectRoot);
 		const resolvedBaseUrl = baseUrl
 			? resolve(projectRoot, baseUrl)
@@ -146,8 +159,8 @@ export class AgentLoader {
 
 		return {
 			name: "typescript-path-mapping",
-			setup(build: any) {
-				build.onResolve({ filter: /.*/ }, (args: any) => {
+			setup(build: ESBuildPluginSetup) {
+				build.onResolve({ filter: /.*/ }, (args: ESBuildOnResolveArgs) => {
 					if (!quiet) {
 						logger.debug(
 							`Resolving import: "${args.path}" from "${args.importer || "unknown"}"`,
@@ -264,7 +277,7 @@ export class AgentLoader {
 	async importTypeScriptFile(
 		filePath: string,
 		providedProjectRoot?: string,
-	): Promise<Record<string, unknown>> {
+	): Promise<ModuleExport> {
 		// Normalize the input file path
 		const normalizedFilePath = normalize(resolve(filePath));
 		const projectRoot =
@@ -303,17 +316,10 @@ export class AgentLoader {
 			const ALWAYS_EXTERNAL_SCOPES = ["@iqai/"];
 			const alwaysExternal = ["@iqai/adk"];
 
-			const plugin = {
+			const plugin: ESBuildPlugin = {
 				name: "externalize-bare-imports",
-				setup(build: {
-					onResolve: (
-						options: { filter: RegExp },
-						callback: (args: {
-							path: string;
-						}) => { path: string; external: boolean } | undefined,
-					) => void;
-				}) {
-					build.onResolve({ filter: /.*/ }, (args: { path: string }) => {
+				setup(build: ESBuildPluginSetup) {
+					build.onResolve({ filter: /.*/ }, (args: ESBuildOnResolveArgs) => {
 						const isWindowsAbsolutePath = /^[a-zA-Z]:/.test(args.path);
 						if (
 							args.path.startsWith(".") ||
@@ -372,15 +378,15 @@ export class AgentLoader {
 				});
 			}
 
-			const dynamicRequire = createRequire(outFile);
+			const dynamicRequire = createRequire(outFile) as RequireLike;
 			// Bust require cache if we rebuilt the same outFile path
 			try {
 				if (needRebuild) {
-					const resolved = (dynamicRequire as any).resolve
-						? (dynamicRequire as any).resolve(outFile)
+					const resolved = dynamicRequire.resolve
+						? dynamicRequire.resolve(outFile)
 						: outFile;
-					if ((dynamicRequire as any).cache?.[resolved]) {
-						delete (dynamicRequire as any).cache[resolved];
+					if (dynamicRequire.cache?.[resolved]) {
+						delete dynamicRequire.cache[resolved];
 					}
 				}
 			} catch (error) {
@@ -393,9 +399,9 @@ export class AgentLoader {
 				}
 			}
 
-			let mod: Record<string, unknown>;
+			let mod: ModuleExport;
 			try {
-				mod = dynamicRequire(outFile) as Record<string, unknown>;
+				mod = dynamicRequire(outFile) as ModuleExport;
 			} catch (loadErr) {
 				this.logger.warn(
 					`Primary require failed for built agent '${outFile}': ${
@@ -403,10 +409,7 @@ export class AgentLoader {
 					}. Falling back to dynamic import...`,
 				);
 				try {
-					mod = (await import(pathToFileURL(outFile).href)) as Record<
-						string,
-						unknown
-					>;
+					mod = (await import(pathToFileURL(outFile).href)) as ModuleExport;
 				} catch (fallbackErr) {
 					throw new Error(
 						`Both require() and import() failed for built agent file '${outFile}': ${
@@ -418,10 +421,19 @@ export class AgentLoader {
 				}
 			}
 
-			let agentExport = (mod as any)?.agent;
-			if (!agentExport && (mod as any)?.default) {
-				const defaultExport = (mod as any).default as Record<string, unknown>;
-				agentExport = (defaultExport as any)?.agent ?? defaultExport;
+			let agentExport = mod.agent;
+			if (!agentExport && mod.default) {
+				const defaultExport = mod.default;
+				if (
+					defaultExport &&
+					typeof defaultExport === "object" &&
+					"agent" in defaultExport
+				) {
+					const defaultObj = defaultExport as ModuleExport;
+					agentExport = defaultObj.agent ?? defaultExport;
+				} else {
+					agentExport = defaultExport;
+				}
 			}
 
 			if (agentExport) {
@@ -527,9 +539,9 @@ export class AgentLoader {
 		return (
 			obj != null &&
 			typeof obj === "object" &&
-			"agent" in (obj as any) &&
-			"runner" in (obj as any) &&
-			"session" in (obj as any)
+			"agent" in obj &&
+			"runner" in obj &&
+			"session" in obj
 		);
 	}
 
@@ -545,12 +557,20 @@ export class AgentLoader {
 	/**
 	 * Safely invoke a function, handling both sync and async results
 	 */
-	private async invokeFunctionSafely(fn: () => unknown): Promise<unknown> {
-		let result = fn();
-		if (result && typeof result === "object" && "then" in (result as any)) {
-			result = await (result as any);
+	private async invokeFunctionSafely(
+		fn: () => AgentExportValue,
+	): Promise<AgentExportValue> {
+		let result: unknown = fn();
+		if (result && typeof result === "object" && "then" in result) {
+			try {
+				result = await (result as Promise<AgentExportValue>);
+			} catch (e) {
+				throw new Error(
+					`Failed to await function result: ${e instanceof Error ? e.message : String(e)}`,
+				);
+			}
 		}
-		return result;
+		return result as AgentExportValue;
 	}
 
 	/**
@@ -559,7 +579,7 @@ export class AgentLoader {
 	 */
 	private async extractBaseAgent(
 		item: unknown,
-	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent } | null> {
+	): Promise<AgentExportResult | null> {
 		if (this.isLikelyAgentInstance(item)) {
 			return { agent: item as BaseAgent };
 		}
@@ -568,9 +588,10 @@ export class AgentLoader {
 			return { agent: built.agent, builtAgent: built };
 		}
 		if (this.isBuiltAgent(item)) {
+			const builtItem = item as BuiltAgent;
 			return {
-				agent: (item as BuiltAgent).agent,
-				builtAgent: item as BuiltAgent,
+				agent: builtItem.agent,
+				builtAgent: builtItem,
 			};
 		}
 		return null;
@@ -580,8 +601,8 @@ export class AgentLoader {
 	 * Search through module exports to find potential agent exports
 	 */
 	private async scanModuleExports(
-		mod: Record<string, unknown>,
-	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent } | null> {
+		mod: ModuleExport,
+	): Promise<AgentExportResult | null> {
 		for (const [key, value] of Object.entries(mod)) {
 			if (key === "default") continue;
 			const keyLower = key.toLowerCase();
@@ -592,11 +613,9 @@ export class AgentLoader {
 				return result;
 			}
 
-			if (value && typeof value === "object" && "agent" in (value as any)) {
-				const container = value as Record<string, unknown>;
-				const containerResult = await this.extractBaseAgent(
-					(container as any).agent,
-				);
+			if (value && typeof value === "object" && "agent" in value) {
+				const container = value as ModuleExport;
+				const containerResult = await this.extractBaseAgent(container.agent);
 				if (containerResult) {
 					return containerResult;
 				}
@@ -606,7 +625,8 @@ export class AgentLoader {
 				typeof value === "function" &&
 				(() => {
 					if (/(agent|build|create)/i.test(keyLower)) return true;
-					const fnName = (value as { name?: string })?.name;
+					const fnLike = value as { name?: string };
+					const fnName = fnLike?.name;
 					return !!(
 						fnName && /(agent|build|create)/i.test(fnName.toLowerCase())
 					);
@@ -614,25 +634,11 @@ export class AgentLoader {
 			) {
 				try {
 					const functionResult = await this.invokeFunctionSafely(
-						value as () => unknown,
+						value as () => unknown as () => AgentExportValue,
 					);
 					const result = await this.extractBaseAgent(functionResult);
 					if (result) {
 						return result;
-					}
-
-					if (
-						functionResult &&
-						typeof functionResult === "object" &&
-						"agent" in (functionResult as any)
-					) {
-						const container = functionResult as Record<string, unknown>;
-						const containerResult = await this.extractBaseAgent(
-							(container as any).agent,
-						);
-						if (containerResult) {
-							return containerResult;
-						}
 					}
 				} catch (_e) {
 					// Swallow and continue searching
@@ -643,17 +649,13 @@ export class AgentLoader {
 		return null;
 	}
 
-	async resolveAgentExport(
-		mod: Record<string, unknown>,
-	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent }> {
-		const moduleDefault = (mod as any)?.default as
-			| Record<string, unknown>
-			| undefined;
+	async resolveAgentExport(mod: ModuleExport): Promise<AgentExportResult> {
+		const moduleDefault =
+			mod.default && typeof mod.default === "object"
+				? (mod.default as ModuleExport)
+				: undefined;
 		const candidateToResolve: unknown =
-			(mod as any)?.agent ??
-			(moduleDefault as any)?.agent ??
-			moduleDefault ??
-			mod;
+			mod.agent ?? moduleDefault?.agent ?? moduleDefault ?? mod;
 
 		const directResult = await this.tryResolvingDirectCandidate(
 			candidateToResolve,
@@ -686,8 +688,8 @@ export class AgentLoader {
 	 */
 	private async tryResolvingDirectCandidate(
 		candidateToResolve: unknown,
-		mod: Record<string, unknown>,
-	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent } | null> {
+		mod: ModuleExport,
+	): Promise<AgentExportResult | null> {
 		if (
 			this.isPrimitive(candidateToResolve) ||
 			(candidateToResolve && candidateToResolve === (mod as unknown))
@@ -703,10 +705,10 @@ export class AgentLoader {
 		if (
 			candidateToResolve &&
 			typeof candidateToResolve === "object" &&
-			"agent" in (candidateToResolve as any)
+			"agent" in candidateToResolve
 		) {
-			const container = candidateToResolve as Record<string, unknown>;
-			return await this.extractBaseAgent((container as any).agent);
+			const container = candidateToResolve as ModuleExport;
+			return await this.extractBaseAgent(container.agent);
 		}
 
 		return null;
@@ -717,24 +719,15 @@ export class AgentLoader {
 	 */
 	private async tryResolvingFunctionCandidate(
 		functionCandidate: unknown,
-	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent } | null> {
+	): Promise<AgentExportResult | null> {
 		try {
 			const functionResult = await this.invokeFunctionSafely(
-				functionCandidate as () => unknown,
+				functionCandidate as () => unknown as () => AgentExportValue,
 			);
 
 			const result = await this.extractBaseAgent(functionResult);
 			if (result) {
 				return result;
-			}
-
-			if (
-				functionResult &&
-				typeof functionResult === "object" &&
-				"agent" in (functionResult as any)
-			) {
-				const container = functionResult as Record<string, unknown>;
-				return await this.extractBaseAgent((container as any).agent);
 			}
 		} catch (e) {
 			throw new Error(
