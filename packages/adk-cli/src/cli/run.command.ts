@@ -63,7 +63,10 @@ class ConsoleManager {
 				return !["error", "warn"].includes(level);
 			};
 
-			const createConsoleFn = (level: string, original: Function) => {
+			const createConsoleFn = (
+				level: string,
+				original: (...args: any[]) => any,
+			) => {
 				return ((...args: any[]) => {
 					if (!shouldSilenceConsole(level)) {
 						original.apply(console, args);
@@ -358,6 +361,40 @@ class AgentChatClient {
 			const spinner = p.spinner();
 			spinner.start("🤖 Thinking...");
 
+			// Save original methods for targeted silencing during the request
+			const savedStdout = process.stdout.write;
+			const savedStderr = process.stderr.write;
+			const savedConsoleLog = console.log;
+			const savedConsoleInfo = console.info;
+			const savedConsoleWarn = console.warn;
+			const savedConsoleError = console.error;
+
+			// Intelligent stdout filtering - allow spinner chars but block log messages
+			const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+			const isSpinnerOutput = (chunk: any): boolean => {
+				const str = String(chunk);
+				return (
+					spinnerChars.some((char) => str.includes(char)) ||
+					str.includes("🤖 Thinking") ||
+					str.includes("\r") || // carriage returns for spinner updates
+					str.includes("\x1b")
+				); // ANSI escape codes for colors/positioning
+			};
+
+			// Temporarily override output during the fetch
+			process.stdout.write = ((chunk: any, encoding?: any, callback?: any) => {
+				if (isSpinnerOutput(chunk)) {
+					return savedStdout.call(process.stdout, chunk, encoding, callback);
+				}
+				return true; // Block everything else
+			}) as any;
+
+			process.stderr.write = (() => true) as any; // Block all stderr
+			console.log = (() => {}) as any;
+			console.info = (() => {}) as any;
+			console.warn = (() => {}) as any;
+			console.error = (() => {}) as any;
+
 			try {
 				const agentPath = this.selectedAgent?.relativePath;
 				if (!agentPath) {
@@ -395,6 +432,14 @@ class AgentChatClient {
 					error instanceof Error ? error.message : String(error);
 				this.consoleManager.error(`Failed to send message: ${errorMessage}`);
 				throw error;
+			} finally {
+				// Restore all methods
+				process.stdout.write = savedStdout;
+				process.stderr.write = savedStderr;
+				console.log = savedConsoleLog;
+				console.info = savedConsoleInfo;
+				console.warn = savedConsoleWarn;
+				console.error = savedConsoleError;
 			}
 		});
 	}
