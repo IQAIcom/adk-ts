@@ -1,24 +1,7 @@
-import * as p from "@clack/prompts";
-import { spinner } from "@clack/prompts";
 import chalk from "chalk";
-import { marked } from "marked";
-import * as markedTerminal from "marked-terminal";
 import { Command, CommandRunner, Option } from "nest-commander";
 import { startHttpServer } from "../http/bootstrap";
-
-const mt: any =
-	(markedTerminal as any).markedTerminal ?? (markedTerminal as any);
-marked.use(mt() as any);
-
-/**
- * Render markdown to ANSI for terminal using 'marked' + 'marked-terminal'.
- * Simple static import and configuration as per package docs.
- */
-async function render(text: string): Promise<string> {
-	const input = text ?? "";
-	const out = marked.parse(input);
-	return typeof out === "string" ? out : String(out ?? "");
-}
+import { Logger } from "../utils/logger";
 
 interface ServeLikeOptions {
 	host?: string;
@@ -40,9 +23,11 @@ interface Agent {
 class AgentChatClient {
 	private apiUrl: string;
 	private selectedAgent: Agent | null = null;
+	private logger: Logger;
 
-	constructor(apiUrl: string) {
+	constructor(apiUrl: string, logger: Logger) {
 		this.apiUrl = apiUrl;
+		this.logger = logger;
 	}
 
 	async connect(): Promise<void> {
@@ -84,19 +69,14 @@ class AgentChatClient {
 			return agents[0];
 		}
 
-		const selectedAgent = await p.select({
-			message: "Choose an agent to chat with:",
-			options: agents.map((agent) => ({
+		const selectedAgent = await this.logger.select<Agent>(
+			"Choose an agent to chat with:",
+			agents.map((agent) => ({
 				label: agent.name,
 				value: agent,
 				hint: agent.relativePath,
 			})),
-		});
-
-		if (p.isCancel(selectedAgent)) {
-			p.cancel("Operation cancelled");
-			process.exit(0);
-		}
+		);
 
 		return selectedAgent;
 	}
@@ -106,8 +86,7 @@ class AgentChatClient {
 			throw new Error("No agent selected");
 		}
 
-		const s = spinner();
-		s.start("🤖 Thinking...");
+		this.logger.startSpinner("🤖 Thinking...");
 
 		try {
 			const response = await fetch(
@@ -121,7 +100,7 @@ class AgentChatClient {
 
 			if (!response.ok) {
 				const errorText = await response.text();
-				s.stop("❌ Failed to send message");
+				this.logger.stopSpinner("❌ Failed to send message");
 				throw new Error(`Failed to send message: ${errorText}`);
 			}
 
@@ -129,14 +108,13 @@ class AgentChatClient {
 				response?: string;
 				agentName?: string;
 			};
-			s.stop(`🤖 ${result.agentName ?? "Assistant"}:`);
+			this.logger.stopSpinner(`🤖 ${result.agentName ?? "Assistant"}:`);
 
 			if (result.response) {
-				const formattedResponse = await render(result.response);
-				p.log.message((formattedResponse || "").trim());
+				this.logger.printAnswer(result.response);
 			}
 		} catch (_error) {
-			p.log.error("Failed to send message");
+			this.logger.error("Failed to send message");
 		}
 	}
 
@@ -147,7 +125,7 @@ class AgentChatClient {
 
 		// Add SIGINT handler for interactive chat mode
 		const sigintHandler = () => {
-			p.cancel("Chat ended");
+			this.logger.outro("Chat ended");
 			process.exit(0);
 		};
 		process.on("SIGINT", sigintHandler);
@@ -155,24 +133,15 @@ class AgentChatClient {
 		try {
 			while (true) {
 				try {
-					const message = await p.text({
-						message: "💬 Message:",
+					const input = await this.logger.prompt("💬 Message:", {
 						placeholder:
 							"Type your message here... (type 'exit' or 'quit' to end)",
 					});
 
-					if (p.isCancel(message)) {
-						sigintHandler();
-					}
-
-					const trimmed =
-						typeof message === "symbol"
-							? String(message)
-							: (message || "").trim();
+					const trimmed = (input || "").trim();
 
 					// Check for explicit exit commands
 					if (["exit", "quit"].includes(trimmed.toLowerCase())) {
-						p.outro("Chat ended");
 						process.exit(0);
 					}
 
@@ -207,11 +176,16 @@ export class RunCommand extends CommandRunner {
 		const isVerbose =
 			options?.verbose ?? (envVerbose === "1" || envVerbose === "true");
 
+		const logger = new Logger({ verbose: isVerbose });
+		logger.hookConsole();
+		logger.hookChildProcessSilence();
+		process.on("exit", () => logger.restoreConsole());
+
 		if (options?.server) {
 			// Server-only mode
 			const apiPort = 8042;
 			const host = options.host || "localhost";
-			console.log(chalk.blue("🚀 Starting ADK Server..."));
+			logger.info(chalk.blue("🚀 Starting ADK Server...") as unknown as string);
 
 			const server = await startHttpServer({
 				port: apiPort,
@@ -222,7 +196,9 @@ export class RunCommand extends CommandRunner {
 				watchPaths: options?.watch,
 			});
 
-			console.log(chalk.cyan("Press Ctrl+C to stop the server"));
+			logger.info(
+				chalk.cyan("Press Ctrl+C to stop the server") as unknown as string,
+			);
 			process.on("SIGINT", async () => {
 				console.log(chalk.yellow("\n🛑 Stopping server..."));
 				await server.stop();
@@ -233,16 +209,14 @@ export class RunCommand extends CommandRunner {
 			return;
 		}
 
-		// Interactive chat mode
+		// Interactive chat mode (only Q/A should show unless verbose)
 		const apiUrl = `http://${options?.host || "localhost"}:8042`;
-		p.intro("🤖 ADK Agent Chat");
+
+		logger.intro("🤖 ADK Agent Chat");
 
 		// Ensure server is up, else start it
 		const healthResponse = await fetch(`${apiUrl}/health`).catch(() => null);
 		if (!healthResponse || !healthResponse.ok) {
-			const serverSpinner = spinner();
-			serverSpinner.start("🚀 Starting server...");
-
 			await startHttpServer({
 				port: 8042,
 				host: options?.host || "localhost",
@@ -253,52 +227,40 @@ export class RunCommand extends CommandRunner {
 			});
 
 			await new Promise((resolve) => setTimeout(resolve, 1000));
-			serverSpinner.stop("✅ Server ready");
 		}
 
-		const client = new AgentChatClient(apiUrl);
+		const client = new AgentChatClient(apiUrl, logger);
 
 		await client.connect();
 
-		const agentSpinner = spinner();
-		agentSpinner.start("🔍 Scanning for agents...");
 		try {
 			const agents = await client.fetchAgents();
 
 			let selectedAgent: Agent;
 			if (agents.length === 0) {
-				agentSpinner.stop("❌ No agents found");
-				p.cancel("No agents found in the current directory");
+				logger.error("No agents found in the current directory");
 				process.exit(1);
 			} else if (agents.length === 1 || agentPathArg) {
 				selectedAgent =
 					(agentPathArg &&
 						agents.find((a) => a.relativePath === agentPathArg)) ||
 					agents[0];
-				agentSpinner.stop(`🤖 Selected agent: ${selectedAgent.name}`);
 			} else {
-				agentSpinner.stop(`🤖 Found ${agents.length} agents`);
-				const choice = await p.select({
-					message: "Choose an agent to chat with:",
-					options: agents.map((agent) => ({
+				selectedAgent = await logger.select<Agent>(
+					"Choose an agent to chat with:",
+					agents.map((agent) => ({
 						label: agent.name,
 						value: agent,
 						hint: agent.relativePath,
 					})),
-				});
-
-				if (p.isCancel(choice)) {
-					p.cancel("Operation cancelled");
-					process.exit(0);
-				}
-				selectedAgent = choice as Agent;
+				);
 			}
 
 			client.setSelectedAgent(selectedAgent);
 			await client.startChat();
-			p.outro("Chat ended");
+			logger.outro("Chat ended");
 		} catch (error) {
-			p.cancel(
+			logger.error(
 				`Error: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			process.exit(1);
