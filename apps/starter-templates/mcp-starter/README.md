@@ -96,7 +96,7 @@ This template includes a weather service example that demonstrates:
    * Environment variable management
    * Service configuration
 
-3. **Weather Service** (`src/services/weatherService.ts`):
+3. **Weather Service** (`src/services/weather-service.ts`):
    * API integration
    * Data transformation
    * Proper error propagation

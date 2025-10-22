@@ -1,5 +1,5 @@
 {
-	"name": "@iqai/examples",
+	"name": "@iqai/adk-examples",
 	"version": "0.0.33",
 	"description": "Agent Development Kit for TypeScript with multi-provider LLM support",
 	"scripts": {
