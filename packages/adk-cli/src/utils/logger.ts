@@ -1,18 +1,13 @@
+import * as p from "@clack/prompts";
 import chalk from "chalk";
 import { marked } from "marked";
 import * as markedTerminal from "marked-terminal";
-import readline from "readline";
-import { Writable } from "stream";
+
+// Note: We use clack for prompts now; no readline usage here
 
 const mt: any =
 	(markedTerminal as any).markedTerminal ?? (markedTerminal as any);
 marked.use(mt() as any);
-
-export type SelectOption<T = any> = {
-	label: string;
-	value: T;
-	hint?: string;
-};
 
 type ConsoleMethods = Pick<
 	Console,
@@ -188,66 +183,6 @@ export class Logger {
 		}
 	}
 
-	// Prompt for free text (used for chat messages)
-	async prompt(
-		message: string,
-		opts?: { placeholder?: string },
-	): Promise<string> {
-		const rl = readline.createInterface({
-			input: process.stdin,
-			output: this.createReadlineOut(),
-		});
-		const label = `${message.trim()}${opts?.placeholder ? chalk.gray(` (${opts.placeholder})`) : ""} `;
-		return new Promise<string>((resolve) => {
-			rl.question(label, (answer) => {
-				rl.close();
-				resolve((answer ?? "").trim());
-			});
-			rl.on("SIGINT", () => {
-				rl.close();
-				// propagate SIGINT to main process
-				process.kill(process.pid, "SIGINT");
-			});
-		});
-	}
-
-	// Select from a list of options in TTY (1..N). Returns the value chosen.
-	async select<T>(message: string, options: SelectOption<T>[]): Promise<T> {
-		// Always show selection question as it's essential interaction
-		this.writeOut(chalk.bold(message) + "\n");
-		options.forEach((opt, idx) => {
-			const hint = opt.hint ? chalk.gray(` – ${opt.hint}`) : "";
-			this.writeOut(`  ${idx + 1}. ${opt.label}${hint}\n`);
-		});
-		const rl = readline.createInterface({
-			input: process.stdin,
-			output: this.createReadlineOut(),
-		});
-		return new Promise<T>((resolve) => {
-			const ask = () => {
-				rl.question(chalk.gray("Enter number or q to cancel: "), (answer) => {
-					const val = (answer ?? "").trim().toLowerCase();
-					if (val === "q" || val === "quit" || val === "exit") {
-						rl.close();
-						process.exit(0);
-					}
-					const num = Number(val);
-					if (!Number.isInteger(num) || num < 1 || num > options.length) {
-						this.writeErr(chalk.red("Invalid selection. Try again.\n"));
-						return ask();
-					}
-					rl.close();
-					resolve(options[num - 1].value);
-				});
-			};
-			ask();
-			rl.on("SIGINT", () => {
-				rl.close();
-				process.kill(process.pid, "SIGINT");
-			});
-		});
-	}
-
 	// Print a question (when needed) and an answer rendered from markdown
 	printAnswer(markdown: string, header?: string): void {
 		if (header) this.writeOut(chalk.bold(header) + "\n");
@@ -278,28 +213,37 @@ export class Logger {
 		}
 	}
 
-	// Provide a Writable for readline that bypasses silencing
-	private createReadlineOut(): NodeJS.WritableStream {
-		const self = this;
-		const out = new Writable({
-			write(chunk, _enc, cb) {
-				const text =
-					typeof chunk === "string" ? chunk : (chunk?.toString?.() ?? "");
-				self.writeOut(text);
-				cb();
-			},
-		}) as unknown as NodeJS.WritableStream & {
-			isTTY?: boolean;
-			columns?: number;
-			rows?: number;
-			getColorDepth?: (...args: any[]) => number;
-		};
-		// Mirror TTY properties so readline behaves
-		(out as any).isTTY = (process.stdout as any).isTTY;
-		(out as any).columns = (process.stdout as any).columns;
-		(out as any).rows = (process.stdout as any).rows;
-		(out as any).getColorDepth = (...args: any[]) =>
-			(process.stdout as any).getColorDepth?.(...args) ?? 1;
-		return out as NodeJS.WritableStream;
+	// ===============
+	// Clack wrappers
+	// ===============
+
+	// Prompt for free text via clack
+	async prompt(
+		message: string,
+		opts?: { placeholder?: string; initialValue?: string },
+	): Promise<string> {
+		return await this.withAllowedOutput(async () => {
+			const res = await p.text({
+				message,
+				placeholder: opts?.placeholder,
+				initialValue: opts?.initialValue,
+			});
+			if (p.isCancel(res)) return "exit";
+			return typeof res === "symbol" ? String(res) : (res ?? "");
+		});
+	}
+
+	// Select from a list via clack
+	async select<T>(
+		message: string,
+		options: Array<{ label: string; value: T; hint?: string }>,
+	): Promise<T> {
+		return await this.withAllowedOutput(async () => {
+			const choice = await p.select({ message, options: options as any });
+			if (p.isCancel(choice)) {
+				process.exit(0);
+			}
+			return choice as T;
+		});
 	}
 }
