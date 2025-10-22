@@ -1,3 +1,4 @@
+import * as p from "@clack/prompts";
 import chalk from "chalk";
 import { Command, CommandRunner, Option } from "nest-commander";
 import { startHttpServer } from "../http/bootstrap";
@@ -66,17 +67,23 @@ class AgentChatClient {
 		}
 
 		if (agents.length === 1) {
-			return agents[0];
+			return agents[0]; // Return the only agent found
 		}
 
-		const selectedAgent = await this.logger.select<Agent>(
-			"Choose an agent to chat with:",
-			agents.map((agent) => ({
-				label: agent.name,
-				value: agent,
-				hint: agent.relativePath,
-			})),
-		);
+		const selectedAgent = await this.logger.withAllowedOutput(async () => {
+			const choice = await p.select({
+				message: "Choose an agent to chat with:",
+				options: agents.map((agent) => ({
+					label: agent.name,
+					value: agent,
+					hint: agent.relativePath,
+				})),
+			});
+			if (p.isCancel(choice)) {
+				process.exit(0);
+			}
+			return choice as Agent;
+		});
 
 		return selectedAgent;
 	}
@@ -133,9 +140,14 @@ class AgentChatClient {
 		try {
 			while (true) {
 				try {
-					const input = await this.logger.prompt("💬 Message:", {
-						placeholder:
-							"Type your message here... (type 'exit' or 'quit' to end)",
+					const input = await this.logger.withAllowedOutput(async () => {
+						const res = await p.text({
+							message: "💬 Message:",
+							placeholder:
+								"Type your message here... (type 'exit' or 'quit' to end)",
+						});
+						if (p.isCancel(res)) return "exit";
+						return typeof res === "symbol" ? String(res) : (res ?? "");
 					});
 
 					const trimmed = (input || "").trim();
@@ -246,14 +258,20 @@ export class RunCommand extends CommandRunner {
 						agents.find((a) => a.relativePath === agentPathArg)) ||
 					agents[0];
 			} else {
-				selectedAgent = await logger.select<Agent>(
-					"Choose an agent to chat with:",
-					agents.map((agent) => ({
-						label: agent.name,
-						value: agent,
-						hint: agent.relativePath,
-					})),
-				);
+				selectedAgent = await logger.withAllowedOutput(async () => {
+					const choice = await p.select({
+						message: "Choose an agent to chat with:",
+						options: agents.map((agent) => ({
+							label: agent.name,
+							value: agent,
+							hint: agent.relativePath,
+						})),
+					});
+					if (p.isCancel(choice)) {
+						process.exit(0);
+					}
+					return choice as Agent;
+				});
 			}
 
 			client.setSelectedAgent(selectedAgent);

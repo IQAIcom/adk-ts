@@ -46,7 +46,6 @@ export class Logger {
 		};
 		this.originalStdoutWrite = process.stdout.write.bind(process.stdout) as any;
 		this.originalStderrWrite = process.stderr.write.bind(process.stderr) as any;
-		// eslint-disable-next-line @typescript-eslint/no-empty-function
 		const noop = () => {};
 		console.log = noop as any;
 		console.info = noop as any;
@@ -63,7 +62,6 @@ export class Logger {
 	// Additionally, silence noisy child process stderr for known MCP-related processes
 	hookChildProcessSilence(): void {
 		if (this.verbose || this.originalSpawn) return;
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		const cp =
 			require("node:child_process") as typeof import("node:child_process");
 		this.originalSpawn = cp.spawn;
@@ -121,7 +119,6 @@ export class Logger {
 			process.stderr.write = this.originalStderrWrite as any;
 		}
 		if (this.originalSpawn) {
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
 			const cp =
 				require("node:child_process") as typeof import("node:child_process");
 			cp.spawn = this.originalSpawn;
@@ -256,6 +253,29 @@ export class Logger {
 		if (header) this.writeOut(chalk.bold(header) + "\n");
 		const rendered = this.renderMarkdown(markdown);
 		this.writeOut((rendered || "").trim() + "\n");
+	}
+
+	// Temporarily allow stdout/stderr writes (for UI libraries like clack)
+	async withAllowedOutput<T>(fn: () => Promise<T> | T): Promise<T> {
+		if (this.verbose) {
+			return await fn();
+		}
+		// Save current (silenced) writers to restore after
+		const _saveStdout = process.stdout.write;
+		const _saveStderr = process.stderr.write;
+		try {
+			if (this.originalStdoutWrite) {
+				process.stdout.write = this.originalStdoutWrite as any;
+			}
+			if (this.originalStderrWrite) {
+				process.stderr.write = this.originalStderrWrite as any;
+			}
+			return await fn();
+		} finally {
+			// Re-silence writes
+			process.stdout.write = _saveStdout;
+			process.stderr.write = _saveStderr;
+		}
 	}
 
 	// Provide a Writable for readline that bypasses silencing
