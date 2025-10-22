@@ -31,111 +31,205 @@ class ConsoleManager {
 	private originalStderrWrite: any = null;
 	private originalSpawn: any = null;
 	private verbose: boolean;
-	private silencingActive = false;
+	private outputAllowed = false;
+	private isDestroyed = false;
 
 	constructor(verbose: boolean) {
 		this.verbose = verbose;
+		// Ensure cleanup on process exit
+		process.on("exit", () => this.restore());
+		process.on("SIGINT", () => this.restore());
+		process.on("SIGTERM", () => this.restore());
 	}
 
 	hookConsole(): void {
-		if (this.verbose || this.originals) return;
+		if (this.verbose || this.originals || this.isDestroyed) return;
 
-		this.originals = {
-			log: console.log,
-			info: console.info,
-			warn: console.warn,
-			error: console.error,
-			debug: console.debug,
-		};
-		this.originalStdoutWrite = process.stdout.write.bind(process.stdout);
-		this.originalStderrWrite = process.stderr.write.bind(process.stderr);
+		try {
+			this.originals = {
+				log: console.log,
+				info: console.info,
+				warn: console.warn,
+				error: console.error,
+				debug: console.debug,
+			};
+			this.originalStdoutWrite = process.stdout.write.bind(process.stdout);
+			this.originalStderrWrite = process.stderr.write.bind(process.stderr);
 
-		const noop = () => {};
-		console.log = noop as any;
-		console.info = noop as any;
-		console.warn = noop as any;
-		console.error = noop as any;
-		console.debug = noop as any;
+			// Smart console method replacement - allow errors and warnings in verbose mode
+			const shouldSilenceConsole = (level: string) => {
+				if (this.outputAllowed) return false;
+				// Always allow error and warn messages to prevent diagnostic issues
+				return !['error', 'warn'].includes(level);
+			};
 
-		// Smart stdout/stderr silencing - silence unless during withAllowedOutput
-		const shouldSilence = () => !this.silencingActive;
+			const createConsoleFn = (level: string, original: Function) => {
+				return ((...args: any[]) => {
+					if (!shouldSilenceConsole(level)) {
+						original.apply(console, args);
+					}
+				}) as any;
+			};
 
-		process.stdout.write = ((chunk: any, encoding?: any, callback?: any) => {
-			if (shouldSilence()) return true;
-			return this.originalStdoutWrite(chunk, encoding, callback);
-		}) as any;
+			console.log = createConsoleFn('log', this.originals.log);
+			console.info = createConsoleFn('info', this.originals.info);
+			console.warn = createConsoleFn('warn', this.originals.warn);
+			console.error = createConsoleFn('error', this.originals.error);
+			console.debug = createConsoleFn('debug', this.originals.debug);
 
-		process.stderr.write = ((chunk: any, encoding?: any, callback?: any) => {
-			if (shouldSilence()) return true;
-			return this.originalStderrWrite(chunk, encoding, callback);
-		}) as any;
+			// Smart stdout silencing - allow certain output patterns
+			const shouldSilenceStdout = (chunk: any) => {
+				if (this.outputAllowed) return false;
+				return !this.isImportantOutput(chunk);
+			};
+
+			process.stdout.write = ((chunk: any, encoding?: any, callback?: any) => {
+				if (shouldSilenceStdout(chunk)) return true;
+				return this.originalStdoutWrite(chunk, encoding, callback);
+			}) as any;
+
+			// Allow stderr for error messages but filter out non-critical output
+			process.stderr.write = ((chunk: any, encoding?: any, callback?: any) => {
+				if (this.outputAllowed) {
+					return this.originalStderrWrite(chunk, encoding, callback);
+				}
+				// Allow error-like content through stderr
+				const str = String(chunk).toLowerCase();
+				if (str.includes('error') || str.includes('warning') || str.includes('failed')) {
+					return this.originalStderrWrite(chunk, encoding, callback);
+				}
+				return true;
+			}) as any;
+		} catch (error) {
+			// If console hooking fails, continue without it to avoid breaking the app
+			console.error('Failed to hook console:', error);
+		}
+	}
+
+	private isImportantOutput(chunk: any): boolean {
+		const str = String(chunk);
+		// Allow spinner characters and UI elements
+		const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+		// Allow interactive prompts, errors, and control sequences
+		return (
+			spinnerChars.some((char) => str.includes(char)) ||
+			str.includes("🤖") ||
+			str.includes("Thinking") ||
+			str.includes("\r") ||
+			str.includes("\x1b") ||
+			str.toLowerCase().includes('error') ||
+			str.toLowerCase().includes('warning') ||
+			str.includes('?') // Interactive prompts
+		);
 	}
 
 	hookChildProcessSilence(): void {
-		if (this.verbose || this.originalSpawn) return;
+		if (this.verbose || this.originalSpawn || this.isDestroyed) return;
 
-		const cp = require("node:child_process");
-		this.originalSpawn = cp.spawn;
+		try {
+			const cp = require("node:child_process");
+			this.originalSpawn = cp.spawn;
 
-		const shouldSilence = (
-			command?: string,
-			args?: ReadonlyArray<string>,
-		): boolean => {
-			const cmd = (command || "").toLowerCase();
-			const joined = [
-				cmd,
-				...(args || []).map((a) => String(a).toLowerCase()),
-			].join(" ");
-			return (
-				joined.includes("mcp-remote") ||
-				joined.includes("@iqai/mcp") ||
-				joined.includes("modelcontextprotocol") ||
-				joined.includes("@modelcontextprotocol")
-			);
-		};
+			const shouldSilenceProcess = (
+				command?: string,
+				args?: ReadonlyArray<string>,
+			): boolean => {
+				if (!command) return false;
+				
+				const cmd = command.toLowerCase();
+				const allArgs = (args || []).map(a => String(a).toLowerCase());
+				const fullCommand = [cmd, ...allArgs].join(" ");
+				
+				// Only silence specific known noisy processes
+				const silencePatterns = [
+					"mcp-remote",
+					"@iqai/mcp",
+					"modelcontextprotocol",
+					"@modelcontextprotocol"
+				];
+				
+				return silencePatterns.some(pattern => fullCommand.includes(pattern));
+			};
 
-		cp.spawn = ((command: any, args?: any, options?: any) => {
-			try {
-				if (
-					shouldSilence(command, Array.isArray(args) ? args : options?.args)
-				) {
-					const opts = (Array.isArray(args) ? options : args) || {};
-					const stdio = opts.stdio;
-					const newStdio = Array.isArray(stdio)
-						? [stdio[0] ?? "pipe", stdio[1] ?? "pipe", "ignore"]
-						: ["pipe", "pipe", "ignore"];
-					const patched = { ...opts, stdio: newStdio };
-					if (Array.isArray(args)) {
-						return this.originalSpawn!(command, args, patched);
+			cp.spawn = ((command: any, args?: any, options?: any) => {
+				try {
+					const shouldSilence = shouldSilenceProcess(
+						command, 
+						Array.isArray(args) ? args : options?.args
+					);
+					
+					if (shouldSilence) {
+						// Determine the correct options object
+						const opts = Array.isArray(args) ? (options || {}) : (args || {});
+						
+						// Create safer stdio configuration
+						const currentStdio = opts.stdio;
+						let newStdio: any;
+						
+						if (Array.isArray(currentStdio)) {
+							newStdio = [
+								currentStdio[0] || "pipe",
+								"pipe", // stdout to pipe (can be handled)
+								"pipe"  // stderr to pipe (allow error monitoring)
+							];
+						} else if (typeof currentStdio === 'string') {
+							newStdio = ["pipe", "pipe", "pipe"];
+						} else {
+							newStdio = ["pipe", "pipe", "pipe"];
+						}
+						
+						const patchedOpts = { ...opts, stdio: newStdio };
+						
+						if (Array.isArray(args)) {
+							return this.originalSpawn!(command, args, patchedOpts);
+						}
+						return this.originalSpawn!(command, patchedOpts);
 					}
-					return this.originalSpawn!(command, patched);
+				} catch (error) {
+					// Log error and continue with original spawn to avoid breaking functionality
+					console.error('Error in child process hook:', error);
 				}
-			} catch {
-				// fall through
-			}
-			return this.originalSpawn!(command, args, options);
-		}) as any;
+				
+				return this.originalSpawn!(command, args, options);
+			}) as any;
+		} catch (error) {
+			console.error('Failed to hook child process:', error);
+		}
 	}
 
 	restore(): void {
-		if (this.originals) {
-			console.log = this.originals.log;
-			console.info = this.originals.info;
-			console.warn = this.originals.warn;
-			console.error = this.originals.error;
-			console.debug = this.originals.debug;
-			this.originals = null;
-		}
-		if (this.originalStdoutWrite) {
-			process.stdout.write = this.originalStdoutWrite;
-		}
-		if (this.originalStderrWrite) {
-			process.stderr.write = this.originalStderrWrite;
-		}
-		if (this.originalSpawn) {
-			const cp = require("node:child_process");
-			cp.spawn = this.originalSpawn;
-			this.originalSpawn = null;
+		if (this.isDestroyed) return;
+		this.isDestroyed = true;
+		
+		try {
+			if (this.originals) {
+				console.log = this.originals.log;
+				console.info = this.originals.info;
+				console.warn = this.originals.warn;
+				console.error = this.originals.error;
+				console.debug = this.originals.debug;
+				this.originals = null;
+			}
+			if (this.originalStdoutWrite) {
+				process.stdout.write = this.originalStdoutWrite;
+				this.originalStdoutWrite = null;
+			}
+			if (this.originalStderrWrite) {
+				process.stderr.write = this.originalStderrWrite;
+				this.originalStderrWrite = null;
+			}
+			if (this.originalSpawn) {
+				const cp = require("node:child_process");
+				cp.spawn = this.originalSpawn;
+				this.originalSpawn = null;
+			}
+		} catch (error) {
+			// Use original console.error if available, fallback to process.stderr
+			if (this.originals?.error) {
+				this.originals.error('Error during ConsoleManager restore:', error);
+			} else {
+				process.stderr.write(`Error during ConsoleManager restore: ${error}\n`);
+			}
 		}
 	}
 
@@ -156,17 +250,17 @@ class ConsoleManager {
 	}
 
 	async withAllowedOutput<T>(fn: () => Promise<T> | T): Promise<T> {
-		if (this.verbose) {
+		if (this.verbose || this.isDestroyed) {
 			return await fn();
 		}
 
-		const wasSilencing = this.silencingActive;
-		this.silencingActive = true; // Allow output during this function
+		const wasOutputAllowed = this.outputAllowed;
+		this.outputAllowed = true; // Allow output during this function
 
 		try {
 			return await fn();
 		} finally {
-			this.silencingActive = wasSilencing; // Restore previous state
+			this.outputAllowed = wasOutputAllowed; // Restore previous state
 		}
 	}
 
@@ -260,47 +354,14 @@ class AgentChatClient {
 			const spinner = p.spinner();
 			spinner.start("🤖 Thinking...");
 
-			// Save original methods
-			const savedStdout = process.stdout.write;
-			const savedStderr = process.stderr.write;
-			const savedConsoleLog = console.log;
-			const savedConsoleInfo = console.info;
-			const savedConsoleWarn = console.warn;
-			const savedConsoleError = console.error;
-
-			// Intelligent stdout filtering - allow spinner chars but block log messages
-			const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-			const isSpinnerOutput = (chunk: any): boolean => {
-				const str = String(chunk);
-				return (
-					spinnerChars.some((char) => str.includes(char)) ||
-					str.includes("🤖 Thinking") ||
-					str.includes("\r") || // carriage returns for spinner updates
-					str.includes("\x1b")
-				); // ANSI escape codes for colors/positioning
-			};
-
-			// Filter stdout - allow spinner, block logs
-			process.stdout.write = ((chunk: any, encoding?: any, callback?: any) => {
-				if (isSpinnerOutput(chunk)) {
-					return savedStdout.call(process.stdout, chunk, encoding, callback);
-				}
-				// Block everything else
-				return true;
-			}) as any;
-
-			// Block all stderr
-			process.stderr.write = (() => true) as any;
-
-			// Block all console methods
-			console.log = (() => {}) as any;
-			console.info = (() => {}) as any;
-			console.warn = (() => {}) as any;
-			console.error = (() => {}) as any;
-
 			try {
+				const agentPath = this.selectedAgent?.relativePath;
+				if (!agentPath) {
+					throw new Error("Agent path not available");
+				}
+
 				const response = await fetch(
-					`${this.apiUrl}/api/agents/${encodeURIComponent(this.selectedAgent!.relativePath)}/message`,
+					`${this.apiUrl}/api/agents/${encodeURIComponent(agentPath)}/message`,
 					{
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -311,7 +372,7 @@ class AgentChatClient {
 				if (!response.ok) {
 					const errorText = await response.text();
 					spinner.stop("❌ Failed to send message");
-					throw new Error(`Failed to send message: ${errorText}`);
+					throw new Error(`HTTP ${response.status}: ${errorText}`);
 				}
 
 				const result = (await response.json()) as {
@@ -326,16 +387,9 @@ class AgentChatClient {
 				}
 			} catch (error) {
 				spinner.stop("❌ Error");
-				this.consoleManager.error("Failed to send message");
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				this.consoleManager.error(`Failed to send message: ${errorMessage}`);
 				throw error;
-			} finally {
-				// Restore all methods
-				process.stdout.write = savedStdout;
-				process.stderr.write = savedStderr;
-				console.log = savedConsoleLog;
-				console.info = savedConsoleInfo;
-				console.warn = savedConsoleWarn;
-				console.error = savedConsoleError;
 			}
 		});
 	}
@@ -378,7 +432,8 @@ class AgentChatClient {
 						await this.sendMessage(trimmed);
 					}
 				} catch (error) {
-					this.consoleManager.error(`Error in chat: ${error}`);
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					this.consoleManager.error(`Error in chat: ${errorMessage}`);
 					process.exit(1);
 				}
 			}
@@ -405,9 +460,11 @@ export class RunCommand extends CommandRunner {
 			options?.verbose ?? (envVerbose === "1" || envVerbose === "true");
 
 		const consoleManager = new ConsoleManager(isVerbose);
-		consoleManager.hookConsole();
-		consoleManager.hookChildProcessSilence();
-		process.on("exit", () => consoleManager.restore());
+		// Hook console and child process only in non-verbose mode
+		if (!isVerbose) {
+			consoleManager.hookConsole();
+			consoleManager.hookChildProcessSilence();
+		}
 
 		if (options?.server) {
 			const apiPort = 8042;
@@ -500,10 +557,12 @@ export class RunCommand extends CommandRunner {
 				p.outro("Chat ended");
 			});
 		} catch (error) {
-			consoleManager.error(
-				`Error: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			consoleManager.error(`Error: ${errorMessage}`);
 			process.exit(1);
+		} finally {
+			// Ensure cleanup happens
+			consoleManager.restore();
 		}
 	}
 
