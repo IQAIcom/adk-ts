@@ -338,6 +338,24 @@ export class AgentLoader {
 			const plugins = [pathMappingPlugin, plugin];
 
 			if (needRebuild) {
+				// Delete old cache file before rebuilding to avoid stale cache on build failure
+				try {
+					if (existsSync(outFile)) {
+						unlinkSync(outFile);
+						if (!this.quiet) {
+							this.logger.debug(`Deleted old cache file: ${outFile}`);
+						}
+					}
+				} catch (error) {
+					if (!this.quiet) {
+						this.logger.warn(
+							`Failed to delete old cache file ${outFile}: ${
+								error instanceof Error ? error.message : String(error)
+							}`,
+						);
+					}
+				}
+
 				await build({
 					entryPoints: [this.normalizePath(normalizedFilePath)],
 					outfile: outFile,
