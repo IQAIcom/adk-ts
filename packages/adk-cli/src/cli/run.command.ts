@@ -1,13 +1,17 @@
+import * as p from "@clack/prompts";
 import chalk from "chalk";
+import { marked } from "marked";
+import * as markedTerminal from "marked-terminal";
 import { Command, CommandRunner, Option } from "nest-commander";
 import { startHttpServer } from "../http/bootstrap";
-import { Logger } from "../utils/logger";
 
-interface ServeLikeOptions {
+// Setup markdown terminal renderer
+const mt: any =
+	(markedTerminal as any).markedTerminal ?? (markedTerminal as any);
+marked.use(mt() as any);
+
+interface RunOptions {
 	host?: string;
-}
-
-interface RunOptions extends ServeLikeOptions {
 	server?: boolean;
 	verbose?: boolean;
 	hot?: boolean;
@@ -20,14 +24,176 @@ interface Agent {
 	absolutePath: string;
 }
 
+// Console management for quiet mode
+class ConsoleManager {
+	private originals: any = null;
+	private originalStdoutWrite: any = null;
+	private originalStderrWrite: any = null;
+	private originalSpawn: any = null;
+	private verbose: boolean;
+	private silencingActive = false;
+
+	constructor(verbose: boolean) {
+		this.verbose = verbose;
+	}
+
+	hookConsole(): void {
+		if (this.verbose || this.originals) return;
+
+		this.originals = {
+			log: console.log,
+			info: console.info,
+			warn: console.warn,
+			error: console.error,
+			debug: console.debug,
+		};
+		this.originalStdoutWrite = process.stdout.write.bind(process.stdout);
+		this.originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+		const noop = () => {};
+		console.log = noop as any;
+		console.info = noop as any;
+		console.warn = noop as any;
+		console.error = noop as any;
+		console.debug = noop as any;
+
+		// Smart stdout/stderr silencing - silence unless during withAllowedOutput
+		const shouldSilence = () => !this.silencingActive;
+
+		process.stdout.write = ((chunk: any, encoding?: any, callback?: any) => {
+			if (shouldSilence()) return true;
+			return this.originalStdoutWrite(chunk, encoding, callback);
+		}) as any;
+
+		process.stderr.write = ((chunk: any, encoding?: any, callback?: any) => {
+			if (shouldSilence()) return true;
+			return this.originalStderrWrite(chunk, encoding, callback);
+		}) as any;
+	}
+
+	hookChildProcessSilence(): void {
+		if (this.verbose || this.originalSpawn) return;
+
+		const cp = require("node:child_process");
+		this.originalSpawn = cp.spawn;
+
+		const shouldSilence = (
+			command?: string,
+			args?: ReadonlyArray<string>,
+		): boolean => {
+			const cmd = (command || "").toLowerCase();
+			const joined = [
+				cmd,
+				...(args || []).map((a) => String(a).toLowerCase()),
+			].join(" ");
+			return (
+				joined.includes("mcp-remote") ||
+				joined.includes("@iqai/mcp") ||
+				joined.includes("modelcontextprotocol") ||
+				joined.includes("@modelcontextprotocol")
+			);
+		};
+
+		cp.spawn = ((command: any, args?: any, options?: any) => {
+			try {
+				if (
+					shouldSilence(command, Array.isArray(args) ? args : options?.args)
+				) {
+					const opts = (Array.isArray(args) ? options : args) || {};
+					const stdio = opts.stdio;
+					const newStdio = Array.isArray(stdio)
+						? [stdio[0] ?? "pipe", stdio[1] ?? "pipe", "ignore"]
+						: ["pipe", "pipe", "ignore"];
+					const patched = { ...opts, stdio: newStdio };
+					if (Array.isArray(args)) {
+						return this.originalSpawn!(command, args, patched);
+					}
+					return this.originalSpawn!(command, patched);
+				}
+			} catch {
+				// fall through
+			}
+			return this.originalSpawn!(command, args, options);
+		}) as any;
+	}
+
+	restore(): void {
+		if (this.originals) {
+			console.log = this.originals.log;
+			console.info = this.originals.info;
+			console.warn = this.originals.warn;
+			console.error = this.originals.error;
+			console.debug = this.originals.debug;
+			this.originals = null;
+		}
+		if (this.originalStdoutWrite) {
+			process.stdout.write = this.originalStdoutWrite;
+		}
+		if (this.originalStderrWrite) {
+			process.stderr.write = this.originalStderrWrite;
+		}
+		if (this.originalSpawn) {
+			const cp = require("node:child_process");
+			cp.spawn = this.originalSpawn;
+			this.originalSpawn = null;
+		}
+	}
+
+	private writeOut(text: string): void {
+		if (this.originalStdoutWrite) {
+			this.originalStdoutWrite(text);
+		} else {
+			process.stdout.write(text);
+		}
+	}
+
+	private writeErr(text: string): void {
+		if (this.originalStderrWrite) {
+			this.originalStderrWrite(text);
+		} else {
+			process.stderr.write(text);
+		}
+	}
+
+	async withAllowedOutput<T>(fn: () => Promise<T> | T): Promise<T> {
+		if (this.verbose) {
+			return await fn();
+		}
+
+		const wasSilencing = this.silencingActive;
+		this.silencingActive = true; // Allow output during this function
+
+		try {
+			return await fn();
+		} finally {
+			this.silencingActive = wasSilencing; // Restore previous state
+		}
+	}
+
+	error(text: string): void {
+		this.writeErr(chalk.red(text) + "\n");
+	}
+
+	renderMarkdown(text: string): string {
+		const input = text ?? "";
+		const out = marked.parse(input);
+		return typeof out === "string" ? out : String(out ?? "");
+	}
+
+	printAnswer(markdown: string): void {
+		const rendered = this.renderMarkdown(markdown);
+		this.writeOut((rendered || "").trim() + "\n");
+	}
+}
+
 class AgentChatClient {
 	private apiUrl: string;
 	private selectedAgent: Agent | null = null;
-	private logger: Logger;
+	private consoleManager: ConsoleManager;
 
-	constructor(apiUrl: string, logger: Logger) {
+	constructor(apiUrl: string, consoleManager: ConsoleManager) {
 		this.apiUrl = apiUrl;
-		this.logger = logger;
+		this.consoleManager = consoleManager;
 	}
 
 	async connect(): Promise<void> {
@@ -66,19 +232,23 @@ class AgentChatClient {
 		}
 
 		if (agents.length === 1) {
-			return agents[0]; // Return the only agent found
+			return agents[0];
 		}
 
-		const selectedAgent = await this.logger.select<Agent>(
-			"Choose an agent to chat with:",
-			agents.map((agent) => ({
-				label: agent.name,
-				value: agent,
-				hint: agent.relativePath,
-			})),
-		);
-
-		return selectedAgent;
+		return await this.consoleManager.withAllowedOutput(async () => {
+			const choice = await p.select({
+				message: "Choose an agent to chat with:",
+				options: agents.map((agent) => ({
+					label: agent.name,
+					value: agent,
+					hint: agent.relativePath,
+				})) as any,
+			});
+			if (p.isCancel(choice)) {
+				process.exit(0);
+			}
+			return choice as Agent;
+		});
 	}
 
 	async sendMessage(message: string): Promise<void> {
@@ -86,36 +256,88 @@ class AgentChatClient {
 			throw new Error("No agent selected");
 		}
 
-		this.logger.startSpinner("🤖 Thinking...");
+		await this.consoleManager.withAllowedOutput(async () => {
+			const spinner = p.spinner();
+			spinner.start("🤖 Thinking...");
 
-		try {
-			const response = await fetch(
-				`${this.apiUrl}/api/agents/${encodeURIComponent(this.selectedAgent.relativePath)}/message`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ message }),
-				},
-			);
+			// Save original methods
+			const savedStdout = process.stdout.write;
+			const savedStderr = process.stderr.write;
+			const savedConsoleLog = console.log;
+			const savedConsoleInfo = console.info;
+			const savedConsoleWarn = console.warn;
+			const savedConsoleError = console.error;
 
-			if (!response.ok) {
-				const errorText = await response.text();
-				this.logger.stopSpinner("❌ Failed to send message");
-				throw new Error(`Failed to send message: ${errorText}`);
-			}
-
-			const result = (await response.json()) as {
-				response?: string;
-				agentName?: string;
+			// Intelligent stdout filtering - allow spinner chars but block log messages
+			const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+			const isSpinnerOutput = (chunk: any): boolean => {
+				const str = String(chunk);
+				return (
+					spinnerChars.some((char) => str.includes(char)) ||
+					str.includes("🤖 Thinking") ||
+					str.includes("\r") || // carriage returns for spinner updates
+					str.includes("\x1b")
+				); // ANSI escape codes for colors/positioning
 			};
-			this.logger.stopSpinner(`🤖 ${result.agentName ?? "Assistant"}:`);
 
-			if (result.response) {
-				this.logger.printAnswer(result.response);
+			// Filter stdout - allow spinner, block logs
+			process.stdout.write = ((chunk: any, encoding?: any, callback?: any) => {
+				if (isSpinnerOutput(chunk)) {
+					return savedStdout.call(process.stdout, chunk, encoding, callback);
+				}
+				// Block everything else
+				return true;
+			}) as any;
+
+			// Block all stderr
+			process.stderr.write = (() => true) as any;
+
+			// Block all console methods
+			console.log = (() => {}) as any;
+			console.info = (() => {}) as any;
+			console.warn = (() => {}) as any;
+			console.error = (() => {}) as any;
+
+			try {
+				const response = await fetch(
+					`${this.apiUrl}/api/agents/${encodeURIComponent(this.selectedAgent!.relativePath)}/message`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ message }),
+					},
+				);
+
+				if (!response.ok) {
+					const errorText = await response.text();
+					spinner.stop("❌ Failed to send message");
+					throw new Error(`Failed to send message: ${errorText}`);
+				}
+
+				const result = (await response.json()) as {
+					response?: string;
+					agentName?: string;
+				};
+
+				spinner.stop(`🤖 ${result.agentName ?? "Assistant"}:`);
+
+				if (result.response) {
+					this.consoleManager.printAnswer(result.response);
+				}
+			} catch (error) {
+				spinner.stop("❌ Error");
+				this.consoleManager.error("Failed to send message");
+				throw error;
+			} finally {
+				// Restore all methods
+				process.stdout.write = savedStdout;
+				process.stderr.write = savedStderr;
+				console.log = savedConsoleLog;
+				console.info = savedConsoleInfo;
+				console.warn = savedConsoleWarn;
+				console.error = savedConsoleError;
 			}
-		} catch (_error) {
-			this.logger.error("Failed to send message");
-		}
+		});
 	}
 
 	async startChat(): Promise<void> {
@@ -123,9 +345,10 @@ class AgentChatClient {
 			throw new Error("Agent not selected");
 		}
 
-		// Add SIGINT handler for interactive chat mode
 		const sigintHandler = () => {
-			this.logger.outro("Chat ended");
+			this.consoleManager.withAllowedOutput(async () => {
+				p.outro("Chat ended");
+			});
 			process.exit(0);
 		};
 		process.on("SIGINT", sigintHandler);
@@ -133,14 +356,20 @@ class AgentChatClient {
 		try {
 			while (true) {
 				try {
-					const input = await this.logger.prompt("💬 Message:", {
-						placeholder:
-							"Type your message here... (type 'exit' or 'quit' to end)",
-					});
+					const input = await this.consoleManager.withAllowedOutput(
+						async () => {
+							const res = await p.text({
+								message: "💬 Message:",
+								placeholder:
+									"Type your message here... (type 'exit' or 'quit' to end)",
+							});
+							if (p.isCancel(res)) return "exit";
+							return typeof res === "symbol" ? String(res) : (res ?? "");
+						},
+					);
 
 					const trimmed = (input || "").trim();
 
-					// Check for explicit exit commands
 					if (["exit", "quit"].includes(trimmed.toLowerCase())) {
 						process.exit(0);
 					}
@@ -149,12 +378,11 @@ class AgentChatClient {
 						await this.sendMessage(trimmed);
 					}
 				} catch (error) {
-					console.error(chalk.red("Error in chat:"), error);
+					this.consoleManager.error(`Error in chat: ${error}`);
 					process.exit(1);
 				}
 			}
 		} finally {
-			// Clean up SIGINT handler
 			process.removeListener("SIGINT", sigintHandler);
 		}
 	}
@@ -176,16 +404,18 @@ export class RunCommand extends CommandRunner {
 		const isVerbose =
 			options?.verbose ?? (envVerbose === "1" || envVerbose === "true");
 
-		const logger = new Logger({ verbose: isVerbose });
-		logger.hookConsole();
-		logger.hookChildProcessSilence();
-		process.on("exit", () => logger.restoreConsole());
+		const consoleManager = new ConsoleManager(isVerbose);
+		consoleManager.hookConsole();
+		consoleManager.hookChildProcessSilence();
+		process.on("exit", () => consoleManager.restore());
 
 		if (options?.server) {
-			// Server-only mode
 			const apiPort = 8042;
 			const host = options.host || "localhost";
-			logger.info(chalk.blue("🚀 Starting ADK Server...") as unknown as string);
+
+			if (isVerbose) {
+				console.log(chalk.blue("🚀 Starting ADK Server..."));
+			}
 
 			const server = await startHttpServer({
 				port: apiPort,
@@ -196,9 +426,10 @@ export class RunCommand extends CommandRunner {
 				watchPaths: options?.watch,
 			});
 
-			logger.info(
-				chalk.cyan("Press Ctrl+C to stop the server") as unknown as string,
-			);
+			if (isVerbose) {
+				console.log(chalk.cyan("Press Ctrl+C to stop the server"));
+			}
+
 			process.on("SIGINT", async () => {
 				console.log(chalk.yellow("\n🛑 Stopping server..."));
 				await server.stop();
@@ -209,12 +440,14 @@ export class RunCommand extends CommandRunner {
 			return;
 		}
 
-		// Interactive chat mode (only Q/A should show unless verbose)
+		// Interactive chat mode
 		const apiUrl = `http://${options?.host || "localhost"}:8042`;
 
-		logger.intro("🤖 ADK Agent Chat");
+		await consoleManager.withAllowedOutput(async () => {
+			p.intro("🤖 ADK Agent Chat");
+		});
 
-		// Ensure server is up, else start it
+		// Start server if not running
 		const healthResponse = await fetch(`${apiUrl}/health`).catch(() => null);
 		if (!healthResponse || !healthResponse.ok) {
 			await startHttpServer({
@@ -225,20 +458,18 @@ export class RunCommand extends CommandRunner {
 				hotReload: options?.hot,
 				watchPaths: options?.watch,
 			});
-
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 		}
 
-		const client = new AgentChatClient(apiUrl, logger);
-
-		await client.connect();
+		const client = new AgentChatClient(apiUrl, consoleManager);
 
 		try {
+			await client.connect();
 			const agents = await client.fetchAgents();
 
 			let selectedAgent: Agent;
 			if (agents.length === 0) {
-				logger.error("No agents found in the current directory");
+				consoleManager.error("No agents found in the current directory");
 				process.exit(1);
 			} else if (agents.length === 1 || agentPathArg) {
 				selectedAgent =
@@ -246,21 +477,30 @@ export class RunCommand extends CommandRunner {
 						agents.find((a) => a.relativePath === agentPathArg)) ||
 					agents[0];
 			} else {
-				selectedAgent = await logger.select<Agent>(
-					"Choose an agent to chat with:",
-					agents.map((agent) => ({
-						label: agent.name,
-						value: agent,
-						hint: agent.relativePath,
-					})),
-				);
+				selectedAgent = await consoleManager.withAllowedOutput(async () => {
+					const choice = await p.select({
+						message: "Choose an agent to chat with:",
+						options: agents.map((agent) => ({
+							label: agent.name,
+							value: agent,
+							hint: agent.relativePath,
+						})) as any,
+					});
+					if (p.isCancel(choice)) {
+						process.exit(0);
+					}
+					return choice as Agent;
+				});
 			}
 
 			client.setSelectedAgent(selectedAgent);
 			await client.startChat();
-			logger.outro("Chat ended");
+
+			await consoleManager.withAllowedOutput(async () => {
+				p.outro("Chat ended");
+			});
 		} catch (error) {
-			logger.error(
+			consoleManager.error(
 				`Error: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			process.exit(1);
