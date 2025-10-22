@@ -6,5 +6,6 @@
 	"linked": [],
 	"access": "public",
 	"baseBranch": "main",
-	"updateInternalDependencies": "patch"
+	"updateInternalDependencies": "patch",
+	"ignore": ["@iqai/adk-docs", "@iqai/adk-web", "@iqai/adk-examples"]
 }

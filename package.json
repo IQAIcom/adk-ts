@@ -13,7 +13,7 @@
 		"lint": "lint-staged --allow-empty",
 		"changeset": "changeset",
 		"version-packages": "changeset version",
-		"publish-packages": "turbo run build lint && changeset version && changeset publish",
+		"publish-packages": "turbo run build lint --filter=!@iqai/adk-docs --filter=!@iqai/adk-web --filter=!@iqai/adk-examples && changeset version && changeset publish",
 		"prepare": "husky",
 		"test": "turbo run test --filter=@iqai/adk --concurrency 50"
 	},
