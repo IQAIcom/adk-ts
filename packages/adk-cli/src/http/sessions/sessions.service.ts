@@ -181,12 +181,32 @@ export class SessionsService {
 		request?: CreateSessionRequest,
 	): Promise<SessionResponse> {
 		try {
+			// Extract initial state from the agent if no state provided in request
+			let stateToUse = request?.state;
+			if (!stateToUse) {
+				// Get the agent path from userId (remove the prefix)
+				const agentPath = loadedAgent.userId.startsWith("user_")
+					? loadedAgent.userId.substring(5)
+					: loadedAgent.userId;
+				const initialState =
+					this.agentManager.getInitialStateForAgent(agentPath);
+				if (initialState) {
+					this.logger.log(
+						format(
+							"Using initial state from agent for new session: %o",
+							Object.keys(initialState),
+						),
+					);
+					stateToUse = initialState;
+				}
+			}
+
 			this.logger.log(
 				format("Creating agent session: %o", {
 					appName: loadedAgent.appName,
 					userId: loadedAgent.userId,
-					hasState: !!request?.state,
-					stateKeys: request?.state ? Object.keys(request.state) : [],
+					hasState: !!stateToUse,
+					stateKeys: stateToUse ? Object.keys(stateToUse) : [],
 					sessionId: request?.sessionId,
 				}),
 			);
@@ -194,7 +214,7 @@ export class SessionsService {
 			const newSession = await this.sessionService.createSession(
 				loadedAgent.appName,
 				loadedAgent.userId,
-				request?.state,
+				stateToUse,
 				request?.sessionId,
 			);
 

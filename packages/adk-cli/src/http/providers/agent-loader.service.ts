@@ -538,17 +538,23 @@ export class AgentLoader {
 
 	/**
 	 * Extract BaseAgent from different possible types
+	 * Returns both the agent and the full built context (if available)
 	 */
-	private async extractBaseAgent(item: unknown): Promise<BaseAgent | null> {
+	private async extractBaseAgent(
+		item: unknown,
+	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent } | null> {
 		if (this.isLikelyAgentInstance(item)) {
-			return item as BaseAgent;
+			return { agent: item as BaseAgent };
 		}
 		if (this.isAgentBuilder(item)) {
 			const built = await (item as AgentBuilder).build();
-			return built.agent;
+			return { agent: built.agent, builtAgent: built };
 		}
 		if (this.isBuiltAgent(item)) {
-			return (item as BuiltAgent).agent;
+			return {
+				agent: (item as BuiltAgent).agent,
+				builtAgent: item as BuiltAgent,
+			};
 		}
 		return null;
 	}
@@ -558,24 +564,24 @@ export class AgentLoader {
 	 */
 	private async scanModuleExports(
 		mod: Record<string, unknown>,
-	): Promise<BaseAgent | null> {
+	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent } | null> {
 		for (const [key, value] of Object.entries(mod)) {
 			if (key === "default") continue;
 			const keyLower = key.toLowerCase();
 			if (this.isPrimitive(value)) continue;
 
-			const baseAgent = await this.extractBaseAgent(value);
-			if (baseAgent) {
-				return baseAgent;
+			const result = await this.extractBaseAgent(value);
+			if (result) {
+				return result;
 			}
 
 			if (value && typeof value === "object" && "agent" in (value as any)) {
 				const container = value as Record<string, unknown>;
-				const containerAgent = await this.extractBaseAgent(
+				const containerResult = await this.extractBaseAgent(
 					(container as any).agent,
 				);
-				if (containerAgent) {
-					return containerAgent;
+				if (containerResult) {
+					return containerResult;
 				}
 			}
 
@@ -593,9 +599,9 @@ export class AgentLoader {
 					const functionResult = await this.invokeFunctionSafely(
 						value as () => unknown,
 					);
-					const baseAgent = await this.extractBaseAgent(functionResult);
-					if (baseAgent) {
-						return baseAgent;
+					const result = await this.extractBaseAgent(functionResult);
+					if (result) {
+						return result;
 					}
 
 					if (
@@ -604,11 +610,11 @@ export class AgentLoader {
 						"agent" in (functionResult as any)
 					) {
 						const container = functionResult as Record<string, unknown>;
-						const containerAgent = await this.extractBaseAgent(
+						const containerResult = await this.extractBaseAgent(
 							(container as any).agent,
 						);
-						if (containerAgent) {
-							return containerAgent;
+						if (containerResult) {
+							return containerResult;
 						}
 					}
 				} catch (_e) {
@@ -620,7 +626,9 @@ export class AgentLoader {
 		return null;
 	}
 
-	async resolveAgentExport(mod: Record<string, unknown>): Promise<BaseAgent> {
+	async resolveAgentExport(
+		mod: Record<string, unknown>,
+	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent }> {
 		const moduleDefault = (mod as any)?.default as
 			| Record<string, unknown>
 			| undefined;
@@ -662,7 +670,7 @@ export class AgentLoader {
 	private async tryResolvingDirectCandidate(
 		candidateToResolve: unknown,
 		mod: Record<string, unknown>,
-	): Promise<BaseAgent | null> {
+	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent } | null> {
 		if (
 			this.isPrimitive(candidateToResolve) ||
 			(candidateToResolve && candidateToResolve === (mod as unknown))
@@ -670,9 +678,9 @@ export class AgentLoader {
 			return null;
 		}
 
-		const directAgent = await this.extractBaseAgent(candidateToResolve);
-		if (directAgent) {
-			return directAgent;
+		const result = await this.extractBaseAgent(candidateToResolve);
+		if (result) {
+			return result;
 		}
 
 		if (
@@ -692,15 +700,15 @@ export class AgentLoader {
 	 */
 	private async tryResolvingFunctionCandidate(
 		functionCandidate: unknown,
-	): Promise<BaseAgent | null> {
+	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent } | null> {
 		try {
 			const functionResult = await this.invokeFunctionSafely(
 				functionCandidate as () => unknown,
 			);
 
-			const directAgent = await this.extractBaseAgent(functionResult);
-			if (directAgent) {
-				return directAgent;
+			const result = await this.extractBaseAgent(functionResult);
+			if (result) {
+				return result;
 			}
 
 			if (

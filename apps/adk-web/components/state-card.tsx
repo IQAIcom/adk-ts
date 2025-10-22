@@ -1,3 +1,6 @@
+import { ChevronDown, ChevronRight, Edit, X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -7,15 +10,117 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, X } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 
 interface StateCardProps {
 	stateKey: string;
 	value: any;
 	onUpdate: (key: string, value: any) => Promise<void>;
 	onDelete: (key: string) => Promise<void>;
+}
+
+function ValueRenderer({ value, depth = 0 }: { value: any; depth?: number }) {
+	const [isExpanded, setIsExpanded] = useState(depth < 2); // Auto-expand first 2 levels
+
+	if (value === null) {
+		return <span className="text-muted-foreground italic">null</span>;
+	}
+
+	if (value === undefined) {
+		return <span className="text-muted-foreground italic">undefined</span>;
+	}
+
+	if (typeof value === "boolean") {
+		return (
+			<span className="text-blue-600 dark:text-blue-400">{String(value)}</span>
+		);
+	}
+
+	if (typeof value === "number") {
+		return <span className="text-green-600 dark:text-green-400">{value}</span>;
+	}
+
+	if (typeof value === "string") {
+		return (
+			<span className="text-orange-600 dark:text-orange-400">"{value}"</span>
+		);
+	}
+
+	if (Array.isArray(value)) {
+		if (value.length === 0) {
+			return <span className="text-muted-foreground">[]</span>;
+		}
+
+		return (
+			<div className="space-y-1">
+				<Button
+					onClick={() => setIsExpanded(!isExpanded)}
+					className="flex items-center gap-1 text-xs hover:text-foreground transition-colors"
+				>
+					{isExpanded ? (
+						<ChevronDown className="h-3 w-3" />
+					) : (
+						<ChevronRight className="h-3 w-3" />
+					)}
+					<span className="text-muted-foreground">Array [{value.length}]</span>
+				</Button>
+				{isExpanded && (
+					<div className="ml-4 space-y-1 border-l border-border/50 pl-3">
+						{value.map((item, index) => (
+							<div key={item} className="flex gap-2">
+								<span className="text-muted-foreground text-xs min-w-[20px]">
+									[{index}]
+								</span>
+								<div className="flex-1">
+									<ValueRenderer value={item} depth={depth + 1} />
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+		);
+	}
+
+	if (typeof value === "object") {
+		const entries = Object.entries(value);
+		if (entries.length === 0) {
+			return <span className="text-muted-foreground">{}</span>;
+		}
+
+		return (
+			<div className="space-y-1">
+				<Button
+					onClick={() => setIsExpanded(!isExpanded)}
+					className="flex items-center gap-1 text-xs hover:text-foreground transition-colors"
+				>
+					{isExpanded ? (
+						<ChevronDown className="h-3 w-3" />
+					) : (
+						<ChevronRight className="h-3 w-3" />
+					)}
+					<span className="text-muted-foreground">
+						Object {`{${entries.length}}`}
+					</span>
+				</Button>
+				{isExpanded && (
+					<div className="ml-4 space-y-1 border-l border-border/50 pl-3">
+						{entries.map(([key, val]) => (
+							<div key={key} className="flex gap-2">
+								<span className="text-purple-600 dark:text-purple-400 text-xs font-medium min-w-fit">
+									{key}:
+								</span>
+								<div className="flex-1">
+									<ValueRenderer value={val} depth={depth + 1} />
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+		);
+	}
+
+	return <span>{String(value)}</span>;
 }
 
 export function StateCard({
@@ -26,6 +131,10 @@ export function StateCard({
 }: StateCardProps) {
 	const [editingKey, setEditingKey] = useState<string | null>(null);
 	const [editValue, setEditValue] = useState("");
+
+	console.log("stateKey", stateKey);
+
+	console.log("value", value);
 
 	const startEditing = (key: string, value: any) => {
 		setEditingKey(key);
@@ -44,7 +153,7 @@ export function StateCard({
 			toast.success(`State "${stateKey}" updated successfully!`);
 			setEditingKey(null);
 			setEditValue("");
-		} catch (error) {
+		} catch (_error) {
 			toast.error(
 				"Invalid JSON format. Please check your syntax and try again.",
 			);
@@ -55,7 +164,7 @@ export function StateCard({
 		try {
 			await onDelete(stateKey);
 			toast.success(`State "${stateKey}" deleted successfully!`);
-		} catch (error) {
+		} catch (_error) {
 			toast.error(`Failed to delete state "${stateKey}". Please try again.`);
 		}
 	};
@@ -120,9 +229,9 @@ export function StateCard({
 						</div>
 					</div>
 				) : (
-					<pre className="text-xs bg-muted/40 p-2 rounded-sm overflow-x-auto max-h-32 overflow-y-auto border border-border/30">
-						{JSON.stringify(value, null, 2)}
-					</pre>
+					<div className="text-xs bg-muted/40 p-3 rounded-sm max-h-64 overflow-y-auto border border-border/30">
+						<ValueRenderer value={value} />
+					</div>
 				)}
 			</CardContent>
 		</Card>
