@@ -109,7 +109,9 @@ class ConsoleManager {
 			}) as any;
 		} catch (error) {
 			// If console hooking fails, continue without it to avoid breaking the app
-			console.error("Failed to hook console:", error);
+			if (this.verbose) {
+				console.error("Failed to hook console:", error);
+			}
 		}
 	}
 
@@ -194,13 +196,17 @@ class ConsoleManager {
 					}
 				} catch (error) {
 					// Log error and continue with original spawn to avoid breaking functionality
-					console.error("Error in child process hook:", error);
+					if (this.verbose) {
+						console.error("Error in child process hook:", error);
+					}
 				}
 
 				return this.originalSpawn!(command, args, options);
 			}) as any;
 		} catch (error) {
-			console.error("Failed to hook child process:", error);
+			if (this.verbose) {
+				console.error("Failed to hook child process:", error);
+			}
 		}
 	}
 
@@ -396,13 +402,12 @@ class AgentChatClient {
 			console.error = (() => {}) as any;
 
 			try {
-				const agentPath = this.selectedAgent?.relativePath;
-				if (!agentPath) {
-					throw new Error("Agent path not available");
+				if (!this.selectedAgent?.relativePath) {
+					throw new Error("No agent selected or agent path not available");
 				}
 
 				const response = await fetch(
-					`${this.apiUrl}/api/agents/${encodeURIComponent(agentPath)}/message`,
+					`${this.apiUrl}/api/agents/${encodeURIComponent(this.selectedAgent.relativePath)}/message`,
 					{
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
