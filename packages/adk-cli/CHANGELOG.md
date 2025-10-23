@@ -1,5 +1,21 @@
 # @iqai/adk-cli
 
+## 0.3.21
+
+### Patch Changes
+
+- Updated dependencies [ae81c74]
+  - @iqai/adk@0.5.2
+
+## 0.3.20
+
+### Patch Changes
+
+- 170dafc: fix: multiple cache file creation
+- 31264cb: Improves the logging for adk run by silencing the logs from agent processes by default
+- Updated dependencies [d8fd6e8]
+  - @iqai/adk@0.5.1
+
 ## 0.3.19
 
 ### Patch Changes
