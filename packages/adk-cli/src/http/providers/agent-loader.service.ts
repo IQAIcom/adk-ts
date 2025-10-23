@@ -127,10 +127,12 @@ export class AgentLoader {
 			const tsconfigContent = readFileSync(tsconfigPath, "utf-8");
 			const tsconfigJson: unknown = JSON.parse(tsconfigContent);
 			const parsed = TsConfigSchema.safeParse(tsconfigJson);
-       if (!parsed.success) {
-			this.logger.warn("Invalid tsconfig.json structure: " + parsed.error.message);
-			return { /* default config here */ };
-		}
+
+			if (!parsed.success) {
+				this.logger.warn(
+					`Invalid tsconfig.json structure: ${parsed.error.message}`,
+				);
+				return {};
 			}
 			const compilerOptions = parsed.data.compilerOptions || {};
 
@@ -565,9 +567,10 @@ export class AgentLoader {
 		if (result && typeof result === "object" && "then" in result) {
 			try {
 				result = await (result as Promise<AgentExportValue>);
-       } catch (e) {
+			} catch (e) {
 				throw new Error(
 					`Failed to await function result: ${e instanceof Error ? e.message : String(e)}`,
+				);
 			}
 		}
 		return result as AgentExportValue;
