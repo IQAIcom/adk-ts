@@ -111,7 +111,7 @@ const positionToolHeavyLevel = (
 
 	// Position tools in clusters around their parent agents (TO THE RIGHT)
 	for (const [parentId, toolIds] of toolGroups) {
-		const parentY = agentPositions.get(parentId) || 0;
+		const parentY = positions.get(parentId)?.y ?? 0;
 		const toolSpacing = isFiltered
 			? Math.min(nodeGapY * 0.8, 100) // More spacing when filtered
 			: Math.min(nodeGapY * 0.4, 60);
