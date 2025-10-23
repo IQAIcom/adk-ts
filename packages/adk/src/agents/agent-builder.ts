@@ -1,7 +1,7 @@
 import { Logger } from "@adk/logger/index.js";
 import type { LlmRequest } from "@adk/models";
 import type { Content, Part } from "@google/genai";
-import { type LanguageModel, generateId } from "ai";
+import { generateId, type LanguageModel } from "ai";
 import type { ZodSchema, ZodType } from "zod";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service.js";
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor.js";
@@ -21,17 +21,17 @@ import type {
 	BeforeAgentCallback,
 } from "./base-agent.js";
 import { LangGraphAgent, type LangGraphNode } from "./lang-graph-agent.js";
+import type {
+	AfterModelCallback,
+	AfterToolCallback,
+	BeforeModelCallback,
+	BeforeToolCallback,
+} from "./llm-agent.js";
 import { LlmAgent } from "./llm-agent.js";
 import { LoopAgent } from "./loop-agent.js";
 import { ParallelAgent } from "./parallel-agent.js";
 import { RunConfig } from "./run-config.js";
 import { SequentialAgent } from "./sequential-agent.js";
-import type {
-	BeforeModelCallback,
-	AfterModelCallback,
-	BeforeToolCallback,
-	AfterToolCallback,
-} from "./llm-agent.js";
 
 /**
  * Configuration options for the AgentBuilder
@@ -442,13 +442,21 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	}
 
 	/**
+	 * Convenience method to start building with an existing agent
+	 * @param agent The agent instance to wrap
+	 * @returns New AgentBuilder instance with agent set
+	 */
+	static withAgent(agent: BaseAgent): AgentBuilder<string, false> {
+		return new AgentBuilder(agent.name || "default_agent").withAgent(agent);
+	}
+
+	/**
 	 * Provide an already constructed agent instance. Further definition-mutating calls
 	 * (model/tools/instruction/etc.) will be ignored with a dev warning.
 	 */
 	withAgent(agent: BaseAgent): this {
 		this.existingAgent = agent;
 		this.definitionLocked = true;
-		// Sync name if default
 		if (this.config.name === "default_agent" && agent.name) {
 			this.config.name = agent.name;
 		}
