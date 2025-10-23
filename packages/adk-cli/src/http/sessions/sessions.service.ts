@@ -343,13 +343,13 @@ export class SessionsService {
 					isFinalResponse:
 						isEventInstance && eventLike.isFinalResponse
 							? eventLike.isFinalResponse()
-							: !parts?.some(
-									(part: unknown) =>
-										part &&
-										typeof part === "object" &&
-										part !== null &&
-										"functionResponse" in part,
-								) && !eventLike.partial,
+                                                        : !parts?.some(
+                                                                                                (part: unknown) =>
+                                                                                                        part &&
+                                                                                                        typeof part === 'object' &&
+                                                                                                        part !== null &&
+                                                                                                        'functionCall' in part,
+                                                                                        ) && !eventLike.partial,
 				};
 			});
 
