@@ -605,8 +605,6 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 				continue;
 			}
 
-			rewindArtifactDelta[filename] = vn + 1;
-
 			let artifact: Part;
 			if (vt === undefined || vt === null) {
 				artifact = {
@@ -630,13 +628,15 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 				};
 			}
 
-			await this.artifactService.saveArtifact({
+			const newVersion = await this.artifactService.saveArtifact({
 				appName: this.appName,
 				userId: session.userId,
 				sessionId: session.id,
 				filename,
 				artifact,
 			});
+
+			rewindArtifactDelta[filename] = newVersion;
 		}
 
 		return rewindArtifactDelta;
