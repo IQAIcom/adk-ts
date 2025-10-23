@@ -127,9 +127,10 @@ export class AgentLoader {
 			const tsconfigContent = readFileSync(tsconfigPath, "utf-8");
 			const tsconfigJson: unknown = JSON.parse(tsconfigContent);
 			const parsed = TsConfigSchema.safeParse(tsconfigJson);
-			if (!parsed.success) {
-				this.logger.warn("Invalid tsconfig.json structure");
-				return {};
+       if (!parsed.success) {
+			this.logger.warn("Invalid tsconfig.json structure: " + parsed.error.message);
+			return { /* default config here */ };
+		}
 			}
 			const compilerOptions = parsed.data.compilerOptions || {};
 
