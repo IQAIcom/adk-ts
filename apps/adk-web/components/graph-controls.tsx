@@ -11,6 +11,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./ui/select";
+import { TOOL_CATEGORIES } from "@/lib/tool-categories";
 
 interface GraphControlsProps {
 	searchTerm: string;
@@ -114,12 +115,11 @@ export function GraphControls({
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="all">All Categories</SelectItem>
-									<SelectItem value="search">Search Tools</SelectItem>
-									<SelectItem value="data">Data Tools</SelectItem>
-									<SelectItem value="api">API Tools</SelectItem>
-									<SelectItem value="file">File Tools</SelectItem>
-									<SelectItem value="ai">AI Tools</SelectItem>
+									{TOOL_CATEGORIES.map((category) => (
+										<SelectItem key={category.value} value={category.value}>
+											{category.label}
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
 						</div>
