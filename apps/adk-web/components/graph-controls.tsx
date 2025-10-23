@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryState } from "nuqs";
 import { Search, Eye, EyeOff, Maximize2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -169,63 +168,40 @@ export function GraphControls({
 
 // Hook for managing graph controls state and URL persistence
 export function useGraphControls() {
-	const router = useRouter();
-	const searchParams = useSearchParams();
-
-	// Initialize state from URL parameters
-	const [searchTerm, setSearchTerm] = useState(
-		searchParams.get("search") || "",
+	const [searchTerm, setSearchTerm] = useQueryState("search", {
+		defaultValue: "",
+	});
+	const [nodeTypeFilter, setNodeTypeFilter] = useQueryState("nodeType", {
+		defaultValue: "all",
+	});
+	const [toolCategoryFilter, setToolCategoryFilter] = useQueryState(
+		"toolCategory",
+		{ defaultValue: "all" },
 	);
-	const [nodeTypeFilter, setNodeTypeFilter] = useState<string>(
-		searchParams.get("nodeType") || "all",
-	);
-	const [toolCategoryFilter, setToolCategoryFilter] = useState<string>(
-		searchParams.get("toolCategory") || "all",
-	);
-	const [showControls, setShowControls] = useState(
-		searchParams.get("showControls") === "true",
-	);
-
-	// Update URL when state changes
-	const updateURL = (updates: Record<string, string | null>) => {
-		const params = new URLSearchParams(searchParams.toString());
-
-		Object.entries(updates).forEach(([key, value]) => {
-			if (value === null || value === "" || value === "all") {
-				params.delete(key);
-			} else {
-				params.set(key, value);
-			}
-		});
-
-		const newURL = params.toString()
-			? `?${params.toString()}`
-			: window.location.pathname;
-		router.replace(newURL, { scroll: false });
-	};
+	const [showControls, setShowControls] = useQueryState("showControls", {
+		defaultValue: false,
+		parse: (value) => value === "true",
+		serialize: (value) => (value ? "true" : "false"),
+	});
 
 	// Handle search term changes
 	const handleSearchChange = (value: string) => {
 		setSearchTerm(value);
-		updateURL({ search: value });
 	};
 
 	// Handle node type filter changes
 	const handleNodeTypeChange = (value: string) => {
 		setNodeTypeFilter(value);
-		updateURL({ nodeType: value });
 	};
 
 	// Handle tool category filter changes
 	const handleToolCategoryChange = (value: string) => {
 		setToolCategoryFilter(value);
-		updateURL({ toolCategory: value });
 	};
 
 	// Handle controls visibility changes
 	const handleControlsToggle = (show: boolean) => {
 		setShowControls(show);
-		updateURL({ showControls: show.toString() });
 	};
 
 	// Clear all filters
@@ -233,21 +209,7 @@ export function useGraphControls() {
 		setSearchTerm("");
 		setNodeTypeFilter("all");
 		setToolCategoryFilter("all");
-		updateURL({ search: null, nodeType: null, toolCategory: null });
 	};
-
-	// Sync state with URL parameters when they change externally
-	useEffect(() => {
-		const search = searchParams.get("search") || "";
-		const nodeType = searchParams.get("nodeType") || "all";
-		const toolCategory = searchParams.get("toolCategory") || "all";
-		const showControlsParam = searchParams.get("showControls");
-
-		setSearchTerm(search);
-		setNodeTypeFilter(nodeType);
-		setToolCategoryFilter(toolCategory);
-		setShowControls(showControlsParam === "true");
-	}, [searchParams]);
 
 	return {
 		searchTerm,
