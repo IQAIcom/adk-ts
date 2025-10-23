@@ -432,7 +432,7 @@ export class AgentManager {
 			return state;
 		}
 
-		const agent = agentResult.agent as unknown as { subAgents?: BaseAgent[] };
+		const agent = agentResult.agent;
 		if (agent.subAgents && Array.isArray(agent.subAgents)) {
 			for (const subAgent of agent.subAgents) {
 				const subState = this.getInitialStateFromSessionService(
