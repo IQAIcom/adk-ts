@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.5.2
+
+### Patch Changes
+
+- ae81c74: Add event compaction feature with configurable summarization
+
 ## 0.5.1
 
 ### Patch Changes
