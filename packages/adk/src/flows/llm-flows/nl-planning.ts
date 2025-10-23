@@ -37,14 +37,7 @@ class NlPlanningRequestProcessor extends BaseLlmRequestProcessor {
 			llmRequest,
 		);
 		if (planningInstruction) {
-			if (llmRequest.appendInstructions) {
-				llmRequest.appendInstructions([planningInstruction]);
-			} else {
-				// Fallback for LlmRequest implementations without appendInstructions
-				const existingInstructions = (llmRequest as any).instructions || "";
-				(llmRequest as any).instructions =
-					`${existingInstructions}\n\n${planningInstruction}`;
-			}
+			llmRequest.appendInstructions([planningInstruction]);
 		}
 
 		// Remove thought content from request
