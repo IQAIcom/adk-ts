@@ -217,8 +217,8 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			searchTerm || nodeTypeFilter !== "all" || toolCategoryFilter !== "all";
 
 		// Dynamic spacing based on node count and density - LEFT TO RIGHT LAYOUT
-		const baseLayerGapX = 200; // horizontal distance between layers
-		const baseNodeGapY = 120; // vertical distance between nodes in same layer
+		const baseLayerGapX = 250; // horizontal distance between layers
+		const baseNodeGapY = 150; // vertical distance between nodes in same layer
 
 		// Increase spacing for dense graphs, especially when filtered
 		const densityFactor = Math.min(1.5, Math.max(0.9, totalNodes / 20));
