@@ -321,13 +321,13 @@ export class SessionsService {
 					functionCalls:
 						isEventInstance && eventLike.getFunctionCalls
 							? eventLike.getFunctionCalls()
-							: parts?.filter(
-									(part: unknown) =>
-										part &&
-										typeof part === "object" &&
-										part !== null &&
-										"functionResponse" in part,
-								) || [],
+              : parts?.filter(
+                  (part: unknown) =>
+                    part &&
+                    typeof part === "object" &&
+                    part !== null &&
+                    "functionCall" in part,
+                ) || [],
 					functionResponses:
 						isEventInstance && eventLike.getFunctionResponses
 							? eventLike.getFunctionResponses()
