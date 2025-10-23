@@ -264,11 +264,30 @@ function getContents(
 	events: Event[],
 	agentName = "",
 ): Content[] {
+	const rewindFilteredEvents: Event[] = [];
+	let i = events.length - 1;
+	while (i >= 0) {
+		const event = events[i];
+		if (event.actions?.rewindBeforeInvocationId) {
+			const rewindInvocationId = event.actions.rewindBeforeInvocationId;
+			for (let j = 0; j < i; j++) {
+				if (events[j].invocationId === rewindInvocationId) {
+					i = j;
+					break;
+				}
+			}
+		} else {
+			rewindFilteredEvents.push(event);
+		}
+		i--;
+	}
+	rewindFilteredEvents.reverse();
+
 	const filteredEvents: Event[] = [];
 
 	// Parse the events, leaving the contents and the function calls and
 	// responses from the current agent.
-	for (const event of events) {
+	for (const event of rewindFilteredEvents) {
 		if (
 			!event.content ||
 			!event.content.role ||

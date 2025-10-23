@@ -1,4 +1,4 @@
-import type { Content } from "@google/genai";
+import type { Content, Part } from "@google/genai";
 import { context, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { BaseAgent } from "./agents/base-agent";
 import {
@@ -7,11 +7,13 @@ import {
 } from "./agents/invocation-context";
 import { LlmAgent } from "./agents/llm-agent";
 import { RunConfig } from "./agents/run-config";
+import { getArtifactUri } from "./artifacts/artifact-util";
 import type { BaseArtifactService } from "./artifacts/base-artifact-service";
 import { InMemoryArtifactService } from "./artifacts/in-memory-artifact-service";
 import { runCompactionForSlidingWindow } from "./events/compaction";
 import type { EventsCompactionConfig } from "./events/compaction-config";
 import { Event } from "./events/event";
+import { EventActions } from "./events/event-actions";
 import type { EventsSummarizer } from "./events/events-summarizer";
 import { LlmEventSummarizer } from "./events/llm-event-summarizer";
 import { Logger } from "./logger";
@@ -467,6 +469,177 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		}
 
 		return undefined;
+	}
+
+	async rewind(args: {
+		userId: string;
+		sessionId: string;
+		rewindBeforeInvocationId: string;
+	}): Promise<void> {
+		const { userId, sessionId, rewindBeforeInvocationId } = args;
+
+		const session = await this.sessionService.getSession(
+			this.appName,
+			userId,
+			sessionId,
+		);
+
+		if (!session) {
+			throw new Error(`Session not found: ${sessionId}`);
+		}
+
+		let rewindEventIndex = -1;
+		for (let i = 0; i < session.events.length; i++) {
+			if (session.events[i].invocationId === rewindBeforeInvocationId) {
+				rewindEventIndex = i;
+				break;
+			}
+		}
+
+		if (rewindEventIndex === -1) {
+			throw new Error(`Invocation ID not found: ${rewindBeforeInvocationId}`);
+		}
+
+		const stateDelta = await this._computeStateDeltaForRewind(
+			session,
+			rewindEventIndex,
+		);
+
+		const artifactDelta = await this._computeArtifactDeltaForRewind(
+			session,
+			rewindEventIndex,
+		);
+
+		const rewindEvent = new Event({
+			invocationId: newInvocationContextId(),
+			author: "user",
+			actions: new EventActions({
+				rewindBeforeInvocationId,
+				stateDelta,
+				artifactDelta,
+			}),
+		});
+
+		this.logger.info(
+			"Rewinding session to invocation:",
+			rewindBeforeInvocationId,
+		);
+
+		await this.sessionService.appendEvent(session, rewindEvent);
+	}
+
+	private async _computeStateDeltaForRewind(
+		session: Session,
+		rewindEventIndex: number,
+	): Promise<Record<string, any>> {
+		const stateAtRewindPoint: Record<string, any> = {};
+
+		for (let i = 0; i < rewindEventIndex; i++) {
+			const event = session.events[i];
+			if (event.actions?.stateDelta) {
+				for (const [k, v] of Object.entries(event.actions.stateDelta)) {
+					if (k.startsWith("app:") || k.startsWith("user:")) {
+						continue;
+					}
+					if (v === null || v === undefined) {
+						delete stateAtRewindPoint[k];
+					} else {
+						stateAtRewindPoint[k] = v;
+					}
+				}
+			}
+		}
+
+		const currentState = session.state;
+		const rewindStateDelta: Record<string, any> = {};
+
+		for (const [key, valueAtRewind] of Object.entries(stateAtRewindPoint)) {
+			if (!(key in currentState) || currentState[key] !== valueAtRewind) {
+				rewindStateDelta[key] = valueAtRewind;
+			}
+		}
+
+		for (const key of Object.keys(currentState)) {
+			if (key.startsWith("app:") || key.startsWith("user:")) {
+				continue;
+			}
+			if (!(key in stateAtRewindPoint)) {
+				rewindStateDelta[key] = null;
+			}
+		}
+
+		return rewindStateDelta;
+	}
+
+	private async _computeArtifactDeltaForRewind(
+		session: Session,
+		rewindEventIndex: number,
+	): Promise<Record<string, number>> {
+		if (!this.artifactService) {
+			return {};
+		}
+
+		const versionsAtRewindPoint: Record<string, number> = {};
+		for (let i = 0; i < rewindEventIndex; i++) {
+			const event = session.events[i];
+			if (event.actions?.artifactDelta) {
+				Object.assign(versionsAtRewindPoint, event.actions.artifactDelta);
+			}
+		}
+
+		const currentVersions: Record<string, number> = {};
+		for (const event of session.events) {
+			if (event.actions?.artifactDelta) {
+				Object.assign(currentVersions, event.actions.artifactDelta);
+			}
+		}
+
+		const rewindArtifactDelta: Record<string, number> = {};
+		for (const [filename, vn] of Object.entries(currentVersions)) {
+			if (filename.startsWith("user:")) {
+				continue;
+			}
+
+			const vt = versionsAtRewindPoint[filename];
+			if (vt === vn) {
+				continue;
+			}
+
+			rewindArtifactDelta[filename] = vn + 1;
+
+			let artifact: Part;
+			if (vt === undefined || vt === null) {
+				artifact = {
+					inlineData: {
+						mimeType: "application/octet-stream",
+						data: "",
+					},
+				};
+			} else {
+				const artifactUri = getArtifactUri({
+					appName: this.appName,
+					userId: session.userId,
+					sessionId: session.id,
+					filename,
+					version: vt,
+				});
+				artifact = {
+					fileData: {
+						fileUri: artifactUri,
+					},
+				};
+			}
+
+			await this.artifactService.saveArtifact({
+				appName: this.appName,
+				userId: session.userId,
+				sessionId: session.id,
+				filename,
+				artifact,
+			});
+		}
+
+		return rewindArtifactDelta;
 	}
 }
 
