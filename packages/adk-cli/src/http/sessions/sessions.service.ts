@@ -332,8 +332,7 @@ export class SessionsService {
 						isEventInstance && eventLike.getFunctionResponses
 							? eventLike.getFunctionResponses()
 							: parts?.filter(
-									(part: unknown) =>
-										part &&
+									(part) =>
 										part &&
 										typeof part === "object" &&
 										part !== null &&
@@ -344,7 +343,7 @@ export class SessionsService {
 						isEventInstance && eventLike.isFinalResponse
 							? eventLike.isFinalResponse()
 							: !parts?.some(
-									(part: unknown) =>
+									(part) =>
 										part &&
 										typeof part === "object" &&
 										part !== null &&
