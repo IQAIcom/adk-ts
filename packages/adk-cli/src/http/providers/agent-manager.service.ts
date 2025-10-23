@@ -22,6 +22,7 @@ const USER_ID_PREFIX = "user_";
 export class AgentManager {
 	private agents = new Map<string, Agent>();
 	private loadedAgents = new Map<string, LoadedAgent>();
+	private builtAgents = new Map<string, BuiltAgent>();
 	private scanner: AgentScanner;
 	private loader: AgentLoader;
 	private logger: Logger;
@@ -273,9 +274,10 @@ export class AgentManager {
 		this.loadedAgents.set(agentPath, loadedAgent);
 		agent.instance = agentResult.agent;
 		agent.name = agentResult.agent.name;
-		// Store the builtAgent for state extraction
-		(agent as unknown as { builtAgent?: BuiltAgent }).builtAgent =
-			agentResult.builtAgent;
+		// Store the builtAgent in a separate map for state extraction
+		if (agentResult.builtAgent) {
+			this.builtAgents.set(agentPath, agentResult.builtAgent);
+		}
 
 		// Ensure the session is stored in the session service
 		try {
@@ -310,6 +312,7 @@ export class AgentManager {
 	async stopAgent(agentPath: string): Promise<void> {
 		// Deprecated: explicit stop not needed; keep method no-op for backward compatibility
 		this.loadedAgents.delete(agentPath);
+		this.builtAgents.delete(agentPath);
 		const agent = this.agents.get(agentPath);
 		if (agent) {
 			agent.instance = undefined;
@@ -382,12 +385,11 @@ export class AgentManager {
 		if (!agent) {
 			return undefined;
 		}
-		// Use the builtAgent if available, otherwise use the agent instance
-		const builtAgent = (agent as unknown as { builtAgent?: BuiltAgent })
-			.builtAgent;
 		if (!agent.instance) {
 			return undefined;
 		}
+		// Use the builtAgent from the separate map if available
+		const builtAgent = this.builtAgents.get(agentPath);
 		const agentResult = {
 			agent: agent.instance,
 			builtAgent: builtAgent,
@@ -515,5 +517,6 @@ export class AgentManager {
 		for (const [agentPath] of Array.from(this.loadedAgents.entries())) {
 			this.stopAgent(agentPath);
 		}
+		this.builtAgents.clear();
 	}
 }
