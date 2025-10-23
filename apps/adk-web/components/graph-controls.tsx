@@ -183,7 +183,7 @@ export function useGraphControls() {
 		searchParams.get("toolCategory") || "all",
 	);
 	const [showControls, setShowControls] = useState(
-		searchParams.get("showControls") !== "false",
+		searchParams.get("showControls") === "true",
 	);
 
 	// Update URL when state changes
@@ -243,23 +243,11 @@ export function useGraphControls() {
 		const toolCategory = searchParams.get("toolCategory") || "all";
 		const showControlsParam = searchParams.get("showControls");
 
-		if (search !== searchTerm) setSearchTerm(search);
-		if (nodeType !== nodeTypeFilter) setNodeTypeFilter(nodeType);
-		if (toolCategory !== toolCategoryFilter)
-			setToolCategoryFilter(toolCategory);
-		if (
-			showControlsParam !== null &&
-			showControlsParam !== showControls.toString()
-		) {
-			setShowControls(showControlsParam !== "false");
-		}
-	}, [
-		searchParams,
-		searchTerm,
-		nodeTypeFilter,
-		toolCategoryFilter,
-		showControls,
-	]);
+		setSearchTerm(search);
+		setNodeTypeFilter(nodeType);
+		setToolCategoryFilter(toolCategory);
+		setShowControls(showControlsParam === "true");
+	}, [searchParams]);
 
 	return {
 		searchTerm,
