@@ -75,18 +75,18 @@ function AutoFitOnFilter({
 			prev.toolCategoryFilter !== currentFilters.toolCategoryFilter;
 
 		if (hasFilterChanged) {
-			// Small delay to ensure nodes are rendered before fitting
-			const timeoutId = setTimeout(() => {
+			// Use requestAnimationFrame to ensure nodes are rendered before fitting
+			const rafId = requestAnimationFrame(() => {
 				fitView({
 					padding: 0.2,
 					duration: 800,
 					includeHiddenNodes: false,
 				});
-			}, 100);
+			});
 
 			prevFilters.current = currentFilters;
 
-			return () => clearTimeout(timeoutId);
+			return () => cancelAnimationFrame(rafId);
 		}
 	}, [searchTerm, nodeTypeFilter, toolCategoryFilter, fitView]);
 
