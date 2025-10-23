@@ -20,6 +20,8 @@ import "@xyflow/react/dist/style.css";
 import { Bot, Wrench } from "lucide-react";
 import { GraphControls, useGraphControls } from "./graph-controls";
 import { useReactFlow } from "@xyflow/react";
+import { AgentColor, AGENT_COLORS } from "@/lib/agent-colors";
+import { getAgentStyles } from "@/lib/agent-styles";
 
 interface GraphPanelProps {
 	data?: GraphResponse;
@@ -212,18 +214,18 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		// Adaptive spacing based on filtered node density and type
 		const totalNodes = filteredNodes.length;
 
-		// Dynamic spacing based on node count and density
-		const baseLayerGapY = 150; // vertical distance between layers;
-		const baseNodeGapX = 220; // horizontal distance between nodes in same layer;
+		// Dynamic spacing based on node count and density - LEFT TO RIGHT LAYOUT
+		const baseLayerGapX = 200; // horizontal distance between layers
+		const baseNodeGapY = 120; // vertical distance between nodes in same layer
 
 		// Increase spacing for dense graphs
 		const densityFactor = Math.min(1.5, Math.max(0.9, totalNodes / 20));
-		const layerGapY = Math.round(baseLayerGapY * densityFactor);
-		const nodeGapX = Math.round(baseNodeGapX * densityFactor);
+		const layerGapX = Math.round(baseLayerGapX * densityFactor);
+		const nodeGapY = Math.round(baseNodeGapY * densityFactor);
 
-		// Special handling for tool-heavy levels
+		// Special handling for tool-heavy levels - LEFT TO RIGHT LAYOUT
 		const positions = new Map<string, { x: number; y: number }>();
-		const maxWidthCount = Math.max(...levels.map((l) => l.length));
+		const maxHeightCount = Math.max(...levels.map((l) => l.length));
 
 		levels.forEach((level, depth) => {
 			const count = level.length;
@@ -235,7 +237,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 			// Adjust spacing for tool-heavy levels
 			const isToolHeavy = toolCount > agentCount * 2;
-			const levelNodeGapX = isToolHeavy ? Math.round(nodeGapX * 0.7) : nodeGapX;
+			const levelNodeGapY = isToolHeavy ? Math.round(nodeGapY * 0.7) : nodeGapY;
 
 			// Group tools by parent agent for better organization
 			if (isToolHeavy && agentCount > 0) {
@@ -257,64 +259,71 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 					}
 				}
 
-				// Position agents first
+				// Position agents first (VERTICALLY CENTERED)
 				parentAgents.forEach((agent, i) => {
-					const x =
-						i * levelNodeGapX * 2 - (parentAgents.length - 1) * levelNodeGapX;
-					agentPositions.set(agent.id, x);
+					const y =
+						i * levelNodeGapY * 2 - (parentAgents.length - 1) * levelNodeGapY;
+					agentPositions.set(agent.id, y);
 					positions.set(agent.id, {
-						x,
-						y: 40 + depth * layerGapY,
+						x: 40 + depth * layerGapX, // X increases with depth (left to right)
+						y,
 					});
 				});
 
-				// Position tools in clusters around their parent agents
+				// Position tools in clusters around their parent agents (TO THE RIGHT)
 				for (const [parentId, toolIds] of toolGroups) {
-					const parentX = agentPositions.get(parentId) || 0;
-					const toolSpacing = Math.min(levelNodeGapX * 0.4, 80);
-					const startX = parentX - ((toolIds.length - 1) * toolSpacing) / 2;
+					const parentY = agentPositions.get(parentId) || 0;
+					const toolSpacing = Math.min(levelNodeGapY * 0.4, 60);
+					const startY = parentY - ((toolIds.length - 1) * toolSpacing) / 2;
 
 					toolIds.forEach((toolId, toolIndex) => {
 						positions.set(toolId, {
-							x: startX + toolIndex * toolSpacing,
-							y: 40 + depth * layerGapY + 60, // Offset tools below agents
+							x: 40 + depth * layerGapX + 80, // Offset tools to the right of agents
+							y: startY + toolIndex * toolSpacing,
 						});
 					});
 				}
 			} else {
 				// Standard layout for non-tool-heavy levels
-				const layerWidth = (count - 1) * levelNodeGapX;
-				const maxLayerWidth = (maxWidthCount - 1) * nodeGapX;
-				const offsetX = (maxLayerWidth - layerWidth) / 2;
+				const layerHeight = (count - 1) * levelNodeGapY;
+				const maxLayerHeight = (maxHeightCount - 1) * nodeGapY;
+				const offsetY = (maxLayerHeight - layerHeight) / 2;
 
 				level.forEach((id, i) => {
 					positions.set(id, {
-						x: offsetX + i * levelNodeGapX,
-						y: 40 + depth * layerGapY,
+						x: 40 + depth * layerGapX, // X increases with depth (left to right)
+						y: offsetY + i * levelNodeGapY,
 					});
 				});
 			}
 		});
 
-		// Create flow nodes with computed positions and enhanced data
+		// Create agent color mapping for consistent coloring
+		const agentColors = AGENT_COLORS;
+		const agentColorMap = new Map<string, AgentColor>();
+
+		// Assign colors to agents (for tool coloring only)
+		const agents = filteredNodes.filter((n) => n.kind === "agent");
+		agents.forEach((agent, index) => {
+			agentColorMap.set(agent.id, agentColors[index % agentColors.length]);
+		});
+
+		// Create flow nodes with computed positions and agent-based color coding
 		return filteredNodes.map((node: GraphNode) => {
 			const position = positions.get(node.id) || { x: 0, y: 0 };
 			const isTool = node.kind === "tool";
 
-			// Determine tool category for color coding
-			let toolCategory = "default";
+			// Determine agent color for this node
+			let agentColor: AgentColor = AgentColor.DEFAULT;
 			if (isTool) {
-				const label = node.label?.toLowerCase() || "";
-				if (label.includes("search") || label.includes("query"))
-					toolCategory = "search";
-				else if (label.includes("data") || label.includes("database"))
-					toolCategory = "data";
-				else if (label.includes("api") || label.includes("http"))
-					toolCategory = "api";
-				else if (label.includes("file") || label.includes("document"))
-					toolCategory = "file";
-				else if (label.includes("ai") || label.includes("llm"))
-					toolCategory = "ai";
+				// Find which agent this tool belongs to
+				const parentEdge = graphEdges.find((edge) => edge.to === node.id);
+				if (parentEdge) {
+					agentColor = agentColorMap.get(parentEdge.from) ?? AgentColor.DEFAULT;
+				}
+			} else {
+				// This is an agent, always use default color
+				agentColor = AgentColor.DEFAULT;
 			}
 
 			return {
@@ -325,7 +334,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 					label: node.label,
 					type: node.type,
 					kind: node.kind,
-					toolCategory,
+					agentColor,
 					isTool,
 				},
 				connectable: false,
@@ -373,27 +382,34 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
 
-		// Map target id to node kind and category for enhanced styling
+		// Create agent color mapping for edge styling
+		const agentColors = AGENT_COLORS;
+		const agentColorMap = new Map<string, AgentColor>();
+
+		// Assign colors to agents
+		const agents = filteredNodes.filter((n) => n.kind === "agent");
+		agents.forEach((agent, index) => {
+			agentColorMap.set(agent.id, agentColors[index % agentColors.length]);
+		});
+
+		// Map target id to node kind and agent color for enhanced styling
 		const nodeDataById = new Map<
 			string,
-			{ kind: string; toolCategory?: string }
+			{ kind: string; agentColor?: AgentColor }
 		>();
 		for (const n of filteredNodes) {
-			const label = n.label?.toLowerCase() || "";
-			let toolCategory = "default";
+			let agentColor: AgentColor = AgentColor.DEFAULT;
 			if (n.kind === "tool") {
-				if (label.includes("search") || label.includes("query"))
-					toolCategory = "search";
-				else if (label.includes("data") || label.includes("database"))
-					toolCategory = "data";
-				else if (label.includes("api") || label.includes("http"))
-					toolCategory = "api";
-				else if (label.includes("file") || label.includes("document"))
-					toolCategory = "file";
-				else if (label.includes("ai") || label.includes("llm"))
-					toolCategory = "ai";
+				// Find which agent this tool belongs to
+				const parentEdge = graphEdges.find((edge) => edge.to === n.id);
+				if (parentEdge) {
+					agentColor = agentColorMap.get(parentEdge.from) ?? AgentColor.DEFAULT;
+				}
+			} else {
+				// This is an agent, always use default color
+				agentColor = AgentColor.DEFAULT;
 			}
-			nodeDataById.set(n.id, { kind: n.kind, toolCategory });
+			nodeDataById.set(n.id, { kind: n.kind, agentColor });
 		}
 
 		// Only include edges where both source and target are in filtered nodes
@@ -403,41 +419,58 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 		return filteredEdges.map((edge: GraphEdge, index: number) => {
 			const targetData = nodeDataById.get(edge.to);
+			const sourceData = nodeDataById.get(edge.from);
 			const isTool = targetData?.kind === "tool";
-			const toolCategory = targetData?.toolCategory || "default";
+			const agentColor =
+				targetData?.agentColor || sourceData?.agentColor || AgentColor.DEFAULT;
 
-			// Enhanced edge styling based on tool category
+			// Enhanced edge styling - only color code agent-to-tool connections
 			let stroke: string;
 			let strokeWidth: number;
 			let strokeDasharray: string | undefined;
 
 			if (isTool) {
-				// Color code edges by tool category
-				switch (toolCategory) {
-					case "search":
+				// Agent-to-tool connections - color code by agent
+				switch (agentColor) {
+					case AgentColor.BLUE:
 						stroke = "var(--color-blue-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "8 4";
 						break;
-					case "data":
+					case AgentColor.GREEN:
 						stroke = "var(--color-green-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "6 3";
 						break;
-					case "api":
-						stroke = "var(--color-orange-500)";
+					case AgentColor.PURPLE:
+						stroke = "var(--color-purple-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "10 5";
 						break;
-					case "file":
-						stroke = "var(--color-purple-500)";
+					case AgentColor.ORANGE:
+						stroke = "var(--color-orange-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "12 6";
 						break;
-					case "ai":
+					case AgentColor.PINK:
 						stroke = "var(--color-pink-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "4 2";
+						break;
+					case AgentColor.CYAN:
+						stroke = "var(--color-cyan-500)";
+						strokeWidth = 2.5;
+						strokeDasharray = "6 4";
+						break;
+					case AgentColor.LIME:
+						stroke = "var(--color-lime-500)";
+						strokeWidth = 2.5;
+						strokeDasharray = "8 2";
+						break;
+					case AgentColor.INDIGO:
+						stroke = "var(--color-indigo-500)";
+						strokeWidth = 2.5;
+						strokeDasharray = "10 3";
 						break;
 					default:
 						stroke = "var(--color-secondary-foreground)";
@@ -447,7 +480,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			} else {
 				// Agent-to-agent connections
 				stroke = "var(--color-primary)";
-				strokeWidth = 2.75;
+				strokeWidth = 2.0;
 				strokeDasharray = undefined;
 			}
 
@@ -553,11 +586,16 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 // Custom node component for agents
 function AgentNode({ data }: { data: any }) {
+	const { agentColor = AgentColor.DEFAULT } = data;
+	const styles = getAgentStyles(agentColor);
+
 	return (
-		<div className="relative px-4 py-3 shadow-lg rounded-lg bg-card border-2 border-primary min-w-[160px] max-w-[200px]">
+		<div
+			className={`relative px-4 py-3 shadow-lg rounded-lg border-2 min-w-[160px] max-w-[200px] ${styles.bgColor} ${styles.borderColor}`}
+		>
 			<div className="flex items-center gap-2">
-				<Bot className="w-5 h-5 text-primary" />
-				<div className="font-semibold text-sm text-card-foreground truncate">
+				<Bot className={`w-5 h-5 ${styles.iconColor}`} />
+				<div className={`font-semibold text-sm ${styles.textColor} truncate`}>
 					{data.label?.replace("🤖 ", "") || data.id}
 				</div>
 			</div>
@@ -566,16 +604,16 @@ function AgentNode({ data }: { data: any }) {
 					{data.type}
 				</div>
 			)}
-			{/* Handles for edge rendering */}
+			{/* Handles for edge rendering - LEFT TO RIGHT FLOW */}
 			<Handle
 				type="target"
-				position={Position.Top}
-				className="!w-3 !h-3 !bg-primary !border-2 !border-background"
+				position={Position.Left}
+				className={`!w-3 !h-3 ${styles.handleColor} !border-2 !border-background`}
 			/>
 			<Handle
 				type="source"
-				position={Position.Bottom}
-				className="!w-3 !h-3 !bg-primary !border-2 !border-background"
+				position={Position.Right}
+				className={`!w-3 !h-3 ${styles.handleColor} !border-2 !border-background`}
 			/>
 		</div>
 	);
@@ -583,57 +621,9 @@ function AgentNode({ data }: { data: any }) {
 
 // Custom node component for tools
 function ToolNode({ data }: { data: any }) {
-	const { toolCategory = "default" } = data;
+	const { agentColor = AgentColor.DEFAULT } = data;
 
-	// Category-based styling
-	const getCategoryStyles = (category: string) => {
-		switch (category) {
-			case "search":
-				return {
-					bgColor: "bg-blue-50 dark:bg-blue-950",
-					borderColor: "border-blue-300 dark:border-blue-700",
-					textColor: "text-blue-700 dark:text-blue-300",
-					iconColor: "text-blue-600 dark:text-blue-400",
-				};
-			case "data":
-				return {
-					bgColor: "bg-green-50 dark:bg-green-950",
-					borderColor: "border-green-300 dark:border-green-700",
-					textColor: "text-green-700 dark:text-green-300",
-					iconColor: "text-green-600 dark:text-green-400",
-				};
-			case "api":
-				return {
-					bgColor: "bg-orange-50 dark:bg-orange-950",
-					borderColor: "border-orange-300 dark:border-orange-700",
-					textColor: "text-orange-700 dark:text-orange-300",
-					iconColor: "text-orange-600 dark:text-orange-400",
-				};
-			case "file":
-				return {
-					bgColor: "bg-purple-50 dark:bg-purple-950",
-					borderColor: "border-purple-300 dark:border-purple-700",
-					textColor: "text-purple-700 dark:text-purple-300",
-					iconColor: "text-purple-600 dark:text-purple-400",
-				};
-			case "ai":
-				return {
-					bgColor: "bg-pink-50 dark:bg-pink-950",
-					borderColor: "border-pink-300 dark:border-pink-700",
-					textColor: "text-pink-700 dark:text-pink-300",
-					iconColor: "text-pink-600 dark:text-pink-400",
-				};
-			default:
-				return {
-					bgColor: "bg-secondary",
-					borderColor: "border-secondary",
-					textColor: "text-secondary-foreground",
-					iconColor: "text-secondary-foreground",
-				};
-		}
-	};
-
-	const styles = getCategoryStyles(toolCategory);
+	const styles = getAgentStyles(agentColor);
 
 	return (
 		<div
@@ -645,16 +635,16 @@ function ToolNode({ data }: { data: any }) {
 					{data.label?.replace("🔧 ", "") || data.id}
 				</div>
 			</div>
-			{/* Handles for edge rendering */}
+			{/* Handles for edge rendering - LEFT TO RIGHT FLOW */}
 			<Handle
 				type="target"
-				position={Position.Top}
-				className={`!w-2 !h-2 !border-2 !border-background ${styles.iconColor.replace("text-", "bg-")}`}
+				position={Position.Left}
+				className={`!w-2 !h-2 !border-2 !border-background ${styles.handleColor}`}
 			/>
 			<Handle
 				type="source"
-				position={Position.Bottom}
-				className={`!w-2 !h-2 !border-2 !border-background ${styles.iconColor.replace("text-", "bg-")}`}
+				position={Position.Right}
+				className={`!w-2 !h-2 !border-2 !border-background ${styles.handleColor}`}
 			/>
 		</div>
 	);
