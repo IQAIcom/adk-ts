@@ -634,7 +634,7 @@ export class AgentLoader {
 			) {
 				try {
 					const functionResult = await this.invokeFunctionSafely(
-						value as () => unknown as () => AgentExportValue,
+value as () => AgentExportValue,
 					);
 					const result = await this.extractBaseAgent(functionResult);
 					if (result) {
