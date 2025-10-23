@@ -1,9 +1,9 @@
-"use client";
-
-import { useQueryState } from "nuqs";
-import { Search, Eye, EyeOff, Maximize2 } from "lucide-react";
 import { Button } from "./ui/button";
+import { Eye, EyeOff, Maximize2, Search } from "lucide-react";
 import { Input } from "./ui/input";
+import { TOOL_CATEGORIES } from "@/lib/tool-categories";
+import { useQueryState } from "nuqs";
+
 import {
 	Select,
 	SelectContent,
@@ -11,7 +11,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./ui/select";
-import { TOOL_CATEGORIES } from "@/lib/tool-categories";
 
 interface GraphControlsProps {
 	searchTerm: string;

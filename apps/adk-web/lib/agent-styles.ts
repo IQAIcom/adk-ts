@@ -1,5 +1,5 @@
 import { AgentColor } from "./agent-colors";
-import { getCategoryValues, type ToolCategory } from "./tool-categories";
+import type { ToolCategory } from "./tool-categories";
 
 // Tool categorization function to reduce duplication and improve maintainability
 export const getToolCategory = (label?: string): ToolCategory | "default" => {
