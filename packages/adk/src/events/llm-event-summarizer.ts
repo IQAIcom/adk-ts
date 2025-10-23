@@ -1,5 +1,6 @@
 import type { Content } from "@google/genai";
 import type { BaseLlm } from "../models/base-llm";
+import { LlmRequest } from "../models/llm-request";
 import { Event } from "./event";
 import { EventActions } from "./event-actions";
 import type { EventsSummarizer } from "./events-summarizer";
@@ -41,19 +42,17 @@ export class LlmEventSummarizer implements EventsSummarizer {
 		const eventsText = this.formatEventsForSummarization(events);
 		const promptWithEvents = this.prompt.replace("{events}", eventsText);
 
-		const llmRequest = {
+		const llmRequest = new LlmRequest({
 			contents: [
 				{
 					role: "user",
 					parts: [{ text: promptWithEvents }],
 				},
 			],
-		};
+		});
 
 		let summaryText = "";
-		for await (const response of this.model.generateContentAsync(
-			llmRequest as any,
-		)) {
+		for await (const response of this.model.generateContentAsync(llmRequest)) {
 			summaryText += response.content?.parts
 				?.map((part) => part.text || "")
 				.join("");
