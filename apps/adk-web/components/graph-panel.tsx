@@ -21,7 +21,7 @@ import { Bot, Wrench } from "lucide-react";
 import { GraphControls, useGraphControls } from "./graph-controls";
 import { useReactFlow } from "@xyflow/react";
 import { AgentColor, AGENT_COLORS } from "@/lib/agent-colors";
-import { getAgentStyles } from "@/lib/agent-styles";
+import { getAgentStyles, getToolCategory } from "@/lib/agent-styles";
 
 interface GraphPanelProps {
 	data?: GraphResponse;
@@ -134,19 +134,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 			// Tool category filter
 			if (toolCategoryFilter !== "all" && node.kind === "tool") {
-				const label = node.label?.toLowerCase() || "";
-				let toolCategory = "default";
-				if (label.includes("search") || label.includes("query"))
-					toolCategory = "search";
-				else if (label.includes("data") || label.includes("database"))
-					toolCategory = "data";
-				else if (label.includes("api") || label.includes("http"))
-					toolCategory = "api";
-				else if (label.includes("file") || label.includes("document"))
-					toolCategory = "file";
-				else if (label.includes("ai") || label.includes("llm"))
-					toolCategory = "ai";
-
+				const toolCategory = getToolCategory(node.label);
 				if (toolCategory !== toolCategoryFilter) return false;
 			}
 
@@ -372,19 +360,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 			// Tool category filter
 			if (toolCategoryFilter !== "all" && node.kind === "tool") {
-				const label = node.label?.toLowerCase() || "";
-				let toolCategory = "default";
-				if (label.includes("search") || label.includes("query"))
-					toolCategory = "search";
-				else if (label.includes("data") || label.includes("database"))
-					toolCategory = "data";
-				else if (label.includes("api") || label.includes("http"))
-					toolCategory = "api";
-				else if (label.includes("file") || label.includes("document"))
-					toolCategory = "file";
-				else if (label.includes("ai") || label.includes("llm"))
-					toolCategory = "ai";
-
+				const toolCategory = getToolCategory(node.label);
 				if (toolCategory !== toolCategoryFilter) return false;
 			}
 

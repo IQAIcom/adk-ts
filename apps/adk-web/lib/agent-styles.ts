@@ -1,5 +1,21 @@
 import { AgentColor } from "./agent-colors";
 
+// Tool categorization function to reduce duplication and improve maintainability
+export const getToolCategory = (label?: string): string => {
+	const labelLower = label?.toLowerCase() || "";
+
+	if (labelLower.includes("search") || labelLower.includes("query"))
+		return "search";
+	if (labelLower.includes("data") || labelLower.includes("database"))
+		return "data";
+	if (labelLower.includes("api") || labelLower.includes("http")) return "api";
+	if (labelLower.includes("file") || labelLower.includes("document"))
+		return "file";
+	if (labelLower.includes("ai") || labelLower.includes("llm")) return "ai";
+
+	return "default";
+};
+
 // Agent styling based on color
 export const getAgentStyles = (color: AgentColor) => {
 	switch (color) {
