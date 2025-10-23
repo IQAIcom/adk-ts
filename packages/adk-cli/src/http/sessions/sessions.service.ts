@@ -5,6 +5,7 @@ import { USER_ID_PREFIX } from "../../common/constants";
 import { TOKENS } from "../../common/tokens";
 import type {
 	CreateSessionRequest,
+	EventLike,
 	EventsResponse,
 	LoadedAgent,
 	SessionResponse,
@@ -292,19 +293,6 @@ export class SessionsService {
 				return { events: [], totalCount: 0 };
 			}
 
-			interface EventLike {
-				id: string;
-				author: string;
-				timestamp: number;
-				content?: { parts?: unknown[] };
-				actions?: unknown;
-				branch?: string;
-				partial?: boolean;
-				getFunctionCalls?: () => unknown[];
-				getFunctionResponses?: () => unknown[];
-				isFinalResponse?: () => boolean;
-			}
-
 			const events = session.events.map((event: Event) => {
 				// Handle both Event class instances and plain objects
 				const eventLike = event as unknown as EventLike;
@@ -536,17 +524,64 @@ export class SessionsService {
 		value: unknown,
 	): void {
 		const keys = path.split(".");
-		const lastKey = keys.pop()!;
-		const target = keys.reduce((current: Record<string, unknown>, key) => {
-			if (
-				!(key in current) ||
-				typeof current[key] !== "object" ||
-				current[key] === null
-			) {
-				current[key] = {};
+		if (keys.length === 0) return;
+
+		const isNumericKey = (k: string) => /^\d+$/.test(k);
+		const lastKey = keys.pop() as string;
+
+		let current: any = obj;
+		for (let i = 0; i < keys.length; i++) {
+			const key = keys[i];
+			const nextKey = keys[i + 1];
+			const nextIsIndex = nextKey != null && isNumericKey(nextKey);
+
+			if (isNumericKey(key)) {
+				// We are indexing into an array
+				const idx = Number(key);
+				if (!Array.isArray(current)) {
+					// If current is not an array, replace it with an array in its parent slot
+					// This can only happen if the path starts with a numeric key, which is invalid
+					throw new Error(
+						`Invalid path: cannot index into non-array at '${keys.slice(0, i + 1).join(".")}'`,
+					);
+				}
+				if (current[idx] == null || typeof current[idx] !== "object") {
+					current[idx] = nextIsIndex ? [] : {};
+				}
+				current = current[idx];
+			} else {
+				// Property access on object
+				if (
+					current[key] == null ||
+					(typeof current[key] !== "object" && !Array.isArray(current[key]))
+				) {
+					current[key] = nextIsIndex ? [] : {};
+				}
+				current = current[key];
 			}
-			return current[key] as Record<string, unknown>;
-		}, obj);
-		target[lastKey] = value;
+		}
+
+		// Set the final key
+		if (isNumericKey(lastKey)) {
+			const idx = Number(lastKey);
+			if (!Array.isArray(current)) {
+				// If final target isn't an array but a numeric key is provided, coerce it to array
+				// Create an array and replace current (object) by mutating its reference
+				// Since we don't have the parent reference here, fall back to setting a numeric property
+				// to avoid silent data loss.
+				(current as any)[idx] = value;
+				return;
+			}
+			current[idx] = value;
+			return;
+		}
+
+		// If the target is an array and lastKey is not numeric, this is likely unintended.
+		if (Array.isArray(current)) {
+			throw new Error(
+				`Invalid path: non-numeric key '${lastKey}' used on array at '${keys.join(".") || "<root>"}'`,
+			);
+		}
+		(current as Record<string, unknown>)[lastKey] = value;
 	}
 }

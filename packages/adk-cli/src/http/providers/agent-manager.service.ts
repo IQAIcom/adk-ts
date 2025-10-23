@@ -11,7 +11,7 @@ import {
 } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import { DEFAULT_APP_NAME, USER_ID_PREFIX } from "../../common/constants";
-import type { Agent, LoadedAgent } from "../../common/types";
+import type { Agent, ContentPart, LoadedAgent } from "../../common/types";
 import { AgentLoader } from "./agent-loader.service";
 import type {
 	ModuleExport,
@@ -407,13 +407,6 @@ export class AgentManager {
 					})),
 				],
 			};
-
-			interface ContentPart {
-				text?: string;
-				inlineData?: { mimeType: string; data: string };
-				functionCall?: { name: string; args: Record<string, unknown> };
-				functionResponse?: { id: string; name: string; response: unknown };
-			}
 
 			// Always run against the CURRENT loadedAgent.sessionId (switchable)
 			let accumulated = "";
