@@ -383,7 +383,7 @@ export class SessionsService {
 			}
 
 			// Update the loaded agent's session ID
-loadedAgent.sessionId = sessionId;
+			loadedAgent.sessionId = sessionId;
 		} catch (error) {
 			this.logger.error("Error switching session: %o", error);
 			throw error;
