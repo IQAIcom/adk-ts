@@ -17,7 +17,8 @@ function getExampleFiles(dir: string) {
 
 	for (const item of items) {
 		// Skip these files
-		if (item === "index.ts" || item === "run.ts") continue;
+		if (item === "index.ts" || item === "run.ts" || item === "utils.ts")
+			continue;
 
 		const itemPath = path.join(dir, item);
 		const stat = fs.statSync(itemPath);
