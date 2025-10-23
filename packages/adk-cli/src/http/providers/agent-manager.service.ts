@@ -11,8 +11,8 @@ import {
 } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import type { Agent, LoadedAgent } from "../../common/types";
-import type { ModuleExport } from "./agent-loader.types";
 import { AgentLoader } from "./agent-loader.service";
+import type { ModuleExport } from "./agent-loader.types";
 import { AgentScanner } from "./agent-scanner.service";
 
 const DEFAULT_APP_NAME = "adk-server";
@@ -354,7 +354,7 @@ export class AgentManager {
 				>;
 				accumulated += parts
 					.map((p: unknown) =>
-						p && typeof p === "object" && "text" in p
+						p && typeof p === "object" && p !== null && "text" in p
 							? (p as { text: string }).text
 							: "",
 					)

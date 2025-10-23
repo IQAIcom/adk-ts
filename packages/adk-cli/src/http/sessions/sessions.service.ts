@@ -323,7 +323,10 @@ export class SessionsService {
 							? eventLike.getFunctionCalls()
 							: parts?.filter(
 									(part: unknown) =>
-										part && typeof part === "object" && "functionCall" in part,
+										part &&
+										typeof part === "object" &&
+										part !== null &&
+										"functionResponse" in part,
 								) || [],
 					functionResponses:
 						isEventInstance && eventLike.getFunctionResponses
@@ -331,7 +334,9 @@ export class SessionsService {
 							: parts?.filter(
 									(part: unknown) =>
 										part &&
+										part &&
 										typeof part === "object" &&
+										part !== null &&
 										"functionResponse" in part,
 								) || [],
 					branch: eventLike.branch,
@@ -340,7 +345,10 @@ export class SessionsService {
 							? eventLike.isFinalResponse()
 							: !parts?.some(
 									(part: unknown) =>
-										part && typeof part === "object" && "functionCall" in part,
+										part &&
+										typeof part === "object" &&
+										part !== null &&
+										"functionResponse" in part,
 								) && !eventLike.partial,
 				};
 			});
