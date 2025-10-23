@@ -84,7 +84,7 @@ To explore the examples, you can either browse all available examples or run a s
 
 ## 📚 Explore Example Applications
 
-We have **12 comprehensive examples** that cover the complete ADK feature set, organized in a logical learning progression from basic concepts to advanced implementations:
+We have **16 comprehensive examples** that cover the complete ADK feature set, organized in a logical learning progression from basic concepts to advanced implementations:
 
 ### 🎯 **Foundational Examples (01-04)**
 
@@ -104,7 +104,7 @@ We have **12 comprehensive examples** that cover the complete ADK feature set, o
 | **[07-code-execution](src/07-code-execution/)** | Code generation and execution capabilities | Code tools, sandboxed execution |
 | **[08-external-integrations](src/08-external-integrations/)** | API integrations and external services | HTTP tools, service integration |
 
-### 🚀 **Advanced Examples (09-13)**
+### 🚀 **Advanced Examples (09-16)**
 
 | Example | Description | Key Concepts |
 |---------|-------------|--------------|
@@ -113,6 +113,9 @@ We have **12 comprehensive examples** that cover the complete ADK feature set, o
 | **[11-mcp-integrations](src/11-mcp-integrations/)** | Model Context Protocol with custom servers | MCP servers, sampling, FastMCP |
 | **[12-event-compaction](src/12-event-compaction/)** | Managing long sessions with event summarization | Event compaction, token optimization |
 | **[13-chat-bots](src/13-chat-bots/)** | Platform-specific chat bot implementations | Discord, Telegram, platform APIs |
+| **[14-callbacks](src/14-callbacks/)** | Safety guardrails and callback patterns | Lifecycle hooks, content filtering, safety |
+| **[15-evaluation](src/15-evaluation/)** | Agent performance evaluation and testing | AgentEvaluator, benchmarking, quality assessment |
+| **[16-email-agent](src/16-email-agent/)** | Email automation and processing (WIP) | Email handling, SMTP, automation |
 
 ## 🤝 Contributing
 
@@ -120,4 +123,4 @@ If you would like to add examples or improve existing ones, please check out our
 
 ---
 
-💡 **Pro Tip**: Follow the examples in order (01-12) for a structured learning path, or jump to specific examples based on your needs. Start with `01-simple-agent` to understand the basics, then explore advanced features like MCP integrations and chat bots!
+💡 **Pro Tip**: Follow the examples in order (01-16) for a structured learning path, or jump to specific examples based on your needs. Start with `01-simple-agent` to understand the basics, then explore advanced features like MCP integrations, event compaction, callbacks, and specialized agents!
