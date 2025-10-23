@@ -564,10 +564,9 @@ export class AgentLoader {
 		if (result && typeof result === "object" && "then" in result) {
 			try {
 				result = await (result as Promise<AgentExportValue>);
-			} catch (e) {
+       } catch (e) {
 				throw new Error(
 					`Failed to await function result: ${e instanceof Error ? e.message : String(e)}`,
-				);
 			}
 		}
 		return result as AgentExportValue;
