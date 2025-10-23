@@ -343,12 +343,25 @@ export class SessionsService {
 						isEventInstance && eventLike.isFinalResponse
 							? eventLike.isFinalResponse()
 							: !parts?.some(
-									(part) =>
+									(part: unknown) =>
+										part &&
+										typeof part === "object" &&
+										part !== null &&
+										"functionCall" in part,
+								) &&
+								!parts?.some(
+									(part: unknown) =>
 										part &&
 										typeof part === "object" &&
 										part !== null &&
 										"functionResponse" in part,
-								) && !eventLike.partial,
+								) &&
+								!eventLike.partial &&
+								!(
+									Array.isArray(parts) &&
+									parts.length > 0 &&
+									(parts[parts.length - 1] as any)?.codeExecutionResult != null
+								),
 				};
 			});
 
