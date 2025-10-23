@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.5.1
+
+### Patch Changes
+
+- d8fd6e8: feat(agent-builder): add static withAgent method for cleaner API usage
+
 ## 0.5.0
 
 ### Minor Changes
