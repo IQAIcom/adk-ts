@@ -213,15 +213,18 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 		// Adaptive spacing based on filtered node density and type
 		const totalNodes = filteredNodes.length;
+		const isFiltered =
+			searchTerm || nodeTypeFilter !== "all" || toolCategoryFilter !== "all";
 
 		// Dynamic spacing based on node count and density - LEFT TO RIGHT LAYOUT
 		const baseLayerGapX = 200; // horizontal distance between layers
 		const baseNodeGapY = 120; // vertical distance between nodes in same layer
 
-		// Increase spacing for dense graphs
+		// Increase spacing for dense graphs, especially when filtered
 		const densityFactor = Math.min(1.5, Math.max(0.9, totalNodes / 20));
-		const layerGapX = Math.round(baseLayerGapX * densityFactor);
-		const nodeGapY = Math.round(baseNodeGapY * densityFactor);
+		const filterFactor = isFiltered ? 1.8 : 1.0; // Extra spacing when filtered
+		const layerGapX = Math.round(baseLayerGapX * densityFactor * filterFactor);
+		const nodeGapY = Math.round(baseNodeGapY * densityFactor * filterFactor);
 
 		// Special handling for tool-heavy levels - LEFT TO RIGHT LAYOUT
 		const positions = new Map<string, { x: number; y: number }>();
@@ -237,7 +240,10 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 			// Adjust spacing for tool-heavy levels
 			const isToolHeavy = toolCount > agentCount * 2;
-			const levelNodeGapY = isToolHeavy ? Math.round(nodeGapY * 0.7) : nodeGapY;
+			const toolSpacingFactor = isFiltered ? 0.5 : 0.7; // Less spacing when filtered
+			const levelNodeGapY = isToolHeavy
+				? Math.round(nodeGapY * toolSpacingFactor)
+				: nodeGapY;
 
 			// Group tools by parent agent for better organization
 			if (isToolHeavy && agentCount > 0) {
@@ -273,7 +279,9 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 				// Position tools in clusters around their parent agents (TO THE RIGHT)
 				for (const [parentId, toolIds] of toolGroups) {
 					const parentY = agentPositions.get(parentId) || 0;
-					const toolSpacing = Math.min(levelNodeGapY * 0.4, 60);
+					const toolSpacing = isFiltered
+						? Math.min(levelNodeGapY * 0.8, 100) // More spacing when filtered
+						: Math.min(levelNodeGapY * 0.4, 60);
 					const startY = parentY - ((toolIds.length - 1) * toolSpacing) / 2;
 
 					toolIds.forEach((toolId, toolIndex) => {
@@ -285,14 +293,17 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 				}
 			} else {
 				// Standard layout for non-tool-heavy levels
-				const layerHeight = (count - 1) * levelNodeGapY;
+				const adjustedNodeGapY = isFiltered
+					? levelNodeGapY * 1.3
+					: levelNodeGapY; // More spacing when filtered
+				const layerHeight = (count - 1) * adjustedNodeGapY;
 				const maxLayerHeight = (maxHeightCount - 1) * nodeGapY;
 				const offsetY = (maxLayerHeight - layerHeight) / 2;
 
 				level.forEach((id, i) => {
 					positions.set(id, {
 						x: 40 + depth * layerGapX, // X increases with depth (left to right)
-						y: offsetY + i * levelNodeGapY,
+						y: offsetY + i * adjustedNodeGapY,
 					});
 				});
 			}
