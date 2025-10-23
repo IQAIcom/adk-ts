@@ -735,7 +735,7 @@ value as () => AgentExportValue,
 	): Promise<AgentExportResult | null> {
 		try {
 			const functionResult = await this.invokeFunctionSafely(
-				functionCandidate as () => unknown as () => AgentExportValue,
+functionCandidate as () => AgentExportValue,
 			);
 
 			const result = await this.extractBaseAgent(functionResult);
