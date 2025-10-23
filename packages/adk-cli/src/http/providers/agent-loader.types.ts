@@ -100,8 +100,3 @@ export const TsConfigSchema = z.object({
 		})
 		.optional(),
 });
-
-/**
- * Zod schema for validating module exports
- */
-export const ModuleExportSchema = z.record(z.string(), z.unknown());
