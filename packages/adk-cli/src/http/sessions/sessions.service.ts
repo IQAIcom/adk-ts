@@ -1,6 +1,7 @@
 import { format } from "node:util";
 import { Event, InMemorySessionService } from "@iqai/adk";
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { USER_ID_PREFIX } from "../../common/constants";
 import { TOKENS } from "../../common/tokens";
 import type {
 	CreateSessionRequest,
@@ -197,8 +198,8 @@ export class SessionsService {
 			let stateToUse = request?.state;
 			if (!stateToUse) {
 				// Get the agent path from userId (remove the prefix)
-				const agentPath = loadedAgent.userId.startsWith("user_")
-					? loadedAgent.userId.substring(5)
+				const agentPath = loadedAgent.userId.startsWith(USER_ID_PREFIX)
+					? loadedAgent.userId.substring(USER_ID_PREFIX.length)
 					: loadedAgent.userId;
 				const initialState =
 					this.agentManager.getInitialStateForAgent(agentPath);

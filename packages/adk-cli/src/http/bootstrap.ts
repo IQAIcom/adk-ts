@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
-import { existsSync, readFileSync, watch } from "node:fs";
 import type { FSWatcher } from "node:fs";
+import { existsSync, readFileSync, watch } from "node:fs";
 import { resolve, sep } from "node:path";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -127,18 +127,12 @@ function setupHotReload(
 								sessionId,
 							] of preservedSessions.entries()) {
 								try {
-									await agentManager.startAgent(agentPath);
-									// Update the loaded agent to use the preserved session
-									const loadedAgent = agentManager
-										.getLoadedAgents()
-										.get(agentPath);
-									if (loadedAgent) {
-										(loadedAgent as any).sessionId = sessionId;
-										if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
-											console.log(
-												`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
-											);
-										}
+									// Start agent with preserved session ID for restoration
+									await agentManager.startAgent(agentPath, sessionId);
+									if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+										console.log(
+											`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
+										);
 									}
 								} catch (e) {
 									if (!config.quiet) {
