@@ -107,6 +107,11 @@ export interface EnhancedRunner<T = string, M extends boolean = false> {
 		newMessage: FullMessage;
 		runConfig?: RunConfig;
 	}): AsyncIterable<Event>;
+	rewind(params: {
+		userId: string;
+		sessionId: string;
+		rewindBeforeInvocationId: string;
+	});
 	__outputSchema?: ZodSchema;
 }
 
@@ -980,17 +985,14 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 
 				return combinedResponse.trim() as T;
 			},
-
-			runAsync(params: {
-				userId: string;
-				sessionId: string;
-				newMessage: FullMessage;
-				runConfig?: RunConfig;
-			}) {
+			runAsync(params) {
 				return baseRunner.runAsync({
 					...params,
 					runConfig: params.runConfig ?? runConfig,
 				});
+			},
+			rewind(params) {
+				return baseRunner.rewind(params);
 			},
 		};
 	}
