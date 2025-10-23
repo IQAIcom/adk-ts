@@ -1,4 +1,5 @@
 import type { Part } from "@google/genai";
+import { isArtifactRef, parseArtifactUri } from "./artifact-util";
 import type { BaseArtifactService } from "./base-artifact-service";
 
 export class InMemoryArtifactService implements BaseArtifactService {
@@ -71,7 +72,38 @@ export class InMemoryArtifactService implements BaseArtifactService {
 			return null;
 		}
 
-		return versions[targetVersion];
+		const artifactEntry = versions[targetVersion];
+
+		if (!artifactEntry) {
+			return null;
+		}
+
+		if (isArtifactRef(artifactEntry)) {
+			const parsedUri = parseArtifactUri(artifactEntry.fileData?.fileUri || "");
+			if (!parsedUri) {
+				throw new Error(
+					`Invalid artifact reference URI: ${artifactEntry.fileData?.fileUri}`,
+				);
+			}
+			return await this.loadArtifact({
+				appName: parsedUri.appName,
+				userId: parsedUri.userId,
+				sessionId: parsedUri.sessionId || sessionId,
+				filename: parsedUri.filename,
+				version: parsedUri.version,
+			});
+		}
+
+		if (
+			!artifactEntry.text &&
+			(!artifactEntry.inlineData?.data ||
+				artifactEntry.inlineData.data.length === 0) &&
+			!artifactEntry.fileData
+		) {
+			return null;
+		}
+
+		return artifactEntry;
 	}
 
 	async listArtifactKeys(args: {

@@ -104,7 +104,7 @@ We have **16 comprehensive examples** that cover the complete ADK feature set, o
 | **[07-code-execution](src/07-code-execution/)** | Code generation and execution capabilities | Code tools, sandboxed execution |
 | **[08-external-integrations](src/08-external-integrations/)** | API integrations and external services | HTTP tools, service integration |
 
-### 🚀 **Advanced Examples (09-15)**
+### 🚀 **Advanced Examples (09-16)**
 
 | Example | Description | Key Concepts |
 |---------|-------------|--------------|
@@ -115,6 +115,7 @@ We have **16 comprehensive examples** that cover the complete ADK feature set, o
 | **[13-chat-bots](src/13-chat-bots/)** | Platform-specific chat bot implementations | Discord, Telegram, platform APIs |
 | **[14-callbacks](src/14-callbacks/)** | Safety guardrails and callback patterns | Lifecycle hooks, content filtering, safety |
 | **[15-evaluation](src/15-evaluation/)** | Agent performance evaluation and testing | AgentEvaluator, benchmarking, quality assessment |
+| **[16-rewind-session](src/16-rewind-session/)** | Session rewinding and conversation state management | Session rewind, time-travel debugging, state restoration |
 
 ## 🤝 Contributing
 
