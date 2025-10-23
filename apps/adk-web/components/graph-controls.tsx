@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Eye, EyeOff } from "lucide-react";
+import { Search, Eye, EyeOff, Maximize2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -23,6 +23,7 @@ interface GraphControlsProps {
 	onToolCategoryChange: (value: string) => void;
 	onControlsToggle: (show: boolean) => void;
 	onClearFilters: () => void;
+	onFitView?: () => void;
 }
 
 export function GraphControls({
@@ -35,6 +36,7 @@ export function GraphControls({
 	onToolCategoryChange,
 	onControlsToggle,
 	onClearFilters,
+	onFitView,
 }: GraphControlsProps) {
 	return (
 		<>
@@ -123,15 +125,28 @@ export function GraphControls({
 							</Select>
 						</div>
 
-						{/* Clear Filters */}
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={onClearFilters}
-							className="w-full h-8 text-xs"
-						>
-							Clear Filters
-						</Button>
+						{/* Action Buttons */}
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={onClearFilters}
+								className="flex-1 h-8 text-xs"
+							>
+								Clear Filters
+							</Button>
+							{onFitView && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={onFitView}
+									className="h-8 px-3 text-xs"
+									title="Fit to view"
+								>
+									<Maximize2 className="h-3 w-3" />
+								</Button>
+							)}
+						</div>
 					</div>
 				</div>
 			)}

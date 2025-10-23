@@ -10,7 +10,7 @@ import {
 	Position,
 	ReactFlow,
 } from "@xyflow/react";
-import { type CSSProperties, useMemo } from "react";
+import { type CSSProperties, useMemo, useRef, useEffect } from "react";
 import type {
 	GraphEdgeDto as GraphEdge,
 	GraphNodeDto as GraphNode,
@@ -19,6 +19,7 @@ import type {
 import "@xyflow/react/dist/style.css";
 import { Bot, Wrench } from "lucide-react";
 import { GraphControls, useGraphControls } from "./graph-controls";
+import { useReactFlow } from "@xyflow/react";
 
 interface GraphPanelProps {
 	data?: GraphResponse;
@@ -30,6 +31,65 @@ const nodeTypes = {
 	agent: AgentNode,
 	tool: ToolNode,
 };
+
+// Component to handle auto-fit when filters change
+function AutoFitOnFilter({
+	searchTerm,
+	nodeTypeFilter,
+	toolCategoryFilter,
+	fitViewRef,
+}: {
+	searchTerm: string;
+	nodeTypeFilter: string;
+	toolCategoryFilter: string;
+	fitViewRef: React.MutableRefObject<(() => void) | null>;
+}) {
+	const { fitView } = useReactFlow();
+	const prevFilters = useRef({
+		searchTerm,
+		nodeTypeFilter,
+		toolCategoryFilter,
+	});
+
+	// Store fitView function in ref for external access
+	useEffect(() => {
+		fitViewRef.current = () => {
+			fitView({
+				padding: 0.2,
+				duration: 800,
+				includeHiddenNodes: false,
+			});
+		};
+	}, [fitView, fitViewRef]);
+
+	useEffect(() => {
+		const currentFilters = { searchTerm, nodeTypeFilter, toolCategoryFilter };
+		const prev = prevFilters.current;
+
+		// Check if any filter has changed
+		const hasFilterChanged =
+			prev.searchTerm !== currentFilters.searchTerm ||
+			prev.nodeTypeFilter !== currentFilters.nodeTypeFilter ||
+			prev.toolCategoryFilter !== currentFilters.toolCategoryFilter;
+
+		if (hasFilterChanged) {
+			// Small delay to ensure nodes are rendered before fitting
+			const timeoutId = setTimeout(() => {
+				fitView({
+					padding: 0.2,
+					duration: 800,
+					includeHiddenNodes: false,
+				});
+			}, 100);
+
+			prevFilters.current = currentFilters;
+
+			return () => clearTimeout(timeoutId);
+		}
+	}, [searchTerm, nodeTypeFilter, toolCategoryFilter, fitView]);
+
+	return null;
+}
 
 export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 	// Use the graph controls hook for state management
@@ -45,26 +105,75 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		clearFilters,
 	} = useGraphControls();
 
+	// Create a ref to store the fitView function
+	const fitViewRef = useRef<(() => void) | null>(null);
+
 	// Extract graph data safely
 	const graphNodes = data?.nodes || [];
 	const graphEdges = data?.edges || [];
 
 	// Convert our graph data to React Flow format with improved layout for many tools
 	const flowNodes: Node[] = useMemo(() => {
-		// Build adjacency (children) map
+		// Apply filtering logic first to get only the nodes we want to display
+		const filteredNodes = graphNodes.filter((node: GraphNode) => {
+			// Search filter
+			if (searchTerm) {
+				const searchLower = searchTerm.toLowerCase();
+				const matchesSearch =
+					node.label?.toLowerCase().includes(searchLower) ||
+					node.id.toLowerCase().includes(searchLower) ||
+					node.type?.toLowerCase().includes(searchLower);
+				if (!matchesSearch) return false;
+			}
+
+			// Node type filter
+			if (nodeTypeFilter !== "all" && node.kind !== nodeTypeFilter)
+				return false;
+
+			// Tool category filter
+			if (toolCategoryFilter !== "all" && node.kind === "tool") {
+				const label = node.label?.toLowerCase() || "";
+				let toolCategory = "default";
+				if (label.includes("search") || label.includes("query"))
+					toolCategory = "search";
+				else if (label.includes("data") || label.includes("database"))
+					toolCategory = "data";
+				else if (label.includes("api") || label.includes("http"))
+					toolCategory = "api";
+				else if (label.includes("file") || label.includes("document"))
+					toolCategory = "file";
+				else if (label.includes("ai") || label.includes("llm"))
+					toolCategory = "ai";
+
+				if (toolCategory !== toolCategoryFilter) return false;
+			}
+
+			return true;
+		});
+
+		// If no nodes after filtering, return empty array
+		if (filteredNodes.length === 0) return [];
+
+		// Build adjacency (children) map using only filtered nodes
+		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
 		const childrenMap = new Map<string, string[]>();
 		for (const edge of graphEdges) {
-			if (!childrenMap.has(edge.from)) childrenMap.set(edge.from, []);
-			childrenMap.get(edge.from)!.push(edge.to);
+			// Only include edges where both source and target are in filtered nodes
+			if (filteredNodeIds.has(edge.from) && filteredNodeIds.has(edge.to)) {
+				if (!childrenMap.has(edge.from)) childrenMap.set(edge.from, []);
+				childrenMap.get(edge.from)!.push(edge.to);
+			}
 		}
 
-		// Compute incoming edge counts to identify roots
+		// Compute incoming edge counts to identify roots (only for filtered nodes)
 		const incomingCount = new Map<string, number>();
-		for (const node of graphNodes) incomingCount.set(node.id, 0);
+		for (const node of filteredNodes) incomingCount.set(node.id, 0);
 		for (const edge of graphEdges) {
-			incomingCount.set(edge.to, (incomingCount.get(edge.to) || 0) + 1);
+			if (filteredNodeIds.has(edge.to)) {
+				incomingCount.set(edge.to, (incomingCount.get(edge.to) || 0) + 1);
+			}
 		}
-		const roots = graphNodes.filter(
+		const roots = filteredNodes.filter(
 			(n: GraphNode) => (incomingCount.get(n.id) || 0) === 0,
 		);
 
@@ -76,7 +185,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		const frontier: string[] =
 			roots.length > 0
 				? roots.map((r) => r.id)
-				: ([graphNodes[0]?.id].filter(Boolean) as string[]);
+				: ([filteredNodes[0]?.id].filter(Boolean) as string[]);
 		if (frontier.length === 0) return [];
 
 		let current = frontier;
@@ -95,13 +204,13 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		}
 
 		// Include any isolated or back-referenced nodes not reached (defensive)
-		const remaining = graphNodes
+		const remaining = filteredNodes
 			.filter((n) => !visited.has(n.id))
 			.map((n) => n.id);
 		if (remaining.length) levels.push(remaining);
 
-		// Adaptive spacing based on node density and type
-		const totalNodes = graphNodes.length;
+		// Adaptive spacing based on filtered node density and type
+		const totalNodes = filteredNodes.length;
 
 		// Dynamic spacing based on node count and density
 		const baseLayerGapY = 150; // vertical distance between layers;
@@ -119,7 +228,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		levels.forEach((level, depth) => {
 			const count = level.length;
 			const levelNodes = level
-				.map((id) => graphNodes.find((n) => n.id === id))
+				.map((id) => filteredNodes.find((n) => n.id === id))
 				.filter(Boolean) as GraphNode[];
 			const toolCount = levelNodes.filter((n) => n.kind === "tool").length;
 			const agentCount = levelNodes.filter((n) => n.kind === "agent").length;
@@ -187,43 +296,6 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			}
 		});
 
-		// Apply filtering logic
-		const filteredNodes = graphNodes.filter((node: GraphNode) => {
-			// Search filter
-			if (searchTerm) {
-				const searchLower = searchTerm.toLowerCase();
-				const matchesSearch =
-					node.label?.toLowerCase().includes(searchLower) ||
-					node.id.toLowerCase().includes(searchLower) ||
-					node.type?.toLowerCase().includes(searchLower);
-				if (!matchesSearch) return false;
-			}
-
-			// Node type filter
-			if (nodeTypeFilter !== "all" && node.kind !== nodeTypeFilter)
-				return false;
-
-			// Tool category filter
-			if (toolCategoryFilter !== "all" && node.kind === "tool") {
-				const label = node.label?.toLowerCase() || "";
-				let toolCategory = "default";
-				if (label.includes("search") || label.includes("query"))
-					toolCategory = "search";
-				else if (label.includes("data") || label.includes("database"))
-					toolCategory = "data";
-				else if (label.includes("api") || label.includes("http"))
-					toolCategory = "api";
-				else if (label.includes("file") || label.includes("document"))
-					toolCategory = "file";
-				else if (label.includes("ai") || label.includes("llm"))
-					toolCategory = "ai";
-
-				if (toolCategory !== toolCategoryFilter) return false;
-			}
-
-			return true;
-		});
-
 		// Create flow nodes with computed positions and enhanced data
 		return filteredNodes.map((node: GraphNode) => {
 			const position = positions.get(node.id) || { x: 0, y: 0 };
@@ -262,12 +334,51 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 	}, [graphNodes, graphEdges, searchTerm, nodeTypeFilter, toolCategoryFilter]);
 
 	const flowEdges: Edge[] = useMemo(() => {
+		// Get filtered nodes to determine which edges to show
+		const filteredNodes = graphNodes.filter((node: GraphNode) => {
+			// Search filter
+			if (searchTerm) {
+				const searchLower = searchTerm.toLowerCase();
+				const matchesSearch =
+					node.label?.toLowerCase().includes(searchLower) ||
+					node.id.toLowerCase().includes(searchLower) ||
+					node.type?.toLowerCase().includes(searchLower);
+				if (!matchesSearch) return false;
+			}
+
+			// Node type filter
+			if (nodeTypeFilter !== "all" && node.kind !== nodeTypeFilter)
+				return false;
+
+			// Tool category filter
+			if (toolCategoryFilter !== "all" && node.kind === "tool") {
+				const label = node.label?.toLowerCase() || "";
+				let toolCategory = "default";
+				if (label.includes("search") || label.includes("query"))
+					toolCategory = "search";
+				else if (label.includes("data") || label.includes("database"))
+					toolCategory = "data";
+				else if (label.includes("api") || label.includes("http"))
+					toolCategory = "api";
+				else if (label.includes("file") || label.includes("document"))
+					toolCategory = "file";
+				else if (label.includes("ai") || label.includes("llm"))
+					toolCategory = "ai";
+
+				if (toolCategory !== toolCategoryFilter) return false;
+			}
+
+			return true;
+		});
+
+		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
+
 		// Map target id to node kind and category for enhanced styling
 		const nodeDataById = new Map<
 			string,
 			{ kind: string; toolCategory?: string }
 		>();
-		for (const n of graphNodes as GraphNode[]) {
+		for (const n of filteredNodes) {
 			const label = n.label?.toLowerCase() || "";
 			let toolCategory = "default";
 			if (n.kind === "tool") {
@@ -285,7 +396,12 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			nodeDataById.set(n.id, { kind: n.kind, toolCategory });
 		}
 
-		return graphEdges.map((edge: GraphEdge, index: number) => {
+		// Only include edges where both source and target are in filtered nodes
+		const filteredEdges = graphEdges.filter(
+			(edge) => filteredNodeIds.has(edge.from) && filteredNodeIds.has(edge.to),
+		);
+
+		return filteredEdges.map((edge: GraphEdge, index: number) => {
 			const targetData = nodeDataById.get(edge.to);
 			const isTool = targetData?.kind === "tool";
 			const toolCategory = targetData?.toolCategory || "default";
@@ -356,7 +472,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			};
 			return e;
 		});
-	}, [graphEdges, graphNodes]);
+	}, [graphEdges, graphNodes, searchTerm, nodeTypeFilter, toolCategoryFilter]);
 
 	// Render a full-bleed canvas; overlay messages when needed
 	const showMessage = isLoading || !!error || !data;
@@ -409,6 +525,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 				onToolCategoryChange={handleToolCategoryChange}
 				onControlsToggle={handleControlsToggle}
 				onClearFilters={clearFilters}
+				onFitView={fitViewRef.current || undefined}
 			/>
 
 			<ReactFlow
@@ -423,6 +540,12 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			>
 				<Background color="var(--color-muted-foreground)" gap={20} size={1} />
 				<Controls position="bottom-left" />
+				<AutoFitOnFilter
+					searchTerm={searchTerm}
+					nodeTypeFilter={nodeTypeFilter}
+					toolCategoryFilter={toolCategoryFilter}
+					fitViewRef={fitViewRef}
+				/>
 			</ReactFlow>
 		</div>
 	);
