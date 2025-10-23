@@ -54,6 +54,102 @@ const filterNodes = (
 	});
 };
 
+// Calculate spacing parameters based on node count and filtering state
+const calculateSpacingParameters = (
+	totalNodes: number,
+	isFiltered: boolean,
+) => {
+	const baseLayerGapX = 250; // horizontal distance between layers
+	const baseNodeGapY = 150; // vertical distance between nodes in same layer
+
+	// Increase spacing for dense graphs, especially when filtered
+	const densityFactor = Math.min(1.5, Math.max(0.9, totalNodes / 20));
+	const filterFactor = isFiltered ? 1.8 : 1.0; // Extra spacing when filtered
+	const layerGapX = Math.round(baseLayerGapX * densityFactor * filterFactor);
+	const nodeGapY = Math.round(baseNodeGapY * densityFactor * filterFactor);
+
+	return { layerGapX, nodeGapY };
+};
+
+// Position nodes in a tool-heavy level with agent-tool grouping
+const positionToolHeavyLevel = (
+	level: string[],
+	depth: number,
+	levelNodes: GraphNode[],
+	graphEdges: GraphEdge[],
+	layerGapX: number,
+	nodeGapY: number,
+	isFiltered: boolean,
+	positions: Map<string, { x: number; y: number }>,
+) => {
+	const parentAgents = levelNodes.filter((n) => n.kind === "agent");
+	const tools = levelNodes.filter((n) => n.kind === "tool");
+
+	// Group tools by parent agent for better organization
+	const agentPositions = new Map<string, number>();
+	const toolGroups = new Map<string, string[]>();
+
+	// Find which tools belong to which agents
+	for (const tool of tools) {
+		const parentEdge = graphEdges.find((e) => e.to === tool.id);
+		if (parentEdge) {
+			const parentId = parentEdge.from;
+			if (!toolGroups.has(parentId)) toolGroups.set(parentId, []);
+			toolGroups.get(parentId)!.push(tool.id);
+		}
+	}
+
+	// Position agents first (VERTICALLY CENTERED)
+	parentAgents.forEach((agent, i) => {
+		const y = i * nodeGapY * 2 - (parentAgents.length - 1) * nodeGapY;
+		agentPositions.set(agent.id, y);
+		positions.set(agent.id, {
+			x: 40 + depth * layerGapX, // X increases with depth (left to right)
+			y,
+		});
+	});
+
+	// Position tools in clusters around their parent agents (TO THE RIGHT)
+	for (const [parentId, toolIds] of toolGroups) {
+		const parentY = agentPositions.get(parentId) || 0;
+		const toolSpacing = isFiltered
+			? Math.min(nodeGapY * 0.8, 100) // More spacing when filtered
+			: Math.min(nodeGapY * 0.4, 60);
+		const startY = parentY - ((toolIds.length - 1) * toolSpacing) / 2;
+
+		toolIds.forEach((toolId, toolIndex) => {
+			positions.set(toolId, {
+				x: 40 + depth * layerGapX + 80, // Offset tools to the right of agents
+				y: startY + toolIndex * toolSpacing,
+			});
+		});
+	}
+};
+
+// Position nodes in a standard level with uniform spacing
+const positionStandardLevel = (
+	level: string[],
+	depth: number,
+	count: number,
+	layerGapX: number,
+	nodeGapY: number,
+	maxHeightCount: number,
+	isFiltered: boolean,
+	positions: Map<string, { x: number; y: number }>,
+) => {
+	const adjustedNodeGapY = isFiltered ? nodeGapY * 1.3 : nodeGapY; // More spacing when filtered
+	const layerHeight = (count - 1) * adjustedNodeGapY;
+	const maxLayerHeight = (maxHeightCount - 1) * nodeGapY;
+	const offsetY = (maxLayerHeight - layerHeight) / 2;
+
+	level.forEach((id, i) => {
+		positions.set(id, {
+			x: 40 + depth * layerGapX, // X increases with depth (left to right)
+			y: offsetY + i * adjustedNodeGapY,
+		});
+	});
+};
+
 interface GraphPanelProps {
 	data?: GraphResponse;
 	isLoading?: boolean;
@@ -221,21 +317,15 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			.map((n) => n.id);
 		if (remaining.length) levels.push(remaining);
 
-		// Adaptive spacing based on filtered node density and type
+		// Calculate spacing parameters
 		const totalNodes = filteredNodes.length;
 		const isFiltered = totalNodes < graphNodes.length; // If filtered, we have fewer nodes
+		const { layerGapX, nodeGapY } = calculateSpacingParameters(
+			totalNodes,
+			isFiltered,
+		);
 
-		// Dynamic spacing based on node count and density - LEFT TO RIGHT LAYOUT
-		const baseLayerGapX = 250; // horizontal distance between layers
-		const baseNodeGapY = 150; // vertical distance between nodes in same layer
-
-		// Increase spacing for dense graphs, especially when filtered
-		const densityFactor = Math.min(1.5, Math.max(0.9, totalNodes / 20));
-		const filterFactor = isFiltered ? 1.8 : 1.0; // Extra spacing when filtered
-		const layerGapX = Math.round(baseLayerGapX * densityFactor * filterFactor);
-		const nodeGapY = Math.round(baseNodeGapY * densityFactor * filterFactor);
-
-		// Special handling for tool-heavy levels - LEFT TO RIGHT LAYOUT
+		// Position nodes using helper functions
 		const positions = new Map<string, { x: number; y: number }>();
 		const maxHeightCount = Math.max(...levels.map((l) => l.length));
 
@@ -247,74 +337,33 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			const toolCount = levelNodes.filter((n) => n.kind === "tool").length;
 			const agentCount = levelNodes.filter((n) => n.kind === "agent").length;
 
-			// Adjust spacing for tool-heavy levels
+			// Determine if this level is tool-heavy
 			const isToolHeavy = toolCount > agentCount * 2;
-			const toolSpacingFactor = isFiltered ? 0.5 : 0.7; // Less spacing when filtered
-			const levelNodeGapY = isToolHeavy
-				? Math.round(nodeGapY * toolSpacingFactor)
-				: nodeGapY;
 
-			// Group tools by parent agent for better organization
 			if (isToolHeavy && agentCount > 0) {
-				// Find parent agents for this level
-				const parentAgents = levelNodes.filter((n) => n.kind === "agent");
-				const tools = levelNodes.filter((n) => n.kind === "tool");
-
-				// Group tools under their parent agents
-				const agentPositions = new Map<string, number>();
-				const toolGroups = new Map<string, string[]>();
-
-				// Find which tools belong to which agents
-				for (const tool of tools) {
-					const parentEdge = graphEdges.find((e) => e.to === tool.id);
-					if (parentEdge) {
-						const parentId = parentEdge.from;
-						if (!toolGroups.has(parentId)) toolGroups.set(parentId, []);
-						toolGroups.get(parentId)!.push(tool.id);
-					}
-				}
-
-				// Position agents first (VERTICALLY CENTERED)
-				parentAgents.forEach((agent, i) => {
-					const y =
-						i * levelNodeGapY * 2 - (parentAgents.length - 1) * levelNodeGapY;
-					agentPositions.set(agent.id, y);
-					positions.set(agent.id, {
-						x: 40 + depth * layerGapX, // X increases with depth (left to right)
-						y,
-					});
-				});
-
-				// Position tools in clusters around their parent agents (TO THE RIGHT)
-				for (const [parentId, toolIds] of toolGroups) {
-					const parentY = agentPositions.get(parentId) || 0;
-					const toolSpacing = isFiltered
-						? Math.min(levelNodeGapY * 0.8, 100) // More spacing when filtered
-						: Math.min(levelNodeGapY * 0.4, 60);
-					const startY = parentY - ((toolIds.length - 1) * toolSpacing) / 2;
-
-					toolIds.forEach((toolId, toolIndex) => {
-						positions.set(toolId, {
-							x: 40 + depth * layerGapX + 80, // Offset tools to the right of agents
-							y: startY + toolIndex * toolSpacing,
-						});
-					});
-				}
+				// Use specialized positioning for tool-heavy levels
+				positionToolHeavyLevel(
+					level,
+					depth,
+					levelNodes,
+					graphEdges,
+					layerGapX,
+					nodeGapY,
+					isFiltered,
+					positions,
+				);
 			} else {
-				// Standard layout for non-tool-heavy levels
-				const adjustedNodeGapY = isFiltered
-					? levelNodeGapY * 1.3
-					: levelNodeGapY; // More spacing when filtered
-				const layerHeight = (count - 1) * adjustedNodeGapY;
-				const maxLayerHeight = (maxHeightCount - 1) * nodeGapY;
-				const offsetY = (maxLayerHeight - layerHeight) / 2;
-
-				level.forEach((id, i) => {
-					positions.set(id, {
-						x: 40 + depth * layerGapX, // X increases with depth (left to right)
-						y: offsetY + i * adjustedNodeGapY,
-					});
-				});
+				// Use standard positioning for regular levels
+				positionStandardLevel(
+					level,
+					depth,
+					count,
+					layerGapX,
+					nodeGapY,
+					maxHeightCount,
+					isFiltered,
+					positions,
+				);
 			}
 		});
 
@@ -334,16 +383,16 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			const isTool = node.kind === "tool";
 
 			// Determine agent color for this node
-			let agentColor: AgentColor = AgentColor.DEFAULT;
+			let agentColor: AgentColor = "default";
 			if (isTool) {
 				// Find which agent this tool belongs to
 				const parentEdge = graphEdges.find((edge) => edge.to === node.id);
 				if (parentEdge) {
-					agentColor = agentColorMap.get(parentEdge.from) ?? AgentColor.DEFAULT;
+					agentColor = agentColorMap.get(parentEdge.from) ?? "default";
 				}
 			} else {
 				// This is an agent, always use default color
-				agentColor = AgentColor.DEFAULT;
+				agentColor = "default";
 			}
 
 			return {
@@ -371,16 +420,16 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			{ kind: string; agentColor?: AgentColor }
 		>();
 		for (const n of filteredNodes) {
-			let agentColor: AgentColor = AgentColor.DEFAULT;
+			let agentColor: AgentColor = "default";
 			if (n.kind === "tool") {
 				// Find which agent this tool belongs to
 				const parentEdge = graphEdges.find((edge) => edge.to === n.id);
 				if (parentEdge) {
-					agentColor = agentColorMap.get(parentEdge.from) ?? AgentColor.DEFAULT;
+					agentColor = agentColorMap.get(parentEdge.from) ?? "default";
 				}
 			} else {
 				// This is an agent, always use default color
-				agentColor = AgentColor.DEFAULT;
+				agentColor = "default";
 			}
 			nodeDataById.set(n.id, { kind: n.kind, agentColor });
 		}
@@ -395,7 +444,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			const sourceData = nodeDataById.get(edge.from);
 			const isTool = targetData?.kind === "tool";
 			const agentColor =
-				targetData?.agentColor || sourceData?.agentColor || AgentColor.DEFAULT;
+				targetData?.agentColor || sourceData?.agentColor || "default";
 
 			// Enhanced edge styling - only color code agent-to-tool connections
 			let stroke: string;
@@ -405,42 +454,42 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			if (isTool) {
 				// Agent-to-tool connections - color code by agent
 				switch (agentColor) {
-					case AgentColor.BLUE:
+					case "blue":
 						stroke = "var(--color-blue-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "8 4";
 						break;
-					case AgentColor.GREEN:
+					case "green":
 						stroke = "var(--color-green-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "6 3";
 						break;
-					case AgentColor.PURPLE:
+					case "purple":
 						stroke = "var(--color-purple-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "10 5";
 						break;
-					case AgentColor.ORANGE:
+					case "orange":
 						stroke = "var(--color-orange-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "12 6";
 						break;
-					case AgentColor.PINK:
+					case "pink":
 						stroke = "var(--color-pink-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "4 2";
 						break;
-					case AgentColor.CYAN:
+					case "cyan":
 						stroke = "var(--color-cyan-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "6 4";
 						break;
-					case AgentColor.LIME:
+					case "lime":
 						stroke = "var(--color-lime-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "8 2";
 						break;
-					case AgentColor.INDIGO:
+					case "indigo":
 						stroke = "var(--color-indigo-500)";
 						strokeWidth = 2.5;
 						strokeDasharray = "10 3";
@@ -559,7 +608,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 // Custom node component for agents
 function AgentNode({ data }: { data: any }) {
-	const { agentColor = AgentColor.DEFAULT } = data;
+	const { agentColor = "default" } = data;
 	const styles = getAgentStyles(agentColor);
 
 	return (
@@ -594,7 +643,7 @@ function AgentNode({ data }: { data: any }) {
 
 // Custom node component for tools
 function ToolNode({ data }: { data: any }) {
-	const { agentColor = AgentColor.DEFAULT } = data;
+	const { agentColor = "default" } = data;
 
 	const styles = getAgentStyles(agentColor);
 
