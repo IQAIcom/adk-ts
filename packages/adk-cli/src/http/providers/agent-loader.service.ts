@@ -576,6 +576,9 @@ export class AgentLoader {
 	/**
 	 * Extract BaseAgent from different possible types
 	 * Returns both the agent and the full built context (if available)
+	 *
+	 * Note: `unknown` here is legitimate - we're dynamically inspecting module exports
+	 * from dynamically loaded code where the actual types are determined at runtime.
 	 */
 	private async extractBaseAgent(
 		item: unknown,

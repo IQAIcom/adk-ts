@@ -2,6 +2,32 @@ import type { AgentBuilder, BaseAgent, BuiltAgent } from "@iqai/adk";
 import { z } from "zod";
 
 /**
+ * Session state - keyed object with unknown values
+ */
+export type SessionState = Record<string, unknown>;
+
+/**
+ * Session-like object with optional state
+ */
+export interface SessionWithState {
+	state?: SessionState;
+}
+
+/**
+ * Possible agent export types
+ */
+export type PossibleAgentExport =
+	| BaseAgent
+	| AgentBuilder
+	| BuiltAgent
+	| { agent: BaseAgent | AgentBuilder | BuiltAgent }
+	| (() =>
+			| BaseAgent
+			| AgentBuilder
+			| BuiltAgent
+			| Promise<BaseAgent | AgentBuilder | BuiltAgent>);
+
+/**
  * TypeScript path configuration from tsconfig.json
  */
 export interface TsConfigPaths {
