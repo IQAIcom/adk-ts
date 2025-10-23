@@ -23,6 +23,37 @@ import { useReactFlow } from "@xyflow/react";
 import { AgentColor, AGENT_COLORS } from "@/lib/agent-colors";
 import { getAgentStyles, getToolCategory } from "@/lib/agent-styles";
 
+// Filter nodes based on search term, node type, and tool category
+const filterNodes = (
+	graphNodes: GraphNode[],
+	searchTerm: string,
+	nodeTypeFilter: string,
+	toolCategoryFilter: string,
+): GraphNode[] => {
+	return graphNodes.filter((node: GraphNode) => {
+		// Search filter
+		if (searchTerm) {
+			const searchLower = searchTerm.toLowerCase();
+			const matchesSearch =
+				node.label?.toLowerCase().includes(searchLower) ||
+				node.id.toLowerCase().includes(searchLower) ||
+				node.type?.toLowerCase().includes(searchLower);
+			if (!matchesSearch) return false;
+		}
+
+		// Node type filter
+		if (nodeTypeFilter !== "all" && node.kind !== nodeTypeFilter) return false;
+
+		// Tool category filter
+		if (toolCategoryFilter !== "all" && node.kind === "tool") {
+			const toolCategory = getToolCategory(node.label);
+			if (toolCategory !== toolCategoryFilter) return false;
+		}
+
+		return true;
+	});
+};
+
 interface GraphPanelProps {
 	data?: GraphResponse;
 	isLoading?: boolean;
@@ -115,32 +146,23 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 	const graphEdges = data?.edges || [];
 
 	// Convert our graph data to React Flow format with improved layout for many tools
-	const flowNodes: Node[] = useMemo(() => {
-		// Apply filtering logic first to get only the nodes we want to display
-		const filteredNodes = graphNodes.filter((node: GraphNode) => {
-			// Search filter
-			if (searchTerm) {
-				const searchLower = searchTerm.toLowerCase();
-				const matchesSearch =
-					node.label?.toLowerCase().includes(searchLower) ||
-					node.id.toLowerCase().includes(searchLower) ||
-					node.type?.toLowerCase().includes(searchLower);
-				if (!matchesSearch) return false;
-			}
-
-			// Node type filter
-			if (nodeTypeFilter !== "all" && node.kind !== nodeTypeFilter)
-				return false;
-
-			// Tool category filter
-			if (toolCategoryFilter !== "all" && node.kind === "tool") {
-				const toolCategory = getToolCategory(node.label);
-				if (toolCategory !== toolCategoryFilter) return false;
-			}
-
-			return true;
+	// Shared filtered nodes and agent color mapping
+	const { filteredNodes, agentColorMap } = useMemo(() => {
+		const filtered = filterNodes(
+			graphNodes,
+			searchTerm,
+			nodeTypeFilter,
+			toolCategoryFilter,
+		);
+		const colorMap = new Map<string, AgentColor>();
+		const agents = filtered.filter((n) => n.kind === "agent");
+		agents.forEach((agent, index) => {
+			colorMap.set(agent.id, AGENT_COLORS[index % AGENT_COLORS.length]);
 		});
+		return { filteredNodes: filtered, agentColorMap: colorMap };
+	}, [graphNodes, searchTerm, nodeTypeFilter, toolCategoryFilter]);
 
+	const flowNodes: Node[] = useMemo(() => {
 		// If no nodes after filtering, return empty array
 		if (filteredNodes.length === 0) return [];
 
@@ -201,8 +223,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 
 		// Adaptive spacing based on filtered node density and type
 		const totalNodes = filteredNodes.length;
-		const isFiltered =
-			searchTerm || nodeTypeFilter !== "all" || toolCategoryFilter !== "all";
+		const isFiltered = totalNodes < graphNodes.length; // If filtered, we have fewer nodes
 
 		// Dynamic spacing based on node count and density - LEFT TO RIGHT LAYOUT
 		const baseLayerGapX = 250; // horizontal distance between layers
@@ -339,45 +360,10 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 				connectable: false,
 			};
 		});
-	}, [graphNodes, graphEdges, searchTerm, nodeTypeFilter, toolCategoryFilter]);
+	}, [filteredNodes, graphEdges, graphNodes]);
 
 	const flowEdges: Edge[] = useMemo(() => {
-		// Get filtered nodes to determine which edges to show
-		const filteredNodes = graphNodes.filter((node: GraphNode) => {
-			// Search filter
-			if (searchTerm) {
-				const searchLower = searchTerm.toLowerCase();
-				const matchesSearch =
-					node.label?.toLowerCase().includes(searchLower) ||
-					node.id.toLowerCase().includes(searchLower) ||
-					node.type?.toLowerCase().includes(searchLower);
-				if (!matchesSearch) return false;
-			}
-
-			// Node type filter
-			if (nodeTypeFilter !== "all" && node.kind !== nodeTypeFilter)
-				return false;
-
-			// Tool category filter
-			if (toolCategoryFilter !== "all" && node.kind === "tool") {
-				const toolCategory = getToolCategory(node.label);
-				if (toolCategory !== toolCategoryFilter) return false;
-			}
-
-			return true;
-		});
-
 		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
-
-		// Create agent color mapping for edge styling
-		const agentColors = AGENT_COLORS;
-		const agentColorMap = new Map<string, AgentColor>();
-
-		// Assign colors to agents
-		const agents = filteredNodes.filter((n) => n.kind === "agent");
-		agents.forEach((agent, index) => {
-			agentColorMap.set(agent.id, agentColors[index % agentColors.length]);
-		});
 
 		// Map target id to node kind and agent color for enhanced styling
 		const nodeDataById = new Map<
@@ -492,7 +478,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			};
 			return e;
 		});
-	}, [graphEdges, graphNodes, searchTerm, nodeTypeFilter, toolCategoryFilter]);
+	}, [filteredNodes, agentColorMap, graphEdges]);
 
 	// Render a full-bleed canvas; overlay messages when needed
 	const showMessage = isLoading || !!error || !data;
