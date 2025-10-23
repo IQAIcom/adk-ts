@@ -276,7 +276,7 @@ export abstract class BaseLlmFlow {
 			const functionResponseEvent = await functions.handleFunctionCallsAsync(
 				invocationContext,
 				finalizedEvent,
-				(llmRequest as any).toolsDict || {},
+				llmRequest.toolsDict || {},
 			);
 
 			if (functionResponseEvent) {
@@ -322,7 +322,7 @@ export abstract class BaseLlmFlow {
 		const functionResponseEvent = await functions.handleFunctionCallsAsync(
 			invocationContext,
 			functionCallEvent,
-			(llmRequest as any).toolsDict || {},
+			llmRequest.toolsDict || {},
 		);
 
 		if (functionResponseEvent) {
@@ -641,7 +641,7 @@ export abstract class BaseLlmFlow {
 				functions.populateClientFunctionCallId(event);
 				event.longRunningToolIds = functions.getLongRunningFunctionCalls(
 					functionCalls,
-					(llmRequest as any).toolsDict || {},
+					llmRequest.toolsDict || {},
 				);
 			}
 		}
