@@ -73,10 +73,9 @@ const calculateSpacingParameters = (
 
 // Position nodes in a tool-heavy level with agent-tool grouping
 const positionToolHeavyLevel = (
-	level: string[],
 	depth: number,
 	levelNodes: GraphNode[],
-	graphEdges: GraphEdge[],
+	childToParentMap: Map<string, string>,
 	layerGapX: number,
 	nodeGapY: number,
 	isFiltered: boolean,
@@ -91,9 +90,8 @@ const positionToolHeavyLevel = (
 
 	// Find which tools belong to which agents
 	for (const tool of tools) {
-		const parentEdge = graphEdges.find((e) => e.to === tool.id);
-		if (parentEdge) {
-			const parentId = parentEdge.from;
+		const parentId = childToParentMap.get(tool.id);
+		if (parentId) {
 			if (!toolGroups.has(parentId)) toolGroups.set(parentId, []);
 			toolGroups.get(parentId)!.push(tool.id);
 		}
@@ -265,11 +263,13 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		// Build adjacency (children) map using only filtered nodes
 		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
 		const childrenMap = new Map<string, string[]>();
+		const childToParentMap = new Map<string, string>();
 		for (const edge of graphEdges) {
 			// Only include edges where both source and target are in filtered nodes
 			if (filteredNodeIds.has(edge.from) && filteredNodeIds.has(edge.to)) {
 				if (!childrenMap.has(edge.from)) childrenMap.set(edge.from, []);
 				childrenMap.get(edge.from)!.push(edge.to);
+				childToParentMap.set(edge.to, edge.from);
 			}
 		}
 
@@ -343,10 +343,9 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			if (isToolHeavy && agentCount > 0) {
 				// Use specialized positioning for tool-heavy levels
 				positionToolHeavyLevel(
-					level,
 					depth,
 					levelNodes,
-					graphEdges,
+					childToParentMap,
 					layerGapX,
 					nodeGapY,
 					isFiltered,
@@ -386,9 +385,9 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			let agentColor: AgentColor = "default";
 			if (isTool) {
 				// Find which agent this tool belongs to
-				const parentEdge = graphEdges.find((edge) => edge.to === node.id);
-				if (parentEdge) {
-					agentColor = agentColorMap.get(parentEdge.from) ?? "default";
+				const parentId = childToParentMap.get(node.id);
+				if (parentId) {
+					agentColor = agentColorMap.get(parentId) ?? "default";
 				}
 			} else {
 				// This is an agent, always use default color
@@ -414,6 +413,14 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 	const flowEdges: Edge[] = useMemo(() => {
 		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
 
+		// Create child-to-parent mapping for O(1) lookups
+		const childToParentMap = new Map<string, string>();
+		for (const edge of graphEdges) {
+			if (filteredNodeIds.has(edge.from) && filteredNodeIds.has(edge.to)) {
+				childToParentMap.set(edge.to, edge.from);
+			}
+		}
+
 		// Map target id to node kind and agent color for enhanced styling
 		const nodeDataById = new Map<
 			string,
@@ -423,9 +430,9 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			let agentColor: AgentColor = "default";
 			if (n.kind === "tool") {
 				// Find which agent this tool belongs to
-				const parentEdge = graphEdges.find((edge) => edge.to === n.id);
-				if (parentEdge) {
-					agentColor = agentColorMap.get(parentEdge.from) ?? "default";
+				const parentId = childToParentMap.get(n.id);
+				if (parentId) {
+					agentColor = agentColorMap.get(parentId) ?? "default";
 				}
 			} else {
 				// This is an agent, always use default color
