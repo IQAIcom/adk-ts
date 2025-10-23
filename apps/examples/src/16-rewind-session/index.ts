@@ -16,27 +16,32 @@ async function main() {
 	const chat: { q: string; a: string; i: string }[] = [];
 
 	for (const question of questions) {
-		chat.push({
-			q: question,
-			a: await runner.ask(question),
-			i: await getLatestInvocationId(sessionService, session),
-		});
-		console.log(chat[-1]);
+		const answer = await runner.ask(question);
+		const invocationId = await getLatestInvocationId(sessionService, session);
+		chat.push({ q: question, a: answer, i: invocationId });
+		console.log(
+			"💬 new chat: ",
+			JSON.stringify(chat[chat.length - 1], null, 2),
+		);
 	}
+
+	// Check context for what is the last question
+	await ask(runner, "what is my last question?");
 
 	async function rewindToQuestion(i: number) {
 		console.log(`4️⃣ Rewind to ${i}th question`);
-		runner.rewind({
+		await runner.rewind({
 			userId: session.userId,
 			sessionId: session.id,
-			rewindBeforeInvocationId: chat[1].i,
+			rewindBeforeInvocationId: chat[i - 1].i,
 		});
 		await ask(runner, "what is my last question?");
 	}
 
-	rewindToQuestion(3);
-	rewindToQuestion(2);
-	rewindToQuestion(1);
+	// Rewind to past and then check what are my last questions
+	await rewindToQuestion(3);
+	await rewindToQuestion(2);
+	await rewindToQuestion(1);
 }
 
 async function getLatestInvocationId(
@@ -49,7 +54,8 @@ async function getLatestInvocationId(
 		session.id,
 	);
 
-	const invocationId = currentSession.events[-1].invocationId;
+	const invocationId =
+		currentSession.events[currentSession.events.length - 1]?.invocationId;
 	return invocationId;
 }
 
