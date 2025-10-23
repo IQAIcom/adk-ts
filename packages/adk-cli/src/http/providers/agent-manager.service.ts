@@ -516,15 +516,12 @@ export class AgentManager {
 	 * @returns The state from the first sub-agent with a non-empty state, undefined otherwise
 	 */
 	private extractSubAgentState(agent: BaseAgent): SessionState | undefined {
-		const agentWithSubAgents = agent as unknown as { subAgents?: BaseAgent[] };
-		if (
-			!agentWithSubAgents.subAgents ||
-			!Array.isArray(agentWithSubAgents.subAgents)
-		) {
+		const subAgents = (agent as { subAgents?: BaseAgent[] }).subAgents;
+		if (!Array.isArray(subAgents)) {
 			return undefined;
 		}
 
-		for (const subAgent of agentWithSubAgents.subAgents) {
+		for (const subAgent of subAgents) {
 			const subState = this.getInitialStateFromSessionService(
 				subAgent as unknown as AgentWithSessionService,
 			);
