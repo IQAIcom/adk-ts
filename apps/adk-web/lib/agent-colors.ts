@@ -1,24 +1,23 @@
-// Agent color enum for type safety and consistency
-export enum AgentColor {
-	BLUE = "blue",
-	GREEN = "green",
-	PURPLE = "purple",
-	ORANGE = "orange",
-	PINK = "pink",
-	CYAN = "cyan",
-	LIME = "lime",
-	INDIGO = "indigo",
-	DEFAULT = "default",
-}
+// Agent color type for type safety and consistency
+export type AgentColor =
+	| "blue"
+	| "green"
+	| "purple"
+	| "orange"
+	| "pink"
+	| "cyan"
+	| "lime"
+	| "indigo"
+	| "default";
 
-// Array of available agent colors (excluding DEFAULT)
+// Array of available agent colors (excluding "default")
 export const AGENT_COLORS = [
-	AgentColor.BLUE,
-	AgentColor.GREEN,
-	AgentColor.PURPLE,
-	AgentColor.ORANGE,
-	AgentColor.PINK,
-	AgentColor.CYAN,
-	AgentColor.LIME,
-	AgentColor.INDIGO,
-] as const;
+	"blue",
+	"green",
+	"purple",
+	"orange",
+	"pink",
+	"cyan",
+	"lime",
+	"indigo",
+] as const satisfies readonly AgentColor[];

@@ -19,7 +19,7 @@ export const getToolCategory = (label?: string): string => {
 // Agent styling based on color
 export const getAgentStyles = (color: AgentColor) => {
 	switch (color) {
-		case AgentColor.BLUE:
+		case "blue":
 			return {
 				bgColor: "bg-blue-50 dark:bg-blue-950",
 				borderColor: "border-blue-500 dark:border-blue-400",
@@ -27,7 +27,7 @@ export const getAgentStyles = (color: AgentColor) => {
 				iconColor: "text-blue-600 dark:text-blue-400",
 				handleColor: "!bg-blue-500",
 			};
-		case AgentColor.GREEN:
+		case "green":
 			return {
 				bgColor: "bg-green-50 dark:bg-green-950",
 				borderColor: "border-green-500 dark:border-green-400",
@@ -35,7 +35,7 @@ export const getAgentStyles = (color: AgentColor) => {
 				iconColor: "text-green-600 dark:text-green-400",
 				handleColor: "!bg-green-500",
 			};
-		case AgentColor.PURPLE:
+		case "purple":
 			return {
 				bgColor: "bg-purple-50 dark:bg-purple-950",
 				borderColor: "border-purple-500 dark:border-purple-400",
@@ -43,7 +43,7 @@ export const getAgentStyles = (color: AgentColor) => {
 				iconColor: "text-purple-600 dark:text-purple-400",
 				handleColor: "!bg-purple-500",
 			};
-		case AgentColor.ORANGE:
+		case "orange":
 			return {
 				bgColor: "bg-orange-50 dark:bg-orange-950",
 				borderColor: "border-orange-500 dark:border-orange-400",
@@ -51,7 +51,7 @@ export const getAgentStyles = (color: AgentColor) => {
 				iconColor: "text-orange-600 dark:text-orange-400",
 				handleColor: "!bg-orange-500",
 			};
-		case AgentColor.PINK:
+		case "pink":
 			return {
 				bgColor: "bg-pink-50 dark:bg-pink-950",
 				borderColor: "border-pink-500 dark:border-pink-400",
@@ -59,7 +59,7 @@ export const getAgentStyles = (color: AgentColor) => {
 				iconColor: "text-pink-600 dark:text-pink-400",
 				handleColor: "!bg-pink-500",
 			};
-		case AgentColor.CYAN:
+		case "cyan":
 			return {
 				bgColor: "bg-cyan-50 dark:bg-cyan-950",
 				borderColor: "border-cyan-500 dark:border-cyan-400",
@@ -67,7 +67,7 @@ export const getAgentStyles = (color: AgentColor) => {
 				iconColor: "text-cyan-600 dark:text-cyan-400",
 				handleColor: "!bg-cyan-500",
 			};
-		case AgentColor.LIME:
+		case "lime":
 			return {
 				bgColor: "bg-lime-50 dark:bg-lime-950",
 				borderColor: "border-lime-500 dark:border-lime-400",
@@ -75,7 +75,7 @@ export const getAgentStyles = (color: AgentColor) => {
 				iconColor: "text-lime-600 dark:text-lime-400",
 				handleColor: "!bg-lime-500",
 			};
-		case AgentColor.INDIGO:
+		case "indigo":
 			return {
 				bgColor: "bg-indigo-50 dark:bg-indigo-950",
 				borderColor: "border-indigo-500 dark:border-indigo-400",
