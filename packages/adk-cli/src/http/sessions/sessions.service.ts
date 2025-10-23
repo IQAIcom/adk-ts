@@ -360,7 +360,7 @@ export class SessionsService {
 								!(
 									Array.isArray(parts) &&
 									parts.length > 0 &&
-									(parts[parts.length - 1] as any)?.codeExecutionResult != null
+(parts[parts.length - 1] as { codeExecutionResult?: unknown })?.codeExecutionResult != null
 								),
 				};
 			});
