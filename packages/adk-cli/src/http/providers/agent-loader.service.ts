@@ -729,6 +729,19 @@ export class AgentLoader {
 			if (result) {
 				return result;
 			}
+
+			if (
+				functionResult &&
+				typeof functionResult === "object" &&
+				"agent" in functionResult
+			) {
+				const containerResult = await this.extractBaseAgent(
+					(functionResult as { agent: unknown }).agent,
+				);
+				if (containerResult) {
+					return containerResult;
+				}
+			}
 		} catch (e) {
 			throw new Error(
 				`Failed executing exported agent function: ${
