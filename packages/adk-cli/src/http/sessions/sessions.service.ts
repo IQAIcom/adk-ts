@@ -333,7 +333,7 @@ export class SessionsService {
 							? eventLike.getFunctionResponses()
 							: parts?.filter(
 									(part: unknown) =>
-										part &&
+                    part &&
 										part &&
 										typeof part === "object" &&
 										part !== null &&
