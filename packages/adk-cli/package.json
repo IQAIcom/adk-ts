@@ -46,7 +46,8 @@
 		"nest-commander": "^3.19.1",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.2",
-		"swagger-ui-express": "^5.0.1"
+		"swagger-ui-express": "^5.0.1",
+		"zod": "^4.1.5"
 	},
 	"devDependencies": {
 		"@iqai/tsconfig": "workspace:*",

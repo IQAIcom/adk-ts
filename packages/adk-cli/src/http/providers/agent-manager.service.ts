@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "node:util";
+import type { BaseAgent, BuiltAgent, EnhancedRunner } from "@iqai/adk";
 import {
 	AgentBuilder,
 	FullMessage,
@@ -11,7 +12,26 @@ import {
 import { Injectable, Logger } from "@nestjs/common";
 import type { Agent, LoadedAgent } from "../../common/types";
 import { AgentLoader } from "./agent-loader.service";
+import type {
+	ModuleExport,
+	SessionState,
+	SessionWithState,
+} from "./agent-loader.types";
 import { AgentScanner } from "./agent-scanner.service";
+
+/**
+ * Agent-like object with optional sessionService
+ */
+interface AgentWithSessionService {
+	sessionService?: SessionServiceLike;
+}
+
+/**
+ * Session service structure with sessions map
+ */
+interface SessionServiceLike {
+	sessions?: Map<string, Map<string, Map<string, SessionWithState>>>;
+}
 
 const DEFAULT_APP_NAME = "adk-server";
 const USER_ID_PREFIX = "user_";
@@ -20,6 +40,7 @@ const USER_ID_PREFIX = "user_";
 export class AgentManager {
 	private agents = new Map<string, Agent>();
 	private loadedAgents = new Map<string, LoadedAgent>();
+	private builtAgents = new Map<string, BuiltAgent>();
 	private scanner: AgentScanner;
 	private loader: AgentLoader;
 	private logger: Logger;
@@ -98,7 +119,9 @@ export class AgentManager {
 		return agent;
 	}
 
-	private async loadAgentModule(agent: Agent): Promise<any> {
+	private async loadAgentModule(
+		agent: Agent,
+	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent }> {
 		// Try both .js and .ts files, prioritizing .js if it exists
 		// Normalize paths for cross-platform compatibility
 		let agentFilePath = normalize(join(agent.absolutePath, "agent.js"));
@@ -119,11 +142,13 @@ export class AgentManager {
 
 		// Use dynamic import to load the agent
 		// For TS files, pass the project root to avoid redundant project root discovery
-		const agentModule: Record<string, unknown> = agentFilePath.endsWith(".ts")
+		const agentModule: ModuleExport = agentFilePath.endsWith(".ts")
 			? await this.loader.importTypeScriptFile(agentFilePath, agent.projectRoot)
-			: ((await import(agentFileUrl)) as Record<string, unknown>);
+			: ((await import(agentFileUrl)) as ModuleExport);
 
-		const agentResult = await this.loader.resolveAgentExport(agentModule);
+		const agentResult = await this.loader.resolveAgentExport(
+			agentModule as ModuleExport,
+		);
 
 		// Validate basic shape
 		if (!agentResult?.agent?.name) {
@@ -138,7 +163,7 @@ export class AgentManager {
 
 	private async getOrCreateSession(
 		agentPath: string,
-		agentResult: { agent: any; builtAgent?: any },
+		agentResult: { agent: BaseAgent; builtAgent?: BuiltAgent },
 	): Promise<Session> {
 		const userId = `${USER_ID_PREFIX}${agentPath}`;
 		const appName = DEFAULT_APP_NAME;
@@ -223,10 +248,10 @@ export class AgentManager {
 	}
 
 	private async createRunnerWithSession(
-		baseAgent: any,
+		baseAgent: BaseAgent,
 		sessionToUse: Session,
 		agentPath: string,
-	): Promise<any> {
+	): Promise<EnhancedRunner> {
 		const userId = `${USER_ID_PREFIX}${agentPath}`;
 		const appName = DEFAULT_APP_NAME;
 
@@ -248,8 +273,8 @@ export class AgentManager {
 
 	private async storeLoadedAgent(
 		agentPath: string,
-		agentResult: { agent: any; builtAgent?: any },
-		runner: any,
+		agentResult: { agent: BaseAgent; builtAgent?: BuiltAgent },
+		runner: EnhancedRunner,
 		sessionToUse: Session,
 		agent: Agent,
 	): Promise<void> {
@@ -267,8 +292,10 @@ export class AgentManager {
 		this.loadedAgents.set(agentPath, loadedAgent);
 		agent.instance = agentResult.agent;
 		agent.name = agentResult.agent.name;
-		// Store the builtAgent for state extraction
-		(agent as any).builtAgent = agentResult.builtAgent;
+		// Store the builtAgent in a separate map for state extraction
+		if (agentResult.builtAgent) {
+			this.builtAgents.set(agentPath, agentResult.builtAgent);
+		}
 
 		// Ensure the session is stored in the session service
 		try {
@@ -303,6 +330,7 @@ export class AgentManager {
 	async stopAgent(agentPath: string): Promise<void> {
 		// Deprecated: explicit stop not needed; keep method no-op for backward compatibility
 		this.loadedAgents.delete(agentPath);
+		this.builtAgents.delete(agentPath);
 		const agent = this.agents.get(agentPath);
 		if (agent) {
 			agent.instance = undefined;
@@ -335,6 +363,13 @@ export class AgentManager {
 				],
 			};
 
+			interface ContentPart {
+				text?: string;
+				inlineData?: { mimeType: string; data: string };
+				functionCall?: { name: string; args: Record<string, unknown> };
+				functionResponse?: { id: string; name: string; response: unknown };
+			}
+
 			// Always run against the CURRENT loadedAgent.sessionId (switchable)
 			let accumulated = "";
 			for await (const event of loadedAgent.runner.runAsync({
@@ -342,14 +377,8 @@ export class AgentManager {
 				sessionId: loadedAgent.sessionId,
 				newMessage: fullMessage,
 			})) {
-				const parts = event?.content?.parts;
-				if (Array.isArray(parts)) {
-					accumulated += parts
-						.map((p: any) =>
-							p && typeof p === "object" && "text" in p ? p.text : "",
-						)
-						.join("");
-				}
+				const parts = (event?.content?.parts || []) as ContentPart[];
+				accumulated += parts.map((p) => (p?.text ? p.text : "")).join("");
 			}
 			return accumulated.trim();
 		} catch (error) {
@@ -366,13 +395,16 @@ export class AgentManager {
 	 * Get initial state for an agent path
 	 * Public method that can be called by other services
 	 */
-	getInitialStateForAgent(agentPath: string): Record<string, any> | undefined {
+	getInitialStateForAgent(agentPath: string): SessionState | undefined {
 		const agent = this.agents.get(agentPath);
 		if (!agent) {
 			return undefined;
 		}
-		// Use the builtAgent if available, otherwise use the agent instance
-		const builtAgent = (agent as any).builtAgent;
+		if (!agent.instance) {
+			return undefined;
+		}
+		// Use the builtAgent from the separate map if available
+		const builtAgent = this.builtAgents.get(agentPath);
 		const agentResult = {
 			agent: agent.instance,
 			builtAgent: builtAgent,
@@ -385,32 +417,33 @@ export class AgentManager {
 	 * This extracts the state that was defined when the agent was built with withSessionService
 	 */
 	private extractInitialState(agentResult: {
-		agent: any;
-		builtAgent?: any;
-	}): Record<string, any> | undefined {
+		agent: BaseAgent;
+		builtAgent?: BuiltAgent;
+	}): SessionState | undefined {
 		// First try to extract from the builtAgent's session if available
 		if (agentResult.builtAgent?.session) {
-			const state = agentResult.builtAgent.session.state;
+			const state = agentResult.builtAgent.session.state as
+				| SessionState
+				| undefined;
 
-			if (state) {
-				const stateKeys = Object.keys(state);
-				if (stateKeys.length > 0) {
-					return state;
-				}
+			if (state && Object.keys(state).length > 0) {
+				return state;
 			}
 		}
 
-		const state = this.getInitialStateFromSessionService(agentResult.agent);
+		const state = this.getInitialStateFromSessionService(
+			agentResult.agent as unknown as AgentWithSessionService,
+		);
 		if (state) {
 			return state;
 		}
 
-		if (
-			agentResult.agent.subAgents &&
-			Array.isArray(agentResult.agent.subAgents)
-		) {
-			for (const subAgent of agentResult.agent.subAgents) {
-				const subState = this.getInitialStateFromSessionService(subAgent);
+		const agent = agentResult.agent;
+		if (agent.subAgents && Array.isArray(agent.subAgents)) {
+			for (const subAgent of agent.subAgents) {
+				const subState = this.getInitialStateFromSessionService(
+					subAgent as unknown as AgentWithSessionService,
+				);
 				if (subState) {
 					this.logger.log(
 						format(
@@ -430,22 +463,27 @@ export class AgentManager {
 	 * Extract state from an agent's sessionService
 	 */
 	private getInitialStateFromSessionService(
-		agent: any,
-	): Record<string, any> | undefined {
+		agent: AgentWithSessionService | undefined,
+	): SessionState | undefined {
 		const sessions = agent?.sessionService?.sessions;
 		if (!sessions) return undefined;
 
-		// sessions is a Map<appName, Map<userId, Map<sessionId, Session>>>
+		// sessions is a Map<appName, Map<userId, Map<sessionId, SessionWithState>>>
 		for (const [, userSessions] of sessions) {
 			for (const [, session] of userSessions) {
 				for (const [, innerSession] of session) {
-					const state = innerSession?.state;
-					if (!state) continue;
+					const state = innerSession?.state as
+						| SessionState
+						| Map<string, unknown>
+						| undefined;
+					if (state == null) continue;
 
 					const stateKeys =
 						state instanceof Map
 							? Array.from(state.keys())
-							: Object.keys(state);
+							: typeof state === "object"
+								? Object.keys(state)
+								: [];
 
 					if (
 						(state instanceof Map && state.size > 0) ||
@@ -455,7 +493,7 @@ export class AgentManager {
 						if (state instanceof Map) {
 							return Object.fromEntries(state);
 						}
-						return state as Record<string, any>;
+						return state as SessionState;
 					}
 				}
 			}
@@ -479,5 +517,6 @@ export class AgentManager {
 		for (const [agentPath] of Array.from(this.loadedAgents.entries())) {
 			this.stopAgent(agentPath);
 		}
+		this.builtAgents.clear();
 	}
 }

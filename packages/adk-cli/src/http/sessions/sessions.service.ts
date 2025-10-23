@@ -50,27 +50,36 @@ export class SessionsService {
 		return this.getAgentSessions(loaded);
 	}
 
-	async createSession(agentPath: string, request: CreateSessionRequest) {
+	async createSession(
+		agentPath: string,
+		request: CreateSessionRequest,
+	): Promise<SessionResponse | { error: string }> {
 		const loaded = await this.ensureAgentLoaded(agentPath);
 		if (!loaded) {
-			return { error: "Failed to load agent" } as any;
+			return { error: "Failed to load agent" };
 		}
 		return this.createAgentSession(loaded, request);
 	}
 
-	async deleteSession(agentPath: string, sessionId: string) {
+	async deleteSession(
+		agentPath: string,
+		sessionId: string,
+	): Promise<{ success: boolean } | { error: string }> {
 		const loaded = await this.ensureAgentLoaded(agentPath);
 		if (!loaded) {
-			return { error: "Failed to load agent" } as any;
+			return { error: "Failed to load agent" };
 		}
 		await this.deleteAgentSession(loaded, sessionId);
 		return { success: true };
 	}
 
-	async switchSession(agentPath: string, sessionId: string) {
+	async switchSession(
+		agentPath: string,
+		sessionId: string,
+	): Promise<{ success: boolean } | { error: string }> {
 		const loaded = await this.ensureAgentLoaded(agentPath);
 		if (!loaded) {
-			return { error: "Failed to load agent" } as any;
+			return { error: "Failed to load agent" };
 		}
 		await this.switchAgentSession(loaded, sessionId);
 		return { success: true };
@@ -99,9 +108,9 @@ export class SessionsService {
 					event.author === "user" ? ("user" as const) : ("assistant" as const),
 				content:
 					event.content?.parts
-						?.map((part: any) =>
-							typeof part === "object" && "text" in part
-								? (part as any).text
+						?.map((part: unknown) =>
+							typeof part === "object" && part !== null && "text" in part
+								? (part as { text: string }).text
 								: "",
 						)
 						.join("") || "",
@@ -141,15 +150,18 @@ export class SessionsService {
 			const sessions: SessionResponse[] = [];
 			for (const s of listResponse.sessions) {
 				// Ensure we load the full session to get the latest event list
-				let fullSession: any;
+				let fullSession: typeof s = s;
 				try {
-					fullSession = await this.sessionService.getSession(
+					const session = await this.sessionService.getSession(
 						loadedAgent.appName,
 						loadedAgent.userId,
 						s.id,
 					);
+					if (session) {
+						fullSession = session;
+					}
 				} catch {
-					fullSession = s;
+					// Keep fullSession as s
 				}
 
 				sessions.push({
@@ -279,31 +291,78 @@ export class SessionsService {
 				return { events: [], totalCount: 0 };
 			}
 
-			const events = session.events.map((event: any) => {
+			interface EventLike {
+				id: string;
+				author: string;
+				timestamp: number;
+				content?: { parts?: unknown[] };
+				actions?: unknown;
+				branch?: string;
+				partial?: boolean;
+				getFunctionCalls?: () => unknown[];
+				getFunctionResponses?: () => unknown[];
+				isFinalResponse?: () => boolean;
+			}
+
+			const events = session.events.map((event: Event) => {
 				// Handle both Event class instances and plain objects
+				const eventLike = event as unknown as EventLike;
 				const isEventInstance =
-					typeof (event as any).getFunctionCalls === "function";
+					typeof eventLike.getFunctionCalls === "function";
+
+				const parts = eventLike.content?.parts;
 
 				return {
-					id: event.id,
-					author: event.author,
-					timestamp: event.timestamp,
-					content: event.content,
-					actions: event.actions,
-					functionCalls: isEventInstance
-						? event.getFunctionCalls()
-						: event.content?.parts?.filter((part: any) => part.functionCall) ||
-							[],
-					functionResponses: isEventInstance
-						? event.getFunctionResponses()
-						: event.content?.parts?.filter(
-								(part: any) => part.functionResponse,
-							) || [],
-					branch: event.branch,
-					isFinalResponse: isEventInstance
-						? event.isFinalResponse()
-						: !event.content?.parts?.some((part: any) => part.functionCall) &&
-							!event.partial,
+					id: eventLike.id,
+					author: eventLike.author,
+					timestamp: eventLike.timestamp,
+					content: eventLike.content,
+					actions: eventLike.actions,
+					functionCalls:
+						isEventInstance && eventLike.getFunctionCalls
+							? eventLike.getFunctionCalls()
+							: parts?.filter(
+									(part: unknown) =>
+										part &&
+										typeof part === "object" &&
+										part !== null &&
+										"functionCall" in part,
+								) || [],
+					functionResponses:
+						isEventInstance && eventLike.getFunctionResponses
+							? eventLike.getFunctionResponses()
+							: parts?.filter(
+									(part) =>
+										part &&
+										typeof part === "object" &&
+										part !== null &&
+										"functionResponse" in part,
+								) || [],
+					branch: eventLike.branch,
+					isFinalResponse:
+						isEventInstance && eventLike.isFinalResponse
+							? eventLike.isFinalResponse()
+							: !parts?.some(
+									(part: unknown) =>
+										part &&
+										typeof part === "object" &&
+										part !== null &&
+										"functionCall" in part,
+								) &&
+								!parts?.some(
+									(part: unknown) =>
+										part &&
+										typeof part === "object" &&
+										part !== null &&
+										"functionResponse" in part,
+								) &&
+								!eventLike.partial &&
+								!(
+									Array.isArray(parts) &&
+									parts.length > 0 &&
+									(parts[parts.length - 1] as { codeExecutionResult?: unknown })
+										?.codeExecutionResult != null
+								),
 				};
 			});
 
@@ -337,7 +396,7 @@ export class SessionsService {
 			}
 
 			// Update the loaded agent's session ID
-			(loadedAgent as any).sessionId = sessionId;
+			loadedAgent.sessionId = sessionId;
 		} catch (error) {
 			this.logger.error("Error switching session: %o", error);
 			throw error;
@@ -364,8 +423,8 @@ export class SessionsService {
 				throw new Error("Session not found");
 			}
 
-			const agentState: Record<string, any> = {};
-			const userState: Record<string, any> = {};
+			const agentState: Record<string, unknown> = {};
+			const userState: Record<string, unknown> = {};
 			const sessionState = session.state || {};
 
 			this.logger.log(
@@ -433,7 +492,7 @@ export class SessionsService {
 		loadedAgent: LoadedAgent,
 		sessionId: string,
 		path: string,
-		value: any,
+		value: unknown,
 	): Promise<void> {
 		try {
 			this.logger.log(
@@ -471,22 +530,22 @@ export class SessionsService {
 	 * Helper method to set nested values using dot notation
 	 */
 	private setNestedValue(
-		obj: Record<string, any>,
+		obj: Record<string, unknown>,
 		path: string,
 		value: unknown,
 	): void {
 		const keys = path.split(".");
 		const lastKey = keys.pop()!;
-		const target = keys.reduce((current, key) => {
+		const target = keys.reduce((current: Record<string, unknown>, key) => {
 			if (
 				!(key in current) ||
 				typeof current[key] !== "object" ||
 				current[key] === null
 			) {
-				(current as any)[key] = {};
+				current[key] = {};
 			}
-			return (current as any)[key];
-		}, obj as any);
-		(target as any)[lastKey] = value;
+			return current[key] as Record<string, unknown>;
+		}, obj);
+		target[lastKey] = value;
 	}
 }
