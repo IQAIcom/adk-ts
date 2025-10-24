@@ -577,8 +577,6 @@ import {
   LlmAgent,
   FunctionTool,
   GoogleSearch,
-  BuiltInCodeExecutor,
-  PlanReActPlanner,
   InMemoryMemoryService,
   InMemorySessionService,
   AgentBuilder,
@@ -686,7 +684,9 @@ const researchAnalyst = new LlmAgent({
   },
 
   afterAgentCallback: ctx => {
-    console.log(`✅ Analysis completed - stored in session state`);
+    console.log(
+      `✅ Analysis completed for ${ctx.agentName} - stored in session state`
+    );
     return undefined;
   },
 });
@@ -694,8 +694,8 @@ const researchAnalyst = new LlmAgent({
 // Build and use the agent
 async function initializeAgent() {
   const { runner } = await AgentBuilder.create()
-    .withAgent(researchAnalyst)
     .withModel("gemini-2.0-flash")
+    .withAgent(researchAnalyst)
     .build();
 
   // Example usage with structured input
