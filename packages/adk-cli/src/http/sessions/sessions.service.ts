@@ -245,6 +245,16 @@ export class SessionsService {
 				}),
 			);
 
+			// Notify connected clients about initial state
+			if (stateToUse && Object.keys(stateToUse).length > 0) {
+				try {
+					const agentPath = loadedAgent.userId.startsWith(USER_ID_PREFIX)
+						? loadedAgent.userId.substring(USER_ID_PREFIX.length)
+						: loadedAgent.userId;
+					this.hotReload?.broadcastState(agentPath, newSession.id);
+				} catch {}
+			}
+
 			return {
 				id: newSession.id,
 				appName: newSession.appName,
