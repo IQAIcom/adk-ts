@@ -222,6 +222,7 @@ export const agent = new LlmAgent({
   tools: [
     new GoogleSearch(), // Built-in tool
     new FunctionTool((expression: string) => eval(expression), {
+      // WARNING: In production, use a safe math parser instead of eval() due to security risks.
       name: "calculate",
       description: "Perform mathematical calculations",
     }),
