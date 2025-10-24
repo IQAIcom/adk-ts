@@ -1,5 +1,19 @@
 # @iqai/adk-cli
 
+## 0.3.22
+
+### Patch Changes
+
+- 1ec769a: fix: improve type safety across cli and adk package
+- 9ba699c: fix: state persistence
+- 4fbb724: Fix: state management
+- 69d3431: fix: state persistence and allows initial state of agents to be passed down to proper sessions
+- Updated dependencies [1ec769a]
+- Updated dependencies [9ba699c]
+- Updated dependencies [4fbb724]
+- Updated dependencies [edfe628]
+  - @iqai/adk@0.5.3
+
 ## 0.3.21
 
 ### Patch Changes
