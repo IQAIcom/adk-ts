@@ -35,8 +35,8 @@ Create a new project from scratch:
 
 ```bash
 mkdir my-first-agent && cd my-first-agent
-npm init -y
-npm install @iqai/adk tsx typescript dotenv
+pnpm init -y
+pnpm install @iqai/adk tsx typescript dotenv
 npx tsc --init --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --noEmit
 ```
 
@@ -206,7 +206,7 @@ For a command-line chat experience, install the CLI globally and start the chat:
 
 ```bash
 # Install the CLI globally
-npm install -g @iqai/adk-cli
+pnpm install -g @iqai/adk-cli
 
 # Start terminal-based chat with your agent
 adk run
