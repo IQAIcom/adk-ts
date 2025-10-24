@@ -151,7 +151,7 @@ function setupHotReload(
 							}
 							// Notify connected clients (web UI) to refresh
 							try {
-								hotReload?.broadcast(
+								hotReload?.broadcastReload(
 									typeof filename === "string" ? filename : null,
 								);
 							} catch {}

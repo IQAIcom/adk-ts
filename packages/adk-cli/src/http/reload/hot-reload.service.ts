@@ -7,11 +7,18 @@ type SseResponse = {
 	setHeader?: (name: string, value: string) => void;
 };
 
-interface ReloadEvent {
-	type: "reload";
-	filename?: string | null;
-	timestamp: number;
-}
+type ServerEvent =
+	| {
+			type: "reload";
+			filename?: string | null;
+			timestamp: number;
+	  }
+	| {
+			type: "state";
+			agentPath: string;
+			sessionId: string;
+			timestamp: number;
+	  };
 
 @Injectable()
 export class HotReloadService {
@@ -59,12 +66,7 @@ export class HotReloadService {
 		}
 	}
 
-	broadcast(filename?: string | null): void {
-		const payload: ReloadEvent = {
-			type: "reload",
-			filename: filename ?? null,
-			timestamp: Date.now(),
-		};
+	private emit(payload: ServerEvent): void {
 		const data = `data: ${JSON.stringify(payload)}\n\n`;
 		for (const res of Array.from(this.clients)) {
 			try {
@@ -73,6 +75,18 @@ export class HotReloadService {
 				this.removeClient(res);
 			}
 		}
+	}
+
+	broadcastReload(filename?: string | null): void {
+		this.emit({
+			type: "reload",
+			filename: filename ?? null,
+			timestamp: Date.now(),
+		});
+	}
+
+	broadcastState(agentPath: string, sessionId: string): void {
+		this.emit({ type: "state", agentPath, sessionId, timestamp: Date.now() });
 	}
 
 	closeAll(): void {

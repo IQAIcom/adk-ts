@@ -1,8 +1,9 @@
 import { format } from "node:util";
 import { Event, InMemorySessionService } from "@iqai/adk";
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { USER_ID_PREFIX } from "../../common/constants";
 import { TOKENS } from "../../common/tokens";
+import { HotReloadService } from "../reload/hot-reload.service";
 import type {
 	CreateSessionRequest,
 	EventLike,
@@ -23,6 +24,9 @@ export class SessionsService {
 		@Inject(InMemorySessionService)
 		private readonly sessionService: InMemorySessionService,
 		@Inject(TOKENS.QUIET) private readonly quiet: boolean,
+		@Optional()
+		@Inject(HotReloadService)
+		private readonly hotReload?: HotReloadService,
 	) {
 		this.logger = new Logger("sessions-service");
 	}
@@ -509,6 +513,13 @@ export class SessionsService {
 			);
 
 			this.logger.log("Session state updated successfully");
+			// Notify connected clients (web UI) that state changed for this agent/session
+			try {
+				const agentPath = loadedAgent.userId.startsWith(USER_ID_PREFIX)
+					? loadedAgent.userId.substring(USER_ID_PREFIX.length)
+					: loadedAgent.userId;
+				this.hotReload?.broadcastState(agentPath, sessionId);
+			} catch {}
 		} catch (error) {
 			this.logger.error("Error updating session state: %o", error);
 			throw error;
