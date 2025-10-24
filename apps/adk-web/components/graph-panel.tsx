@@ -366,16 +366,6 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			}
 		});
 
-		// Create agent color mapping for consistent coloring
-		const agentColors = AGENT_COLORS;
-		const agentColorMap = new Map<string, AgentColor>();
-
-		// Assign colors to agents (for tool coloring only)
-		const agents = filteredNodes.filter((n) => n.kind === "agent");
-		agents.forEach((agent, index) => {
-			agentColorMap.set(agent.id, agentColors[index % agentColors.length]);
-		});
-
 		// Create flow nodes with computed positions and agent-based color coding
 		return filteredNodes.map((node: GraphNode) => {
 			const position = positions.get(node.id) || { x: 0, y: 0 };
@@ -408,7 +398,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 				connectable: false,
 			};
 		});
-	}, [filteredNodes, graphEdges, graphNodes]);
+	}, [filteredNodes, graphEdges, graphNodes, agentColorMap]);
 
 	const flowEdges: Edge[] = useMemo(() => {
 		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
