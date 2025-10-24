@@ -53,6 +53,11 @@ export class EventActions {
 	compaction?: EventCompaction;
 
 	/**
+	 * The invocation id to rewind to. This is only set for rewind event.
+	 */
+	rewindBeforeInvocationId?: string;
+
+	/**
 	 * Constructor for EventActions
 	 */
 	constructor(
@@ -64,6 +69,7 @@ export class EventActions {
 			escalate?: boolean;
 			requestedAuthConfigs?: Record<string, any>;
 			compaction?: EventCompaction;
+			rewindBeforeInvocationId?: string;
 		} = {},
 	) {
 		this.skipSummarization = options.skipSummarization;
@@ -73,5 +79,6 @@ export class EventActions {
 		this.escalate = options.escalate;
 		this.requestedAuthConfigs = options.requestedAuthConfigs;
 		this.compaction = options.compaction;
+		this.rewindBeforeInvocationId = options.rewindBeforeInvocationId;
 	}
 }

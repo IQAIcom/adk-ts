@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
-import { existsSync, readFileSync, watch } from "node:fs";
 import type { FSWatcher } from "node:fs";
+import { existsSync, readFileSync, watch } from "node:fs";
 import { resolve, sep } from "node:path";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -110,9 +110,41 @@ function setupHotReload(
 					}
 					const t = setTimeout(async () => {
 						try {
+							// Preserve session IDs before stopping agents
+							const preservedSessions = agentManager.getLoadedAgentSessions();
+							if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+								console.log(
+									`[hot-reload] Preserving ${preservedSessions.size} session(s)`,
+								);
+							}
+
 							// Clear running agents so next use reloads fresh code, then rescan
 							agentManager.stopAllAgents();
 							agentManager.scanAgents(config.agentsDir);
+
+							// Restore agents with their previous sessions
+							for (const [
+								agentPath,
+								sessionId,
+							] of preservedSessions.entries()) {
+								try {
+									// Start agent with preserved session ID for restoration
+									await agentManager.startAgent(agentPath, sessionId);
+									if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+										console.log(
+											`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
+										);
+									}
+								} catch (e) {
+									if (!config.quiet) {
+										console.error(
+											`[hot-reload] Failed to restore agent ${agentPath}:`,
+											e,
+										);
+									}
+								}
+							}
+
 							if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
 								console.log(
 									`[hot-reload] Reloaded agents after change in ${filename ?? p}`,
@@ -120,7 +152,7 @@ function setupHotReload(
 							}
 							// Notify connected clients (web UI) to refresh
 							try {
-								hotReload?.broadcast(
+								hotReload?.broadcastReload(
 									typeof filename === "string" ? filename : null,
 								);
 							} catch {}

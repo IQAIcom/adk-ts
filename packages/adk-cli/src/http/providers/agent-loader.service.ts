@@ -3,7 +3,6 @@ import { existsSync, mkdirSync, statSync, unlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, normalize, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { BaseAgent } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import { findProjectRoot } from "../../common/find-project-root";
 import { AgentResolver } from "./agent-loader/agent-resolver";
@@ -12,6 +11,7 @@ import { EnvUtils } from "./agent-loader/env-utils";
 import { ErrorHandlingUtils } from "./agent-loader/error-handling-utils";
 import { PathUtils } from "./agent-loader/path-utils";
 import { TypeGuards } from "./agent-loader/type-guards";
+import type { AgentExportResult, ModuleExport } from "./agent-loader.types";
 
 @Injectable()
 export class AgentLoader {
@@ -104,7 +104,7 @@ export class AgentLoader {
 	async importTypeScriptFile(
 		filePath: string,
 		providedProjectRoot?: string,
-	): Promise<Record<string, unknown>> {
+	): Promise<ModuleExport> {
 		const normalizedFilePath = normalize(resolve(filePath));
 		const projectRoot =
 			providedProjectRoot ?? findProjectRoot(dirname(normalizedFilePath));
@@ -200,10 +200,10 @@ export class AgentLoader {
 				}
 			}
 
-			let mod: Record<string, unknown>;
+			let mod: ModuleExport;
 
 			try {
-				mod = dynamicRequire(outFile) as Record<string, unknown>;
+				mod = dynamicRequire(outFile) as ModuleExport;
 			} catch (loadErr) {
 				this.logger.warn(
 					`Primary require failed for built agent '${outFile}': ${
@@ -211,10 +211,7 @@ export class AgentLoader {
 					}. Falling back to dynamic import...`,
 				);
 				try {
-					mod = (await import(pathToFileURL(outFile).href)) as Record<
-						string,
-						unknown
-					>;
+					mod = (await import(pathToFileURL(outFile).href)) as ModuleExport;
 				} catch (fallbackErr) {
 					// Handle env-related import errors
 					mod = await this.errorUtils.handleImportError(
@@ -254,7 +251,10 @@ export class AgentLoader {
 		}
 	}
 
-	async resolveAgentExport(mod: Record<string, unknown>): Promise<BaseAgent> {
-		return this.resolver.resolveAgentExport(mod);
+	async resolveAgentExport(mod: ModuleExport): Promise<AgentExportResult> {
+		const agent = await this.resolver.resolveAgentExport(
+			mod as unknown as Record<string, unknown>,
+		);
+		return { agent };
 	}
 }

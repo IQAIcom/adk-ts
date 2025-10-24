@@ -136,7 +136,7 @@ export class AgentManager {
 
 			const exportedAgent = await this.loader.resolveAgentExport(agentModule);
 
-			if (!exportedAgent?.name) {
+			if (!exportedAgent?.agent.name) {
 				throw new Error(
 					`Invalid agent export in ${agentFilePath}. Expected a BaseAgent instance with a name property.`,
 				);
@@ -331,6 +331,7 @@ export class AgentManager {
 				userId,
 				sessionToUse.id,
 			);
+
 			if (!existingSession) {
 				this.logger.log(
 					format("Creating session in sessionService: %s", sessionToUse.id),

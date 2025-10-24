@@ -8,6 +8,26 @@ export interface Agent {
 	instance?: BaseAgent; // Store the loaded agent instance
 }
 
+export interface ContentPart {
+	text?: string;
+	inlineData?: { mimeType: string; data: string };
+	functionCall?: { name: string; args: Record<string, unknown> };
+	functionResponse?: { id: string; name: string; response: unknown };
+}
+
+export interface EventLike {
+	id: string;
+	author: string;
+	timestamp: number;
+	content?: { parts?: unknown[] };
+	actions?: unknown;
+	branch?: string;
+	partial?: boolean;
+	getFunctionCalls?: () => unknown[];
+	getFunctionResponses?: () => unknown[];
+	isFinalResponse?: () => boolean;
+}
+
 export interface LoadedAgent {
 	agent: BaseAgent;
 	runner: EnhancedRunner; // AgentBuilder's enhanced runner

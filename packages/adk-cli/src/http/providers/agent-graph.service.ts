@@ -61,7 +61,8 @@ export class AgentGraphService {
 										string,
 										unknown
 									>);
-							agent = await loader.resolveAgentExport(mod);
+							const agentResult = await loader.resolveAgentExport(mod);
+							agent = agentResult.agent;
 						} catch (e) {
 							this.logger.warn(
 								`Failed to load agent for graph at ${filePath}: ${e instanceof Error ? e.message : String(e)}`,
