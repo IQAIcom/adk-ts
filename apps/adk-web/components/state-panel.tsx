@@ -205,9 +205,8 @@ export function StatePanel({
 				</Dialog>
 			</div>
 
-			{/* Content */}
-			<ScrollArea className="flex-1 h-full">
-				<div className="p-4 space-y-3 w-full">
+			<ScrollArea className="h-[calc(100%-73px)]">
+				<div className="p-4 space-y-3 w-full pb-8">
 					{isLoading ? (
 						<div className="text-center py-8">
 							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
