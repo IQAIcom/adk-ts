@@ -202,7 +202,7 @@ To test your MCP server with ADK TypeScript, create a separate agent project tha
      transport: {
        mode: "stdio",
        command: "node",
-       args: ["path/to/your/mcp-server/dist/index.js"], // or the host url
+      args: ["../<your-mcp-server-project>/dist/index.js"], // or the host url
        env: {
          OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY,
          PATH: process.env.PATH || "",
