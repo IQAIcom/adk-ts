@@ -240,8 +240,8 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 	const graphEdges = data?.edges || [];
 
 	// Convert our graph data to React Flow format with improved layout for many tools
-	// Shared filtered nodes and agent color mapping
-	const { filteredNodes, agentColorMap } = useMemo(() => {
+	// Shared filtered nodes, agent color mapping, and child-to-parent mapping
+	const { filteredNodes, agentColorMap, childToParentMap } = useMemo(() => {
 		const filtered = filterNodes(
 			graphNodes,
 			searchTerm,
@@ -253,8 +253,22 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		agents.forEach((agent, index) => {
 			colorMap.set(agent.id, AGENT_COLORS[index % AGENT_COLORS.length]);
 		});
-		return { filteredNodes: filtered, agentColorMap: colorMap };
-	}, [graphNodes, searchTerm, nodeTypeFilter, toolCategoryFilter]);
+
+		// Create child-to-parent mapping for O(1) lookups
+		const filteredNodeIds = new Set(filtered.map((n) => n.id));
+		const childToParent = new Map<string, string>();
+		for (const edge of graphEdges) {
+			if (filteredNodeIds.has(edge.from) && filteredNodeIds.has(edge.to)) {
+				childToParent.set(edge.to, edge.from);
+			}
+		}
+
+		return {
+			filteredNodes: filtered,
+			agentColorMap: colorMap,
+			childToParentMap: childToParent,
+		};
+	}, [graphNodes, searchTerm, nodeTypeFilter, toolCategoryFilter, graphEdges]);
 
 	const flowNodes: Node[] = useMemo(() => {
 		// If no nodes after filtering, return empty array
@@ -263,13 +277,11 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 		// Build adjacency (children) map using only filtered nodes
 		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
 		const childrenMap = new Map<string, string[]>();
-		const childToParentMap = new Map<string, string>();
 		for (const edge of graphEdges) {
 			// Only include edges where both source and target are in filtered nodes
 			if (filteredNodeIds.has(edge.from) && filteredNodeIds.has(edge.to)) {
 				if (!childrenMap.has(edge.from)) childrenMap.set(edge.from, []);
 				childrenMap.get(edge.from)!.push(edge.to);
-				childToParentMap.set(edge.to, edge.from);
 			}
 		}
 
@@ -398,18 +410,10 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 				connectable: false,
 			};
 		});
-	}, [filteredNodes, graphEdges, graphNodes, agentColorMap]);
+	}, [filteredNodes, graphEdges, graphNodes, agentColorMap, childToParentMap]);
 
 	const flowEdges: Edge[] = useMemo(() => {
 		const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
-
-		// Create child-to-parent mapping for O(1) lookups
-		const childToParentMap = new Map<string, string>();
-		for (const edge of graphEdges) {
-			if (filteredNodeIds.has(edge.from) && filteredNodeIds.has(edge.to)) {
-				childToParentMap.set(edge.to, edge.from);
-			}
-		}
 
 		// Map target id to node kind and agent color for enhanced styling
 		const nodeDataById = new Map<
@@ -524,7 +528,7 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			};
 			return e;
 		});
-	}, [filteredNodes, agentColorMap, graphEdges]);
+	}, [filteredNodes, agentColorMap, graphEdges, childToParentMap]);
 
 	// Render a full-bleed canvas; overlay messages when needed
 	const showMessage = isLoading || !!error || !data;
