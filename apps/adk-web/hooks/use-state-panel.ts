@@ -31,7 +31,8 @@ export function useStatePanel(
 		enabled: !!apiClient && !!selectedAgent && !!currentSessionId,
 		staleTime: 10000,
 		retry: 2,
-		refetchInterval: 30000,
+		refetchInterval: false,
+		refetchOnWindowFocus: false,
 	});
 
 	const updateStateMutation = useMutation({
