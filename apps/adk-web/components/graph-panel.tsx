@@ -21,7 +21,11 @@ import { Bot, Wrench } from "lucide-react";
 import { GraphControls, useGraphControls } from "./graph-controls";
 import { useReactFlow } from "@xyflow/react";
 import { AgentColor, AGENT_COLORS } from "@/lib/agent-colors";
-import { getAgentStyles, getToolCategory } from "@/lib/agent-styles";
+import {
+	getAgentStyles,
+	getToolCategory,
+	getEdgeStyles,
+} from "@/lib/agent-styles";
 
 // Filter nodes based on search term, node type, and tool category
 const filterNodes = (
@@ -447,71 +451,16 @@ export function GraphPanel({ data, isLoading, error }: GraphPanelProps) {
 			const agentColor =
 				targetData?.agentColor || sourceData?.agentColor || "default";
 
-			// Enhanced edge styling - only color code agent-to-tool connections
-			let stroke: string;
-			let strokeWidth: number;
-			let strokeDasharray: string | undefined;
-
-			if (isTool) {
-				// Agent-to-tool connections - color code by agent
-				switch (agentColor) {
-					case "blue":
-						stroke = "var(--color-blue-500)";
-						strokeWidth = 2.5;
-						strokeDasharray = "8 4";
-						break;
-					case "green":
-						stroke = "var(--color-green-500)";
-						strokeWidth = 2.5;
-						strokeDasharray = "6 3";
-						break;
-					case "purple":
-						stroke = "var(--color-purple-500)";
-						strokeWidth = 2.5;
-						strokeDasharray = "10 5";
-						break;
-					case "orange":
-						stroke = "var(--color-orange-500)";
-						strokeWidth = 2.5;
-						strokeDasharray = "12 6";
-						break;
-					case "pink":
-						stroke = "var(--color-pink-500)";
-						strokeWidth = 2.5;
-						strokeDasharray = "4 2";
-						break;
-					case "cyan":
-						stroke = "var(--color-cyan-500)";
-						strokeWidth = 2.5;
-						strokeDasharray = "6 4";
-						break;
-					case "lime":
-						stroke = "var(--color-lime-500)";
-						strokeWidth = 2.5;
-						strokeDasharray = "8 2";
-						break;
-					case "indigo":
-						stroke = "var(--color-indigo-500)";
-						strokeWidth = 2.5;
-						strokeDasharray = "10 3";
-						break;
-					default:
-						stroke = "var(--color-secondary-foreground)";
-						strokeWidth = 2.25;
-						strokeDasharray = "8 4";
-				}
-			} else {
-				// Agent-to-agent connections
-				stroke = "var(--color-primary)";
-				strokeWidth = 2.0;
-				strokeDasharray = undefined;
-			}
+			// Enhanced edge styling - use centralized helper function
+			const edgeStyles = getEdgeStyles(agentColor, isTool);
 
 			const style: CSSProperties = {
-				stroke,
-				strokeWidth,
+				stroke: edgeStyles.stroke,
+				strokeWidth: edgeStyles.strokeWidth,
 				opacity: 0.8,
-				...(strokeDasharray ? { strokeDasharray } : {}),
+				...(edgeStyles.strokeDasharray
+					? { strokeDasharray: edgeStyles.strokeDasharray }
+					: {}),
 				strokeLinecap: "round",
 				filter: isTool
 					? "drop-shadow(0 0 2px rgba(0,0,0,0.3))"

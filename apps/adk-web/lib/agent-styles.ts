@@ -95,6 +95,76 @@ export const getAgentStyles = (color: AgentColor) => {
 	}
 };
 
+// Edge styling based on agent color
+export const getEdgeStyles = (agentColor: AgentColor, isTool: boolean) => {
+	if (!isTool) {
+		// Agent-to-agent connections
+		return {
+			stroke: "var(--color-primary)",
+			strokeWidth: 2.0,
+			strokeDasharray: undefined,
+		};
+	}
+
+	// Agent-to-tool connections - color code by agent
+	switch (agentColor) {
+		case "blue":
+			return {
+				stroke: "var(--color-blue-500)",
+				strokeWidth: 2.5,
+				strokeDasharray: "8 4",
+			};
+		case "green":
+			return {
+				stroke: "var(--color-green-500)",
+				strokeWidth: 2.5,
+				strokeDasharray: "6 3",
+			};
+		case "purple":
+			return {
+				stroke: "var(--color-purple-500)",
+				strokeWidth: 2.5,
+				strokeDasharray: "10 5",
+			};
+		case "orange":
+			return {
+				stroke: "var(--color-orange-500)",
+				strokeWidth: 2.5,
+				strokeDasharray: "12 6",
+			};
+		case "pink":
+			return {
+				stroke: "var(--color-pink-500)",
+				strokeWidth: 2.5,
+				strokeDasharray: "4 2",
+			};
+		case "cyan":
+			return {
+				stroke: "var(--color-cyan-500)",
+				strokeWidth: 2.5,
+				strokeDasharray: "6 4",
+			};
+		case "lime":
+			return {
+				stroke: "var(--color-lime-500)",
+				strokeWidth: 2.5,
+				strokeDasharray: "8 2",
+			};
+		case "indigo":
+			return {
+				stroke: "var(--color-indigo-500)",
+				strokeWidth: 2.5,
+				strokeDasharray: "10 3",
+			};
+		default:
+			return {
+				stroke: "var(--color-secondary-foreground)",
+				strokeWidth: 2.25,
+				strokeDasharray: "8 4",
+			};
+	}
+};
+
 // Tool category styling
 export const getCategoryStyles = (category: string) => {
 	switch (category) {
