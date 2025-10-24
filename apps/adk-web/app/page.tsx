@@ -66,6 +66,11 @@ function HomeContent() {
 						queryClient.invalidateQueries({ queryKey: ["agents"] });
 						queryClient.invalidateQueries({ queryKey: ["sessions"] });
 						queryClient.invalidateQueries({ queryKey: ["events"] });
+					} else if (data && data.type === "state") {
+						// Targeted invalidation for the changed agent/session state
+						queryClient.invalidateQueries({
+							queryKey: ["state", finalApiUrl, data.agentPath, data.sessionId],
+						});
 					}
 				} catch {
 					// ignore parse errors

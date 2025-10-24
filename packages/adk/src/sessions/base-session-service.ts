@@ -103,11 +103,16 @@ export abstract class BaseSessionService {
 			return;
 		}
 		for (const key in event.actions.stateDelta) {
-			if (Object.prototype.hasOwnProperty.call(event.actions.stateDelta, key)) {
+			if (Object.hasOwn(event.actions.stateDelta, key)) {
 				if (key.startsWith("temp_")) {
 					continue;
 				}
-				session.state[key] = event.actions.stateDelta[key];
+				const value = event.actions.stateDelta[key];
+				if (value === null || value === undefined) {
+					delete session.state[key];
+				} else {
+					session.state[key] = value;
+				}
 			}
 		}
 	}

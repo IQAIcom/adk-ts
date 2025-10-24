@@ -31,16 +31,16 @@ export class StateService {
 		sessionId: string,
 		path: string,
 		value: unknown,
-	) {
+	): Promise<{ success: boolean } | { error: string }> {
 		const loaded = await this.sessionsService.ensureAgentLoaded(agentPath);
 		if (!loaded) {
-			return { error: "Failed to load agent" } as any;
+			return { error: "Failed to load agent" };
 		}
 		await this.sessionsService.updateSessionState(
 			loaded,
 			sessionId,
 			path,
-			value as any,
+			value,
 		);
 		return { success: true };
 	}

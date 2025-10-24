@@ -264,11 +264,36 @@ function getContents(
 	events: Event[],
 	agentName = "",
 ): Content[] {
+	// Create a map of invocationId to index for O(1) lookup
+	const invocationIdToIndex = new Map<string, number>();
+	for (let idx = 0; idx < events.length; idx++) {
+		if (events[idx].invocationId) {
+			invocationIdToIndex.set(events[idx].invocationId, idx);
+		}
+	}
+
+	const rewindFilteredEvents: Event[] = [];
+	let i = events.length - 1;
+	while (i >= 0) {
+		const event = events[i];
+		if (event.actions?.rewindBeforeInvocationId) {
+			const rewindInvocationId = event.actions.rewindBeforeInvocationId;
+			const rewindIndex = invocationIdToIndex.get(rewindInvocationId);
+			if (rewindIndex !== undefined && rewindIndex < i) {
+				i = rewindIndex;
+			}
+		} else {
+			rewindFilteredEvents.push(event);
+		}
+		i--;
+	}
+	rewindFilteredEvents.reverse();
+
 	const filteredEvents: Event[] = [];
 
 	// Parse the events, leaving the contents and the function calls and
 	// responses from the current agent.
-	for (const event of events) {
+	for (const event of rewindFilteredEvents) {
 		if (
 			!event.content ||
 			!event.content.role ||
