@@ -204,6 +204,15 @@ export function useAgents(currentSessionId?: string | null) {
 						currentSessionId,
 					],
 				});
+				// Also refresh UI state since the agent may have changed session state
+				queryClient.invalidateQueries({
+					queryKey: [
+						"state",
+						apiUrl,
+						selectedAgent.relativePath,
+						currentSessionId,
+					],
+				});
 			}
 		},
 		onError: (error) => {

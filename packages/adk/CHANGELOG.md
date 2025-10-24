@@ -1,5 +1,14 @@
 # @iqai/adk
 
+## 0.5.3
+
+### Patch Changes
+
+- 1ec769a: fix: improve type safety across cli and adk package
+- 9ba699c: fix: state persistence
+- 4fbb724: Fix: state management
+- edfe628: Add artifact parsing and rewind functionality
+
 ## 0.5.2
 
 ### Patch Changes
