@@ -570,6 +570,8 @@ export const monitoredAgent = new LlmAgent({
 
 Here's a comprehensive example of a **Research Analyst Agent** that demonstrates comprehensive configuration for a specialized use case:
 
+
+
 ```ts
 import {
   LlmAgent,
@@ -582,6 +584,10 @@ import {
   AgentBuilder,
 } from "@iqai/adk";
 import { z } from "zod";
+import { config } from "dotenv";
+
+//  Load environment variables from .env file
+config();
 
 // Define structured input/output schemas
 const AnalysisRequestSchema = z.object({
@@ -652,10 +658,6 @@ const researchAnalyst = new LlmAgent({
     }),
   ],
 
-  // Advanced reasoning capabilities
-  codeExecutor: new BuiltInCodeExecutor(),
-  planner: new PlanReActPlanner(),
-
   // Persistence and memory
   memoryService: new InMemoryMemoryService(),
   sessionService: new InMemorySessionService(),
@@ -693,6 +695,7 @@ const researchAnalyst = new LlmAgent({
 async function initializeAgent() {
   const { runner } = await AgentBuilder.create()
     .withAgent(researchAnalyst)
+    .withModel("gemini-2.0-flash")
     .build();
 
   // Example usage with structured input
