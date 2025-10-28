@@ -1,5 +1,11 @@
 # @iqai/adk-cli
 
+## 0.3.23
+
+### Patch Changes
+
+- 737493f: Fix hot reload state sync and State Panel UI issues
+
 ## 0.3.22
 
 ### Patch Changes
