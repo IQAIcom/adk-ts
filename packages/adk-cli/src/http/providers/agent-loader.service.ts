@@ -276,10 +276,14 @@ export class AgentLoader {
 
 	/**
 	 * Import a TypeScript file by compiling it on-demand
+	 * @param filePath - Path to the TypeScript file
+	 * @param providedProjectRoot - Optional project root path
+	 * @param forceInvalidateCache - Force cache invalidation (full reload)
 	 */
 	async importTypeScriptFile(
 		filePath: string,
 		providedProjectRoot?: string,
+		forceInvalidateCache?: boolean,
 	): Promise<ModuleExport> {
 		// Normalize the input file path
 		const normalizedFilePath = normalize(resolve(filePath));
@@ -310,11 +314,14 @@ export class AgentLoader {
 			const tsconfigPath = join(projectRoot, "tsconfig.json");
 
 			// Check if we need to rebuild
-			const needRebuild = this.isRebuildNeeded(
-				outFile,
-				normalizedFilePath,
-				tsconfigPath,
-			);
+			// Force rebuild if explicitly requested (e.g., initial state changed)
+			const needRebuild =
+				forceInvalidateCache ||
+				this.isRebuildNeeded(outFile, normalizedFilePath, tsconfigPath);
+
+			if (forceInvalidateCache && !this.quiet) {
+				this.logger.log(`Forcing cache invalidation for ${normalizedFilePath}`);
+			}
 
 			const ALWAYS_EXTERNAL_SCOPES = ["@iqai/"];
 			const alwaysExternal = ["@iqai/adk"];

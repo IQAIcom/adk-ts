@@ -109,37 +109,70 @@ function setupHotReload(
 					}
 					const t = setTimeout(async () => {
 						try {
-							// Preserve session IDs before stopping agents
-							const preservedSessions = agentManager.getLoadedAgentSessions();
-							if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
-								console.log(
-									`[hot-reload] Preserving ${preservedSessions.size} session(s)`,
-								);
-							}
+							// Check if initial state has changed for any agent
+							const stateChanged = await agentManager.hasInitialStateChanged();
 
-							// Clear running agents so next use reloads fresh code, then rescan
-							agentManager.stopAllAgents();
-							agentManager.scanAgents(config.agentsDir);
+							if (stateChanged) {
+								if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+									console.log(
+										"[hot-reload] Initial state changed - performing full reload (sessions will be cleared)",
+									);
+								}
+								// Full reload: don't preserve sessions
+								agentManager.stopAllAgents();
+								agentManager.scanAgents(config.agentsDir);
 
-							// Restore agents with their previous sessions
-							for (const [
-								agentPath,
-								sessionId,
-							] of preservedSessions.entries()) {
-								try {
-									// Start agent with preserved session ID for restoration
-									await agentManager.startAgent(agentPath, sessionId);
-									if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
-										console.log(
-											`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
-										);
+								// Restart agents with force full reload flag
+								for (const agentPath of agentManager.getAgents().keys()) {
+									try {
+										await agentManager.startAgent(agentPath, undefined, true);
+										if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+											console.log(
+												`[hot-reload] Full reload completed for ${agentPath}`,
+											);
+										}
+									} catch (e) {
+										if (!config.quiet) {
+											console.error(
+												`[hot-reload] Failed to full reload agent ${agentPath}:`,
+												e,
+											);
+										}
 									}
-								} catch (e) {
-									if (!config.quiet) {
-										console.error(
-											`[hot-reload] Failed to restore agent ${agentPath}:`,
-											e,
-										);
+								}
+							} else {
+								// Hot reload: preserve sessions
+								const preservedSessions = agentManager.getLoadedAgentSessions();
+								if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+									console.log(
+										`[hot-reload] Code changed - preserving ${preservedSessions.size} session(s)`,
+									);
+								}
+
+								// Clear running agents so next use reloads fresh code, then rescan
+								agentManager.stopAllAgents();
+								agentManager.scanAgents(config.agentsDir);
+
+								// Restore agents with their previous sessions
+								for (const [
+									agentPath,
+									sessionId,
+								] of preservedSessions.entries()) {
+									try {
+										// Start agent with preserved session ID for restoration
+										await agentManager.startAgent(agentPath, sessionId);
+										if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+											console.log(
+												`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
+											);
+										}
+									} catch (e) {
+										if (!config.quiet) {
+											console.error(
+												`[hot-reload] Failed to restore agent ${agentPath}:`,
+												e,
+											);
+										}
 									}
 								}
 							}

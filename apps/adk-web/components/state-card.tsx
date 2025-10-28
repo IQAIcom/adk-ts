@@ -19,7 +19,7 @@ interface StateCardProps {
 }
 
 function ValueRenderer({ value, depth = 0 }: { value: any; depth?: number }) {
-	const [isExpanded, setIsExpanded] = useState(depth < 2); // auto-expand first 2 levels
+	const [isExpanded, setIsExpanded] = useState(false);
 
 	if (value === null) {
 		return <span className="text-muted-foreground italic">null</span>;

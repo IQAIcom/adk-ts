@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -39,6 +40,7 @@ export class AgentManager {
 	private agents = new Map<string, Agent>();
 	private loadedAgents = new Map<string, LoadedAgent>();
 	private builtAgents = new Map<string, BuiltAgent>();
+	private initialStateHashes = new Map<string, string>();
 	private scanner: AgentScanner;
 	private loader: AgentLoader;
 	private logger: Logger;
@@ -70,10 +72,12 @@ export class AgentManager {
 	 * Start an agent, optionally restoring a previous session.
 	 * @param agentPath - The path to the agent
 	 * @param preservedSessionId - Optional session ID to restore (used during hot reload)
+	 * @param forceFullReload - Force cache invalidation and session reset (used when initial state changes)
 	 */
 	async startAgent(
 		agentPath: string,
 		preservedSessionId?: string,
+		forceFullReload?: boolean,
 	): Promise<void> {
 		this.logger.log(
 			format(
@@ -90,10 +94,36 @@ export class AgentManager {
 		}
 
 		try {
-			const agentResult = await this.loadAgentModule(agent);
-			const sessionToUse = preservedSessionId
-				? await this.getExistingSession(agentPath, preservedSessionId)
-				: await this.getOrCreateSession(agentPath, agentResult);
+			const agentResult = await this.loadAgentModule(agent, forceFullReload);
+
+			// Check if initial state has changed
+			const initialState = this.extractInitialState(agentResult);
+			const stateHash = this.hashState(initialState);
+			const previousStateHash = this.initialStateHashes.get(agentPath);
+			const stateChanged = previousStateHash && previousStateHash !== stateHash;
+
+			let sessionIdToUse = preservedSessionId;
+			if (stateChanged) {
+				this.logger.log(
+					format(
+						"Initial state changed for %s - forcing full reload (old: %s, new: %s)",
+						agentPath,
+						previousStateHash,
+						stateHash,
+					),
+				);
+				// Clear existing sessions when initial state changes
+				await this.clearAgentSessions(agentPath);
+				sessionIdToUse = undefined; // Don't preserve session if state changed
+			}
+
+			// Store the new state hash
+			this.initialStateHashes.set(agentPath, stateHash);
+
+			const sessionToUse =
+				sessionIdToUse && !stateChanged
+					? await this.getExistingSession(agentPath, sessionIdToUse)
+					: await this.getOrCreateSession(agentPath, agentResult);
 			const runner = await this.createRunnerWithSession(
 				agentResult.agent,
 				sessionToUse,
@@ -132,6 +162,7 @@ export class AgentManager {
 
 	private async loadAgentModule(
 		agent: Agent,
+		forceInvalidateCache?: boolean,
 	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent }> {
 		// Try both .js and .ts files, prioritizing .js if it exists
 		// Normalize paths for cross-platform compatibility
@@ -154,7 +185,11 @@ export class AgentManager {
 		// Use dynamic import to load the agent
 		// For TS files, pass the project root to avoid redundant project root discovery
 		const agentModule: ModuleExport = agentFilePath.endsWith(".ts")
-			? await this.loader.importTypeScriptFile(agentFilePath, agent.projectRoot)
+			? await this.loader.importTypeScriptFile(
+					agentFilePath,
+					agent.projectRoot,
+					forceInvalidateCache,
+				)
 			: ((await import(agentFileUrl)) as ModuleExport);
 
 		const agentResult = await this.loader.resolveAgentExport(
@@ -614,10 +649,100 @@ export class AgentManager {
 		return sessions;
 	}
 
+	/**
+	 * Check if initial state has changed for any loaded agent
+	 * Returns true if any agent's initial state hash has changed
+	 */
+	async hasInitialStateChanged(): Promise<boolean> {
+		for (const [agentPath, agent] of this.agents.entries()) {
+			if (!this.loadedAgents.has(agentPath)) {
+				continue; // Skip agents that aren't loaded
+			}
+
+			try {
+				// Temporarily load the agent to check its state
+				const agentResult = await this.loadAgentModule(agent, false);
+				const initialState = this.extractInitialState(agentResult);
+				const stateHash = this.hashState(initialState);
+				const previousStateHash = this.initialStateHashes.get(agentPath);
+
+				if (previousStateHash && previousStateHash !== stateHash) {
+					this.logger.log(
+						format(
+							"Detected initial state change for %s (old: %s, new: %s)",
+							agentPath,
+							previousStateHash,
+							stateHash,
+						),
+					);
+					return true;
+				}
+			} catch (error) {
+				// If we can't load the agent, assume state might have changed
+				this.logger.warn(
+					format(
+						"Failed to check state for %s: %s",
+						agentPath,
+						error instanceof Error ? error.message : String(error),
+					),
+				);
+				return true; // Be safe and reload
+			}
+		}
+		return false;
+	}
+
 	stopAllAgents(): void {
 		for (const [agentPath] of Array.from(this.loadedAgents.entries())) {
 			this.stopAgent(agentPath);
 		}
 		this.builtAgents.clear();
+	}
+
+	/**
+	 * Hash the initial state to detect changes
+	 */
+	private hashState(state: SessionState | undefined): string {
+		if (!state || Object.keys(state).length === 0) {
+			return "empty";
+		}
+		// Sort keys to ensure consistent hashing regardless of property order
+		const sortedState = JSON.stringify(state, Object.keys(state).sort());
+		return createHash("sha256").update(sortedState).digest("hex");
+	}
+
+	/**
+	 * Clear all sessions for an agent (used when initial state changes)
+	 */
+	private async clearAgentSessions(agentPath: string): Promise<void> {
+		try {
+			const userId = `${USER_ID_PREFIX}${agentPath}`;
+			const appName = DEFAULT_APP_NAME;
+			const sessions = await this.sessionService.listSessions(appName, userId);
+
+			for (const session of sessions.sessions) {
+				try {
+					await this.sessionService.deleteSession(appName, userId, session.id);
+					this.logger.log(
+						format("Cleared session %s for agent %s", session.id, agentPath),
+					);
+				} catch (error) {
+					this.logger.warn(
+						format(
+							"Failed to clear session %s: %s",
+							session.id,
+							error instanceof Error ? error.message : String(error),
+						),
+					);
+				}
+			}
+		} catch (error) {
+			this.logger.warn(
+				format(
+					"Failed to list sessions for clearing: %s",
+					error instanceof Error ? error.message : String(error),
+				),
+			);
+		}
 	}
 }

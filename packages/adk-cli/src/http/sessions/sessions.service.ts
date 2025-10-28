@@ -3,7 +3,6 @@ import { Event, InMemorySessionService } from "@iqai/adk";
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { USER_ID_PREFIX } from "../../common/constants";
 import { TOKENS } from "../../common/tokens";
-import { HotReloadService } from "../reload/hot-reload.service";
 import type {
 	CreateSessionRequest,
 	EventLike,
@@ -14,6 +13,7 @@ import type {
 	StateResponse,
 } from "../../common/types";
 import { AgentManager } from "../providers/agent-manager.service";
+import { HotReloadService } from "../reload/hot-reload.service";
 
 @Injectable()
 export class SessionsService {
@@ -245,6 +245,19 @@ export class SessionsService {
 				}),
 			);
 
+			// Notify connected clients about initial state
+			if (stateToUse && Object.keys(stateToUse).length > 0) {
+				try {
+					const agentPath = this.getAgentPathFromUserId(loadedAgent.userId);
+					this.hotReload?.broadcastState(agentPath, newSession.id);
+				} catch (error) {
+					this.logger.warn(
+						`Failed to broadcast initial state for session ${newSession.id}`,
+						error,
+					);
+				}
+			}
+
 			return {
 				id: newSession.id,
 				appName: newSession.appName,
@@ -258,6 +271,12 @@ export class SessionsService {
 			this.logger.error("Error creating session: %o", error);
 			throw error;
 		}
+	}
+
+	private getAgentPathFromUserId(userId: string): string {
+		return userId.startsWith(USER_ID_PREFIX)
+			? userId.substring(USER_ID_PREFIX.length)
+			: userId;
 	}
 
 	/**
@@ -353,8 +372,11 @@ export class SessionsService {
 								!(
 									Array.isArray(parts) &&
 									parts.length > 0 &&
-									(parts[parts.length - 1] as { codeExecutionResult?: unknown })
-										?.codeExecutionResult != null
+									(
+										parts[parts.length - 1] as {
+											codeExecutionResult?: unknown;
+										}
+									)?.codeExecutionResult != null
 								),
 				};
 			});
@@ -515,9 +537,7 @@ export class SessionsService {
 			this.logger.log("Session state updated successfully");
 			// Notify connected clients (web UI) that state changed for this agent/session
 			try {
-				const agentPath = loadedAgent.userId.startsWith(USER_ID_PREFIX)
-					? loadedAgent.userId.substring(USER_ID_PREFIX.length)
-					: loadedAgent.userId;
+				const agentPath = this.getAgentPathFromUserId(loadedAgent.userId);
 				this.hotReload?.broadcastState(agentPath, sessionId);
 			} catch {}
 		} catch (error) {
