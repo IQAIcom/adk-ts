@@ -706,7 +706,9 @@ export class AgentManager {
 		if (!state || Object.keys(state).length === 0) {
 			return "empty";
 		}
-		return createHash("sha256").update(JSON.stringify(state)).digest("hex");
+		// Sort keys to ensure consistent hashing regardless of property order
+		const sortedState = JSON.stringify(state, Object.keys(state).sort());
+		return createHash("sha256").update(sortedState).digest("hex");
 	}
 
 	/**
