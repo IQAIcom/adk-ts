@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { marked } from "marked";
 import * as markedTerminal from "marked-terminal";
 import { Command, CommandRunner, Option } from "nest-commander";
+import { ErrorFormattingUtils } from "../common/error-formatting";
 import { startHttpServer } from "../http/bootstrap";
 
 // Setup markdown terminal renderer
@@ -277,8 +278,28 @@ class ConsoleManager {
 		}
 	}
 
-	error(text: string): void {
-		this.writeErr(chalk.red(text) + "\n");
+	error(text: string | Error): void {
+		// Check if this is already a formatted error from API
+		const apiError =
+			typeof text === "string"
+				? ErrorFormattingUtils.parseApiError(text)
+				: null;
+		if (apiError) {
+			// Format the API error nicely
+			const formatted = ErrorFormattingUtils.formatUserError(apiError, {
+				showStack: process.env.ADK_DEBUG_NEST === "1",
+				colorize: true,
+			});
+			this.writeErr(formatted);
+		} else {
+			// Format as a generic error
+			const errorObj = text instanceof Error ? text : new Error(String(text));
+			const formatted = ErrorFormattingUtils.formatUserError(errorObj, {
+				showStack: process.env.ADK_DEBUG_NEST === "1",
+				colorize: true,
+			});
+			this.writeErr(formatted);
+		}
 	}
 
 	renderMarkdown(text: string): string {
@@ -289,7 +310,7 @@ class ConsoleManager {
 
 	printAnswer(markdown: string): void {
 		const rendered = this.renderMarkdown(markdown);
-		this.writeOut((rendered || "").trim() + "\n");
+		this.writeOut(`${(rendered || "").trim()}\n`);
 	}
 }
 
@@ -487,9 +508,9 @@ class AgentChatClient {
 						await this.sendMessage(trimmed);
 					}
 				} catch (error) {
-					const errorMessage =
-						error instanceof Error ? error.message : String(error);
-					this.consoleManager.error(`Error in chat: ${errorMessage}`);
+					this.consoleManager.error(
+						error instanceof Error ? error : new Error(String(error)),
+					);
 					process.exit(1);
 				}
 			}
@@ -613,9 +634,9 @@ export class RunCommand extends CommandRunner {
 				p.outro("Chat ended");
 			});
 		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			consoleManager.error(`Error: ${errorMessage}`);
+			consoleManager.error(
+				error instanceof Error ? error : new Error(String(error)),
+			);
 			process.exit(1);
 		} finally {
 			// Ensure cleanup happens
