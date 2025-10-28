@@ -12,7 +12,7 @@
 		"dist"
 	],
 	"scripts": {
-		"dev": "tsx watch src/index.ts",
+		"dev": "fastmcp dev src/index.ts",
 		"build": "tsc && shx chmod +x dist/index.js",
 		"watch": "tsc --watch",
 		"start": "node dist/index.js",
