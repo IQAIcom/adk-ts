@@ -1,5 +1,11 @@
 # @iqai/adk-cli
 
+## 0.3.24
+
+### Patch Changes
+
+- 8143f4f: refactor: simplified agent loaders and managers
+
 ## 0.3.23
 
 ### Patch Changes
