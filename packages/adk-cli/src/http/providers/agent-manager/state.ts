@@ -36,12 +36,7 @@ function getInitialStateFromSessionService(
 	for (const [, userSessions] of sessions) {
 		for (const [, session] of userSessions) {
 			for (const [, innerSession] of session) {
-				const extractedState = extractNonEmptyState(
-					innerSession?.state as
-						| SessionState
-						| Map<string, unknown>
-						| undefined,
-				);
+				const extractedState = extractNonEmptyState(innerSession?.state);
 				if (extractedState) return extractedState;
 			}
 		}
