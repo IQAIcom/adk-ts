@@ -1,9 +1,36 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type { ArgumentsHost, ExceptionFilter } from "@nestjs/common";
 import { Catch, HttpException, HttpStatus, Logger } from "@nestjs/common";
+
+// HTTP Status Code Constants
+const HTTP_STATUS = {
+	OK: HttpStatus.OK,
+	BAD_REQUEST: HttpStatus.BAD_REQUEST,
+	FORBIDDEN: HttpStatus.FORBIDDEN,
+	NOT_FOUND: HttpStatus.NOT_FOUND,
+	UNPROCESSABLE_ENTITY: HttpStatus.UNPROCESSABLE_ENTITY,
+	INTERNAL_SERVER_ERROR: HttpStatus.INTERNAL_SERVER_ERROR,
+	SERVICE_UNAVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
+} as const;
+
+// CLI Exit Code Constants
+const CLI_EXIT_CODE = {
+	SUCCESS: 0,
+	GENERAL_ERROR: 1,
+	FILE_NOT_FOUND: 2,
+	PERMISSION_ERROR: 3,
+	NETWORK_ERROR: 4,
+	MODULE_NOT_FOUND: 5,
+	VALIDATION_ERROR: 6,
+	CONFIG_ERROR: 7,
+	SYNTAX_ERROR: 8,
+} as const;
 
 export interface ErrorCategory {
 	type: string;
 	httpStatus: number;
+	cliExitCode: number;
 	icon: string;
 }
 
@@ -12,9 +39,22 @@ export interface FormattedError {
 	message: string;
 	suggestions: string[];
 	statusCode: number;
+	cliExitCode?: number;
 	timestamp: string;
 	path?: string;
 	stack?: string;
+}
+
+interface ExceptionResponse {
+	message?: string;
+	statusCode?: number;
+	error?: string;
+}
+
+export interface ErrorFormatterConfig {
+	showStackTrace?: boolean;
+	includeCLIExitCodes?: boolean;
+	customCategories?: Map<string, ErrorCategory>;
 }
 
 /**
@@ -24,6 +64,17 @@ export interface FormattedError {
 @Catch()
 export class PrettyErrorFilter implements ExceptionFilter {
 	private readonly logger = new Logger(PrettyErrorFilter.name);
+	private readonly config: ErrorFormatterConfig;
+	private readonly packageManager: string;
+
+	constructor(config: ErrorFormatterConfig = {}) {
+		this.config = {
+			showStackTrace: false,
+			includeCLIExitCodes: false,
+			...config,
+		};
+		this.packageManager = this.detectPackageManager();
+	}
 
 	catch(exception: unknown, host: ArgumentsHost): void {
 		const ctx = host.switchToHttp();
@@ -33,15 +84,28 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		const formatted = this.formatError(exception);
 
 		// Only show stack traces in debug mode or development
-		if (
-			process.env.ADK_DEBUG_NEST !== "1" &&
-			process.env.NODE_ENV !== "development"
-		) {
+		const shouldShowStack =
+			this.config.showStackTrace ||
+			process.env.ADK_DEBUG_NEST === "1" ||
+			process.env.NODE_ENV === "development";
+
+		if (!shouldShowStack) {
 			delete formatted.stack;
 		}
 
 		// Add request context
 		formatted.path = request.url;
+
+		// Include CLI exit code if configured
+		if (!this.config.includeCLIExitCodes) {
+			delete formatted.cliExitCode;
+		}
+
+		// Log the error for monitoring
+		this.logger.error(
+			`${formatted.errorType}: ${formatted.message}`,
+			formatted.stack,
+		);
 
 		response.status(formatted.statusCode).json(formatted);
 	}
@@ -50,25 +114,32 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		// Extract base error properties
 		let message = "An unexpected error occurred";
 		let stack: string | undefined;
-		let _httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+		let _httpStatus = HTTP_STATUS.INTERNAL_SERVER_ERROR;
 
-		if (exception instanceof HttpException) {
-			_httpStatus = exception.getStatus();
-			const exceptionResponse = exception.getResponse();
-			if (typeof exceptionResponse === "string") {
-				message = exceptionResponse;
-			} else if (
-				typeof exceptionResponse === "object" &&
-				exceptionResponse !== null
-			) {
-				message = (exceptionResponse as any).message || message;
+		try {
+			if (exception instanceof HttpException) {
+				_httpStatus = exception.getStatus();
+				const exceptionResponse = exception.getResponse();
+
+				if (typeof exceptionResponse === "string") {
+					message = exceptionResponse;
+				} else if (this.isExceptionResponse(exceptionResponse)) {
+					message = exceptionResponse.message || message;
+				}
+				stack = exception.stack;
+			} else if (exception instanceof Error) {
+				message = exception.message;
+				stack = exception.stack;
+			} else if (typeof exception === "string") {
+				message = exception;
+			} else {
+				// Handle unknown exception types
+				message = "An unknown error occurred";
+				this.logger.warn("Unknown exception type:", exception);
 			}
-			stack = exception.stack;
-		} else if (exception instanceof Error) {
-			message = exception.message;
-			stack = exception.stack;
-		} else if (typeof exception === "string") {
-			message = exception;
+		} catch (error) {
+			this.logger.error("Error while extracting exception details:", error);
+			message = "Failed to process error details";
 		}
 
 		// Categorize error and extract suggestions
@@ -83,13 +154,52 @@ export class PrettyErrorFilter implements ExceptionFilter {
 			message,
 			suggestions,
 			statusCode: category.httpStatus,
+			cliExitCode: category.cliExitCode,
 			timestamp: new Date().toISOString(),
 			stack,
 		};
 	}
 
+	private isExceptionResponse(obj: unknown): obj is ExceptionResponse {
+		return (
+			typeof obj === "object" &&
+			obj !== null &&
+			("message" in obj || "statusCode" in obj || "error" in obj)
+		);
+	}
+
+	private detectPackageManager(): string {
+		const cwd = process.cwd();
+
+		// Check for lock files in order of preference
+		if (existsSync(join(cwd, "pnpm-lock.yaml"))) {
+			return "pnpm";
+		}
+		if (existsSync(join(cwd, "yarn.lock"))) {
+			return "yarn";
+		}
+		if (existsSync(join(cwd, "package-lock.json"))) {
+			return "npm";
+		}
+		if (existsSync(join(cwd, "bun.lockb"))) {
+			return "bun";
+		}
+
+		// Default to npm if no lock file found
+		return "npm";
+	}
+
 	private categorizeError(message: string): ErrorCategory {
 		const lowerMsg = message.toLowerCase();
+
+		// Check custom categories first if configured
+		if (this.config.customCategories) {
+			for (const [pattern, category] of this.config.customCategories) {
+				if (lowerMsg.includes(pattern.toLowerCase())) {
+					return category;
+				}
+			}
+		}
 
 		// File system errors
 		if (
@@ -99,7 +209,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		) {
 			return {
 				type: "File Not Found",
-				httpStatus: HttpStatus.NOT_FOUND,
+				httpStatus: HTTP_STATUS.NOT_FOUND,
+				cliExitCode: CLI_EXIT_CODE.FILE_NOT_FOUND,
 				icon: "📄",
 			};
 		}
@@ -112,7 +223,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		) {
 			return {
 				type: "Permission Error",
-				httpStatus: HttpStatus.FORBIDDEN,
+				httpStatus: HTTP_STATUS.FORBIDDEN,
+				cliExitCode: CLI_EXIT_CODE.PERMISSION_ERROR,
 				icon: "🔒",
 			};
 		}
@@ -128,7 +240,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		) {
 			return {
 				type: "Network Error",
-				httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+				httpStatus: HTTP_STATUS.SERVICE_UNAVAILABLE,
+				cliExitCode: CLI_EXIT_CODE.NETWORK_ERROR,
 				icon: "🌐",
 			};
 		}
@@ -145,7 +258,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		) {
 			return {
 				type: "Agent Loading Error",
-				httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+				httpStatus: HTTP_STATUS.UNPROCESSABLE_ENTITY,
+				cliExitCode: CLI_EXIT_CODE.GENERAL_ERROR,
 				icon: "🧠",
 			};
 		}
@@ -158,7 +272,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		) {
 			return {
 				type: "Module Not Found",
-				httpStatus: HttpStatus.NOT_FOUND,
+				httpStatus: HTTP_STATUS.NOT_FOUND,
+				cliExitCode: CLI_EXIT_CODE.MODULE_NOT_FOUND,
 				icon: "📦",
 			};
 		}
@@ -171,7 +286,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		) {
 			return {
 				type: "Validation Error",
-				httpStatus: HttpStatus.BAD_REQUEST,
+				httpStatus: HTTP_STATUS.BAD_REQUEST,
+				cliExitCode: CLI_EXIT_CODE.VALIDATION_ERROR,
 				icon: "🧩",
 			};
 		}
@@ -184,7 +300,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		) {
 			return {
 				type: "Environment Configuration Error",
-				httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+				httpStatus: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				cliExitCode: CLI_EXIT_CODE.CONFIG_ERROR,
 				icon: "🌱",
 			};
 		}
@@ -193,7 +310,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		if (lowerMsg.includes("agent not found")) {
 			return {
 				type: "Agent Not Found",
-				httpStatus: HttpStatus.NOT_FOUND,
+				httpStatus: HTTP_STATUS.NOT_FOUND,
+				cliExitCode: CLI_EXIT_CODE.FILE_NOT_FOUND,
 				icon: "🤖",
 			};
 		}
@@ -205,7 +323,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		) {
 			return {
 				type: "Syntax Error",
-				httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+				httpStatus: HTTP_STATUS.UNPROCESSABLE_ENTITY,
+				cliExitCode: CLI_EXIT_CODE.SYNTAX_ERROR,
 				icon: "🧾",
 			};
 		}
@@ -214,7 +333,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		if (lowerMsg.includes("typeerror")) {
 			return {
 				type: "Type Error",
-				httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+				httpStatus: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				cliExitCode: CLI_EXIT_CODE.GENERAL_ERROR,
 				icon: "🔢",
 			};
 		}
@@ -222,7 +342,8 @@ export class PrettyErrorFilter implements ExceptionFilter {
 		// Default runtime error
 		return {
 			type: "Runtime Error",
-			httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+			httpStatus: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+			cliExitCode: CLI_EXIT_CODE.GENERAL_ERROR,
 			icon: "⚙️",
 		};
 	}
@@ -242,7 +363,7 @@ export class PrettyErrorFilter implements ExceptionFilter {
 				"Ensure you're running the command from the correct directory",
 			);
 			const filePathMatch = message.match(
-				/['"]([^'"]+\.(?:ts|js|json|env))['"]/,
+				/['"]([^'"]+\.(?:ts|js|json|env|yaml|yml))['"]/,
 			);
 			if (filePathMatch?.[1]) {
 				suggestions.push(`Create the missing file: ${filePathMatch[1]}`);
@@ -295,13 +416,13 @@ export class PrettyErrorFilter implements ExceptionFilter {
 			const moduleName = this.extractModuleName(message);
 			if (moduleName) {
 				suggestions.push(
-					`Install the missing package: pnpm add ${moduleName}`,
+					`Install the missing package: ${this.packageManager} add ${moduleName}`,
 					`Check if ${moduleName} is in your package.json dependencies`,
-					"Run 'pnpm install' to ensure all dependencies are installed",
+					`Run '${this.packageManager} install' to ensure all dependencies are installed`,
 				);
 			} else {
 				suggestions.push(
-					"Run 'pnpm install' to install missing dependencies",
+					`Run '${this.packageManager} install' to install missing dependencies`,
 					"Check your import statements for typos",
 					"Ensure the module path is correct",
 				);
@@ -343,7 +464,7 @@ export class PrettyErrorFilter implements ExceptionFilter {
 				"Check your agent.ts file for syntax errors",
 				"Ensure all imports are correct and installed",
 				"Verify your agent exports a valid agent instance",
-				"Try running 'pnpm add @iqai/adk' to update the SDK",
+				`Try running '${this.packageManager} add @iqai/adk' to update the SDK`,
 			);
 		}
 
@@ -401,24 +522,58 @@ export class PrettyErrorFilter implements ExceptionFilter {
 			/Cannot find module ['"]([^'"]+)['"]/,
 			/Module not found: Error: Can't resolve ['"]([^'"]+)['"]/,
 			/Cannot resolve module ['"]([^'"]+)['"]/,
+			/Error: Cannot find package ['"]([^'"]+)['"]/,
 		];
 
 		for (const pattern of patterns) {
 			const match = message.match(pattern);
 			if (match?.[1]) {
-				// Clean up the module name (remove paths, keep just the package)
-				const modulePath = match[1];
-				if (modulePath.startsWith("@")) {
-					// Scoped package
-					const parts = modulePath.split("/");
-					return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : modulePath;
-				}
-				// Regular package
-				return modulePath.split("/")[0];
+				return this.normalizeModulePath(match[1]);
 			}
 		}
 
 		return null;
+	}
+
+	private normalizeModulePath(modulePath: string): string {
+		// Handle relative paths - extract just the package name
+		if (modulePath.startsWith("./") || modulePath.startsWith("../")) {
+			// This is a relative import, not a package
+			return modulePath;
+		}
+
+		// Handle scoped packages (@org/package)
+		if (modulePath.startsWith("@")) {
+			const parts = modulePath.split("/");
+			return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : modulePath;
+		}
+
+		// Handle regular packages with subpaths
+		const firstSegment = modulePath.split("/")[0];
+
+		// Check if it's a Node.js built-in module
+		const builtInModules = [
+			"fs",
+			"path",
+			"http",
+			"https",
+			"crypto",
+			"stream",
+			"url",
+			"util",
+			"events",
+			"os",
+			"child_process",
+			"net",
+			"buffer",
+		];
+
+		if (builtInModules.includes(firstSegment)) {
+			return firstSegment;
+		}
+
+		// Return just the package name
+		return firstSegment;
 	}
 
 	private extractEnvVarName(message: string): string | null {
@@ -426,6 +581,7 @@ export class PrettyErrorFilter implements ExceptionFilter {
 			/environment variable[:\s]+([A-Z_][A-Z0-9_]*)/i,
 			/Missing required[:\s]+([A-Z_][A-Z0-9_]*)/i,
 			/variable[:\s]+([A-Z_][A-Z0-9_]*)/i,
+			/([A-Z_][A-Z0-9_]*)\s+is\s+(?:not\s+)?(?:defined|set|required)/i,
 		];
 
 		for (const pattern of patterns) {
@@ -440,16 +596,17 @@ export class PrettyErrorFilter implements ExceptionFilter {
 
 	private cleanMessage(message: string): string {
 		// Remove redundant prefixes
-		let cleanedMessage = message.replace(/^Error:\s*/i, "");
-		cleanedMessage = cleanedMessage.replace(/^Failed to\s+/i, "");
+		let cleaned = message
+			.replace(/^Error:\s*/i, "")
+			.replace(/^Failed to\s+/i, "")
+			.replace(/^Exception:\s*/i, "")
+			.trim();
 
-		// Trim and capitalize first letter
-		cleanedMessage = cleanedMessage.trim();
-		if (cleanedMessage.length > 0) {
-			cleanedMessage =
-				cleanedMessage.charAt(0).toUpperCase() + cleanedMessage.slice(1);
+		// Capitalize first letter
+		if (cleaned.length > 0) {
+			cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 		}
 
-		return cleanedMessage;
+		return cleaned || "An unexpected error occurred";
 	}
 }
