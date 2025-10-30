@@ -35,6 +35,12 @@ const latest = await ctx.loadArtifact('summary.txt'); // session scope
 const userConfig = await ctx.loadArtifact('user:settings.json'); // user scope
 ```
 
+## Filenames
+
+- Use clear, descriptive filenames; extensions (e.g., `.pdf`, `.png`) help humans, while decoding relies on `mimeType`.
+- Filenames must be unique within their scope (session or user namespace).
+- Prefer consistent naming conventions for temporary vs long-lived artifacts (e.g., `tmp_*.json`).
+
 ## Versioning
 
 Each save creates a new version starting at 0. Loading without a `version` parameter returns the latest.

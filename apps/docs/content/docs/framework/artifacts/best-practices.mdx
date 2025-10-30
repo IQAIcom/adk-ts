@@ -5,511 +5,94 @@ description: Performance, security, versioning, and production considerations fo
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-This guide covers essential best practices for using artifacts in production environments, focusing on performance optimization, security considerations, and operational excellence.
+This guide covers essential best practices for using artifacts effectively in development and production. The emphasis is on clarity, safety, and maintainability.
 
-## Performance Optimization
+## Choose the right service
 
-### Caching Strategies
+Use the in-memory service for local dev and tests. Use GCS (or another durable backend) for production.
 
-Keep a small in-process cache for hot artifacts.
+<Callout type="info">In-memory data is lost on restart. GCS persists and scales.</Callout>
+
+## Filenames and MIME types
+
+Use descriptive filenames (extensions help humans). Always set an accurate MIME type; consumers rely on it to decode data correctly.
 
 ```typescript
-const cache = new Map<string, { part: Part; ts: number }>();
-const TTL_MS = 5 * 60 * 1000;
+// Good: descriptive name + accurate type
+await ctx.saveArtifact('monthly_report.pdf', {
+  inlineData: { data: pdfBytesB64, mimeType: 'application/pdf' }
+});
 
-async function loadWithCache(svc: BaseArtifactService, key: {
-  appName: string; userId: string; sessionId: string; filename: string; version?: number
-}): Promise<Part | null> {
-  const k = `${key.appName}:${key.userId}:${key.sessionId}:${key.filename}:${key.version ?? 'latest'}`;
-  const hit = cache.get(k);
-  if (hit && Date.now() - hit.ts < TTL_MS) return hit.part;
-  const part = await svc.loadArtifact(key);
-  if (part) cache.set(k, { part, ts: Date.now() });
-  return part;
+// Avoid: misleading extension or missing mimeType
+// await ctx.saveArtifact('file', { inlineData: { data: pdfBytesB64 } });
+```
+
+## Understand scoping
+
+Default filenames are session-scoped. Prefix with `user:` for user-wide artifacts that span sessions, e.g., `user:settings.json`.
+
+Use `user:` only for data that truly belongs to the user across conversations.
+
+## Versioning behavior
+
+Every save creates a new version (starting at 0). Loading without an explicit version returns the latest. If you need a historical copy, pass the version number.
+
+```typescript
+await ctx.saveArtifact('report.pdf', pdfPart);        // v0
+await ctx.saveArtifact('report.pdf', updatedPdfPart); // v1
+const v0 = await ctx.loadArtifact('report.pdf', 0);
+const latest = await ctx.loadArtifact('report.pdf');
+```
+
+## Error handling
+
+Handle missing services, missing artifacts, and storage errors (auth, permissions, network):
+
+```typescript
+try {
+  const a = await ctx.loadArtifact('maybe_exists.txt');
+  if (!a) {
+    // handle not found
+  }
+} catch (e) {
+  // handle storage/auth/network issues
 }
 ```
 
-### Batch Operations
+## Size and performance
+
+Be mindful of large payloads: cost, latency, memory. Prefer compression for large text/JSON and avoid unnecessarily large binary data in-memory.
+
+Simple batching and lightweight caching can help:
 
 ```typescript
 await Promise.all([
-  svc.saveArtifact({ /* args1 */ }),
-  svc.saveArtifact({ /* args2 */ }),
-  svc.saveArtifact({ /* args3 */ })
+  ctx.saveArtifact('a.txt', a),
+  ctx.saveArtifact('b.txt', b)
 ]);
 ```
 
-### Size Optimization
+## Cleanup strategies
+
+Durable stores like GCS keep artifacts until deleted. Consider:
+
+- GCS lifecycle rules for automatic pruning
+- Administrative tooling calling `deleteArtifact` for temporary data
+- Naming conventions that distinguish temporary vs. long-lived artifacts
+
+## Security basics
 
 ```typescript
-// Compress text/JSON before saving
-const json = JSON.stringify(someData);
-const compact = json.replace(/\s+/g, ' ');
-
-// Validate size (default 10MB)
-const ok = Buffer.from(part.inlineData.data, 'base64').length <= 10 * 1024 * 1024;
-```
-
-## Security and Access Control
-
-### Data Validation
-
-```typescript
+// Validate filename, size, and MIME type before saving
 const ALLOWED = new Set(['text/plain','text/csv','application/json','image/png','image/jpeg','application/pdf']);
-const MAX = 50 * 1024 * 1024;
+const MAX = 50 * 1024 * 1024; // 50MB
 
 function validatePart(filename: string, part: Part) {
-  const errors: string[] = [], warnings: string[] = [];
   const mime = part.inlineData.mimeType;
   const size = Buffer.from(part.inlineData.data, 'base64').length;
-  if (!ALLOWED.has(mime)) errors.push(`Unsupported MIME: ${mime}`);
-  if (size > MAX) errors.push(`File too large: ${size}`);
-  if (!/^[a-zA-Z0-9._-]+$/.test(filename.replace('user:', ''))) errors.push('Invalid filename');
-  if (mime === 'application/json') {
-    try { JSON.parse(Buffer.from(part.inlineData.data, 'base64').toString()); } catch { errors.push('Invalid JSON'); }
-  }
-  if (size === 0) warnings.push('Empty file');
-  return { isValid: errors.length === 0, errors, warnings, size };
-}
-```
-
-### Access Control Patterns
-
-Implement proper access controls:
-
-```typescript
-class SecureArtifactService {
-  constructor(
-    private baseService: BaseArtifactService,
-    private authService: AuthService
-  ) {}
-
-  async saveArtifact(
-    args: {
-      appName: string;
-      userId: string;
-      sessionId: string;
-      filename: string;
-      artifact: Part;
-    },
-    requestingUserId: string,
-    permissions: string[]
-  ): Promise<number> {
-    // Verify user can save artifacts
-    if (!permissions.includes('artifact:write')) {
-      throw new Error('Insufficient permissions to save artifacts');
-    }
-
-    // Verify user can save to this location
-    if (args.userId !== requestingUserId && !permissions.includes('artifact:admin')) {
-      throw new Error('Cannot save artifacts for other users');
-    }
-
-    // Validate user namespace access
-    if (args.filename.startsWith('user:') && args.userId !== requestingUserId) {
-      throw new Error('Cannot save to user namespace of other users');
-    }
-
-    // Apply rate limiting
-    await this.checkRateLimit(requestingUserId, 'save');
-
-    return this.baseService.saveArtifact(args);
-  }
-
-  async loadArtifact(
-    args: {
-      appName: string;
-      userId: string;
-      sessionId: string;
-      filename: string;
-      version?: number;
-    },
-    requestingUserId: string,
-    permissions: string[]
-  ): Promise<Part | null> {
-    // Verify user can read artifacts
-    if (!permissions.includes('artifact:read')) {
-      throw new Error('Insufficient permissions to read artifacts');
-    }
-
-    // Check if user can access this data
-    const canAccess =
-      args.userId === requestingUserId ||
-      permissions.includes('artifact:admin') ||
-      this.isSharedArtifact(args.filename);
-
-    if (!canAccess) {
-      throw new Error('Access denied to artifact');
-    }
-
-    return this.baseService.loadArtifact(args);
-  }
-
-  private async checkRateLimit(userId: string, operation: string): Promise<void> {
-    // Implement rate limiting logic
-    const key = `ratelimit:${userId}:${operation}`;
-    const current = await this.getRateLimitCount(key);
-
-    if (current > this.getRateLimit(operation)) {
-      throw new Error('Rate limit exceeded');
-    }
-
-    await this.incrementRateLimit(key);
-  }
-
-  private isSharedArtifact(filename: string): boolean {
-    // Define shared artifact patterns
-    return filename.startsWith('shared:') || filename.startsWith('public:');
-  }
-
-  private getRateLimit(operation: string): number {
-    const limits = {
-      save: 100,  // 100 saves per hour
-      load: 1000  // 1000 loads per hour
-    };
-    return limits[operation] || 10;
-  }
-
-  private async getRateLimitCount(key: string): Promise<number> {
-    // Implementation depends on your rate limiting store (Redis, etc.)
-    return 0;
-  }
-
-  private async incrementRateLimit(key: string): Promise<void> {
-    // Implementation depends on your rate limiting store
-  }
-}
-```
-
-## Version Management
-
-### Cleanup Strategies
-
-Implement automatic cleanup for old versions:
-
-```typescript
-class ArtifactVersionManager {
-  constructor(private artifactService: BaseArtifactService) {}
-
-  async cleanupOldVersions(
-    appName: string,
-    userId: string,
-    sessionId: string,
-    retentionPolicy: RetentionPolicy
-  ): Promise<CleanupResult> {
-    const artifacts = await this.artifactService.listArtifactKeys({
-      appName,
-      userId,
-      sessionId
-    });
-
-    let totalDeleted = 0;
-    const errors: string[] = [];
-
-    for (const filename of artifacts) {
-      try {
-        const versions = await this.artifactService.listVersions({
-          appName,
-          userId,
-          sessionId,
-          filename
-        });
-
-        const versionsToDelete = this.selectVersionsForDeletion(
-          versions,
-          retentionPolicy
-        );
-
-        for (const version of versionsToDelete) {
-          // Note: Current interface doesn't support version-specific deletion
-          // This would need to be added to BaseArtifactService
-          console.log(`Would delete ${filename} version ${version}`);
-          totalDeleted++;
-        }
-
-      } catch (error) {
-        errors.push(`Failed to cleanup ${filename}: ${error.message}`);
-      }
-    }
-
-    return {
-      artifactsProcessed: artifacts.length,
-      versionsDeleted: totalDeleted,
-      errors
-    };
-  }
-
-  private selectVersionsForDeletion(
-    versions: number[],
-    policy: RetentionPolicy
-  ): number[] {
-    const sortedVersions = [...versions].sort((a, b) => b - a); // newest first
-
-    switch (policy.strategy) {
-      case 'keep_latest':
-        return sortedVersions.slice(policy.count);
-
-      case 'keep_recent':
-        // Keep versions from the last N days (simplified)
-        const cutoffVersion = sortedVersions[policy.count - 1] || 0;
-        return versions.filter(v => v < cutoffVersion);
-
-      case 'custom':
-        return policy.customSelector(versions);
-
-      default:
-        return [];
-    }
-  }
-}
-
-interface RetentionPolicy {
-  strategy: 'keep_latest' | 'keep_recent' | 'custom';
-  count: number;
-  customSelector?: (versions: number[]) => number[];
-}
-
-interface CleanupResult {
-  artifactsProcessed: number;
-  versionsDeleted: number;
-  errors: string[];
-}
-```
-
-### Backup Strategies
-
-Implement backup and recovery for critical artifacts:
-
-```typescript
-class ArtifactBackupService {
-  constructor(
-    private primaryService: BaseArtifactService,
-    private backupService: BaseArtifactService
-  ) {}
-
-  async saveWithBackup(args: {
-    appName: string;
-    userId: string;
-    sessionId: string;
-    filename: string;
-    artifact: Part;
-  }): Promise<number> {
-    // Save to primary storage
-    const version = await this.primaryService.saveArtifact(args);
-
-    // Async backup (don't wait for completion)
-    this.backupArtifact(args, version).catch(error => {
-      console.error('Backup failed:', error);
-    });
-
-    return version;
-  }
-
-  private async backupArtifact(
-    args: {
-      appName: string;
-      userId: string;
-      sessionId: string;
-      filename: string;
-      artifact: Part;
-    },
-    version: number
-  ): Promise<void> {
-    try {
-      // Add backup metadata
-      const backupArtifact = {
-        ...args.artifact,
-        inlineData: {
-          ...args.artifact.inlineData,
-          // Add backup metadata to MIME type
-          mimeType: `${args.artifact.inlineData.mimeType}; backup=true; original-version=${version}`
-        }
-      };
-
-      await this.backupService.saveArtifact({
-        ...args,
-        artifact: backupArtifact
-      });
-
-    } catch (error) {
-      console.error('Failed to create backup:', error);
-      throw error;
-    }
-  }
-
-  async restoreFromBackup(args: {
-    appName: string;
-    userId: string;
-    sessionId: string;
-    filename: string;
-    version?: number;
-  }): Promise<Part | null> {
-    console.log('Attempting restore from backup...');
-
-    try {
-      const backup = await this.backupService.loadArtifact(args);
-
-      if (backup) {
-        // Remove backup metadata from MIME type
-        const cleanArtifact = {
-          ...backup,
-          inlineData: {
-            ...backup.inlineData,
-            mimeType: backup.inlineData.mimeType.split(';')[0]
-          }
-        };
-
-        // Restore to primary storage
-        await this.primaryService.saveArtifact({
-          ...args,
-          artifact: cleanArtifact
-        });
-
-        return cleanArtifact;
-      }
-
-      return null;
-
-    } catch (error) {
-      console.error('Backup restore failed:', error);
-      throw error;
-    }
-  }
-}
-```
-
-## Error Handling and Resilience
-
-### Retry Logic (simple backoff)
-
-```typescript
-async function withRetry<T>(op: () => Promise<T>, attempts = 3, base = 1000) {
-  let last: unknown;
-  for (let i = 0; i <= attempts; i++) {
-    try { return await op(); } catch (e) {
-      last = e; if (i === attempts) break;
-      await new Promise(r => setTimeout(r, base * Math.pow(2, i)));
-    }
-  }
-  throw last;
-}
-```
-
-## Monitoring and Observability
-
-### Metrics Collection
-
-Track artifact usage and performance:
-
-```typescript
-class ArtifactMetricsCollector {
-  private metrics = {
-    saves: 0,
-    loads: 0,
-    errors: 0,
-    totalSize: 0,
-    averageSize: 0,
-    operationTimes: [] as number[]
-  };
-
-  constructor(private artifactService: BaseArtifactService) {}
-
-  async saveArtifactWithMetrics(args: {
-    appName: string;
-    userId: string;
-    sessionId: string;
-    filename: string;
-    artifact: Part;
-  }): Promise<number> {
-    const startTime = Date.now();
-
-    try {
-      const version = await this.artifactService.saveArtifact(args);
-
-      // Record success metrics
-      this.metrics.saves++;
-      const size = Buffer.from(args.artifact.inlineData.data, 'base64').length;
-      this.updateSizeMetrics(size);
-      this.recordOperationTime(Date.now() - startTime);
-
-      return version;
-
-    } catch (error) {
-      this.metrics.errors++;
-      throw error;
-    }
-  }
-
-  async loadArtifactWithMetrics(args: {
-    appName: string;
-    userId: string;
-    sessionId: string;
-    filename: string;
-    version?: number;
-  }): Promise<Part | null> {
-    const startTime = Date.now();
-
-    try {
-      const artifact = await this.artifactService.loadArtifact(args);
-
-      // Record success metrics
-      this.metrics.loads++;
-
-      if (artifact) {
-        const size = Buffer.from(artifact.inlineData.data, 'base64').length;
-        this.updateSizeMetrics(size);
-      }
-
-      this.recordOperationTime(Date.now() - startTime);
-
-      return artifact;
-
-    } catch (error) {
-      this.metrics.errors++;
-      throw error;
-    }
-  }
-
-  private updateSizeMetrics(size: number): void {
-    this.metrics.totalSize += size;
-    const totalOps = this.metrics.saves + this.metrics.loads;
-    this.metrics.averageSize = this.metrics.totalSize / totalOps;
-  }
-
-  private recordOperationTime(time: number): void {
-    this.metrics.operationTimes.push(time);
-
-    // Keep only last 1000 operations for memory efficiency
-    if (this.metrics.operationTimes.length > 1000) {
-      this.metrics.operationTimes = this.metrics.operationTimes.slice(-1000);
-    }
-  }
-
-  getMetrics() {
-    const times = this.metrics.operationTimes;
-
-    return {
-      ...this.metrics,
-      averageOperationTime: times.length > 0
-        ? times.reduce((a, b) => a + b, 0) / times.length
-        : 0,
-      p95OperationTime: times.length > 0
-        ? times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)]
-        : 0,
-      errorRate: (this.metrics.errors / (this.metrics.saves + this.metrics.loads + this.metrics.errors)) * 100
-    };
-  }
-
-  resetMetrics(): void {
-    this.metrics = {
-      saves: 0,
-      loads: 0,
-      errors: 0,
-      totalSize: 0,
-      averageSize: 0,
-      operationTimes: []
-    };
-  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(filename.replace('user:', ''))) throw new Error('Invalid filename');
+  if (!ALLOWED.has(mime)) throw new Error(`Unsupported MIME: ${mime}`);
+  if (size > MAX) throw new Error(`File too large: ${size}`);
 }
 ```
 

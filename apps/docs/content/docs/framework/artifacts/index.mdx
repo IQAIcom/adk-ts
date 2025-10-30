@@ -6,23 +6,36 @@ description: Manage named, versioned binary data for rich agent interactions wit
 import { Cards, Card } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Artifacts provide a mechanism for managing named, versioned binary data associated with user sessions. They enable agents to handle data beyond simple text strings, supporting rich interactions with files, images, audio, and other binary formats.
+Artifacts provide a mechanism for managing named, versioned binary data associated with user sessions or persistently with a user. They enable agents to handle data beyond simple text strings, supporting rich interactions with files, images, audio, and other binary formats.
 
-## Overview
+## What are artifacts?
 
-Artifacts are pieces of binary data identified by unique filenames within specific scopes, with automatic versioning for data evolution. They bridge the gap between simple session state and complex file management needs.
+Artifacts are pieces of binary data (like files) identified by a unique filename within a scope (session or user). Each time you save an artifact with the same filename, a new numeric version is created automatically.
 
-### Core Characteristics
+Representation:
 
-- **Binary Data Storage**: Handle any type of binary content (images, PDFs, audio, video)
-- **Named Identification**: Use descriptive filenames for easy reference
-- **Automatic Versioning**: Each save creates a new version automatically
-- **Scoped Access**: Session-specific or user-wide accessibility
-- **Standard Representation**: Consistent `Part` object format from `@google/genai`
+- Standard data shape is a `Part` from `@google/genai` with `inlineData`:
+  - `inlineData.data`: base64-encoded bytes
+  - `inlineData.mimeType`: MIME type string (for correct interpretation)
+
+## Why use artifacts
+
+- Handle non-textual data (images, audio, PDFs, spreadsheets, etc.)
+- Persist larger blobs separate from lightweight session state
+- Manage user uploads and generated outputs across steps/sessions
+- Share or cache binary results to avoid recomputation
 
 <Callout type="info" title="Beyond Text Storage">
 While session state is perfect for configuration and conversational context, artifacts are designed for binary data, large files, and content that needs versioning.
 </Callout>
+
+## Common use cases
+
+- Generated reports/files (PDFs, CSV exports, image charts)
+- Handling user uploads (analysis, summarization, conversion)
+- Intermediate binary results in multi-step workflows (audio, renders)
+- Persistent user data that isn’t a simple key-value
+- Caching expensive binary outputs for reuse
 
 ## Quick Start
 
@@ -80,36 +93,6 @@ const runner = new Runner({
   sessionService: new InMemorySessionService(),
   artifactService // Configure artifact service
 });
-```
-
-### Working with Different Data Types
-
-```typescript
-const mediaArtifactCallback = async (callbackContext: CallbackContext) => {
-  // Save an image artifact
-  const imageData = Buffer.from(/* your image data */);
-  const imageArtifact = {
-    inlineData: {
-      data: imageData.toString('base64'),
-      mimeType: 'image/png'
-    }
-  };
-
-  await callbackContext.saveArtifact('generated_chart.png', imageArtifact);
-
-  // Save a JSON data artifact
-  const jsonData = { results: [1, 2, 3], timestamp: new Date().toISOString() };
-  const jsonArtifact = {
-    inlineData: {
-      data: Buffer.from(JSON.stringify(jsonData)).toString('base64'),
-      mimeType: 'application/json'
-    }
-  };
-
-  await callbackContext.saveArtifact('analysis_results.json', jsonArtifact);
-
-  return undefined;
-};
 ```
 
 ### Auto-save input blobs from user messages
@@ -246,233 +229,11 @@ const versioningExample = async (callbackContext: CallbackContext) => {
     href="/docs/framework/artifacts/best-practices"
   />
 </Cards>
+## Related topics
 
-### File Upload and Processing
+See these pages for details and examples:
 
-Save an uploaded file as an artifact, then persist derived results (e.g., analysis output). This is a minimal end-to-end flow; see the full tool-based version in Recipes.
-
-[Open recipes](/docs/framework/artifacts/recipes)
-
-```typescript
-const fileProcessingCallback = async (callbackContext: CallbackContext) => {
-  // Simulate receiving an uploaded file
-  const uploadedFileData = Buffer.from('CSV data here');
-  const csvArtifact = {
-    inlineData: {
-      data: uploadedFileData.toString('base64'),
-      mimeType: 'text/csv'
-    }
-  };
-
-  // Save uploaded file
-  await callbackContext.saveArtifact('uploaded_data.csv', csvArtifact);
-
-  // Process and save results
-  const processedData = { summary: 'Analysis complete', rows: 100 };
-  const resultsArtifact = {
-    inlineData: {
-      data: Buffer.from(JSON.stringify(processedData)).toString('base64'),
-      mimeType: 'application/json'
-    }
-  };
-
-  await callbackContext.saveArtifact('processing_results.json', resultsArtifact);
-
-  return undefined;
-};
-```
-
-### Caching Expensive Operations
-
-Avoid recomputing expensive results by saving a JSON artifact as a cache entry and reading it on subsequent runs. Use this for deterministic or memoizable outputs.
-
-```typescript
-const cachingCallback = async (callbackContext: CallbackContext) => {
-  const cacheKey = 'expensive_computation_result.json';
-
-  // Check for cached result
-  const cachedResult = await callbackContext.loadArtifact(cacheKey);
-
-  if (cachedResult) {
-    console.log('Using cached result');
-    const data = JSON.parse(
-      Buffer.from(cachedResult.inlineData.data, 'base64').toString()
-    );
-    callbackContext.state.set('computation_result', data);
-  } else {
-    console.log('Computing new result');
-
-    // Perform expensive computation
-    const result = { value: Math.random(), timestamp: Date.now() };
-
-    // Cache the result
-    const artifact = {
-      inlineData: {
-        data: Buffer.from(JSON.stringify(result)).toString('base64'),
-        mimeType: 'application/json'
-      }
-    };
-
-    await callbackContext.saveArtifact(cacheKey, artifact);
-    callbackContext.state.set('computation_result', result);
-  }
-
-  return undefined;
-};
-```
-
-## Service Architecture
-
-See interfaces and backends in:
-
-- [Scoping & Versioning](/docs/framework/artifacts/scoping-and-versioning): behavior overview
-- [Service Implementations](/docs/framework/artifacts/service-implementations): concrete setup and usage
-
-## Documentation Structure
-
-<Cards>
-  <Card
-    title="🏗️ Service Implementations"
-    description="Different artifact service backends and their configurations"
-    href="/docs/framework/artifacts/service-implementations"
-  />
-
-  <Card
-    title="🔧 Context Integration"
-    description="Using artifacts through CallbackContext and ToolContext"
-    href="/docs/framework/artifacts/context-integration"
-  />
-
-  <Card
-    title="📋 Best Practices"
-    description="Performance, security, versioning, and production considerations"
-    href="/docs/framework/artifacts/best-practices"
-  />
-</Cards>
-
-## Error Handling
-
-Always implement proper error handling for artifact operations:
-
-```typescript
-const robustArtifactCallback = async (callbackContext: CallbackContext) => {
-  try {
-    const artifact = await callbackContext.loadArtifact('user_config.json');
-
-    if (artifact) {
-      const config = JSON.parse(
-        Buffer.from(artifact.inlineData.data, 'base64').toString()
-      );
-      callbackContext.state.set('user_config', config);
-    } else {
-      console.log('No existing config found, using defaults');
-      callbackContext.state.set('user_config', getDefaultConfig());
-    }
-  } catch (error) {
-    console.error('Failed to load user config:', error);
-
-    // Fallback to defaults
-    callbackContext.state.set('user_config', getDefaultConfig());
-
-    // Optionally notify the user
-    return {
-      role: 'model',
-      parts: [{ text: 'Configuration could not be loaded. Using default settings.' }]
-    };
-  }
-
-  return undefined;
-};
-
-function getDefaultConfig() {
-  return {
-    theme: 'light',
-    language: 'en',
-    notifications: true
-  };
-}
-```
-
-## Integration Examples
-
-### With Tools
-
-```typescript
-import { BaseTool, ToolContext } from '@iqai/adk';
-
-class FileAnalysisTool extends BaseTool {
-  async runAsync(args: { filename: string }, context: ToolContext) {
-    try {
-      // List available artifacts
-      const availableFiles = await context.listArtifacts();
-
-      if (!availableFiles.includes(args.filename)) {
-        return { error: `File ${args.filename} not found` };
-      }
-
-      // Load and analyze the file
-      const artifact = await context.loadArtifact(args.filename);
-      if (!artifact) {
-        return { error: `Could not load ${args.filename}` };
-      }
-
-      // Perform analysis based on MIME type
-      const analysis = this.analyzeFile(artifact);
-
-      // Save analysis results
-      const resultArtifact = {
-        inlineData: {
-          data: Buffer.from(JSON.stringify(analysis)).toString('base64'),
-          mimeType: 'application/json'
-        }
-      };
-
-      await context.saveArtifact(`analysis_${args.filename}.json`, resultArtifact);
-
-      return {
-        analysis,
-        result_saved: `analysis_${args.filename}.json`
-      };
-    } catch (error) {
-      return { error: `Analysis failed: ${error.message}` };
-    }
-  }
-
-  private analyzeFile(artifact: Part) {
-    // Implementation based on MIME type
-    return {
-      size: artifact.inlineData.data.length,
-      type: artifact.inlineData.mimeType,
-      timestamp: new Date().toISOString()
-    };
-  }
-}
-```
-
-## Related Topics
-
-<Cards>
-  <Card
-    title="🔧 Tools"
-    description="Using artifacts in tool implementations for file processing"
-    href="/docs/framework/tools"
-  />
-
-  <Card
-    title="💬 Sessions"
-    description="Understanding artifact scoping within session management"
-    href="/docs/framework/sessions"
-  />
-
-  <Card
-    title="📋 Callbacks"
-    description="Artifact access and management through callbacks"
-    href="/docs/framework/callbacks"
-  />
-
-  <Card
-    title="🏗️ Context"
-    description="Context objects for artifact operations and access"
-    href="/docs/framework/context"
-  />
-</Cards>
+- Context usage: save/load/list via `CallbackContext` and `ToolContext`
+- Scoping & versioning rules and patterns
+- Service implementations (In-memory, GCS) and setup
+- Recipes for upload → process → save and caching
