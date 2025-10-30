@@ -2,16 +2,12 @@ import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "node:util";
-import type { BaseAgent, BuiltAgent, EnhancedRunner } from "@iqai/adk";
-import { FullMessage, InMemorySessionService, Session } from "@iqai/adk";
+import type { BaseAgent, BuiltAgent } from "@iqai/adk";
+import { FullMessage, InMemorySessionService } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import type { Agent, ContentPart, LoadedAgent } from "../../common/types";
 import { AgentLoader } from "./agent-loader.service";
-import type {
-	ModuleExport,
-	SessionState,
-	SessionWithState,
-} from "./agent-loader.types";
+import type { ModuleExport, SessionState } from "./agent-loader.types";
 import {
 	clearAgentSessions as clearAgentSessionsHelper,
 	createRunnerWithSession as createRunnerWithSessionHelper,
@@ -22,20 +18,6 @@ import {
 } from "./agent-manager/sessions";
 import { extractInitialState as extractInitialStateHelper } from "./agent-manager/state";
 import { AgentScanner } from "./agent-scanner.service";
-
-/**
- * Agent-like object with optional sessionService
- */
-interface AgentWithSessionService {
-	sessionService?: SessionServiceLike;
-}
-
-/**
- * Session service structure with sessions map
- */
-interface SessionServiceLike {
-	sessions?: Map<string, Map<string, Map<string, SessionWithState>>>;
-}
 
 @Injectable()
 export class AgentManager {
@@ -229,67 +211,6 @@ export class AgentManager {
 		return agentResult;
 	}
 
-	/**
-	 * Get an existing session by ID, falling back to creating a new one if not found
-	 */
-	private async getExistingSession(
-		agentPath: string,
-		sessionId: string,
-	): Promise<Session> {
-		return getExistingSessionHelper(
-			this.sessionService,
-			agentPath,
-			sessionId,
-			this.logger,
-		);
-	}
-
-	private async getOrCreateSession(
-		agentPath: string,
-		agentResult: { agent: BaseAgent; builtAgent?: BuiltAgent },
-	): Promise<Session> {
-		return getOrCreateSessionHelper(
-			this.sessionService,
-			agentPath,
-			agentResult,
-			(r) => extractInitialStateHelper(r, this.logger),
-			this.logger,
-		);
-	}
-
-	private async createRunnerWithSession(
-		baseAgent: BaseAgent,
-		sessionToUse: Session,
-		agentPath: string,
-	): Promise<EnhancedRunner> {
-		return createRunnerWithSessionHelper(
-			this.sessionService,
-			baseAgent,
-			sessionToUse,
-			agentPath,
-		);
-	}
-
-	private async storeLoadedAgent(
-		agentPath: string,
-		agentResult: { agent: BaseAgent; builtAgent?: BuiltAgent },
-		runner: EnhancedRunner,
-		sessionToUse: Session,
-		agent: Agent,
-	): Promise<void> {
-		return storeLoadedAgentHelper(
-			this.sessionService,
-			agentPath,
-			agentResult,
-			runner,
-			sessionToUse,
-			agent,
-			(path, payload) => this.loadedAgents.set(path, payload as LoadedAgent),
-			this.logger,
-			(path, built) => this.builtAgents.set(path, built),
-		);
-	}
-
 	async stopAgent(agentPath: string): Promise<void> {
 		// Deprecated: explicit stop not needed; keep method no-op for backward compatibility
 		this.loadedAgents.delete(agentPath);
@@ -445,16 +366,5 @@ export class AgentManager {
 	 */
 	private hashState(state: SessionState | undefined): string {
 		return hashStateHelper(state);
-	}
-
-	/**
-	 * Clear all sessions for an agent (used when initial state changes)
-	 */
-	private async clearAgentSessions(agentPath: string): Promise<void> {
-		return clearAgentSessionsHelper(
-			this.sessionService,
-			agentPath,
-			this.logger,
-		);
 	}
 }

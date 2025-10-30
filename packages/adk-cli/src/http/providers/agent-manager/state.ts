@@ -2,6 +2,18 @@ import type { BaseAgent, BuiltAgent } from "@iqai/adk";
 import type { Logger } from "@nestjs/common";
 import type { SessionState, SessionWithState } from "../agent-loader.types";
 
+interface AgentWithSessionService {
+	sessionService?: {
+		sessions?: Map<string, Map<string, Map<string, SessionWithState>>>;
+	};
+}
+
+function hasSessionService(agent: unknown): agent is AgentWithSessionService {
+	return (
+		typeof agent === "object" && agent !== null && "sessionService" in agent
+	);
+}
+
 function extractNonEmptyState(
 	state: SessionState | Map<string, unknown> | undefined,
 ): SessionState | undefined {
@@ -17,25 +29,14 @@ function extractNonEmptyState(
 }
 
 function getInitialStateFromSessionService(
-	agent:
-		| {
-				sessionService?: {
-					sessions?: Map<string, Map<string, Map<string, SessionWithState>>>;
-				};
-		  }
-		| undefined,
+	agent: AgentWithSessionService | undefined,
 ): SessionState | undefined {
 	const sessions = agent?.sessionService?.sessions;
 	if (!sessions) return undefined;
 	for (const [, userSessions] of sessions) {
 		for (const [, session] of userSessions) {
 			for (const [, innerSession] of session) {
-				const extractedState = extractNonEmptyState(
-					innerSession?.state as
-						| SessionState
-						| Map<string, unknown>
-						| undefined,
-				);
+				const extractedState = extractNonEmptyState(innerSession?.state);
 				if (extractedState) return extractedState;
 			}
 		}
@@ -59,18 +60,14 @@ function extractSubAgentState(
 	const subAgents = (agent as { subAgents?: BaseAgent[] }).subAgents;
 	if (!Array.isArray(subAgents)) return undefined;
 	for (const subAgent of subAgents) {
-		const subState = getInitialStateFromSessionService(
-			subAgent as unknown as {
-				sessionService?: {
-					sessions?: Map<string, Map<string, Map<string, SessionWithState>>>;
-				};
-			},
-		);
-		if (subState) {
-			logger?.log(
-				`✅ Extracted state from sub-agent: ${Object.keys(subState)}`,
-			);
-			return subState;
+		if (hasSessionService(subAgent)) {
+			const subState = getInitialStateFromSessionService(subAgent);
+			if (subState) {
+				logger?.log(
+					`✅ Extracted state from sub-agent: ${Object.keys(subState)}`,
+				);
+				return subState;
+			}
 		}
 	}
 	return undefined;
@@ -83,14 +80,10 @@ export function extractInitialState(
 	const builtAgentState = extractBuiltAgentState(agentResult.builtAgent);
 	if (builtAgentState) return builtAgentState;
 
-	const agentState = getInitialStateFromSessionService(
-		agentResult.agent as unknown as {
-			sessionService?: {
-				sessions?: Map<string, Map<string, Map<string, SessionWithState>>>;
-			};
-		},
-	);
-	if (agentState) return agentState;
+	if (hasSessionService(agentResult.agent)) {
+		const agentState = getInitialStateFromSessionService(agentResult.agent);
+		if (agentState) return agentState;
+	}
 
 	const subAgentState = extractSubAgentState(agentResult.agent, logger);
 	if (subAgentState) return subAgentState;
