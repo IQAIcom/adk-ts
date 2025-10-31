@@ -6,23 +6,12 @@ import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import z from "zod";
+import { environmentEnum, envSchema } from "../common/schema";
 import { HttpModule } from "./http.module";
 import { AgentManager } from "./providers/agent-manager.service";
 import { DIRECTORIES_TO_SKIP } from "./providers/agent-scanner.service";
 import { HotReloadService } from "./reload/hot-reload.service";
 import type { RuntimeConfig } from "./runtime-config";
-
-const environmentEnum = z.enum(["development", "production"]);
-
-const envSchema = z.object({
-	ADK_DEBUG: z
-		.string()
-		.optional()
-		.transform((val) => val === "true")
-		.default(false),
-	NODE_ENV: environmentEnum.default("development"),
-	ADK_HTTP_BODY_LIMIT: z.string().default("25mb"),
-});
 
 function pathHasSkippedDir(p: string): boolean {
 	const parts = p.split(sep).filter(Boolean);
