@@ -228,7 +228,7 @@ adk serve --swagger
 
 ```bash
 # Enable detailed logging for development
-export ADK_DEBUG_NEST=true
+export ADK_DEBUG=true
 export ADK_VERBOSE=true
 
 # Run with debug output

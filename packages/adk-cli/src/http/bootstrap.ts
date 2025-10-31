@@ -96,7 +96,7 @@ function setupHotReload(
 					const fullPath =
 						typeof filename === "string" ? resolve(p, filename) : p;
 					if (shouldIgnorePath(fullPath, gitignorePrefixes)) {
-						if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+						if (!config.quiet && process.env.ADK_DEBUG === "1") {
 							console.log(`[hot-reload] Ignored change in ${fullPath}`);
 						}
 						return;
@@ -113,7 +113,7 @@ function setupHotReload(
 							const stateChanged = await agentManager.hasInitialStateChanged();
 
 							if (stateChanged) {
-								if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+								if (!config.quiet && process.env.ADK_DEBUG === "true") {
 									console.log(
 										"[hot-reload] Initial state changed - performing full reload (sessions will be cleared)",
 									);
@@ -126,7 +126,7 @@ function setupHotReload(
 								for (const agentPath of agentManager.getAgents().keys()) {
 									try {
 										await agentManager.startAgent(agentPath, undefined, true);
-										if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+										if (!config.quiet && process.env.ADK_DEBUG === "true") {
 											console.log(
 												`[hot-reload] Full reload completed for ${agentPath}`,
 											);
@@ -143,7 +143,7 @@ function setupHotReload(
 							} else {
 								// Hot reload: preserve sessions
 								const preservedSessions = agentManager.getLoadedAgentSessions();
-								if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+								if (!config.quiet && process.env.ADK_DEBUG === "true") {
 									console.log(
 										`[hot-reload] Code changed - preserving ${preservedSessions.size} session(s)`,
 									);
@@ -161,7 +161,7 @@ function setupHotReload(
 									try {
 										// Start agent with preserved session ID for restoration
 										await agentManager.startAgent(agentPath, sessionId);
-										if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+										if (!config.quiet && process.env.ADK_DEBUG === "true") {
 											console.log(
 												`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
 											);
@@ -177,7 +177,7 @@ function setupHotReload(
 								}
 							}
 
-							if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+							if (!config.quiet && process.env.ADK_DEBUG === "1") {
 								console.log(
 									`[hot-reload] Reloaded agents after change in ${filename ?? p}`,
 								);
@@ -196,7 +196,7 @@ function setupHotReload(
 				},
 			);
 			watchers.push(watcher);
-			if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+			if (!config.quiet && process.env.ADK_DEBUG === "true") {
 				console.log(`[hot-reload] Watching ${p}`);
 			}
 		} catch (e) {
@@ -245,7 +245,7 @@ export async function startHttpServer(
 		HttpModule.register(config),
 		{
 			logger:
-				process.env.ADK_DEBUG_NEST === "1"
+				process.env.ADK_DEBUG === "true"
 					? ["log", "error", "warn", "debug", "verbose"]
 					: ["error", "warn"],
 		},
@@ -291,7 +291,7 @@ export async function startHttpServer(
 			customSiteTitle: "ADK API Docs",
 			jsonDocumentUrl: "/openapi.json",
 		});
-		if (!config.quiet && process.env.ADK_DEBUG_NEST === "1") {
+		if (!config.quiet && process.env.ADK_DEBUG === "true") {
 			console.log("[openapi] Docs available at /docs (json: /openapi.json)");
 		}
 	}
