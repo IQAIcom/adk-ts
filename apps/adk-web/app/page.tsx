@@ -10,6 +10,7 @@ import { IncompatibleState } from "@/components/ui/incompatible-state";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { useAgents } from "@/hooks/use-agent";
 import { useCompatibility } from "@/hooks/use-compatibility";
+import { isPanelId, PanelId } from "./(dashboard)/_schema";
 
 function HomeContent() {
 	// Use nuqs for URL state management
@@ -24,15 +25,14 @@ function HomeContent() {
 			? `http://localhost:${port}`
 			: "http://localhost:8042";
 
-	const [selectedPanel, setSelectedPanel] = useQueryState<
-		"sessions" | "events" | "state" | "graph" | null
-	>("panel", {
-		parse: (value: string | null) =>
-			value as "sessions" | "events" | "state" | "graph" | null,
-		serialize: (value: "sessions" | "events" | "state" | "graph" | null) =>
-			value || "",
-		defaultValue: null,
-	});
+	const [selectedPanel, setSelectedPanel] = useQueryState<PanelId | null>(
+		"panel",
+		{
+			parse: (value) => (isPanelId(value) ? value : null),
+			serialize: (value) => value ?? "",
+			defaultValue: null,
+		},
+	);
 
 	const queryClient = useQueryClient();
 	const {
