@@ -1,5 +1,8 @@
 "use client";
 
+import { Database, Plus } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { SessionCard } from "@/components/session-card";
 import {
 	AlertDialog,
@@ -23,9 +26,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { Database, Plus } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 import type { SessionResponseDto as Session } from "../Api";
 
 interface SessionsPanelProps {
@@ -63,7 +63,7 @@ export function SessionsPanel({
 			if (newSessionState.trim()) {
 				try {
 					state = JSON.parse(newSessionState);
-				} catch (error) {
+				} catch (_error) {
 					toast.error(
 						"Invalid JSON in session state. Using as plain text instead.",
 					);
@@ -87,10 +87,10 @@ export function SessionsPanel({
 				if (createdId) {
 					await onSwitchSession(createdId);
 				}
-			} catch (e) {
+			} catch (_e) {
 				toast.warning("Session created but failed to switch automatically.");
 			}
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to create session. Please try again.");
 		} finally {
 			setIsCreating(false);
@@ -111,7 +111,7 @@ export function SessionsPanel({
 			toast.success("Session deleted successfully!");
 			setIsDeleteDialogOpen(false);
 			setSessionToDelete(null);
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to delete session. Please try again.");
 		} finally {
 			setIsDeleting(false);
@@ -126,7 +126,7 @@ export function SessionsPanel({
 	const handleSwitchSession = async (sessionId: string) => {
 		try {
 			await onSwitchSession(sessionId);
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to switch session. Please try again.");
 		}
 	};
@@ -210,7 +210,7 @@ export function SessionsPanel({
 							disabled={isDeleting}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
-							{isDeleting ? <>Deleting...</> : <>Delete</>}
+							{isDeleting ? "Deleting..." : "Delete"}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
