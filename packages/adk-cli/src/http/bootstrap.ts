@@ -7,6 +7,7 @@ import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
+import { PrettyErrorFilter } from "./filters/pretty-error.filter";
 import { HttpModule } from "./http.module";
 import { AgentManager } from "./providers/agent-manager.service";
 import { DIRECTORIES_TO_SKIP } from "./providers/agent-scanner.service";
@@ -250,6 +251,9 @@ export async function startHttpServer(
 					: ["error", "warn"],
 		},
 	);
+
+	// Apply global exception filter for user-friendly error messages
+	app.useGlobalFilters(new PrettyErrorFilter());
 
 	// CORS parity with previous Hono app.use("/*", cors())
 	app.enableCors({

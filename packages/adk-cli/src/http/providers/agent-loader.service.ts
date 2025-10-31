@@ -9,7 +9,7 @@ import {
 	isRebuildNeeded as checkRebuildNeeded,
 	createExternalizePlugin,
 } from "./agent-loader/build-utils";
-import { loadEnvironmentVariables as loadEnv } from "./agent-loader/env";
+import { EnvUtils } from "./agent-loader/env";
 import { createPathMappingPlugin } from "./agent-loader/path-plugin";
 import { resolveAgentExport as resolveAgentExportHelper } from "./agent-loader/resolver";
 import { normalizePathForEsbuild } from "./agent-loader/utils";
@@ -27,9 +27,11 @@ export class AgentLoader {
 	private static cacheCleanupRegistered = false;
 	private static activeCacheFiles = new Set<string>();
 	private static projectRoots = new Set<string>();
+	private envUtils: EnvUtils;
 
 	constructor(private quiet = false) {
 		this.logger = new Logger("agent-loader");
+		this.envUtils = new EnvUtils(this.logger, this.quiet);
 		this.registerCleanupHandlers();
 	}
 
@@ -297,7 +299,7 @@ export class AgentLoader {
 	}
 
 	loadEnvironmentVariables(agentFilePath: string): void {
-		loadEnv(agentFilePath, this.logger);
+		this.envUtils.loadEnvironmentVariables(agentFilePath);
 	}
 
 	async resolveAgentExport(mod: ModuleExport): Promise<AgentExportResult> {
