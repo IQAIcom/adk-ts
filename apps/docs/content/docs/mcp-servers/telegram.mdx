@@ -177,6 +177,20 @@ The tools will return an error message in the `result` field if an error occurs.
 - **Invalid chat ID:** Double-check the chat ID or username.
 - **Bot not in channel:** Add the bot to the channel with appropriate permissions.
 
+### Deployment Issues
+
+**Render Deployment Failure with Telegram Polling**
+
+When deploying Telegram polling-based agents to Render using Docker, the deployment may fail because:
+
+- Render Web Services require binding to `$PORT` environment variable
+- Telegram polling agents don't bind to an HTTP port (they use Telegram's polling API)
+- The service appears unhealthy without a bound port and may be restarted or terminated
+
+**Solution:** Switch the service type to "Background Worker" on Render instead of "Web Service". Background Workers are designed for long-running processes that don't need to expose HTTP endpoints, which matches Telegram polling behavior.
+
+For more details, see [GitHub Issue #345](https://github.com/IQAIcom/adk-ts/issues/345).
+
 ## Bot Setup
 
 <Callout type="info" title="Bot Setup Required">
