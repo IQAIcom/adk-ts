@@ -198,6 +198,13 @@ export interface StartedHttpServer {
 	stop: () => Promise<void>;
 }
 
+/**
+ * Start a Nest Express HTTP server with the ADK controllers and providers.
+ * Mirrors previous Hono server endpoints:
+ * - GET /health
+ * - /api/agents ...
+ * - /api/agents/:id/sessions ...
+ */
 export async function startHttpServer(
 	config: RuntimeConfig,
 ): Promise<StartedHttpServer> {
