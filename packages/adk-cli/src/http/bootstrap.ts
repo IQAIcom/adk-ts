@@ -59,6 +59,10 @@ function shouldIgnorePath(fullPath: string, prefixes: string[]): boolean {
 	return false;
 }
 
+/**
+ * Setup hot reload file watching with .gitignore filtering and well-known directory skips.
+ * Returns watcher/timeout references and a teardown function to close resources.
+ */
 function setupHotReload(
 	agentManager: AgentManager,
 	hotReload: HotReloadService | undefined,
