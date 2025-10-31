@@ -1,8 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useQueryState } from "nuqs";
+import { Suspense, useEffect, useRef } from "react";
 import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
 import { ChatPanel } from "@/components/chat-panel";
 import { Navbar } from "@/components/navbar";
@@ -12,9 +12,10 @@ import { useAgents } from "@/hooks/use-agent";
 import { useCompatibility } from "@/hooks/use-compatibility";
 
 function HomeContent() {
-	const searchParams = useSearchParams();
-	const apiUrl = searchParams.get("apiUrl");
-	const port = searchParams.get("port");
+	// Use nuqs for URL state management
+	const [apiUrl] = useQueryState("apiUrl");
+	const [port] = useQueryState("port");
+	const [sessionId, setSessionId] = useQueryState("sessionId");
 
 	// Support both legacy apiUrl and new port parameter, else default
 	const finalApiUrl = apiUrl
@@ -23,11 +24,15 @@ function HomeContent() {
 			? `http://localhost:${port}`
 			: "http://localhost:8042";
 
-	// Panel and session state
-	const [selectedPanel, setSelectedPanel] = useState<
+	const [selectedPanel, setSelectedPanel] = useQueryState<
 		"sessions" | "events" | "state" | "graph" | null
-	>(null);
-	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+	>("panel", {
+		parse: (value: string | null) =>
+			value as "sessions" | "events" | "state" | "graph" | null,
+		serialize: (value: "sessions" | "events" | "state" | "graph" | null) =>
+			value || "",
+		defaultValue: null,
+	});
 
 	const queryClient = useQueryClient();
 	const {
@@ -49,7 +54,7 @@ function HomeContent() {
 		selectAgent,
 		refreshAgents,
 		isSendingMessage,
-	} = useAgents(currentSessionId);
+	} = useAgents(sessionId);
 
 	// Subscribe to server-side hot-reload stream (SSE) and refresh data on change
 	useEffect(() => {
@@ -92,6 +97,7 @@ function HomeContent() {
 	) => {
 		setSelectedPanel(panel);
 	};
+
 	// Auto-select first agent if none selected and agents are available
 	useEffect(() => {
 		if (agents.length > 0 && !selectedAgent) {
@@ -106,11 +112,10 @@ function HomeContent() {
 		const currentAgentPath = selectedAgent?.relativePath ?? null;
 		if (currentAgentPath !== prevAgentRef.current) {
 			// Agent actually changed -> clear active session so new agent's first session can auto-select
-			setCurrentSessionId(null);
+			setSessionId(null);
 			prevAgentRef.current = currentAgentPath;
 		}
-	}, [selectedAgent]);
-	// (Session and events lifecycle + management moved into Sidebar)
+	}, [selectedAgent, setSessionId]);
 
 	if (loading || compatLoading) {
 		return <LoadingState message="Connecting to ADK server..." />;
@@ -158,8 +163,8 @@ function HomeContent() {
 					selectedPanel={selectedPanel}
 					onPanelSelect={handlePanelSelect}
 					selectedAgent={selectedAgent}
-					currentSessionId={currentSessionId}
-					onSessionChange={(id) => setCurrentSessionId(id)}
+					currentSessionId={sessionId}
+					onSessionChange={(id) => setSessionId(id)}
 				/>
 			</div>
 
@@ -175,7 +180,7 @@ function HomeContent() {
 							selectedAgent={selectedAgent}
 							onSelectAgent={(agent) => {
 								// Clear session first to avoid stale session requests against new agent
-								setCurrentSessionId(null);
+								setSessionId(null);
 								selectAgent(agent);
 							}}
 						/>

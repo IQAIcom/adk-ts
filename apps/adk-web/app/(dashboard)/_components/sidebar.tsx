@@ -2,7 +2,6 @@
 
 import { Activity, Archive, Database, Share2, X } from "lucide-react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { EventsPanel } from "@/components/events-panel";
 import { GraphPanel } from "@/components/graph-panel";
@@ -40,9 +39,6 @@ export function Sidebar({
 	currentSessionId: initialSessionId,
 	onSessionChange,
 }: SidebarProps) {
-	// API URL now resolved inside hooks via useApiUrl
-	const _searchParams = useSearchParams();
-
 	// Local session state should be declared before hooks that depend on it
 	const [localSessionId, setLocalSessionId] = useState<string | null>(
 		initialSessionId ?? null,
@@ -86,28 +82,48 @@ export function Sidebar({
 	}, [initialSessionId]);
 
 	// Auto-select first session when sessions are loaded if no current session (per agent)
+	// OR if URL has a sessionId, try to use it
 	useEffect(() => {
-		if (sessions.length > 0 && !localSessionId) {
+		// If we have a sessionId from URL, validate it exists in sessions
+		if (initialSessionId && sessions.some((s) => s.id === initialSessionId)) {
+			// URL sessionId is valid, ensure we're using it
+			if (localSessionId !== initialSessionId) {
+				setLocalSessionId(initialSessionId);
+				try {
+					void switchSession(initialSessionId);
+				} catch {}
+			}
+		} else if (sessions.length > 0 && !localSessionId) {
+			// No valid URL session, auto-select first
 			const firstSessionId = sessions[0].id;
 			setLocalSessionId(firstSessionId);
 			onSessionChange?.(firstSessionId);
-			// Also sync server-side active session for consistency
 			try {
 				void switchSession(firstSessionId);
 			} catch {}
-		}
-		// If current local session id is no longer present in sessions (e.g., after agent change or deletion), clear it
-		if (localSessionId && !sessions.some((s) => s.id === localSessionId)) {
+		} else if (
+			localSessionId &&
+			!sessions.some((s) => s.id === localSessionId)
+		) {
+			// Current local session id is no longer present in sessions
 			setLocalSessionId(null);
 			onSessionChange?.(null);
 		}
-	}, [sessions, localSessionId, onSessionChange, switchSession]);
+	}, [
+		sessions,
+		localSessionId,
+		initialSessionId,
+		onSessionChange,
+		switchSession,
+	]);
 
 	const handleCreateSession = async (
 		state?: Record<string, any>,
 		sessionId?: string,
 	) => {
-		await createSession({ state, sessionId });
+		const created = await createSession({ state, sessionId });
+		// Return the created session so caller can switch to it
+		return created;
 	};
 
 	const handleDeleteSession = async (sessionId: string) => {

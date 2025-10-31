@@ -34,7 +34,7 @@ interface SessionsPanelProps {
 	onCreateSession: (
 		state?: Record<string, any>,
 		sessionId?: string,
-	) => Promise<void>;
+	) => Promise<any>;
 	onDeleteSession: (sessionId: string) => Promise<void>;
 	onSwitchSession: (sessionId: string) => Promise<void>;
 	isLoading?: boolean;
