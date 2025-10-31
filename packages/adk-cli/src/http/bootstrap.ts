@@ -1,17 +1,28 @@
 import "reflect-metadata";
-
 import type { FSWatcher } from "node:fs";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { resolve, sep } from "node:path";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-
+import z from "zod";
 import { HttpModule } from "./http.module";
 import { AgentManager } from "./providers/agent-manager.service";
 import { DIRECTORIES_TO_SKIP } from "./providers/agent-scanner.service";
 import { HotReloadService } from "./reload/hot-reload.service";
 import type { RuntimeConfig } from "./runtime-config";
+
+const environmentEnum = z.enum(["development", "production"]);
+
+const envSchema = z.object({
+	ADK_DEBUG: z
+		.string()
+		.optional()
+		.transform((val) => val === "true")
+		.default(false),
+	NODE_ENV: environmentEnum.default("development"),
+	ADK_HTTP_BODY_LIMIT: z.string().default("25mb"),
+});
 
 function pathHasSkippedDir(p: string): boolean {
 	const parts = p.split(sep).filter(Boolean);
@@ -20,13 +31,6 @@ function pathHasSkippedDir(p: string): boolean {
 	);
 }
 
-/**
- * Load simple .gitignore prefixes.
- * For robustness without extra deps, we:
- * - ignore blank and comment lines
- * - skip complex globs (* ? [])
- * - treat entries as path prefixes relative to repo root
- */
 function loadGitignorePrefixes(rootDir: string): string[] {
 	try {
 		const igPath = resolve(rootDir, ".gitignore");
@@ -36,7 +40,7 @@ function loadGitignorePrefixes(rootDir: string): string[] {
 		for (const raw of lines) {
 			const line = raw.trim();
 			if (!line || line.startsWith("#")) continue;
-			if (/[?*[\]]/.test(line)) continue; // skip complex glob lines
+			if (/[?*[\]]/.test(line)) continue;
 			const normalized = line.replace(/\/+$/, "");
 			const abs = resolve(rootDir, normalized);
 			prefixes.push(abs + sep);
@@ -55,14 +59,11 @@ function shouldIgnorePath(fullPath: string, prefixes: string[]): boolean {
 	return false;
 }
 
-/**
- * Setup hot reload file watching with .gitignore filtering and well-known directory skips.
- * Returns watcher/timeout references and a teardown function to close resources.
- */
 function setupHotReload(
 	agentManager: AgentManager,
 	hotReload: HotReloadService | undefined,
 	config: RuntimeConfig,
+	env: z.infer<typeof envSchema>,
 ): {
 	watchers: FSWatcher[];
 	debouncers: NodeJS.Timeout[];
@@ -70,7 +71,9 @@ function setupHotReload(
 } {
 	const watchers: FSWatcher[] = [];
 	const debouncers: NodeJS.Timeout[] = [];
-	const shouldWatch = config.hotReload ?? process.env.NODE_ENV !== "production";
+	const shouldWatch =
+		config.hotReload ?? env.NODE_ENV !== environmentEnum.enum.production;
+	const debug = env.ADK_DEBUG;
 
 	if (!shouldWatch) {
 		return { watchers, debouncers, teardownHotReload: () => {} };
@@ -78,140 +81,104 @@ function setupHotReload(
 
 	const rootDir = process.cwd();
 	const gitignorePrefixes = loadGitignorePrefixes(rootDir);
-
 	const rawPaths =
 		Array.isArray(config.watchPaths) && config.watchPaths.length > 0
 			? config.watchPaths
 			: [rootDir];
-
 	const paths = rawPaths.filter(Boolean).map((p) => resolve(p as string));
+
 	for (const p of paths) {
 		try {
-			const watcher = watch(
-				p,
-				// recursive is supported on macOS and Windows; best-effort on others
-				{ recursive: true },
-				(_event, filename) => {
-					// Filter out ignored paths early
-					const fullPath =
-						typeof filename === "string" ? resolve(p, filename) : p;
-					if (shouldIgnorePath(fullPath, gitignorePrefixes)) {
-						if (!config.quiet && process.env.ADK_DEBUG === "1") {
-							console.log(`[hot-reload] Ignored change in ${fullPath}`);
-						}
-						return;
-					}
-
-					// Simple global debounce: clear pending reloads and schedule a new one
-					while (debouncers.length) {
-						const t = debouncers.pop();
-						if (t) clearTimeout(t);
-					}
-					const t = setTimeout(async () => {
-						try {
-							// Check if initial state has changed for any agent
-							const stateChanged = await agentManager.hasInitialStateChanged();
-
-							if (stateChanged) {
-								if (!config.quiet && process.env.ADK_DEBUG === "true") {
-									console.log(
-										"[hot-reload] Initial state changed - performing full reload (sessions will be cleared)",
-									);
-								}
-								// Full reload: don't preserve sessions
-								agentManager.stopAllAgents();
-								agentManager.scanAgents(config.agentsDir);
-
-								// Restart agents with force full reload flag
-								for (const agentPath of agentManager.getAgents().keys()) {
-									try {
-										await agentManager.startAgent(agentPath, undefined, true);
-										if (!config.quiet && process.env.ADK_DEBUG === "true") {
-											console.log(
-												`[hot-reload] Full reload completed for ${agentPath}`,
-											);
-										}
-									} catch (e) {
-										if (!config.quiet) {
-											console.error(
-												`[hot-reload] Failed to full reload agent ${agentPath}:`,
-												e,
-											);
-										}
-									}
-								}
-							} else {
-								// Hot reload: preserve sessions
-								const preservedSessions = agentManager.getLoadedAgentSessions();
-								if (!config.quiet && process.env.ADK_DEBUG === "true") {
-									console.log(
-										`[hot-reload] Code changed - preserving ${preservedSessions.size} session(s)`,
-									);
-								}
-
-								// Clear running agents so next use reloads fresh code, then rescan
-								agentManager.stopAllAgents();
-								agentManager.scanAgents(config.agentsDir);
-
-								// Restore agents with their previous sessions
-								for (const [
-									agentPath,
-									sessionId,
-								] of preservedSessions.entries()) {
-									try {
-										// Start agent with preserved session ID for restoration
-										await agentManager.startAgent(agentPath, sessionId);
-										if (!config.quiet && process.env.ADK_DEBUG === "true") {
-											console.log(
-												`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
-											);
-										}
-									} catch (e) {
-										if (!config.quiet) {
-											console.error(
-												`[hot-reload] Failed to restore agent ${agentPath}:`,
-												e,
-											);
-										}
-									}
-								}
-							}
-
-							if (!config.quiet && process.env.ADK_DEBUG === "1") {
+			const watcher = watch(p, { recursive: true }, (_event, filename) => {
+				const fullPath =
+					typeof filename === "string" ? resolve(p, filename) : p;
+				if (shouldIgnorePath(fullPath, gitignorePrefixes)) {
+					if (!config.quiet && debug)
+						console.log(`[hot-reload] Ignored change in ${fullPath}`);
+					return;
+				}
+				while (debouncers.length) {
+					const t = debouncers.pop();
+					if (t) clearTimeout(t);
+				}
+				const t = setTimeout(async () => {
+					try {
+						const stateChanged = await agentManager.hasInitialStateChanged();
+						if (stateChanged) {
+							if (!config.quiet && debug)
 								console.log(
-									`[hot-reload] Reloaded agents after change in ${filename ?? p}`,
+									"[hot-reload] Initial state changed - performing full reload (sessions will be cleared)",
 								);
+							agentManager.stopAllAgents();
+							agentManager.scanAgents(config.agentsDir);
+							for (const agentPath of agentManager.getAgents().keys()) {
+								try {
+									await agentManager.startAgent(agentPath, undefined, true);
+									if (!config.quiet && debug)
+										console.log(
+											`[hot-reload] Full reload completed for ${agentPath}`,
+										);
+								} catch (e) {
+									if (!config.quiet)
+										console.error(
+											`[hot-reload] Failed to full reload agent ${agentPath}:`,
+											e,
+										);
+								}
 							}
-							// Notify connected clients (web UI) to refresh
-							try {
-								hotReload?.broadcastReload(
-									typeof filename === "string" ? filename : null,
+						} else {
+							const preservedSessions = agentManager.getLoadedAgentSessions();
+							if (!config.quiet && debug)
+								console.log(
+									`[hot-reload] Code changed - preserving ${preservedSessions.size} session(s)`,
 								);
-							} catch {}
-						} catch (e) {
-							console.error("[hot-reload] Error during reload:", e);
+							agentManager.stopAllAgents();
+							agentManager.scanAgents(config.agentsDir);
+							for (const [
+								agentPath,
+								sessionId,
+							] of preservedSessions.entries()) {
+								try {
+									await agentManager.startAgent(agentPath, sessionId);
+									if (!config.quiet && debug)
+										console.log(
+											`[hot-reload] Restored session ${sessionId} for ${agentPath}`,
+										);
+								} catch (e) {
+									if (!config.quiet)
+										console.error(
+											`[hot-reload] Failed to restore agent ${agentPath}:`,
+											e,
+										);
+								}
+							}
 						}
-					}, 300);
-					debouncers.push(t);
-				},
-			);
+						if (!config.quiet && debug)
+							console.log(
+								`[hot-reload] Reloaded agents after change in ${filename ?? p}`,
+							);
+						try {
+							hotReload?.broadcastReload(
+								typeof filename === "string" ? filename : null,
+							);
+						} catch {}
+					} catch (e) {
+						console.error("[hot-reload] Error during reload:", e);
+					}
+				}, 300);
+				debouncers.push(t);
+			});
 			watchers.push(watcher);
-			if (!config.quiet && process.env.ADK_DEBUG === "true") {
-				console.log(`[hot-reload] Watching ${p}`);
-			}
+			if (!config.quiet && debug) console.log(`[hot-reload] Watching ${p}`);
 		} catch (e) {
 			console.warn(
-				`[hot-reload] Failed to watch ${p}: ${
-					e instanceof Error ? e.message : String(e)
-				}`,
+				`[hot-reload] Failed to watch ${p}: ${e instanceof Error ? e.message : String(e)}`,
 			);
 		}
 	}
 
 	const teardownHotReload = () => {
-		for (const t of debouncers) {
-			clearTimeout(t);
-		}
+		for (const t of debouncers) clearTimeout(t);
 		for (const w of watchers) {
 			try {
 				w.close();
@@ -231,45 +198,37 @@ export interface StartedHttpServer {
 	stop: () => Promise<void>;
 }
 
-/**
- * Start a Nest Express HTTP server with the ADK controllers and providers.
- * Mirrors previous Hono server endpoints:
- * - GET /health
- * - /api/agents ...
- * - /api/agents/:id/sessions ...
- */
 export async function startHttpServer(
 	config: RuntimeConfig,
 ): Promise<StartedHttpServer> {
+	const env = envSchema.parse(process.env);
+	const debug = env.ADK_DEBUG;
+
 	const app = await NestFactory.create<NestExpressApplication>(
 		HttpModule.register(config),
 		{
-			logger:
-				process.env.ADK_DEBUG === "true"
-					? ["log", "error", "warn", "debug", "verbose"]
-					: ["error", "warn"],
+			logger: debug
+				? ["log", "error", "warn", "debug", "verbose"]
+				: ["error", "warn"],
 		},
 	);
 
-	// CORS parity with previous Hono app.use("/*", cors())
 	app.enableCors({
 		origin: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization"],
 	});
 
-	// Configure body size limits using NestJS methods
-	const bodyLimit = process.env.ADK_HTTP_BODY_LIMIT || "25mb";
+	const bodyLimit = env.ADK_HTTP_BODY_LIMIT;
 	app.useBodyParser("json", { limit: bodyLimit });
 	app.useBodyParser("urlencoded", { limit: bodyLimit, extended: true });
 
-	// Initial agent scan (parity with ADKServer constructor)
 	const agentManager = app.get(AgentManager, { strict: false });
 	const hotReload = app.get(HotReloadService, { strict: false });
 	agentManager.scanAgents(config.agentsDir);
 
-	// Swagger / OpenAPI setup
-	const enableSwagger = config.swagger ?? process.env.NODE_ENV !== "production";
+	const enableSwagger =
+		config.swagger ?? env.NODE_ENV !== environmentEnum.enum.production;
 	if (enableSwagger) {
 		const builder = new DocumentBuilder()
 			.setTitle("ADK HTTP API")
@@ -291,23 +250,24 @@ export async function startHttpServer(
 			customSiteTitle: "ADK API Docs",
 			jsonDocumentUrl: "/openapi.json",
 		});
-		if (!config.quiet && process.env.ADK_DEBUG === "true") {
+		if (!config.quiet && debug)
 			console.log("[openapi] Docs available at /docs (json: /openapi.json)");
-		}
 	}
 
-	// Hot reloading: setup via helper for readability and testability
-	const { teardownHotReload } = setupHotReload(agentManager, hotReload, config);
+	const { teardownHotReload } = setupHotReload(
+		agentManager,
+		hotReload,
+		config,
+		env,
+	);
 
 	await app.listen(config.port, config.host);
 	const url = `http://${config.host}:${config.port}`;
 
 	const stop = async () => {
 		try {
-			// Graceful shutdown: stop all agents first
 			agentManager.stopAllAgents();
 		} finally {
-			// Tear down hot reload resources and close app
 			try {
 				teardownHotReload();
 			} catch {}
