@@ -1,5 +1,11 @@
 # @iqai/adk-cli
 
+## 0.3.25
+
+### Patch Changes
+
+- 0082494: fix: env parsing
+
 ## 0.3.24
 
 ### Patch Changes
