@@ -154,7 +154,13 @@ function setupHotReload(
 							hotReload?.broadcastReload(
 								typeof filename === "string" ? filename : null,
 							);
-						} catch {}
+						} catch (e) {
+							if (debug)
+								console.warn(
+									"[hot-reload] Failed to broadcast reload message",
+									e,
+								);
+						}
 					} catch (e) {
 						console.error("[hot-reload] Error during reload:", e);
 					}
