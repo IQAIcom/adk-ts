@@ -384,6 +384,22 @@ export function McpUpbit(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP Polymarket - Interact with the Polymarket prediction market
+ *
+ * Required env vars:
+ * - FUNDER_ADDRESS: Available to copy from the user menu dropdown on the Polymarket website (different from the wallet address used to log in).
+ * - POLYMARKET_PRIVATE_KEY: Private key of the wallet that interacts with Polymarket.
+ */
+export function McpPolymarket(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Polymarket MCP Client",
+		"@iqai/mcp-polymarket",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * Popular third-party MCP servers
  * These can be added as we expand support for community MCP servers
  */
