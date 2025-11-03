@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.5.4
+
+### Patch Changes
+
+- 2167a47: Adds polymarket mcp wrapper
+
 ## 0.5.3
 
 ### Patch Changes
