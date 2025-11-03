@@ -343,7 +343,7 @@ When working on the CLI codebase, use these debugging techniques:
 
 ```bash
 # Enable detailed logging for development
-export ADK_DEBUG_NEST=true
+export ADK_DEBUG=true
 export ADK_VERBOSE=true
 
 # Test your changes with verbose output
