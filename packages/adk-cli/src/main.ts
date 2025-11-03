@@ -30,7 +30,7 @@ function selectLogger(): any {
 	// Unified rule: stay silent by default to avoid polluting UX.
 	// Opt-in via env var for framework level diagnostics.
 
-	if (dubug) {
+	if (debug) {
 		return ["log", "error", "warn", "debug", "verbose"] as const;
 	}
 	// Keep errors & warnings only (avoid boot noise like InstanceLoader lines).
