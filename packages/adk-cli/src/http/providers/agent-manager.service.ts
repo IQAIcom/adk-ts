@@ -62,7 +62,7 @@ export class AgentManager {
 		agentPath: string,
 		preservedSessionId?: string,
 		forceFullReload?: boolean,
-	) {
+	): Promise<void> {
 		this.logger.log(
 			format(
 				"Starting agent: %s%s",
@@ -140,8 +140,6 @@ export class AgentManager {
 				this.logger,
 				(path, built) => this.builtAgents.set(path, built),
 			);
-
-			return { session: sessionIdToUse };
 		} catch (error) {
 			const agentName = agent?.name ?? agentPath;
 			this.logger.error(
@@ -361,5 +359,12 @@ export class AgentManager {
 			this.stopAgent(agentPath);
 		}
 		this.builtAgents.clear();
+	}
+
+	/**
+	 * Hash the initial state to detect changes
+	 */
+	private hashState(state: SessionState | undefined): string {
+		return hashStateHelper(state);
 	}
 }

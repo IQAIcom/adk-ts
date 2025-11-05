@@ -69,7 +69,7 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 			queryClient.invalidateQueries({
 				queryKey: ["sessions", apiUrl, selectedAgent?.relativePath],
 			});
-			// Return the created session
+			// Expose created session to caller via resolved promise
 			return created;
 		},
 		onError: (error) => {
