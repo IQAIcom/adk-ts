@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.5.5
+
+### Patch Changes
+
+- 05bb1b8: Fix state variable injection: serialize objects to JSON and parse nested properties
+
 ## 0.5.4
 
 ### Patch Changes
