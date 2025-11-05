@@ -11,7 +11,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { ChatStatus } from "ai";
-import { Loader2Icon, SendIcon, SquareIcon, XIcon } from "lucide-react";
+import {
+	Loader2Icon,
+	SendIcon,
+	SquareIcon,
+	XIcon,
+	Mic,
+	MicOff,
+} from "lucide-react";
 import type {
 	ComponentProps,
 	HTMLAttributes,
@@ -142,6 +149,24 @@ export const PromptInputButton = ({
 		/>
 	);
 };
+
+export type PromptInputMicButtonProps = ComponentProps<typeof Button> & {
+	status?: { recording: boolean };
+};
+
+export const PromptInputMicButton = ({
+	className,
+	status,
+	...props
+}: PromptInputMicButtonProps) => (
+	<Button className={cn("gap-1.5 rounded-lg", className)} {...props}>
+		{status?.recording ? (
+			<MicOff className="size-4" />
+		) : (
+			<Mic className="size-4" />
+		)}
+	</Button>
+);
 
 export type PromptInputSubmitProps = ComponentProps<typeof Button> & {
 	status?: ChatStatus;
