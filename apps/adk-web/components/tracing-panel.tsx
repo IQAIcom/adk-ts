@@ -21,7 +21,7 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 		);
 	}
 
-	if (!traceGroups.length) {
+	if (traceGroups.length === 0) {
 		return (
 			<div className="text-center text-muted-foreground py-12 text-sm">
 				No trace data
@@ -44,7 +44,6 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 
 function TraceGroupCollapsible({ group }: { group: TraceGroup }) {
 	const [open, setOpen] = useState(true);
-
 	const messageText = extractMessageText(group.userMessage);
 
 	return (
@@ -79,6 +78,8 @@ function TraceGroupCollapsible({ group }: { group: TraceGroup }) {
 
 function TraceTimeline({ group }: { group: TraceGroup }) {
 	const flatItems = useMemo(() => flattenTraces(group.events), [group.events]);
+	if (flatItems.length === 0) return null;
+
 	const startTime = Math.min(...flatItems.map((i) => i.timestamp));
 	const endTime = Math.max(
 		...flatItems.map((i) => i.timestamp + (i.duration || 0)),
@@ -128,10 +129,17 @@ function flattenTraces(
 	items: TraceItem[],
 	level = 0,
 ): (TraceItem & { level: number })[] {
-	return items.flatMap((item) => [
-		{ ...item, level },
-		...(item.children ? flattenTraces(item.children, level + 1) : []),
-	]);
+	const flattened: (TraceItem & { level: number })[] = [];
+
+	for (const item of items) {
+		flattened.push({ ...item, level });
+		if (item.children && item.children.length > 0) {
+			const nested = flattenTraces(item.children, level + 1);
+			flattened.push(...nested);
+		}
+	}
+
+	return flattened;
 }
 
 function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
@@ -147,51 +155,71 @@ function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
 				currentGroup.events = buildNestedStructure(currentGroup.events);
 				groups.push(currentGroup);
 			}
+
 			currentGroup = {
 				id: event.id,
 				userMessage: event,
 				events: [],
 				timestamp: event.timestamp,
 			};
-		} else if (currentGroup) {
-			const item: TraceItem = {
-				id: event.id,
-				type: determineTraceType(event),
-				author: event.author,
-				timestamp: event.timestamp,
-				duration: nextEvent ? nextEvent.timestamp - event.timestamp : 50,
-				children: [],
-			};
-			currentGroup.events.push(item);
+			continue;
 		}
+
+		if (!currentGroup) continue;
+
+		const duration =
+			nextEvent && typeof nextEvent.timestamp === "number"
+				? nextEvent.timestamp - event.timestamp
+				: 50;
+
+		currentGroup.events.push({
+			id: event.id,
+			type: determineTraceType(event),
+			author: event.author,
+			timestamp: event.timestamp,
+			duration,
+			children: [],
+		});
 	}
+
 	if (currentGroup) {
 		currentGroup.events = buildNestedStructure(currentGroup.events);
 		groups.push(currentGroup);
 	}
+
 	return groups;
 }
 
 function buildNestedStructure(items: TraceItem[]): TraceItem[] {
 	const stack: TraceItem[] = [];
 	const roots: TraceItem[] = [];
+
 	for (const item of items) {
-		while (stack.length) {
+		while (stack.length > 0) {
 			const top = stack[stack.length - 1];
 			const end = top.timestamp + (top.duration || 0);
 			if (end <= item.timestamp) stack.pop();
 			else break;
 		}
-		if (stack.length) stack[stack.length - 1].children?.push(item);
-		else roots.push(item);
+
+		if (stack.length > 0) {
+			const parent = stack[stack.length - 1];
+			if (!parent.children) parent.children = [];
+			parent.children.push(item);
+		} else {
+			roots.push(item);
+		}
+
 		stack.push(item);
 	}
+
 	return roots;
 }
 
 function determineTraceType(event: Event): TraceItem["type"] {
-	if (event.functionCalls?.length) return "tool_call";
-	if (event.functionResponses?.length) return "tool_response";
+	if (event.functionCalls && event.functionCalls.length > 0) return "tool_call";
+	if (event.functionResponses && event.functionResponses.length > 0)
+		return "tool_response";
 	if (event.author === "user") return "message";
 	return "llm_call";
 }
@@ -210,7 +238,7 @@ function getIconForType(type: TraceItem["type"]) {
 }
 
 function formatTraceType(type: string): string {
-	return type.replace(/_/g, " ");
+	return type ? type.replace(/_/g, " ") : "";
 }
 
 function formatDuration(ms: number): string {
@@ -220,22 +248,21 @@ function formatDuration(ms: number): string {
 }
 
 function extractMessageText(userMessage: Event): string {
-	if (!userMessage?.content) return "";
+	if (!userMessage || !userMessage.content) return "";
 
-	const content = userMessage.content as
-		| { parts?: { text?: string }[] }
-		| { text?: string }
-		| string;
+	const content = userMessage.content;
 
 	if (typeof content === "string") return content;
 
-	if ("parts" in content && Array.isArray(content.parts)) {
-		const first = content.parts[0];
-		if (first?.text) return first.text;
+	if ("parts" in content) {
+		const parts = (content as any).parts;
+		if (parts && parts.length > 0 && parts[0].text) {
+			return parts[0].text;
+		}
 	}
 
-	if ("text" in content && typeof content.text === "string") {
-		return content.text;
+	if ("text" in content && typeof (content as any).text === "string") {
+		return (content as any).text;
 	}
 
 	return "";
