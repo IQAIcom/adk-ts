@@ -167,10 +167,7 @@ function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
 
 		if (!currentGroup) continue;
 
-		const duration =
-			nextEvent && typeof nextEvent.timestamp === "number"
-				? nextEvent.timestamp - event.timestamp
-				: 50;
+		const duration = nextEvent ? nextEvent.timestamp - event.timestamp : 50;
 
 		currentGroup.events.push({
 			id: event.id,
