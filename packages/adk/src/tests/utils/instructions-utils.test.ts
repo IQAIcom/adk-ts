@@ -161,11 +161,13 @@ describe("injectSessionState", () => {
 			expect(result).toBe("Hello !");
 		});
 
-		it("should throw error for missing required variables", async () => {
+		it("should return original expression for missing required variables (fallback)", async () => {
 			mockContext.session.state = {};
-			await expect(
-				injectSessionState("Hello {userName}!", readonlyContext),
-			).rejects.toThrow("Context variable not found: `userName`");
+			const result = await injectSessionState(
+				"Hello {userName}!",
+				readonlyContext,
+			);
+			expect(result).toBe("Hello {userName}!");
 		});
 	});
 
@@ -194,11 +196,13 @@ describe("injectSessionState", () => {
 			expect(result).toBe("Value: null");
 		});
 
-		it("should handle undefined values as missing", async () => {
+		it("should return original expression for undefined values (fallback)", async () => {
 			mockContext.session.state = { value: undefined };
-			await expect(
-				injectSessionState("Value: {value}", readonlyContext),
-			).rejects.toThrow("Context variable not found: `value`");
+			const result = await injectSessionState(
+				"Value: {value}",
+				readonlyContext,
+			);
+			expect(result).toBe("Value: {value}");
 		});
 
 		it("should not replace invalid variable names", async () => {
@@ -238,6 +242,78 @@ describe("injectSessionState", () => {
 				readonlyContext,
 			);
 			expect(result2).toBe("Value: value2");
+		});
+	});
+
+	describe("fallback behavior", () => {
+		it("should return original expression when root property doesn't exist", async () => {
+			mockContext.session.state = { existingProp: "value" };
+			const result = await injectSessionState(
+				"Test {nonExistentProp} and {existingProp}",
+				readonlyContext,
+			);
+			expect(result).toBe("Test {nonExistentProp} and value");
+		});
+
+		it("should return original expression when nested property path doesn't exist", async () => {
+			mockContext.session.state = {
+				user: { profile: { name: "John" } },
+			};
+			const result = await injectSessionState(
+				"Test {user.profile.age} and {user.profile.name}",
+				readonlyContext,
+			);
+			expect(result).toBe("Test {user.profile.age} and John");
+		});
+
+		it("should return original expression when intermediate object is null/undefined", async () => {
+			mockContext.session.state = {
+				user: null,
+				data: { nested: null },
+			};
+			const result = await injectSessionState(
+				"Test {user.name} and {data.nested.value}",
+				readonlyContext,
+			);
+			expect(result).toBe("Test {user.name} and {data.nested.value}");
+		});
+
+		it("should return original expression when array index is out of bounds", async () => {
+			mockContext.session.state = {
+				items: ["apple", "banana"],
+			};
+			const result = await injectSessionState(
+				"Test {items[5]} and {items[0]}",
+				readonlyContext,
+			);
+			expect(result).toBe("Test {items[5]} and apple");
+		});
+
+		it("should mix resolved and unresolved variables in the same template", async () => {
+			mockContext.session.state = {
+				validVar: "resolved",
+				nested: { prop: "value" },
+			};
+			const result = await injectSessionState(
+				"Valid: {validVar}, Missing: {missingVar}, Nested: {nested.prop}, Deep: {nested.missing.deep}",
+				readonlyContext,
+			);
+			expect(result).toBe("Valid: resolved, Missing: {missingVar}, Nested: value, Deep: {nested.missing.deep}");
+		});
+
+		it("should handle fallback with complex nested expressions", async () => {
+			mockContext.session.state = {
+				basket: {
+					fruits: [
+						{ name: "apple" },
+					],
+				},
+			};
+			const result = await injectSessionState(
+				"Available: {basket.fruits[0].name}, Missing: {basket.fruits[1].name}",
+				readonlyContext,
+			);
+			expect(result).toBe("Available: apple, Missing: {basket.fruits[1].name}");
 		});
 	});
 });
