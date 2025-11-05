@@ -327,7 +327,7 @@ const shoppingAgent = new LlmAgent({
 
     **Cart summary:**
     - Items in cart: {cartCount}
-    - Total: ${cartTotal}
+    - Total: {cartTotal}
 
     When users ask about their cart, reference the detailed cart object above.
     Suggest related products based on what's already in the cart.
@@ -397,7 +397,7 @@ const analyticsAgent = new LlmAgent({
     {metrics}
 
     **Key highlights:**
-    - Revenue this month: ${metrics.revenue.current}
+    - Revenue this month: {metrics.revenue.current}
     - Best performing product: {metrics.topProducts[0].name}
     - Conversion rate: {metrics.conversion.rate}%
 
@@ -472,7 +472,7 @@ const shoppingAgent = new LlmAgent({
 
     **Current cart status:**
     - Items in cart: {cartCount}
-    - Cart total: ${cartTotal}
+    - Cart total: {cartTotal}
     - Cart contents: {cart}
 
     **Your capabilities:**
