@@ -1,15 +1,7 @@
 "use client";
 
-import {
-	AlertCircle,
-	ChevronDown,
-	ChevronRight,
-	MessageCircle,
-	Wrench,
-	Zap,
-} from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -18,332 +10,128 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { EventItemDto as Event } from "../Api";
 
-interface TracingPanelProps {
-	events: Event[];
-	isLoading?: boolean;
-}
-
-interface TraceItem {
-	id: string;
-	type: "message" | "llm_call" | "tool_call" | "tool_response";
-	author: string;
-	timestamp: number;
-	duration?: number;
-	content?: string;
-	functionCalls?: any[];
-	functionResponses?: any[];
-	attributes?: any;
-	children?: TraceItem[];
-}
-
-interface TraceGroup {
-	id: string;
-	userMessage: Event;
-	events: TraceItem[];
-	timestamp: number;
-	duration?: number;
-}
-
 export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
-	const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-
 	const traceGroups = useMemo(() => groupTracesByUserMessage(events), [events]);
 
-	const toggleExpand = (id: string) => {
-		setExpandedItems((prev) => {
-			const next = new Set(prev);
-			if (next.has(id)) next.delete(id);
-			else next.add(id);
-			return next;
-		});
-	};
+	if (isLoading) {
+		return (
+			<div className="text-center text-muted-foreground py-12 text-sm">
+				Loading traces…
+			</div>
+		);
+	}
+
+	if (!traceGroups.length) {
+		return (
+			<div className="text-center text-muted-foreground py-12 text-sm">
+				No trace data
+			</div>
+		);
+	}
 
 	return (
-		<div className="h-full flex flex-col bg-background">
-			<div className="px-4 py-3 border-b">
-				<div className="flex items-center gap-2">
-					<span className="text-sm font-medium text-muted-foreground">
-						{traceGroups.length} {traceGroups.length === 1 ? "trace" : "traces"}
-					</span>
-				</div>
-			</div>
-
-			<ScrollArea className="flex-1 max-h-[calc(100vh-200px)]">
-				<div className="p-4 space-y-3">
-					{isLoading ? (
-						<div className="text-center text-muted-foreground py-12">
-							<div className="text-sm">Loading traces...</div>
-						</div>
-					) : traceGroups.length === 0 ? (
-						<div className="text-center text-muted-foreground py-12">
-							<AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-40" />
-							<p className="text-sm">No trace data</p>
-							<p className="text-xs mt-1 opacity-60">
-								Send a message to see execution traces
-							</p>
-						</div>
-					) : (
-						traceGroups.map((group) => (
-							<TraceGroupNode
-								key={group.id}
-								group={group}
-								isExpanded={expandedItems.has(group.id)}
-								onToggleExpand={() => toggleExpand(group.id)}
-								expandedItems={expandedItems}
-								onToggleItem={toggleExpand}
-							/>
-						))
-					)}
+		<div className="h-full flex flex-col">
+			<ScrollArea className="flex-1">
+				<div className="divide-y divide-border/30">
+					{traceGroups.map((group) => (
+						<TraceGroupCollapsible key={group.id} group={group} />
+					))}
 				</div>
 			</ScrollArea>
 		</div>
 	);
 }
 
-interface TraceGroupNodeProps {
-	group: TraceGroup;
-	isExpanded: boolean;
-	onToggleExpand: () => void;
-	expandedItems: Set<string>;
-	onToggleItem: (id: string) => void;
-}
+function TraceGroupCollapsible({ group }: { group: TraceGroup }) {
+	const [open, setOpen] = useState(true);
 
-function TraceGroupNode({
-	group,
-	isExpanded,
-	onToggleExpand,
-	expandedItems,
-	onToggleItem,
-}: TraceGroupNodeProps) {
-	const userContent = extractContent(group.userMessage);
+	const messageText = extractMessageText(group.userMessage);
 
 	return (
-		<Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
+		<Collapsible open={open} onOpenChange={setOpen}>
 			<CollapsibleTrigger asChild>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className="w-full justify-start text-left rounded-md border bg-card hover:bg-accent/5 transition-colors p-3 h-auto"
-				>
-					<div className="flex items-start gap-3 w-full">
-						<div className="flex-shrink-0 mt-0.5">
-							{isExpanded ? (
-								<ChevronDown className="h-4 w-4 text-muted-foreground" />
-							) : (
-								<ChevronRight className="h-4 w-4 text-muted-foreground" />
-							)}
-						</div>
-
-						<div className="flex-shrink-0 mt-0.5">
-							<MessageCircle className="h-4 w-4 text-muted-foreground" />
-						</div>
-
-						<div className="flex-1 min-w-0">
-							<div className="flex items-center gap-2 mb-1">
-								<span className="text-sm font-medium">User Message</span>
-								<span className="text-xs text-muted-foreground">·</span>
-								<span className="text-xs text-muted-foreground">
-									{group.events.length}{" "}
-									{group.events.length === 1 ? "event" : "events"}
-								</span>
-								{group.duration && (
-									<>
-										<span className="text-xs text-muted-foreground">·</span>
-										<span className="text-xs text-muted-foreground">
-											{formatDuration(group.duration)}
-										</span>
-									</>
-								)}
-							</div>
-
-							{userContent && (
-								<p
-									className={`text-xs text-muted-foreground ${
-										!isExpanded ? "truncate" : ""
-									}`}
-								>
-									{userContent}
-								</p>
-							)}
-						</div>
+				<div className="flex items-center justify-between px-3 py-2 text-xs font-mono cursor-pointer hover:bg-muted/50">
+					<div className="flex items-center space-x-2">
+						{open ? (
+							<ChevronDown className="w-3 h-3 text-muted-foreground" />
+						) : (
+							<ChevronRight className="w-3 h-3 text-muted-foreground" />
+						)}
+						<p className="text-foreground">
+							<span className="line-clamp-1">
+								{messageText || "Untitled message"}
+							</span>
+							<span className="text-muted-foreground">
+								{" "}
+								({new Date(group.timestamp).toLocaleTimeString()})
+							</span>
+						</p>
 					</div>
-				</Button>
+				</div>
 			</CollapsibleTrigger>
 
 			<CollapsibleContent>
-				{group.events.length > 0 && (
-					<div className="ml-7 pl-4 border-l space-y-1.5 mt-2">
-						{group.events.map((item) => (
-							<TraceItemNode
-								key={item.id}
-								item={item}
-								depth={0}
-								isExpanded={expandedItems.has(item.id)}
-								onToggleExpand={() => onToggleItem(item.id)}
-							/>
-						))}
-					</div>
-				)}
+				<TraceTimeline group={group} />
 			</CollapsibleContent>
 		</Collapsible>
 	);
 }
 
-interface TraceItemNodeProps {
-	item: TraceItem;
-	depth: number;
-	isExpanded: boolean;
-	onToggleExpand: () => void;
-}
-
-function TraceItemNode({
-	item,
-	depth,
-	isExpanded,
-	onToggleExpand,
-}: TraceItemNodeProps) {
-	const hasChildren = (item.children ?? []).length > 0;
-	const hasDetails =
-		(item.functionCalls?.length ?? 0) > 0 ||
-		(item.functionResponses?.length ?? 0) > 0 ||
-		!!item.content;
-	const icon = getIconForType(item.type);
+function TraceTimeline({ group }: { group: TraceGroup }) {
+	const flatItems = useMemo(() => flattenTraces(group.events), [group.events]);
+	const startTime = Math.min(...flatItems.map((i) => i.timestamp));
+	const endTime = Math.max(
+		...flatItems.map((i) => i.timestamp + (i.duration || 0)),
+	);
+	const totalDuration = Math.max(endTime - startTime, 1);
 
 	return (
-		<Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
-			<CollapsibleTrigger asChild>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className="w-full justify-start text-left rounded-md border bg-card hover:bg-accent/5 transition-colors p-2.5 h-auto"
-					style={{ marginLeft: `${depth * 16}px` }}
-				>
-					<div className="flex items-start gap-2.5 w-full">
-						{(hasChildren || hasDetails) && (
-							<div className="flex-shrink-0 mt-0.5">
-								{isExpanded ? (
-									<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-								) : (
-									<ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-								)}
-							</div>
-						)}
-						<div className="flex-shrink-0 text-muted-foreground mt-0.5">
-							{icon}
+		<div className="p-3 space-y-1 text-xs font-mono">
+			{flatItems.map((node) => {
+				const relStart = ((node.timestamp - startTime) / totalDuration) * 100;
+				const relWidth = ((node.duration || 0) / totalDuration) * 100;
+
+				return (
+					<div
+						key={node.id}
+						className="flex items-center h-6 relative"
+						style={{ paddingLeft: `${node.level * 12}px` }}
+					>
+						<span className="mr-2 text-blue-400">
+							{getIconForType(node.type)}
+						</span>
+
+						<div className="w-[200px] truncate text-foreground">
+							{formatTraceType(node.type)}{" "}
+							<span className="text-muted-foreground">
+								({formatDuration(node.duration || 0)})
+							</span>
 						</div>
-						<div className="flex-1 min-w-0">
-							<div className="flex items-center gap-2 mb-0.5">
-								<span className="text-xs font-medium capitalize">
-									{item.type.replace(/_/g, " ")}
-								</span>
-								{item.duration && (
-									<>
-										<span className="text-xs text-muted-foreground">·</span>
-										<span className="text-xs text-muted-foreground">
-											{formatDuration(item.duration)}
-										</span>
-									</>
-								)}
-							</div>
-							{item.content && !isExpanded && (
-								<p className="text-xs text-muted-foreground truncate">
-									{item.content}
-								</p>
-							)}
-						</div>
-					</div>
-				</Button>
-			</CollapsibleTrigger>
 
-			<CollapsibleContent>
-				{isExpanded && (
-					<div className="mt-3 ml-6 space-y-2.5">
-						{item.content && (
-							<div className="text-xs">
-								<div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5 font-medium">
-									Content
-								</div>
-								<div className="bg-muted/50 rounded px-2.5 py-2 font-mono text-[11px] break-words">
-									{item.content}
-								</div>
-							</div>
-						)}
-
-						{(item.functionCalls?.length ?? 0) > 0 && (
-							<div className="text-xs space-y-1.5">
-								<div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-									Function Calls ({item.functionCalls?.length ?? 0})
-								</div>
-								{(item.functionCalls ?? []).map((call: any, idx: number) => (
-									<div
-										key={call.id || idx}
-										className="bg-muted/50 rounded px-2.5 py-2"
-									>
-										<div className="font-medium text-[11px] mb-1">
-											{call.name || "Unknown"}
-										</div>
-										{call.id && (
-											<div className="text-muted-foreground text-[10px] mb-1">
-												{call.id}
-											</div>
-										)}
-										{call.args && (
-											<pre className="text-[10px] mt-1.5 overflow-x-auto text-muted-foreground">
-												{JSON.stringify(call.args, null, 2)}
-											</pre>
-										)}
-									</div>
-								))}
-							</div>
-						)}
-
-						{(item.functionResponses?.length ?? 0) > 0 && (
-							<div className="text-xs space-y-1.5">
-								<div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-									Function Responses ({item.functionResponses?.length ?? 0})
-								</div>
-								{(item.functionResponses ?? []).map(
-									(response: any, idx: number) => (
-										<div
-											key={response.id || idx}
-											className="bg-muted/50 rounded px-2.5 py-2"
-										>
-											{response.id && (
-												<div className="text-muted-foreground text-[10px] mb-1.5">
-													{response.id}
-												</div>
-											)}
-											{response.response && (
-												<pre className="text-[10px] overflow-x-auto text-muted-foreground">
-													{JSON.stringify(response.response, null, 2)}
-												</pre>
-											)}
-										</div>
-									),
-								)}
-							</div>
-						)}
-					</div>
-				)}
-
-				{isExpanded && hasChildren && (
-					<div className="space-y-1.5">
-						{item.children!.map((child) => (
-							<TraceItemNode
-								key={child.id}
-								item={child}
-								depth={depth + 1}
-								isExpanded={false}
-								onToggleExpand={() => {}}
+						<div className="flex-1 relative h-4 ml-4">
+							<div
+								className="absolute h-3 rounded bg-blue-500/30"
+								style={{
+									left: `${relStart}%`,
+									width: `${Math.max(relWidth, 1)}%`,
+								}}
 							/>
-						))}
+						</div>
 					</div>
-				)}
-			</CollapsibleContent>
-		</Collapsible>
+				);
+			})}
+		</div>
 	);
+}
+
+function flattenTraces(
+	items: TraceItem[],
+	level = 0,
+): (TraceItem & { level: number })[] {
+	return items.flatMap((item) => [
+		{ ...item, level },
+		...(item.children ? flattenTraces(item.children, level + 1) : []),
+	]);
 }
 
 function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
@@ -355,7 +143,10 @@ function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
 		const nextEvent = events[i + 1];
 
 		if (event.author === "user") {
-			if (currentGroup) groups.push(currentGroup);
+			if (currentGroup) {
+				currentGroup.events = buildNestedStructure(currentGroup.events);
+				groups.push(currentGroup);
+			}
 			currentGroup = {
 				id: event.id,
 				userMessage: event,
@@ -368,26 +159,34 @@ function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
 				type: determineTraceType(event),
 				author: event.author,
 				timestamp: event.timestamp,
-				content: extractContent(event),
-				functionCalls: event.functionCalls,
-				functionResponses: event.functionResponses,
-				attributes: event.actions,
+				duration: nextEvent ? nextEvent.timestamp - event.timestamp : 50,
+				children: [],
 			};
-			if (nextEvent) item.duration = nextEvent.timestamp - event.timestamp;
 			currentGroup.events.push(item);
 		}
 	}
-
 	if (currentGroup) {
-		if (currentGroup.events.length > 0) {
-			const last = currentGroup.events[currentGroup.events.length - 1];
-			currentGroup.duration =
-				last.timestamp + (last.duration || 0) - currentGroup.timestamp;
-		}
+		currentGroup.events = buildNestedStructure(currentGroup.events);
 		groups.push(currentGroup);
 	}
-
 	return groups;
+}
+
+function buildNestedStructure(items: TraceItem[]): TraceItem[] {
+	const stack: TraceItem[] = [];
+	const roots: TraceItem[] = [];
+	for (const item of items) {
+		while (stack.length) {
+			const top = stack[stack.length - 1];
+			const end = top.timestamp + (top.duration || 0);
+			if (end <= item.timestamp) stack.pop();
+			else break;
+		}
+		if (stack.length) stack[stack.length - 1].children?.push(item);
+		else roots.push(item);
+		stack.push(item);
+	}
+	return roots;
 }
 
 function determineTraceType(event: Event): TraceItem["type"] {
@@ -397,33 +196,69 @@ function determineTraceType(event: Event): TraceItem["type"] {
 	return "llm_call";
 }
 
-function extractContent(event: Event): string | undefined {
-	if (!event.content) return;
-	const content = event.content as any;
-	if (content.parts && Array.isArray(content.parts)) {
-		const textParts = content.parts
-			.filter((p: any) => p.text)
-			.map((p: any) => p.text);
-		if (textParts.length > 0) return textParts.join("\n").substring(0, 200);
-	}
-	return JSON.stringify(event.content).substring(0, 200);
-}
-
 function getIconForType(type: TraceItem["type"]) {
 	switch (type) {
-		case "message":
-			return <MessageCircle className="h-3.5 w-3.5" />;
-		case "llm_call":
-			return <Zap className="h-3.5 w-3.5" />;
 		case "tool_call":
-			return <Wrench className="h-3.5 w-3.5" />;
+			return "▶";
 		case "tool_response":
-			return <MessageCircle className="h-3.5 w-3.5" />;
+			return "◀";
+		case "llm_call":
+			return "💬";
+		default:
+			return "•";
 	}
+}
+
+function formatTraceType(type: string): string {
+	return type.replace(/_/g, " ");
 }
 
 function formatDuration(ms: number): string {
 	if (ms < 1) return `${(ms * 1000).toFixed(0)}µs`;
 	if (ms < 1000) return `${ms.toFixed(0)}ms`;
 	return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function extractMessageText(userMessage: Event): string {
+	if (!userMessage?.content) return "";
+
+	const content = userMessage.content as
+		| { parts?: { text?: string }[] }
+		| { text?: string }
+		| string;
+
+	if (typeof content === "string") return content;
+
+	if ("parts" in content && Array.isArray(content.parts)) {
+		const first = content.parts[0];
+		if (first?.text) return first.text;
+	}
+
+	if ("text" in content && typeof content.text === "string") {
+		return content.text;
+	}
+
+	return "";
+}
+
+interface TracingPanelProps {
+	events: Event[];
+	isLoading?: boolean;
+}
+
+interface TraceItem {
+	id: string;
+	type: "message" | "llm_call" | "tool_call" | "tool_response";
+	author: string;
+	timestamp: number;
+	duration?: number;
+	children?: TraceItem[];
+}
+
+interface TraceGroup {
+	id: string;
+	userMessage: Event;
+	events: TraceItem[];
+	timestamp: number;
+	duration?: number;
 }
