@@ -262,6 +262,185 @@ The framework automatically injects session state values into your instructions 
 **Example:** If your state contains `{user_name: "Alice", cart_count: 3}`, then `"Hello {user_name}, you have {cart_count} items"` becomes `"Hello Alice, you have 3 items"`
 </Callout>
 
+#### Object and Array Formatting with Lensing
+
+The framework intelligently formats complex state values, making it easy to work with objects and arrays in your instructions.
+
+**Before the Lensing Enhancement:**
+```typescript
+// ❌ Objects would render as [object Object]
+state = { user: { name: "Alice", age: 30 } }
+template = "User: {user}"
+result = "User: [object Object]"  // Not helpful!
+
+// ❌ Nested properties couldn't be accessed
+state = { basket: { fruits: [{ name: "apple" }] } }
+template = "First fruit: {basket.fruits[0].name}"
+result = "First fruit: {basket.fruits[0].name}"  // Literal text, not resolved
+```
+
+**After the Lensing Enhancement:**
+```typescript
+// ✅ Objects are formatted as readable JSON
+state = { user: { name: "Alice", age: 30 } }
+template = "User: {user}"
+result = `User: {
+  "name": "Alice",
+  "age": 30
+}`  // Beautiful, readable JSON!
+
+// ✅ Nested properties are fully resolved
+state = { basket: { fruits: [{ name: "apple" }] } }
+template = "First fruit: {basket.fruits[0].name}"
+result = "First fruit: apple"  // Works perfectly!
+```
+
+<Callout type="info" title="Smart Value Formatting">
+The framework automatically chooses the best formatting for your values:
+
+**Primitive values** (strings, numbers, booleans):
+- Rendered as-is: `{count}` → `"42"`
+
+**Objects and arrays**:
+- Formatted as indented JSON for readability
+- `{user}` → `"{\n  \"name\": \"Alice\",\n  \"age\": 30\n}"`
+
+**Nested property access**:
+- Supports dot notation: `{user.profile.firstName}`
+- Supports bracket notation: `{items[0]}`, `{obj['key-name']}`
+- Supports deep nesting: `{basket.fruits[0].color}`
+- Returns the final resolved value in appropriate format
+</Callout>
+
+#### Practical Examples with Lensing
+
+**Example 1: Shopping Cart with Object Display**
+
+```typescript
+const shoppingAgent = new LlmAgent({
+  name: "shopping_assistant",
+  instruction: `
+    You are a shopping cart assistant.
+
+    **Current cart:**
+    {cart}
+
+    **Cart summary:**
+    - Items in cart: {cartCount}
+    - Total: ${cartTotal}
+
+    When users ask about their cart, reference the detailed cart object above.
+    Suggest related products based on what's already in the cart.
+  `,
+  tools: [addItemTool, viewCartTool],
+});
+
+// If state is:
+// {
+//   cart: [
+//     { item: "Laptop", quantity: 1, price: 999 },
+//     { item: "Mouse", quantity: 2, price: 25 }
+//   ],
+//   cartCount: 2,
+//   cartTotal: 1049
+// }
+//
+// The {cart} variable will be formatted as:
+// [
+//   {
+//     "item": "Laptop",
+//     "quantity": 1,
+//     "price": 999
+//   },
+//   {
+//     "item": "Mouse",
+//     "quantity": 2,
+//     "price": 25
+//   }
+// ]
+```
+
+**Example 2: Nested Property Access for User Profiles**
+
+```typescript
+const customerAgent = new LlmAgent({
+  name: "customer_service",
+  instruction: `
+    You are helping {user.profile.firstName} {user.profile.lastName}.
+
+    **Customer details:**
+    - Email: {user.contact.email}
+    - Phone: {user.contact.phone}
+    - Member since: {user.membership.joinDate}
+    - Status: {user.membership.tier}
+    - Recent order: {user.orders[0].id}
+    - Last purchase: {user.orders[0].items[0].name}
+
+    Provide personalized service based on their {user.membership.tier} tier status.
+  `,
+});
+
+// All nested properties are automatically resolved!
+// user.profile.firstName → "Alice"
+// user.orders[0].items[0].name → "Premium Headphones"
+```
+
+**Example 3: Complex Data Structures**
+
+```typescript
+const analyticsAgent = new LlmAgent({
+  name: "analytics_specialist",
+  instruction: `
+    You provide insights on business metrics.
+
+    **Latest metrics:**
+    {metrics}
+
+    **Key highlights:**
+    - Revenue this month: ${metrics.revenue.current}
+    - Best performing product: {metrics.topProducts[0].name}
+    - Conversion rate: {metrics.conversion.rate}%
+
+    **Regional breakdown:**
+    - North America: {metrics.regions[0].sales}
+    - Europe: {metrics.regions[1].sales}
+    - Asia: {metrics.regions[2].sales}
+
+    Use these metrics to provide data-driven recommendations.
+  `,
+});
+
+// The {metrics} object will be fully formatted as JSON
+// Individual nested values like {metrics.topProducts[0].name} are extracted
+```
+
+**Example 4: Working with Arrays**
+
+```typescript
+const taskManager = new LlmAgent({
+  name: "task_manager",
+  instruction: `
+    You help manage tasks and priorities.
+
+    **All pending tasks:**
+    {tasks}
+
+    **Immediate attention needed:**
+    - Highest priority: {tasks[0].title}
+    - Due: {tasks[0].dueDate}
+    - Assigned to: {tasks[0].assignee}
+
+    **Task summary:**
+    - Total tasks: {taskCount}
+    - Overdue: {overdueTasks[0].title}, {overdueTasks[1].title}
+
+    Prioritize tasks and suggest optimal workflow.
+  `,
+});
+
+// Arrays are formatted as JSON, and individual items can be accessed by index
+```
+
 #### Shopping Cart Example with State Interpolation
 
 ```ts
