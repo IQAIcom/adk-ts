@@ -123,8 +123,7 @@ export async function injectSessionState(
 					if (optional) {
 						return "";
 					}
-					// Fallback: return original expression when variable cannot be resolved
-					return match[0];
+					throw new Error(`Context variable not found: \`${varName}\`.`);
 				}
 
 				return formatValue(value);
@@ -132,8 +131,7 @@ export async function injectSessionState(
 				if (optional) {
 					return "";
 				}
-				// Fallback: return original expression when variable cannot be resolved
-				return match[0];
+				throw error;
 			}
 		}
 	}
