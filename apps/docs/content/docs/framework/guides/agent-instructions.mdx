@@ -269,30 +269,31 @@ The framework intelligently formats complex state values, making it easy to work
 **Before the Lensing Enhancement:**
 ```typescript
 // ❌ Objects would render as [object Object]
-state = { user: { name: "Alice", age: 30 } }
-template = "User: {user}"
-result = "User: [object Object]"  // Not helpful!
+// state = { user: { name: "Alice", age: 30 } }
+// template = "User: {user}"
+// result = "User: [object Object]"  // Not helpful!
 
 // ❌ Nested properties couldn't be accessed
-state = { basket: { fruits: [{ name: "apple" }] } }
-template = "First fruit: {basket.fruits[0].name}"
-result = "First fruit: {basket.fruits[0].name}"  // Literal text, not resolved
+// state = { basket: { fruits: [{ name: "apple" }] } }
+// template = "First fruit: {basket.fruits[0].name}"
+// result = "First fruit: {basket.fruits[0].name}"  // Literal text, not resolved
 ```
 
 **After the Lensing Enhancement:**
 ```typescript
 // ✅ Objects are formatted as readable JSON
-state = { user: { name: "Alice", age: 30 } }
-template = "User: {user}"
-result = `User: {
-  "name": "Alice",
-  "age": 30
-}`  // Beautiful, readable JSON!
+// state = { user: { name: "Alice", age: 30 } }
+// template = "User: {user}"
+// result:
+"User: {
+  \"name\": \"Alice\",
+  \"age\": 30
+}"  // Beautiful, readable JSON!
 
 // ✅ Nested properties are fully resolved
-state = { basket: { fruits: [{ name: "apple" }] } }
-template = "First fruit: {basket.fruits[0].name}"
-result = "First fruit: apple"  // Works perfectly!
+// state = { basket: { fruits: [{ name: "apple" }] } }
+// template = "First fruit: {basket.fruits[0].name}"
+// result = "First fruit: apple"  // Works perfectly!
 ```
 
 <Callout type="info" title="Smart Value Formatting">
