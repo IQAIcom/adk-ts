@@ -209,5 +209,35 @@ describe("injectSessionState", () => {
 			);
 			expect(result).toBe("Test {invalid-name} test");
 		});
+
+		it("should validate root property for nested access", async () => {
+			mockContext.session.state = { validName: { nested: "value" } };
+			const result = await injectSessionState(
+				"Test {invalid-name.nested} {validName.nested}",
+				readonlyContext,
+			);
+			// invalid-name should not be replaced because root is invalid
+			expect(result).toBe("Test {invalid-name.nested} value");
+		});
+
+		it("should handle quoted property names in bracket notation", async () => {
+			mockContext.session.state = {
+				obj: {
+					"key-name": "value1",
+					"another.key": "value2",
+				},
+			};
+			const result1 = await injectSessionState(
+				"Value: {obj['key-name']}",
+				readonlyContext,
+			);
+			expect(result1).toBe("Value: value1");
+
+			const result2 = await injectSessionState(
+				'Value: {obj["another.key"]}',
+				readonlyContext,
+			);
+			expect(result2).toBe("Value: value2");
+		});
 	});
 });

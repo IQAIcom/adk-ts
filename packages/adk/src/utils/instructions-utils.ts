@@ -102,7 +102,13 @@ export async function injectSessionState(
 			// Check if this is a nested property access (e.g., basket.fruits[0].name)
 			const isNestedAccess = varName.includes(".") || varName.includes("[");
 
-			if (!isNestedAccess && !isValidStateName(varName)) {
+			// Extract root property name for validation
+			const rootProperty = isNestedAccess
+				? varName.split(/[.[]/)[0] // Get the part before first . or [
+				: varName;
+
+			// Validate the root property name
+			if (!isValidStateName(rootProperty)) {
 				return match[0]; // Return original if not a valid state name
 			}
 
@@ -184,23 +190,65 @@ function isValidIdentifier(name: string): boolean {
  */
 function getNestedValue(obj: any, path: string): any {
 	// Split the path into parts, handling both dot notation and bracket notation
-	// Examples:
-	// "basket.fruits[0].name" -> ["basket", "fruits", "0", "name"]
-	// "user.profile.firstName" -> ["user", "profile", "firstName"]
-	const parts = path
-		.replace(/\[(\w+)\]/g, ".$1") // Convert bracket notation to dot notation
-		.split(".")
-		.filter((part) => part.length > 0);
+	// We need to handle quoted strings that may contain dots
+	const parts: string[] = [];
+	let current = "";
+	let inBrackets = false;
+	let quote = "";
 
-	let current = obj;
-	for (const part of parts) {
-		if (current === null || current === undefined) {
-			return undefined;
+	for (let i = 0; i < path.length; i++) {
+		const char = path[i];
+
+		if (char === "[" && !quote) {
+			// Starting bracket notation
+			if (current) {
+				parts.push(current);
+				current = "";
+			}
+			inBrackets = true;
+		} else if (char === "]" && inBrackets && !quote) {
+			// Ending bracket notation
+			if (current) {
+				parts.push(current);
+				current = "";
+			}
+			inBrackets = false;
+		} else if ((char === '"' || char === "'") && inBrackets) {
+			// Toggle quote state
+			if (quote === char) {
+				quote = "";
+			} else if (!quote) {
+				quote = char;
+			} else {
+				current += char;
+			}
+		} else if (char === "." && !inBrackets && !quote) {
+			// Dot separator (only when not in brackets or quotes)
+			if (current) {
+				parts.push(current);
+				current = "";
+			}
+		} else {
+			// Regular character
+			current += char;
 		}
-		current = current[part];
 	}
 
-	return current;
+	// Add last part
+	if (current) {
+		parts.push(current);
+	}
+
+	// Navigate through the object
+	let result: any = obj;
+	for (const part of parts) {
+		if (result === null || result === undefined) {
+			return undefined;
+		}
+		result = result[part];
+	}
+
+	return result;
 }
 
 /**
