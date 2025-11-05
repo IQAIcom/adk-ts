@@ -1,12 +1,13 @@
 "use client";
 
-import { Activity, Archive, Database, Share2, X } from "lucide-react";
+import { Activity, Archive, Database, Share2, X, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { EventsPanel } from "@/components/events-panel";
 import { GraphPanel } from "@/components/graph-panel";
 import { SessionsPanel } from "@/components/sessions-panel";
 import { StatePanel } from "@/components/state-panel";
+import { TracingPanel } from "@/components/tracing-panel";
 import { Button } from "@/components/ui/button";
 import { useAgentGraph } from "@/hooks/use-agent-graph";
 import { useEvents } from "@/hooks/use-events";
@@ -29,6 +30,7 @@ const navigationItems: { id: PanelId; label: string; icon: typeof Database }[] =
 		{ id: PanelIdSchema.enum.events, label: "Events", icon: Activity },
 		{ id: PanelIdSchema.enum.state, label: "State", icon: Archive },
 		{ id: PanelIdSchema.enum.graph, label: "Graph", icon: Share2 },
+		{ id: PanelIdSchema.enum.trace, label: "Trace", icon: Sparkles },
 	];
 
 export function Sidebar({
@@ -185,7 +187,9 @@ export function Sidebar({
 									? "Events"
 									: selectedPanel === "graph"
 										? "Graph"
-										: "State"}
+										: selectedPanel === "trace"
+											? "Trace"
+											: "State"}
 						</h2>
 						<Button
 							variant="ghost"
@@ -227,6 +231,9 @@ export function Sidebar({
 									error={graphError ?? null}
 								/>
 							</div>
+						)}
+						{selectedPanel === "trace" && (
+							<TracingPanel events={events || []} isLoading={!!eventsLoading} />
 						)}
 					</div>
 				</div>
