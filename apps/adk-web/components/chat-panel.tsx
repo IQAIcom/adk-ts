@@ -12,7 +12,6 @@ import {
 import {
 	PromptInput,
 	PromptInputButton,
-	PromptInputMicButton,
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputToolbar,
@@ -23,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { useChatAttachments } from "@/hooks/use-chat-attachments";
 import { cn } from "@/lib/utils";
 import type { AgentListItemDto as Agent } from "../Api";
-import useVoiceRecording from "@/hooks/use-voice-recording";
 
 interface ChatPanelProps {
 	selectedAgent: Agent | null;
@@ -54,8 +52,6 @@ export function ChatPanel({
 		isDragOver,
 	} = useChatAttachments();
 
-	const { recording, startRecording, stopRecording } = useVoiceRecording();
-
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if ((!inputMessage.trim() && attachedFiles.length === 0) || !selectedAgent)
@@ -68,14 +64,6 @@ export function ChatPanel({
 		requestAnimationFrame(() => {
 			inputRef.current?.focus();
 		});
-	};
-
-	const handleVoiceRecording = () => {
-		if (recording) {
-			stopRecording();
-		} else {
-			startRecording();
-		}
 	};
 
 	// Scroll logic moved to ConversationAutoScroll
@@ -159,33 +147,6 @@ export function ChatPanel({
 								</Message>
 							))}
 
-							{recording && (
-								<>
-									<Message from="user" key="recording">
-										<MessageContent>
-											<Response className="px-2 italic animate-pulse text-sm text-muted-foreground">
-												Recording...
-											</Response>
-										</MessageContent>
-										<MessageAvatar
-											icon={<UserIcon className="size-4" />}
-											name="You"
-										/>
-									</Message>
-									<Message from="assistant" key="recording">
-										<MessageContent>
-											<Response className="px-2 italic animate-pulse text-sm text-muted-foreground">
-												Listening...
-											</Response>
-										</MessageContent>
-										<MessageAvatar
-											icon={<Bot className="size-4" />}
-											name={selectedAgent.name || "Assistant"}
-										/>
-									</Message>
-								</>
-							)}
-
 							{/* In-conversation loading indicator (appears after user's last message) */}
 							{isSendingMessage && (
 								<Message from="assistant" key="loading">
@@ -267,19 +228,13 @@ export function ChatPanel({
 										<Paperclip className="size-4" />
 									</PromptInputButton>
 								</PromptInputTools>
-								<div>
-									<PromptInputMicButton
-										status={{ recording }}
-										onClick={handleVoiceRecording}
-									/>
-									<PromptInputSubmit
-										status={isSendingMessage ? "streaming" : "ready"}
-										disabled={
-											(!inputMessage.trim() && attachedFiles.length === 0) ||
-											isSendingMessage
-										}
-									/>
-								</div>
+								<PromptInputSubmit
+									status={isSendingMessage ? "streaming" : "ready"}
+									disabled={
+										(!inputMessage.trim() && attachedFiles.length === 0) ||
+										isSendingMessage
+									}
+								/>
 							</PromptInputToolbar>
 						</PromptInput>
 						{/* Drag and Drop Overlay */}
