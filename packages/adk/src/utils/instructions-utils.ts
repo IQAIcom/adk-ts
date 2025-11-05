@@ -99,18 +99,34 @@ export async function injectSessionState(
 			}
 		} else {
 			// Handle session state variables
-			if (!isValidStateName(varName)) {
+			// Check if this is a nested property access (e.g., basket.fruits[0].name)
+			const isNestedAccess = varName.includes(".") || varName.includes("[");
+
+			if (!isNestedAccess && !isValidStateName(varName)) {
 				return match[0]; // Return original if not a valid state name
 			}
 
 			const sessionState = invocationContext.session.state;
-			if (varName in sessionState) {
-				return String(sessionState[varName]);
+
+			try {
+				const value = isNestedAccess
+					? getNestedValue(sessionState, varName)
+					: sessionState[varName];
+
+				if (value === undefined) {
+					if (optional) {
+						return "";
+					}
+					throw new Error(`Context variable not found: \`${varName}\`.`);
+				}
+
+				return formatValue(value);
+			} catch (error) {
+				if (optional) {
+					return "";
+				}
+				throw error;
 			}
-			if (optional) {
-				return "";
-			}
-			throw new Error(`Context variable not found: \`${varName}\`.`);
 		}
 	}
 
@@ -156,4 +172,59 @@ function isValidIdentifier(name: string): boolean {
 	// JavaScript identifier regex: starts with letter, $, or _, followed by letters, digits, $, or _
 	const identifierRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 	return identifierRegex.test(name);
+}
+
+/**
+ * Gets a nested value from an object using a path string.
+ * Supports both dot notation (obj.prop) and bracket notation (obj[0], obj['prop'])
+ *
+ * @param obj The object to extract value from
+ * @param path The path string (e.g., "basket.fruits[0].name")
+ * @returns The value at the specified path
+ */
+function getNestedValue(obj: any, path: string): any {
+	// Split the path into parts, handling both dot notation and bracket notation
+	// Examples:
+	// "basket.fruits[0].name" -> ["basket", "fruits", "0", "name"]
+	// "user.profile.firstName" -> ["user", "profile", "firstName"]
+	const parts = path
+		.replace(/\[(\w+)\]/g, ".$1") // Convert bracket notation to dot notation
+		.split(".")
+		.filter((part) => part.length > 0);
+
+	let current = obj;
+	for (const part of parts) {
+		if (current === null || current === undefined) {
+			return undefined;
+		}
+		current = current[part];
+	}
+
+	return current;
+}
+
+/**
+ * Formats a value for injection into a template.
+ * - Primitive values are converted to strings
+ * - Objects and arrays are serialized to JSON with indentation
+ *
+ * @param value The value to format
+ * @returns The formatted string representation
+ */
+function formatValue(value: any): string {
+	if (value === null) {
+		return "null";
+	}
+
+	if (value === undefined) {
+		return "undefined";
+	}
+
+	// Check if value is an object or array
+	if (typeof value === "object") {
+		return JSON.stringify(value, null, 2);
+	}
+
+	// For primitives (string, number, boolean), convert to string
+	return String(value);
 }
