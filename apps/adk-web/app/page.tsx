@@ -1,8 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useQueryState } from "nuqs";
+import { Suspense, useEffect, useMemo } from "react";
 import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
 import { ChatPanel } from "@/components/chat-panel";
 import { Navbar } from "@/components/navbar";
@@ -10,11 +10,14 @@ import { IncompatibleState } from "@/components/ui/incompatible-state";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { useAgents } from "@/hooks/use-agent";
 import { useCompatibility } from "@/hooks/use-compatibility";
+import { isPanelId, PanelId } from "./(dashboard)/_schema";
 
 function HomeContent() {
-	const searchParams = useSearchParams();
-	const apiUrl = searchParams.get("apiUrl");
-	const port = searchParams.get("port");
+	// Use nuqs for URL state management
+	const [apiUrl] = useQueryState("apiUrl");
+	const [port] = useQueryState("port");
+	const [sessionId, setSessionId] = useQueryState("sessionId");
+	const [agentName, setAgentName] = useQueryState("agent");
 
 	// Support both legacy apiUrl and new port parameter, else default
 	const finalApiUrl = apiUrl
@@ -23,11 +26,14 @@ function HomeContent() {
 			? `http://localhost:${port}`
 			: "http://localhost:8042";
 
-	// Panel and session state
-	const [selectedPanel, setSelectedPanel] = useState<
-		"sessions" | "events" | "state" | "graph" | null
-	>(null);
-	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+	const [selectedPanel, setSelectedPanel] = useQueryState<PanelId | null>(
+		"panel",
+		{
+			parse: (value) => (isPanelId(value) ? value : null),
+			serialize: (value) => value ?? "",
+			defaultValue: null,
+		},
+	);
 
 	const queryClient = useQueryClient();
 	const {
@@ -49,11 +55,26 @@ function HomeContent() {
 		selectAgent,
 		refreshAgents,
 		isSendingMessage,
-	} = useAgents(currentSessionId);
+	} = useAgents(sessionId);
 
-	// Subscribe to server-side hot-reload stream (SSE) and refresh data on change
+	// Determine which agent should be selected based on URL state
+	const targetAgent = useMemo(() => {
+		if (!agents.length) return null;
+
+		// If agentName is in URL, find that agent
+		if (agentName) {
+			const found = agents.find((a) => a.name === agentName);
+			if (found) return found;
+		}
+
+		// Otherwise default to first agent
+		return agents[0];
+	}, [agents, agentName]);
+
+	// Single effect for SSE hot-reload subscription
 	useEffect(() => {
 		if (!finalApiUrl) return;
+
 		let es: EventSource | null = null;
 		try {
 			es = new EventSource(`${finalApiUrl}/reload/stream`);
@@ -61,13 +82,11 @@ function HomeContent() {
 				try {
 					const data = ev.data ? JSON.parse(ev.data) : null;
 					if (data && data.type === "reload") {
-						// Refresh agents and invalidate common queries
 						refreshAgents();
 						queryClient.invalidateQueries({ queryKey: ["agents"] });
 						queryClient.invalidateQueries({ queryKey: ["sessions"] });
 						queryClient.invalidateQueries({ queryKey: ["events"] });
 					} else if (data && data.type === "state") {
-						// Targeted invalidation for the changed agent/session state
 						queryClient.invalidateQueries({
 							queryKey: ["state", finalApiUrl, data.agentPath, data.sessionId],
 						});
@@ -79,6 +98,7 @@ function HomeContent() {
 		} catch {
 			// ignore connection failures
 		}
+
 		return () => {
 			try {
 				es?.close();
@@ -86,31 +106,41 @@ function HomeContent() {
 		};
 	}, [finalApiUrl, queryClient, refreshAgents]);
 
+	// Single effect for syncing agent selection and session clearing
+	useEffect(() => {
+		// If no target agent, nothing to do
+		if (!targetAgent) return;
+
+		// If selected agent doesn't match target, update it
+		if (selectedAgent?.name !== targetAgent.name) {
+			// Clear session when switching agents
+			setSessionId(null);
+			selectAgent(targetAgent);
+		}
+
+		// If no agentName in URL, set it to match current agent
+		if (!agentName && targetAgent.name) {
+			setAgentName(targetAgent.name);
+		}
+	}, [
+		targetAgent,
+		selectedAgent,
+		agentName,
+		selectAgent,
+		setSessionId,
+		setAgentName,
+	]);
+
 	// Panel action handlers
-	const handlePanelSelect = (
-		panel: "sessions" | "events" | "state" | "graph" | null,
-	) => {
+	const handlePanelSelect = (panel: PanelId | null) => {
 		setSelectedPanel(panel);
 	};
-	// Auto-select first agent if none selected and agents are available
-	useEffect(() => {
-		if (agents.length > 0 && !selectedAgent) {
-			console.log("Auto-selecting first agent:", agents[0].name);
-			selectAgent(agents[0]);
-		}
-	}, [agents, selectedAgent, selectAgent]);
 
-	// Reset session when switching to a different agent
-	const prevAgentRef = useRef<string | null>(null);
-	useEffect(() => {
-		const currentAgentPath = selectedAgent?.relativePath ?? null;
-		if (currentAgentPath !== prevAgentRef.current) {
-			// Agent actually changed -> clear active session so new agent's first session can auto-select
-			setCurrentSessionId(null);
-			prevAgentRef.current = currentAgentPath;
-		}
-	}, [selectedAgent]);
-	// (Session and events lifecycle + management moved into Sidebar)
+	const handleAgentSelect = (agent: (typeof agents)[0]) => {
+		// Update URL state, which will trigger the sync effect
+		setAgentName(agent.name);
+		setSessionId(null);
+	};
 
 	if (loading || compatLoading) {
 		return <LoadingState message="Connecting to ADK server..." />;
@@ -158,8 +188,8 @@ function HomeContent() {
 					selectedPanel={selectedPanel}
 					onPanelSelect={handlePanelSelect}
 					selectedAgent={selectedAgent}
-					currentSessionId={currentSessionId}
-					onSessionChange={(id) => setCurrentSessionId(id)}
+					currentSessionId={sessionId}
+					onSessionChange={(id) => setSessionId(id)}
 				/>
 			</div>
 
@@ -173,11 +203,7 @@ function HomeContent() {
 							apiUrl={finalApiUrl}
 							agents={agents}
 							selectedAgent={selectedAgent}
-							onSelectAgent={(agent) => {
-								// Clear session first to avoid stale session requests against new agent
-								setCurrentSessionId(null);
-								selectAgent(agent);
-							}}
+							onSelectAgent={handleAgentSelect}
 						/>
 					</div>
 
