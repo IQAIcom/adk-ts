@@ -1,7 +1,8 @@
 "use client";
 
 import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { Message as ChatMessage } from "@/app/(dashboard)/_schema";
 import { ConversationAutoScroll } from "@/components/ai-elements/conversation-auto-scroll";
 import {
@@ -54,7 +55,8 @@ export function ChatPanel({
 		isDragOver,
 	} = useChatAttachments();
 
-	const { recording, startRecording, stopRecording } = useVoiceRecording();
+	const { recording, error, startRecording, stopRecording, clearAudio } =
+		useVoiceRecording();
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -70,13 +72,27 @@ export function ChatPanel({
 		});
 	};
 
-	const handleVoiceRecording = () => {
+	const handleVoiceRecording = async () => {
 		if (recording) {
-			stopRecording();
+			const audioFile = await stopRecording();
+			if (audioFile) {
+				onSendMessage("", [audioFile]);
+				clearAudio();
+			} else {
+				toast.error("No audio was recorded");
+			}
 		} else {
-			startRecording();
+			await startRecording();
 		}
 	};
+
+	// Show error toast if recording fails
+	useEffect(() => {
+		if (error) {
+			toast.error(error);
+			clearAudio();
+		}
+	}, [error, clearAudio]);
 
 	// Scroll logic moved to ConversationAutoScroll
 
@@ -172,7 +188,7 @@ export function ChatPanel({
 											name="You"
 										/>
 									</Message>
-									<Message from="assistant" key="recording">
+									<Message from="assistant" key="listening">
 										<MessageContent>
 											<Response className="px-2 italic animate-pulse text-sm text-muted-foreground">
 												Listening...
