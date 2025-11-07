@@ -132,7 +132,6 @@ export function startTranscription(
 	recognition.onresult = (event: SpeechRecognitionEvent) => {
 		// The event contains multiple results (one per utterance)
 		// We need to combine them all
-		let interimTranscript = "";
 		let finalTranscript = "";
 
 		// Iterate through all results in this event
@@ -143,8 +142,6 @@ export function startTranscription(
 			// Check if this is an interim (partial) or final result
 			if (event.results[i].isFinal) {
 				finalTranscript += transcript + " ";
-			} else {
-				interimTranscript += transcript;
 			}
 
 			// Call the callback with this result
@@ -159,9 +156,6 @@ export function startTranscription(
 		if (finalTranscript) {
 			fullTranscript += finalTranscript;
 		}
-
-		// Combine full transcript with current interim for display
-		const displayText = fullTranscript + interimTranscript;
 	};
 
 	/**
