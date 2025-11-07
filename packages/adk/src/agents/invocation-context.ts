@@ -5,6 +5,7 @@ import type { BaseSessionService } from "../sessions/base-session-service";
 import type { Session } from "../sessions/session";
 import type { ActiveStreamingTool } from "./active-streaming-tool";
 import type { BaseAgent } from "./base-agent";
+import { ContextCacheConfig } from "./context-cache-config";
 import type { LiveRequestQueue } from "./live-request-queue";
 import type { RunConfig } from "./run-config";
 import type { TranscriptionEntry } from "./transcription-entry";
@@ -103,6 +104,7 @@ export class InvocationContext {
 	readonly artifactService?: BaseArtifactService;
 	readonly sessionService: BaseSessionService;
 	readonly memoryService?: BaseMemoryService;
+	readonly contextCacheConfig: ContextCacheConfig;
 
 	/**
 	 * The id of this invocation context. Readonly.
@@ -186,6 +188,7 @@ export class InvocationContext {
 		activeStreamingTools?: Record<string, ActiveStreamingTool>;
 		transcriptionCache?: TranscriptionEntry[];
 		runConfig?: RunConfig;
+		contextCacheConfig?: ContextCacheConfig;
 	}) {
 		this.artifactService = options.artifactService;
 		this.sessionService = options.sessionService;
@@ -245,6 +248,7 @@ export class InvocationContext {
 			activeStreamingTools: this.activeStreamingTools,
 			transcriptionCache: this.transcriptionCache,
 			runConfig: this.runConfig,
+			contextCacheConfig: this.contextCacheConfig,
 		});
 	}
 }
