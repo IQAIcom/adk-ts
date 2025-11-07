@@ -8,6 +8,7 @@ import {
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import type { EventItemDto as Event } from "../Api";
 
 export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
@@ -34,7 +35,7 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 			<ScrollArea className="flex-1">
 				<div className="divide-y divide-border/30">
 					{traceGroups.map((group) => (
-						<TraceGroupCollapsible key={group.id} group={group} />
+						<TraceGroup key={group.id} group={group} />
 					))}
 				</div>
 			</ScrollArea>
@@ -42,7 +43,7 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 	);
 }
 
-function TraceGroupCollapsible({ group }: { group: TraceGroup }) {
+function TraceGroup({ group }: { group: TraceGroup }) {
 	const [open, setOpen] = useState(true);
 	const messageText = extractMessageText(group.userMessage);
 
@@ -56,14 +57,8 @@ function TraceGroupCollapsible({ group }: { group: TraceGroup }) {
 						) : (
 							<ChevronRight className="w-3 h-3 text-muted-foreground" />
 						)}
-						<p className="text-foreground">
-							<span className="line-clamp-1">
-								{messageText || "Untitled message"}
-							</span>
-							<span className="text-muted-foreground">
-								{" "}
-								({new Date(group.timestamp).toLocaleTimeString()})
-							</span>
+						<p className="text-foreground line-clamp-1">
+							{messageText || "Untitled message"}
 						</p>
 					</div>
 				</div>
@@ -77,69 +72,79 @@ function TraceGroupCollapsible({ group }: { group: TraceGroup }) {
 }
 
 function TraceTimeline({ group }: { group: TraceGroup }) {
-	const flatItems = useMemo(() => flattenTraces(group.events), [group.events]);
-	if (flatItems.length === 0) return null;
-
-	const startTime = Math.min(...flatItems.map((i) => i.timestamp));
-	const endTime = Math.max(
-		...flatItems.map((i) => i.timestamp + (i.duration || 0)),
-	);
-	const totalDuration = Math.max(endTime - startTime, 1);
+	const nested = useMemo(() => group.events, [group.events]);
+	if (!nested || nested.length === 0) return null;
 
 	return (
-		<div className="p-3 space-y-1 text-xs font-mono">
-			{flatItems.map((node) => {
-				const relStart = ((node.timestamp - startTime) / totalDuration) * 100;
-				const relWidth = ((node.duration || 0) / totalDuration) * 100;
+		<div className="text-white p-4 rounded-xl font-mono shadow-inner border-b border-t rounded-t-none rounded-b-none">
+			<div className="mb-3">
+				<h3 className="text-sm font-semibold text-slate-100">Invocation ID</h3>
+				<p className="text-slate-400 text-xs truncate">{group.id}</p>
+			</div>
 
-				return (
-					<div
-						key={node.id}
-						className="flex items-center h-6 relative"
-						style={{ paddingLeft: `${node.level * 12}px` }}
-					>
-						<span className="mr-2 text-blue-400">
-							{getIconForType(node.type)}
-						</span>
-
-						<div className="w-[200px] truncate text-foreground">
-							{formatTraceType(node.type)}{" "}
-							<span className="text-muted-foreground">
-								({formatDuration(node.duration || 0)})
-							</span>
-						</div>
-
-						<div className="flex-1 relative h-4 ml-4">
-							<div
-								className="absolute h-3 rounded bg-blue-500/30"
-								style={{
-									left: `${relStart}%`,
-									width: `${Math.max(relWidth, 1)}%`,
-								}}
-							/>
-						</div>
-					</div>
-				);
-			})}
+			<div className="space-y-1 text-xs">
+				{nested.map((node) => (
+					<TraceNode key={node.id} node={node} level={0} />
+				))}
+			</div>
 		</div>
 	);
 }
 
-function flattenTraces(
-	items: TraceItem[],
-	level = 0,
-): (TraceItem & { level: number })[] {
-	const flattened: (TraceItem & { level: number })[] = [];
+function TraceNode({ node, level }: { node: TraceItem; level: number }) {
+	const indent = `${level * 12}px`;
+	const barWidth = Math.log((node.duration || 1) + 1) * 20;
+	const children = node.children ?? [];
 
-	for (const item of items) {
-		flattened.push({ ...item, level });
-		if (item.children && item.children.length > 0) {
-			const nested = flattenTraces(item.children, level + 1);
-			flattened.push(...nested);
-		}
+	return (
+		<div className="ml-2 pl-2" style={{ marginLeft: indent }}>
+			<div className="flex items-center justify-between py-1">
+				<div className="flex items-center gap-2 text-slate-300 text-sm truncate">
+					<span>{getIconForType(node.type)}</span>
+					<span className="truncate">{formatTraceType(node.type)}</span>
+				</div>
+
+				<div className="flex items-center gap-2 text-slate-400 text-xs">
+					<div
+						className={cn(
+							"h-2 rounded transition-all",
+							node.type === "tool_call"
+								? "bg-green-600"
+								: node.type === "tool_response"
+									? "bg-amber-500"
+									: node.type === "llm_call"
+										? "bg-blue-600"
+										: "bg-slate-600",
+						)}
+						style={{ width: `${barWidth}px` }}
+					/>
+					<span>{formatDuration(node.duration || 0)}</span>
+				</div>
+			</div>
+
+			{children.length > 0 && (
+				<div className="mt-1 space-y-1">
+					{children.map((child) => (
+						<TraceNode key={child.id} node={child} level={level + 1} />
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
+
+function extractMessageText(userMessage: Event): string {
+	if (!userMessage || !userMessage.content) return "";
+	const content = userMessage.content;
+	if (typeof content === "string") return content;
+	if ("parts" in content && Array.isArray((content as any).parts)) {
+		const parts = (content as any).parts;
+		if (parts[0]?.text) return parts[0].text;
 	}
-
-	return flattened;
+	if ("text" in content && typeof (content as any).text === "string") {
+		return (content as any).text;
+	}
+	return "";
 }
 
 function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
@@ -155,7 +160,6 @@ function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
 				currentGroup.events = buildNestedStructure(currentGroup.events);
 				groups.push(currentGroup);
 			}
-
 			currentGroup = {
 				id: event.id,
 				userMessage: event,
@@ -201,12 +205,11 @@ function buildNestedStructure(items: TraceItem[]): TraceItem[] {
 
 		if (stack.length > 0) {
 			const parent = stack[stack.length - 1];
-			if (!parent.children) parent.children = [];
+			parent.children = parent.children || [];
 			parent.children.push(item);
 		} else {
 			roots.push(item);
 		}
-
 		stack.push(item);
 	}
 
@@ -214,9 +217,8 @@ function buildNestedStructure(items: TraceItem[]): TraceItem[] {
 }
 
 function determineTraceType(event: Event): TraceItem["type"] {
-	if (event.functionCalls && event.functionCalls.length > 0) return "tool_call";
-	if (event.functionResponses && event.functionResponses.length > 0)
-		return "tool_response";
+	if (event.functionCalls?.length) return "tool_call";
+	if (event.functionResponses?.length) return "tool_response";
 	if (event.author === "user") return "message";
 	return "llm_call";
 }
@@ -229,6 +231,8 @@ function getIconForType(type: TraceItem["type"]) {
 			return "◀";
 		case "llm_call":
 			return "💬";
+		case "message":
+			return "🧑";
 		default:
 			return "•";
 	}
@@ -242,27 +246,6 @@ function formatDuration(ms: number): string {
 	if (ms < 1) return `${(ms * 1000).toFixed(0)}µs`;
 	if (ms < 1000) return `${ms.toFixed(0)}ms`;
 	return `${(ms / 1000).toFixed(2)}s`;
-}
-
-function extractMessageText(userMessage: Event): string {
-	if (!userMessage || !userMessage.content) return "";
-
-	const content = userMessage.content;
-
-	if (typeof content === "string") return content;
-
-	if ("parts" in content) {
-		const parts = (content as any).parts;
-		if (parts && parts.length > 0 && parts[0].text) {
-			return parts[0].text;
-		}
-	}
-
-	if ("text" in content && typeof (content as any).text === "string") {
-		return (content as any).text;
-	}
-
-	return "";
 }
 
 interface TracingPanelProps {
