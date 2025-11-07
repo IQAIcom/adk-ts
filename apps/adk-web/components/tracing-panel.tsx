@@ -328,6 +328,7 @@ function extractMessageText(userMessage: Event): string {
 function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
 	const groups: TraceGroup[] = [];
 	let currentGroup: TraceGroup | null = null;
+	const DURATION_FALLBACK_MS = 50;
 
 	for (let i = 0; i < events.length; i++) {
 		const event = events[i];
@@ -349,7 +350,9 @@ function groupTracesByUserMessage(events: Event[]): TraceGroup[] {
 
 		if (!currentGroup) continue;
 
-		const duration = nextEvent ? nextEvent.timestamp - event.timestamp : 50;
+		const duration = nextEvent
+			? nextEvent.timestamp - event.timestamp
+			: DURATION_FALLBACK_MS;
 
 		currentGroup.events.push({
 			id: event.id,
