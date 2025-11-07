@@ -221,6 +221,10 @@ function TraceDetailSheet({
 }) {
 	if (!eventData) return null;
 
+	const content = eventData.content;
+	const hasRequestMetadata = "requestMetadata" in eventData;
+	const hasResponseMetadata = "responseMetadata" in eventData;
+
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent side="right" className="overflow-hidden">
@@ -246,20 +250,23 @@ function TraceDetailSheet({
 					<TabsContent value="request" className="flex-1 overflow-auto">
 						<ScrollArea className="h-full">
 							<div className="p-4">
-								{(eventData as any).requestMetadata ? (
-									<JsonTreeView data={(eventData as any).requestMetadata} />
-								) : eventData.content &&
-									typeof eventData.content === "object" ? (
+								{hasRequestMetadata ? (
+									<JsonTreeView data={eventData.requestMetadata} />
+								) : content && typeof content === "object" ? (
 									<JsonTreeView
 										data={{
 											model:
-												(eventData.content as any).model ||
-												(eventData.content as any).config?.model,
-											config: (eventData.content as any).config,
-											systemInstruction: (eventData.content as any)
+												(content as Record<string, unknown>).model ||
+												(
+													(content as Record<string, unknown>).config as
+														| Record<string, unknown>
+														| undefined
+												)?.model,
+											config: (content as Record<string, unknown>).config,
+											systemInstruction: (content as Record<string, unknown>)
 												.systemInstruction,
-											tools: (eventData.content as any).tools,
-											contents: (eventData.content as any).contents,
+											tools: (content as Record<string, unknown>).tools,
+											contents: (content as Record<string, unknown>).contents,
 										}}
 									/>
 								) : (
@@ -274,16 +281,16 @@ function TraceDetailSheet({
 					<TabsContent value="response" className="flex-1 overflow-auto">
 						<ScrollArea className="h-full">
 							<div className="p-4">
-								{(eventData as any).responseMetadata ? (
-									<JsonTreeView data={(eventData as any).responseMetadata} />
-								) : eventData.content &&
-									typeof eventData.content === "object" ? (
+								{hasResponseMetadata ? (
+									<JsonTreeView data={eventData.responseMetadata} />
+								) : content && typeof content === "object" ? (
 									<JsonTreeView
 										data={{
-											content: (eventData.content as any).content,
-											finishReason: (eventData.content as any).finishReason,
-											usageMetadata: (eventData.content as any).usageMetadata,
-											groundingMetadata: (eventData as any).groundingMetadata,
+											content: (content as Record<string, unknown>).content,
+											finishReason: (content as Record<string, unknown>)
+												.finishReason,
+											usageMetadata: (content as Record<string, unknown>)
+												.usageMetadata,
 										}}
 									/>
 								) : (
@@ -304,12 +311,16 @@ function extractMessageText(userMessage: Event): string {
 	if (!userMessage || !userMessage.content) return "";
 	const content = userMessage.content;
 	if (typeof content === "string") return content;
-	if ("parts" in content && Array.isArray((content as any).parts)) {
-		const parts = (content as any).parts;
-		if (parts[0]?.text) return parts[0].text;
-	}
-	if ("text" in content && typeof (content as any).text === "string") {
-		return (content as any).text;
+	if (typeof content === "object" && content !== null) {
+		if ("parts" in content && Array.isArray(content.parts)) {
+			const parts = content.parts;
+			if (parts[0] && typeof parts[0] === "object" && "text" in parts[0]) {
+				return String(parts[0].text);
+			}
+		}
+		if ("text" in content && typeof content.text === "string") {
+			return content.text;
+		}
 	}
 	return "";
 }
@@ -415,7 +426,7 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(2)}s`;
 }
 
-function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
+function JsonTreeView({ data, level = 0 }: { data: unknown; level?: number }) {
 	const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
 	const toggleCollapse = (key: string) => {
@@ -465,7 +476,8 @@ function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
 		);
 	}
 
-	const keys = Object.keys(data);
+	const dataRecord = data as Record<string, unknown>;
+	const keys = Object.keys(dataRecord);
 	if (keys.length === 0)
 		return <span className="text-muted-foreground">{"{}"}</span>;
 
@@ -475,9 +487,12 @@ function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
 				<span className="text-muted-foreground text-xs">{"{"}</span>
 			)}
 			{keys.map((key) => {
-				const value = data[key];
+				const value = dataRecord[key];
 				const isExpandable =
-					value && typeof value === "object" && Object.keys(value).length > 0;
+					value !== null &&
+					value !== undefined &&
+					typeof value === "object" &&
+					Object.keys(value).length > 0;
 				const isCollapsed = collapsed[key];
 
 				return (
@@ -507,7 +522,9 @@ function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
 							</div>
 							{isCollapsed && isExpandable && (
 								<span className="text-muted-foreground text-xs italic">
-									{Array.isArray(value) ? `[${value.length}]` : "{...}"}
+									{Array.isArray(value)
+										? `[${(value as unknown[]).length}]`
+										: "{...}"}
 								</span>
 							)}
 							{!isCollapsed && !isExpandable && (

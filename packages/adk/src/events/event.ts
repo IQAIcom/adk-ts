@@ -15,6 +15,7 @@ interface EventOpts {
 	timestamp?: number;
 	content?: any;
 	partial?: boolean;
+	groundingMetadata?: any;
 	/** LLM request metadata for debugging */
 	requestMetadata?: {
 		model?: string;
@@ -30,7 +31,6 @@ interface EventOpts {
 		usageMetadata?: any;
 		functionCalls?: any[];
 		functionResponses?: any[];
-		groundingMetadata?: any;
 		toolName?: string;
 		toolResult?: any;
 		mergedFrom?: number;
@@ -89,7 +89,6 @@ export class Event extends LlmResponse {
 		usageMetadata?: any;
 		functionCalls?: any[];
 		functionResponses?: any[];
-		groundingMetadata?: any;
 		toolName?: string;
 		toolResult?: any;
 		mergedFrom?: number;
@@ -112,6 +111,7 @@ export class Event extends LlmResponse {
 		this.timestamp = opts.timestamp ?? Math.floor(Date.now() / 1000);
 		this.requestMetadata = opts.requestMetadata;
 		this.responseMetadata = opts.responseMetadata;
+		this.groundingMetadata = opts.groundingMetadata;
 	}
 
 	/**

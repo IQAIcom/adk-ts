@@ -123,7 +123,6 @@ export abstract class BaseLlmFlow {
 				usageMetadata: llmResponse.usageMetadata,
 				functionCalls: llmResponse.getFunctionCalls?.() || [],
 				functionResponses: llmResponse.getFunctionResponses?.() || [],
-				groundingMetadata: llmResponse.groundingMetadata,
 			};
 			// Also capture content for the event itself
 			modelResponseEvent.content = llmResponse.content;
