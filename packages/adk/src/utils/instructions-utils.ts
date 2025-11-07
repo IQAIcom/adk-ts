@@ -99,40 +99,18 @@ export async function injectSessionState(
 			}
 		} else {
 			// Handle session state variables
-			// Check if this is a nested property access (e.g., basket.fruits[0].name)
-			const isNestedAccess = varName.includes(".") || varName.includes("[");
-
-			// Extract root property name for validation
-			const rootProperty = isNestedAccess
-				? varName.split(/[.[]/)[0] // Get the part before first . or [
-				: varName;
-
-			// Validate the root property name
-			if (!isValidStateName(rootProperty)) {
+			if (!isValidStateName(varName)) {
 				return match[0]; // Return original if not a valid state name
 			}
 
 			const sessionState = invocationContext.session.state;
-
-			try {
-				const value = isNestedAccess
-					? getNestedValue(sessionState, varName)
-					: sessionState[varName];
-
-				if (value === undefined) {
-					if (optional) {
-						return "";
-					}
-					throw new Error(`Context variable not found: \`${varName}\`.`);
-				}
-
-				return formatValue(value);
-			} catch (error) {
-				if (optional) {
-					return "";
-				}
-				throw error;
+			if (varName in sessionState) {
+				return String(sessionState[varName]);
 			}
+			if (optional) {
+				return "";
+			}
+			throw new Error(`Context variable not found: \`${varName}\`.`);
 		}
 	}
 
@@ -178,101 +156,4 @@ function isValidIdentifier(name: string): boolean {
 	// JavaScript identifier regex: starts with letter, $, or _, followed by letters, digits, $, or _
 	const identifierRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 	return identifierRegex.test(name);
-}
-
-/**
- * Gets a nested value from an object using a path string.
- * Supports both dot notation (obj.prop) and bracket notation (obj[0], obj['prop'])
- *
- * @param obj The object to extract value from
- * @param path The path string (e.g., "basket.fruits[0].name")
- * @returns The value at the specified path
- */
-function getNestedValue(obj: any, path: string): any {
-	// Split the path into parts, handling both dot notation and bracket notation
-	// We need to handle quoted strings that may contain dots
-	const parts: string[] = [];
-	let current = "";
-	let inBrackets = false;
-	let quote = "";
-
-	for (let i = 0; i < path.length; i++) {
-		const char = path[i];
-
-		if (char === "[" && !quote) {
-			// Starting bracket notation
-			if (current) {
-				parts.push(current);
-				current = "";
-			}
-			inBrackets = true;
-		} else if (char === "]" && inBrackets && !quote) {
-			// Ending bracket notation
-			if (current) {
-				parts.push(current);
-				current = "";
-			}
-			inBrackets = false;
-		} else if ((char === '"' || char === "'") && inBrackets) {
-			// Toggle quote state
-			if (quote === char) {
-				quote = "";
-			} else if (!quote) {
-				quote = char;
-			} else {
-				current += char;
-			}
-		} else if (char === "." && !inBrackets && !quote) {
-			// Dot separator (only when not in brackets or quotes)
-			if (current) {
-				parts.push(current);
-				current = "";
-			}
-		} else {
-			// Regular character
-			current += char;
-		}
-	}
-
-	// Add last part
-	if (current) {
-		parts.push(current);
-	}
-
-	// Navigate through the object
-	let result: any = obj;
-	for (const part of parts) {
-		if (result === null || result === undefined) {
-			return undefined;
-		}
-		result = result[part];
-	}
-
-	return result;
-}
-
-/**
- * Formats a value for injection into a template.
- * - Primitive values are converted to strings
- * - Objects and arrays are serialized to JSON with indentation
- *
- * @param value The value to format
- * @returns The formatted string representation
- */
-function formatValue(value: any): string {
-	if (value === null) {
-		return "null";
-	}
-
-	if (value === undefined) {
-		return "undefined";
-	}
-
-	// Check if value is an object or array
-	if (typeof value === "object") {
-		return JSON.stringify(value, null, 2);
-	}
-
-	// For primitives (string, number, boolean), convert to string
-	return String(value);
 }
