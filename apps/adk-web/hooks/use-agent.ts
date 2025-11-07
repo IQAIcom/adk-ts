@@ -102,12 +102,10 @@ export function useAgents(currentSessionId?: string | null) {
 			agent,
 			message,
 			attachments,
-			voiceMessage,
 		}: {
 			agent: AgentListItemDto;
 			message: string;
 			attachments?: File[];
-			voiceMessage?: File;
 		}) => {
 			const userMessage: Message = {
 				id: Date.now(),
@@ -166,16 +164,6 @@ export function useAgents(currentSessionId?: string | null) {
 						};
 					}),
 				);
-			}
-
-			if (voiceMessage) {
-				encodedAttachments?.push({
-					name: voiceMessage.name,
-					mimeType: voiceMessage.type,
-					data: new File([voiceMessage], voiceMessage.name, {
-						type: voiceMessage.type,
-					}).toString(),
-				});
 			}
 
 			const body = { message, attachments: encodedAttachments };
