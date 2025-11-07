@@ -120,9 +120,6 @@ export function startTranscription(
 		return null;
 	}
 
-	// Accumulate all transcribed text
-	let fullTranscript = "";
-
 	/**
 	 * This event fires whenever the recognition engine produces a result
 	 * It can fire multiple times:
@@ -154,7 +151,11 @@ export function startTranscription(
 
 		// Update our accumulated transcript
 		if (finalTranscript) {
-			fullTranscript += finalTranscript;
+			callbacks.onResult?.({
+				text: finalTranscript,
+				isFinal: true,
+				confidence: 1,
+			});
 		}
 	};
 
@@ -192,7 +193,7 @@ export function startTranscription(
 	/**
 	 * Fires when recognition stops (naturally or manually)
 	 */
-	recognition.onend = () => {
+	recognition.onend = (_event: Event) => {
 		callbacks.onEnd?.();
 	};
 
@@ -213,7 +214,7 @@ export function startTranscription(
 	return () => {
 		try {
 			recognition.stop();
-		} catch (error) {
+		} catch (_error) {
 			// Ignore errors when stopping
 		}
 	};
