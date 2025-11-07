@@ -31,6 +31,9 @@ interface EventOpts {
 		function_calls?: any[];
 		function_responses?: any[];
 		grounding_metadata?: any;
+		tool_name?: string;
+		tool_result?: any;
+		merged_from?: number;
 	};
 }
 
@@ -87,6 +90,9 @@ export class Event extends LlmResponse {
 		function_calls?: any[];
 		function_responses?: any[];
 		grounding_metadata?: any;
+		tool_name?: string;
+		tool_result?: any;
+		merged_from?: number;
 	};
 
 	/**
