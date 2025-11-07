@@ -45,7 +45,7 @@ export function isSpeechRecognitionSupported(): boolean {
  * - Chrome/Edge: webkitSpeechRecognition
  * - Standard: SpeechRecognition (not widely supported yet)
  */
-function getSpeechRecognition(): typeof SpeechRecognition | null {
+function getSpeechRecognition(): (typeof window)["SpeechRecognition"] | null {
 	if (typeof window === "undefined") return null;
 
 	// Try standard API first (future-proof)
