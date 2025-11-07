@@ -55,8 +55,15 @@ export function ChatPanel({
 		isDragOver,
 	} = useChatAttachments();
 
-	const { recording, error, startRecording, stopRecording, clearAudio } =
-		useVoiceRecording();
+	const {
+		recording,
+		error,
+		transcribedText,
+		isTranscribing,
+		startRecording,
+		stopRecording,
+		clearAudio,
+	} = useVoiceRecording();
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -74,14 +81,24 @@ export function ChatPanel({
 
 	const handleVoiceRecording = async () => {
 		if (recording) {
-			const audioFile = await stopRecording();
-			if (audioFile) {
-				onSendMessage("", [audioFile]);
+			// Stop recording and get both the audio file and transcript
+			const { file, transcript } = await stopRecording();
+
+			if (file) {
+				// Use the transcribed text as the message
+				// If transcription failed or is empty, use a fallback message
+				const messageText =
+					transcript?.trim() || "Voice message (transcription unavailable)";
+
+				// Send the transcribed text along with the audio file
+				// The agent receives the text message, and optionally the audio file as attachment
+				onSendMessage(messageText, [file]);
 				clearAudio();
 			} else {
 				toast.error("No audio was recorded");
 			}
 		} else {
+			// Start recording (transcription starts automatically)
 			await startRecording();
 		}
 	};
@@ -179,9 +196,24 @@ export function ChatPanel({
 								<>
 									<Message from="user" key="recording">
 										<MessageContent>
-											<Response className="px-2 italic animate-pulse text-sm text-muted-foreground">
-												Recording...
-											</Response>
+											<div className="px-2 text-sm">
+												{transcribedText ? (
+													<>
+														<span className="text-foreground">
+															{transcribedText}
+														</span>
+														{isTranscribing && (
+															<span className="ml-2 inline-block w-2 h-4 bg-primary animate-pulse" />
+														)}
+													</>
+												) : (
+													<span className="italic animate-pulse text-muted-foreground">
+														{isTranscribing
+															? "Listening and transcribing..."
+															: "Recording..."}
+													</span>
+												)}
+											</div>
 										</MessageContent>
 										<MessageAvatar
 											icon={<UserIcon className="size-4" />}
@@ -285,6 +317,7 @@ export function ChatPanel({
 								</PromptInputTools>
 								<div>
 									<PromptInputMicButton
+										variant={"secondary"}
 										status={{ recording }}
 										onClick={handleVoiceRecording}
 									/>
