@@ -340,9 +340,9 @@ function buildResponseEvent(
 		// Add metadata for tool responses
 		responseMetadata: {
 			content: content,
-			function_responses: [partFunctionResponse.functionResponse],
-			tool_name: tool.name,
-			tool_result: result,
+			functionResponses: [partFunctionResponse.functionResponse],
+			toolName: tool.name,
+			toolResult: result,
 		},
 	});
 }
@@ -390,10 +390,8 @@ export function mergeParallelFunctionResponseEvents(
 	// Merge response metadata from all events
 	const mergedFunctionResponses: any[] = [];
 	for (const event of functionResponseEvents) {
-		if (event.responseMetadata?.function_responses) {
-			mergedFunctionResponses.push(
-				...event.responseMetadata.function_responses,
-			);
+		if (event.responseMetadata?.functionResponses) {
+			mergedFunctionResponses.push(...event.responseMetadata.functionResponses);
 		}
 	}
 
@@ -407,8 +405,8 @@ export function mergeParallelFunctionResponseEvents(
 		// Preserve metadata from merged function responses
 		responseMetadata: {
 			content: { role: "user", parts: mergedParts },
-			function_responses: mergedFunctionResponses,
-			merged_from: functionResponseEvents.length,
+			functionResponses: mergedFunctionResponses,
+			mergedFrom: functionResponseEvents.length,
 		},
 	});
 

@@ -38,6 +38,8 @@ export interface EventsTable {
 	actions: string | null;
 	long_running_tool_ids_json: string | null;
 	grounding_metadata: string | null;
+	request_metadata_json: string | null;
+	response_metadata_json: string | null;
 	partial: boolean | null;
 	turn_complete: boolean | null;
 	error_code: string | null;
@@ -133,6 +135,8 @@ export class DatabaseSessionService extends BaseSessionService {
 				.addColumn("actions", "text")
 				.addColumn("long_running_tool_ids_json", "text")
 				.addColumn("grounding_metadata", "text")
+				.addColumn("request_metadata_json", "text")
+				.addColumn("response_metadata_json", "text")
 				.addColumn("partial", "boolean")
 				.addColumn("turn_complete", "boolean")
 				.addColumn("error_code", "varchar(256)")
@@ -686,6 +690,12 @@ export class DatabaseSessionService extends BaseSessionService {
 			grounding_metadata: event.groundingMetadata
 				? JSON.stringify(event.groundingMetadata)
 				: null,
+			request_metadata_json: event.requestMetadata
+				? JSON.stringify(event.requestMetadata)
+				: null,
+			response_metadata_json: event.responseMetadata
+				? JSON.stringify(event.responseMetadata)
+				: null,
 			partial: event.partial || null,
 			turn_complete: event.turnComplete || null,
 			error_code: event.errorCode || null,
@@ -721,6 +731,12 @@ export class DatabaseSessionService extends BaseSessionService {
 				: undefined,
 			groundingMetadata: storageEvent.grounding_metadata
 				? this.parseJsonSafely(storageEvent.grounding_metadata, null)
+				: undefined,
+			requestMetadata: storageEvent.request_metadata_json
+				? this.parseJsonSafely(storageEvent.request_metadata_json, null)
+				: undefined,
+			responseMetadata: storageEvent.response_metadata_json
+				? this.parseJsonSafely(storageEvent.response_metadata_json, null)
 				: undefined,
 			partial: storageEvent.partial || undefined,
 			turnComplete: storageEvent.turn_complete || undefined,

@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import type { EventItemDto as Event } from "../Api";
 
 export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
+	console.log("events", JSON.stringify(events, null, 2));
 	const eventMap = useMemo(() => {
 		const map = new Map<string, Event>();
 		for (const e of events) map.set(e.id, e);
@@ -255,8 +256,8 @@ function TraceDetailSheet({
 												(eventData.content as any).model ||
 												(eventData.content as any).config?.model,
 											config: (eventData.content as any).config,
-											system_instruction: (eventData.content as any)
-												.system_instruction,
+											systemInstruction: (eventData.content as any)
+												.systemInstruction,
 											tools: (eventData.content as any).tools,
 											contents: (eventData.content as any).contents,
 										}}
@@ -280,9 +281,9 @@ function TraceDetailSheet({
 									<JsonTreeView
 										data={{
 											content: (eventData.content as any).content,
-											finish_reason: (eventData.content as any).finish_reason,
-											usage_metadata: (eventData.content as any).usage_metadata,
-											grounding_metadata: (eventData as any).groundingMetadata,
+											finishReason: (eventData.content as any).finishReason,
+											usageMetadata: (eventData.content as any).usageMetadata,
+											groundingMetadata: (eventData as any).groundingMetadata,
 										}}
 									/>
 								) : (

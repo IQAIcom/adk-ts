@@ -19,21 +19,21 @@ interface EventOpts {
 	requestMetadata?: {
 		model?: string;
 		config?: any;
-		system_instruction?: string;
+		systemInstruction?: string;
 		tools?: any[];
 		contents?: any[];
 	};
 	/** LLM response metadata for debugging */
 	responseMetadata?: {
 		content?: any;
-		finish_reason?: string;
-		usage_metadata?: any;
-		function_calls?: any[];
-		function_responses?: any[];
-		grounding_metadata?: any;
-		tool_name?: string;
-		tool_result?: any;
-		merged_from?: number;
+		finishReason?: string;
+		usageMetadata?: any;
+		functionCalls?: any[];
+		functionResponses?: any[];
+		groundingMetadata?: any;
+		toolName?: string;
+		toolResult?: any;
+		mergedFrom?: number;
 	};
 }
 
@@ -77,7 +77,7 @@ export class Event extends LlmResponse {
 	requestMetadata?: {
 		model?: string;
 		config?: any;
-		system_instruction?: string;
+		systemInstruction?: string;
 		tools?: any[];
 		contents?: any[];
 	};
@@ -85,14 +85,14 @@ export class Event extends LlmResponse {
 	/** LLM response metadata for debugging */
 	responseMetadata?: {
 		content?: any;
-		finish_reason?: string;
-		usage_metadata?: any;
-		function_calls?: any[];
-		function_responses?: any[];
-		grounding_metadata?: any;
-		tool_name?: string;
-		tool_result?: any;
-		merged_from?: number;
+		finishReason?: string;
+		usageMetadata?: any;
+		functionCalls?: any[];
+		functionResponses?: any[];
+		groundingMetadata?: any;
+		toolName?: string;
+		toolResult?: any;
+		mergedFrom?: number;
 	};
 
 	/**

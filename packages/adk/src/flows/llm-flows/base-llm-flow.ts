@@ -105,7 +105,7 @@ export abstract class BaseLlmFlow {
 			requestMetadata: {
 				model: llm.model || llmRequest.model, // Use actual model from LLM instance
 				config: llmRequest.config,
-				system_instruction: llmRequest.getSystemInstructionText(),
+				systemInstruction: llmRequest.getSystemInstructionText(),
 				tools: llmRequest.config?.tools,
 				contents: llmRequest.contents,
 			},
@@ -119,11 +119,11 @@ export abstract class BaseLlmFlow {
 			// Update event with response metadata
 			modelResponseEvent.responseMetadata = {
 				content: llmResponse.content,
-				finish_reason: llmResponse.finishReason,
-				usage_metadata: llmResponse.usageMetadata,
-				function_calls: llmResponse.getFunctionCalls?.() || [],
-				function_responses: llmResponse.getFunctionResponses?.() || [],
-				grounding_metadata: llmResponse.groundingMetadata,
+				finishReason: llmResponse.finishReason,
+				usageMetadata: llmResponse.usageMetadata,
+				functionCalls: llmResponse.getFunctionCalls?.() || [],
+				functionResponses: llmResponse.getFunctionResponses?.() || [],
+				groundingMetadata: llmResponse.groundingMetadata,
 			};
 			// Also capture content for the event itself
 			modelResponseEvent.content = llmResponse.content;
