@@ -112,7 +112,6 @@ const useVoiceRecording = () => {
 			setIsTranscribing(false);
 
 			// Step 2: Get the final transcribed text
-			// Wait a brief moment for any final transcription results
 			const finalTranscript = accumulatedTranscriptRef.current.trim();
 
 			if (!mediaRecorderRef.current) {
