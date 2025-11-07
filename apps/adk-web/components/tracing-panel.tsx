@@ -20,6 +20,12 @@ import { cn } from "@/lib/utils";
 import type { EventItemDto as Event } from "../Api";
 
 export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
+	const eventMap = useMemo(() => {
+		const map = new Map<string, Event>();
+		for (const e of events) map.set(e.id, e);
+		return map;
+	}, [events]);
+
 	const traceGroups = useMemo(() => groupTracesByUserMessage(events), [events]);
 
 	if (isLoading) {
@@ -43,7 +49,7 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 			<ScrollArea className="flex-1">
 				<div className="divide-y divide-border/30">
 					{traceGroups.map((group) => (
-						<TraceGroup key={group.id} group={group} events={events} />
+						<TraceGroup key={group.id} group={group} eventMap={eventMap} />
 					))}
 				</div>
 			</ScrollArea>
@@ -51,7 +57,13 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 	);
 }
 
-function TraceGroup({ group, events }: { group: TraceGroup; events: Event[] }) {
+function TraceGroup({
+	group,
+	eventMap,
+}: {
+	group: TraceGroup;
+	eventMap: Map<string, Event>;
+}) {
 	const [open, setOpen] = useState(false);
 	const messageText = extractMessageText(group.userMessage);
 
@@ -73,7 +85,7 @@ function TraceGroup({ group, events }: { group: TraceGroup; events: Event[] }) {
 			</CollapsibleTrigger>
 
 			<CollapsibleContent>
-				<TraceTimeline group={group} allEvents={events} />
+				<TraceTimeline group={group} eventMap={eventMap} />
 			</CollapsibleContent>
 		</Collapsible>
 	);
@@ -81,10 +93,10 @@ function TraceGroup({ group, events }: { group: TraceGroup; events: Event[] }) {
 
 function TraceTimeline({
 	group,
-	allEvents,
+	eventMap,
 }: {
 	group: TraceGroup;
-	allEvents: Event[];
+	eventMap: Map<string, Event>;
 }) {
 	const nested = useMemo(() => group.events, [group.events]);
 	if (!nested || nested.length === 0) return null;
@@ -98,7 +110,7 @@ function TraceTimeline({
 
 			<div className="space-y-1 text-xs">
 				{nested.map((node) => (
-					<TraceNode key={node.id} node={node} level={0} events={allEvents} />
+					<TraceNode key={node.id} node={node} level={0} eventMap={eventMap} />
 				))}
 			</div>
 		</div>
@@ -108,21 +120,18 @@ function TraceTimeline({
 function TraceNode({
 	node,
 	level,
-	events,
+	eventMap,
 }: {
 	node: TraceItem;
 	level: number;
-	events: Event[];
+	eventMap: Map<string, Event>;
 }) {
 	const [sheetOpen, setSheetOpen] = useState(false);
 	const indent = `${level * 12}px`;
 	const barWidth = Math.log((node.duration || 1) + 1) * 20;
 	const children = node.children ?? [];
 
-	const eventData = useMemo(
-		() => events.find((e) => e.id === node.id),
-		[events, node.id],
-	);
+	const eventData = eventMap.get(node.id);
 
 	const isClickable =
 		node.type === "llm_call" ||
@@ -179,7 +188,7 @@ function TraceNode({
 								key={child.id}
 								node={child}
 								level={level + 1}
-								events={events}
+								eventMap={eventMap}
 							/>
 						))}
 					</div>
@@ -195,6 +204,98 @@ function TraceNode({
 				/>
 			)}
 		</>
+	);
+}
+
+function TraceDetailSheet({
+	open,
+	onOpenChange,
+	node,
+	eventData,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	node: TraceItem;
+	eventData?: Event;
+}) {
+	if (!eventData) return null;
+
+	return (
+		<Sheet open={open} onOpenChange={onOpenChange}>
+			<SheetContent side="right" className="overflow-hidden">
+				<SheetHeader>
+					<SheetTitle>{formatTraceType(node.type)}</SheetTitle>
+				</SheetHeader>
+
+				<Tabs defaultValue="event" className="h-full flex flex-col">
+					<TabsList className="grid w-full grid-cols-3">
+						<TabsTrigger value="event">Event</TabsTrigger>
+						<TabsTrigger value="request">Request</TabsTrigger>
+						<TabsTrigger value="response">Response</TabsTrigger>
+					</TabsList>
+
+					<TabsContent value="event" className="flex-1 overflow-auto">
+						<ScrollArea className="h-full">
+							<div className="p-4">
+								<JsonTreeView data={eventData} />
+							</div>
+						</ScrollArea>
+					</TabsContent>
+
+					<TabsContent value="request" className="flex-1 overflow-auto">
+						<ScrollArea className="h-full">
+							<div className="p-4">
+								{(eventData as any).requestMetadata ? (
+									<JsonTreeView data={(eventData as any).requestMetadata} />
+								) : eventData.content &&
+									typeof eventData.content === "object" ? (
+									<JsonTreeView
+										data={{
+											model:
+												(eventData.content as any).model ||
+												(eventData.content as any).config?.model,
+											config: (eventData.content as any).config,
+											system_instruction: (eventData.content as any)
+												.system_instruction,
+											tools: (eventData.content as any).tools,
+											contents: (eventData.content as any).contents,
+										}}
+									/>
+								) : (
+									<p className="text-sm text-muted-foreground">
+										No request data
+									</p>
+								)}
+							</div>
+						</ScrollArea>
+					</TabsContent>
+
+					<TabsContent value="response" className="flex-1 overflow-auto">
+						<ScrollArea className="h-full">
+							<div className="p-4">
+								{(eventData as any).responseMetadata ? (
+									<JsonTreeView data={(eventData as any).responseMetadata} />
+								) : eventData.content &&
+									typeof eventData.content === "object" ? (
+									<JsonTreeView
+										data={{
+											content: (eventData.content as any).content,
+											finish_reason: (eventData.content as any).finish_reason,
+											usage_metadata: (eventData.content as any).usage_metadata,
+											grounding_metadata: (eventData as any).groundingMetadata,
+										}}
+									/>
+								) : (
+									<p className="text-sm text-muted-foreground">
+										No response data
+									</p>
+								)}
+							</div>
+						</ScrollArea>
+					</TabsContent>
+				</Tabs>
+			</SheetContent>
+		</Sheet>
 	);
 }
 
@@ -313,120 +414,6 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(2)}s`;
 }
 
-interface TracingPanelProps {
-	events: Event[];
-	isLoading?: boolean;
-}
-
-interface TraceItem {
-	id: string;
-	type: "message" | "llm_call" | "tool_call" | "tool_response";
-	author: string;
-	timestamp: number;
-	duration?: number;
-	children?: TraceItem[];
-}
-
-interface TraceGroup {
-	id: string;
-	userMessage: Event;
-	events: TraceItem[];
-	timestamp: number;
-	duration?: number;
-}
-
-function TraceDetailSheet({
-	open,
-	onOpenChange,
-	node,
-	eventData,
-}: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	node: TraceItem;
-	eventData?: Event;
-}) {
-	if (!eventData) return null;
-
-	return (
-		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent side="right" className="overflow-hidden">
-				<SheetHeader>
-					<SheetTitle>{formatTraceType(node.type)}</SheetTitle>
-				</SheetHeader>
-
-				<Tabs defaultValue="event" className="h-full flex flex-col">
-					<TabsList className="grid w-full grid-cols-3">
-						<TabsTrigger value="event">Event</TabsTrigger>
-						<TabsTrigger value="request">Request</TabsTrigger>
-						<TabsTrigger value="response">Response</TabsTrigger>
-					</TabsList>
-
-					<TabsContent value="event" className="flex-1 overflow-auto">
-						<ScrollArea className="h-full">
-							<div className="p-4">
-								<JsonTreeView data={eventData} />
-							</div>
-						</ScrollArea>
-					</TabsContent>
-
-					<TabsContent value="request" className="flex-1 overflow-auto">
-						<ScrollArea className="h-full">
-							<div className="p-4">
-								{(eventData as any).requestMetadata ? (
-									<JsonTreeView data={(eventData as any).requestMetadata} />
-								) : eventData.content &&
-									typeof eventData.content === "object" ? (
-									<JsonTreeView
-										data={{
-											model:
-												(eventData.content as any).model ||
-												(eventData.content as any).config?.model,
-											config: (eventData.content as any).config,
-											system_instruction: (eventData.content as any)
-												.system_instruction,
-											tools: (eventData.content as any).tools,
-											contents: (eventData.content as any).contents,
-										}}
-									/>
-								) : (
-									<p className="text-sm text-muted-foreground">
-										No request data
-									</p>
-								)}
-							</div>
-						</ScrollArea>
-					</TabsContent>
-
-					<TabsContent value="response" className="flex-1 overflow-auto">
-						<ScrollArea className="h-full">
-							<div className="p-4">
-								{(eventData as any).responseMetadata ? (
-									<JsonTreeView data={(eventData as any).responseMetadata} />
-								) : eventData.content &&
-									typeof eventData.content === "object" ? (
-									<JsonTreeView
-										data={{
-											content: (eventData.content as any).content,
-											finish_reason: (eventData.content as any).finish_reason,
-											usage_metadata: (eventData.content as any).usage_metadata,
-											grounding_metadata: (eventData as any).groundingMetadata,
-										}}
-									/>
-								) : (
-									<p className="text-sm text-muted-foreground">
-										No response data
-									</p>
-								)}
-							</div>
-						</ScrollArea>
-					</TabsContent>
-				</Tabs>
-			</SheetContent>
-		</Sheet>
-	);
-}
-
 function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
 	const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
@@ -541,4 +528,25 @@ function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
 			)}
 		</div>
 	);
+}
+
+export interface TracingPanelProps {
+	events: Event[];
+	isLoading?: boolean;
+}
+
+interface TraceGroup {
+	id: string;
+	userMessage: Event;
+	events: TraceItem[];
+	timestamp: number;
+}
+
+interface TraceItem {
+	id: string;
+	type: "message" | "llm_call" | "tool_call" | "tool_response";
+	author?: string;
+	timestamp: number;
+	duration?: number;
+	children?: TraceItem[];
 }
