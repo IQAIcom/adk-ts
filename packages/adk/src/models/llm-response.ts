@@ -55,6 +55,30 @@ export class LlmResponse {
 		Object.assign(this, data);
 	}
 
+	// Extract function calls from the response content (if any)
+	getFunctionCalls(): any[] {
+		const calls: any[] = [];
+		const content: any = this.content as any;
+		if (content && Array.isArray(content.parts)) {
+			for (const part of content.parts) {
+				if (part.functionCall) calls.push(part.functionCall);
+			}
+		}
+		return calls;
+	}
+
+	// Extract function responses from the response content (if any)
+	getFunctionResponses(): any[] {
+		const responses: any[] = [];
+		const content: any = this.content as any;
+		if (content && Array.isArray(content.parts)) {
+			for (const part of content.parts) {
+				if (part.functionResponse) responses.push(part.functionResponse);
+			}
+		}
+		return responses;
+	}
+
 	static create(generateContentResponse: GenerateContentResponse): LlmResponse {
 		const usageMetadata = generateContentResponse.usageMetadata;
 		if (

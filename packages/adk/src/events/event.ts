@@ -15,6 +15,23 @@ interface EventOpts {
 	timestamp?: number;
 	content?: any;
 	partial?: boolean;
+	/** LLM request metadata for debugging */
+	requestMetadata?: {
+		model?: string;
+		config?: any;
+		system_instruction?: string;
+		tools?: any[];
+		contents?: any[];
+	};
+	/** LLM response metadata for debugging */
+	responseMetadata?: {
+		content?: any;
+		finish_reason?: string;
+		usage_metadata?: any;
+		function_calls?: any[];
+		function_responses?: any[];
+		grounding_metadata?: any;
+	};
 }
 
 /**
@@ -53,6 +70,25 @@ export class Event extends LlmResponse {
 	/** The timestamp of the event (seconds since epoch). */
 	timestamp: number = Math.floor(Date.now() / 1000);
 
+	/** LLM request metadata for debugging */
+	requestMetadata?: {
+		model?: string;
+		config?: any;
+		system_instruction?: string;
+		tools?: any[];
+		contents?: any[];
+	};
+
+	/** LLM response metadata for debugging */
+	responseMetadata?: {
+		content?: any;
+		finish_reason?: string;
+		usage_metadata?: any;
+		function_calls?: any[];
+		function_responses?: any[];
+		grounding_metadata?: any;
+	};
+
 	/**
 	 * Constructor for Event.
 	 */
@@ -68,6 +104,8 @@ export class Event extends LlmResponse {
 		this.branch = opts.branch;
 		this.id = opts.id ?? Event.newId();
 		this.timestamp = opts.timestamp ?? Math.floor(Date.now() / 1000);
+		this.requestMetadata = opts.requestMetadata;
+		this.responseMetadata = opts.responseMetadata;
 	}
 
 	/**

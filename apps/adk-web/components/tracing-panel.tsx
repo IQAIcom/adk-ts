@@ -2,12 +2,20 @@
 
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { EventItemDto as Event } from "../Api";
 
@@ -35,7 +43,7 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 			<ScrollArea className="flex-1">
 				<div className="divide-y divide-border/30">
 					{traceGroups.map((group) => (
-						<TraceGroup key={group.id} group={group} />
+						<TraceGroup key={group.id} group={group} events={events} />
 					))}
 				</div>
 			</ScrollArea>
@@ -43,8 +51,8 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 	);
 }
 
-function TraceGroup({ group }: { group: TraceGroup }) {
-	const [open, setOpen] = useState(true);
+function TraceGroup({ group, events }: { group: TraceGroup; events: Event[] }) {
+	const [open, setOpen] = useState(false);
 	const messageText = extractMessageText(group.userMessage);
 
 	return (
@@ -65,13 +73,19 @@ function TraceGroup({ group }: { group: TraceGroup }) {
 			</CollapsibleTrigger>
 
 			<CollapsibleContent>
-				<TraceTimeline group={group} />
+				<TraceTimeline group={group} allEvents={events} />
 			</CollapsibleContent>
 		</Collapsible>
 	);
 }
 
-function TraceTimeline({ group }: { group: TraceGroup }) {
+function TraceTimeline({
+	group,
+	allEvents,
+}: {
+	group: TraceGroup;
+	allEvents: Event[];
+}) {
 	const nested = useMemo(() => group.events, [group.events]);
 	if (!nested || nested.length === 0) return null;
 
@@ -84,52 +98,103 @@ function TraceTimeline({ group }: { group: TraceGroup }) {
 
 			<div className="space-y-1 text-xs">
 				{nested.map((node) => (
-					<TraceNode key={node.id} node={node} level={0} />
+					<TraceNode key={node.id} node={node} level={0} events={allEvents} />
 				))}
 			</div>
 		</div>
 	);
 }
 
-function TraceNode({ node, level }: { node: TraceItem; level: number }) {
+function TraceNode({
+	node,
+	level,
+	events,
+}: {
+	node: TraceItem;
+	level: number;
+	events: Event[];
+}) {
+	const [sheetOpen, setSheetOpen] = useState(false);
 	const indent = `${level * 12}px`;
 	const barWidth = Math.log((node.duration || 1) + 1) * 20;
 	const children = node.children ?? [];
 
-	return (
-		<div className="ml-2 pl-2" style={{ marginLeft: indent }}>
-			<div className="flex items-center justify-between py-1">
-				<div className="flex items-center gap-2 text-slate-300 text-sm truncate">
-					<span>{getIconForType(node.type)}</span>
-					<span className="truncate">{formatTraceType(node.type)}</span>
-				</div>
+	const eventData = useMemo(
+		() => events.find((e) => e.id === node.id),
+		[events, node.id],
+	);
 
-				<div className="flex items-center gap-2 text-slate-400 text-xs">
-					<div
-						className={cn(
-							"h-2 rounded transition-all",
-							node.type === "tool_call"
-								? "bg-green-600"
-								: node.type === "tool_response"
-									? "bg-amber-500"
-									: node.type === "llm_call"
-										? "bg-blue-600"
-										: "bg-slate-600",
-						)}
-						style={{ width: `${barWidth}px` }}
-					/>
-					<span>{formatDuration(node.duration || 0)}</span>
-				</div>
+	const isClickable =
+		node.type === "llm_call" ||
+		node.type === "tool_call" ||
+		node.type === "tool_response";
+
+	const content = (
+		<>
+			<div className="flex items-center gap-2 text-slate-300 text-sm truncate">
+				<span>{getIconForType(node.type)}</span>
+				<span className="truncate">{formatTraceType(node.type)}</span>
 			</div>
 
-			{children.length > 0 && (
-				<div className="mt-1 space-y-1">
-					{children.map((child) => (
-						<TraceNode key={child.id} node={child} level={level + 1} />
-					))}
-				</div>
+			<div className="flex items-center gap-2 text-slate-400 text-xs">
+				<div
+					className={cn(
+						"h-2 rounded transition-all",
+						node.type === "tool_call"
+							? "bg-green-600"
+							: node.type === "tool_response"
+								? "bg-amber-500"
+								: node.type === "llm_call"
+									? "bg-blue-600"
+									: "bg-slate-600",
+					)}
+					style={{ width: `${barWidth}px` }}
+				/>
+				<span>{formatDuration(node.duration || 0)}</span>
+			</div>
+		</>
+	);
+
+	return (
+		<>
+			<div className="ml-2 pl-2" style={{ marginLeft: indent }}>
+				{isClickable ? (
+					<Button
+						variant="ghost"
+						className="w-full flex items-center justify-between py-1 h-auto hover:bg-slate-700/30 rounded px-2 -mx-2 transition-colors"
+						onClick={() => setSheetOpen(true)}
+					>
+						{content}
+					</Button>
+				) : (
+					<div className="flex items-center justify-between py-1 rounded px-2 -mx-2">
+						{content}
+					</div>
+				)}
+
+				{children.length > 0 && (
+					<div className="mt-1 space-y-1">
+						{children.map((child) => (
+							<TraceNode
+								key={child.id}
+								node={child}
+								level={level + 1}
+								events={events}
+							/>
+						))}
+					</div>
+				)}
+			</div>
+
+			{isClickable && (
+				<TraceDetailSheet
+					open={sheetOpen}
+					onOpenChange={setSheetOpen}
+					node={node}
+					eventData={eventData}
+				/>
 			)}
-		</div>
+		</>
 	);
 }
 
@@ -268,4 +333,212 @@ interface TraceGroup {
 	events: TraceItem[];
 	timestamp: number;
 	duration?: number;
+}
+
+function TraceDetailSheet({
+	open,
+	onOpenChange,
+	node,
+	eventData,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	node: TraceItem;
+	eventData?: Event;
+}) {
+	if (!eventData) return null;
+
+	return (
+		<Sheet open={open} onOpenChange={onOpenChange}>
+			<SheetContent side="right" className="overflow-hidden">
+				<SheetHeader>
+					<SheetTitle>{formatTraceType(node.type)}</SheetTitle>
+				</SheetHeader>
+
+				<Tabs defaultValue="event" className="h-full flex flex-col">
+					<TabsList className="grid w-full grid-cols-3">
+						<TabsTrigger value="event">Event</TabsTrigger>
+						<TabsTrigger value="request">Request</TabsTrigger>
+						<TabsTrigger value="response">Response</TabsTrigger>
+					</TabsList>
+
+					<TabsContent value="event" className="flex-1 overflow-auto">
+						<ScrollArea className="h-full">
+							<div className="p-4">
+								<JsonTreeView data={eventData} />
+							</div>
+						</ScrollArea>
+					</TabsContent>
+
+					<TabsContent value="request" className="flex-1 overflow-auto">
+						<ScrollArea className="h-full">
+							<div className="p-4">
+								{(eventData as any).requestMetadata ? (
+									<JsonTreeView data={(eventData as any).requestMetadata} />
+								) : eventData.content &&
+									typeof eventData.content === "object" ? (
+									<JsonTreeView
+										data={{
+											model:
+												(eventData.content as any).model ||
+												(eventData.content as any).config?.model,
+											config: (eventData.content as any).config,
+											system_instruction: (eventData.content as any)
+												.system_instruction,
+											tools: (eventData.content as any).tools,
+											contents: (eventData.content as any).contents,
+										}}
+									/>
+								) : (
+									<p className="text-sm text-muted-foreground">
+										No request data
+									</p>
+								)}
+							</div>
+						</ScrollArea>
+					</TabsContent>
+
+					<TabsContent value="response" className="flex-1 overflow-auto">
+						<ScrollArea className="h-full">
+							<div className="p-4">
+								{(eventData as any).responseMetadata ? (
+									<JsonTreeView data={(eventData as any).responseMetadata} />
+								) : eventData.content &&
+									typeof eventData.content === "object" ? (
+									<JsonTreeView
+										data={{
+											content: (eventData.content as any).content,
+											finish_reason: (eventData.content as any).finish_reason,
+											usage_metadata: (eventData.content as any).usage_metadata,
+											grounding_metadata: (eventData as any).groundingMetadata,
+										}}
+									/>
+								) : (
+									<p className="text-sm text-muted-foreground">
+										No response data
+									</p>
+								)}
+							</div>
+						</ScrollArea>
+					</TabsContent>
+				</Tabs>
+			</SheetContent>
+		</Sheet>
+	);
+}
+
+function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
+	const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+	const toggleCollapse = (key: string) => {
+		setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+	};
+
+	if (data === null)
+		return <span className="text-muted-foreground italic">null</span>;
+	if (data === undefined)
+		return <span className="text-muted-foreground italic">undefined</span>;
+
+	if (typeof data !== "object") {
+		return (
+			<span
+				className={cn(
+					"font-medium",
+					typeof data === "string" && "text-emerald-600 dark:text-emerald-400",
+					typeof data === "number" && "text-blue-600 dark:text-blue-400",
+					typeof data === "boolean" && "text-purple-600 dark:text-purple-400",
+				)}
+			>
+				{typeof data === "string" ? `"${data}"` : String(data)}
+			</span>
+		);
+	}
+
+	if (Array.isArray(data)) {
+		if (data.length === 0)
+			return <span className="text-muted-foreground">[]</span>;
+
+		return (
+			<div className="space-y-0.5">
+				<span className="text-muted-foreground text-xs">[</span>
+				{data.map((item, index) => (
+					<div
+						key={`item-${index + 1}`}
+						className="ml-6 flex items-start gap-2 py-0.5"
+					>
+						<span className="text-muted-foreground text-xs min-w-[20px]">
+							{index}
+						</span>
+						<JsonTreeView data={item} level={level + 1} />
+					</div>
+				))}
+				<span className="text-muted-foreground text-xs">]</span>
+			</div>
+		);
+	}
+
+	const keys = Object.keys(data);
+	if (keys.length === 0)
+		return <span className="text-muted-foreground">{"{}"}</span>;
+
+	return (
+		<div className="space-y-0.5">
+			{level === 0 && (
+				<span className="text-muted-foreground text-xs">{"{"}</span>
+			)}
+			{keys.map((key) => {
+				const value = data[key];
+				const isExpandable =
+					value && typeof value === "object" && Object.keys(value).length > 0;
+				const isCollapsed = collapsed[key];
+
+				return (
+					<div key={key} className="group">
+						<div className="flex items-start gap-2 py-0.5 hover:bg-muted/50 rounded px-1 -mx-1 transition-colors">
+							<div className="flex items-center gap-1.5 min-w-0">
+								{isExpandable ? (
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => toggleCollapse(key)}
+										className="h-4 w-4 p-0 hover:bg-transparent text-muted-foreground hover:text-foreground"
+									>
+										{isCollapsed ? (
+											<ChevronRight className="w-3 h-3" />
+										) : (
+											<ChevronDown className="w-3 h-3" />
+										)}
+									</Button>
+								) : (
+									<span className="w-4 flex-shrink-0" />
+								)}
+								<span className="text-foreground font-mono text-xs font-semibold truncate">
+									{key}
+								</span>
+								<span className="text-muted-foreground flex-shrink-0">:</span>
+							</div>
+							{isCollapsed && isExpandable && (
+								<span className="text-muted-foreground text-xs italic">
+									{Array.isArray(value) ? `[${value.length}]` : "{...}"}
+								</span>
+							)}
+							{!isCollapsed && !isExpandable && (
+								<div className="flex-1 min-w-0">
+									<JsonTreeView data={value} level={level + 1} />
+								</div>
+							)}
+						</div>
+						{!isCollapsed && isExpandable && (
+							<div className="ml-6 mt-0.5 pl-3 border-l-2 border-muted">
+								<JsonTreeView data={value} level={level + 1} />
+							</div>
+						)}
+					</div>
+				);
+			})}
+			{level === 0 && (
+				<span className="text-muted-foreground text-xs">{"}"}</span>
+			)}
+		</div>
+	);
 }
