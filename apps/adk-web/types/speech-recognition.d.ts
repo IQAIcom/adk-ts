@@ -51,6 +51,46 @@ interface SpeechRecognition extends EventTarget {
 	onend: (() => void) | null;
 
 	/**
+	 * Fired when the speech recognition service has begun listening to incoming audio.
+	 */
+	onstart: (() => void) | null;
+
+	/**
+	 * Fired when sound that is recognized as speech has been detected.
+	 */
+	onspeechstart: (() => void) | null;
+
+	/**
+	 * Fired when speech recognized by the speech recognition service has stopped being detected.
+	 */
+	onspeechend: (() => void) | null;
+
+	/**
+	 * Fired when any sound (recognizable speech or not) has been detected.
+	 */
+	onsoundstart: (() => void) | null;
+
+	/**
+	 * Fired when any sound (recognizable speech or not) has stopped being detected.
+	 */
+	onsoundend: (() => void) | null;
+
+	/**
+	 * Fired when the user agent has started to capture audio.
+	 */
+	onaudiostart: (() => void) | null;
+
+	/**
+	 * Fired when the user agent has finished capturing audio.
+	 */
+	onaudioend: (() => void) | null;
+
+	/**
+	 * Fired when the speech recognition service returns a final result with no significant recognition.
+	 */
+	onnomatch: (() => void) | null;
+
+	/**
 	 * Starts the speech recognition service listening to incoming audio.
 	 */
 	start(): void;
