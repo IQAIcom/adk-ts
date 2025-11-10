@@ -69,7 +69,7 @@ export class GoogleLlm extends BaseLlm {
 
 		if (llmRequest.cacheConfig) {
 			this.logger.debug("Handling context caching");
-			cacheManager = new GeminiContextCacheManager(this.apiClient);
+			cacheManager = new GeminiContextCacheManager(this.apiClient, this.logger);
 			cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
 			if (cacheMetadata) {
 				if (cacheMetadata.cacheName) {

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { ContextCacheConfig } from "@adk/agents/context-cache-config";
+import { Logger } from "@adk/logger";
 import type {
 	CachedContent,
 	CreateCachedContentConfig,
@@ -37,13 +38,15 @@ export class CacheMetadata {
  */
 export class GeminiContextCacheManager {
 	private readonly genaiClient: GoogleGenAI;
+	private readonly logger: Logger;
 
 	/**
 	 * Creates a new cache manager
 	 * @param genaiClient - GoogleGenAI instance for cache operations
 	 */
-	constructor(genaiClient: GoogleGenAI) {
+	constructor(genaiClient: GoogleGenAI, logger: Logger) {
 		this.genaiClient = genaiClient;
+		this.logger = logger;
 	}
 
 	/**
@@ -59,7 +62,7 @@ export class GeminiContextCacheManager {
 		const cacheMeta = llmRequest.cacheMetadata;
 
 		if (cacheMeta) {
-			console.debug("Found existing cache metadata:", cacheMeta);
+			this.logger.debug("Found existing cache metadata:", cacheMeta);
 			if (await this.isCacheValid(llmRequest, cacheConfig)) {
 				// Increment usage count
 				cacheMeta.invocationsUsed += 1;
@@ -73,7 +76,7 @@ export class GeminiContextCacheManager {
 
 			// Cleanup old cache
 			if (cacheMeta.cacheName) {
-				console.debug("Cache invalid, cleaning up:", cacheMeta.cacheName);
+				this.logger.debug("Cache invalid, cleaning up:", cacheMeta.cacheName);
 				await this.cleanupCache(cacheMeta.cacheName);
 			}
 
@@ -136,12 +139,12 @@ export class GeminiContextCacheManager {
 
 		const now = Date.now() / 1000; // seconds
 		if (now >= cache.expireTime) {
-			console.info("Cache expired:", cache.cacheName);
+			this.logger.info("Cache expired:", cache.cacheName);
 			return false;
 		}
 
 		if (cache.invocationsUsed >= cacheConfig.cacheIntervals) {
-			console.info("Cache exceeded intervals:", cache.cacheName);
+			this.logger.info("Cache exceeded intervals:", cache.cacheName);
 			return false;
 		}
 
@@ -242,7 +245,7 @@ export class GeminiContextCacheManager {
 				cacheConfig,
 			);
 		} catch (e) {
-			console.warn("Failed to create cache:", e);
+			this.logger.warn("Failed to create cache:", e);
 			return null;
 		}
 	}
@@ -281,7 +284,7 @@ export class GeminiContextCacheManager {
 		const cachedContent: CachedContent =
 			await this.genaiClient.caches.create(params);
 		const createdAt = Date.now() / 1000;
-		console.info("Cache created successfully:", cachedContent.name);
+		this.logger.info("Cache created successfully:", cachedContent.name);
 
 		return new CacheMetadata({
 			cacheName: cachedContent.name,
@@ -297,13 +300,13 @@ export class GeminiContextCacheManager {
 	}
 
 	private async cleanupCache(cacheName: string): Promise<void> {
-		console.debug("Deleting cache:", cacheName);
+		this.logger.debug("Deleting cache:", cacheName);
 		try {
 			const params: DeleteCachedContentParameters = { name: cacheName };
 			await this.genaiClient.caches.delete(params);
-			console.info("Cache cleaned up:", cacheName);
+			this.logger.info("Cache cleaned up:", cacheName);
 		} catch (e) {
-			console.warn("Failed to cleanup cache", cacheName, e);
+			this.logger.warn("Failed to cleanup cache", cacheName, e);
 		}
 	}
 
