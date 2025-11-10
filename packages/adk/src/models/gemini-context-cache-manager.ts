@@ -156,23 +156,69 @@ export class GeminiContextCacheManager {
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
 	): string {
+		const seen = new WeakSet();
+
+		function canonicalize(value: unknown) {
+			// Avoid circular references
+			if (value && typeof value === "object") {
+				if (seen.has(value as object)) return "[Circular]";
+				seen.add(value as object);
+			}
+
+			if (value === undefined) return null;
+			if (typeof value === "bigint") return value.toString();
+			if (value instanceof Date) return value.toISOString();
+
+			if (Array.isArray(value)) {
+				return value.map(canonicalize);
+			}
+
+			if (value instanceof Map) {
+				// Sort Map entries by key for determinism
+				return Array.from(value.entries())
+					.sort(([a], [b]) => (a > b ? 1 : -1))
+					.map(([k, v]) => [k, canonicalize(v)]);
+			}
+
+			if (value instanceof Set) {
+				// Sort set values for deterministic order
+				return Array.from(value.values())
+					.map(canonicalize)
+					.sort((a, b) => (JSON.stringify(a) > JSON.stringify(b) ? 1 : -1));
+			}
+
+			if (value && typeof value === "object") {
+				const sortedKeys = Object.keys(value as Record<string, unknown>).sort();
+				const result: Record<string, unknown> = {};
+				for (const key of sortedKeys) {
+					result[key] = canonicalize((value as Record<string, unknown>)[key]);
+				}
+				return result;
+			}
+
+			return value;
+		}
+
 		const data: Record<string, unknown> = {};
+
 		if (llmRequest.config?.systemInstruction)
 			data.systemInstruction = llmRequest.config.systemInstruction;
+
 		if (llmRequest.config?.tools)
-			data.tools = llmRequest.config.tools?.map((t) => ({ ...t }));
+			data.tools = llmRequest.config.tools.map((t) => canonicalize(t));
+
 		if (llmRequest.config?.toolConfig)
-			data.toolConfig = { ...llmRequest.config.toolConfig };
+			data.toolConfig = canonicalize(llmRequest.config.toolConfig);
+
 		if (cacheContentsCount > 0 && llmRequest.contents.length > 0) {
 			data.cachedContents = llmRequest.contents
 				.slice(0, cacheContentsCount)
-				.map((c) => ({ role: c.role, parts: c.parts }));
+				.map((c) => canonicalize({ role: c.role, parts: c.parts }));
 		}
 
-		const hash = crypto
-			.createHash("sha256")
-			.update(JSON.stringify(data, Object.keys(data).sort()))
-			.digest("hex");
+		const canonicalData = canonicalize(data);
+		const json = JSON.stringify(canonicalData);
+		const hash = crypto.createHash("sha256").update(json).digest("hex");
 
 		return hash.slice(0, 16);
 	}
