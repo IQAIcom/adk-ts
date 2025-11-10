@@ -264,9 +264,9 @@ export class GeminiContextCacheManager {
 		cacheContentsCount: number,
 	): void {
 		if (llmRequest.config) {
-			llmRequest.config.systemInstruction = null;
-			llmRequest.config.tools = null;
-			llmRequest.config.toolConfig = null;
+llmRequest.config.systemInstruction = undefined;
+llmRequest.config.tools = undefined;
+llmRequest.config.toolConfig = undefined;
 			llmRequest.config.cachedContent = cacheName;
 		}
 		llmRequest.contents = llmRequest.contents.slice(cacheContentsCount);
