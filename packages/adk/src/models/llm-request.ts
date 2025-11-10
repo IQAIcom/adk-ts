@@ -1,3 +1,4 @@
+import { ContextCacheConfig } from "@adk/agents/context-cache-config";
 import type { BaseTool } from "@adk/tools";
 import type {
 	Content,
@@ -33,6 +34,21 @@ export class LlmRequest {
 	config?: GenerateContentConfig;
 
 	/**
+	 * Context cache config for the request.
+	 */
+	cacheConfig?: ContextCacheConfig;
+
+	/**
+	 * Cache metadata from previous requests, used for cache management.
+	 */
+	cacheMetadata?: any;
+
+	/**
+	 * Token count from previous request's prompt, used for cache size validation.
+	 */
+	cacheableContentsTokenCount?: number;
+
+	/**
 	 * Live connect config for the request.
 	 */
 	liveConnectConfig: LiveConnectConfig;
@@ -48,6 +64,9 @@ export class LlmRequest {
 		config?: GenerateContentConfig;
 		liveConnectConfig?: LiveConnectConfig;
 		toolsDict?: Record<string, BaseTool>;
+		cacheConfig?: ContextCacheConfig;
+		cacheMetadata?: any;
+		cacheableContentsTokenCount?: number;
 	}) {
 		this.model = data?.model;
 		this.contents = data?.contents ?? [];
@@ -55,6 +74,9 @@ export class LlmRequest {
 		this.liveConnectConfig =
 			data?.liveConnectConfig ?? ({} as LiveConnectConfig);
 		this.toolsDict = data?.toolsDict ?? {};
+		this.cacheConfig = data?.cacheConfig;
+		this.cacheMetadata = data?.cacheMetadata;
+		this.cacheableContentsTokenCount = data?.cacheableContentsTokenCount;
 	}
 
 	/**

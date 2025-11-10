@@ -1,6 +1,7 @@
 import type { Content, Part } from "@google/genai";
 import { context, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { BaseAgent } from "./agents/base-agent";
+import { ContextCacheConfig } from "./agents/context-cache-config";
 import {
 	InvocationContext,
 	newInvocationContextId,
@@ -96,6 +97,11 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 	 */
 	eventsCompactionConfig?: EventsCompactionConfig;
 
+	/**
+	 * Context cache config for the runner.
+	 */
+	contextCacheConfig?: ContextCacheConfig;
+
 	protected logger = new Logger({ name: "Runner" });
 
 	/**
@@ -108,6 +114,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		sessionService,
 		memoryService,
 		eventsCompactionConfig,
+		contextCacheConfig,
 	}: {
 		appName: string;
 		agent: T;
@@ -115,6 +122,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		sessionService: BaseSessionService;
 		memoryService?: BaseMemoryService;
 		eventsCompactionConfig?: EventsCompactionConfig;
+		contextCacheConfig?: ContextCacheConfig;
 	}) {
 		this.appName = appName;
 		this.agent = agent;
@@ -122,6 +130,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		this.sessionService = sessionService;
 		this.memoryService = memoryService;
 		this.eventsCompactionConfig = eventsCompactionConfig;
+		this.contextCacheConfig = contextCacheConfig;
 	}
 
 	/**
@@ -413,6 +422,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			userContent: newMessage || null,
 			liveRequestQueue: null,
 			runConfig,
+			contextCacheConfig: this.contextCacheConfig,
 		});
 	}
 
@@ -647,11 +657,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
  * An in-memory Runner for testing and development.
  */
 export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
-	/**
-	 * Deprecated. Please don't use. The in-memory session service for the runner.
-	 */
 	private _inMemorySessionService: InMemorySessionService;
-
 	/**
 	 * Initializes the InMemoryRunner.
 	 */
