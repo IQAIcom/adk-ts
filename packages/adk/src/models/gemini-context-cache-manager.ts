@@ -140,7 +140,7 @@ export class GeminiContextCacheManager {
 			return false;
 		}
 
-if (cache.invocationsUsed >= cacheConfig.cacheIntervals) {
+		if (cache.invocationsUsed >= cacheConfig.cacheIntervals) {
 			console.info("Cache exceeded intervals:", cache.cacheName);
 			return false;
 		}
@@ -270,11 +270,6 @@ if (cache.invocationsUsed >= cacheConfig.cacheIntervals) {
 			llmRequest.config.cachedContent = cacheName;
 		}
 		llmRequest.contents = llmRequest.contents.slice(cacheContentsCount);
-
-		// Increment usage
-		if (llmRequest.cacheMetadata) {
-			llmRequest.cacheMetadata.invocationsUsed += 1;
-		}
 	}
 
 	public populateCacheMetadataInResponse(
