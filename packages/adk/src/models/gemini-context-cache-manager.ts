@@ -204,6 +204,11 @@ export class GeminiContextCacheManager {
 		cacheConfig: ContextCacheConfig,
 	): Promise<CacheMetadata> {
 		const cacheContents = llmRequest.contents.slice(0, cacheContentsCount);
+		const model = llmRequest.model;
+
+		if (!model) {
+			throw new Error("Model name is required to create a Gemini cache.");
+		}
 
 		const createCacheConfig: CreateCachedContentConfig = {
 			contents: cacheContents,
@@ -220,7 +225,7 @@ export class GeminiContextCacheManager {
 		}
 
 		const params: CreateCachedContentParameters = {
-			model: llmRequest.model || "",
+			model,
 			config: createCacheConfig,
 		};
 
