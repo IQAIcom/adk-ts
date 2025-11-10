@@ -159,7 +159,7 @@ export class GeminiContextCacheManager {
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
 	): string {
-		const MAX_HASH_LENGTH = 16;
+const MAX_HASH_LENGTH = 32;
 		const MIN_HASH_LENGTH = 0;
 
 		const seen = new WeakSet();
