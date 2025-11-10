@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { ContextCacheConfig } from "@adk/agents/context-cache-config";
 import type {
 	CachedContent,
 	CreateCachedContentConfig,
@@ -6,48 +7,9 @@ import type {
 	DeleteCachedContentParameters,
 	Content as GoogleContent,
 	GoogleGenAI,
-	Tool as GoogleTool,
-	ToolConfig as GoogleToolConfig,
 } from "@google/genai";
-import { LlmResponse as AdkLlmResponse } from "./llm-response";
-
-export interface CacheConfig {
-	ttlSeconds: number;
-	ttlString: string;
-	cacheIntervals: number;
-	minTokens: number;
-}
-
-export interface ContentPart {
-	text?: string;
-	[key: string]: unknown;
-}
-
-export class LlmResponse extends AdkLlmResponse {
-	cacheMetadata?: CacheMetadata;
-}
-
-export interface Content {
-	role: string;
-	parts: ContentPart[];
-	modelDump?: () => Record<string, unknown>;
-}
-
-export interface LlmRequestConfig {
-	systemInstruction?: string | null;
-	tools?: GoogleTool[] | null;
-	toolConfig?: GoogleToolConfig | null;
-	cachedContent?: string | null;
-}
-
-export interface LlmRequest {
-	config?: LlmRequestConfig;
-	contents: Content[];
-	cacheMetadata?: CacheMetadata;
-	cacheConfig: CacheConfig;
-	model: string;
-	cacheableContentsTokenCount?: number | null;
-}
+import type { LlmRequest } from "./llm-request";
+import type { LlmResponse } from "./llm-response";
 
 export class CacheMetadata {
 	cacheName?: string;
@@ -91,11 +53,15 @@ export class GeminiContextCacheManager {
 	async handleContextCaching(
 		llmRequest: LlmRequest,
 	): Promise<CacheMetadata | null> {
+		// Type assertion for cache config
+		const cacheConfig = llmRequest.cacheConfig;
+		if (!cacheConfig) return null;
+
 		const cacheMeta = llmRequest.cacheMetadata;
 
 		if (cacheMeta) {
 			console.debug("Found existing cache metadata:", cacheMeta);
-			if (await this.isCacheValid(llmRequest)) {
+			if (await this.isCacheValid(llmRequest, cacheConfig)) {
 				// Increment usage count
 				cacheMeta.invocationsUsed += 1;
 				const cacheName = cacheMeta.cacheName;
@@ -122,6 +88,7 @@ export class GeminiContextCacheManager {
 				const newCache = await this.createNewCacheWithContents(
 					llmRequest,
 					cacheMeta.contentsCount,
+					cacheConfig,
 				);
 				if (newCache) {
 					this.applyCacheToRequest(
@@ -161,7 +128,10 @@ export class GeminiContextCacheManager {
 		});
 	}
 
-	private async isCacheValid(llmRequest: LlmRequest): Promise<boolean> {
+	private async isCacheValid(
+		llmRequest: LlmRequest,
+		cacheConfig: ContextCacheConfig,
+	): Promise<boolean> {
 		const cache = llmRequest.cacheMetadata;
 		if (!cache || !cache.cacheName) return false;
 
@@ -171,7 +141,7 @@ export class GeminiContextCacheManager {
 			return false;
 		}
 
-		if (cache.invocationsUsed > llmRequest.cacheConfig.cacheIntervals) {
+		if (cache.invocationsUsed > cacheConfig.cacheIntervals) {
 			console.info("Cache exceeded intervals:", cache.cacheName);
 			return false;
 		}
@@ -191,15 +161,13 @@ export class GeminiContextCacheManager {
 		if (llmRequest.config?.systemInstruction)
 			data.systemInstruction = llmRequest.config.systemInstruction;
 		if (llmRequest.config?.tools)
-			data.tools = llmRequest.config.tools.map((t) => ({ ...t }));
+			data.tools = llmRequest.config.tools?.map((t) => ({ ...t }));
 		if (llmRequest.config?.toolConfig)
 			data.toolConfig = { ...llmRequest.config.toolConfig };
 		if (cacheContentsCount > 0 && llmRequest.contents.length > 0) {
 			data.cachedContents = llmRequest.contents
 				.slice(0, cacheContentsCount)
-				.map((c) =>
-					c.modelDump ? c.modelDump() : { role: c.role, parts: c.parts },
-				);
+				.map((c) => ({ role: c.role, parts: c.parts }));
 		}
 
 		const hash = crypto
@@ -213,15 +181,18 @@ export class GeminiContextCacheManager {
 	private async createNewCacheWithContents(
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
+		cacheConfig: ContextCacheConfig,
 	): Promise<CacheMetadata | null> {
 		if (!llmRequest.cacheableContentsTokenCount) return null;
-		if (
-			llmRequest.cacheableContentsTokenCount < llmRequest.cacheConfig.minTokens
-		)
+		if (llmRequest.cacheableContentsTokenCount < cacheConfig.minTokens)
 			return null;
 
 		try {
-			return await this.createGeminiCache(llmRequest, cacheContentsCount);
+			return await this.createGeminiCache(
+				llmRequest,
+				cacheContentsCount,
+				cacheConfig,
+			);
 		} catch (e) {
 			console.warn("Failed to create cache:", e);
 			return null;
@@ -231,31 +202,30 @@ export class GeminiContextCacheManager {
 	private async createGeminiCache(
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
+		cacheConfig: ContextCacheConfig,
 	): Promise<CacheMetadata> {
 		const cacheContents = llmRequest.contents.slice(
 			0,
 			cacheContentsCount,
 		) as unknown as GoogleContent[];
 
-		const cacheConfig: CreateCachedContentConfig = {
+		const createCacheConfig: CreateCachedContentConfig = {
 			contents: cacheContents,
-			ttl: llmRequest.cacheConfig.ttlString,
+			ttl: cacheConfig.ttlString,
 			displayName: `adk-cache-${Math.floor(Date.now() / 1000)}-${cacheContentsCount}contents`,
 		};
 
 		if (llmRequest.config?.systemInstruction) {
-			cacheConfig.systemInstruction = llmRequest.config.systemInstruction;
+			createCacheConfig.systemInstruction = llmRequest.config.systemInstruction;
 		}
-		if (llmRequest.config?.tools) {
-			cacheConfig.tools = llmRequest.config.tools;
-		}
+
 		if (llmRequest.config?.toolConfig) {
-			cacheConfig.toolConfig = llmRequest.config.toolConfig;
+			createCacheConfig.toolConfig = llmRequest.config.toolConfig;
 		}
 
 		const params: CreateCachedContentParameters = {
-			model: llmRequest.model,
-			config: cacheConfig,
+			model: llmRequest.model || "",
+			config: createCacheConfig,
 		};
 
 		const cachedContent: CachedContent =
@@ -265,7 +235,7 @@ export class GeminiContextCacheManager {
 
 		return new CacheMetadata({
 			cacheName: cachedContent.name,
-			expireTime: createdAt + llmRequest.cacheConfig.ttlSeconds,
+			expireTime: createdAt + cacheConfig.ttlSeconds,
 			fingerprint: this.generateCacheFingerprint(
 				llmRequest,
 				cacheContentsCount,
@@ -309,7 +279,7 @@ export class GeminiContextCacheManager {
 	public populateCacheMetadataInResponse(
 		llmResponse: LlmResponse,
 		cacheMetadata: CacheMetadata,
-	) {
+	): void {
 		llmResponse.cacheMetadata = cacheMetadata.modelCopy();
 	}
 }

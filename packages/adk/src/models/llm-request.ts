@@ -5,6 +5,7 @@ import type {
 	GenerateContentConfig,
 	LiveConnectConfig,
 } from "@google/genai";
+import type { CacheMetadata } from "./gemini-context-cache-manager";
 
 /**
  * LLM request class that allows passing in tools, output schema and system
@@ -41,7 +42,7 @@ export class LlmRequest {
 	/**
 	 * Cache metadata from previous requests, used for cache management.
 	 */
-	cacheMetadata?: any;
+	cacheMetadata?: CacheMetadata;
 
 	/**
 	 * Token count from previous request's prompt, used for cache size validation.
@@ -65,7 +66,7 @@ export class LlmRequest {
 		liveConnectConfig?: LiveConnectConfig;
 		toolsDict?: Record<string, BaseTool>;
 		cacheConfig?: ContextCacheConfig;
-		cacheMetadata?: any;
+		cacheMetadata?: CacheMetadata;
 		cacheableContentsTokenCount?: number;
 	}) {
 		this.model = data?.model;

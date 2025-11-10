@@ -3,6 +3,7 @@ import type {
 	GenerateContentResponseUsageMetadata,
 	GroundingMetadata,
 } from "@google/genai";
+import type { CacheMetadata } from "./gemini-context-cache-manager";
 
 interface Candidate {
 	content?: Content;
@@ -42,6 +43,11 @@ export class LlmResponse {
 	interrupted?: boolean;
 
 	customMetadata?: Record<string, any>;
+
+	/**
+	 * Cache metadata for context caching operations
+	 */
+	cacheMetadata?: CacheMetadata;
 
 	usageMetadata?: GenerateContentResponseUsageMetadata;
 
