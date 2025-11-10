@@ -140,7 +140,7 @@ export class GeminiContextCacheManager {
 			return false;
 		}
 
-		if (cache.invocationsUsed > cacheConfig.cacheIntervals) {
+if (cache.invocationsUsed >= cacheConfig.cacheIntervals) {
 			console.info("Cache exceeded intervals:", cache.cacheName);
 			return false;
 		}
