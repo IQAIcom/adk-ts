@@ -20,6 +20,10 @@ import type {
 	BaseAgent,
 	BeforeAgentCallback,
 } from "./base-agent.js";
+import {
+	ContextCacheConfig,
+	type ContextCacheConfigProps,
+} from "./context-cache-config.js";
 import { LangGraphAgent, type LangGraphNode } from "./lang-graph-agent.js";
 import type {
 	AfterModelCallback,
@@ -155,6 +159,7 @@ interface RunnerConfig {
 	memoryService?: BaseMemoryService;
 	artifactService?: BaseArtifactService;
 	eventsCompactionConfig?: EventsCompactionConfig;
+	contextCacheConfig?: ContextCacheConfig;
 }
 
 /**
@@ -208,6 +213,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	private memoryService?: BaseMemoryService;
 	private artifactService?: BaseArtifactService;
 	private eventsCompactionConfig?: EventsCompactionConfig;
+	private cacheConfig?: ContextCacheConfig;
 	private agentType: AgentType = "llm";
 	private existingSession?: Session;
 	private existingAgent?: BaseAgent; // If provided, reuse directly
@@ -649,6 +655,33 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	}
 
 	/**
+	 * Configure context caching for Gemini models
+	 * @param config Cache configuration options (cacheIntervals, ttlSeconds, minTokens)
+	 * @returns This builder instance for chaining
+	 * @example
+	 * ```typescript
+	 * const { runner } = await AgentBuilder
+	 *   .create("assistant")
+	 *   .withModel("gemini-2.5-flash")
+	 *   .withCacheConfig({
+	 *     cacheIntervals: 10,  // Reuse cache for 10 invocations
+	 *     ttlSeconds: 1800,    // Cache expires after 30 minutes
+	 *     minTokens: 1000,     // Only cache if request has 1000+ tokens
+	 *   })
+	 *   .build();
+	 * ```
+	 */
+	withCacheConfig(
+		config: Partial<ContextCacheConfigProps> | ContextCacheConfig,
+	): this {
+		this.cacheConfig =
+			config instanceof ContextCacheConfig
+				? config
+				: new ContextCacheConfig(config);
+		return this;
+	}
+
+	/**
 	 * Configure runtime behavior for runs
 	 */
 	withRunConfig(config: RunConfig | Partial<RunConfig>): this {
@@ -724,6 +757,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 				memoryService: this.memoryService,
 				artifactService: this.artifactService,
 				eventsCompactionConfig: this.eventsCompactionConfig,
+				contextCacheConfig: this.cacheConfig,
 			};
 
 			const baseRunner = new Runner(runnerConfig);
