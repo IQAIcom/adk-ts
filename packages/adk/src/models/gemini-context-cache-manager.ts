@@ -156,6 +156,9 @@ export class GeminiContextCacheManager {
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
 	): string {
+		const MAX_HASH_LENGTH = 16;
+		const MIN_HASH_LENGTH = 0;
+
 		const seen = new WeakSet();
 
 		function canonicalize(value: unknown) {
@@ -220,7 +223,7 @@ export class GeminiContextCacheManager {
 		const json = JSON.stringify(canonicalData);
 		const hash = crypto.createHash("sha256").update(json).digest("hex");
 
-		return hash.slice(0, 16);
+		return hash.slice(MIN_HASH_LENGTH, MAX_HASH_LENGTH);
 	}
 
 	private async createNewCacheWithContents(
@@ -310,9 +313,9 @@ export class GeminiContextCacheManager {
 		cacheContentsCount: number,
 	): void {
 		if (llmRequest.config) {
-llmRequest.config.systemInstruction = undefined;
-llmRequest.config.tools = undefined;
-llmRequest.config.toolConfig = undefined;
+			llmRequest.config.systemInstruction = undefined;
+			llmRequest.config.tools = undefined;
+			llmRequest.config.toolConfig = undefined;
 			llmRequest.config.cachedContent = cacheName;
 		}
 		llmRequest.contents = llmRequest.contents.slice(cacheContentsCount);
