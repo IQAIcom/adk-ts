@@ -7,7 +7,10 @@ import {
 } from "@google/genai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
-import { GeminiContextCacheManager } from "./gemini-context-cache-manager";
+import {
+	CacheMetadata,
+	GeminiContextCacheManager,
+} from "./gemini-context-cache-manager";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -61,7 +64,7 @@ export class GoogleLlm extends BaseLlm {
 		this.preprocessRequest(llmRequest);
 
 		// Handle context caching if configured
-		let cacheMetadata = null;
+		let cacheMetadata: CacheMetadata | null = null;
 		let cacheManager: GeminiContextCacheManager | null = null;
 
 		if (llmRequest.cacheConfig) {
