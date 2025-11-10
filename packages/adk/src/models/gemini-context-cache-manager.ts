@@ -5,7 +5,6 @@ import type {
 	CreateCachedContentConfig,
 	CreateCachedContentParameters,
 	DeleteCachedContentParameters,
-	Content as GoogleContent,
 	GoogleGenAI,
 } from "@google/genai";
 import type { LlmRequest } from "./llm-request";
@@ -204,10 +203,7 @@ export class GeminiContextCacheManager {
 		cacheContentsCount: number,
 		cacheConfig: ContextCacheConfig,
 	): Promise<CacheMetadata> {
-		const cacheContents = llmRequest.contents.slice(
-			0,
-			cacheContentsCount,
-		) as unknown as GoogleContent[];
+		const cacheContents = llmRequest.contents.slice(0, cacheContentsCount);
 
 		const createCacheConfig: CreateCachedContentConfig = {
 			contents: cacheContents,
