@@ -1,0 +1,35 @@
+---
+title: Context caching with Gemini
+description: This document explains how to configure and use the context caching feature.
+---
+
+When working with agents to complete tasks, you may want to reuse extended instructions or large sets of data across multiple agent requests to a generative AI model. Resending this data for each agent request is slow, inefficient, and can be expensive. Using context caching features in generative AI models can significantly speed up responses and lower the number of tokens sent to the model for each request.
+
+The ADK Context Caching feature allows you to cache request data with generative AI models that support it, including Gemini 2.0 and higher models. This document explains how to configure and use this feature.
+
+
+## Configure context caching
+
+You configure the context caching feature when creating your agent by passing a `contextCacheConfig` object directly to your agent. For example:
+
+```typescript
+const agent = new LlmAgent({
+  model: "gemini-2.0-flash" // Configure an agent using Gemini 2.0 or higher
+  ...
+  contextCacheConfig: {
+      cacheIntervals: 10,
+      ttlSeconds: 1800,
+      minTokens: 1000,
+  },
+});
+```
+
+## Configuration settings
+
+The `contextCacheConfig` object has the following settings that control how caching works for your agent:
+
+* **minTokens** (`number`): The minimum number of tokens required in a request to enable caching. This avoids caching very small requests where the performance benefit is negligible. **Default:** `0`.
+
+* **ttlSeconds** (`number`): The time-to-live (TTL) for the cache in seconds. Determines how long cached content is stored before it is refreshed. **Default:** `1800` (30 minutes).
+
+* **cacheIntervals** (`number`): The maximum number of times the same cached content can be used before it expires. Allows control over how frequently the cache is updated, even if the TTL has not expired. **Default:** `10`.

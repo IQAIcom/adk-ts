@@ -104,7 +104,7 @@ export class InvocationContext {
 	readonly artifactService?: BaseArtifactService;
 	readonly sessionService: BaseSessionService;
 	readonly memoryService?: BaseMemoryService;
-readonly contextCacheConfig?: ContextCacheConfig;
+	readonly contextCacheConfig?: ContextCacheConfig;
 
 	/**
 	 * The id of this invocation context. Readonly.
@@ -203,6 +203,7 @@ readonly contextCacheConfig?: ContextCacheConfig;
 		this.activeStreamingTools = options.activeStreamingTools;
 		this.transcriptionCache = options.transcriptionCache;
 		this.runConfig = options.runConfig;
+		this.contextCacheConfig = options.contextCacheConfig;
 	}
 
 	/**

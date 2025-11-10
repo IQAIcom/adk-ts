@@ -77,7 +77,9 @@ export abstract class BaseLlmFlow {
 	async *_runOneStepAsync(
 		invocationContext: InvocationContext,
 	): AsyncGenerator<Event> {
-		const llmRequest = new LlmRequest();
+		const llmRequest = new LlmRequest({
+			cacheConfig: invocationContext.contextCacheConfig,
+		});
 
 		// Preprocessing phase
 		for await (const event of this._preprocessAsync(
