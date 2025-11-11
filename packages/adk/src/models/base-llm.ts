@@ -72,11 +72,6 @@ export abstract class BaseLlm {
 				})) || [],
 		};
 
-		console.log(
-			"*generateContentAsync requestMetadata",
-			JSON.stringify(requestMetadata, null, 2),
-		);
-
 		yield* tracer.startActiveSpan(
 			`llm_generate [${this.model}]`,
 			async function* (span) {

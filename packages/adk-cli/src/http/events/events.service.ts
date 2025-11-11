@@ -21,8 +21,6 @@ export class EventsService {
 			loaded,
 			sessionId,
 		);
-
-		console.log("events", JSON.stringify(events, null, 2));
 		return events;
 
 		// return this.sessionsService.getSessionEvents(loaded, sessionId);
