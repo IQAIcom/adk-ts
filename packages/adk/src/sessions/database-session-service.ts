@@ -424,6 +424,8 @@ export class DatabaseSessionService extends BaseSessionService {
 				.reverse()
 				.map((storageEvent) => this.storageEventToEvent(storageEvent));
 
+			console.log("event", JSON.stringify(events, null, 2));
+
 			return {
 				id: sessionId,
 				appName,

@@ -63,7 +63,7 @@ export abstract class BaseLlm {
 							return {
 								text:
 									part.text.length > 200
-										? part.text.substring(0, 200) + "..."
+										? `${part.text.substring(0, 200)}...`
 										: part.text,
 							};
 						}
@@ -71,6 +71,11 @@ export abstract class BaseLlm {
 					}),
 				})) || [],
 		};
+
+		console.log(
+			"*generateContentAsync requestMetadata",
+			JSON.stringify(requestMetadata, null, 2),
+		);
 
 		yield* tracer.startActiveSpan(
 			`llm_generate [${this.model}]`,

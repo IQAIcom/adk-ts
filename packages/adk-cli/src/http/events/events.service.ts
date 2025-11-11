@@ -16,6 +16,15 @@ export class EventsService {
 		if (!loaded) {
 			return { events: [], totalCount: 0 };
 		}
-		return this.sessionsService.getSessionEvents(loaded, sessionId);
+
+		const events = await this.sessionsService.getSessionEvents(
+			loaded,
+			sessionId,
+		);
+
+		console.log("events", JSON.stringify(events, null, 2));
+		return events;
+
+		// return this.sessionsService.getSessionEvents(loaded, sessionId);
 	}
 }
