@@ -49,6 +49,29 @@ export abstract class BaseLlm {
 		// Apply the maybeAppendUserContent fix before processing
 		this.maybeAppendUserContent(llmRequest);
 
+		// Prepare request metadata for debugging
+		const requestMetadata = {
+			model: this.model,
+			config: llmRequest.config,
+			systemInstruction: llmRequest.getSystemInstructionText(),
+			tools: llmRequest.config?.tools || [],
+			contents:
+				llmRequest.contents?.map((content) => ({
+					role: content.role,
+					parts: content.parts?.map((part) => {
+						if (typeof part.text === "string") {
+							return {
+								text:
+									part.text.length > 200
+										? part.text.substring(0, 200) + "..."
+										: part.text,
+							};
+						}
+						return { text: "[non_text_content]" };
+					}),
+				})) || [],
+		};
+
 		yield* tracer.startActiveSpan(
 			`llm_generate [${this.model}]`,
 			async function* (span) {
@@ -87,17 +110,44 @@ export abstract class BaseLlm {
 					)) {
 						responseCount++;
 
+						// Attach request metadata to response
+						response.requestMetadata = requestMetadata;
+
+						// Prepare response metadata
+						const functionCalls =
+							response.content?.parts?.filter(
+								(part: any) => part.functionCall,
+							) || [];
+						const functionResponses =
+							response.content?.parts?.filter(
+								(part: any) => part.functionResponse,
+							) || [];
+
+						response.responseMetadata = {
+							content: response.content,
+							finishReason: response.finishReason,
+							usageMetadata: response.usageMetadata,
+							functionCalls: functionCalls.map(
+								(part: any) => part.functionCall,
+							),
+							functionResponses: functionResponses.map(
+								(part: any) => part.functionResponse,
+							),
+						};
+
 						// Update span attributes with response info
-						if (response.usage) {
-							totalTokens += response.usage.total_tokens || 0;
+						if (response.usageMetadata) {
+							totalTokens += response.usageMetadata.totalTokenCount || 0;
 							span.setAttributes({
 								"gen_ai.response.finish_reasons": [
-									response.finish_reason || "unknown",
+									response.finishReason || "unknown",
 								],
-								"gen_ai.usage.input_tokens": response.usage.prompt_tokens || 0,
+								"gen_ai.usage.input_tokens":
+									response.usageMetadata.promptTokenCount || 0,
 								"gen_ai.usage.output_tokens":
-									response.usage.completion_tokens || 0,
-								"gen_ai.usage.total_tokens": response.usage.total_tokens || 0,
+									response.usageMetadata.candidatesTokenCount || 0,
+								"gen_ai.usage.total_tokens":
+									response.usageMetadata.totalTokenCount || 0,
 							});
 						}
 
