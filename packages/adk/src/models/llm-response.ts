@@ -57,6 +57,27 @@ export class LlmResponse {
 
 	error?: Error;
 
+	/** LLM request metadata for debugging */
+	requestMetadata?: {
+		model?: string;
+		config?: any;
+		systemInstruction?: string;
+		tools?: any[];
+		contents?: any[];
+	};
+
+	/** LLM response metadata for debugging */
+	responseMetadata?: {
+		content?: any;
+		finishReason?: string;
+		usageMetadata?: any;
+		functionCalls?: any[];
+		functionResponses?: any[];
+		toolName?: string;
+		toolResult?: any;
+		mergedFrom?: number;
+	};
+
 	constructor(data: Partial<LlmResponse> = {}) {
 		Object.assign(this, data);
 	}

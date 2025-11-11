@@ -398,8 +398,16 @@ function buildNestedStructure(items: TraceItem[]): TraceItem[] {
 }
 
 function determineTraceType(event: Event): TraceItem["type"] {
-	if (event.functionCalls?.length) return "tool_call";
-	if (event.functionResponses?.length) return "tool_response";
+	// Check both direct properties and responseMetadata for function calls/responses
+	const functionCalls =
+		(event as any).functionCalls ||
+		(event as any).responseMetadata?.functionCalls;
+	const functionResponses =
+		(event as any).functionResponses ||
+		(event as any).responseMetadata?.functionResponses;
+
+	if (functionCalls?.length) return "tool_call";
+	if (functionResponses?.length) return "tool_response";
 	if (event.author === "user") return "message";
 	return "llm_call";
 }
