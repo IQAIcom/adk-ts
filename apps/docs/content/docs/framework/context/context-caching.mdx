@@ -14,8 +14,8 @@ You configure the context caching feature when creating your agent by passing a 
 
 ```typescript
 const agent = new LlmAgent({
-  model: "gemini-2.0-flash" // Configure an agent using Gemini 2.0 or higher
-  ...
+  model: "gemini-2.5-flash", // Configure an agent using a model that supports context caching
+  // ... other agent properties
   contextCacheConfig: {
       cacheIntervals: 10,
       ttlSeconds: 1800,
