@@ -10,6 +10,7 @@ import { Logger } from "@adk/logger";
 import { LogFormatter } from "@adk/logger/log-formatter";
 import {
 	type BaseLlm,
+	type CacheMetadata,
 	type FunctionDeclaration,
 	LlmRequest,
 	type LlmResponse,
@@ -38,6 +39,46 @@ export abstract class BaseLlmFlow {
 	responseProcessors: Array<any> = [];
 
 	protected logger = new Logger({ name: "BaseLlmFlow" });
+
+	/**
+	 * Extracts cache metadata and token count from the last LLM response event in session history.
+	 * This is used to propagate cache information to subsequent requests for context caching to work.
+	 * @param invocationContext The current invocation context with session info
+	 * @returns Object containing cacheMetadata and cacheableContentsTokenCount, or null if not found
+	 */
+	private _extractCacheInfoFromSessionHistory(
+		invocationContext: InvocationContext,
+	): {
+		cacheMetadata?: CacheMetadata;
+		cacheableContentsTokenCount?: number;
+	} | null {
+		const events = invocationContext.session.events;
+		if (!events || events.length === 0) return null;
+
+		// Iterate backwards through events to find the most recent LLM response
+		for (let i = events.length - 1; i >= 0; i--) {
+			const event = events[i];
+
+			// Look for events with cacheMetadata (LLM responses)
+			// Event extends LlmResponse which has cacheMetadata property
+			if (event.cacheMetadata) {
+				const cacheMetadata = event.cacheMetadata;
+				const usageMetadata = event.usageMetadata;
+
+				const cacheableContentsTokenCount =
+					usageMetadata?.cachedContentInputTokenCount ||
+					usageMetadata?.promptTokenCount ||
+					0;
+
+				return {
+					cacheMetadata,
+					cacheableContentsTokenCount,
+				};
+			}
+		}
+
+		return null;
+	}
 
 	async *runAsync(invocationContext: InvocationContext): AsyncGenerator<Event> {
 		this.logger.debug(`Agent '${invocationContext.agent.name}' started.`);
@@ -77,8 +118,14 @@ export abstract class BaseLlmFlow {
 	async *_runOneStepAsync(
 		invocationContext: InvocationContext,
 	): AsyncGenerator<Event> {
+		// Extract cache metadata from previous LLM response in session history
+		const cacheInfo =
+			this._extractCacheInfoFromSessionHistory(invocationContext);
+
 		const llmRequest = new LlmRequest({
 			cacheConfig: invocationContext.contextCacheConfig,
+			cacheMetadata: cacheInfo?.cacheMetadata,
+			cacheableContentsTokenCount: cacheInfo?.cacheableContentsTokenCount,
 		});
 
 		// Preprocessing phase
