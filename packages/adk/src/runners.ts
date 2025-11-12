@@ -679,11 +679,11 @@ export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
 			memoryService: new InMemoryMemoryService(),
 		});
 
-		this.logger.info(
+		this._inMemorySessionService = inMemorySessionService;
+
+		this.logger.debug(
 			"Using in-memory session service",
 			this._inMemorySessionService,
 		);
-
-		this._inMemorySessionService = inMemorySessionService;
 	}
 }
