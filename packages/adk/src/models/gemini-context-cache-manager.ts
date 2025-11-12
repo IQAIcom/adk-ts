@@ -7,6 +7,7 @@ import type {
 	CreateCachedContentParameters,
 	DeleteCachedContentParameters,
 	GoogleGenAI,
+	Tool,
 } from "@google/genai";
 import type { LlmRequest } from "./llm-request";
 import type { LlmResponse } from "./llm-response";
@@ -272,7 +273,7 @@ export class GeminiContextCacheManager {
 		}
 
 		if (llmRequest.config?.tools) {
-			createCacheConfig.tools = llmRequest.config.tools;
+			createCacheConfig.tools = llmRequest.config.tools as unknown as Tool[];
 		}
 
 		if (llmRequest.config?.toolConfig) {

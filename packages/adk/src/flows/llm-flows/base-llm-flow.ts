@@ -66,7 +66,7 @@ export abstract class BaseLlmFlow {
 				const usageMetadata = event.usageMetadata;
 
 				const cacheableContentsTokenCount =
-					usageMetadata?.cachedContentInputTokenCount ||
+					usageMetadata?.cachedContentTokenCount ||
 					usageMetadata?.promptTokenCount ||
 					0;
 
