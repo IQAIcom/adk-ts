@@ -17,6 +17,7 @@ import {
 } from "@adk/models";
 import { traceLlmCall } from "@adk/telemetry";
 import { ToolContext } from "@adk/tools";
+import { UsageMetadata } from "@google/genai";
 import * as functions from "./functions";
 
 // Tool interfaces for better type safety
@@ -62,12 +63,12 @@ export abstract class BaseLlmFlow {
 			// Look for events with cacheMetadata (LLM responses)
 			// Event extends LlmResponse which has cacheMetadata property
 			if (event.cacheMetadata) {
-				const cacheMetadata = event.cacheMetadata;
-				const usageMetadata = event.usageMetadata;
+				const cacheMetadata = event.cacheMetadata as CacheMetadata;
+				const usageMetadata = event.usageMetadata as UsageMetadata;
 
 				const cacheableContentsTokenCount =
-					usageMetadata?.cachedContentTokenCount ||
-					usageMetadata?.promptTokenCount ||
+					usageMetadata.cachedContentTokenCount ||
+					usageMetadata.promptTokenCount ||
 					0;
 
 				return {
