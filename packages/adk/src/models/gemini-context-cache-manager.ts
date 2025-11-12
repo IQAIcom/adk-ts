@@ -40,8 +40,6 @@ export class CacheMetadata {
 export class GeminiContextCacheManager {
 	private readonly genaiClient: GoogleGenAI;
 	private readonly logger: Logger;
-	private readonly MAX_HASH_LENGTH = 32;
-	private readonly MIN_HASH_LENGTH = 0;
 
 	/**
 	 * Creates a new cache manager
@@ -226,7 +224,7 @@ export class GeminiContextCacheManager {
 		const json = JSON.stringify(canonicalData);
 		const hash = crypto.createHash("sha256").update(json).digest("hex");
 
-return hash;
+		return hash;
 	}
 
 	private async createNewCacheWithContents(
