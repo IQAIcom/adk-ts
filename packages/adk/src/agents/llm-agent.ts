@@ -388,6 +388,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 			subAgents: config.subAgents,
 			beforeAgentCallback: config.beforeAgentCallback,
 			afterAgentCallback: config.afterAgentCallback,
+			contextCacheConfig: config.contextCacheConfig,
 		});
 
 		this.model = config.model || "";
@@ -412,7 +413,6 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 		this.afterModelCallback = config.afterModelCallback;
 		this.beforeToolCallback = config.beforeToolCallback;
 		this.afterToolCallback = config.afterToolCallback;
-		this.contextCacheConfig = config.contextCacheConfig;
 
 		// Validate output schema configuration
 		this.validateOutputSchemaConfig();
