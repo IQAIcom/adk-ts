@@ -39,6 +39,8 @@ export class CacheMetadata {
 export class GeminiContextCacheManager {
 	private readonly genaiClient: GoogleGenAI;
 	private readonly logger: Logger;
+	private readonly MAX_HASH_LENGTH = 32;
+	private readonly MIN_HASH_LENGTH = 0;
 
 	/**
 	 * Creates a new cache manager
@@ -159,9 +161,6 @@ export class GeminiContextCacheManager {
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
 	): string {
-const MAX_HASH_LENGTH = 32;
-		const MIN_HASH_LENGTH = 0;
-
 		const seen = new WeakSet();
 
 		function canonicalize(value: unknown) {
@@ -226,7 +225,7 @@ const MAX_HASH_LENGTH = 32;
 		const json = JSON.stringify(canonicalData);
 		const hash = crypto.createHash("sha256").update(json).digest("hex");
 
-		return hash.slice(MIN_HASH_LENGTH, MAX_HASH_LENGTH);
+		return hash.slice(this.MIN_HASH_LENGTH, this.MAX_HASH_LENGTH);
 	}
 
 	private async createNewCacheWithContents(
@@ -315,13 +314,13 @@ const MAX_HASH_LENGTH = 32;
 		cacheName: string,
 		cacheContentsCount: number,
 	): void {
-    if (!llmRequest.config) {
-      llmRequest.config = {};
-    }
-    llmRequest.config.systemInstruction = undefined;
-    llmRequest.config.tools = undefined;
-    llmRequest.config.toolConfig = undefined;
-    llmRequest.config.cachedContent = cacheName;
+		if (!llmRequest.config) {
+			llmRequest.config = {};
+		}
+		llmRequest.config.systemInstruction = undefined;
+		llmRequest.config.tools = undefined;
+		llmRequest.config.toolConfig = undefined;
+		llmRequest.config.cachedContent = cacheName;
 		llmRequest.contents = llmRequest.contents.slice(cacheContentsCount);
 	}
 

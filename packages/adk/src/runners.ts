@@ -657,7 +657,11 @@ export class Runner<T extends BaseAgent = BaseAgent> {
  * An in-memory Runner for testing and development.
  */
 export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
+	/**
+	 * Deprecated. Please don't use. The in-memory session service for the runner.
+	 */
 	private _inMemorySessionService: InMemorySessionService;
+
 	/**
 	 * Initializes the InMemoryRunner.
 	 */
@@ -674,6 +678,11 @@ export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
 			sessionService: inMemorySessionService,
 			memoryService: new InMemoryMemoryService(),
 		});
+
+		this.logger.info(
+			"Using in-memory session service",
+			this._inMemorySessionService,
+		);
 
 		this._inMemorySessionService = inMemorySessionService;
 	}
