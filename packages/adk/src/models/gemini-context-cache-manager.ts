@@ -226,7 +226,7 @@ export class GeminiContextCacheManager {
 		const json = JSON.stringify(canonicalData);
 		const hash = crypto.createHash("sha256").update(json).digest("hex");
 
-		return hash.slice(this.MIN_HASH_LENGTH, this.MAX_HASH_LENGTH);
+return hash;
 	}
 
 	private async createNewCacheWithContents(
