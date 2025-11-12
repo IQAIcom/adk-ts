@@ -314,13 +314,13 @@ export class GeminiContextCacheManager {
 		cacheName: string,
 		cacheContentsCount: number,
 	): void {
-		if (!llmRequest.config) {
-			llmRequest.config = {};
-		}
-		llmRequest.config.systemInstruction = undefined;
-		llmRequest.config.tools = undefined;
-		llmRequest.config.toolConfig = undefined;
-		llmRequest.config.cachedContent = cacheName;
+		llmRequest.config = {
+			...llmRequest.config,
+			systemInstruction: undefined,
+			tools: undefined,
+			toolConfig: undefined,
+			cachedContent: cacheName,
+		};
 		llmRequest.contents = llmRequest.contents.slice(cacheContentsCount);
 	}
 
