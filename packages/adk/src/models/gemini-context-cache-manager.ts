@@ -271,6 +271,10 @@ export class GeminiContextCacheManager {
 			createCacheConfig.systemInstruction = llmRequest.config.systemInstruction;
 		}
 
+		if (llmRequest.config?.tools) {
+			createCacheConfig.tools = llmRequest.config.tools;
+		}
+
 		if (llmRequest.config?.toolConfig) {
 			createCacheConfig.toolConfig = llmRequest.config.toolConfig;
 		}
