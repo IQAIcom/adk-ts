@@ -132,11 +132,83 @@ class CreatedTool<T extends Record<string, any>> extends BaseTool {
 		// Remove $schema field which is not needed for LLM function declarations
 		const { $schema, ...parameters } = rawParameters as any;
 
+		// Sanitize the schema by flattening descriptions into the correct structure
+		const sanitized = this.sanitizeSchema(parameters);
+
 		return {
 			name: this.name,
 			description: this.description,
-			parameters: parameters as JSONSchema,
+			parameters: sanitized as JSONSchema,
 		};
+	}
+
+	/**
+	 * Sanitizes schema to ensure descriptions and field structures are properly formatted
+	 * for LLM consumption. Handles edge cases introduced by Zod's .describe() method.
+	 */
+	private sanitizeSchema(schema: any): any {
+		if (!schema || typeof schema !== "object") {
+			return schema;
+		}
+
+		// Handle object schema with properties
+		if (schema.type === "object" && schema.properties) {
+			const sanitized: any = {
+				type: schema.type,
+				properties: {},
+			};
+
+			if (schema.required) {
+				sanitized.required = schema.required;
+			}
+
+			if (schema.description) {
+				sanitized.description = schema.description;
+			}
+
+			// Process each property
+			for (const [key, prop] of Object.entries(schema.properties)) {
+				sanitized.properties[key] = this.sanitizeSchema(prop);
+			}
+
+			return sanitized;
+		}
+
+		// For non-object types, preserve only essential fields
+		const essentialFields = [
+			"type",
+			"description",
+			"enum",
+			"default",
+			"items",
+			"properties",
+			"required",
+			"minLength",
+			"maxLength",
+			"pattern",
+			"minimum",
+			"maximum",
+			"format",
+		];
+
+		const sanitized: any = {};
+
+		for (const field of essentialFields) {
+			if (field in schema) {
+				if (field === "items") {
+					sanitized[field] = this.sanitizeSchema(schema[field]);
+				} else {
+					sanitized[field] = schema[field];
+				}
+			}
+		}
+
+		// Ensure we have at least a type if nothing else
+		if (Object.keys(sanitized).length === 0) {
+			sanitized.type = schema.type || "string";
+		}
+
+		return sanitized;
 	}
 }
 
