@@ -281,16 +281,17 @@ describe("injectSessionState", () => {
 				validVar: "resolved",
 			};
 			await expect(
-				injectSessionState("Valid: {validVar}, Missing: {missingVar}", readonlyContext),
+				injectSessionState(
+					"Valid: {validVar}, Missing: {missingVar}",
+					readonlyContext,
+				),
 			).rejects.toThrow("Context variable not found: `missingVar`.");
 		});
 
 		it("should throw error for complex nested expressions that don't exist", async () => {
 			mockContext.session.state = {
 				basket: {
-					fruits: [
-						{ name: "apple" },
-					],
+					fruits: [{ name: "apple" }],
 				},
 			};
 			await expect(
