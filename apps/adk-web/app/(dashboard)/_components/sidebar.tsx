@@ -2,8 +2,7 @@
 
 import { Activity, Archive, Database, Share2, X, Sparkles } from "lucide-react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { EventsPanel } from "@/components/events-panel";
 import { GraphPanel } from "@/components/graph-panel";
 import { SessionsPanel } from "@/components/sessions-panel";
@@ -42,14 +41,6 @@ export function Sidebar({
 	currentSessionId: initialSessionId,
 	onSessionChange,
 }: SidebarProps) {
-	// API URL now resolved inside hooks via useApiUrl
-	const _searchParams = useSearchParams();
-
-	// Local session state should be declared before hooks that depend on it
-	const [localSessionId, setLocalSessionId] = useState<string | null>(
-		initialSessionId ?? null,
-	);
-
 	// Manage sessions and events internally
 	const {
 		sessions,
@@ -61,7 +52,7 @@ export function Sidebar({
 
 	const { events, isLoading: eventsLoading } = useEvents(
 		selectedAgent,
-		localSessionId ?? null,
+		initialSessionId ?? null,
 	);
 
 	const {
@@ -72,57 +63,70 @@ export function Sidebar({
 
 	// Track previous agent to detect actual agent switch
 	const prevAgentRef = useRef<string | null>(null);
+
+	// Unified session management effect
 	useEffect(() => {
 		const currentAgentPath = selectedAgent?.relativePath ?? null;
+
+		// Check if agent changed
 		if (currentAgentPath !== prevAgentRef.current) {
-			// Agent changed: clear local session so auto-select can pick correct one for new agent
-			setLocalSessionId(null);
+			// Agent switched: clear session to allow new agent's first session to auto-select
 			onSessionChange?.(null);
 			prevAgentRef.current = currentAgentPath;
+			return;
 		}
-	}, [selectedAgent, onSessionChange]);
 
-	// Sync incoming initialSessionId prop into local state
-	useEffect(() => {
-		setLocalSessionId(initialSessionId ?? null);
-	}, [initialSessionId]);
-
-	// Auto-select first session when sessions are loaded if no current session (per agent)
-	useEffect(() => {
-		if (sessions.length > 0 && !localSessionId) {
-			const firstSessionId = sessions[0].id;
-			setLocalSessionId(firstSessionId);
-			onSessionChange?.(firstSessionId);
-			// Also sync server-side active session for consistency
-			try {
-				void switchSession(firstSessionId);
-			} catch {}
+		// No sessions available yet
+		if (sessions.length === 0) {
+			return;
 		}
-		// If current local session id is no longer present in sessions (e.g., after agent change or deletion), clear it
-		if (localSessionId && !sessions.some((s) => s.id === localSessionId)) {
-			setLocalSessionId(null);
+
+		// Validate URL sessionId
+		const isUrlSessionValid =
+			initialSessionId && sessions.some((s) => s.id === initialSessionId);
+
+		if (isUrlSessionValid) {
+			// URL has a valid sessionId - use it and sync with server
+			switchSession(initialSessionId).catch((error) => {
+				console.error("Failed to switch to URL session:", error);
+			});
+		} else if (initialSessionId) {
+			// URL has invalid sessionId - clear it
 			onSessionChange?.(null);
+		} else {
+			// No URL sessionId - auto-select first session
+			const firstSessionId = sessions[0].id;
+			onSessionChange?.(firstSessionId);
+			switchSession(firstSessionId).catch((error) => {
+				console.error("Failed to auto-select first session:", error);
+			});
 		}
-	}, [sessions, localSessionId, onSessionChange, switchSession]);
+	}, [
+		sessions,
+		initialSessionId,
+		selectedAgent,
+		onSessionChange,
+		switchSession,
+	]);
 
 	const handleCreateSession = async (
 		state?: Record<string, any>,
 		sessionId?: string,
 	) => {
-		await createSession({ state, sessionId });
+		const created = await createSession({ state, sessionId });
+		// Return the created session so caller can switch to it
+		return created;
 	};
 
 	const handleDeleteSession = async (sessionId: string) => {
 		await deleteSession(sessionId);
-		if (localSessionId === sessionId) {
-			setLocalSessionId(null);
+		if (initialSessionId === sessionId) {
 			onSessionChange?.(null);
 		}
 	};
 
 	const handleSwitchSession = async (sessionId: string) => {
 		await switchSession(sessionId);
-		setLocalSessionId(sessionId);
 		onSessionChange?.(sessionId);
 	};
 
@@ -203,7 +207,7 @@ export function Sidebar({
 						{selectedPanel === "sessions" && (
 							<SessionsPanel
 								sessions={sessions || []}
-								currentSessionId={localSessionId}
+								currentSessionId={initialSessionId ?? null}
 								onCreateSession={handleCreateSession}
 								onDeleteSession={handleDeleteSession}
 								onSwitchSession={handleSwitchSession}
@@ -216,7 +220,7 @@ export function Sidebar({
 						{selectedPanel === "state" && (
 							<StatePanel
 								selectedAgent={selectedAgent}
-								currentSessionId={localSessionId}
+								currentSessionId={initialSessionId ?? null}
 							/>
 						)}
 						{selectedPanel === "graph" && (

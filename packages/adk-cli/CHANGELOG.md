@@ -1,5 +1,20 @@
 # @iqai/adk-cli
 
+## 0.3.28
+
+### Patch Changes
+
+- 8d5ba1e: ADK WEB now supports voice input
+- Updated dependencies [8d5ba1e]
+  - @iqai/adk@0.5.6
+
+## 0.3.27
+
+### Patch Changes
+
+- Updated dependencies [05bb1b8]
+  - @iqai/adk@0.5.5
+
 ## 0.3.26
 
 ### Patch Changes
