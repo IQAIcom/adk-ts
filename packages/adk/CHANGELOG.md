@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.5.6
+
+### Patch Changes
+
+- 8d5ba1e: ADK WEB now supports voice input
+
 ## 0.5.5
 
 ### Patch Changes
