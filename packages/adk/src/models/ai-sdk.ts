@@ -2,16 +2,20 @@ import { Logger } from "@adk/logger";
 import type { Content, Part } from "@google/genai";
 import {
 	AssistantContent,
-	type LanguageModel,
-	ModelMessage,
-	type Tool,
 	generateText,
 	jsonSchema,
+	type LanguageModel,
+	ModelMessage,
 	streamText,
+	type Tool,
 } from "ai";
 import { BaseLlm } from "./base-llm";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
+import {
+	type CacheMetadata,
+	GeminiContextCacheManager,
+} from "./gemini-context-cache-manager";
 
 /**
  * AI SDK integration that accepts a pre-configured LanguageModel.
@@ -20,6 +24,8 @@ import { LlmResponse } from "./llm-response";
 export class AiSdkLlm extends BaseLlm {
 	private modelInstance: LanguageModel;
 	protected logger = new Logger({ name: "AiSdkLlm" });
+	private _cacheManager?: GeminiContextCacheManager;
+	private _googleApiClient?: any; // GoogleGenAI instance
 
 	/**
 	 * Constructor accepts a pre-configured LanguageModel instance
@@ -41,16 +47,78 @@ export class AiSdkLlm extends BaseLlm {
 		return [];
 	}
 
+	/**
+	 * Check if the model is a Google model (for cache support)
+	 */
+	private isGoogleModel(): boolean {
+		// Check model string for Google/Gemini indicators
+		return this.model.includes("gemini") || this.model.includes("google");
+	}
+
+	/**
+	 * Get or create the Google API client for cache operations
+	 */
+	private async getGoogleApiClient(): Promise<any> {
+		if (!this._googleApiClient) {
+			try {
+				const { GoogleGenAI } = await import("@google/genai");
+				const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+				if (!apiKey) {
+					throw new Error(
+						"GOOGLE_GENERATIVE_AI_API_KEY environment variable is required for caching",
+					);
+				}
+				this._googleApiClient = new GoogleGenAI({ apiKey });
+			} catch (error) {
+				throw new Error(`Failed to initialize Google API client: ${error}`);
+			}
+		}
+		return this._googleApiClient;
+	}
+
+	/**
+	 * Get or create the cache manager
+	 */
+	private async getCacheManager(): Promise<GeminiContextCacheManager> {
+		if (!this._cacheManager) {
+			const apiClient = await this.getGoogleApiClient();
+			this._cacheManager = new GeminiContextCacheManager(
+				apiClient,
+				this.logger,
+			);
+		}
+		return this._cacheManager;
+	}
+
 	protected async *generateContentAsyncImpl(
 		request: LlmRequest,
 		stream = false,
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		try {
+			// Handle context caching for Google models
+			let cacheMetadata: CacheMetadata | null = null;
+			let cacheManager: GeminiContextCacheManager | null = null;
+
+			if (request.cacheConfig && this.isGoogleModel()) {
+				this.logger.debug("Handling context caching for Google model");
+				try {
+					cacheManager = await this.getCacheManager();
+					cacheMetadata = await cacheManager.handleContextCaching(request);
+					if (cacheMetadata?.cacheName) {
+						this.logger.debug(`Using cache: ${cacheMetadata.cacheName}`);
+					}
+				} catch (error) {
+					this.logger.warn(`Failed to handle context caching: ${error}`);
+					// Continue without caching
+					cacheMetadata = null;
+				}
+			}
+
 			const messages = this.convertToAiSdkMessages(request);
 			const systemMessage = request.getSystemInstructionText();
 			const tools = this.convertToAiSdkTools(request);
 
-			const requestParams = {
+			const requestParams: any = {
 				model: this.modelInstance,
 				messages,
 				system: systemMessage,
@@ -59,6 +127,15 @@ export class AiSdkLlm extends BaseLlm {
 				temperature: request.config?.temperature,
 				topP: request.config?.topP,
 			};
+
+			// Add cached content for Google provider
+			if (cacheMetadata?.cacheName && this.isGoogleModel()) {
+				requestParams.providerOptions = {
+					google: {
+						cachedContent: cacheMetadata.cacheName,
+					},
+				};
+			}
 
 			if (stream) {
 				const result = streamText(requestParams);
@@ -98,7 +175,7 @@ export class AiSdkLlm extends BaseLlm {
 
 				const finalUsage = await result.usage;
 				const finishReason = await result.finishReason;
-				yield new LlmResponse({
+				const finalResponse = new LlmResponse({
 					content: {
 						role: "model",
 						parts: parts.length > 0 ? parts : [{ text: "" }],
@@ -113,6 +190,16 @@ export class AiSdkLlm extends BaseLlm {
 					finishReason: this.mapFinishReason(finishReason),
 					turnComplete: true,
 				});
+
+				// Populate cache metadata in final response
+				if (cacheMetadata && cacheManager) {
+					cacheManager.populateCacheMetadataInResponse(
+						finalResponse,
+						cacheMetadata,
+					);
+				}
+
+				yield finalResponse;
 			} else {
 				const result = await generateText(requestParams);
 
@@ -132,7 +219,7 @@ export class AiSdkLlm extends BaseLlm {
 					}
 				}
 
-				yield new LlmResponse({
+				const llmResponse = new LlmResponse({
 					content: {
 						role: "model",
 						parts: parts.length > 0 ? parts : [{ text: "" }],
@@ -147,6 +234,16 @@ export class AiSdkLlm extends BaseLlm {
 					finishReason: this.mapFinishReason(result.finishReason),
 					turnComplete: true,
 				});
+
+				// Populate cache metadata in response
+				if (cacheMetadata && cacheManager) {
+					cacheManager.populateCacheMetadataInResponse(
+						llmResponse,
+						cacheMetadata,
+					);
+				}
+
+				yield llmResponse;
 			}
 		} catch (error) {
 			this.logger.error(`AI SDK Error: ${String(error)}`, { error, request });

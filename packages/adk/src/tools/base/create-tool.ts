@@ -130,7 +130,7 @@ class CreatedTool<T extends Record<string, any>> extends BaseTool {
 		const rawParameters = z.toJSONSchema(this.schema);
 
 		// Remove $schema field which is not needed for LLM function declarations
-		const { $schema, ...parameters } = rawParameters as any;
+		const { $schema: _, ...parameters } = rawParameters as any;
 
 		return {
 			name: this.name,
