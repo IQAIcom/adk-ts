@@ -17,12 +17,6 @@ export class EventsService {
 			return { events: [], totalCount: 0 };
 		}
 
-		const events = await this.sessionsService.getSessionEvents(
-			loaded,
-			sessionId,
-		);
-		return events;
-
-		// return this.sessionsService.getSessionEvents(loaded, sessionId);
+		return this.sessionsService.getSessionEvents(loaded, sessionId);
 	}
 }
