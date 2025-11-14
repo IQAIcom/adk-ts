@@ -15,6 +15,26 @@ interface EventOpts {
 	timestamp?: number;
 	content?: any;
 	partial?: boolean;
+	groundingMetadata?: any;
+	/** LLM request metadata for debugging */
+	requestMetadata?: {
+		model?: string;
+		config?: any;
+		systemInstruction?: string;
+		tools?: any[];
+		contents?: any[];
+	};
+	/** LLM response metadata for debugging */
+	responseMetadata?: {
+		content?: any;
+		finishReason?: string;
+		usageMetadata?: any;
+		functionCalls?: any[];
+		functionResponses?: any[];
+		toolName?: string;
+		toolResult?: any;
+		mergedFrom?: number;
+	};
 }
 
 /**
@@ -68,6 +88,9 @@ export class Event extends LlmResponse {
 		this.branch = opts.branch;
 		this.id = opts.id ?? Event.newId();
 		this.timestamp = opts.timestamp ?? Math.floor(Date.now() / 1000);
+		this.requestMetadata = opts.requestMetadata;
+		this.responseMetadata = opts.responseMetadata;
+		this.groundingMetadata = opts.groundingMetadata;
 	}
 
 	/**
@@ -89,6 +112,12 @@ export class Event extends LlmResponse {
 	 * Returns the function calls in the event.
 	 */
 	getFunctionCalls(): any[] {
+		// First check responseMetadata for function calls
+		if (this.responseMetadata?.functionCalls?.length) {
+			return this.responseMetadata.functionCalls;
+		}
+
+		// Fall back to extracting from content
 		const funcCalls: any[] = [];
 		if (this.content && Array.isArray(this.content.parts)) {
 			for (const part of this.content.parts) {
@@ -104,6 +133,12 @@ export class Event extends LlmResponse {
 	 * Returns the function responses in the event.
 	 */
 	getFunctionResponses(): any[] {
+		// First check responseMetadata for function responses
+		if (this.responseMetadata?.functionResponses?.length) {
+			return this.responseMetadata.functionResponses;
+		}
+
+		// Fall back to extracting from content
 		const funcResponses: any[] = [];
 		if (this.content && Array.isArray(this.content.parts)) {
 			for (const part of this.content.parts) {

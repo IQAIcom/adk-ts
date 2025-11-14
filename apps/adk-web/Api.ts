@@ -97,6 +97,10 @@ export interface EventItemDto {
   branch?: string | null;
   /** @example false */
   isFinalResponse: boolean;
+  /** LLM request metadata for debugging */
+  requestMetadata?: object | null;
+  /** LLM response metadata for debugging */
+  responseMetadata?: object | null;
 }
 
 export interface EventsResponseDto {

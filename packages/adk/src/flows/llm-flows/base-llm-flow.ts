@@ -93,11 +93,22 @@ export abstract class BaseLlmFlow {
 		}
 
 		// Model response phase
+		// We need to get the LLM instance to capture the actual model name
+		const llm = this.__getLlm(invocationContext);
+
 		const modelResponseEvent = new Event({
 			id: Event.newId(),
 			invocationId: invocationContext.invocationId,
 			author: invocationContext.agent.name,
 			branch: invocationContext.branch,
+			// Capture request metadata for debugging
+			requestMetadata: {
+				model: llm.model || llmRequest.model, // Use actual model from LLM instance
+				config: llmRequest.config,
+				systemInstruction: llmRequest.getSystemInstructionText(),
+				tools: llmRequest.config?.tools,
+				contents: llmRequest.contents,
+			},
 		});
 
 		for await (const llmResponse of this._callLlmAsync(
@@ -105,6 +116,19 @@ export abstract class BaseLlmFlow {
 			llmRequest,
 			modelResponseEvent,
 		)) {
+			// Update event with response metadata
+			modelResponseEvent.responseMetadata = {
+				content: llmResponse.content,
+				finishReason: llmResponse.finishReason,
+				usageMetadata: llmResponse.usageMetadata,
+				functionCalls: llmResponse.getFunctionCalls?.() || [],
+				functionResponses: llmResponse.getFunctionResponses?.() || [],
+			};
+			// Also capture content for the event itself
+			modelResponseEvent.content = llmResponse.content;
+			// Preserve grounding metadata from LLM response
+			modelResponseEvent.groundingMetadata = llmResponse.groundingMetadata;
+
 			for await (const event of this._postprocessAsync(
 				invocationContext,
 				llmRequest,
