@@ -2,6 +2,7 @@ import type { Content } from "@google/genai";
 import { Event } from "../events/event";
 import { telemetryService } from "../telemetry";
 import { CallbackContext } from "./callback-context";
+import { ContextCacheConfig } from "./context-cache-config";
 import type { InvocationContext } from "./invocation-context";
 
 /**
@@ -83,6 +84,8 @@ export abstract class BaseAgent {
 	 */
 	afterAgentCallback?: AfterAgentCallback;
 
+	contextCacheConfig?: ContextCacheConfig;
+
 	/**
 	 * Constructor for BaseAgent
 	 */
@@ -92,12 +95,14 @@ export abstract class BaseAgent {
 		subAgents?: BaseAgent[];
 		beforeAgentCallback?: BeforeAgentCallback;
 		afterAgentCallback?: AfterAgentCallback;
+		contextCacheConfig?: ContextCacheConfig;
 	}) {
 		this.name = config.name;
 		this.description = config.description || "";
 		this.subAgents = config.subAgents || [];
 		this.beforeAgentCallback = config.beforeAgentCallback;
 		this.afterAgentCallback = config.afterAgentCallback;
+		this.contextCacheConfig = config.contextCacheConfig;
 
 		// Validate agent name
 		this.validateName(this.name);

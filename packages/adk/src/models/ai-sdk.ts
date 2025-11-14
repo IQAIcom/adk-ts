@@ -2,12 +2,12 @@ import { Logger } from "@adk/logger";
 import type { Content, Part } from "@google/genai";
 import {
 	AssistantContent,
-	type LanguageModel,
-	ModelMessage,
-	type Tool,
 	generateText,
 	jsonSchema,
+	type LanguageModel,
+	ModelMessage,
 	streamText,
+	type Tool,
 } from "ai";
 import { BaseLlm } from "./base-llm";
 import type { LlmRequest } from "./llm-request";
@@ -41,6 +41,14 @@ export class AiSdkLlm extends BaseLlm {
 		return [];
 	}
 
+	/**
+	 * Check if the model is a Google model (for cache support)
+	 */
+	private isGoogleModel(): boolean {
+		// Check model string for Google/Gemini indicators
+		return this.model.includes("gemini") || this.model.includes("google");
+	}
+
 	protected async *generateContentAsyncImpl(
 		request: LlmRequest,
 		stream = false,
@@ -50,7 +58,7 @@ export class AiSdkLlm extends BaseLlm {
 			const systemMessage = request.getSystemInstructionText();
 			const tools = this.convertToAiSdkTools(request);
 
-			const requestParams = {
+			const requestParams: any = {
 				model: this.modelInstance,
 				messages,
 				system: systemMessage,
@@ -59,6 +67,18 @@ export class AiSdkLlm extends BaseLlm {
 				temperature: request.config?.temperature,
 				topP: request.config?.topP,
 			};
+
+			// Add cached content for Google provider if provided in config
+			if (request.config?.cachedContent && this.isGoogleModel()) {
+				this.logger.debug(
+					`Using cached content: ${request.config.cachedContent}`,
+				);
+				requestParams.providerOptions = {
+					google: {
+						cachedContent: request.config.cachedContent,
+					},
+				};
+			}
 
 			if (stream) {
 				const result = streamText(requestParams);
