@@ -214,6 +214,7 @@ function HomeContent() {
 							messages={messages}
 							onSendMessage={sendMessage}
 							isSendingMessage={isSendingMessage}
+							isLoading={loading}
 						/>
 					</div>
 				</div>
