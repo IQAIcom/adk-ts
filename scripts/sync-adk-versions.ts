@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,7 +7,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.join(__dirname, "..");
 const ADK_PACKAGE = path.join(ROOT_DIR, "packages/adk/package.json");
 
-const SYNC_DIRS = ["apps/examples", "apps/starter-templates"];
+const SYNC_DIRS = [
+	{ path: "apps/examples", pattern: "direct" }, // Only the direct package.json
+	{ path: "apps/starter-templates", pattern: "subdirs" }, // All subdirectories
+];
 
 interface PackageJson {
 	name?: string;
@@ -25,32 +29,40 @@ function getAdkVersion(): string {
 	return pkg.version;
 }
 
-function findPackageJsonFiles(dir: string): string[] {
-	const fullPath = path.join(ROOT_DIR, dir);
-	if (!fs.existsSync(fullPath)) {
-		console.warn(`⚠️  Directory not found: ${dir}`);
-		return [];
-	}
+function findPackageJsonFiles(): string[] {
+	const files: string[] = [];
 
-	const packageFiles: string[] = [];
+	for (const { path: dirPath, pattern } of SYNC_DIRS) {
+		const fullPath = path.join(ROOT_DIR, dirPath);
 
-	function traverse(currentPath: string, relativePath: string) {
-		const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+		if (!fs.existsSync(fullPath)) {
+			console.warn(`⚠️  Directory not found: ${dirPath}`);
+			continue;
+		}
 
-		for (const entry of entries) {
-			const entryPath = path.join(currentPath, entry.name);
-			const relativeEntryPath = path.join(relativePath, entry.name);
-
-			if (entry.isDirectory() && entry.name !== "node_modules") {
-				traverse(entryPath, relativeEntryPath);
-			} else if (entry.isFile() && entry.name === "package.json") {
-				packageFiles.push(relativeEntryPath);
+		if (pattern === "direct") {
+			// Check for package.json directly in this directory
+			const pkgPath = path.join(dirPath, "package.json");
+			const fullPkgPath = path.join(ROOT_DIR, pkgPath);
+			if (fs.existsSync(fullPkgPath)) {
+				files.push(pkgPath);
+			}
+		} else if (pattern === "subdirs") {
+			// Check for package.json in each subdirectory
+			const entries = fs.readdirSync(fullPath, { withFileTypes: true });
+			for (const entry of entries) {
+				if (entry.isDirectory()) {
+					const pkgPath = path.join(dirPath, entry.name, "package.json");
+					const fullPkgPath = path.join(ROOT_DIR, pkgPath);
+					if (fs.existsSync(fullPkgPath)) {
+						files.push(pkgPath);
+					}
+				}
 			}
 		}
 	}
 
-	traverse(fullPath, dir);
-	return packageFiles;
+	return files;
 }
 
 function updatePackageJson(filePath: string, adkVersion: string): void {
@@ -62,14 +74,12 @@ function updatePackageJson(filePath: string, adkVersion: string): void {
 
 	// Update version if this is an example or starter template
 	if (filePath.includes("examples") || filePath.includes("starter-templates")) {
-		// For examples and starters, align their patch version with ADK
-		// Extract major.minor from ADK version
+		// Extract major.minor from ADK version and set patch to 0
 		const adkMatch = adkVersion.match(/^(\d+\.\d+)/);
-		if (adkMatch) {
-			const majorMinor = adkMatch[1];
-			const currentMatch = pkg.version?.match(/^(\d+\.\d+)/);
-			if (currentMatch && currentMatch[1] !== majorMinor) {
-				pkg.version = `${majorMinor}.0`;
+		if (adkMatch && pkg.version) {
+			const targetVersion = `${adkMatch[1]}.0`;
+			if (pkg.version !== targetVersion) {
+				pkg.version = targetVersion;
 				updated = true;
 				console.log(
 					`Updated ${filePath} version to ${pkg.version} (aligned with ADK)`,
@@ -78,24 +88,17 @@ function updatePackageJson(filePath: string, adkVersion: string): void {
 		}
 	}
 
-	// Update @iqai/adk dependency
-	if (pkg.dependencies?.["@iqai/adk"]) {
-		if (pkg.dependencies["@iqai/adk"] !== adkVersion) {
-			pkg.dependencies["@iqai/adk"] = adkVersion;
-			updated = true;
-			console.log(
-				`Updated @iqai/adk in ${filePath} to ${adkVersion} (dependencies)`,
-			);
-		}
-	}
-
-	if (pkg.devDependencies?.["@iqai/adk"]) {
-		if (pkg.devDependencies["@iqai/adk"] !== adkVersion) {
-			pkg.devDependencies["@iqai/adk"] = adkVersion;
-			updated = true;
-			console.log(
-				`Updated @iqai/adk in ${filePath} to ${adkVersion} (devDependencies)`,
-			);
+	// Update @iqai/adk dependency in both dependencies and devDependencies
+	const depTypes = ["dependencies", "devDependencies"] as const;
+	for (const depType of depTypes) {
+		if (pkg[depType]?.["@iqai/adk"]) {
+			if (pkg[depType]!["@iqai/adk"] !== adkVersion) {
+				pkg[depType]!["@iqai/adk"] = adkVersion;
+				updated = true;
+				console.log(
+					`Updated @iqai/adk in ${filePath} to ${adkVersion} (${depType})`,
+				);
+			}
 		}
 	}
 
@@ -111,22 +114,16 @@ function main(): void {
 		const adkVersion = getAdkVersion();
 		console.log(`🔄 Syncing ADK version: ${adkVersion}\n`);
 
-		const allPackageFiles: string[] = [];
-		for (const dir of SYNC_DIRS) {
-			const files = findPackageJsonFiles(dir);
-			allPackageFiles.push(...files);
-		}
+		const packageFiles = findPackageJsonFiles();
 
-		if (allPackageFiles.length === 0) {
+		if (packageFiles.length === 0) {
 			console.warn("⚠️  No package.json files found to sync");
 			return;
 		}
 
-		console.log(
-			`Found ${allPackageFiles.length} package.json file(s) to check\n`,
-		);
+		console.log(`Found ${packageFiles.length} package.json file(s) to check\n`);
 
-		for (const file of allPackageFiles) {
+		for (const file of packageFiles) {
 			updatePackageJson(file, adkVersion);
 		}
 
