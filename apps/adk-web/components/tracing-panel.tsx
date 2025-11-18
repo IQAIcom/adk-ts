@@ -21,7 +21,8 @@ interface EventNode {
 	displayName: string;
 	color: string;
 	icon: React.ReactNode;
-	duration: string;
+	duration: string; // formatted
+	rawDuration: number; // ms
 }
 
 export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
@@ -39,19 +40,17 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 			</div>
 		);
 
-	const rootNodes = buildEventTree(events);
+	const rootNodes = buildUserMessageTree(events);
 
 	return (
-		<div className="min-h-screen text-slate-100 p-6 px-2">
-			<div className="max-w-4xl mx-auto">
-				<ScrollArea className="max-h-[80vh]">
-					<div className="space-y-4">
-						{rootNodes.map((node) => (
-							<TimelineNode key={node.event.id} node={node} depth={0} />
-						))}
-					</div>
-				</ScrollArea>
-			</div>
+		<div className="text-slate-100 p-6 px-2 max-h-screen">
+			<ScrollArea className="h-[calc(100%-73px)]">
+				<div className="space-y-4">
+					{rootNodes.map((node) => (
+						<TimelineNode key={node.event.id} node={node} depth={0} />
+					))}
+				</div>
+			</ScrollArea>
 		</div>
 	);
 }
@@ -60,42 +59,50 @@ function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 	const contentWithParts = node.event.content as ContentParts;
 
 	const hasDetails =
+		node.children.length > 0 ||
 		node.event.author === "user" ||
 		node.event.functionCalls?.length > 0 ||
 		node.event.functionResponses?.length > 0 ||
 		(node.event.isFinalResponse && contentWithParts?.parts?.[0]?.text);
 
+	const forceCollapsible = node.event.author === "user";
+
 	return (
 		<div className="relative">
-			<div
-				className="flex items-start gap-3"
-				style={{ paddingLeft: depth * 24 }}
-			>
-				<TimelineDot node={node} />
-				<div className="flex-1 min-w-0">
-					{hasDetails ? (
-						<Collapsible defaultOpen={false}>
-							<CollapsibleTrigger asChild>
-								<div className="cursor-pointer">
-									<EventContent node={node} />
-								</div>
-							</CollapsibleTrigger>
-							<CollapsibleContent>
-								<div className="space-y-2 mt-2">
-									{node.children.map((child) => (
-										<TimelineNode
-											key={child.event.id}
-											node={child}
-											depth={depth + 1}
-										/>
-									))}
-								</div>
-							</CollapsibleContent>
-						</Collapsible>
-					) : (
+			<div style={{ paddingLeft: depth * 24 }}>
+				{hasDetails || forceCollapsible ? (
+					<Collapsible defaultOpen={node.event.author === "user"}>
+						<CollapsibleTrigger asChild>
+							<div
+								className={cn(
+									"cursor-pointer flex items-start gap-2 rounded-md",
+									forceCollapsible &&
+										"bg-[var(--card)]/10 dark:bg-[var(--card)]/20 p-1 border rounded",
+								)}
+							>
+								<TimelineDot node={node} />
+								<EventContent node={node} />
+							</div>
+						</CollapsibleTrigger>
+
+						<CollapsibleContent>
+							<div className="space-y-2 mt-2">
+								{node.children.map((child) => (
+									<TimelineNode
+										key={child.event.id}
+										node={child}
+										depth={depth + 1}
+									/>
+								))}
+							</div>
+						</CollapsibleContent>
+					</Collapsible>
+				) : (
+					<div className="flex items-start gap-2">
+						<TimelineDot node={node} />
 						<EventContent node={node} />
-					)}
-				</div>
+					</div>
+				)}
 			</div>
 		</div>
 	);
@@ -104,7 +111,7 @@ function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 const TimelineDot = ({ node }: { node: EventNode }) => (
 	<div
 		className={cn(
-			"flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+			"w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
 			node.event.author === "user" ? "bg-blue-500/20" : "bg-slate-700",
 			node.color,
 		)}
@@ -118,30 +125,27 @@ const EventContent = ({ node }: { node: EventNode }) => {
 		.requestMetadata as RequestMetadata | null;
 
 	return (
-		<div className="flex items-center gap-2 hover:bg-slate-800/30 rounded p-1 -ml-1">
+		<div className="flex items-start gap-2 grow rounded p-1 min-w-0">
 			<div className="flex-1 min-w-0">
-				<div className="flex items-center gap-2">
-					<span
-						className={`font-mono text-sm ${node.color}`}
-						title={node.displayName}
-					>
-						{node.displayName.length > 60
-							? `${node.displayName.substring(0, 60)}...`
-							: node.displayName}
-					</span>
+				<div className="font-mono text-sm truncate" title={node.displayName}>
+					{node.displayName}
+				</div>
+
+				<div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 min-w-0">
 					{node.event.branch && node.event.author !== "user" && (
-						<span className="text-xs text-slate-500 font-mono">
+						<span className="truncate max-w-[120px]" title={node.event.author}>
 							[{node.event.author}]
 						</span>
 					)}
+					{requestMetadataObj?.model && (
+						<span title={requestMetadataObj.model} className="font-mono">
+							{requestMetadataObj.model}
+						</span>
+					)}
 				</div>
+
 				<div className="text-xs text-slate-500 mt-0.5">{node.duration}</div>
 			</div>
-			{requestMetadataObj?.model && (
-				<div className="text-xs text-slate-600 font-mono">
-					{requestMetadataObj.model.split("-").slice(-1)[0]}
-				</div>
-			)}
 		</div>
 	);
 };
@@ -153,7 +157,7 @@ const getEventName = (event: Event) => {
 
 	if (event.author === "user") {
 		const text = contentWithParts?.parts?.[0]?.text || "";
-		return text.length > 40 ? `${text.substring(0, 40)}...` : text;
+		return text.length > 60 ? `${text.substring(0, 60)}...` : text;
 	}
 	if (functionCallsArray?.length > 0)
 		return functionCallsArray[0].functionCall.name;
@@ -180,41 +184,67 @@ const getEventColor = (event: Event) => {
 	return "text-gray-400";
 };
 
-function buildEventTree(events: Event[]): EventNode[] {
-	const nodeMap = new Map<string, EventNode>();
+function buildUserMessageTree(events: Event[]): EventNode[] {
 	const roots: EventNode[] = [];
+	let currentUserNode: EventNode | null = null;
 
-	for (const event of events) {
+	const withDurations = computeDurations(events);
+
+	for (const event of withDurations) {
 		const node: EventNode = {
 			event,
 			children: [],
 			displayName: getEventName(event),
 			color: getEventColor(event),
 			icon: getEventIcon(event),
-			duration: computeDuration(event),
+			duration: formatDuration(event.__durationMs),
+			rawDuration: event.__durationMs,
 		};
 
-		nodeMap.set(event.branch || event.id, node);
-
-		if (!event.branch || event.author === "user") {
+		if (event.author === "user") {
+			currentUserNode = node;
 			roots.push(node);
+		} else if (currentUserNode) {
+			currentUserNode.children.push(node);
 		} else {
-			const parentBranch = event.branch.split(".").slice(0, -1).join(".");
-			const parent = nodeMap.get(parentBranch);
-			if (parent) parent.children.push(node);
-			else roots.push(node);
+			// no user event yet, treat as root
+			roots.push(node);
+		}
+	}
+
+	// compute group total duration
+	for (const root of roots) {
+		if (root.event.author === "user") {
+			let lastTimestamp = root.event.timestamp;
+			for (const child of root.children) {
+				if (child.event.timestamp > lastTimestamp)
+					lastTimestamp = child.event.timestamp;
+			}
+			const total = lastTimestamp - root.event.timestamp;
+			root.duration = formatDuration(total);
+			root.rawDuration = total;
 		}
 	}
 
 	return roots;
 }
 
-function computeDuration(event: Event) {
-	if (event.timestamp && event.timestamp) {
-		const ms = event.timestamp - event.timestamp;
-		return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
-	}
-	return "0ms";
+function computeDurations(events: Event[]) {
+	return events.map((event, i) => {
+		const next = events[i + 1];
+		const ownDuration = next ? next.timestamp - event.timestamp : 0;
+
+		return {
+			...event,
+			__durationMs: ownDuration < 0 ? 0 : ownDuration,
+		};
+	});
+}
+
+function formatDuration(ms: number) {
+	if (!ms || ms < 1) return "0ms";
+	if (ms < 1000) return `${ms}ms`;
+	return `${(ms / 1000).toFixed(2)}s`;
 }
 
 interface ContentParts {
