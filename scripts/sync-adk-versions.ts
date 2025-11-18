@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,17 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.join(__dirname, "..");
 const ADK_PACKAGE = path.join(ROOT_DIR, "packages/adk/package.json");
 
-// Files to update
-const FILES_TO_SYNC = [
-	"apps/examples/package.json",
-	"apps/starter-templates/discord-bot/package.json",
-	"apps/starter-templates/next-js-starter/package.json",
-	"apps/starter-templates/hono-server/package.json",
-	"apps/starter-templates/mcp-starter/package.json",
-	"apps/starter-templates/shade-agent/package.json",
-	"apps/starter-templates/simple-agent/package.json",
-	"apps/starter-templates/telegram-bot/package.json",
-];
+const SYNC_DIRS = ["apps/examples", "apps/starter-templates"];
 
 interface PackageJson {
 	name?: string;
@@ -36,14 +25,36 @@ function getAdkVersion(): string {
 	return pkg.version;
 }
 
-function updatePackageJson(filePath: string, adkVersion: string): void {
-	const fullPath = path.join(ROOT_DIR, filePath);
-
+function findPackageJsonFiles(dir: string): string[] {
+	const fullPath = path.join(ROOT_DIR, dir);
 	if (!fs.existsSync(fullPath)) {
-		console.warn(`⚠️  File not found: ${filePath}`);
-		return;
+		console.warn(`⚠️  Directory not found: ${dir}`);
+		return [];
 	}
 
+	const packageFiles: string[] = [];
+
+	function traverse(currentPath: string, relativePath: string) {
+		const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+
+		for (const entry of entries) {
+			const entryPath = path.join(currentPath, entry.name);
+			const relativeEntryPath = path.join(relativePath, entry.name);
+
+			if (entry.isDirectory() && entry.name !== "node_modules") {
+				traverse(entryPath, relativeEntryPath);
+			} else if (entry.isFile() && entry.name === "package.json") {
+				packageFiles.push(relativeEntryPath);
+			}
+		}
+	}
+
+	traverse(fullPath, dir);
+	return packageFiles;
+}
+
+function updatePackageJson(filePath: string, adkVersion: string): void {
+	const fullPath = path.join(ROOT_DIR, filePath);
 	const content = fs.readFileSync(fullPath, "utf-8");
 	const pkg: PackageJson = JSON.parse(content);
 
@@ -100,7 +111,22 @@ function main(): void {
 		const adkVersion = getAdkVersion();
 		console.log(`🔄 Syncing ADK version: ${adkVersion}\n`);
 
-		for (const file of FILES_TO_SYNC) {
+		const allPackageFiles: string[] = [];
+		for (const dir of SYNC_DIRS) {
+			const files = findPackageJsonFiles(dir);
+			allPackageFiles.push(...files);
+		}
+
+		if (allPackageFiles.length === 0) {
+			console.warn("⚠️  No package.json files found to sync");
+			return;
+		}
+
+		console.log(
+			`Found ${allPackageFiles.length} package.json file(s) to check\n`,
+		);
+
+		for (const file of allPackageFiles) {
 			updatePackageJson(file, adkVersion);
 		}
 
