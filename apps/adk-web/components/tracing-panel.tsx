@@ -18,6 +18,10 @@ export interface TracingPanelProps {
 interface EventNode {
 	event: Event;
 	children: EventNode[];
+	displayName: string;
+	color: string;
+	icon: React.ReactNode;
+	duration: string;
 }
 
 export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
@@ -27,6 +31,7 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 				Loading traces…
 			</div>
 		);
+
 	if (!events || events.length === 0)
 		return (
 			<div className="text-center text-muted-foreground py-12 text-sm">
@@ -51,45 +56,6 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 	);
 }
 
-function buildEventTree(events: Event[]): EventNode[] {
-	const roots: EventNode[] = [];
-	let currentRoot: EventNode | null = null;
-
-	for (const event of events) {
-		const node: EventNode = { event, children: [] };
-
-		if (event.author === "user") {
-			roots.push(node);
-			currentRoot = node;
-		} else if (currentRoot) {
-			insertNode(currentRoot, node);
-		} else {
-			roots.push(node);
-			currentRoot = node;
-		}
-	}
-
-	return roots;
-}
-
-function insertNode(parent: EventNode, node: EventNode) {
-	if (!node.event.branch || !parent.event.branch) {
-		parent.children.push(node);
-		return;
-	}
-
-	const parentDepth = parent.event.branch.split(".").length;
-	const nodeDepth = node.event.branch.split(".").length;
-
-	if (nodeDepth === parentDepth + 1) {
-		parent.children.push(node);
-	} else if (parent.children.length > 0) {
-		insertNode(parent.children[parent.children.length - 1], node);
-	} else {
-		parent.children.push(node);
-	}
-}
-
 function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 	const contentWithParts = node.event.content as ContentParts;
 
@@ -99,27 +65,19 @@ function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 		node.event.functionResponses?.length > 0 ||
 		(node.event.isFinalResponse && contentWithParts?.parts?.[0]?.text);
 
-	const duration =
-		depth > 0 &&
-		node.event.timestamp &&
-		node.event.timestamp &&
-		node.event.timestamp
-			? formatDuration(node.event.timestamp - node.event.timestamp)
-			: "0ms";
-
 	return (
 		<div className="relative">
 			<div
 				className="flex items-start gap-3"
 				style={{ paddingLeft: depth * 24 }}
 			>
-				<TimelineDot event={node.event} />
+				<TimelineDot node={node} />
 				<div className="flex-1 min-w-0">
 					{hasDetails ? (
 						<Collapsible defaultOpen={false}>
 							<CollapsibleTrigger asChild>
 								<div className="cursor-pointer">
-									<EventContent event={node.event} duration={duration} />
+									<EventContent node={node} />
 								</div>
 							</CollapsibleTrigger>
 							<CollapsibleContent>
@@ -135,7 +93,7 @@ function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 							</CollapsibleContent>
 						</Collapsible>
 					) : (
-						<EventContent event={node.event} duration={duration} />
+						<EventContent node={node} />
 					)}
 				</div>
 			</div>
@@ -143,46 +101,41 @@ function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 	);
 }
 
-const TimelineDot = ({ event }: { event: Event }) => {
-	const eventColor = getEventColor(event);
-	const eventIcon = getEventIcon(event);
+const TimelineDot = ({ node }: { node: EventNode }) => (
+	<div
+		className={cn(
+			"flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+			node.event.author === "user" ? "bg-blue-500/20" : "bg-slate-700",
+			node.color,
+		)}
+	>
+		{node.icon}
+	</div>
+);
 
-	return (
-		<div
-			className={cn(
-				"flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
-				event.author === "user" ? "bg-blue-500/20" : "bg-slate-700",
-				eventColor,
-			)}
-		>
-			{eventIcon}
-		</div>
-	);
-};
-
-const EventContent = ({
-	event,
-	duration,
-}: {
-	event: Event;
-	duration: string;
-}) => {
-	const requestMetadataObj = event.requestMetadata as RequestMetadata | null;
+const EventContent = ({ node }: { node: EventNode }) => {
+	const requestMetadataObj = node.event
+		.requestMetadata as RequestMetadata | null;
 
 	return (
 		<div className="flex items-center gap-2 hover:bg-slate-800/30 rounded p-1 -ml-1">
 			<div className="flex-1 min-w-0">
 				<div className="flex items-center gap-2">
-					<span className={`font-mono text-sm ${getEventColor(event)}`}>
-						{getEventName(event)}
+					<span
+						className={`font-mono text-sm ${node.color}`}
+						title={node.displayName}
+					>
+						{node.displayName.length > 60
+							? `${node.displayName.substring(0, 60)}...`
+							: node.displayName}
 					</span>
-					{event.branch && event.author !== "user" && (
+					{node.event.branch && node.event.author !== "user" && (
 						<span className="text-xs text-slate-500 font-mono">
-							[{event.author}]
+							[{node.event.author}]
 						</span>
 					)}
 				</div>
-				<div className="text-xs text-slate-500 mt-0.5">{duration}</div>
+				<div className="text-xs text-slate-500 mt-0.5">{node.duration}</div>
 			</div>
 			{requestMetadataObj?.model && (
 				<div className="text-xs text-slate-600 font-mono">
@@ -227,8 +180,42 @@ const getEventColor = (event: Event) => {
 	return "text-gray-400";
 };
 
-const formatDuration = (ms: number) =>
-	ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
+function buildEventTree(events: Event[]): EventNode[] {
+	const nodeMap = new Map<string, EventNode>();
+	const roots: EventNode[] = [];
+
+	for (const event of events) {
+		const node: EventNode = {
+			event,
+			children: [],
+			displayName: getEventName(event),
+			color: getEventColor(event),
+			icon: getEventIcon(event),
+			duration: computeDuration(event),
+		};
+
+		nodeMap.set(event.branch || event.id, node);
+
+		if (!event.branch || event.author === "user") {
+			roots.push(node);
+		} else {
+			const parentBranch = event.branch.split(".").slice(0, -1).join(".");
+			const parent = nodeMap.get(parentBranch);
+			if (parent) parent.children.push(node);
+			else roots.push(node);
+		}
+	}
+
+	return roots;
+}
+
+function computeDuration(event: Event) {
+	if (event.timestamp && event.timestamp) {
+		const ms = event.timestamp - event.timestamp;
+		return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
+	}
+	return "0ms";
+}
 
 interface ContentParts {
 	parts?: Array<{ text?: string }>;
