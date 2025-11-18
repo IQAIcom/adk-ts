@@ -290,8 +290,8 @@ importers:
         specifier: ^1.19.0
         version: 1.19.0(@modelcontextprotocol/sdk@1.17.5)
       '@iqai/adk':
-        specifier: 0.5.6
-        version: 0.5.6(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0))(@types/better-sqlite3@7.6.13)(@types/node@24.3.1)(@types/pg@8.15.5)(better-sqlite3@12.4.1)(mysql2@3.14.5)(pg@8.16.3)(typescript@5.9.2)(ws@8.18.3)
+        specifier: workspace:*
+        version: link:../../packages/adk
       '@modelcontextprotocol/sdk':
         specifier: ^1.17.5
         version: 1.17.5
@@ -1110,22 +1110,6 @@ packages:
       '@types/node': '>=18'
     peerDependenciesMeta:
       '@types/node':
-        optional: true
-
-  '@iqai/adk@0.5.6':
-    resolution: {integrity: sha512-rf+BeW7lt6Z46HYM4xvdFr4gdBI5bzbP2gFdyz3SG8WAp84qJD3yiLBORYBKorVKn9wLWhtS+mV/u6tZ5M7PwA==}
-    engines: {node: '>=22.0'}
-    hasBin: true
-    peerDependencies:
-      better-sqlite3: ^11.10.0
-      mysql2: ^3.14.1
-      pg: ^8.16.0
-    peerDependenciesMeta:
-      better-sqlite3:
-        optional: true
-      mysql2:
-        optional: true
-      pg:
         optional: true
 
   '@isaacs/cliui@8.0.2':
@@ -7306,80 +7290,6 @@ snapshots:
       iconv-lite: 0.6.3
     optionalDependencies:
       '@types/node': 24.3.1
-
-  '@iqai/adk@0.5.6(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0))(@types/better-sqlite3@7.6.13)(@types/node@24.3.1)(@types/pg@8.15.5)(better-sqlite3@12.4.1)(mysql2@3.14.5)(pg@8.16.3)(typescript@5.9.2)(ws@8.18.3)':
-    dependencies:
-      '@anthropic-ai/sdk': 0.61.0
-      '@clack/prompts': 0.11.0
-      '@electric-sql/pglite': 0.3.8
-      '@google-cloud/storage': 7.17.0
-      '@google-cloud/vertexai': 1.10.0
-      '@google/genai': 1.19.0(@modelcontextprotocol/sdk@1.17.5)
-      '@modelcontextprotocol/sdk': 1.17.5
-      '@opentelemetry/api': 1.9.0
-      '@opentelemetry/auto-instrumentations-node': 0.63.0(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0))
-      '@opentelemetry/exporter-trace-otlp-http': 0.204.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/resources': 2.1.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-node': 0.204.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-trace-base': 2.1.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-trace-node': 2.1.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.37.0
-      '@types/cors': 2.8.19
-      ai: 5.0.39(zod@4.1.5)
-      axios: 1.11.0
-      chalk: 5.6.2
-      cors: 2.8.5
-      dedent: 1.7.0
-      dockerode: 4.0.8
-      dotenv: 17.2.2
-      drizzle-orm: 0.44.5(@electric-sql/pglite@0.3.8)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.5)(better-sqlite3@12.4.1)(kysely@0.28.5)(mysql2@3.14.5)(pg@8.16.3)
-      jsonrepair: 3.13.0
-      kysely: 0.28.5
-      openai: 5.20.0(ws@8.18.3)(zod@4.1.5)
-      socket.io: 4.8.1
-      ts-node: 10.9.2(@types/node@24.3.1)(typescript@5.9.2)
-      uuid: 13.0.0
-      zod: 4.1.5
-    optionalDependencies:
-      better-sqlite3: 12.4.1
-      mysql2: 3.14.5
-      pg: 8.16.3
-    transitivePeerDependencies:
-      - '@aws-sdk/client-rds-data'
-      - '@cloudflare/workers-types'
-      - '@libsql/client'
-      - '@libsql/client-wasm'
-      - '@neondatabase/serverless'
-      - '@op-engineering/op-sqlite'
-      - '@opentelemetry/core'
-      - '@planetscale/database'
-      - '@prisma/client'
-      - '@swc/core'
-      - '@swc/wasm'
-      - '@tidbcloud/serverless'
-      - '@types/better-sqlite3'
-      - '@types/node'
-      - '@types/pg'
-      - '@types/sql.js'
-      - '@upstash/redis'
-      - '@vercel/postgres'
-      - '@xata.io/client'
-      - babel-plugin-macros
-      - bufferutil
-      - bun-types
-      - debug
-      - encoding
-      - expo-sqlite
-      - gel
-      - knex
-      - postgres
-      - prisma
-      - sql.js
-      - sqlite3
-      - supports-color
-      - typescript
-      - utf-8-validate
-      - ws
 
   '@isaacs/cliui@8.0.2':
     dependencies:
