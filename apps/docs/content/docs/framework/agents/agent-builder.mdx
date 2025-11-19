@@ -23,8 +23,9 @@ Unlike direct agent instantiation, `AgentBuilder` handles session creation, memo
 The simplest way to get started is with the convenience method:
 
 ```typescript
-// Instant execution - no setup required
-const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
+import { AgentBuilder } from "@iqai/adk";
+
+const response = AgentBuilder.withModel("gemini-2.5-flash").ask(
   "Hello, what can you help me with?"
 );
 ```
@@ -32,13 +33,18 @@ const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
 For more control, use the full builder pattern:
 
 ```typescript
-// Full builder pattern with session
-const { agent, runner, session } = await AgentBuilder.create("my-assistant")
-  .withModel("gemini-2.5-flash")
-  .withInstruction("You are a helpful research assistant")
-  .build();
+import { AgentBuilder } from "@iqai/adk";
 
-const response = await runner.ask("What is quantum computing?");
+async function main() {
+  const { runner } = await AgentBuilder.create("my-assistant")
+    .withModel("gemini-2.5-flash")
+    .withInstruction("You are a helpful research assistant")
+    .build();
+
+  const response = await runner.ask("What is quantum computing?");
+}
+
+main().catch(console.error);
 ```
 
 ## Configuration Options
@@ -53,7 +59,7 @@ Basic agent setup and behavior:
 | ------------------------------ | ------------------------------------ | -------------------------------- |
 | `create(name)`                 | `string`                             | Creates a named builder instance |
 | `withModel(model)`             | `string \| BaseLlm \| LanguageModel` | Sets the LLM model               |
-| `withDescription(desc)`        | `string`                             | Adds agent description           |
+| `withDescription(description)` | `string`                             | Adds agent description           |
 | `withInstruction(instruction)` | `string \| InstructionProvider`      | Sets behavior instructions       |
 | `withAgent(agent)`             | `BaseAgent`                          | Wraps existing agent             |
 
@@ -61,69 +67,69 @@ Basic agent setup and behavior:
 
 Data validation, schemas, and response formatting:
 
-| Method                         | Type                                 | Description                      |
-| ------------------------------ | ------------------------------------ | -------------------------------- |
-| `withInputSchema(schema)`      | `ZodSchema`                          | Input validation schema          |
-| `withOutputSchema(schema)`     | `ZodSchema`                          | Structured output format         |
-| `withOutputKey(outputKey)`     | `string`                             | Sets output key in session state |
+| Method                     | Type         | Description                                                      |
+| -------------------------- | ------------ | ---------------------------------------------------------------- |
+| `withInputSchema(schema)`  | `ZodSchema`  | Input validation schema                                          |
+| `withOutputSchema(schema)` | `ZodType<T>` | Structured output format                                         |
+| `withOutputKey(outputKey)` | `string`     | The output key in session state to store the output of the agent |
 
 ### Tools & Execution
 
 External capabilities and code execution:
 
-| Method                         | Type                                 | Description                      |
-| ------------------------------ | ------------------------------------ | -------------------------------- |
-| `withTools(...tools)`          | `ToolUnion[]`                        | Adds tools to the agent          |
-| `withPlanner(planner)`         | `BasePlanner`                        | Sets the planner for the agent   |
-| `withCodeExecutor(executor)`   | `BaseCodeExecutor`                   | Enables code execution           |
-| `withSubAgents(subAgents)`     | `BaseAgent[]`                        | Adds sub-agents to the agent     |
+| Method                           | Type               | Description                    |
+| -------------------------------- | ------------------ | ------------------------------ |
+| `withTools(...tools)`            | `BaseTool[]`       | Adds tools to the agent        |
+| `withSubAgents(subAgents)`       | `BaseAgent[]`      | Adds sub-agents to the agent   |
+| `withPlanner(planner)`           | `BasePlanner`      | Sets the planner for the agent |
+| `withCodeExecutor(codeExecutor)` | `BaseCodeExecutor` | Enables code execution         |
 
 ### Callback Methods
 
-Monitoring and execution hooks for logging, analytics, and custom processing:
+Monitoring and customization hooks:
 
-| Method                         | Type                                 | Description                      |
-| ------------------------------ | ------------------------------------ | -------------------------------- |
-| `withBeforeAgentCallback(cb)`  | `BeforeAgentCallback`                | Before agent execution callback  |
-| `withAfterAgentCallback(cb)`   | `AfterAgentCallback`                 | After agent execution callback   |
-| `withBeforeModelCallback(cb)`  | `BeforeModelCallback`                | Before model interaction callback|
-| `withAfterModelCallback(cb)`   | `AfterModelCallback`                 | After model interaction callback |
-| `withBeforeToolCallback(cb)`   | `BeforeToolCallback`                 | Before tool execution callback   |
-| `withAfterToolCallback(cb)`    | `AfterToolCallback`                  | After tool execution callback    |
+| Method                              | Type                  | Description                       |
+| ----------------------------------- | --------------------- | --------------------------------- |
+| `withBeforeAgentCallback(callback)` | `BeforeAgentCallback` | Before agent execution callback   |
+| `withAfterAgentCallback(callback)`  | `AfterAgentCallback`  | After agent execution callback    |
+| `withBeforeModelCallback(callback)` | `BeforeModelCallback` | Before model interaction callback |
+| `withAfterModelCallback(callback)`  | `AfterModelCallback`  | After model interaction callback  |
+| `withBeforeToolCallback(callback)`  | `BeforeToolCallback`  | Before tool execution callback    |
+| `withAfterToolCallback(callback)`   | `AfterToolCallback`   | After tool execution callback     |
 
 ### Session & Memory
 
 State management and persistence:
 
-| Method                         | Type                                 | Description                      |
-| ------------------------------ | ------------------------------------ | -------------------------------- |
-| `withMemory(service)`          | `BaseMemoryService`                  | Adds long-term memory            |
-| `withSessionService(service)`  | `BaseSessionService`                 | Custom session management        |
-| `withSession(session)`         | `Session`                            | Uses existing session instance   |
-| `withQuickSession(options)`    | `SessionOptions`                     | In-memory session with custom IDs|
-| `withArtifactService(service)` | `BaseArtifactService`                | File storage capability          |
-| `withRunConfig(config)`        | `RunConfig \| Partial<RunConfig>`    | Configures runtime behavior      |
+| Method                                 | Type                                 | Description                       |
+| -------------------------------------- | ------------------------------------ | --------------------------------- |
+| `withMemory(memoryService)`            | `BaseMemoryService`                  | Adds long-term memory             |
+| `withSessionService(service, options)` | `BaseSessionService, SessionOptions` | Custom session management         |
+| `withSession(session)`                 | `Session`                            | Uses existing session instance    |
+| `withQuickSession(options)`            | `SessionOptions`                     | In-memory session with custom IDs |
+| `withArtifactService(artifactService)` | `BaseArtifactService`                | File storage capability           |
+| `withRunConfig(config)`                | `RunConfig \| Partial<RunConfig>`    | Configures runtime behavior       |
 
 ### Multi-Agent Workflows
 
-Agent orchestration patterns *(mutually exclusive - choose one)*:
+Agent orchestration patterns _(mutually exclusive - choose one)_:
 
-| Method                         | Type                                 | Description                      |
-| ------------------------------ | ------------------------------------ | -------------------------------- |
-| `asSequential(agents)`         | `BaseAgent[]`                        | Creates sequential workflow      |
-| `asParallel(agents)`           | `BaseAgent[]`                        | Creates parallel execution       |
-| `asLoop(agents, max)`          | `BaseAgent[], number`                | Creates iterative execution      |
-| `asLangGraph(nodes, start)`    | `LangGraphNode[], string`            | Creates complex workflows        |
+| Method                             | Type                      | Description                 |
+| ---------------------------------- | ------------------------- | --------------------------- |
+| `asSequential(subAgents)`          | `BaseAgent[]`             | Creates sequential workflow |
+| `asParallel(subAgents)`            | `BaseAgent[]`             | Creates parallel execution  |
+| `asLoop(subAgents, maxIterations)` | `BaseAgent[], number`     | Creates iterative execution |
+| `asLangGraph(nodes, rootNode)`     | `LangGraphNode[], string` | Creates complex workflows   |
 
 ### Build Methods
 
-Final agent construction *(choose one to complete the configuration)*:
+Final agent construction _(choose one to complete the configuration)_:
 
-| Method                         | Type                                 | Description                      |
-| ------------------------------ | ------------------------------------ | -------------------------------- |
-| `build()`                      | `Promise<BuiltAgent>`                | Builds the configured agent      |
-| `buildWithSchema<T>()`         | `Promise<BuiltAgent<T>>`             | Type-safe build with schema      |
-| `ask(message)`                 | `Promise<string \| T>`               | Quick execution helper           |
+| Method              | Type                       | Description                 |
+| ------------------- | -------------------------- | --------------------------- |
+| `build()`           | `Promise<BuiltAgent>`      | Builds the configured agent |
+| `buildWithSchema()` | `Promise<BuiltAgent>`      | Type-safe build with schema |
+| `ask(message)`      | `Promise<RunnerAskReturn>` | Quick execution helper      |
 
 ### Requirement Patterns
 
@@ -135,7 +141,9 @@ Final agent construction *(choose one to complete the configuration)*:
 - **Use when:** You want a named agent for multi-agent systems or production use
 
 ```typescript
-const { runner } = await AgentBuilder.create("my-agent")
+import { AgentBuilder } from "@iqai/adk";
+
+const { runner } = AgentBuilder.create("my-agent")
   .withModel("gemini-2.5-flash")
   .build();
 ```
@@ -146,21 +154,29 @@ const { runner } = await AgentBuilder.create("my-agent")
 - **Use when:** Rapid prototyping or simple one-off tasks
 
 ```typescript
-const response = await AgentBuilder.withModel("gemini-2.5-flash").ask("Hello!"); // Builds and executes immediately
+import { AgentBuilder } from "@iqai/adk";
+
+const response = AgentBuilder.withModel("gemini-2.5-flash").ask("Hello!");
 ```
 
 **✅ Pattern 3: Wrap Existing Agent**
 
-- **Required:** `withAgent()` only
+- **Required:** `create(name)` + `withAgent()`
 - **Use when:** Adding AgentBuilder features to existing agents
 
 ```typescript
-const { runner } = await AgentBuilder.withAgent(existingLlmAgent).build();
+import { AgentBuilder } from "@iqai/adk";
+import { existingLlmAgent } from "./existingLlmAgent";
+
+const agent = AgentBuilder.create("my-assistant")
+  .withModel("gemini-2.5-flash")
+  .withAgent(existingLlmAgent)
+  .build();
 ```
 
 **All other configuration methods are optional** and can be chained as needed with any pattern.
 
-## Configuration Details
+## Configuration Options Details
 
 ### create(name)
 
@@ -171,8 +187,12 @@ Creates a named builder instance that will generate an LLM agent with the specif
 The name must follow JavaScript identifier rules (start with letter/underscore, contain only letters, numbers, underscores). Choose descriptive names that clearly indicate the agent's purpose.
 
 ```typescript
-const builder = AgentBuilder.create("research-assistant");
-const builder2 = AgentBuilder.create("data_processor");
+import { AgentBuilder } from "@iqai/adk";
+
+const builder =
+  AgentBuilder.create("research_assistant").withModel("gemini-2.5-flash");
+const builder2 =
+  AgentBuilder.create("data_processor").withModel("gemini-2.5-flash");
 ```
 
 ### withModel(model)
@@ -184,17 +204,21 @@ Specifies the Large Language Model that powers your agent's reasoning and text g
 Your model choice significantly affects response quality, speed, and cost. See [Models & Providers](/docs/framework/agents/models) for detailed configuration options and available models.
 
 ```typescript
-// String identifier (most common)
-AgentBuilder.withModel("gemini-2.5-flash");
+import { AgentBuilder, OpenAiLlm } from "@iqai/adk";
 
-// Custom LLM instance with specific configuration
-AgentBuilder.withModel(
-  new OpenAiLlm({
-    model: "gpt-4o",
-    apiKey: "...",
-    temperature: 0.1,
-  })
-);
+// Example 1: Using a string model identifier (most common)
+const agent1 = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent using Gemini")
+  .withModel("gemini-2.5-flash")
+  .build();
+
+// Example 2: Using a custom LLM instance
+const agent2 = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent using OpenAI GPT-4")
+  .withModel(new OpenAiLlm("gpt-4o"))
+  .build();
 ```
 
 ### withDescription(description)
@@ -204,9 +228,14 @@ AgentBuilder.withModel(
 Adds a brief description that explains the agent's capabilities and purpose. This is particularly important in multi-agent systems where parent agents use descriptions to make intelligent routing decisions. The description should clearly differentiate your agent from others.
 
 ```typescript
-AgentBuilder.create("financial-analyst").withDescription(
-  "Specializes in financial data analysis and investment recommendations"
-);
+import { AgentBuilder } from "@iqai/adk";
+
+const agent = AgentBuilder.create("financial_analyst")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "Specializes in financial data analysis and investment recommendations"
+  )
+  .build();
 ```
 
 ### withInstruction(instruction)
@@ -218,497 +247,25 @@ Defines the agent's behavior, decision-making patterns, and interaction style. T
 Instructions can be static strings for consistent behavior or dynamic functions that adapt based on context. See [Agent Instructions Guide](/docs/framework/guides/agent-instructions) for comprehensive guidance on writing effective instructions.
 
 ```typescript
+import { AgentBuilder } from "@iqai/adk";
+
 // Static instruction
-AgentBuilder.withInstruction(
-  "You are a financial advisor. Provide clear, actionable investment advice."
-);
-
-// Dynamic instruction based on context
-AgentBuilder.withInstruction(
-  (ctx) =>
-    `You are assisting ${ctx.session.state.username} with financial planning.`
-);
-```
-
-### withTools(...tools)
-
-**Type:** `ToolUnion[]` | **Default:** `[]`
-
-Adds tools that dramatically extend your agent's capabilities beyond text generation, enabling interaction with external systems, API calls, calculations, and code execution. You can provide multiple tools in a single call, mixing different tool types.
-
-Accepts `BaseTool` instances (built-in or custom), `FunctionTool` wrappers for easy integration, or raw async functions that get automatically wrapped. The agent's LLM intelligently decides when and how to use each tool based on context. See [Tools documentation](/docs/framework/tools) for available tools and creating custom ones.
-
-```typescript
-AgentBuilder.withTools(
-  new WebSearchTool(), // Built-in tool
-  new CalculatorTool(), // Another built-in tool
-  new FunctionTool({
-    // Function tool wrapper
-    name: "get_weather",
-    description: "Get current weather",
-    func: async (city: string) => getWeather(city),
-  }),
-  async (query: string) => {
-    // Raw function (auto-wrapped)
-    return await database.search(query);
-  }
-);
-```
-
-### Multi-Agent Workflow Types
-
-`AgentBuilder` offers four distinct approaches for creating multi-agent systems, each designed for specific workflow patterns. These methods transform your builder from creating a single agent into orchestrating multiple agents that work together to solve complex problems.
-
-Choose the workflow type that best matches your use case - whether you need linear processing, concurrent execution, iterative refinement, or complex branching logic. Each agent type method creates a specialized coordinator that manages agent interactions, data flow, and execution patterns.
-
-#### asSequential(agents)
-
-**Type:** `BaseAgent[]`
-
-Transforms your builder into a sequential workflow where agents execute in order, with each agent receiving the output of the previous one. Perfect for pipeline workflows like research → analysis → report generation.
-
-See [Sequential Agents](/docs/framework/agents/workflow-agents/sequential-agents) for detailed patterns and examples.
-
-```typescript
-AgentBuilder.asSequential([researcher, analyzer, reporter]);
-```
-
-#### asParallel(agents)
-
-**Type:** `BaseAgent[]`
-
-Creates a parallel execution pattern where multiple agents run simultaneously on the same input. Useful when you need different perspectives or want to process multiple aspects of a task concurrently.
-
-See [Parallel Agents](/docs/framework/agents/workflow-agents/parallel-agents) for coordination patterns.
-
-```typescript
-AgentBuilder.asParallel([sentimentAnalyzer, topicExtractor, summaryGenerator]);
-```
-
-#### asLoop(agents, maxIterations)
-
-**Type:** `BaseAgent[], number`
-
-Creates an iterative execution pattern where agents repeat until a condition is met or maximum iterations reached. Essential for problem-solving workflows that require refinement and improvement.
-
-See [Loop Agents](/docs/framework/agents/workflow-agents/loop-agents) for termination conditions and patterns.
-
-```typescript
-AgentBuilder.asLoop([problemSolver, validator], 5); // Max 5 iterations
-```
-
-#### asLangGraph(nodes, startNode)
-
-**Type:** `LangGraphNode[], string`
-
-Creates complex, graph-based workflows with conditional branching, loops, and dynamic routing. Most powerful option for sophisticated multi-agent orchestration.
-
-```typescript
-AgentBuilder.asLangGraph(workflowNodes, "start-node");
-```
-
-<Callout type="info" title="Choosing Agent Types">
-  **You can only use ONE agent type method per builder.** If you don't use any
-  agent type method, `AgentBuilder` creates a single LLM agent with your
-  configuration.
-</Callout>
-
-### withMemory(service)
-
-**Type:** `BaseMemoryService` | **Default:** `undefined`
-
-Adds long-term memory storage that persists information across conversations and sessions. Memory enables agents to remember user preferences, learned insights, and important context from previous interactions.
-
-Particularly valuable for personal assistants, customer service agents, and knowledge workers that need to build relationships over time. See [Sessions & Memory](/docs/framework/sessions) for memory configuration options.
-
-```typescript
-AgentBuilder.withMemory(
-  new VectorMemoryService({
-    apiKey: process.env.OPENAI_API_KEY,
-  })
-);
-```
-
-### withSessionService(service)
-
-**Type:** `BaseSessionService` | **Default:** Auto-created in-memory session
-
-Provides custom session management for conversation state, message history, and ephemeral data during a single session. `AgentBuilder` creates in-memory sessions automatically, but you can customize this for persistence or multi-tenant applications.
-
-Sessions are lighter-weight than memory and typically reset between conversations. See [Sessions & Memory](/docs/framework/sessions) for session configuration.
-
-```typescript
-AgentBuilder.withSessionService(
-  new RedisSessionService({
-    connectionString: "redis://localhost:6379",
-  })
-);
-```
-
-**Using Together:** You can combine both for comprehensive state management - sessions for current conversation context and memory for long-term retention:
-
-```typescript
-AgentBuilder.withMemory(new VectorMemoryService()) // Long-term insights
-  .withSessionService(new RedisSessionService()); // Persistent sessions
-```
-
-### withCodeExecutor(executor)
-
-**Type:** `BaseCodeExecutor` | **Default:** `undefined`
-
-Enables your agent to write and execute code in a secure, sandboxed environment. This dramatically expands problem-solving capabilities beyond text generation, making agents capable of data analysis, calculations, visualizations, and dynamic computation.
-
-```typescript
-import { PythonCodeExecutor } from "@iqai/adk";
-
-AgentBuilder.withCodeExecutor(new PythonCodeExecutor());
-```
-
-### withArtifactService(service)
-
-**Type:** `BaseArtifactService` | **Default:** `undefined`
-
-Provides file storage and management capabilities for documents, images, and generated content. Essential for agents that work with files across multiple conversations.
-
-```typescript
-import { LocalArtifactService } from "@iqai/adk";
-
-AgentBuilder.withArtifactService(
-  new LocalArtifactService({ baseDir: "./uploads" })
-);
-```
-
-### withInputSchema(schema)
-
-**Type:** `ZodSchema` | **Default:** `undefined`
-
-Validates and structures input data before processing, ensuring your agent receives properly formatted data. This provides type safety and automatic validation for complex input requirements.
-
-```typescript
-import { z } from "zod";
-
-const inputSchema = z.object({
-  query: z.string().min(1),
-  filters: z.array(z.string()).optional(),
-  maxResults: z.number().min(1).max(100).default(10),
-});
-
-const { runner } = await AgentBuilder.create("search-agent")
+const financeAgent = AgentBuilder.create("financial_analyst")
   .withModel("gemini-2.5-flash")
-  .withInputSchema(inputSchema)
+  .withInstruction(
+    "You are a financial advisor. Provide clear, actionable investment advice."
+  )
   .build();
 
-// Input is validated against schema
-const result = await runner.ask({
-  query: "machine learning",
-  filters: ["recent", "academic"],
-  maxResults: 20,
-});
-```
-
-### withOutputSchema(schema)
-
-**Type:** `ZodSchema` | **Default:** `undefined`
-
-Enforces structured JSON output with TypeScript type safety, ensuring predictable, parseable responses. Perfect for API integrations and data processing workflows. **Important:** This disables tool usage as the agent can only generate structured responses.
-
-```typescript
-import { z } from "zod";
-
-const schema = z.object({
-  summary: z.string(),
-  confidence: z.number().min(0).max(1),
-  categories: z.array(z.string()),
-});
-
-const { runner } = await AgentBuilder.withOutputSchema(schema).build();
-
-// TypeScript knows the return type matches schema
-const result = await runner.ask("Analyze this document...");
-// result.summary, result.confidence, result.categories are fully typed
-```
-
-### withPlanner(planner)
-
-**Type:** `BasePlanner` | **Default:** `undefined`
-
-Adds strategic planning capabilities that help agents break down complex tasks into manageable steps. Planners analyze requests and create execution strategies before proceeding with the actual work.
-
-```typescript
-import { ReActPlanner } from "@iqai/adk";
-
-const { runner } = await AgentBuilder.create("strategic-agent")
+// Dynamic instruction using template literals
+const travelAgent = AgentBuilder.create("travel_agent")
   .withModel("gemini-2.5-flash")
-  .withPlanner(new ReActPlanner())
-  .withTools(new WebSearchTool(), new CalculatorTool())
+  .withInstruction(
+    `You are a travel guide. 
+    User Preferences: {user_preferences}
+    Suggest personalized travel itineraries based on user preferences.`
+  )
   .build();
-
-// Agent will plan before executing
-const result = await runner.ask("Research and analyze market trends for Q4");
-```
-
-### withOutputKey(key)
-
-**Type:** `string` | **Default:** `undefined`
-
-Specifies which key from the agent's response should be returned as the primary output. Useful when agents generate complex objects but you only need specific data.
-
-```typescript
-const { runner } = await AgentBuilder.create("analyzer")
-  .withModel("gemini-2.5-flash")
-  .withOutputKey("analysis")
-  .build();
-
-// Only the 'analysis' field will be returned
-const analysis = await runner.ask("Analyze this data...");
-```
-
-### withSubAgents(agents)
-
-**Type:** `BaseAgent[]` | **Default:** `[]`
-
-Adds specialized sub-agents that the main agent can delegate specific tasks to. This creates a hierarchical agent system where the main agent acts as a coordinator.
-
-```typescript
-const researchAgent = new LlmAgent({
-  name: "researcher",
-  model: "gemini-2.5-flash",
-  instruction: "Specialize in gathering information",
-});
-
-const analysisAgent = new LlmAgent({
-  name: "analyst",
-  model: "gemini-2.5-flash",
-  instruction: "Specialize in data analysis",
-});
-
-const { runner } = await AgentBuilder.create("coordinator")
-  .withModel("gemini-2.5-flash")
-  .withSubAgents([researchAgent, analysisAgent])
-  .build();
-```
-
-### Callback Methods
-
-AgentBuilder provides comprehensive callback hooks for monitoring and customizing agent behavior at different execution stages.
-
-#### withBeforeAgentCallback(callback)
-
-**Type:** `(context: AgentContext) => Promise<void>` | **Default:** `undefined`
-
-Executes before the agent processes any request. Perfect for logging, authentication, or context preparation.
-
-```typescript
-const { runner } = await AgentBuilder.create("monitored-agent")
-  .withModel("gemini-2.5-flash")
-  .withBeforeAgentCallback(async (context) => {
-    console.log(`Agent starting: ${context.agent.name}`);
-    // Add custom logic here
-  })
-  .build();
-```
-
-#### withAfterAgentCallback(callback)
-
-**Type:** `(context: AgentContext, result: any) => Promise<void>` | **Default:** `undefined`
-
-Executes after the agent completes processing. Ideal for logging results, cleanup, or post-processing.
-
-```typescript
-const { runner } = await AgentBuilder.create("logged-agent")
-  .withModel("gemini-2.5-flash")
-  .withAfterAgentCallback(async (context, result) => {
-    console.log(`Agent completed: ${result}`);
-    // Log to analytics, save results, etc.
-  })
-  .build();
-```
-
-#### withBeforeModelCallback(callback)
-
-**Type:** `(context: ModelContext) => Promise<void>` | **Default:** `undefined`
-
-Executes before each LLM model call. Useful for request modification, caching checks, or usage tracking.
-
-```typescript
-const { runner } = await AgentBuilder.create("tracked-agent")
-  .withModel("gemini-2.5-flash")
-  .withBeforeModelCallback(async (context) => {
-    console.log(`Model call: ${context.messages.length} messages`);
-    // Track usage, modify requests, etc.
-  })
-  .build();
-```
-
-#### withAfterModelCallback(callback)
-
-**Type:** `(context: ModelContext, response: ModelResponse) => Promise<void>` | **Default:** `undefined`
-
-Executes after each LLM model response. Perfect for response processing, caching, or usage analytics.
-
-```typescript
-const { runner } = await AgentBuilder.create("cached-agent")
-  .withModel("gemini-2.5-flash")
-  .withAfterModelCallback(async (context, response) => {
-    // Cache responses, log usage, etc.
-    await cache.set(context.cacheKey, response);
-  })
-  .build();
-```
-
-#### withBeforeToolCallback(callback)
-
-**Type:** `(context: ToolContext) => Promise<void>` | **Default:** `undefined`
-
-Executes before each tool execution. Useful for authorization, logging, or parameter validation.
-
-```typescript
-const { runner } = await AgentBuilder.create("secure-agent")
-  .withModel("gemini-2.5-flash")
-  .withTools(new WebSearchTool())
-  .withBeforeToolCallback(async (context) => {
-    console.log(`Using tool: ${context.tool.name}`);
-    // Validate permissions, log usage, etc.
-  })
-  .build();
-```
-
-#### withAfterToolCallback(callback)
-
-**Type:** `(context: ToolContext, result: any) => Promise<void>` | **Default:** `undefined`
-
-Executes after each tool execution. Perfect for result processing, error handling, or usage tracking.
-
-```typescript
-const { runner } = await AgentBuilder.create("monitored-agent")
-  .withModel("gemini-2.5-flash")
-  .withTools(new CalculatorTool())
-  .withAfterToolCallback(async (context, result) => {
-    console.log(`Tool ${context.tool.name} returned:`, result);
-    // Process results, handle errors, etc.
-  })
-  .build();
-```
-
-### Session Management Methods
-
-#### withSession(session)
-
-**Type:** `BaseSession` | **Default:** `undefined`
-
-Provides a specific session instance for conversation state management. Use this when you need to continue an existing conversation or share sessions between agents.
-
-```typescript
-import { InMemorySession } from "@iqai/adk";
-
-const existingSession = new InMemorySession("user-123");
-await existingSession.addMessage("user", "Hello");
-
-const { runner } = await AgentBuilder.create("continuing-agent")
-  .withModel("gemini-2.5-flash")
-  .withSession(existingSession)
-  .build();
-
-// Continues the existing conversation
-const response = await runner.ask("What did I just say?");
-```
-
-#### withQuickSession(sessionId)
-
-**Type:** `string` | **Default:** `undefined`
-
-Creates or retrieves a session using just an ID. Convenient for simple session management without manual session creation.
-
-```typescript
-const { runner } = await AgentBuilder.create("quick-agent")
-  .withModel("gemini-2.5-flash")
-  .withQuickSession("user-456")
-  .build();
-
-// Automatically manages session with ID "user-456"
-const response = await runner.ask("Remember this conversation");
-```
-
-### withRunConfig(config)
-
-**Type:** `RunConfig` | **Default:** `{}`
-
-Configures runtime behavior including timeouts, retry policies, and execution parameters. Essential for production deployments with specific performance requirements.
-
-```typescript
-const { runner } = await AgentBuilder.create("production-agent")
-  .withModel("gemini-2.5-flash")
-  .withRunConfig({
-    timeout: 30000, // 30 second timeout
-    maxRetries: 3,
-    retryDelay: 1000,
-    streaming: true,
-  })
-  .build();
-```
-
-### Build Methods
-
-#### build()
-
-**Type:** `Promise<{ agent: BaseAgent, runner: AgentRunner, session: BaseSession }>`
-
-Creates the configured agent and returns all components for maximum flexibility. This is the standard build method that provides access to the agent, runner, and session.
-
-```typescript
-const { agent, runner, session } = await AgentBuilder.create("my-agent")
-  .withModel("gemini-2.5-flash")
-  .withTools(new WebSearchTool())
-  .build();
-
-// Use runner for conversations
-const response = await runner.ask("Search for recent AI news");
-
-// Access agent directly for advanced usage
-console.log(agent.name, agent.model);
-
-// Manage session state
-await session.addMessage("system", "Custom system message");
-```
-
-#### buildWithSchema&lt;T&gt;(schema)
-
-**Type:** `<T>(schema: ZodSchema<T>) => Promise<{ agent: BaseAgent, runner: TypedAgentRunner<T>, session: BaseSession }>`
-
-Builds an agent with typed output schema, providing full TypeScript type safety for responses. The runner's `ask()` method returns properly typed results.
-
-```typescript
-import { z } from "zod";
-
-const responseSchema = z.object({
-  answer: z.string(),
-  confidence: z.number(),
-  sources: z.array(z.string()),
-});
-
-const { runner } = await AgentBuilder.create("typed-agent")
-  .withModel("gemini-2.5-flash")
-  .buildWithSchema(responseSchema);
-
-// TypeScript knows the exact return type
-const result = await runner.ask("What is machine learning?");
-// result.answer, result.confidence, result.sources are fully typed
-```
-
-#### ask(message)
-
-**Type:** `(message: string) => Promise<string>`
-
-Convenience method that builds the agent and immediately processes a single message. Perfect for one-off queries or simple interactions.
-
-```typescript
-// Quick one-liner for simple queries
-const response = await AgentBuilder.create("quick-agent")
-  .withModel("gemini-2.5-flash")
-  .withTools(new CalculatorTool())
-  .ask("What is 15% of 240?");
-
-console.log(response); // Direct string response
 ```
 
 ### withAgent(agent)
@@ -718,12 +275,18 @@ console.log(response); // Direct string response
 Wraps an existing agent instance with `AgentBuilder`'s session management and runner interface. This is useful when you have pre-configured agents but want `AgentBuilder`'s automatic session management and convenient runner interface.
 
 ```typescript
+import { AgentBuilder, LlmAgent } from "@iqai/adk";
+
 const existingAgent = new LlmAgent({
   name: "my-agent",
-  model: "gemini-2.5-flash",
+  description: "An agent for general tasks",
 });
 
-const { runner } = await AgentBuilder.withAgent(existingAgent).build();
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent wrapping an existing LlmAgent")
+  .withAgent(existingAgent)
+  .build();
 ```
 
 <Callout type="warn" title="Configuration After Wrapping">
@@ -731,6 +294,656 @@ const { runner } = await AgentBuilder.withAgent(existingAgent).build();
   or `withTools()` are ignored. The existing agent's configuration is used
   as-is.
 </Callout>
+
+### withInputSchema(schema)
+
+**Type:** `ZodSchema` | **Default:** `undefined`
+
+Validates and structures input data before processing, ensuring your agent receives properly formatted data. This provides type safety and automatic validation for complex input requirements.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import { z } from "zod";
+
+const inputSchema = z.object({
+  query: z.string().min(1),
+  filters: z.array(z.string()).optional(),
+  maxResults: z.number().min(1).max(100).default(10),
+});
+
+const agent = await AgentBuilder.create("coordinator_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("A coordinator agent that processes user queries")
+  .withInputSchema(inputSchema)
+  .build();
+```
+
+### withOutputSchema(schema)
+
+**Type:** `ZodType<T>` | **Default:** `undefined`
+
+Enforces structured JSON output with TypeScript type safety, ensuring predictable, parseable responses. Perfect for API integrations and data processing workflows. **Important:** This disables tool usage as the agent can only generate structured responses.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import { z } from "zod";
+
+const outputSchema = z.object({
+  summary: z.string(),
+  confidence: z.number().min(0).max(1),
+  categories: z.array(z.string()),
+});
+
+const agent = await AgentBuilder.create("coordinator_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent that summarizes and categorizes text")
+  .withOutputSchema(outputSchema)
+  .build();
+
+// User asks the agent to analyze the provided document
+const response = await agent.runner.ask("Analyze this document...");
+
+console.log(response); // The output will match the defined schema
+```
+
+### withOutputKey(outputKey)
+
+**Type:** `string` | **Default:** `undefined`
+
+Sets the key in session state where the agent's output will be stored. This makes the agent's response available to subsequent agents in multi-agent workflows, enabling data flow between agents.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const agent = await AgentBuilder.create("analyzer_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "An agent that analyzes documents and provides structured output"
+  )
+  .withOutputKey("analysis")
+  .build();
+```
+
+### withTools(...tools)
+
+**Type:** `BaseTool[]` | **Default:** `[]`
+
+Adds tools that dramatically extend your agent's capabilities beyond text generation, enabling interaction with external systems, API calls, calculations, and code execution. You can provide multiple tools in a single call, mixing different tool types.
+
+Accepts `BaseTool` instances (built-in or custom), `FunctionTool` wrappers for easy integration, or raw async functions that get automatically wrapped. The agent's LLM intelligently decides when and how to use each tool based on context. See [Tools documentation](/docs/framework/tools) for available tools and creating custom ones.
+
+```typescript
+import {
+  AgentBuilder,
+  FileOperationsTool,
+  GoogleSearch,
+  createTool,
+} from "@iqai/adk";
+import { z } from "zod";
+
+const getWeather = async (city: string): Promise<string> => {
+  // Mock implementation of a weather fetching function
+  return `The current weather in ${city} is sunny with a temperature of 25°C.`;
+};
+const weatherTool = createTool({
+  name: "get_weather",
+  description: "Get current weather",
+  schema: z.object({
+    city: z.string().describe("The city to get weather for"),
+  }),
+  fn: async (params) => getWeather(params.city),
+});
+
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withTools(
+    new GoogleSearch(), // Built-in tool
+    new FileOperationsTool(), // Another built-in tool
+    weatherTool
+  )
+  .build();
+```
+
+### withSubAgents(subAgents)
+
+**Type:** `BaseAgent[]` | **Default:** `[]`
+
+Adds specialized sub-agents that the main agent can delegate specific tasks to. This creates a hierarchical agent system where the main agent acts as a coordinator.
+
+```typescript
+import { AgentBuilder, LlmAgent } from "@iqai/adk";
+
+const researchAgent = new LlmAgent({
+  name: "researcher_agent",
+  model: "gemini-2.5-flash",
+  description: "Specialize in research tasks",
+});
+
+const analysisAgent = new LlmAgent({
+  name: "analyst_agent",
+  model: "gemini-2.5-flash",
+  description: "Specialize in data analysis tasks",
+});
+
+const agent = await AgentBuilder.create("coordinator_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent coordinating research and analysis tasks")
+  .withSubAgents([researchAgent, analysisAgent])
+  .build();
+```
+
+### withPlanner(planner)
+
+**Type:** `BasePlanner` | **Default:** `undefined`
+
+Adds strategic planning capabilities that help agents break down complex tasks into manageable steps. Planners analyze requests and create execution strategies before proceeding with the actual work.
+
+```typescript
+import {
+  AgentBuilder,
+  FileOperationsTool,
+  GoogleSearch,
+  PlanReActPlanner,
+} from "@iqai/adk";
+
+const agent = await AgentBuilder.create("strategic_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "A strategic agent that uses planning and tools to accomplish complex tasks"
+  )
+  .withPlanner(new PlanReActPlanner())
+  .withTools(new GoogleSearch(), new FileOperationsTool())
+  .build();
+```
+
+### withCodeExecutor(codeExecutor)
+
+**Type:** `BaseCodeExecutor` | **Default:** `undefined`
+
+Enables your agent to write and execute code in a secure, sandboxed environment. This dramatically expands problem-solving capabilities beyond text generation, making agents capable of data analysis, calculations, visualizations, and dynamic computation.
+
+```typescript
+import { AgentBuilder, BuiltInCodeExecutor } from "@iqai/adk";
+
+const agent = await AgentBuilder.create("strategic_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "A strategic agent that uses planning and tools to accomplish complex tasks"
+  )
+  .withCodeExecutor(new BuiltInCodeExecutor())
+  .build();
+```
+
+### withBeforeAgentCallback(callback)
+
+**Type:** `BeforeAgentCallback` | **Default:** `undefined`
+
+Executes before the agent processes any request. Perfect for logging, authentication, or context preparation.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const agent = await AgentBuilder.create("monitored_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent with monitoring capabilities")
+  .withBeforeAgentCallback(async (context) => {
+    console.log("Before agent execution:", context);
+    return undefined;
+  })
+  .build();
+```
+
+### withAfterAgentCallback(callback)
+
+**Type:** `AfterAgentCallback` | **Default:** `undefined`
+
+Executes after the agent completes processing. Ideal for logging results, cleanup, or post-processing.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const agent = await AgentBuilder.create("monitored_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent with monitoring capabilities")
+  .withAfterAgentCallback(async (context) => {
+    console.log("After agent execution:", context);
+    return undefined;
+  })
+  .build();
+```
+
+### withBeforeModelCallback(callback)
+
+**Type:** `BeforeModelCallback` | **Default:** `undefined`
+
+Executes before each LLM model call. Useful for request modification, caching checks, or usage tracking.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const agent = await AgentBuilder.create("monitored_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent with monitoring capabilities")
+  .withBeforeModelCallback(async (context) => {
+    console.log("Before model execution:", context);
+    return undefined;
+  })
+  .build();
+```
+
+### withAfterModelCallback(callback)
+
+**Type:** `AfterModelCallback` | **Default:** `undefined`
+
+Executes after each LLM model response. Perfect for response processing, caching, or usage analytics.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const agent = await AgentBuilder.create("monitored_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent with monitoring capabilities")
+  .withAfterModelCallback(async (context) => {
+    console.log("After model execution:", context);
+    return undefined;
+  })
+  .build();
+```
+
+### withBeforeToolCallback(callback)
+
+**Type:** `BeforeToolCallback` | **Default:** `undefined`
+
+Executes before each tool execution. Useful for authorization, logging, or parameter validation.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const agent = await AgentBuilder.create("monitored_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent with monitoring capabilities")
+  .withBeforeToolCallback(async (context) => {
+    console.log("Before tool execution:", context);
+    return undefined;
+  })
+  .build();
+```
+
+### withAfterToolCallback(callback)
+
+**Type:** `AfterToolCallback` | **Default:** `undefined`
+
+Executes after each tool execution. Perfect for result processing, error handling, or usage tracking.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const agent = await AgentBuilder.create("monitored_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent with monitoring capabilities")
+  .withAfterToolCallback(async (context) => {
+    console.log("After tool execution:", context);
+    return undefined;
+  })
+  .build();
+```
+
+### withMemory(memoryService)
+
+**Type:** `BaseMemoryService` | **Default:** `undefined`
+
+Adds long-term memory storage that persists information across conversations and sessions. Memory enables agents to remember user preferences, learned insights, and important context from previous interactions.
+
+Available memory services include `InMemoryMemoryService` for simple in-memory storage and `VertexAiRagMemoryService` for Vertex AI RAG-based memory with semantic search capabilities. Particularly valuable for personal assistants, customer service agents, and knowledge workers that need to build relationships over time. See [Sessions & Memory](/docs/framework/sessions) for memory configuration options.
+
+```typescript
+import { AgentBuilder, InMemoryMemoryService } from "@iqai/adk";
+
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "An agent that utilizes memory for enhanced context retention"
+  )
+  .withMemory(new InMemoryMemoryService())
+  .build();
+```
+
+### withSessionService(service, options)
+
+**Type:** `BaseSessionService, SessionOptions` | **Default:** Auto-created in-memory session
+
+Provides custom session management for conversation state, message history, and ephemeral data during a single session. `AgentBuilder` creates in-memory sessions automatically, but you can customize this for persistence or multi-tenant applications.
+
+Available session services include `InMemorySessionService` for simple in-memory storage, `DatabaseSessionService` for database-backed persistence, and `VertexAiSessionService` for Vertex AI integration. Sessions are lighter-weight than memory and typically reset between conversations. See [Sessions & Memory](/docs/framework/sessions) for session configuration.
+
+```typescript
+import { AgentBuilder, createDatabaseSessionService } from "@iqai/adk";
+
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent with persistent session storage")
+  .withSessionService(createDatabaseSessionService("sqlite://sessions.db"))
+  .build();
+```
+
+**Using Together:** You can combine both for comprehensive state management - sessions for current conversation context and memory for long-term retention:
+
+```typescript
+import {
+  AgentBuilder,
+  InMemoryMemoryService,
+  createDatabaseSessionService,
+} from "@iqai/adk";
+
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An advanced agent with memory and session management")
+  .withMemory(new InMemoryMemoryService()) // Long-term insights
+  .withSessionService(createDatabaseSessionService("sqlite://sessions.db")) // Persistent sessions
+  .build();
+```
+
+### withSession(session)
+
+**Type:** `Session` | **Default:** `undefined`
+
+Provides a specific session instance for conversation state management. Use this when you need to continue an existing conversation or share sessions between agents. Requires `withSessionService()` to be called first.
+
+```typescript
+import { AgentBuilder, InMemorySessionService } from "@iqai/adk";
+
+// First set up the session service
+const sessionService = new InMemorySessionService();
+
+// Create a session with some initial state
+const existingSession = await sessionService.createSession(
+  "my-app",
+  "user-123",
+  { conversationCount: 1 },
+  "session-456"
+);
+
+const agent = await AgentBuilder.create("continuing_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent that continues existing conversations")
+  .withSessionService(sessionService) // Required before withSession()
+  .withSession(existingSession) // Use the existing session
+  .build();
+
+// User asks the agent to pick up the previous conversation
+const response = await agent.runner.ask("Can you summarize where we left off?");
+```
+
+### withQuickSession(options)
+
+**Type:** `SessionOptions` | **Default:** `{}`
+
+Creates an in-memory session with optional identifiers for user, app, state, or a custom session ID. Handy when you need lightweight session tracking without configuring a dedicated session service.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("quick_agent")
+  .withDescription("An agent that uses quick sessions for user interactions")
+  .withModel("gemini-2.5-flash")
+  .withQuickSession({
+    userId: "user-456",
+    appName: "quick-chat",
+    state: { greetingCount: 1 },
+    sessionId: "session-456",
+  })
+  .build();
+
+// Automatically manages the session using the provided identifiers
+// User asks the agent to recall their prior exchange
+const response = await runner.ask("Remember this conversation");
+```
+
+### withArtifactService(artifactService)
+
+**Type:** `BaseArtifactService` | **Default:** `undefined`
+
+Provides artifact storage and management capabilities for documents, images, and generated content. Use `InMemoryArtifactService` for in-memory storage or `GcsArtifactService` for cloud-based persistence. Essential for agents that work with files across multiple conversations.
+
+```typescript
+import { AgentBuilder, InMemoryArtifactService } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("document_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent that manages files and documents")
+  .withArtifactService(new InMemoryArtifactService())
+  .build();
+
+// User asks the agent to work with files
+const response = await runner.ask("Process and store this document");
+```
+
+### withRunConfig(config)
+
+**Type:** `(config: RunConfig | Partial<RunConfig>) => this` | **Default:** `{}`
+
+Configures runtime behavior including streaming mode, LLM call limits, input/output audio transcription, and other execution parameters. Essential for production deployments with specific performance and execution requirements.
+
+```typescript
+import { AgentBuilder, StreamingMode } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("production_agent")
+  .withModel("gemini-2.5-flash")
+  .withRunConfig({
+    streamingMode: StreamingMode.SSE,
+    maxLlmCalls: 100,
+    saveInputBlobsAsArtifacts: true,
+  })
+  .build();
+
+// User asks the agent to process a request with configured limits
+const response = await runner.ask("Process this data with safeguards");
+```
+
+### asSequential(subAgents)
+
+**Type:** `BaseAgent[]`
+
+Transforms your builder into a sequential workflow where agents execute in order, with each agent receiving the output of the previous one. Perfect for pipeline workflows like research → analysis → report generation.
+
+See [Sequential Agents](/docs/framework/agents/workflow-agents/sequential-agents) for detailed patterns and examples.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import { getResearchAgent } from "./agents/researcher-agent.js";
+import { getAnalysisAgent } from "./agents/analyzer-agent.js";
+import { getReportingAgent } from "./agents/reporter-agent.js";
+
+const researcherAgent = getResearchAgent();
+const analyzerAgent = getAnalysisAgent();
+const reporterAgent = getReportingAgent();
+
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("A multi-step agent for research, analysis, and reporting")
+  .asSequential([researcherAgent, analyzerAgent, reporterAgent])
+  .build();
+```
+
+### asParallel(subAgents)
+
+**Type:** `BaseAgent[]`
+
+Creates a parallel execution pattern where multiple agents run simultaneously on the same input. Useful when you need different perspectives or want to process multiple aspects of a task concurrently.
+
+See [Parallel Agents](/docs/framework/agents/workflow-agents/parallel-agents) for coordination patterns.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import { getAnalysisAgent } from "./agents/analysis-agent.js";
+import { getResearchAgent } from "./agents/research-agent.js";
+import { getReportingAgent } from "./agents/reporting-agent.js";
+
+const sentimentAnalyzer = getAnalysisAgent();
+const topicExtractor = getResearchAgent();
+const summaryGenerator = getReportingAgent();
+
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "An agent that performs sentiment analysis, topic extraction, and summarization"
+  )
+  .asParallel([sentimentAnalyzer, topicExtractor, summaryGenerator])
+  .build();
+```
+
+### asLoop(subAgents, maxIterations)
+
+**Type:** `BaseAgent[], number`
+
+Creates an iterative execution pattern where agents repeat until a condition is met or maximum iterations reached. Essential for problem-solving workflows that require refinement and improvement.
+
+See [Loop Agents](/docs/framework/agents/workflow-agents/loop-agents) for termination conditions and patterns.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import { getProblemSolverAgent } from "./agents/problem-solver-agent.js";
+import { getValidatorAgent } from "./agents/validator-agent.js";
+
+const problemSolver = getProblemSolverAgent();
+const validator = getValidatorAgent();
+
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "An agent that performs sentiment analysis, topic extraction, and summarization"
+  )
+  .asLoop([problemSolver, validator], 5) // Max 5 iterations
+  .build();
+```
+
+### asLangGraph(nodes, rootNode)
+
+**Type:** `LangGraphNode[], string`
+
+Creates complex, graph-based workflows with conditional branching, loops, and dynamic routing. Most powerful option for sophisticated multi-agent orchestration. See [Language Graph Agents](/docs/framework/agents/workflow-agents/lang-graph-agents) for detailed examples and patterns.
+
+```typescript
+import { AgentBuilder, LlmAgent } from "@iqai/adk";
+
+const sentimentAgent = new LlmAgent({
+  name: "sentiment_analysis_agent",
+  description: "Analyzes sentiment of text",
+});
+
+const topicAgent = new LlmAgent({
+  name: "topic_extraction_agent",
+  description: "Extracts topics from text",
+});
+
+const summaryAgent = new LlmAgent({
+  name: "summarization_agent",
+  description: "Summarizes text",
+});
+
+const workflowNodes = [
+  {
+    id: "start-node",
+    name: "sentiment_analysis",
+    agent: sentimentAgent,
+    next: "topic-extraction-node",
+  },
+  {
+    id: "topic-extraction-node",
+    name: "topic_extraction",
+    agent: topicAgent,
+    next: "summarization-node",
+  },
+  {
+    id: "summarization-node",
+    name: "summarization",
+    agent: summaryAgent,
+    next: null,
+  },
+];
+
+const agent = AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "An agent that performs sentiment analysis, topic extraction, and summarization"
+  )
+  .asLangGraph(workflowNodes, "start-node")
+  .build();
+```
+
+<Callout type="info" title="Choosing Agent Types">
+  **You can only use ONE agent type method per builder.** If you don't use any
+  agent type method, `AgentBuilder` creates a single LLM agent with your
+  configuration.
+</Callout>
+
+### build()
+
+**Type:** `Promise<BuiltAgent>`
+
+Creates the configured agent and optionally returns the runner and session for immediate use. This is the most common way to finalize your agent configuration.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const { agent, runner, session } = await AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("A helpful research assistant")
+  .build();
+
+// Use runner for conversations
+// User asks the agent for the latest AI news
+const response = await runner.ask("Search for recent AI news");
+
+// Access agent directly for advanced usage
+console.log("Agent name:", agent.name);
+console.log("Session app:", session.appName);
+console.log("Session user:", session.userId);
+```
+
+### buildWithSchema()
+
+**Type:** `<T>() => Promise<BuiltAgent<T, TMulti>>`
+
+Builds an agent with typed output schema, providing full TypeScript type safety for responses. The runner's `ask()` method returns properly typed results. Use this after calling `withOutputSchema()` to define the response structure.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import { z } from "zod";
+
+const responseSchema = z.object({
+  summary: z.string(),
+  confidence: z.number(),
+  sources: z.array(z.string()),
+});
+
+const { runner } = await AgentBuilder.create("typed_agent")
+  .withModel("gemini-2.5-flash")
+  .withOutputSchema(responseSchema)
+  .buildWithSchema();
+
+// TypeScript knows the exact return type
+const result = await runner.ask("What is machine learning?");
+console.log(result.summary, result.confidence, result.sources);
+```
+
+### ask(message)
+
+**Type:** `(message: string | FullMessage) => Promise<string>`
+
+Convenience method that builds the agent and immediately processes a single message. Returns a string response directly without needing to access a runner object. Perfect for one-off queries, rapid prototyping, or simple interactions.
+
+```typescript
+import { AgentBuilder, GoogleSearch } from "@iqai/adk";
+
+// Quick one-liner for simple queries
+const response = await AgentBuilder.create("quick_agent")
+  .withModel("gemini-2.5-flash")
+  .withTools(new GoogleSearch())
+  .ask("What are the latest AI developments in 2025?");
+
+console.log(response); // Direct string response
+```
 
 ## When to Use `AgentBuilder` vs LLM Agents
 
@@ -761,48 +974,41 @@ const { runner } = await AgentBuilder.withAgent(existingAgent).build();
 Here's `AgentBuilder` with multiple configuration options showcasing the full range of capabilities:
 
 ```typescript
-const { agent, runner, session } = await AgentBuilder.create("advanced-agent")
+import {
+  AgentBuilder,
+  InMemoryMemoryService,
+  BuiltInCodeExecutor,
+  GoogleSearch,
+  StreamingMode,
+} from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("advanced_agent")
   .withModel("gemini-2.5-flash")
   .withDescription("Advanced research and analysis agent")
   .withInstruction("You are a thorough research assistant")
-  .withTools(new WebSearchTool(), new CalculatorTool())
-  .withCodeExecutor(new PythonCodeExecutor())
-  .withMemory(new VectorMemoryService())
-  .withQuickSession("user-123")
+  .withTools(new GoogleSearch())
+  .withCodeExecutor(new BuiltInCodeExecutor())
+  .withMemory(new InMemoryMemoryService())
+  .withQuickSession({
+    userId: "user-123",
+    appName: "research-app",
+  })
   .withRunConfig({
-    timeout: 30000,
-    maxRetries: 3,
-    streaming: true,
+    streamingMode: StreamingMode.SSE,
+    maxLlmCalls: 50,
+    saveInputBlobsAsArtifacts: true,
   })
   .withBeforeAgentCallback(async (context) => {
-    console.log(`Starting research task: ${context.input}`);
+    console.log(`Starting research task: ${context.sessionId}`);
+    return undefined;
   })
-  .withAfterToolCallback(async (context, result) => {
-    console.log(`Tool ${context.tool.name} completed`);
+  .withAfterToolCallback(async (context) => {
+    console.log(`Tool ${context.name} completed`);
   })
   .build();
 
+// User asks the agent to research the requested topic
 const result = await runner.ask("Research quantum computing trends");
-```
-
-For typed responses, use `buildWithSchema()`:
-
-```typescript
-import { z } from "zod";
-
-const responseSchema = z.object({
-  summary: z.string(),
-  keyFindings: z.array(z.string()),
-  confidence: z.number(),
-});
-
-const { runner } = await AgentBuilder.create("typed-researcher")
-  .withModel("gemini-2.5-flash")
-  .withTools(new WebSearchTool())
-  .buildWithSchema(responseSchema);
-
-const result = await runner.ask("Research AI trends");
-// result.summary, result.keyFindings, result.confidence are fully typed
 ```
 
 ## Related Topics
@@ -813,34 +1019,29 @@ const result = await runner.ask("Research AI trends");
     description="Direct agent configuration with maximum control"
     href="/docs/framework/agents/llm-agents"
   />
-
   <Card
     title="🛠️ Tools"
     description="Available tools and creating custom ones"
     href="/docs/framework/tools"
   />
-
-<Card
-  title="🔗 Sequential Agents"
-  description="Execute agents in order for pipeline workflows"
-  href="/docs/framework/agents/workflow-agents/sequential-agents"
-/>
-
-<Card
-  title="⚡ Parallel Agents"
-  description="Run multiple agents simultaneously"
-  href="/docs/framework/agents/workflow-agents/parallel-agents"
-/>
-
+  <Card
+    title="🔗 Sequential Agents"
+    description="Execute agents in order for pipeline workflows"
+    href="/docs/framework/agents/workflow-agents/sequential-agents"
+  />
+  <Card
+    title="⚡ Parallel Agents"
+    description="Run multiple agents simultaneously"
+    href="/docs/framework/agents/workflow-agents/parallel-agents"
+  />
   <Card
     title="🔄 Loop Agents"
     description="Repeat agent execution until conditions are met"
     href="/docs/framework/agents/workflow-agents/loop-agents"
   />
-
   <Card
     title="🧠 Sessions & Memory"
     description="Manage conversation state and long-term memory"
-    href="/docs/framework/sessions"
+    href="/docs/framework/sessions/session"
   />
 </Cards>
