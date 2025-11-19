@@ -122,8 +122,9 @@ export function SessionManager({
 		onSessionChange(newSessionId);
 	};
 
-	// Chat is disabled if sessions are loading or no session is selected
-	const isChatDisabled = sessionsLoading || !sessionId;
+	// Chat is disabled if sessions are loading, no session is selected,
+	// OR all sessions were deleted (empty sessions)
+	const isChatDisabled = sessionsLoading || !sessionId || sessions.length === 0;
 
 	return (
 		<div className="h-screen flex bg-background">
