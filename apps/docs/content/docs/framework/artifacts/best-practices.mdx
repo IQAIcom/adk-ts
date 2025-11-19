@@ -247,7 +247,7 @@ gsutil lifecycle set lifecycle.json gs://my-artifacts-bucket
 Build specific tools or administrative functions that utilize `deleteArtifact`:
 
 ```typescript
-import { BaseArtifactService } from '@iqai/adk';
+import { BaseArtifactService, BaseSessionService } from '@iqai/adk';
 
 class ArtifactCleanupService {
   constructor(private artifactService: BaseArtifactService) {}
@@ -293,15 +293,36 @@ class ArtifactCleanupService {
     appName: string,
     userId: string,
     sessionIds: string[],
-    olderThanDays: number
+    olderThanDays: number,
+    sessionService: BaseSessionService
   ): Promise<number> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+    const cutoffTimestamp = Math.floor(
+      (Date.now() - olderThanDays * 24 * 60 * 60 * 1000) / 1000
+    );
 
     let deletedCount = 0;
 
     for (const sessionId of sessionIds) {
-      // Verify session is old enough (you'd check session metadata)
+      // Get session to check its age
+      const session = await sessionService.getSession(
+        appName,
+        userId,
+        sessionId
+      );
+
+      if (!session) {
+        console.warn(`Session ${sessionId} not found, skipping`);
+        continue;
+      }
+
+      // Only delete artifacts for sessions older than cutoff
+      if (session.lastUpdateTime >= cutoffTimestamp) {
+        console.log(
+          `Session ${sessionId} is not old enough (last update: ${new Date(session.lastUpdateTime * 1000).toISOString()}), skipping`
+        );
+        continue;
+      }
+
       const artifacts = await this.artifactService.listArtifactKeys({
         appName,
         userId,
@@ -327,7 +348,11 @@ class ArtifactCleanupService {
   }
 
   private matchesPattern(filename: string, pattern: string): boolean {
-    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    // Escape regex metacharacters, then convert * wildcards to .*
+    const escapedPattern = pattern
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\\\*/g, '.*');
+    const regex = new RegExp('^' + escapedPattern + '$');
     return regex.test(filename);
   }
 }

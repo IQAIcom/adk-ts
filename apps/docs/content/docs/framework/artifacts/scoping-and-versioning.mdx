@@ -106,13 +106,6 @@ await artifactService.deleteArtifact({
 
 ### Example: Cleanup After Processing
 
-```typescript
-// Save temporary processing file
-await ctx.saveArtifact('temp_analysis.csv', csvArtifact);
-
-// Process the file...
-// ... processing logic ...
-
 // Clean up temporary file using the service directly
 // (Note: You'd need access to the artifact service instance)
 await artifactService.deleteArtifact({
