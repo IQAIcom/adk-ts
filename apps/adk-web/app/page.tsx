@@ -1,39 +1,40 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useQueryState } from "nuqs";
-import { Suspense, useEffect, useMemo } from "react";
-import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
-import { ChatPanel } from "@/components/chat-panel";
-import { Navbar } from "@/components/navbar";
+import { parseAsString, useQueryStates } from "nuqs";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { IncompatibleState } from "@/components/ui/incompatible-state";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { useAgents } from "@/hooks/use-agent";
 import { useCompatibility } from "@/hooks/use-compatibility";
-import { isPanelId, PanelId } from "./(dashboard)/_schema";
+import { SessionManager } from "./(dashboard)/_components/session-manager";
+import { isPanelId } from "./(dashboard)/_schema";
 
 function HomeContent() {
-	// Use nuqs for URL state management
-	const [apiUrl] = useQueryState("apiUrl");
-	const [port] = useQueryState("port");
-	const [sessionId, setSessionId] = useQueryState("sessionId");
-	const [agentName, setAgentName] = useQueryState("agent");
+	const [urlState, setUrlState] = useQueryStates({
+		apiUrl: parseAsString,
+		port: parseAsString,
+		sessionId: parseAsString,
+		agent: parseAsString,
+		panel: {
+			parse: (value) => (isPanelId(value) ? value : null),
+			serialize: (value) => value ?? "",
+		},
+	});
 
-	// Support both legacy apiUrl and new port parameter, else default
+	const {
+		apiUrl,
+		port,
+		sessionId,
+		agent: agentName,
+		panel: selectedPanel,
+	} = urlState;
+
 	const finalApiUrl = apiUrl
 		? apiUrl
 		: port
 			? `http://localhost:${port}`
 			: "http://localhost:8042";
-
-	const [selectedPanel, setSelectedPanel] = useQueryState<PanelId | null>(
-		"panel",
-		{
-			parse: (value) => (isPanelId(value) ? value : null),
-			serialize: (value) => value ?? "",
-			defaultValue: null,
-		},
-	);
 
 	const queryClient = useQueryClient();
 	const {
@@ -57,89 +58,95 @@ function HomeContent() {
 		isSendingMessage,
 	} = useAgents(sessionId);
 
-	// Determine which agent should be selected based on URL state
 	const targetAgent = useMemo(() => {
 		if (!agents.length) return null;
-
-		// If agentName is in URL, find that agent
 		if (agentName) {
 			const found = agents.find((a) => a.name === agentName);
 			if (found) return found;
 		}
-
-		// Otherwise default to first agent
 		return agents[0];
 	}, [agents, agentName]);
 
-	// Single effect for SSE hot-reload subscription
-	useEffect(() => {
-		if (!finalApiUrl) return;
+	const prevAgentRef = useRef<string | null>(null);
 
+	// Single unified effect for SSE hot-reload and agent selection sync
+	useEffect(() => {
+		// SSE hot-reload subscription
 		let es: EventSource | null = null;
-		try {
-			es = new EventSource(`${finalApiUrl}/reload/stream`);
-			es.onmessage = (ev) => {
-				try {
-					const data = ev.data ? JSON.parse(ev.data) : null;
-					if (data && data.type === "reload") {
-						refreshAgents();
-						queryClient.invalidateQueries({ queryKey: ["agents"] });
-						queryClient.invalidateQueries({ queryKey: ["sessions"] });
-						queryClient.invalidateQueries({ queryKey: ["events"] });
-					} else if (data && data.type === "state") {
-						queryClient.invalidateQueries({
-							queryKey: ["state", finalApiUrl, data.agentPath, data.sessionId],
-						});
+		if (finalApiUrl) {
+			try {
+				es = new EventSource(`${finalApiUrl}/reload/stream`);
+				es.onmessage = (ev) => {
+					try {
+						const data = ev.data ? JSON.parse(ev.data) : null;
+						if (data && data.type === "reload") {
+							refreshAgents();
+							queryClient.invalidateQueries({ queryKey: ["agents"] });
+							queryClient.invalidateQueries({ queryKey: ["sessions"] });
+							queryClient.invalidateQueries({ queryKey: ["events"] });
+						} else if (data && data.type === "state") {
+							queryClient.invalidateQueries({
+								queryKey: [
+									"state",
+									finalApiUrl,
+									data.agentPath,
+									data.sessionId,
+								],
+							});
+						}
+					} catch {
+						// ignore parse errors
 					}
-				} catch {
-					// ignore parse errors
-				}
-			};
-		} catch {
-			// ignore connection failures
+				};
+			} catch {
+				// ignore connection failures
+			}
 		}
 
+		// Agent selection sync
+		if (targetAgent) {
+			const currentAgentName = targetAgent.name;
+
+			// Check if agent changed from previous render
+			if (currentAgentName !== prevAgentRef.current) {
+				// Update via combined setter
+				setUrlState({ sessionId: null });
+				prevAgentRef.current = currentAgentName;
+			}
+
+			// Sync selected agent if needed
+			if (selectedAgent?.name !== currentAgentName) {
+				selectAgent(targetAgent);
+			}
+
+			// Set agent name in URL if not present
+			if (!agentName && currentAgentName) {
+				setUrlState({ agent: currentAgentName });
+			}
+		}
+
+		// Cleanup SSE connection
 		return () => {
 			try {
 				es?.close();
 			} catch {}
 		};
-	}, [finalApiUrl, queryClient, refreshAgents]);
-
-	// Single effect for syncing agent selection and session clearing
-	useEffect(() => {
-		// If no target agent, nothing to do
-		if (!targetAgent) return;
-
-		// If selected agent doesn't match target, update it
-		if (selectedAgent?.name !== targetAgent.name) {
-			// Clear session when switching agents
-			setSessionId(null);
-			selectAgent(targetAgent);
-		}
-
-		// If no agentName in URL, set it to match current agent
-		if (!agentName && targetAgent.name) {
-			setAgentName(targetAgent.name);
-		}
 	}, [
+		finalApiUrl,
+		queryClient,
+		refreshAgents,
 		targetAgent,
 		selectedAgent,
 		agentName,
 		selectAgent,
-		setSessionId,
-		setAgentName,
+		setUrlState,
 	]);
 
-	// Panel action handlers
-	const handlePanelSelect = (panel: PanelId | null) => {
-		setSelectedPanel(panel);
-	};
-
 	const handleAgentSelect = (agent: (typeof agents)[0]) => {
-		// Update URL state, which will trigger the sync effect
-		setAgentName(agent.name);
-		setSessionId(null);
+		setUrlState({
+			agent: agent.name,
+			sessionId: null,
+		});
 	};
 
 	if (loading || compatLoading) {
@@ -180,46 +187,19 @@ function HomeContent() {
 	}
 
 	return (
-		<div className="h-screen flex bg-background">
-			{/* Sidebar (now includes expanded panel) */}
-			<div className="flex-shrink-0 h-full">
-				<Sidebar
-					key={selectedAgent?.relativePath || "__no_agent__"}
-					selectedPanel={selectedPanel}
-					onPanelSelect={handlePanelSelect}
-					selectedAgent={selectedAgent}
-					currentSessionId={sessionId}
-					onSessionChange={(id) => setSessionId(id)}
-				/>
-			</div>
-
-			{/* Main Content Area */}
-			<div className="flex-1 flex min-h-0">
-				{/* Chat Panel - Always visible, takes remaining space */}
-				<div className="flex-1 flex flex-col min-h-0">
-					{/* Navbar above chat */}
-					<div className="flex-shrink-0">
-						<Navbar
-							apiUrl={finalApiUrl}
-							agents={agents}
-							selectedAgent={selectedAgent}
-							onSelectAgent={handleAgentSelect}
-						/>
-					</div>
-
-					{/* Chat Content */}
-					<div className="flex-1 min-h-0 overflow-hidden">
-						<ChatPanel
-							selectedAgent={selectedAgent}
-							messages={messages}
-							onSendMessage={sendMessage}
-							isSendingMessage={isSendingMessage}
-							isLoading={loading}
-						/>
-					</div>
-				</div>
-			</div>
-		</div>
+		<SessionManager
+			apiUrl={finalApiUrl}
+			agents={agents}
+			selectedAgent={selectedAgent}
+			sessionId={sessionId}
+			selectedPanel={selectedPanel}
+			messages={messages}
+			isSendingMessage={isSendingMessage}
+			onSessionChange={(id) => setUrlState({ sessionId: id })}
+			onPanelSelect={(panel) => setUrlState({ panel })}
+			onAgentSelect={handleAgentSelect}
+			onSendMessage={sendMessage}
+		/>
 	);
 }
 
