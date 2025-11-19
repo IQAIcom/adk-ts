@@ -31,6 +31,7 @@ interface ChatPanelProps {
 	messages: ChatMessage[];
 	onSendMessage: (message: string, attachments?: File[]) => void;
 	isSendingMessage?: boolean;
+	isLoading?: boolean;
 }
 
 export function ChatPanel({
@@ -38,6 +39,7 @@ export function ChatPanel({
 	messages,
 	onSendMessage,
 	isSendingMessage = false,
+	isLoading = false,
 }: ChatPanelProps) {
 	const [inputMessage, setInputMessage] = useState("");
 	const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -303,6 +305,7 @@ export function ChatPanel({
 										: `Message ${selectedAgent.name}...`
 								}
 								onChange={(e) => setInputMessage(e.target.value)}
+								disabled={isLoading || isSendingMessage}
 							/>
 							<PromptInputToolbar>
 								<PromptInputTools>
@@ -311,6 +314,7 @@ export function ChatPanel({
 										onClick={handleFileAttach}
 										className="transition-colors hover:bg-accent hover:text-accent-foreground"
 										title="Attach files"
+										disabled={isLoading || isSendingMessage}
 									>
 										<Paperclip className="size-4" />
 									</PromptInputButton>
@@ -320,12 +324,14 @@ export function ChatPanel({
 										variant={"secondary"}
 										status={{ recording }}
 										onClick={handleVoiceRecording}
+										disabled={isLoading}
 									/>
 									<PromptInputSubmit
 										status={isSendingMessage ? "streaming" : "ready"}
 										disabled={
 											(!inputMessage.trim() && attachedFiles.length === 0) ||
-											isSendingMessage
+											isSendingMessage ||
+											isLoading
 										}
 									/>
 								</div>
