@@ -73,9 +73,22 @@ const versions = await artifactService.listVersions({
 // e.g., [0, 1, 2]
 ```
 
-Deletion removes all versions of a filename in the current scope.
+## Deletion
+
+Deletion removes all versions of a filename in the current scope. The `deleteArtifact` method permanently removes the artifact and all its versions.
+
+<Callout type="warning" title="Direct Service Access Required">
+The `deleteArtifact` method is not available through `CallbackContext` or `ToolContext` for safety reasons. You must access it directly through the artifact service instance.
+</Callout>
+
+### Basic Deletion
 
 ```typescript
+import { InMemoryArtifactService } from '@iqai/adk';
+
+const artifactService = new InMemoryArtifactService();
+
+// Delete an artifact (removes all versions)
 await artifactService.deleteArtifact({
   appName: 'my_app',
   userId: 'u1',
@@ -83,5 +96,33 @@ await artifactService.deleteArtifact({
   filename: 'document.txt'
 });
 ```
+
+### Deletion Behavior
+
+- **All Versions Removed**: Deletion removes all versions of the artifact, not just the latest
+- **Scope-Aware**: Deletion respects the artifact's scope (session or user namespace)
+- **Irreversible**: Once deleted, artifacts cannot be recovered (unless you have backups)
+- **No Context Access**: Must be called directly on the artifact service, not through contexts
+
+### Example: Cleanup After Processing
+
+```typescript
+// Save temporary processing file
+await ctx.saveArtifact('temp_analysis.csv', csvArtifact);
+
+// Process the file...
+// ... processing logic ...
+
+// Clean up temporary file using the service directly
+// (Note: You'd need access to the artifact service instance)
+await artifactService.deleteArtifact({
+  appName: ctx.appName,
+  userId: ctx.userId,
+  sessionId: ctx.sessionId,
+  filename: 'temp_analysis.csv'
+});
+```
+
+For more comprehensive cleanup strategies, see [Best Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion).
 
 

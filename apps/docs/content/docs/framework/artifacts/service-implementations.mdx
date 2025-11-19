@@ -55,6 +55,10 @@ interface BaseArtifactService {
 
 This consistent interface allows you to switch between implementations without changing your agent code.
 
+<Callout type="warning" title="Artifact Deletion">
+The `deleteArtifact` method is available on all artifact service implementations but is intentionally not exposed through context objects (`CallbackContext` or `ToolContext`) for safety reasons. Access it directly through the artifact service instance. See [Best Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion) for cleanup strategies.
+</Callout>
+
 ## InMemoryArtifactService
 
 Fast, temporary storage for development and testing scenarios.
@@ -121,6 +125,14 @@ if (loaded) {
   const text = Buffer.from(loaded.inlineData.data, 'base64').toString();
   console.log(`Loaded: ${text}`); // "Hello, World!"
 }
+
+// Delete an artifact when no longer needed
+await artifactService.deleteArtifact({
+  appName: 'test_app',
+  userId: 'user123',
+  sessionId: 'session456',
+  filename: 'greeting.txt'
+});
 ```
 
 <Callout type="info">
@@ -234,6 +246,14 @@ try {
 
   console.log('Available artifacts:', artifactKeys);
   // ['user:profile_picture.png', ...]
+
+  // Delete an artifact when no longer needed
+  await artifactService.deleteArtifact({
+    appName: 'photo_app',
+    userId: 'user789',
+    sessionId: 'session123',
+    filename: 'temp_thumbnail.png'
+  });
 
 } catch (error) {
   console.error('GCS operation failed:', error);
