@@ -22,9 +22,9 @@ import {
 import { Response } from "@/components/ai-elements/response";
 import { Button } from "@/components/ui/button";
 import { useChatAttachments } from "@/hooks/use-chat-attachments";
+import useVoiceRecording from "@/hooks/use-voice-recording";
 import { cn } from "@/lib/utils";
 import type { AgentListItemDto as Agent } from "../Api";
-import useVoiceRecording from "@/hooks/use-voice-recording";
 
 interface ChatPanelProps {
 	selectedAgent: Agent | null;
@@ -324,7 +324,7 @@ export function ChatPanel({
 										variant={"secondary"}
 										status={{ recording }}
 										onClick={handleVoiceRecording}
-										disabled={isLoading}
+										disabled={isLoading || isSendingMessage}
 									/>
 									<PromptInputSubmit
 										status={isSendingMessage ? "streaming" : "ready"}
