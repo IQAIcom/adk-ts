@@ -247,7 +247,8 @@ gsutil lifecycle set lifecycle.json gs://my-artifacts-bucket
 Build specific tools or administrative functions that utilize `deleteArtifact`:
 
 ```typescript
-import { BaseArtifactService, BaseSessionService } from '@iqai/adk';
+import { BaseArtifactService } from '@iqai/adk';
+import type { BaseSessionService } from '@iqai/adk';
 
 class ArtifactCleanupService {
   constructor(private artifactService: BaseArtifactService) {}
@@ -349,8 +350,10 @@ class ArtifactCleanupService {
 
   private matchesPattern(filename: string, pattern: string): boolean {
     // Escape regex metacharacters, then convert * wildcards to .*
+    // First escape all special regex characters to prevent accidental matches
+    const specialChars = /[.*+?^${}()|[\]\\]/g;
     const escapedPattern = pattern
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(specialChars, '\\$&')
       .replace(/\\\*/g, '.*');
     const regex = new RegExp('^' + escapedPattern + '$');
     return regex.test(filename);
