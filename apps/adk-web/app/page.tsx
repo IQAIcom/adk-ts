@@ -1,33 +1,40 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
-import { ChatPanel } from "@/components/chat-panel";
-import { Navbar } from "@/components/navbar";
+import { parseAsString, useQueryStates } from "nuqs";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { IncompatibleState } from "@/components/ui/incompatible-state";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { useAgents } from "@/hooks/use-agent";
 import { useCompatibility } from "@/hooks/use-compatibility";
+import { SessionManager } from "./(dashboard)/_components/session-manager";
+import { isPanelId } from "./(dashboard)/_schema";
 
 function HomeContent() {
-	const searchParams = useSearchParams();
-	const apiUrl = searchParams.get("apiUrl");
-	const port = searchParams.get("port");
+	const [urlState, setUrlState] = useQueryStates({
+		apiUrl: parseAsString,
+		port: parseAsString,
+		sessionId: parseAsString,
+		agent: parseAsString,
+		panel: {
+			parse: (value) => (isPanelId(value) ? value : null),
+			serialize: (value) => value ?? "",
+		},
+	});
 
-	// Support both legacy apiUrl and new port parameter, else default
+	const {
+		apiUrl,
+		port,
+		sessionId,
+		agent: agentName,
+		panel: selectedPanel,
+	} = urlState;
+
 	const finalApiUrl = apiUrl
 		? apiUrl
 		: port
 			? `http://localhost:${port}`
 			: "http://localhost:8042";
-
-	// Panel and session state
-	const [selectedPanel, setSelectedPanel] = useState<
-		"sessions" | "events" | "state" | "graph" | null
-	>(null);
-	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
 	const queryClient = useQueryClient();
 	const {
@@ -49,68 +56,98 @@ function HomeContent() {
 		selectAgent,
 		refreshAgents,
 		isSendingMessage,
-	} = useAgents(currentSessionId);
+	} = useAgents(sessionId);
 
-	// Subscribe to server-side hot-reload stream (SSE) and refresh data on change
-	useEffect(() => {
-		if (!finalApiUrl) return;
-		let es: EventSource | null = null;
-		try {
-			es = new EventSource(`${finalApiUrl}/reload/stream`);
-			es.onmessage = (ev) => {
-				try {
-					const data = ev.data ? JSON.parse(ev.data) : null;
-					if (data && data.type === "reload") {
-						// Refresh agents and invalidate common queries
-						refreshAgents();
-						queryClient.invalidateQueries({ queryKey: ["agents"] });
-						queryClient.invalidateQueries({ queryKey: ["sessions"] });
-						queryClient.invalidateQueries({ queryKey: ["events"] });
-					} else if (data && data.type === "state") {
-						// Targeted invalidation for the changed agent/session state
-						queryClient.invalidateQueries({
-							queryKey: ["state", finalApiUrl, data.agentPath, data.sessionId],
-						});
-					}
-				} catch {
-					// ignore parse errors
-				}
-			};
-		} catch {
-			// ignore connection failures
+	const targetAgent = useMemo(() => {
+		if (!agents.length) return null;
+		if (agentName) {
+			const found = agents.find((a) => a.name === agentName);
+			if (found) return found;
 		}
+		return agents[0];
+	}, [agents, agentName]);
+
+	const prevAgentRef = useRef<string | null>(null);
+
+	// Single unified effect for SSE hot-reload and agent selection sync
+	useEffect(() => {
+		// SSE hot-reload subscription
+		let es: EventSource | null = null;
+		if (finalApiUrl) {
+			try {
+				es = new EventSource(`${finalApiUrl}/reload/stream`);
+				es.onmessage = (ev) => {
+					try {
+						const data = ev.data ? JSON.parse(ev.data) : null;
+						if (data && data.type === "reload") {
+							refreshAgents();
+							queryClient.invalidateQueries({ queryKey: ["agents"] });
+							queryClient.invalidateQueries({ queryKey: ["sessions"] });
+							queryClient.invalidateQueries({ queryKey: ["events"] });
+						} else if (data && data.type === "state") {
+							queryClient.invalidateQueries({
+								queryKey: [
+									"state",
+									finalApiUrl,
+									data.agentPath,
+									data.sessionId,
+								],
+							});
+						}
+					} catch {
+						// ignore parse errors
+					}
+				};
+			} catch {
+				// ignore connection failures
+			}
+		}
+
+		// Agent selection sync
+		if (targetAgent) {
+			const currentAgentName = targetAgent.name;
+
+			// Check if agent changed from previous render
+			if (currentAgentName !== prevAgentRef.current) {
+				// Update via combined setter
+				setUrlState({ sessionId: null });
+				prevAgentRef.current = currentAgentName;
+			}
+
+			// Sync selected agent if needed
+			if (selectedAgent?.name !== currentAgentName) {
+				selectAgent(targetAgent);
+			}
+
+			// Set agent name in URL if not present
+			if (!agentName && currentAgentName) {
+				setUrlState({ agent: currentAgentName });
+			}
+		}
+
+		// Cleanup SSE connection
 		return () => {
 			try {
 				es?.close();
 			} catch {}
 		};
-	}, [finalApiUrl, queryClient, refreshAgents]);
+	}, [
+		finalApiUrl,
+		queryClient,
+		refreshAgents,
+		targetAgent,
+		selectedAgent,
+		agentName,
+		selectAgent,
+		setUrlState,
+	]);
 
-	// Panel action handlers
-	const handlePanelSelect = (
-		panel: "sessions" | "events" | "state" | "graph" | null,
-	) => {
-		setSelectedPanel(panel);
+	const handleAgentSelect = (agent: (typeof agents)[0]) => {
+		setUrlState({
+			agent: agent.name,
+			sessionId: null,
+		});
 	};
-	// Auto-select first agent if none selected and agents are available
-	useEffect(() => {
-		if (agents.length > 0 && !selectedAgent) {
-			console.log("Auto-selecting first agent:", agents[0].name);
-			selectAgent(agents[0]);
-		}
-	}, [agents, selectedAgent, selectAgent]);
-
-	// Reset session when switching to a different agent
-	const prevAgentRef = useRef<string | null>(null);
-	useEffect(() => {
-		const currentAgentPath = selectedAgent?.relativePath ?? null;
-		if (currentAgentPath !== prevAgentRef.current) {
-			// Agent actually changed -> clear active session so new agent's first session can auto-select
-			setCurrentSessionId(null);
-			prevAgentRef.current = currentAgentPath;
-		}
-	}, [selectedAgent]);
-	// (Session and events lifecycle + management moved into Sidebar)
 
 	if (loading || compatLoading) {
 		return <LoadingState message="Connecting to ADK server..." />;
@@ -150,49 +187,19 @@ function HomeContent() {
 	}
 
 	return (
-		<div className="h-screen flex bg-background">
-			{/* Sidebar (now includes expanded panel) */}
-			<div className="flex-shrink-0 h-full">
-				<Sidebar
-					key={selectedAgent?.relativePath || "__no_agent__"}
-					selectedPanel={selectedPanel}
-					onPanelSelect={handlePanelSelect}
-					selectedAgent={selectedAgent}
-					currentSessionId={currentSessionId}
-					onSessionChange={(id) => setCurrentSessionId(id)}
-				/>
-			</div>
-
-			{/* Main Content Area */}
-			<div className="flex-1 flex min-h-0">
-				{/* Chat Panel - Always visible, takes remaining space */}
-				<div className="flex-1 flex flex-col min-h-0">
-					{/* Navbar above chat */}
-					<div className="flex-shrink-0">
-						<Navbar
-							apiUrl={finalApiUrl}
-							agents={agents}
-							selectedAgent={selectedAgent}
-							onSelectAgent={(agent) => {
-								// Clear session first to avoid stale session requests against new agent
-								setCurrentSessionId(null);
-								selectAgent(agent);
-							}}
-						/>
-					</div>
-
-					{/* Chat Content */}
-					<div className="flex-1 min-h-0 overflow-hidden">
-						<ChatPanel
-							selectedAgent={selectedAgent}
-							messages={messages}
-							onSendMessage={sendMessage}
-							isSendingMessage={isSendingMessage}
-						/>
-					</div>
-				</div>
-			</div>
-		</div>
+		<SessionManager
+			apiUrl={finalApiUrl}
+			agents={agents}
+			selectedAgent={selectedAgent}
+			sessionId={sessionId}
+			selectedPanel={selectedPanel}
+			messages={messages}
+			isSendingMessage={isSendingMessage}
+			onSessionChange={(id) => setUrlState({ sessionId: id })}
+			onPanelSelect={(panel) => setUrlState({ panel })}
+			onAgentSelect={handleAgentSelect}
+			onSendMessage={sendMessage}
+		/>
 	);
 }
 

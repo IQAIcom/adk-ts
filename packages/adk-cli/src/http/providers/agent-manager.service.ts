@@ -2,26 +2,30 @@ import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "node:util";
-import {
-	AgentBuilder,
-	Event,
-	FullMessage,
-	InMemorySessionService,
-	Session,
-	State,
-} from "@iqai/adk";
+import type { BuiltAgent } from "@iqai/adk";
+import { FullMessage, InMemorySessionService } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import type { Agent, LoadedAgent } from "../../common/types";
 import { AgentLoader } from "./agent-loader.service";
+import {
+	clearAgentSessions as clearAgentSessionsHelper,
+	createRunnerWithSession as createRunnerWithSessionHelper,
+	getExistingSession as getExistingSessionHelper,
+	getOrCreateSession as getOrCreateSessionHelper,
+	hashState as hashStateHelper,
+	storeLoadedAgent as storeLoadedAgentHelper,
+} from "./agent-manager/sessions";
+import { extractInitialState as extractInitialStateHelper } from "./agent-manager/state";
 import { AgentScanner } from "./agent-scanner.service";
 
-const DEFAULT_APP_NAME = "adk-server";
-const USER_ID_PREFIX = "user_";
-
+const _DEFAULT_APP_NAME = "adk-server";
+const _USER_ID_PREFIX = "user_";
 @Injectable()
 export class AgentManager {
 	private agents = new Map<string, Agent>();
 	private loadedAgents = new Map<string, LoadedAgent>();
+	private builtAgents = new Map<string, BuiltAgent>();
+	private initialStateHashes = new Map<string, string>();
 	private scanner: AgentScanner;
 	private loader: AgentLoader;
 	private logger: Logger;
@@ -49,8 +53,25 @@ export class AgentManager {
 		this.logger.log(format("Found agents: %o", Array.from(this.agents.keys())));
 	}
 
-	async startAgent(agentPath: string): Promise<void> {
-		this.logger.log(format("Starting agent: %s", agentPath));
+	/**
+	 * Start an agent, optionally restoring a previous session.
+	 * @param agentPath - The path to the agent
+	 * @param preservedSessionId - Optional session ID to restore (used during hot reload)
+	 * @param forceFullReload - Force cache invalidation and session reset (used when initial state changes)
+	 */
+	async startAgent(
+		agentPath: string,
+		preservedSessionId?: string,
+		forceFullReload?: boolean,
+	) {
+		this.logger.log(
+			format(
+				"Starting agent: %s%s",
+				agentPath,
+				preservedSessionId ? ` (restoring session ${preservedSessionId})` : "",
+			),
+		);
+
 		const agent = this.validateAndGetAgent(agentPath);
 
 		if (this.loadedAgents.has(agentPath)) {
@@ -58,33 +79,70 @@ export class AgentManager {
 		}
 
 		try {
-			// Load agent module safely without stack traces on failure
-			let exportedAgent: any;
-			try {
-				exportedAgent = await this.loadAgentModule(agent);
-			} catch (e) {
-				const msg = e instanceof Error ? e.message : String(e);
-				this.logger.error(`❌ Failed to import agent: ${msg}`);
-				throw new Error(msg);
+			const agentResult = await this.loadAgentModule(agent, forceFullReload);
+
+			// Check if initial state has changed
+			const initialState = this.extractInitialState(agentResult);
+			const stateHash = hashStateHelper(initialState);
+			const previousStateHash = this.initialStateHashes.get(agentPath);
+			const stateChanged = previousStateHash && previousStateHash !== stateHash;
+
+			let sessionIdToUse = preservedSessionId;
+			if (stateChanged) {
+				this.logger.log(
+					format(
+						"Initial state changed for %s - forcing full reload (old: %s, new: %s)",
+						agentPath,
+						previousStateHash,
+						stateHash,
+					),
+				);
+				// Clear existing sessions when initial state changes
+				await clearAgentSessionsHelper(
+					this.sessionService,
+					agentPath,
+					this.logger,
+				);
+				sessionIdToUse = undefined; // Don't preserve session if state changed
 			}
 
-			const sessionToUse = await this.getOrCreateSession(
-				agentPath,
-				exportedAgent,
-			);
-			const runner = await this.createRunnerWithSession(
-				exportedAgent,
+			// Store the new state hash
+			this.initialStateHashes.set(agentPath, stateHash);
+
+			const sessionToUse =
+				sessionIdToUse && !stateChanged
+					? await getExistingSessionHelper(
+							this.sessionService,
+							agentPath,
+							sessionIdToUse,
+							this.logger,
+						)
+					: await getOrCreateSessionHelper(
+							this.sessionService,
+							agentPath,
+							agentResult,
+							(r) => extractInitialStateHelper(r, this.logger),
+							this.logger,
+						);
+			const runner = await createRunnerWithSessionHelper(
+				this.sessionService,
+				agentResult.agent,
 				sessionToUse,
 				agentPath,
 			);
-
-			await this.storeLoadedAgent(
+			await storeLoadedAgentHelper(
+				this.sessionService,
 				agentPath,
-				exportedAgent,
+				agentResult.agent,
 				runner,
 				sessionToUse,
 				agent,
+				(path, payload) => this.loadedAgents.set(path, payload as LoadedAgent),
+				this.logger,
+				(path, built) => this.builtAgents.set(path, built),
 			);
+
+			return { session: sessionIdToUse };
 		} catch (error) {
 			const agentName = agent?.name ?? agentPath;
 			const message = error instanceof Error ? error.message : String(error);
@@ -112,7 +170,12 @@ export class AgentManager {
 		return agent;
 	}
 
-	private async loadAgentModule(agent: Agent): Promise<any> {
+	private async loadAgentModule(
+		agent: Agent,
+		forceInvalidateCache?: boolean,
+	): Promise<{ agent: any; builtAgent?: any }> {
+		// Try both .js and .ts files, prioritizing .js if it exists
+		// Normalize paths for cross-platform compatibility
 		let agentFilePath = normalize(join(agent.absolutePath, "agent.js"));
 		if (!existsSync(agentFilePath)) {
 			agentFilePath = normalize(join(agent.absolutePath, "agent.ts"));
@@ -126,227 +189,29 @@ export class AgentManager {
 		this.loader.loadEnvironmentVariables(agentFilePath);
 		const agentFileUrl = pathToFileURL(agentFilePath).href;
 
-		try {
-			const agentModule: Record<string, unknown> = agentFilePath.endsWith(".ts")
-				? await this.loader.importTypeScriptFile(
-						agentFilePath,
-						agent.projectRoot,
-					)
-				: ((await import(agentFileUrl)) as Record<string, unknown>);
+		// Use dynamic import to load the agent
+		// For TS files, pass the project root to avoid redundant project root discovery
+		const agentModule: any = agentFilePath.endsWith(".ts")
+			? await this.loader.importTypeScriptFile(
+					agentFilePath,
+					agent.projectRoot,
+					forceInvalidateCache,
+				)
+			: ((await import(agentFileUrl)) as any);
 
-			const exportedAgent = await this.loader.resolveAgentExport(agentModule);
-
-			if (!exportedAgent?.agent.name) {
-				throw new Error(
-					`Invalid agent export in ${agentFilePath}. Expected a BaseAgent instance with a name property.`,
-				);
-			}
-
-			return exportedAgent;
-		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
-			throw new Error(msg);
-		}
-	}
-
-	private async getOrCreateSession(
-		agentPath: string,
-		exportedAgent: any,
-	): Promise<Session> {
-		const userId = `${USER_ID_PREFIX}${agentPath}`;
-		const appName = DEFAULT_APP_NAME;
-
-		const existingSessions = await this.sessionService.listSessions(
-			appName,
-			userId,
+		const agentResult = await this.loader.resolveAgentExport(
+			agentModule as any,
 		);
 
-		if (existingSessions.sessions.length > 0) {
-			const mostRecentSession = existingSessions.sessions.reduce(
-				(latest, current) =>
-					current.lastUpdateTime > latest.lastUpdateTime ? current : latest,
+		// Validate basic shape
+		if (!agentResult?.agent?.name) {
+			throw new Error(
+				`Invalid agent export in ${agentFilePath}. Expected a BaseAgent instance with a name property.`,
 			);
-
-			// Check if the session has state, if not, initialize it
-			if (
-				!mostRecentSession.state ||
-				Object.keys(mostRecentSession.state).length === 0
-			) {
-				this.logger.log(
-					"Existing session has no state, will initialize with default state",
-				);
-
-				// Get the default/initial state from the agent if available
-				const initialState = this.getInitialStateForAgent(exportedAgent);
-
-				if (initialState) {
-					const stateUpdateEvent = new Event({
-						author: "system",
-						actions: {
-							stateDelta: initialState,
-							artifactDelta: {},
-						},
-						content: {
-							parts: [
-								{
-									text: "Initialized session with default state from agent definition.",
-								},
-							],
-						},
-					});
-
-					// This updates both the session in storage and the local `mostRecentSession` object.
-					await this.sessionService.appendEvent(
-						mostRecentSession,
-						stateUpdateEvent,
-					);
-					this.logger.log(
-						format("Updated session with initial state: %o", {
-							sessionId: mostRecentSession.id,
-							stateKeys: Object.keys(initialState),
-						}),
-					);
-				}
-			}
-
-			this.logger.log(
-				format("Reusing existing session: %o", {
-					sessionId: mostRecentSession.id,
-					hasState: !!mostRecentSession.state,
-					stateKeys: mostRecentSession.state
-						? Object.keys(mostRecentSession.state)
-						: [],
-					lastUpdateTime: mostRecentSession.lastUpdateTime,
-				}),
-			);
-			return mostRecentSession;
 		}
 
-		this.logger.log("No existing sessions found, creating new session");
-
-		// Get initial state
-		const initialState = this.getInitialStateForAgent(exportedAgent);
-
-		const agentBuilder = AgentBuilder.create(exportedAgent.name).withAgent(
-			exportedAgent,
-		);
-		agentBuilder.withSessionService(this.sessionService, {
-			userId,
-			appName,
-			state: initialState,
-		});
-		const { session } = await agentBuilder.build();
-
-		this.logger.log(
-			format("New session created: %o", {
-				sessionId: session.id,
-				hasState: !!session.state,
-				stateKeys: session.state ? Object.keys(session.state) : [],
-			}),
-		);
-
-		return session;
-	}
-
-	/**
-	 * Extract initial state from the agent definition
-	 * This allows agents to define their default state
-	 */
-	private getInitialStateForAgent(exportedAgent: any) {
-		const sessions = exportedAgent?.sessionService?.sessions;
-		if (!sessions) return undefined;
-
-		for (const [, userSessions] of sessions) {
-			for (const [, session] of userSessions) {
-				// session itself is a Map of actual session objects
-				for (const [, innerSession] of session) {
-					const state = innerSession?.state;
-					if (!state) continue;
-
-					const stateKeys =
-						state instanceof Map
-							? Array.from(state.keys())
-							: Object.keys(state);
-
-					if (
-						(state instanceof Map && state.size > 0) ||
-						(typeof state === "object" && stateKeys.length > 0)
-					) {
-						return state as State;
-					}
-				}
-			}
-		}
-		return undefined;
-	}
-
-	private async createRunnerWithSession(
-		exportedAgent: any,
-		sessionToUse: Session,
-		agentPath: string,
-	): Promise<any> {
-		const userId = `${USER_ID_PREFIX}${agentPath}`;
-		const appName = DEFAULT_APP_NAME;
-
-		const agentBuilder = AgentBuilder.create(exportedAgent.name).withAgent(
-			exportedAgent,
-		);
-
-		agentBuilder.withSessionService(this.sessionService, {
-			userId,
-			appName,
-			state: sessionToUse.state,
-			sessionId: sessionToUse.id,
-		});
-
-		const { runner } = await agentBuilder.build();
-		return runner;
-	}
-
-	private async storeLoadedAgent(
-		agentPath: string,
-		exportedAgent: any,
-		runner: any,
-		sessionToUse: Session,
-		agent: Agent,
-	): Promise<void> {
-		const userId = `${USER_ID_PREFIX}${agentPath}`;
-		const appName = DEFAULT_APP_NAME;
-
-		const loadedAgent: LoadedAgent = {
-			agent: exportedAgent,
-			runner,
-			sessionId: sessionToUse.id,
-			userId,
-			appName,
-		};
-
-		this.loadedAgents.set(agentPath, loadedAgent);
-		agent.instance = exportedAgent;
-		agent.name = exportedAgent.name;
-
-		try {
-			const existingSession = await this.sessionService.getSession(
-				appName,
-				userId,
-				sessionToUse.id,
-			);
-
-			if (!existingSession) {
-				this.logger.log(
-					format("Creating session in sessionService: %s", sessionToUse.id),
-				);
-				await this.sessionService.createSession(
-					appName,
-					userId,
-					sessionToUse.state,
-					sessionToUse.id,
-				);
-			}
-		} catch (error) {
-			const msg = error instanceof Error ? error.message : String(error);
-			this.logger.error(`Error ensuring session exists: ${msg}`);
-		}
+		// Return the full result (agent + builtAgent if available)
+		return agentResult;
 	}
 
 	async stopAgent(agentPath: string): Promise<void> {
@@ -402,6 +267,92 @@ export class AgentManager {
 			this.logger.error(`Error sending message to agent ${agentPath}: ${msg}`);
 			throw new Error(`Failed to send message to agent: ${msg}`);
 		}
+	}
+
+	/**
+	 * Get initial state for an agent path
+	 * Public method that can be called by other services
+	 */
+	getInitialStateForAgent(agentPath: string): any | undefined {
+		const agent = this.agents.get(agentPath);
+		if (!agent) {
+			return undefined;
+		}
+		if (!agent.instance) {
+			return undefined;
+		}
+		// Use the builtAgent from the separate map if available
+		const builtAgent = this.builtAgents.get(agentPath);
+		const agentResult = {
+			agent: agent.instance,
+			builtAgent: builtAgent,
+		};
+		return this.extractInitialState(agentResult);
+	}
+
+	/**
+	 * Extract initial state from an agent result
+	 */
+	private extractInitialState(agentResult: {
+		agent: any;
+		builtAgent?: any;
+	}): any | undefined {
+		return extractInitialStateHelper(agentResult, this.logger);
+	}
+
+	/**
+	 * Get session info for all loaded agents before stopping
+	 * Used for preserving sessions during hot reload
+	 */
+	getLoadedAgentSessions(): Map<string, string> {
+		const sessions = new Map<string, string>();
+		for (const [agentPath, loadedAgent] of this.loadedAgents.entries()) {
+			sessions.set(agentPath, loadedAgent.sessionId);
+		}
+		return sessions;
+	}
+
+	/**
+	 * Check if initial state has changed for any loaded agent
+	 * Returns true if any agent's initial state hash has changed
+	 */
+	async hasInitialStateChanged(): Promise<boolean> {
+		for (const [agentPath, agent] of this.agents.entries()) {
+			if (!this.loadedAgents.has(agentPath)) {
+				continue; // Skip agents that aren't loaded
+			}
+
+			try {
+				// Temporarily load the agent to check its state
+				const agentResult = await this.loadAgentModule(agent, false);
+				const initialState = this.extractInitialState(agentResult);
+				const stateHash = hashStateHelper(initialState);
+				const previousStateHash = this.initialStateHashes.get(agentPath);
+
+				if (previousStateHash && previousStateHash !== stateHash) {
+					this.logger.log(
+						format(
+							"Detected initial state change for %s (old: %s, new: %s)",
+							agentPath,
+							previousStateHash,
+							stateHash,
+						),
+					);
+					return true;
+				}
+			} catch (error) {
+				// If we can't load the agent, assume state might have changed
+				this.logger.warn(
+					format(
+						"Failed to check state for %s: %s",
+						agentPath,
+						error instanceof Error ? error.message : String(error),
+					),
+				);
+				return true; // Be safe and reload
+			}
+		}
+		return false;
 	}
 
 	stopAllAgents(): void {

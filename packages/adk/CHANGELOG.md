@@ -1,5 +1,23 @@
 # @iqai/adk
 
+## 0.5.6
+
+### Patch Changes
+
+- 8d5ba1e: ADK WEB now supports voice input
+
+## 0.5.5
+
+### Patch Changes
+
+- 05bb1b8: Fix state variable injection: serialize objects to JSON and parse nested properties
+
+## 0.5.4
+
+### Patch Changes
+
+- 2167a47: Adds polymarket mcp wrapper
+
 ## 0.5.3
 
 ### Patch Changes

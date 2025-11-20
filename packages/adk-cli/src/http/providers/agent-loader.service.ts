@@ -23,6 +23,8 @@ export class AgentLoader {
 	private readonly errorUtils: ErrorHandlingUtils;
 	private readonly guards: TypeGuards;
 	private readonly resolver: AgentResolver;
+	private static activeCacheFiles = new Set<string>();
+	private static projectRoots = new Set<string>();
 
 	constructor(private quiet = false) {
 		this.logger = new Logger("agent-loader");
@@ -99,11 +101,30 @@ export class AgentLoader {
 	}
 
 	/**
+	 * Track a cache file for cleanup
+	 */
+	private trackCacheFile(filePath: string, projectRoot: string): void {
+		AgentLoader.activeCacheFiles.add(filePath);
+		AgentLoader.projectRoots.add(projectRoot);
+	}
+
+	/**
+	 * Normalize path to use forward slashes (cross-platform)
+	 */
+	private normalizePath(path: string): string {
+		return path.replace(/\\/g, "/");
+	}
+
+	/**
 	 * Import a TypeScript file by compiling it on-demand
+	 * @param filePath - Path to the TypeScript file
+	 * @param providedProjectRoot - Optional project root path
+	 * @param forceInvalidateCache - Force cache invalidation (full reload)
 	 */
 	async importTypeScriptFile(
 		filePath: string,
 		providedProjectRoot?: string,
+		forceInvalidateCache?: boolean,
 	): Promise<ModuleExport> {
 		const normalizedFilePath = normalize(resolve(filePath));
 		const projectRoot =
@@ -132,11 +153,14 @@ export class AgentLoader {
 			const tsconfigPath = join(projectRoot, "tsconfig.json");
 
 			// Check if we need to rebuild
-			const needRebuild = this.isRebuildNeeded(
-				outFile,
-				normalizedFilePath,
-				tsconfigPath,
-			);
+			// Force rebuild if explicitly requested (e.g., initial state changed)
+			const needRebuild =
+				forceInvalidateCache ||
+				this.isRebuildNeeded(outFile, normalizedFilePath, tsconfigPath);
+
+			if (forceInvalidateCache && !this.quiet) {
+				this.logger.log(`Forcing cache invalidation for ${normalizedFilePath}`);
+			}
 
 			const plugins = [
 				this.pathUtils.createPathMappingPlugin(projectRoot),

@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { marked } from "marked";
 import * as markedTerminal from "marked-terminal";
 import { Command, CommandRunner, Option } from "nest-commander";
+import { envSchema } from "../common/schema";
 import { startHttpServer } from "../http/bootstrap";
 
 // Setup markdown terminal renderer
@@ -535,9 +536,8 @@ class AgentChatClient {
 export class RunCommand extends CommandRunner {
 	async run(passed: string[], options?: RunOptions): Promise<void> {
 		const agentPathArg = passed?.[0];
-		const envVerbose = process.env.ADK_VERBOSE;
-		const isVerbose =
-			options?.verbose ?? (envVerbose === "1" || envVerbose === "true");
+		const env = envSchema.parse(process.env);
+		const isVerbose = options?.verbose ?? env.ADK_VERBOSE;
 
 		const consoleManager = new ConsoleManager(isVerbose);
 		// Hook console and child process only in non-verbose mode

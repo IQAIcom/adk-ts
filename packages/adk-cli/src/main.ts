@@ -3,6 +3,7 @@ import "reflect-metadata";
 
 import { CommandFactory } from "nest-commander";
 import { AppModule } from "./app.module";
+import { envSchema } from "./common/schema";
 
 // Lightweight, dependency-free version flag handling executed before Nest bootstraps.
 // Supports: adk --version | adk -v | adk -V
@@ -24,9 +25,12 @@ try {
 // We only want framework bootstrap logs when actually starting a server
 // (serve / run / web). Plain `adk` (help) should be clean.
 function selectLogger(): any {
+	const env = envSchema.parse(process.env);
+	const debug = env.ADK_DEBUG;
 	// Unified rule: stay silent by default to avoid polluting UX.
 	// Opt-in via env var for framework level diagnostics.
-	if (process.env.ADK_DEBUG_NEST === "1") {
+
+	if (debug) {
 		return ["log", "error", "warn", "debug", "verbose"] as const;
 	}
 	// Keep errors & warnings only (avoid boot noise like InstanceLoader lines).

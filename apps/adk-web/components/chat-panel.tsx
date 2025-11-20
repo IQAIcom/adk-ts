@@ -1,7 +1,8 @@
 "use client";
 
 import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { Message as ChatMessage } from "@/app/(dashboard)/_schema";
 import { ConversationAutoScroll } from "@/components/ai-elements/conversation-auto-scroll";
 import {
@@ -12,6 +13,7 @@ import {
 import {
 	PromptInput,
 	PromptInputButton,
+	PromptInputMicButton,
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputToolbar,
@@ -20,6 +22,7 @@ import {
 import { Response } from "@/components/ai-elements/response";
 import { Button } from "@/components/ui/button";
 import { useChatAttachments } from "@/hooks/use-chat-attachments";
+import useVoiceRecording from "@/hooks/use-voice-recording";
 import { cn } from "@/lib/utils";
 import type { AgentListItemDto as Agent } from "../Api";
 
@@ -28,6 +31,7 @@ interface ChatPanelProps {
 	messages: ChatMessage[];
 	onSendMessage: (message: string, attachments?: File[]) => void;
 	isSendingMessage?: boolean;
+	isLoading?: boolean;
 }
 
 export function ChatPanel({
@@ -35,6 +39,7 @@ export function ChatPanel({
 	messages,
 	onSendMessage,
 	isSendingMessage = false,
+	isLoading = false,
 }: ChatPanelProps) {
 	const [inputMessage, setInputMessage] = useState("");
 	const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -52,6 +57,16 @@ export function ChatPanel({
 		isDragOver,
 	} = useChatAttachments();
 
+	const {
+		recording,
+		error,
+		transcribedText,
+		isTranscribing,
+		startRecording,
+		stopRecording,
+		clearAudio,
+	} = useVoiceRecording();
+
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if ((!inputMessage.trim() && attachedFiles.length === 0) || !selectedAgent)
@@ -65,6 +80,38 @@ export function ChatPanel({
 			inputRef.current?.focus();
 		});
 	};
+
+	const handleVoiceRecording = async () => {
+		if (recording) {
+			// Stop recording and get both the audio file and transcript
+			const { file, transcript } = await stopRecording();
+
+			if (file) {
+				// Use the transcribed text as the message
+				// If transcription failed or is empty, use a fallback message
+				const messageText =
+					transcript?.trim() || "Voice message (transcription unavailable)";
+
+				// Send the transcribed text along with the audio file
+				// The agent receives the text message, and optionally the audio file as attachment
+				onSendMessage(messageText, [file]);
+				clearAudio();
+			} else {
+				toast.error("No audio was recorded");
+			}
+		} else {
+			// Start recording (transcription starts automatically)
+			await startRecording();
+		}
+	};
+
+	// Show error toast if recording fails
+	useEffect(() => {
+		if (error) {
+			toast.error(error);
+			clearAudio();
+		}
+	}, [error, clearAudio]);
 
 	// Scroll logic moved to ConversationAutoScroll
 
@@ -147,6 +194,48 @@ export function ChatPanel({
 								</Message>
 							))}
 
+							{recording && (
+								<>
+									<Message from="user" key="recording">
+										<MessageContent>
+											<div className="px-2 text-sm">
+												{transcribedText ? (
+													<>
+														<span className="text-foreground">
+															{transcribedText}
+														</span>
+														{isTranscribing && (
+															<span className="ml-2 inline-block w-2 h-4 bg-primary animate-pulse" />
+														)}
+													</>
+												) : (
+													<span className="italic animate-pulse text-muted-foreground">
+														{isTranscribing
+															? "Listening and transcribing..."
+															: "Recording..."}
+													</span>
+												)}
+											</div>
+										</MessageContent>
+										<MessageAvatar
+											icon={<UserIcon className="size-4" />}
+											name="You"
+										/>
+									</Message>
+									<Message from="assistant" key="listening">
+										<MessageContent>
+											<Response className="px-2 italic animate-pulse text-sm text-muted-foreground">
+												Listening...
+											</Response>
+										</MessageContent>
+										<MessageAvatar
+											icon={<Bot className="size-4" />}
+											name={selectedAgent.name || "Assistant"}
+										/>
+									</Message>
+								</>
+							)}
+
 							{/* In-conversation loading indicator (appears after user's last message) */}
 							{isSendingMessage && (
 								<Message from="assistant" key="loading">
@@ -216,6 +305,7 @@ export function ChatPanel({
 										: `Message ${selectedAgent.name}...`
 								}
 								onChange={(e) => setInputMessage(e.target.value)}
+								disabled={isLoading || isSendingMessage}
 							/>
 							<PromptInputToolbar>
 								<PromptInputTools>
@@ -224,17 +314,27 @@ export function ChatPanel({
 										onClick={handleFileAttach}
 										className="transition-colors hover:bg-accent hover:text-accent-foreground"
 										title="Attach files"
+										disabled={isLoading || isSendingMessage}
 									>
 										<Paperclip className="size-4" />
 									</PromptInputButton>
 								</PromptInputTools>
-								<PromptInputSubmit
-									status={isSendingMessage ? "streaming" : "ready"}
-									disabled={
-										(!inputMessage.trim() && attachedFiles.length === 0) ||
-										isSendingMessage
-									}
-								/>
+								<div>
+									<PromptInputMicButton
+										variant={"secondary"}
+										status={{ recording }}
+										onClick={handleVoiceRecording}
+										disabled={isLoading || isSendingMessage}
+									/>
+									<PromptInputSubmit
+										status={isSendingMessage ? "streaming" : "ready"}
+										disabled={
+											(!inputMessage.trim() && attachedFiles.length === 0) ||
+											isSendingMessage ||
+											isLoading
+										}
+									/>
+								</div>
 							</PromptInputToolbar>
 						</PromptInput>
 						{/* Drag and Drop Overlay */}
