@@ -62,64 +62,6 @@ Break complex problems into manageable steps. Each sub-agent can focus on what i
 **🎯 Specialized Orchestration**  
 Combine different agent types - use LLM agents for reasoning, tool agents for actions, and workflow agents for coordination.
 
-## Quick Start Example
-
-Here's a content creation pipeline using AgentBuilder with sequential workflow:
-
-```typescript
-import * as dotenv from "dotenv";
-import { LlmAgent, SequentialAgent, AgentBuilder } from "@iqai/adk";
-
-dotenv.config();
-
-// Create specialized agents for each step
-const writerAgent = new LlmAgent({
-  name: "content_writer_agent",
-  model: "gpt-4o-mini",
-  description: "Creates engaging and informative articles on given topics",
-  instruction: `Write a comprehensive, engaging article on the given topic. 
-  Include an introduction, main points with examples, and a conclusion.`,
-});
-
-const editorAgent = new LlmAgent({
-  name: "copy_editor_agent",
-  model: "gpt-4o-mini",
-  description: "Edits content for clarity, grammar, and style",
-  instruction: `Review and edit the article for clarity, grammar, and style. 
-  Improve readability while maintaining the original voice and message.`,
-});
-
-const factCheckerAgent = new LlmAgent({
-  name: "fact_checker_agent",
-  model: "gpt-4o-mini",
-  description: "Verifies claims and identifies statements requiring sources",
-  instruction: `Verify factual claims using web search. Flag any unsupported 
-  statements and add citations where needed.`,
-});
-
-
-// Sequential pipeline: Write → Edit → Fact-check
-const contentCreationAgent = () => {
-  return AgentBuilder.create("content_creation_pipeline")
-    .withModel("gpt-4o-mini")
-    .withDescription("End-to-end content creation with quality controls")
-    .asSequential([writerAgent, editorAgent, factCheckerAgent])
-    .build();
-};
-
-async function main() {
-  const { runner } = await contentCreationAgent();
-  const response = await runner.ask(
-    "Write an article about the benefits of renewable energy"
-  );
-
-  console.log("📝 Final Response:\n");
-  console.log(response);
-}
-
-main().catch(console.error);
-```
-
 ## Choosing the Right Workflow Type
 
 Each workflow type solves different coordination challenges:
