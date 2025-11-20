@@ -20,79 +20,59 @@ Unlike [sequential agents](/docs/framework/agents/workflow-agents/sequential-age
 Here's a content analysis system that simultaneously examines multiple aspects of user feedback:
 
 ```typescript
-import { LlmAgent, ParallelAgent, WebSearchTool } from "@iqai/adk";
+import { LlmAgent, ParallelAgent } from "@iqai/adk";
 
-// Parallel analysis: Multiple perspectives on the same content
-const sentimentAnalyzer = new LlmAgent({
-  name: "sentiment-analyzer",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Analyze the sentiment of the given text. Provide:
-    - Overall sentiment (positive/negative/neutral)
-    - Confidence score (0-1)
-    - Key emotional indicators
-    - Tone analysis (formal, casual, frustrated, etc.)
-  `,
-  outputKey: "sentiment_analysis",
+// Parallel analysis agents for user feedback - each analyzes different aspects simultaneously
+const sentimentAgent = new LlmAgent({
+  name: "sentiment_agent",
+  description:
+    "Analyzes the overall sentiment and emotional tone of user feedback",
+  instruction: `Analyze the sentiment of the user feedback. Classify as positive, negative, or neutral, and provide a confidence score. Identify specific emotional indicators.`,
+  outputKey: "sentiment_analysis", // Key for storing sentiment results
 });
 
-const topicExtractor = new LlmAgent({
-  name: "topic-extractor",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Extract key topics and themes from the text:
-    - Main topics discussed
-    - Product/feature mentions
-    - Categories and tags
-    - Intent classification (complaint, praise, question, etc.)
-  `,
-  outputKey: "topics",
+const topicAgent = new LlmAgent({
+  name: "topic_agent",
+  description: "Categorizes feedback into relevant topics and themes",
+  instruction: `Identify the main topics and themes in the user feedback. Categorize into areas like product features, customer service, pricing, usability, etc. List specific topics mentioned.`,
+  outputKey: "topic_categories", // Key for storing topic results
 });
 
-const priorityAssessor = new LlmAgent({
-  name: "priority-assessor",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Assess the urgency and priority of this feedback:
-    - Priority level (high/medium/low)
-    - Urgency indicators
-    - Business impact assessment
-    - Recommended response timeframe
-  `,
-  outputKey: "priority_assessment",
+const issueAgent = new LlmAgent({
+  name: "issue_agent",
+  description:
+    "Identifies specific problems, bugs, or concerns mentioned in feedback",
+  instruction: `Extract and categorize any specific issues, problems, or concerns mentioned in the feedback. Prioritize critical issues and suggest severity levels.`,
+  outputKey: "identified_issues", // Key for storing issue results
 });
 
-const keywordAnalyzer = new LlmAgent({
-  name: "keyword-analyzer",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Extract important keywords and phrases:
-    - Key terms and phrases
-    - Brand/competitor mentions
-    - Technical terms
-    - Action items mentioned
-  `,
-  outputKey: "keywords",
+const suggestionAgent = new LlmAgent({
+  name: "suggestion_agent",
+  description: "Extracts user suggestions and improvement ideas",
+  instruction: `Identify any suggestions, recommendations, or improvement ideas mentioned in the feedback. Organize them by category and feasibility.`,
+  outputKey: "user_suggestions", // Key for storing suggestion results
 });
 
-// All agents run simultaneously on the same input
-const feedbackAnalyzer = new ParallelAgent({
-  name: "feedback-analyzer",
-  description: "Multi-perspective analysis of customer feedback",
+const satisfactionAgent = new LlmAgent({
+  name: "satisfaction_agent",
+  description: "Rates overall user satisfaction and likelihood to recommend",
+  instruction: `Rate the user's overall satisfaction on a scale of 1-10. Assess likelihood to recommend and identify key satisfaction drivers or pain points.`,
+  outputKey: "satisfaction_rating", // Key for storing satisfaction results
+});
+
+// Parallel analysis system - demonstrates concurrent execution pattern
+const feedbackAgent = new ParallelAgent({
+  name: "feedback_agent",
+  description:
+    "Comprehensive parallel analysis of user feedback across multiple dimensions",
   subAgents: [
-    sentimentAnalyzer,
-    topicExtractor,
-    priorityAssessor,
-    keywordAnalyzer,
+    sentimentAgent,
+    topicAgent,
+    issueAgent,
+    suggestionAgent,
+    satisfactionAgent,
   ],
 });
-
-// Usage: Get comprehensive analysis in parallel
-const analysis = await feedbackAnalyzer.run({
-  message:
-    "The new checkout process is confusing and I can't complete my purchase!",
-});
-// Results available at: analysis.sentiment_analysis, analysis.topics, analysis.priority_assessment, analysis.keywords
 ```
 
 ### Visual Flow
@@ -100,15 +80,17 @@ const analysis = await feedbackAnalyzer.run({
 <Mermaid
   chart="
 flowchart TD
-  U[User or Upstream] --> P[ParallelAgent]
-  P --> A[Agent A]
-  P --> B[Agent B]
-  P --> C[Agent C]
-  A -. writes state: a_key .-> P
-  B -. writes state: b_key .-> P
-  C -. writes state: c_key .-> P
-  P --> G[Gather/Synthesize]
-  G -. reads a_key,b_key,c_key .-> P
+  U[User Feedback] --> P[ParallelAgent]
+  P --> S[Sentiment Agent]
+  P --> T[Topic Agent]
+  P --> I[Issue Agent]
+  P --> SG[Suggestion Agent]
+  P --> SA[Satisfaction Agent]
+  S -. sentiment_analysis .-> P
+  T -. topic_categories .-> P
+  I -. identified_issues .-> P
+  SG -. user_suggestions .-> P
+  SA -. satisfaction_rating .-> P
 "
 />
 
