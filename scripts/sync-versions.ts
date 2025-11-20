@@ -9,7 +9,6 @@ const ADK_PACKAGE = path.join(ROOT_DIR, "packages/adk/package.json");
 
 // Directories to search for package.json files
 const SYNC_DIRS = [
-	{ path: "apps/examples", pattern: "direct" }, // Only the direct package.json
 	{ path: "apps/starter-templates", pattern: "subdirs" }, // All subdirectories
 ];
 
