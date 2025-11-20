@@ -21,17 +21,14 @@ Perfect for workflows where order matters: research before analysis, writing bef
 Here's a market research pipeline that transforms a simple query into comprehensive business intelligence:
 
 ```typescript
-import * as dotenv from "dotenv";
 import { LlmAgent, SequentialAgent } from "@iqai/adk";
-
-dotenv.config();
 
 // Step 1: Create initial content
 const writerAgent = new LlmAgent({
   name: "writer_agent",
   description: "Creates engaging and informative articles on given topics",
   instruction: `Write a comprehensive, engaging article on the given topic. Include an introduction, main points with examples, and a conclusion.`,
-  outputKey: "draft_content",
+  outputKey: "draft_content", // Key for passing output to next agent
 });
 
 // Step 2: Edit for clarity and style
@@ -39,7 +36,7 @@ const editorAgent = new LlmAgent({
   name: "editor_agent",
   description: "Edits content for clarity, grammar, and style",
   instruction: `Review and edit the article for clarity, grammar, and style. Improve readability while maintaining the original voice and message.`,
-  outputKey: "edited_content",
+  outputKey: "edited_content", // Key for passing output to next agent
 });
 
 // Step 3: Verify facts and add citations
@@ -47,7 +44,7 @@ const factCheckerAgent = new LlmAgent({
   name: "fact_checker_agent",
   description: "Verifies factual claims and adds citations where needed",
   instruction: `Verify factual claims in the content. Flag any unsupported statements and add citations where needed. Ensure accuracy and credibility.`,
-  outputKey: "verified_content",
+  outputKey: "verified_content", // Final output key
 });
 
 // Sequential pipeline: write → edit → fact_check
@@ -63,13 +60,10 @@ const contentCreationAgent = new SequentialAgent({
 <Mermaid
   chart="
 flowchart TD
-  U[User Query] --> S[SequentialAgent]
-  S --> R[Research Agent]
-  R --> A[Analysis Agent]
-  A --> T[Strategist Agent]
-  R -. market data .-> S
-  A -. insights + data .-> S
-  T -. strategy + insights + data .-> S
+    A[User Query] --> B[Writer Agent]
+    B --> C[Editor Agent]
+    C --> D[Fact Checker Agent]
+    D --> E[Final Verified Content]
 "
 />
 
@@ -92,8 +86,8 @@ Execution order is guaranteed - no race conditions or unpredictable results. Per
 
 <Callout type="info" title="Data Flow Between Agents">
   Agents automatically share session state, so later agents can reference
-  earlier results. Use descriptive output and clear instructions to help agents
-  understand what information to pass forward.
+  earlier results. Use unique `outputKey` values for each agent and clear
+  instructions to help agents understand what information to pass forward.
 </Callout>
 
 ## Real-World Use Cases
