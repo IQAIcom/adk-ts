@@ -21,76 +21,80 @@ Unlike [sequential agents](/docs/framework/agents/workflow-agents/sequential-age
 
 ## Quick Start Example
 
-Here's a content refinement system that iteratively improves writing until it meets quality standards:
+Here's a research synthesis agent that iteratively gathers and refines information until a comprehensive understanding is achieved:
 
 ```typescript
 import { LlmAgent, LoopAgent, Event, EventActions } from "@iqai/adk";
 
-// Step 1: Content improver that refines the current draft
-const contentImprover = new LlmAgent({
-  name: "content-improver",
+// Research question generator
+const researchPlannerAgent = new LlmAgent({
+  name: "research_planner_agent",
   model: "gemini-2.5-flash",
-  instruction: `
-    Improve the current content by:
-    - Enhancing clarity and readability
-    - Strengthening arguments and evidence
-    - Improving flow and structure
-    - Fixing grammar and style issues
-    
-    Provide the improved version as your output.
-  `,
-  outputKey: "current_draft",
+  description: "Generates focused research questions and search strategies",
+  instruction:
+    "Break down the research topic into specific, answerable questions. Prioritize the most important questions to investigate.",
+  outputKey: "research_questions",
 });
 
-// Step 2: Quality evaluator that decides if we're done
-const qualityEvaluator = new LlmAgent({
-  name: "quality-evaluator",
+// Information gatherer using search
+const infoGathererAgent = new LlmAgent({
+  name: "info_gatherer_agent",
   model: "gemini-2.5-flash",
-  instruction: `
-    Evaluate the current draft quality on a scale of 1-10:
-    - Clarity and readability (1-10)
-    - Argument strength (1-10) 
-    - Professional tone (1-10)
-    - Grammar and style (1-10)
-    
-    If ALL scores are 8 or higher, respond with "QUALITY_ACHIEVED".
-    Otherwise, provide specific feedback for improvement.
-  `,
-  outputKey: "quality_assessment",
+  description: "Gathers information from various sources",
+  instruction:
+    "Search for and collect relevant information to answer the research questions. Be thorough but focused.",
+  outputKey: "gathered_info",
 });
 
-// Step 3: Stop condition checker
-const stopConditionChecker = new (class extends LlmAgent {
+// Synthesis and gap analyzer
+const synthesisAgent = new LlmAgent({
+  name: "synthesis_agent",
+  model: "gemini-2.5-flash",
+  description: "Synthesizes information and identifies knowledge gaps",
+  instruction:
+    "Analyze the gathered information. Synthesize key findings and identify what important questions remain unanswered.",
+  outputKey: "synthesis_analysis",
+});
+
+// Research completion checker
+const researchCompleterAgent = new (class extends LlmAgent {
   constructor() {
     super({
-      name: "stop-checker",
-      description: "Stops loop when quality is achieved",
+      name: "research_completer_agent",
+      description: "Determines if research is sufficiently complete",
     });
   }
 
   protected async *runAsyncImpl(ctx: any) {
-    const assessment = ctx.session.state.get("quality_assessment", "");
-    const qualityAchieved = assessment.includes("QUALITY_ACHIEVED");
+    const synthesis = ctx.session.state.get("synthesis_analysis", "");
+    const questions = ctx.session.state.get("research_questions", "");
 
+    // Check if major knowledge gaps remain
+    const hasMajorGaps =
+      synthesis.toLowerCase().includes("major gap") ||
+      synthesis.toLowerCase().includes("insufficient") ||
+      synthesis.toLowerCase().includes("unclear");
+
+    // Emit event indicating whether to escalate (continue research) or not
     yield new Event({
       author: this.name,
-      actions: new EventActions({ escalate: qualityAchieved }),
+      actions: new EventActions({ escalate: !hasMajorGaps }),
     });
   }
 })();
 
-// Iterative refinement loop - up to 5 improvement cycles
-const contentRefinementLoop = new LoopAgent({
-  name: "content-refinement-loop",
-  description: "Iteratively improves content until quality standards are met",
-  subAgents: [contentImprover, qualityEvaluator, stopConditionChecker],
-  maxIterations: 5,
-});
-
-// Usage: Transform rough draft into polished content
-const result = await contentRefinementLoop.run({
-  message:
-    "Please refine this draft: 'AI is good for business because it helps with stuff.'",
+// Research synthesis loop - iterative research refinement
+const researchSynthesisAgent = new LoopAgent({
+  name: "research_synthesis_agent",
+  description:
+    "Iteratively researches and synthesizes information until comprehensive understanding is achieved",
+  subAgents: [
+    researchPlannerAgent,
+    infoGathererAgent,
+    synthesisAgent,
+    researchCompleterAgent,
+  ],
+  maxIterations: 4,
 });
 ```
 
@@ -99,15 +103,13 @@ const result = await contentRefinementLoop.run({
 <Mermaid
   chart="
 flowchart TD
-  U[User Input] --> L[LoopAgent]
-  L --> I[Content Improver]
-  I --> E[Quality Evaluator]
-  E --> S[Stop Checker]
-  S -->|Quality < 8| L
-  S -->|Quality >= 8| End[Complete]
-  I -. improved draft .-> L
-  E -. quality scores .-> L
-  S -. stop decision .-> L
+    A[Start Research] --> L[LoopAgent]
+    L --> RP[Research Planner Agent]
+    RP --> IG[Information Gatherer Agent]
+    IG --> S[Synthesis Agent]
+    S --> RC[Research Completer Agent]
+    RC -->|Not Complete| L
+    RC -->|Complete| E[Final Synthesis Output]
 "
 />
 
