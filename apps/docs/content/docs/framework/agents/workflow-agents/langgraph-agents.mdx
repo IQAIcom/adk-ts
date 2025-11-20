@@ -330,12 +330,12 @@ Before coding, map out:
 ### 2. Keep Nodes Focused
 
 ```typescript
-// Good: Single responsibility
+// ✅ Good: Single responsibility
 const riskAssessor = new LlmAgent({
   instruction: "Assess financial risk only",
 });
 
-// Avoid: Multiple responsibilities
+// ❌ Avoid: Multiple responsibilities
 const everythingAgent = new LlmAgent({
   instruction: "Assess risk, make decisions, and format output",
 });

@@ -33,7 +33,7 @@ const researchPlannerAgent = new LlmAgent({
   description: "Generates focused research questions and search strategies",
   instruction:
     "Break down the research topic into specific, answerable questions. Prioritize the most important questions to investigate.",
-  outputKey: "research_questions",
+  outputKey: "research_questions", // Key for storing generated questions
 });
 
 // Information gatherer using search
@@ -43,7 +43,7 @@ const infoGathererAgent = new LlmAgent({
   description: "Gathers information from various sources",
   instruction:
     "Search for and collect relevant information to answer the research questions. Be thorough but focused.",
-  outputKey: "gathered_info",
+  outputKey: "gathered_info", // Key for storing gathered information
 });
 
 // Synthesis and gap analyzer
@@ -53,7 +53,7 @@ const synthesisAgent = new LlmAgent({
   description: "Synthesizes information and identifies knowledge gaps",
   instruction:
     "Analyze the gathered information. Synthesize key findings and identify what important questions remain unanswered.",
-  outputKey: "synthesis_analysis",
+  outputKey: "synthesis_analysis", // Key for storing synthesis results
 });
 
 // Research completion checker
