@@ -128,7 +128,7 @@ class SecureArtifactService {
     permissions: string[]
   ): Promise<Part | null> {
     // Verify user can read artifacts
-    if (!permissions.includes('artifact:read')) {
+    if (!permissions.includes('artifact:read')) 
       throw new Error('Insufficient permissions to read artifacts');
     }
 
@@ -178,23 +178,33 @@ class SecureArtifactService {
   private async incrementRateLimit(key: string): Promise<void> {
     // Implementation depends on your rate limiting store
   }
-}
 ```
 
-## Artifact Cleanup Guidelines
+## Artifact Cleanup and Deletion
 
-Keep cleanup logic simple:
+### Understanding deleteArtifact
 
-- Use the `deleteArtifact` method sparingly and only when you are sure the file is no longer needed.
-- Always call it through your artifact service instance (it is not exposed via contexts).
-- Prefer predictable filenames (for example, `temp_*`) so you can target specific artifacts if you need to delete them later.
+For persistent storage like `GcsArtifactService`, artifacts remain until explicitly deleted. The `deleteArtifact` method allows you to remove artifacts and all their versions. This is a powerful operation that should be used carefully.
 
-### Basic example
+<Callout type="warning" title="Safety Consideration">
+The `deleteArtifact` method is intentionally not exposed through context objects (`CallbackContext` or `ToolContext`) for safety reasons. It must be accessed directly through the artifact service instance.
+</Callout>
+
+### When to Delete Artifacts
+
+Consider implementing cleanup strategies when:
+
+- **Temporary Data**: Artifacts represent temporary processing results that have a limited lifespan
+- **Storage Costs**: Large artifacts accumulate and impact storage costs
+- **Privacy Requirements**: User data must be deleted per retention policies or user requests
+- **Session Cleanup**: Session-scoped artifacts should be cleaned up when sessions end
+
+### Basic Deletion
 
 ```typescript
-import { InMemoryArtifactService } from '@iqai/adk';
+import { GcsArtifactService } from '@iqai/adk';
 
-const artifactService = new InMemoryArtifactService();
+const artifactService = new GcsArtifactService('my-bucket');
 
 // Delete a specific artifact (removes all versions)
 await artifactService.deleteArtifact({
@@ -204,6 +214,162 @@ await artifactService.deleteArtifact({
   filename: 'temp_processing.csv'
 });
 ```
+
+### Cleanup Strategies
+
+For persistent storage, implement cleanup strategies using `deleteArtifact`:
+
+#### 1. GCS Lifecycle Policies
+
+For `GcsArtifactService`, configure bucket lifecycle policies to automatically delete old artifacts:
+
+```bash
+# Set lifecycle policy to delete artifacts older than 90 days
+gsutil lifecycle set lifecycle.json gs://my-artifacts-bucket
+```
+
+```json
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {"type": "Delete"},
+        "condition": {"age": 90}
+      }
+    ]
+  }
+}
+```
+
+#### 2. Administrative Cleanup Tools
+
+Build specific tools or administrative functions that utilize `deleteArtifact`:
+
+```typescript
+import { BaseArtifactService } from '@iqai/adk';
+
+// Simple cleanup function for temporary artifacts
+async function cleanupTemporaryArtifacts(
+  artifactService: BaseArtifactService,
+  appName: string,
+  userId: string,
+  sessionId: string
+): Promise<void> {
+  const artifacts = await artifactService.listArtifactKeys({
+    appName,
+    userId,
+    sessionId
+  });
+
+  // Delete artifacts that start with 'temp_'
+  for (const filename of artifacts) {
+    if (filename.startsWith('temp_')) {
+      try {
+        await artifactService.deleteArtifact({
+          appName,
+          userId,
+          sessionId,
+          filename
+        });
+      } catch (error) {
+        console.warn(`Failed to delete ${filename}:`, error);
+      }
+    }
+  }
+}
+```
+
+#### 3. Pattern-Based Deletion
+
+Carefully manage filenames to allow pattern-based deletion:
+
+```typescript
+// Use consistent naming conventions for easy cleanup
+const TEMP_PREFIX = 'temp_';
+const CACHE_PREFIX = 'cache_';
+const USER_DATA_PREFIX = 'user:';
+
+async function cleanupByPattern(
+  artifactService: BaseArtifactService,
+  appName: string,
+  userId: string,
+  sessionId: string
+) {
+  const artifacts = await artifactService.listArtifactKeys({
+    appName,
+    userId,
+    sessionId
+  });
+
+  // Delete all temporary artifacts
+  const tempArtifacts = artifacts.filter(name => name.startsWith(TEMP_PREFIX));
+  
+  for (const filename of tempArtifacts) {
+    await artifactService.deleteArtifact({
+      appName,
+      userId,
+      sessionId,
+      filename
+    });
+  }
+}
+```
+
+#### 4. Scheduled Cleanup Jobs
+
+Implement scheduled cleanup for production environments:
+
+```typescript
+import { BaseArtifactService } from '@iqai/adk';
+
+class ScheduledArtifactCleanup {
+  constructor(
+    private artifactService: BaseArtifactService,
+    private appName: string
+  ) {}
+
+  async runDailyCleanup(): Promise<void> {
+    // This would typically be called by a cron job or scheduler
+    console.log('Starting daily artifact cleanup...');
+
+    // Get all users (implementation depends on your user management)
+    const users = await this.getAllUsers();
+
+    for (const userId of users) {
+      try {
+        // Clean up temporary artifacts older than 7 days
+        await this.cleanupOldArtifacts(userId, 7);
+      } catch (error) {
+        console.error(`Cleanup failed for user ${userId}:`, error);
+      }
+    }
+
+    console.log('Daily cleanup completed');
+  }
+
+  private async cleanupOldArtifacts(
+    userId: string,
+    daysOld: number
+  ): Promise<void> {
+    // Implementation would check artifact metadata/timestamps
+    // and delete artifacts older than specified days
+    // This is a simplified example
+  }
+
+  private async getAllUsers(): Promise<string[]> {
+    // Implementation depends on your user management system
+    return [];
+  }
+}
+```
+
+### Important Considerations
+
+- **Irreversible Operation**: Deletion removes all versions of an artifact permanently
+- **No Context Access**: `deleteArtifact` is not available through `CallbackContext` or `ToolContext` for safety
+- **Direct Service Access**: Always access through the artifact service instance
+- **Error Handling**: Implement proper error handling and logging for cleanup operations
+- **Testing**: Test cleanup strategies thoroughly in staging before production deployment
 
 ## Version Management
 

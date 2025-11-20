@@ -104,18 +104,6 @@ await artifactService.deleteArtifact({
 - **Irreversible**: Once deleted, artifacts cannot be recovered (unless you have backups)
 - **No Context Access**: Must be called directly on the artifact service, not through contexts
 
-### Example: Cleanup After Processing
 
-// Clean up temporary file using the service directly
-// (Note: You'd need access to the artifact service instance)
-await artifactService.deleteArtifact({
-  appName: ctx.appName,
-  userId: ctx.userId,
-  sessionId: ctx.sessionId,
-  filename: 'temp_analysis.csv'
-});
-```
-
-For more comprehensive cleanup strategies, see [Best Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion).
 
 
