@@ -21,59 +21,57 @@ Perfect for workflows where order matters: research before analysis, writing bef
 Here's a market research pipeline that transforms a simple query into comprehensive business intelligence:
 
 ```typescript
-import { LlmAgent, SequentialAgent, WebSearchTool } from "@iqai/adk";
+import * as dotenv from "dotenv";
+import { LlmAgent, SequentialAgent, AgentBuilder } from "@iqai/adk";
 
-// Step 1: Gather raw data
+dotenv.config();
+
+// Step 1: Gather raw data using web search
 const researchAgent = new LlmAgent({
-  name: "market-researcher",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Research the given company/topic thoroughly. Focus on:
-    - Current market position and competitors
-    - Recent news and developments
-    - Financial performance and growth trends
-  `,
-  tools: [new WebSearchTool()],
+  name: "research_agent",
+  description: "Researches companies and topics to gather market intelligence",
+  instruction: `Research the given company/topic. Focus on current market position, competitors, recent news, and financial performance.`,
 });
 
 // Step 2: Analyze the collected data
 const analysisAgent = new LlmAgent({
-  name: "business-analyst",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Analyze the research data from the previous step. Identify:
-    - Key opportunities and threats
-    - Market trends and patterns
-    - Competitive advantages and weaknesses
-    Provide data-driven insights with specific examples.
-  `,
+  name: "analysis_agent",
+  description: "Analyzes research data to identify opportunities and threats",
+  instruction: `Analyze the research data. Identify key opportunities, threats, market trends, and competitive advantages.`,
 });
 
 // Step 3: Create actionable recommendations
 const strategistAgent = new LlmAgent({
-  name: "business-strategist",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Based on the research and analysis, create strategic recommendations:
-    - 3-5 specific, actionable strategies
-    - Risk assessment for each recommendation
-    - Timeline and resource requirements
-    Format as an executive summary.
-  `,
+  name: "strategist_agent",
+  description: "Creates strategic recommendations based on analysis",
+  instruction: `Based on the research and analysis, create 3-5 specific actionable strategies with risk assessment and timeline. Format as an executive summary.`,
 });
 
 // Sequential pipeline: research → analyze → strategize
 const marketIntelligencePipeline = new SequentialAgent({
-  name: "market-intelligence-pipeline",
+  name: "market_intelligence_pipeline",
   description: "Comprehensive market analysis and strategy development",
   subAgents: [researchAgent, analysisAgent, strategistAgent],
 });
 
-// Use the pipeline
-const result = await marketIntelligencePipeline.run({
-  message:
-    "Analyze Tesla's position in the EV market and suggest growth strategies",
-});
+const rootAgent = () => {
+  return AgentBuilder.create("root_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("Comprehensive market analysis and strategy development")
+    .withSubAgents([marketIntelligencePipeline])
+    .build();
+};
+
+async function main() {
+  const { runner } = await rootAgent();
+
+  const response = await runner.ask(
+    "Analyze Tesla's position in the EV market and suggest growth strategies"
+  );
+  console.log("📝 Final Response:\n");
+  console.log(response);
+}
+main().catch(console.error);
 ```
 
 ### Visual Flow
@@ -110,7 +108,8 @@ Execution order is guaranteed - no race conditions or unpredictable results. Per
 
 <Callout type="info" title="Data Flow Between Agents">
   Agents automatically share session state, so later agents can reference
-  earlier results. Use descriptive output and clear instructions to help agents understand what information to pass forward.
+  earlier results. Use descriptive output and clear instructions to help agents
+  understand what information to pass forward.
 </Callout>
 
 ## Real-World Use Cases
