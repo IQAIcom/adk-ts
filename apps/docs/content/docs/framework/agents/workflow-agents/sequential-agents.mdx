@@ -22,56 +22,40 @@ Here's a market research pipeline that transforms a simple query into comprehens
 
 ```typescript
 import * as dotenv from "dotenv";
-import { LlmAgent, SequentialAgent, AgentBuilder } from "@iqai/adk";
+import { LlmAgent, SequentialAgent } from "@iqai/adk";
 
 dotenv.config();
 
-// Step 1: Gather raw data using web search
-const researchAgent = new LlmAgent({
-  name: "research_agent",
-  description: "Researches companies and topics to gather market intelligence",
-  instruction: `Research the given company/topic. Focus on current market position, competitors, recent news, and financial performance.`,
+// Step 1: Create initial content
+const writerAgent = new LlmAgent({
+  name: "writer_agent",
+  description: "Creates engaging and informative articles on given topics",
+  instruction: `Write a comprehensive, engaging article on the given topic. Include an introduction, main points with examples, and a conclusion.`,
+  outputKey: "draft_content",
 });
 
-// Step 2: Analyze the collected data
-const analysisAgent = new LlmAgent({
-  name: "analysis_agent",
-  description: "Analyzes research data to identify opportunities and threats",
-  instruction: `Analyze the research data. Identify key opportunities, threats, market trends, and competitive advantages.`,
+// Step 2: Edit for clarity and style
+const editorAgent = new LlmAgent({
+  name: "editor_agent",
+  description: "Edits content for clarity, grammar, and style",
+  instruction: `Review and edit the article for clarity, grammar, and style. Improve readability while maintaining the original voice and message.`,
+  outputKey: "edited_content",
 });
 
-// Step 3: Create actionable recommendations
-const strategistAgent = new LlmAgent({
-  name: "strategist_agent",
-  description: "Creates strategic recommendations based on analysis",
-  instruction: `Based on the research and analysis, create 3-5 specific actionable strategies with risk assessment and timeline. Format as an executive summary.`,
+// Step 3: Verify facts and add citations
+const factCheckerAgent = new LlmAgent({
+  name: "fact_checker_agent",
+  description: "Verifies factual claims and adds citations where needed",
+  instruction: `Verify factual claims in the content. Flag any unsupported statements and add citations where needed. Ensure accuracy and credibility.`,
+  outputKey: "verified_content",
 });
 
-// Sequential pipeline: research → analyze → strategize
-const marketIntelligencePipeline = new SequentialAgent({
-  name: "market_intelligence_pipeline",
-  description: "Comprehensive market analysis and strategy development",
-  subAgents: [researchAgent, analysisAgent, strategistAgent],
+// Sequential pipeline: write → edit → fact_check
+const contentCreationAgent = new SequentialAgent({
+  name: "content_creation_agent",
+  description: "End-to-end content creation with quality controls",
+  subAgents: [writerAgent, editorAgent, factCheckerAgent],
 });
-
-const rootAgent = () => {
-  return AgentBuilder.create("root_agent")
-    .withModel("gemini-2.5-flash")
-    .withDescription("Comprehensive market analysis and strategy development")
-    .withSubAgents([marketIntelligencePipeline])
-    .build();
-};
-
-async function main() {
-  const { runner } = await rootAgent();
-
-  const response = await runner.ask(
-    "Analyze Tesla's position in the EV market and suggest growth strategies"
-  );
-  console.log("📝 Final Response:\n");
-  console.log(response);
-}
-main().catch(console.error);
 ```
 
 ### Visual Flow
