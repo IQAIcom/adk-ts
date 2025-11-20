@@ -57,7 +57,9 @@ const v0 = await ctx.loadArtifact('document.txt', 0);
 const latestDoc = await ctx.loadArtifact('document.txt');
 ```
 
-To list versions, call the underlying service (if you hold a reference). Contexts do not expose version listing.
+### Listing Versions
+
+The `listVersions` method (on the service, not context) can be used to find all existing version numbers for an artifact. Contexts do not expose version listing.
 
 ```typescript
 import { InMemoryArtifactService } from '@iqai/adk';
