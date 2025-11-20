@@ -7,10 +7,5 @@
 	"access": "public",
 	"baseBranch": "main",
 	"updateInternalDependencies": "patch",
-	"ignore": [
-		"@iqai/adk-docs",
-		"@iqai/adk-web",
-		"@iqai/adk-examples",
-		"@iqai/starter-templates"
-	]
+	"ignore": ["@iqai/adk-docs", "@iqai/adk-web", "@iqai/adk-examples"]
 }
