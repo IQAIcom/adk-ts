@@ -6,7 +6,9 @@ description: Build agents with completely custom orchestration logic by inheriti
 import { Callout } from "fumadocs-ui/components/callout";
 import { Cards, Card } from "fumadocs-ui/components/card";
 
-Custom agents provide ultimate flexibility in ADK-TS, allowing you to define arbitrary orchestration logic by inheriting directly from `BaseAgent` and implementing your own control flow. This goes beyond the predefined patterns of `SequentialAgent`, `LoopAgent`, and `ParallelAgent`, enabling you to build highly specific and complex agentic workflows.
+Custom agents provide ultimate flexibility in ADK-TS for orchestrating sophisticated workflows with conditional branching, dynamic routing, and state-dependent decisions. Think of them as the master conductors for complex, multi-path processes where the next step depends on the results of previous steps.
+
+Unlike simple workflow patterns (`SequentialAgent`, `ParallelAgent`, `LoopAgent`), custom agents handle complex decision trees, conditional flows, and dynamic routing based on content analysis, user preferences, or business rules. They allow you to define arbitrary orchestration logic by inheriting directly from `BaseAgent` and implementing your own control flow.
 
 <Callout type="warn" title="Advanced Feature">
   Custom agents require deep understanding of `ADK-TS` fundamentals. Master [LLM
@@ -15,9 +17,356 @@ Custom agents provide ultimate flexibility in ADK-TS, allowing you to define arb
   orchestration logic.
 </Callout>
 
-## What is a Custom Agent?
+## Implementing Custom Logic
 
-A custom agent is any class that inherits from `BaseAgent` and implements the `runAsyncImpl` method with your unique orchestration logic. You have complete control over how agents are called, state is managed, and execution flows.
+The core of any custom agent is the `runAsyncImpl` method where you define unique behavior:
+
+**Signature**: `protected async *runAsyncImpl(ctx: InvocationContext): AsyncGenerator<Event, void, unknown>`
+
+- **AsyncGenerator**: Must be an `async *` function that yields events
+- **InvocationContext**: Provides access to session state, user context, and services
+- **Event Yielding**: Forward events from sub-agents or create custom progress updates
+
+### Core Concepts
+
+**1. Sub-Agent Initialization**
+
+Store sub-agents as instance properties and initialize them in the constructor:
+
+```typescript
+import { BaseAgent, LlmAgent } from "@iqai/adk";
+
+export class CustomWorkflowAgent extends BaseAgent {
+  private processor: LlmAgent;
+  private validator: LlmAgent;
+
+  constructor() {
+    super({ name: "custom_workflow_agent" });
+
+    this.processor = new LlmAgent({
+      name: "content_processor_agent",
+      model: "gemini-2.5-flash",
+      description:
+        "Processes user input to extract and format key information.",
+      instruction: "Process the input: {user_input}",
+      outputKey: "processed_content",
+    });
+
+    this.validator = new LlmAgent({
+      name: "content_validator_agent",
+      model: "gemini-2.5-flash",
+      description:
+        "Validates the processed content and determines its validity status.",
+      instruction: "Validate: {processed_content}. Return 'valid' or 'invalid'",
+      outputKey: "validation_result",
+    });
+  }
+}
+```
+
+**2. State Management**
+
+Read and write session state within `runAsyncImpl` to manage data flow:
+
+```typescript
+protected async *runAsyncImpl(
+  ctx: InvocationContext
+): AsyncGenerator<Event, void, unknown> {
+  // Read state with defaults
+  const complexity = ctx.session.state.get("complexity", "standard");
+
+  // Make decisions based on state
+  if (complexity === "high") {
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "⚙️ Using advanced processing..." }] },
+    });
+  }
+
+  // Set state for downstream agents
+  ctx.session.state.set("processing_stage", "validation");
+
+  // Use EventActions for auditable state updates
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: "✅ Processing started" }] },
+    actions: new EventActions({
+      stateDelta: { processing_started: true },
+    }),
+  });
+}
+```
+
+**3. Custom Control Flow**
+
+Implement conditional logic and retries within `runAsyncImpl`:
+
+```typescript
+protected async *runAsyncImpl(
+  ctx: InvocationContext
+): AsyncGenerator<Event, void, unknown> {
+  // Call sub-agents and forward their events
+  for await (const event of this.processor.runAsync(ctx)) {
+    yield event;
+  }
+  for await (const event of this.validator.runAsync(ctx)) {
+    yield event;
+  }
+  // Check validation result and implement retry logic
+  const validationResult = ctx.session.state.get("validation_result");
+  if (validationResult === "invalid") {
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "❌ Validation failed, retrying..." }] },
+    });
+    // Retry logic - call processor again
+    for await (const event of this.processor.runAsync(ctx)) {
+      yield event;
+    }
+  }
+}
+```
+
+**4. Template Variables**
+
+Sub-agents access session state dynamically through template variables in their instructions:
+
+```typescript
+this.processor = new LlmAgent({
+  name: "content_processor_agent",
+  model: "gemini-2.5-flash",
+  description: "Processes user input to extract and format key information.",
+  instruction: "Process the input: {user_input}", // Using template variable
+  outputKey: "processed_content",
+});
+
+this.validator = new LlmAgent({
+  name: "content_validator_agent",
+  model: "gemini-2.5-flash",
+  description:
+    "Validates the processed content and determines its validity status.",
+  instruction: "Validate: {processed_content}. Return 'valid' or 'invalid'", // Using template variable
+  outputKey: "validation_result",
+});
+```
+
+Each sub-agent receives values like `{user_input}` and `{processed_content}` from session state automatically.
+
+## Real-World Example: Content Quality Agent
+
+A complete custom agent that processes content through validation, quality checks, and conditional refinement with retry logic.
+
+```typescript
+import {
+  BaseAgent,
+  LlmAgent,
+  LoopAgent,
+  InvocationContext,
+  Event,
+  EventActions,
+} from "@iqai/adk";
+
+export class ContentQualityAgent extends BaseAgent {
+  private processor: LlmAgent;
+  private validator: LlmAgent;
+  private critic: LlmAgent;
+  private reviser: LlmAgent;
+  private qualityChecker: LlmAgent;
+  private critiqueLoop: LoopAgent;
+
+  constructor() {
+    super({ name: "content_quality_agent" });
+
+    this.processor = new LlmAgent({
+      name: "content_processor_agent",
+      model: "gemini-2.5-flash",
+      description: "Processes and formats user content for quality enhancement",
+      instruction: "Process and format: {user_input}",
+      outputKey: "processed_content",
+    });
+
+    this.validator = new LlmAgent({
+      name: "content_validator_agent",
+      model: "gemini-2.5-flash",
+      description: "Validates the processed content for required standards",
+      instruction: "Validate: {processed_content}. Return 'valid' or 'invalid'",
+      outputKey: "validation_result",
+    });
+
+    this.critic = new LlmAgent({
+      name: "content_critic_agent",
+      model: "gemini-2.5-flash",
+      description: "Critiques the processed content and suggests improvements",
+      instruction: "Critique: {processed_content}. Suggest improvements.",
+      outputKey: "critique",
+    });
+
+    this.reviser = new LlmAgent({
+      name: "content_reviser_agent",
+      model: "gemini-2.5-flash",
+      description:
+        "Revises the processed content based on critique suggestions",
+      instruction: "Revise: {processed_content} based on: {critique}",
+      outputKey: "processed_content",
+    });
+
+    this.qualityChecker = new LlmAgent({
+      name: "quality_checker_agent",
+      model: "gemini-2.5-flash",
+      description: "Checks the quality score of the processed content",
+      instruction:
+        "Rate quality 1-10: {processed_content}. Output only number.",
+      outputKey: "quality_score",
+    });
+
+    this.critiqueLoop = new LoopAgent({
+      name: "critique_loop_agent",
+      description:
+        "Iteratively critiques and revises content to enhance quality",
+      maxIterations: 2,
+      subAgents: [this.critic, this.reviser],
+    });
+  }
+
+  protected async *runAsyncImpl(
+    ctx: InvocationContext
+  ): AsyncGenerator<Event, void, unknown> {
+    const maxRetries = 2;
+    let retryCount = 0;
+
+    // Read user preferences from state
+    const complexity = ctx.session.state.get("content_complexity", "standard");
+    const qualityThreshold = ctx.session.state.get("quality_threshold", 7);
+
+    while (retryCount <= maxRetries) {
+      // Step 1: Conditional processing based on complexity
+      if (complexity === "high") {
+        yield new Event({
+          author: this.name,
+          content: { parts: [{ text: "⚙️ Using advanced processing..." }] },
+        });
+      }
+
+      // Step 2: Process content
+      for await (const event of this.processor.runAsync(ctx)) {
+        yield event;
+      }
+
+      // Step 3: Validate processed content
+      for await (const event of this.validator.runAsync(ctx)) {
+        yield event;
+      }
+
+      const validationResult = ctx.session.state.get("validation_result");
+
+      if (validationResult === "invalid") {
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          yield new Event({
+            author: this.name,
+            content: {
+              parts: [
+                {
+                  text: `❌ Validation failed. Retry ${retryCount}/${maxRetries}`,
+                },
+              ],
+            },
+          });
+          continue;
+        } else {
+          yield new Event({
+            author: this.name,
+            content: { parts: [{ text: "⚠️ Max retries reached" }] },
+          });
+          return;
+        }
+      }
+
+      // Step 4: Quality enhancement loop
+      for await (const event of this.critiqueLoop.runAsync(ctx)) {
+        yield event;
+      }
+
+      // Step 5: Final quality check
+      for await (const event of this.qualityChecker.runAsync(ctx)) {
+        yield event;
+      }
+
+      const qualityScore = parseInt(
+        ctx.session.state.get("quality_score", "0"),
+        10
+      );
+
+      // Step 6: Decision based on quality
+      if (qualityScore >= qualityThreshold) {
+        yield new Event({
+          author: this.name,
+          content: {
+            parts: [{ text: `✅ Quality approved! Score: ${qualityScore}` }],
+          },
+          actions: new EventActions({
+            stateDelta: {
+              processing_complete: true,
+              final_quality_score: qualityScore,
+            },
+          }),
+        });
+        return;
+      } else {
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          yield new Event({
+            author: this.name,
+            content: {
+              parts: [
+                {
+                  text: `🔄 Quality below threshold. Regenerating (${retryCount}/${maxRetries})...`,
+                },
+              ],
+            },
+          });
+        } else {
+          yield new Event({
+            author: this.name,
+            content: {
+              parts: [{ text: "⚠️ Max regeneration attempts reached" }],
+            },
+          });
+          return;
+        }
+      }
+    }
+  }
+}
+```
+
+**What Makes This Custom:**
+
+- **State-driven decisions**: Routes based on complexity and quality thresholds
+- **Retry logic with limits**: Handles validation failures with bounded retries
+- **Mixed orchestration**: Combines LoopAgent with custom conditional flow
+- **Quality gates**: Multi-stage validation before approval
+- **Auditable state updates**: Uses EventActions for transparency
+
+## Real-World Use Cases
+
+**📝 Multi-Perspective Content Analysis**
+Sentiment + Topics + Keywords + Priority Assessment (all simultaneously)
+
+**🔍 Comprehensive Research**
+Web Search + Academic Papers + News + Social Media (parallel data gathering)
+
+**📊 Financial Analysis**
+Technical Analysis + Fundamental Analysis + News Sentiment + Risk Assessment
+
+**🛠️ Quality Assurance**
+Grammar Check + Fact Verification + Style Review + Compliance Check
+
+**🌍 Multi-Language Processing**
+Translation + Sentiment + Cultural Context + Localization (per language)
+
+**📊 Data Validation**
+Format Check + Business Rules + Data Quality + Duplicate Detection
 
 ## When to Use Custom Agents
 
@@ -30,369 +379,60 @@ Use custom agents when standard workflow patterns don't meet your needs:
 - **Unique Workflow Patterns**: Implement logic that doesn't fit sequential, parallel, or loop structures
 - **Advanced Error Handling**: Custom retry logic, fallback strategies, and recovery mechanisms
 
-## Common Use Cases
-
-- **Business Process Automation**: Route documents through approval chains, triage support tickets, content moderation
-- **Data Processing Pipelines**: Validate data quality, convert formats, enrich with external sources
-- **Decision Support Systems**: Risk assessment, recommendation engines, resource allocation
-- **Quality Assurance**: Multi-stage validation with fallback strategies
-- **Dynamic Workflows**: Adapt processing based on content complexity, user tier, or system load
-
-## Implementing Custom Logic
-
-The core of any custom agent is the `runAsyncImpl` method where you define unique behavior:
-
-**Signature**: `protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event>`
-
-- **AsyncGenerator**: Must be an `async *` function that yields events
-- **InvocationContext**: Provides access to session state, user context, and services
-- **Event Yielding**: Forward events from sub-agents or create custom progress updates
-
-### Key Capabilities
-
-Within `runAsyncImpl`, you have access to powerful orchestration capabilities:
-
-**State-Based Decision Making:** Read session state to make conditional routing decisions based on user preferences, content complexity, or previous results.
-
-**Sub-Agent Orchestration:** Call sub-agents and forward their events while maintaining full control over execution order and conditions.
-
-**Custom Control Flow:** Implement retry logic, fallback strategies, and conditional branching that standard workflow agents cannot provide.
-
-**Progress Communication:** Yield custom events to provide meaningful feedback during long-running operations.
-
-```typescript
-export class CustomWorkflowAgent extends BaseAgent {
-  private processor: LlmAgent;
-  private validator: LlmAgent;
-
-  constructor() {
-    super({ name: "custom-workflow-agent" });
-
-    this.processor = new LlmAgent({
-      name: "content-processor",
-      instruction: "Process the input: {user_input}",
-      outputKey: "processed_content",
-    });
-
-    this.validator = new LlmAgent({
-      name: "content-validator",
-      instruction: "Validate: {processed_content}. Return 'valid' or 'invalid'",
-      outputKey: "validation_result",
-    });
-  }
-
-  protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event> {
-    // 1. Read session state to make decisions
-    const complexity = ctx.session.state.get("content_complexity", "standard");
-
-    // 2. Conditional logic based on state
-    if (complexity === "high") {
-      yield new Event({
-        author: this.name,
-        content: { parts: [{ text: "⚙️ Using advanced processing..." }] },
-      });
-    }
-
-    // 3. Call sub-agents and forward their events
-    for await (const event of this.processor.runAsync(ctx)) {
-      yield event;
-    }
-
-    for await (const event of this.validator.runAsync(ctx)) {
-      yield event;
-    }
-
-    // 4. Custom control flow based on results
-    const validationResult = ctx.session.state.get("validation_result");
-    if (validationResult === "invalid") {
-      yield new Event({
-        author: this.name,
-        content: { parts: [{ text: "❌ Validation failed, retrying..." }] },
-      });
-
-      // Retry logic - call processor again
-      for await (const event of this.processor.runAsync(ctx)) {
-        yield event;
-      }
-    }
-
-    yield new Event({
-      author: this.name,
-      content: { parts: [{ text: "✅ Workflow complete!" }] },
-    });
-  }
-}
-```
-
-## Managing Sub-Agents and State
-
-Custom agents typically orchestrate multiple sub-agents while coordinating state to make decisions and pass data between execution steps.
-
-### Sub-Agent Initialization
-
-Store sub-agents as instance properties and initialize them in the constructor. This enables lifecycle management and provides clear agent hierarchy.
-
-```typescript
-export class WorkflowController extends BaseAgent {
-  // Store sub-agents as instance properties
-  private analyzer: LlmAgent;
-  private validator: LlmAgent;
-  private processor: LlmAgent;
-
-  constructor() {
-    super({
-      name: "workflow-controller",
-      description: "Custom workflow orchestration",
-    });
-
-    // Initialize sub-agents in constructor
-    this.analyzer = new LlmAgent({
-      name: "content-analyzer",
-      instruction: "Analyze content complexity and type",
-      outputKey: "analysis_result",
-    });
-
-    this.validator = new LlmAgent({
-      name: "content-validator",
-      instruction: "Validate content meets requirements",
-      outputKey: "validation_status",
-    });
-
-    this.processor = new LlmAgent({
-      name: "content-processor",
-      instruction: "Process content based on {analysis_result}",
-      outputKey: "final_result",
-    });
-  }
-}
-```
-
-### State Management
-
-Coordinate agent decisions and data flow through session state with proper defaults and validation:
-
-```typescript
-protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event> {
-  // Reading state with defaults
-  const userPreferences = ctx.session.state.get("user_preferences", {});
-  const contentType = ctx.session.state.get("content_type", "general");
-
-  // Making decisions based on state
-  if (contentType === "technical" && userPreferences.detail_level === "high") {
-    yield* this.handleTechnicalContent(ctx);
-  } else {
-    yield* this.handleGeneralContent(ctx);
-  }
-
-  // Setting state for downstream agents
-  ctx.session.state.set("processing_stage", "validation");
-  ctx.session.state.set("workflow_metadata", {
-    started_at: new Date().toISOString(),
-    content_type: contentType
-  });
-
-  // State updates through events (recommended for auditability)
-  yield new Event({
-    author: this.name,
-    content: { parts: [{ text: "Analysis phase complete" }] },
-    actions: new EventActions({
-      stateDelta: {
-        analysis_complete: true,
-        confidence_score: 0.92
-      }
-    })
-  });
-}
-```
-
-### State Template Integration
-
-Enable sub-agents to dynamically access session state through template variables in their instructions:
-
-```typescript
-const processor = new LlmAgent({
-  name: "adaptive-processor",
-  instruction: `
-    Process content with complexity: {complexity_level}
-    User preferences: {user_preferences}
-    Processing mode: {processing_mode}
-  `,
-  outputKey: "processed_content",
-});
-```
-
-## Design Pattern Example: StoryWorkflowAgent
-
-Let's build a comprehensive example showing advanced custom agent patterns: a story generation system with conditional refinement, quality gates, and regeneration logic.
-
-**Goal:** Create a system that generates stories, critiques them iteratively, validates quality, and regenerates if quality standards aren't met.
-
-**Why Custom:** The conditional regeneration based on quality validation requires custom logic that standard workflow agents cannot provide.
-
-### Step 1: Agent Structure and Initialization
-
-We'll build a story workflow agent that demonstrates all key custom agent concepts:
-
-```typescript
-import { BaseAgent, LlmAgent, LoopAgent, SequentialAgent } from "@iqai/adk";
-
-export class StoryWorkflowAgent extends BaseAgent {
-  // Specialist sub-agents
-  private storyGenerator: LlmAgent;
-  private critic: LlmAgent;
-  private reviser: LlmAgent;
-  private qualityChecker: LlmAgent;
-  private toneChecker: LlmAgent;
-
-  // Compose workflow agents within custom logic
-  private critiqueLoop: LoopAgent;
-  private qualityValidation: SequentialAgent;
-
-  constructor() {
-    super({ name: "story-workflow-agent" });
-
-    // Initialize specialist agents
-    this.storyGenerator = new LlmAgent({
-      name: "story-generator",
-      instruction: "Write a short story about: {story_topic}",
-      outputKey: "current_story",
-    });
-
-    this.critic = new LlmAgent({
-      name: "story-critic",
-      instruction:
-        "Critique this story: {current_story}. Suggest improvements.",
-      outputKey: "critique",
-    });
-
-    this.reviser = new LlmAgent({
-      name: "story-reviser",
-      instruction: "Revise story: {current_story} based on: {critique}",
-      outputKey: "current_story", // Overwrites story
-    });
-
-    this.qualityChecker = new LlmAgent({
-      name: "quality-checker",
-      instruction:
-        "Rate story quality 1-10: {current_story}. Output only number.",
-      outputKey: "quality_score",
-    });
-
-    this.toneChecker = new LlmAgent({
-      name: "tone-checker",
-      instruction:
-        "Analyze story tone: {current_story}. Output: positive, negative, or neutral.",
-      outputKey: "tone_result",
-    });
-
-    // Create workflow orchestrators for reuse
-    this.critiqueLoop = new LoopAgent({
-      name: "critique-loop",
-      maxIterations: 2,
-      subAgents: [this.critic, this.reviser],
-    });
-
-    this.qualityValidation = new SequentialAgent({
-      name: "quality-validation",
-      subAgents: [this.qualityChecker, this.toneChecker],
-    });
-  }
-
-  // Main execution loop
-  protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event> {
-    const maxRegenerations = 2;
-    let regenerationCount = 0;
-
-    while (regenerationCount <= maxRegenerations) {
-      // Step 1: Generate story
-      for await (const event of this.storyGenerator.runAsync(ctx)) {
-        yield event;
-      }
-
-      // Step 2: Critique and revise using LoopAgent
-      for await (const event of this.critiqueLoop.runAsync(ctx)) {
-        yield event;
-      }
-
-      // Step 3: Validate quality using SequentialAgent
-      for await (const event of this.qualityValidation.runAsync(ctx)) {
-        yield event;
-      }
-
-      // Step 4: Custom conditional logic
-      const qualityScore = parseInt(
-        ctx.session.state.get("quality_score", "0"),
-        10
-      );
-      const tone = ctx.session.state.get("tone_result", "neutral");
-
-      if (qualityScore >= 7 && tone !== "negative") {
-        yield new Event({
-          author: this.name,
-          content: { parts: [{ text: "✅ Story approved!" }] },
-        });
-        return;
-      } else {
-        regenerationCount++;
-        if (regenerationCount <= maxRegenerations) {
-          yield new Event({
-            author: this.name,
-            content: {
-              parts: [
-                {
-                  text: `🔄 Regenerating story (attempt ${regenerationCount})...`,
-                },
-              ],
-            },
-          });
-        } else {
-          yield new Event({
-            author: this.name,
-            content: { parts: [{ text: "⚠️ Max attempts reached" }] },
-          });
-          return;
-        }
-      }
-    }
-  }
-}
-```
-
-### Step 2: Running the Custom Agent
-
-```typescript
-const storyAgent = new StoryWorkflowAgent();
-
-const result = await storyAgent.run({
-  message: "Generate a story about a robot finding friendship",
-  state: { story_topic: "a lonely robot finding a friend" },
-});
-```
-
-### What Makes This Custom
-
-- **Quality-based regeneration**: Only possible with custom conditional logic
-- **Mixed orchestration**: Combines `LoopAgent`, `SequentialAgent`, and custom control flow
-- **Dynamic decision making**: Routes based on quality score and tone analysis
-- **State-driven logic**: Uses session state to make execution decisions
-
 ## Common Custom Agent Patterns
 
 ### Routing Agent Pattern
 
-Dynamically select specialized agents based on runtime analysis of input complexity, user tier, or content type. This pattern is ideal for systems that need to adapt processing based on varying requirements.
+Dynamically route requests to specialized sub-agents based on runtime analysis. This pattern evaluates input complexity, user tier, or content characteristics to select the optimal processing path.
 
-**Structure:** Single custom agent with multiple specialist sub-agents and selection logic
+**Key Features:**
 
-**Use Cases:** Customer support routing, content processing tiers, complexity-based workflows
+- Input complexity analysis
+- Multi-tier processing logic
+- Dynamic agent selection based on multiple criteria
+- Conditional branching without nested if-else chains
+
+**Use Cases:** Customer support ticket routing, content processing tiers, complexity-based workflows, resource optimization
 
 ```typescript
-export class IntelligentRouter extends BaseAgent {
+import { BaseAgent, LlmAgent, InvocationContext, Event } from "@iqai/adk";
+
+export class IntelligentRouterAgent extends BaseAgent {
   private basicProcessor: LlmAgent;
   private advancedProcessor: LlmAgent;
   private expertProcessor: LlmAgent;
 
-  protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event> {
+  constructor() {
+    super({ name: "intelligent_router_agent" });
+
+    this.basicProcessor = new LlmAgent({
+      name: "basic_processor_agent",
+      model: "gemini-2.5-flash",
+      description: "Handles basic processing tasks",
+      instruction: "Handle with basic processing: {user_input}",
+      outputKey: "result",
+    });
+
+    this.advancedProcessor = new LlmAgent({
+      name: "advanced_processor_agent",
+      model: "gemini-2.5-flash",
+      description: "Handles advanced processing tasks",
+      instruction: "Apply advanced analysis: {user_input}",
+      outputKey: "result",
+    });
+
+    this.expertProcessor = new LlmAgent({
+      name: "expert_processor_agent",
+      model: "gemini-2.5-flash",
+      description: "Handles expert-level processing tasks",
+      instruction: "Provide expert-level analysis: {user_input}",
+      outputKey: "result",
+    });
+  }
+
+  protected async *runAsyncImpl(
+    ctx: InvocationContext
+  ): AsyncGenerator<Event, void, unknown> {
     // Analyze input to determine routing
     const complexity = this.analyzeComplexity(
       ctx.session.state.get("user_input", "")
@@ -404,7 +444,9 @@ export class IntelligentRouter extends BaseAgent {
       content: {
         parts: [
           {
-            text: `📊 Complexity: ${complexity.toFixed(2)}, User: ${userTier}`,
+            text: `📊 Analyzing: Complexity ${complexity.toFixed(
+              2
+            )}, Tier ${userTier}`,
           },
         ],
       },
@@ -427,7 +469,9 @@ export class IntelligentRouter extends BaseAgent {
 
     yield new Event({
       author: this.name,
-      content: { parts: [{ text: `🎯 Using ${processingLevel} processing` }] },
+      content: {
+        parts: [{ text: `🎯 Routing to ${processingLevel} processor` }],
+      },
     });
 
     // Execute selected agent
@@ -437,7 +481,6 @@ export class IntelligentRouter extends BaseAgent {
   }
 
   private analyzeComplexity(input: string): number {
-    // Custom complexity analysis logic
     const factors = {
       length: Math.min(input.length / 1000, 1),
       technicalTerms:
@@ -457,18 +500,47 @@ export class IntelligentRouter extends BaseAgent {
 
 ### Retry with Backoff Pattern
 
-Implement sophisticated retry logic with exponential backoff, different retry strategies per failure type, and graceful degradation when all retries are exhausted.
+Implement sophisticated retry logic with exponential backoff, different retry strategies per failure type, and graceful fallback when all retries are exhausted. This pattern goes beyond basic retries by adding timing strategies and fallback agents.
 
-**Structure:** Custom agent with retry logic, backoff calculation, and fallback strategies
+**Key Features:**
 
-**Use Cases:** External API integration, unreliable services, quality assurance workflows
+- Exponential backoff with configurable timing
+- Attempt tracking and limits
+- Fallback strategy when primary fails
+- Graceful degradation
+
+**Use Cases:** External API integration, unreliable services, quality assurance with fallback options, resilient processing
 
 ```typescript
-export class ResilientProcessor extends BaseAgent {
+import { BaseAgent, LlmAgent, InvocationContext, Event } from "@iqai/adk";
+
+export class ResilientProcessorAgent extends BaseAgent {
   private primaryAgent: LlmAgent;
   private fallbackAgent: LlmAgent;
 
-  protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event> {
+  constructor() {
+    super({ name: "resilient_processor_agent" });
+
+    this.primaryAgent = new LlmAgent({
+      name: "primary_processor_agent",
+      model: "gemini-2.5-flash",
+      description: "Primary processor with high accuracy",
+      instruction: "Process with high accuracy: {user_input}",
+      outputKey: "result",
+    });
+
+    this.fallbackAgent = new LlmAgent({
+      name: "fallback_processor_agent",
+      model: "gemini-2.5-flash",
+      description: "Fallback processor with robust handling",
+      instruction: "Process with fallback method: {user_input}",
+      outputKey: "result",
+    });
+  }
+
+  protected async *runAsyncImpl(
+    ctx: InvocationContext
+  ): AsyncGenerator<Event, void, unknown> {
     const maxRetries = 3;
     let attempt = 0;
     let backoffMs = 1000; // Start with 1 second
@@ -507,7 +579,9 @@ export class ResilientProcessor extends BaseAgent {
         if (attempt < maxRetries) {
           yield new Event({
             author: this.name,
-            content: { parts: [{ text: `⏳ Retrying in ${backoffMs}ms...` }] },
+            content: {
+              parts: [{ text: `⏳ Retrying in ${backoffMs}ms...` }],
+            },
           });
 
           await new Promise((resolve) => setTimeout(resolve, backoffMs));
@@ -520,7 +594,7 @@ export class ResilientProcessor extends BaseAgent {
     yield new Event({
       author: this.name,
       content: {
-        parts: [{ text: "🔄 All retries failed, using fallback method" }],
+        parts: [{ text: "🔄 All retries exhausted, using fallback processor" }],
       },
     });
 
@@ -533,13 +607,20 @@ export class ResilientProcessor extends BaseAgent {
 
 ### State Machine Pattern
 
-Implement workflows with explicit state transitions, validation rules, and conditional branching based on current state and input conditions.
+Implement workflows with explicit state transitions, validation rules, and conditional branching based on current state. This pattern defines valid transitions between states and enforces workflow rules throughout execution.
 
-**Structure:** Custom agent with state transition logic and validation
+**Key Features:**
 
-**Use Cases:** Approval workflows, multi-stage processes, complex business logic
+- Explicit state transition validation
+- State-to-state mapping with allowed transitions
+- Loop-back capabilities for retries
+- Clear workflow visualization
+
+**Use Cases:** Approval workflows, multi-stage processes, complex business logic with validation, document processing pipelines
 
 ```typescript
+import { BaseAgent, InvocationContext, Event } from "@iqai/adk";
+
 type WorkflowState =
   | "initialized"
   | "analyzing"
@@ -548,17 +629,23 @@ type WorkflowState =
   | "completed"
   | "failed";
 
-export class WorkflowStateMachine extends BaseAgent {
+export class WorkflowStateMachineAgent extends BaseAgent {
   private readonly stateTransitions: Record<WorkflowState, WorkflowState[]> = {
     initialized: ["analyzing", "failed"],
     analyzing: ["processing", "failed"],
-    processing: ["validating", "analyzing", "failed"], // Can loop back for re-analysis
-    validating: ["completed", "processing", "failed"], // Can retry processing
+    processing: ["validating", "analyzing", "failed"],
+    validating: ["completed", "processing", "failed"],
     completed: [],
-    failed: ["initialized"], // Can restart
+    failed: ["initialized"],
   };
 
-  protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event> {
+  constructor() {
+    super({ name: "workflow_state_machine_agent" });
+  }
+
+  protected async *runAsyncImpl(
+    ctx: InvocationContext
+  ): AsyncGenerator<Event, void, unknown> {
     let currentState: WorkflowState = ctx.session.state.get(
       "workflow_state",
       "initialized"
@@ -567,7 +654,7 @@ export class WorkflowStateMachine extends BaseAgent {
     while (currentState !== "completed" && currentState !== "failed") {
       yield new Event({
         author: this.name,
-        content: { parts: [{ text: `🔄 Current state: ${currentState}` }] },
+        content: { parts: [{ text: `🔄 State: ${currentState}` }] },
       });
 
       const nextState = await this.executeStateLogic(currentState, ctx);
@@ -578,7 +665,9 @@ export class WorkflowStateMachine extends BaseAgent {
           author: this.name,
           content: {
             parts: [
-              { text: `❌ Invalid transition: ${currentState} → ${nextState}` },
+              {
+                text: `❌ Invalid transition: ${currentState} → ${nextState}`,
+              },
             ],
           },
         });
@@ -590,9 +679,7 @@ export class WorkflowStateMachine extends BaseAgent {
       yield new Event({
         author: this.name,
         content: {
-          parts: [
-            { text: `➡️  Transitioning: ${currentState} → ${nextState}` },
-          ],
+          parts: [{ text: `➡️ Transition: ${currentState} → ${nextState}` }],
         },
       });
 
@@ -674,55 +761,7 @@ export class WorkflowStateMachine extends BaseAgent {
 
 **Progress Events:** Provide regular feedback during long-running operations. Users need to understand what's happening, especially for complex workflows that may take time to complete.
 
-```typescript
-protected async *runAsyncImpl(ctx: InvocationContext): AsyncIterator<Event> {
-  const totalSteps = 4;
-  let currentStep = 0;
-
-  const updateProgress = (stepName: string) => {
-    currentStep++;
-    return new Event({
-      author: this.name,
-      content: { parts: [{ text: `⚡ Step ${currentStep}/${totalSteps}: ${stepName}` }] },
-      metadata: { progress: currentStep / totalSteps }
-    });
-  };
-
-  yield updateProgress("Analyzing input");
-  for await (const event of this.analyzer.runAsync(ctx)) {
-    yield event;
-  }
-
-  yield updateProgress("Processing content");
-  for await (const event of this.processor.runAsync(ctx)) {
-    yield event;
-  }
-
-  yield updateProgress("Validation");
-  for await (const event of this.validator.runAsync(ctx)) {
-    yield event;
-  }
-
-  yield updateProgress("Completion");
-  // Final processing logic
-}
-```
-
 **State Updates:** Use `EventActions` to update session state for better auditability and transparency. This creates a clear audit trail of state changes throughout the workflow.
-
-```typescript
-yield new Event({
-  author: this.name,
-  content: { parts: [{ text: "Analysis complete" }] },
-  actions: new EventActions({
-    stateDelta: {
-      analysis_results: analysisData,
-      confidence_score: 0.95,
-      next_recommended_action: "proceed_to_synthesis",
-    },
-  }),
-});
-```
 
 ### Development Tips
 
@@ -732,64 +771,6 @@ yield new Event({
 
 **State Debugging:** Use clear state key names and log state transitions to make debugging easier when agents don't receive expected data or make wrong decisions.
 
-### Testing Custom Agents
-
-Test custom orchestration logic in isolation using mocked contexts and sub-agents to verify conditional logic and state management:
-
-```typescript
-import { describe, it, expect, vi } from "vitest";
-
-describe("StoryWorkflowAgent", () => {
-  it("should regenerate content when quality is below threshold", async () => {
-    const agent = new StoryWorkflowAgent();
-
-    const mockContext = {
-      session: {
-        state: new Map([
-          ["story_topic", "test topic"],
-          ["quality_score", "5"], // Below threshold
-          ["tone_result", "positive"],
-        ]),
-      },
-    } as any;
-
-    const events = [];
-    for await (const event of agent.runAsync(mockContext)) {
-      events.push(event);
-    }
-
-    // Should contain regeneration messages
-    const regenerationEvents = events.filter((e) =>
-      e.content?.parts[0]?.text?.includes("Regeneration attempt")
-    );
-    expect(regenerationEvents.length).toBeGreaterThan(0);
-  });
-
-  it("should skip regeneration for high quality content", async () => {
-    const mockContext = {
-      session: {
-        state: new Map([
-          ["story_topic", "test topic"],
-          ["quality_score", "9"], // Above threshold
-          ["tone_result", "positive"],
-        ]),
-      },
-    } as any;
-
-    const events = [];
-    for await (const event of agent.runAsync(mockContext)) {
-      events.push(event);
-    }
-
-    // Should contain approval message, no regeneration
-    const approvalEvents = events.filter((e) =>
-      e.content?.parts[0]?.text?.includes("Story approved")
-    );
-    expect(approvalEvents.length).toBeGreaterThan(0);
-  });
-});
-```
-
 ## Related Topics
 
 <Cards>
@@ -798,19 +779,16 @@ describe("StoryWorkflowAgent", () => {
     description="The building blocks that custom agents orchestrate"
     href="/docs/framework/agents/llm-agents"
   />
-
-<Card
-  title="🔄 Workflow Agents"
-  description="Standard patterns to use before building custom logic"
-  href="/docs/framework/agents/workflow-agents"
-/>
-
-<Card
-  title="📡 Events & Actions"
-  description="Communication system for agent coordination"
-  href="/docs/framework/events"
-/>
-
+  <Card
+    title="🔄 Workflow Agents"
+    description="Standard patterns to use before building custom logic"
+    href="/docs/framework/agents/workflow-agents"
+  />
+  <Card
+    title="📡 Events & Actions"
+    description="Communication system for agent coordination"
+    href="/docs/framework/events"
+  />
   <Card
     title="🧠 Sessions & State"
     description="Managing data flow and persistence"
