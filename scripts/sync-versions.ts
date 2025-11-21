@@ -72,8 +72,7 @@ function updatePackageJson(filePath: string, adkVersion: string): void {
 
 	let updated = false;
 
-	// Update version if this is an example or starter template
-	if (filePath.includes("examples") || filePath.includes("starter-templates")) {
+	if (filePath.includes("starter-templates")) {
 		// Extract major.minor from ADK version and set patch to 0
 		const adkMatch = adkVersion.match(/^(\d+\.\d+)/);
 		if (adkMatch && pkg.version) {
