@@ -12,14 +12,16 @@
 		"format": "biome format . --write",
 		"lint": "lint-staged --allow-empty",
 		"changeset": "changeset",
-		"version-packages": "changeset version",
+		"version-packages": "changeset version && tsx ./scripts/sync-versions.ts",
 		"publish-packages": "turbo run build lint --filter=!@iqai/adk-docs --filter=!@iqai/adk-web --filter=!@iqai/adk-examples && changeset version && changeset publish",
 		"prepare": "husky",
-		"test": "turbo run test --filter=@iqai/adk --concurrency 50"
+		"test": "turbo run test --filter=@iqai/adk --concurrency 50",
+		"sync-versions": "tsx ./scripts/sync-versions.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.0.6",
 		"@changesets/cli": "^2.27.1",
+		"@types/node": "^24.10.1",
 		"husky": "9.1.7",
 		"lint-staged": "^15.4.3",
 		"tsx": "^4.19.4",
