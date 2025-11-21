@@ -53,6 +53,9 @@ const contentCreationAgent = new SequentialAgent({
   description: "End-to-end content creation with quality controls",
   subAgents: [writerAgent, editorAgent, factCheckerAgent],
 });
+
+// Export the sequential agent for use
+export { contentCreationAgent };
 ```
 
 ### Visual Flow

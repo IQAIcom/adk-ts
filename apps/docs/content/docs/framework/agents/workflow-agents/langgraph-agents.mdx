@@ -23,140 +23,225 @@ Here's a customer support system that intelligently routes inquiries based on an
 
 ```typescript
 import { LlmAgent, LangGraphAgent } from "@iqai/adk";
-
-// Step 1: Analyze incoming inquiry
-const inquiryAnalyzer = new LlmAgent({
-  name: "inquiry-analyzer",
+// Analyze incoming customer inquiry
+const inquiryAnalyzerAgent = new LlmAgent({
+  name: "inquiry_analyzer_agent",
   model: "gemini-2.5-flash",
+  description:
+    "Analyzes customer inquiries to determine category, urgency, and routing",
   instruction: `
     Analyze the customer inquiry and determine:
-    - Category: technical, billing, general, complaint, refund
+    - Category: technical, billing, refund, general, complaint
     - Urgency: low, medium, high, critical
     - Complexity: simple, moderate, complex
     - Sentiment: positive, neutral, negative, angry
-    
-    Output as JSON with these fields.
+
+    Output as JSON with these exact fields: category, urgency, complexity, sentiment.
   `,
-  outputKey: "analysis",
+  outputKey: "inquiry_analysis",
 });
 
-// Specialized handlers for different types
-const technicalSupport = new LlmAgent({
-  name: "technical-support",
+// Specialized support agents
+const technicalSupportAgent = new LlmAgent({
+  name: "technical_support_agent",
   model: "gemini-2.5-flash",
-  instruction:
-    "Handle technical issues with step-by-step troubleshooting guidance.",
+  description: "Handles technical issues with step-by-step troubleshooting",
+  instruction: `
+    Provide technical support for the customer's issue:
+    - Diagnose the technical problem
+    - Provide step-by-step troubleshooting guidance
+    - Offer workarounds or solutions
+    - Escalate to engineering if needed
+
+    Be patient, clear, and technically accurate.
+  `,
   outputKey: "technical_response",
 });
 
-const billingSupport = new LlmAgent({
-  name: "billing-support",
+const billingSupportAgent = new LlmAgent({
+  name: "billing_support_agent",
   model: "gemini-2.5-flash",
-  instruction:
-    "Handle billing inquiries with account-specific information and resolution steps.",
+  description: "Handles billing inquiries and payment issues",
+  instruction: `
+    Handle billing and payment-related inquiries:
+    - Review account charges and billing history
+    - Explain billing policies and charges
+    - Process refunds or adjustments when appropriate
+    - Escalate complex billing disputes
+
+    Be transparent about charges and helpful with resolutions.
+  `,
   outputKey: "billing_response",
 });
 
-const escalationHandler = new LlmAgent({
-  name: "escalation-handler",
+const escalationHandlerAgent = new LlmAgent({
+  name: "escalation_handler_agent",
   model: "gemini-2.5-flash",
-  instruction:
-    "Handle escalated issues requiring human intervention with empathy and next steps.",
+  description: "Handles escalated cases requiring human intervention",
+  instruction: `
+    Handle escalated customer cases with empathy and urgency:
+    - Acknowledge the customer's frustration
+    - Provide immediate relief or compensation if appropriate
+    - Escalate to appropriate internal teams
+    - Provide clear next steps and timelines
+    - Follow up personally on resolution
+
+    Show genuine concern and commitment to resolution.
+  `,
   outputKey: "escalation_response",
 });
 
-const generalSupport = new LlmAgent({
-  name: "general-support",
+const generalSupportAgent = new LlmAgent({
+  name: "general_support_agent",
   model: "gemini-2.5-flash",
-  instruction:
-    "Handle general inquiries with helpful information and guidance.",
+  description: "Handles general inquiries and provides information",
+  instruction: `
+    Provide helpful information and support for general inquiries:
+    - Answer questions about products/services
+    - Provide account information and guidance
+    - Direct to appropriate resources
+    - Offer proactive assistance
+
+    Be friendly, informative, and proactive.
+  `,
   outputKey: "general_response",
 });
 
-// Define the workflow graph with conditional routing
-const supportWorkflow = new LangGraphAgent({
-  name: "customer-support-workflow",
-  description: "Intelligent customer support routing and handling",
+/**
+ * Customer Support Workflow
+ *
+ * Implements the following routing logic:
+ * 1. Analyze Inquiry -> Decision
+ * 2. Decision Branches:
+ *    - Critical/Angry -> Escalation Handler
+ *    - Technical -> Technical Support -> End
+ *    - Billing/Refund -> Billing Support -> Resolved?
+ *      - No -> Escalation Handler -> End
+ *      - Yes -> End
+ *    - General -> General Support -> End
+ */
+const supportWorkflowAgent = new LangGraphAgent({
+  name: "support_workflow_agent",
+  description:
+    "Intelligent customer support routing and handling system using LangGraph for agent orchestration.",
+  rootNode: "analyze",
+  maxSteps: 10,
   nodes: [
     {
-      id: "analyze",
-      agent: inquiryAnalyzer,
-      next: (ctx) => {
-        const analysis = JSON.parse(ctx.session.state.get("analysis", "{}"));
-
-        // Route based on analysis results
-        if (analysis.urgency === "critical" || analysis.sentiment === "angry") {
-          return "escalate";
-        }
-
-        switch (analysis.category) {
-          case "technical":
-            return "technical";
-          case "billing":
-          case "refund":
-            return "billing";
-          default:
-            return "general";
+      name: "analyze",
+      agent: inquiryAnalyzerAgent,
+      targets: ["escalate", "technical", "billing", "general"],
+    },
+    {
+      name: "technical",
+      agent: technicalSupportAgent,
+      condition: (event: any) => {
+        try {
+          // Parse JSON analysis from the previous event
+          const analysis = JSON.parse(
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+          );
+          // Route to technical support if category matches and not critical/angry
+          return (
+            analysis.category === "technical" &&
+            analysis.urgency !== "critical" &&
+            analysis.sentiment !== "angry"
+          );
+        } catch {
+          return false;
         }
       },
     },
     {
-      id: "technical",
-      agent: technicalSupport,
-      next: () => "end",
-    },
-    {
-      id: "billing",
-      agent: billingSupport,
-      next: (ctx) => {
-        // Check if billing issue was resolved
-        const response = ctx.session.state.get("billing_response", "");
-        return response.includes("unresolved") ? "escalate" : "end";
+      name: "billing",
+      agent: billingSupportAgent,
+      targets: ["escalate"], // Can escalate if unresolved
+      condition: (event: any) => {
+        try {
+          // Parse JSON analysis from the previous event
+          const analysis = JSON.parse(
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+          );
+          // Route to billing support if category matches and not critical/angry
+          return (
+            ["billing", "refund"].includes(analysis.category) &&
+            analysis.urgency !== "critical" &&
+            analysis.sentiment !== "angry"
+          );
+        } catch {
+          return false;
+        }
       },
     },
     {
-      id: "escalate",
-      agent: escalationHandler,
-      next: () => "end",
+      name: "escalate",
+      agent: escalationHandlerAgent,
+      condition: (event: any) => {
+        try {
+          // Parse JSON analysis from the previous event
+          const analysis = JSON.parse(
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+          );
+
+          // Escalate if critical, angry, or complaint
+          if (
+            analysis.urgency === "critical" ||
+            analysis.sentiment === "angry" ||
+            analysis.category === "complaint"
+          ) {
+            return true;
+          }
+
+          // Also escalate if billing agent mentions escalation
+          return event.content.toLowerCase().includes("escalate");
+        } catch {
+          return false;
+        }
+      },
     },
     {
-      id: "general",
-      agent: generalSupport,
-      next: () => "end",
+      name: "general",
+      agent: generalSupportAgent,
+      condition: (event: any) => {
+        try {
+          // Parse JSON analysis from the previous event
+          const analysis = JSON.parse(
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+          );
+          // Route to general support if category matches and not critical/angry
+          return (
+            analysis.category === "general" &&
+            analysis.urgency !== "critical" &&
+            analysis.sentiment !== "angry"
+          );
+        } catch {
+          return false;
+        }
+      },
     },
   ],
-  startNode: "analyze",
 });
 
-// Usage: Intelligent routing based on inquiry content
-const result = await supportWorkflow.run({
-  message:
-    "My billing is completely wrong and I'm very frustrated! I need this fixed immediately!",
-});
-// → Routes to escalation due to angry sentiment and billing category
+// Export the main workflow agent for use in other modules
+export { supportWorkflowAgent };
 ```
 
 ### Visual Flow
 
 <Mermaid
   chart="
-flowchart TD
-  Start[Customer Inquiry] --> Analyze[Analyze Inquiry]
-  
-  Analyze --> Decision{Analysis Results}
-  
-  Decision -->|Critical/Angry| Escalate[Escalation Handler]
-  Decision -->|Technical| Tech[Technical Support]
-  Decision -->|Billing/Refund| Billing[Billing Support]
-  Decision -->|General| General[General Support]
-  
-  Billing --> BillingCheck{Resolved?}
-  BillingCheck -->|No| Escalate
-  BillingCheck -->|Yes| End[Complete]
-  
-  Tech --> End
-  Escalate --> End
-  General --> End
+graph TD
+    Start[Customer Inquiry] --> A[Analyze Inquiry]
+    A[Analyze Inquiry] -->|Critical/Angry| B[Escalation Handler]
+    A -->|Technical| C[Technical Support]
+    A -->|Billing/Refund| D[Billing Support]
+    D -->|Not Resolved| B
+    D -->|Resolved| E[End]
+    A -->|General| F[General Support]
+    B --> E
+    C --> E
+    F --> E
+    E[End]
 "
 />
 
