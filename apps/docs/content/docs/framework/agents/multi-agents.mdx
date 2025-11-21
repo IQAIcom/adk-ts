@@ -28,6 +28,10 @@ import {
   ParallelAgent,
   AgentBuilder,
 } from "@iqai/adk";
+import { config } from "dotenv";
+
+//  Load environment variables from .env file
+config();
 
 // Specialist agents for content analysis
 const sentimentAnalyzerAgent = new LlmAgent({

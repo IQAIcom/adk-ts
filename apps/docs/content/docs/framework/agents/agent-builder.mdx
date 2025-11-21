@@ -981,6 +981,10 @@ import {
   GoogleSearch,
   StreamingMode,
 } from "@iqai/adk";
+import { config } from "dotenv";
+
+//  Load environment variables from .env file
+config();
 
 const { runner } = await AgentBuilder.create("advanced_agent")
   .withModel("gemini-2.5-flash")
