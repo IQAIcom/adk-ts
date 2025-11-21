@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Bot, CheckCircle, User, Wrench } from "lucide-react";
+import { Activity, Bot, CheckCircle, Wrench } from "lucide-react";
 import { EventItemDto as Event } from "@/Api";
 import {
 	Collapsible,
@@ -20,7 +20,7 @@ interface EventNode {
 	children: EventNode[];
 	displayName: string;
 	color: string;
-	icon: React.ReactNode;
+	icon: React.ReactNode | null;
 	duration: string; // formatted
 	rawDuration: number; // ms
 }
@@ -56,28 +56,18 @@ export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
 }
 
 function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
-	const contentWithParts = node.event.content as ContentParts;
-
-	const hasDetails =
-		node.children.length > 0 ||
-		node.event.author === "user" ||
-		node.event.functionCalls?.length > 0 ||
-		node.event.functionResponses?.length > 0 ||
-		(node.event.isFinalResponse && contentWithParts?.parts?.[0]?.text);
-
 	const forceCollapsible = node.event.author === "user";
 
 	return (
 		<div className="relative">
 			<div style={{ paddingLeft: depth * 24 }}>
-				{hasDetails || forceCollapsible ? (
-					<Collapsible defaultOpen={node.event.author === "user"}>
+				{forceCollapsible ? (
+					<Collapsible defaultOpen className="bg-card rounded-b">
 						<CollapsibleTrigger asChild>
 							<div
 								className={cn(
-									"cursor-pointer flex items-start gap-2 rounded-md",
-									forceCollapsible &&
-										"bg-[var(--card)]/10 dark:bg-[var(--card)]/20 p-1 border rounded",
+									"cursor-pointer bg-secondary flex items-start gap-2 rounded-md",
+									"p-1 border rounded",
 								)}
 							>
 								<TimelineDot node={node} />
@@ -108,17 +98,21 @@ function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 	);
 }
 
-const TimelineDot = ({ node }: { node: EventNode }) => (
-	<div
-		className={cn(
-			"w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
-			node.event.author === "user" ? "bg-blue-500/20" : "bg-slate-700",
-			node.color,
-		)}
-	>
-		{node.icon}
-	</div>
-);
+const TimelineDot = ({ node }: { node: EventNode }) => {
+	if (!node.icon) return null;
+
+	return (
+		<div
+			className={cn(
+				"w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
+				"bg-slate-700",
+				node.color,
+			)}
+		>
+			{node.icon}
+		</div>
+	);
+};
 
 const EventContent = ({ node }: { node: EventNode }) => {
 	const requestMetadataObj = node.event
@@ -168,7 +162,7 @@ const getEventName = (event: Event) => {
 };
 
 const getEventIcon = (event: Event) => {
-	if (event.author === "user") return <User className="w-4 h-4" />;
+	if (event.author === "user") return null;
 	if (event.functionCalls?.length > 0) return <Wrench className="w-4 h-4" />;
 	if (event.functionResponses?.length > 0)
 		return <Activity className="w-4 h-4" />;
@@ -177,7 +171,7 @@ const getEventIcon = (event: Event) => {
 };
 
 const getEventColor = (event: Event) => {
-	if (event.author === "user") return "text-blue-400";
+	if (event.author === "user") return "";
 	if (event.functionCalls?.length > 0) return "text-orange-400";
 	if (event.functionResponses?.length > 0) return "text-purple-400";
 	if (event.isFinalResponse) return "text-green-400";
@@ -207,22 +201,20 @@ function buildUserMessageTree(events: Event[]): EventNode[] {
 		} else if (currentUserNode) {
 			currentUserNode.children.push(node);
 		} else {
-			// no user event yet, treat as root
 			roots.push(node);
 		}
 	}
 
-	// compute group total duration
+	// compute total duration for user events
 	for (const root of roots) {
 		if (root.event.author === "user") {
-			let lastTimestamp = root.event.timestamp;
-			for (const child of root.children) {
-				if (child.event.timestamp > lastTimestamp)
-					lastTimestamp = child.event.timestamp;
-			}
-			const total = lastTimestamp - root.event.timestamp;
-			root.duration = formatDuration(total);
-			root.rawDuration = total;
+			const first = root.event.timestamp;
+			const lastChild = root.children.length
+				? root.children[root.children.length - 1].event.timestamp
+				: root.event.timestamp;
+			const total = lastChild - first;
+			root.duration = formatDuration(total > 0 ? total : 1);
+			root.rawDuration = total > 0 ? total : 1;
 		}
 	}
 
@@ -233,7 +225,6 @@ function computeDurations(events: Event[]) {
 	return events.map((event, i) => {
 		const next = events[i + 1];
 		const ownDuration = next ? next.timestamp - event.timestamp : 0;
-
 		return {
 			...event,
 			__durationMs: ownDuration < 0 ? 0 : ownDuration,
