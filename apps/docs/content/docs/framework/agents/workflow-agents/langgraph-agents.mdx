@@ -11,8 +11,8 @@ LangGraph agents orchestrate sophisticated workflows with conditional branching,
 Unlike simple workflow patterns ([sequential](/docs/framework/agents/workflow-agents/sequential-agents), [parallel](/docs/framework/agents/workflow-agents/parallel-agents), [loop](/docs/framework/agents/workflow-agents/loop-agents)), LangGraph agents handle complex decision trees, conditional flows, and dynamic routing based on content analysis, user preferences, or business rules.
 
 <Callout type="info" title="Advanced Orchestration">
-  - **Power:** Handle complex branching logic and conditional workflows
-  - **Flexibility:** Dynamic routing based on content, context, or business rules
+  - **Power:** Handle complex branching logic and conditional workflows -
+  **Flexibility:** Dynamic routing based on content, context, or business rules
   - **Best for:** Sophisticated processes that require intelligent
   decision-making
 </Callout>
@@ -265,14 +265,24 @@ LangGraph agents enable sophisticated workflow orchestration through conditional
 
 **🔀 Conditional Flows**
 
-```typescript
-next: (ctx) => {
-  const analysis = ctx.session.state.get("analysis");
+Conditional flows determine which path the workflow takes based on the results of previous steps. Each node can have a `condition` function that evaluates the current context and returns `true` to execute that node, or routes to alternative targets when conditions aren't met.
 
-  if (analysis.urgency === "critical") return "escalate";
-  if (analysis.category === "technical") return "tech-support";
-  return "general-support";
-};
+```typescript
+// Example: Route based on analysis results
+{
+  name: "technical-support",
+  agent: technicalSupportAgent,
+  condition: (event: any) => {
+    try {
+      const analysis = JSON.parse(event.content);
+      // Execute this node if category is technical and not critical
+      return analysis.category === "technical" &&
+             analysis.urgency !== "critical";
+    } catch {
+      return false;
+    }
+  },
+}
 ```
 
 **📊 State Management**
@@ -287,72 +297,6 @@ next: (ctx) => {
   - **Plan thoroughly:** Map out all possible paths before implementation
   - **Handle edge cases:** Always have fallback routes for unexpected conditions
 </Callout>
-
-## Advanced Patterns
-
-### Multi-Stage Decision Trees
-
-```typescript
-const nodes = [
-  {
-    id: "initial-triage",
-    agent: triageAgent,
-    next: (ctx) => {
-      const triage = ctx.session.state.get("triage");
-      return triage.requiresHuman ? "human-review" : "automated-processing";
-    },
-  },
-  {
-    id: "automated-processing",
-    agent: automatedProcessor,
-    next: (ctx) => {
-      const result = ctx.session.state.get("automated_result");
-      return result.confidence > 0.9 ? "finalize" : "human-review";
-    },
-  },
-  {
-    id: "human-review",
-    agent: humanReviewAgent,
-    next: () => "finalize",
-  },
-  {
-    id: "finalize",
-    agent: finalizationAgent,
-    next: () => "end",
-  },
-];
-```
-
-### Loop Within Graph
-
-```typescript
-{
-  id: "quality-check",
-  agent: qualityAssessor,
-  next: (ctx) => {
-    const quality = ctx.session.state.get("quality_score");
-    const attempts = ctx.session.state.get("improvement_attempts", 0);
-
-    if (quality >= 8) return "approve";
-    if (attempts >= 3) return "escalate";
-    return "improve"; // Loop back for another improvement cycle
-  }
-}
-```
-
-### Parallel Processing Integration
-
-```typescript
-{
-  id: "parallel-analysis",
-  agent: parallelAnalysisAgent, // This could be a ParallelAgent
-  next: (ctx) => {
-    const results = ctx.session.state.get("parallel_results");
-    const consensus = analyzeConsensus(results);
-    return consensus.agreement > 0.8 ? "proceed" : "additional-review";
-  }
-}
-```
 
 ## Real-World Use Cases
 
@@ -378,8 +322,7 @@ Transaction Analysis → Risk Scoring → Investigation Routing → Evidence Gat
 
 <Callout type="success" title="Perfect for Complex Decision Trees">
   - **Use when:** You need sophisticated branching logic and conditional
-  workflows
-  - **Benefit:** Handle complex processes that simple linear or
+  workflows - **Benefit:** Handle complex processes that simple linear or
   parallel patterns can't address
 </Callout>
 
@@ -400,67 +343,157 @@ Transaction Analysis → Risk Scoring → Investigation Routing → Evidence Gat
 - Workflow complexity outweighs the benefits
 - Debugging and maintenance overhead is too high
 
+## Advanced Patterns
+
+### Multi-Stage Decision Trees
+
+Build complex workflows with multiple evaluation points and conditional routing based on accumulated results. Use when you need sophisticated decision trees that adapt based on intermediate outcomes, such as triage systems that require multiple assessment stages before final resolution.
+
+```typescript
+const multiStageWorkflow = new LangGraphAgent({
+  name: "multi_stage_workflow",
+  description: "Multi-stage decision tree with triage and processing phases",
+  rootNode: "initial-triage",
+  maxSteps: 10,
+  nodes: [
+    {
+      name: "initial-triage",
+      agent: triageAgent,
+      targets: ["automated-processing", "human-review"],
+    },
+    {
+      name: "automated-processing",
+      agent: automatedProcessor,
+      targets: ["finalize", "human-review"],
+      condition: (event: any) => {
+        // Route based on confidence score
+        const result = JSON.parse(event.content);
+        return result.confidence > 0.9;
+      },
+    },
+    {
+      name: "human-review",
+      agent: humanReviewAgent,
+      targets: ["finalize"],
+    },
+    {
+      name: "finalize",
+      agent: finalizationAgent,
+    },
+  ],
+});
+```
+
+### Loop Within Graph
+
+Create iterative workflows that can repeat processing steps until conditions are met. Use for quality assurance, iterative improvement, or validation loops where work needs to be refined through multiple cycles before completion.
+
+```typescript
+const iterativeWorkflow = new LangGraphAgent({
+  name: "iterative_workflow",
+  description: "Quality improvement loop with maximum attempts",
+  rootNode: "process",
+  maxSteps: 15, // Allow more steps for iterations
+  nodes: [
+    {
+      name: "process",
+      agent: contentProcessor,
+      targets: ["quality-check"],
+    },
+    {
+      name: "quality-check",
+      agent: qualityAssessor,
+      targets: ["approve", "improve", "escalate"],
+      condition: (event: any) => {
+        const quality = JSON.parse(event.content);
+        const attempts =
+          event.session?.state?.get("improvement_attempts", 0) || 0;
+
+        if (quality.score >= 8) return true; // Approve
+        if (attempts >= 3) return false; // Escalate (condition false means try next target)
+        return false; // Improve (loop back)
+      },
+    },
+    {
+      name: "improve",
+      agent: improvementAgent,
+      targets: ["process"], // Loop back to process
+    },
+    {
+      name: "approve",
+      agent: approvalAgent,
+    },
+    {
+      name: "escalate",
+      agent: escalationAgent,
+    },
+  ],
+});
+```
+
+### Parallel Processing Integration
+
+Integrate parallel processing capabilities within graph workflows to handle concurrent tasks. Use when you need to combine the benefits of parallel execution with conditional routing, such as consensus-based decision making or multi-perspective analysis.
+
+```typescript
+const parallelIntegratedWorkflow = new LangGraphAgent({
+  name: "parallel_integrated_workflow",
+  description: "Workflow integrating parallel analysis for consensus decisions",
+  rootNode: "parallel-analysis",
+  maxSteps: 8,
+  nodes: [
+    {
+      name: "parallel-analysis",
+      agent: parallelAnalysisAgent, // ParallelAgent handling concurrent tasks
+      targets: ["proceed", "additional-review"],
+      condition: (event: any) => {
+        const results = JSON.parse(event.content);
+        const consensus = analyzeConsensus(results);
+        return consensus.agreement > 0.8; // Proceed if high agreement
+      },
+    },
+    {
+      name: "proceed",
+      agent: nextStepAgent,
+    },
+    {
+      name: "additional-review",
+      agent: reviewAgent,
+    },
+  ],
+});
+```
+
 ## Design Best Practices
 
-### 1. Start with Flow Mapping
+### Design Principles
 
-```
-Before coding, map out:
-- All possible entry points
-- Decision criteria at each branch
-- All possible exit conditions
-- Error handling and fallback paths
-```
+**Start Simple:** Begin with basic routing logic and add complexity gradually. Map out all possible paths before implementation to avoid unexpected edge cases and ensure comprehensive coverage.
 
-### 2. Keep Nodes Focused
+**Keep Nodes Focused:** Design each node with a single, clear responsibility. A routing node should only handle decision logic, while processing nodes focus solely on their specific tasks. This separation improves maintainability and testing.
 
-```typescript
-// ✅ Good: Single responsibility
-const riskAssessor = new LlmAgent({
-  instruction: "Assess financial risk only",
-});
+**Handle Edge Cases:** Always provide fallback routes for unexpected conditions and malformed data. Include error handling nodes and default paths to ensure your graph can reach a terminal state under all circumstances.
 
-// ❌ Avoid: Multiple responsibilities
-const everythingAgent = new LlmAgent({
-  instruction: "Assess risk, make decisions, and format output",
-});
-```
+**Test Thoroughly:** Validate every possible execution path through your graph with real data. Test both expected scenarios and edge cases to ensure robust error handling and predictable behavior.
 
-### 3. Handle Edge Cases
+### Communication Patterns
 
-```typescript
-next: (ctx) => {
-  const analysis = ctx.session.state.get("analysis");
+**State Management:** Use descriptive, unique state keys and document data flow between nodes. Clear state contracts prevent conflicts and make debugging easier when nodes don't receive expected data.
 
-  // Always handle missing or malformed data
-  if (!analysis) return "error-handler";
+**Progress Feedback:** Provide meaningful progress updates during execution. Users need visibility into long-running workflows, especially those with multiple decision points and processing stages.
 
-  // Provide fallback for unexpected values
-  switch (analysis.category) {
-    case "technical":
-      return "tech-support";
-    case "billing":
-      return "billing-support";
-    default:
-      return "general-support"; // Fallback
-  }
-};
-```
+### Development Tips
 
-### 4. Test All Paths
+**Flow Mapping:** Plan your graph structure thoroughly before coding. Identify all entry points, decision criteria, and exit conditions to create a comprehensive workflow design.
 
-```
-Ensure every possible route through your graph:
-- Has been tested with real data
-- Handles expected and edge case scenarios
-- Has appropriate error handling
-- Can reach a terminal state
-```
+**Documentation:** Document complex routing logic and state dependencies. Clear documentation is essential for maintaining and debugging sophisticated graph workflows.
+
+**Complexity Awareness:** Be mindful of debugging challenges with complex graphs. Start with simpler patterns and gradually add sophistication as you understand the interaction patterns.
 
 <Callout type="warn" title="Graph Complexity Warning">
-  - **Start simple:** Complex graphs are hard to debug and maintain
-  - **Document thoroughly:** Clear documentation is crucial for complex flows
-  - **Test extensively:** Every path and edge case should be tested
+  - **Start simple:** Complex graphs are hard to debug and maintain - **Document
+  thoroughly:** Clear documentation is crucial for complex flows - **Test
+  extensively:** Every path and edge case should be tested
 </Callout>
 
 ## Related Topics
@@ -481,13 +514,11 @@ Ensure every possible route through your graph:
     description="Can be used as nodes for iterative processing within graphs"
     href="/docs/framework/agents/workflow-agents/loop-agents"
   />
-  
   <Card
     title="🏗️ Agent Builder"
     description="Fluent API for creating LangGraph workflows with asLangGraph()"
     href="/docs/framework/agents/agent-builder"
   />
-
   <Card
     title="🤖 LLM Agents"
     description="Individual agents that serve as nodes in LangGraph workflows"
