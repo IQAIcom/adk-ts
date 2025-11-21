@@ -378,6 +378,8 @@ export class SessionsService {
 										}
 									)?.codeExecutionResult != null
 								),
+					requestMetadata: (eventLike as any).requestMetadata,
+					responseMetadata: (eventLike as any).responseMetadata,
 				};
 			});
 
