@@ -23,6 +23,7 @@ import {
 	type BeforeAgentCallback,
 } from "./base-agent";
 import type { CallbackContext } from "./callback-context";
+import { ContextCacheConfig } from "./context-cache-config";
 import type { InvocationContext } from "./invocation-context";
 import type { ReadonlyContext } from "./readonly-context";
 
@@ -252,6 +253,11 @@ export interface LlmAgentConfig<T extends BaseLlm = BaseLlm> {
 	 * Callback or list of callbacks to be called after calling a tool
 	 */
 	afterToolCallback?: AfterToolCallback;
+
+	/**
+	 * Context cache configuration for Gemini models
+	 */
+	contextCacheConfig?: ContextCacheConfig;
 }
 
 /**
@@ -382,6 +388,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 			subAgents: config.subAgents,
 			beforeAgentCallback: config.beforeAgentCallback,
 			afterAgentCallback: config.afterAgentCallback,
+			contextCacheConfig: config.contextCacheConfig,
 		});
 
 		this.model = config.model || "";
