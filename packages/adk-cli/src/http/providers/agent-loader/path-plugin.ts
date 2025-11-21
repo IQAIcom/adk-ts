@@ -1,12 +1,12 @@
+import { existsSync } from "node:fs";
+import { isAbsolute, normalize, resolve } from "node:path";
+import type { Logger } from "@nestjs/common";
 import type {
 	ESBuildOnResolveArgs,
 	ESBuildPlugin,
 	ESBuildPluginSetup,
 } from "../agent-loader.types";
 import { parseTsConfigPaths } from "./tsconfig";
-import { existsSync } from "node:fs";
-import { isAbsolute, normalize, resolve } from "node:path";
-import type { Logger } from "@nestjs/common";
 import { normalizePathForEsbuild } from "./utils";
 
 export function createPathMappingPlugin(

@@ -327,7 +327,9 @@ class AgentChatClient {
 			throw new Error(`Unexpected response format: ${JSON.stringify(data)}`);
 		} catch (error) {
 			throw new Error(
-				`Failed to fetch agents: ${error instanceof Error ? error.message : String(error)}`,
+				`Failed to fetch agents: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
 			);
 		}
 	}
@@ -384,8 +386,8 @@ class AgentChatClient {
 					spinnerChars.some((char) => str.includes(char)) ||
 					str.includes("🤖 Thinking") ||
 					str.includes("\r") || // carriage returns for spinner updates
-					str.includes("\x1b")
-				); // ANSI escape codes for colors/positioning
+					str.includes("\x1b") // ANSI escape codes
+				);
 			};
 
 			// Temporarily override output during the fetch
@@ -408,7 +410,9 @@ class AgentChatClient {
 				}
 
 				const response = await fetch(
-					`${this.apiUrl}/api/agents/${encodeURIComponent(this.selectedAgent.relativePath)}/message`,
+					`${this.apiUrl}/api/agents/${encodeURIComponent(
+						this.selectedAgent.relativePath,
+					)}/message`,
 					{
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -417,9 +421,29 @@ class AgentChatClient {
 				);
 
 				if (!response.ok) {
-					const errorText = await response.text();
 					spinner.stop("❌ Failed to send message");
-					throw new Error(`HTTP ${response.status}: ${errorText}`);
+					const errorText = await response.text();
+
+					// Try to parse JSON error for nicer formatting
+					try {
+						const errorJson = JSON.parse(errorText);
+						if (errorJson.error && errorJson.message) {
+							p.log.error(
+								`\n❌ ${errorJson.error}\n${"━".repeat(40)}\n${errorJson.message}`,
+							);
+							if (errorJson.details && Array.isArray(errorJson.details)) {
+								errorJson.details.forEach((detail: string) => {
+									p.log.message(`  ${detail}`);
+								});
+							}
+							return;
+						}
+					} catch {
+						// not JSON, just print the raw text
+					}
+
+					p.log.error(errorText);
+					return;
 				}
 
 				const result = (await response.json()) as {
