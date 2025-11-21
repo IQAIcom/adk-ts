@@ -1,6 +1,6 @@
 {
 	"name": "@iqai/adk-examples",
-	"version": "0.0.33",
+	"version": "0.5.0",
 	"description": "Agent Development Kit for TypeScript with multi-provider LLM support",
 	"scripts": {
 		"start": "tsx ./src/index.ts",
