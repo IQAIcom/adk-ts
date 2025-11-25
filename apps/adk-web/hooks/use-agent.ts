@@ -83,7 +83,7 @@ export function useAgents(currentSessionId?: string | null) {
 							: [];
 						const text = textParts.join("").trim();
 						return {
-							id: index + 1,
+id: ev.timestamp,
 							type: ev.author === "user" ? "user" : "assistant",
 							content: text,
 							timestamp: new Date(ev.timestamp * 1000),
