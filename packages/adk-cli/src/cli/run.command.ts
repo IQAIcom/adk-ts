@@ -391,12 +391,12 @@ class AgentChatClient {
 			};
 
 			// Temporarily override output during the fetch
-			process.stdout.write = ((chunk: any, encoding?: any, callback?: any) => {
+			process.stdout.write = (chunk: any, encoding?: any, callback?: any) => {
 				if (isSpinnerOutput(chunk)) {
 					return savedStdout.call(process.stdout, chunk, encoding, callback);
 				}
 				return true; // Block everything else
-			}) as any;
+			};
 
 			process.stderr.write = (() => true) as any; // Block all stderr
 			console.log = (() => {}) as any;
@@ -428,22 +428,22 @@ class AgentChatClient {
 					try {
 						const errorJson = JSON.parse(errorText);
 						if (errorJson.error && errorJson.message) {
-							p.log.error(
-								`\n❌ ${errorJson.error}\n${"━".repeat(40)}\n${errorJson.message}`,
-							);
+							let message = `\n❌ ${errorJson.error}\n${"━".repeat(40)}\n${errorJson.message}`;
+
 							if (errorJson.details && Array.isArray(errorJson.details)) {
-								errorJson.details.forEach((detail: string) => {
-									p.log.message(`  ${detail}`);
-								});
+								const details = errorJson.details
+									.map((detail: string) => `  ${detail}`)
+									.join("\n");
+								message += `\n${details}`;
 							}
-							return;
+
+							throw new Error(message);
 						}
 					} catch {
-						// not JSON, just print the raw text
+						// Not JSON → fall through
 					}
 
-					p.log.error(errorText);
-					return;
+					throw new Error(errorText);
 				}
 
 				const result = (await response.json()) as {

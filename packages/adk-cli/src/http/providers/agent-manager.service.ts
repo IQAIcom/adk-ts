@@ -133,7 +133,7 @@ export class AgentManager {
 			await storeLoadedAgentHelper(
 				this.sessionService,
 				agentPath,
-				agentResult.agent,
+				agentResult,
 				runner,
 				sessionToUse,
 				agent,
@@ -170,10 +170,7 @@ export class AgentManager {
 		return agent;
 	}
 
-	private async loadAgentModule(
-		agent: Agent,
-		forceInvalidateCache?: boolean,
-	): Promise<{ agent: any; builtAgent?: any }> {
+	private async loadAgentModule(agent: Agent, forceInvalidateCache?: boolean) {
 		// Try both .js and .ts files, prioritizing .js if it exists
 		// Normalize paths for cross-platform compatibility
 		let agentFilePath = normalize(join(agent.absolutePath, "agent.js"));
@@ -273,7 +270,7 @@ export class AgentManager {
 	 * Get initial state for an agent path
 	 * Public method that can be called by other services
 	 */
-	getInitialStateForAgent(agentPath: string): any | undefined {
+	getInitialStateForAgent(agentPath: string) {
 		const agent = this.agents.get(agentPath);
 		if (!agent) {
 			return undefined;
@@ -293,10 +290,7 @@ export class AgentManager {
 	/**
 	 * Extract initial state from an agent result
 	 */
-	private extractInitialState(agentResult: {
-		agent: any;
-		builtAgent?: any;
-	}): any | undefined {
+	private extractInitialState(agentResult: { agent: any; builtAgent?: any }) {
 		return extractInitialStateHelper(agentResult, this.logger);
 	}
 
