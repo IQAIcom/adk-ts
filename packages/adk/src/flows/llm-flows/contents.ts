@@ -264,11 +264,36 @@ function getContents(
 	events: Event[],
 	agentName = "",
 ): Content[] {
+	// Create a map of invocationId to index for O(1) lookup
+	const invocationIdToIndex = new Map<string, number>();
+	for (let idx = 0; idx < events.length; idx++) {
+		if (events[idx].invocationId) {
+			invocationIdToIndex.set(events[idx].invocationId, idx);
+		}
+	}
+
+	const rewindFilteredEvents: Event[] = [];
+	let i = events.length - 1;
+	while (i >= 0) {
+		const event = events[i];
+		if (event.actions?.rewindBeforeInvocationId) {
+			const rewindInvocationId = event.actions.rewindBeforeInvocationId;
+			const rewindIndex = invocationIdToIndex.get(rewindInvocationId);
+			if (rewindIndex !== undefined && rewindIndex < i) {
+				i = rewindIndex;
+			}
+		} else {
+			rewindFilteredEvents.push(event);
+		}
+		i--;
+	}
+	rewindFilteredEvents.reverse();
+
 	const filteredEvents: Event[] = [];
 
 	// Parse the events, leaving the contents and the function calls and
 	// responses from the current agent.
-	for (const event of events) {
+	for (const event of rewindFilteredEvents) {
 		if (
 			!event.content ||
 			!event.content.role ||
@@ -304,8 +329,11 @@ function getContents(
 		);
 	}
 
+	// Process compaction events before rearranging
+	const processedEvents = processCompactionEvents(filteredEvents);
+
 	// Rearrange events for proper function call/response pairing
-	let resultEvents = rearrangeEventsForLatestFunctionResponse(filteredEvents);
+	let resultEvents = rearrangeEventsForLatestFunctionResponse(processedEvents);
 	resultEvents =
 		rearrangeEventsForAsyncFunctionResponsesInHistory(resultEvents);
 
@@ -489,4 +517,42 @@ function isAuthEvent(event: Event): boolean {
 	}
 
 	return false;
+}
+
+/**
+ * Processes compaction events in the event list.
+ * Iterates in reverse order to handle overlapping compactions correctly.
+ * For each compaction event, creates a new normal model event with the
+ * compacted content and filters out the original events that were compacted.
+ */
+function processCompactionEvents(events: Event[]): Event[] {
+	const result: Event[] = [];
+	let lastCompactionStartTime = Number.POSITIVE_INFINITY;
+
+	for (let i = events.length - 1; i >= 0; i--) {
+		const event = events[i];
+
+		if (event.actions?.compaction) {
+			const compaction = event.actions.compaction;
+
+			const synthesizedEvent = new Event({
+				timestamp: compaction.endTimestamp,
+				author: "model",
+				content: compaction.compactedContent,
+				branch: event.branch,
+				invocationId: event.invocationId,
+			});
+
+			result.unshift(synthesizedEvent);
+
+			lastCompactionStartTime = Math.min(
+				lastCompactionStartTime,
+				compaction.startTimestamp,
+			);
+		} else if (event.timestamp < lastCompactionStartTime) {
+			result.unshift(event);
+		}
+	}
+
+	return result;
 }

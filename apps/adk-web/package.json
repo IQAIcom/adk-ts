@@ -1,5 +1,5 @@
 {
-	"name": "adk-web",
+	"name": "@iqai/adk-web",
 	"version": "0.1.1",
 	"private": true,
 	"scripts": {
@@ -37,6 +37,7 @@
 		"lucide-react": "^0.543.0",
 		"next": "15.5.2",
 		"next-themes": "^0.4.6",
+		"nuqs": "^2.7.2",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
 		"react-hook-form": "^7.62.0",

@@ -1,5 +1,44 @@
 # @iqai/adk
 
+## 0.5.6
+
+### Patch Changes
+
+- 8d5ba1e: ADK WEB now supports voice input
+
+## 0.5.5
+
+### Patch Changes
+
+- 05bb1b8: Fix state variable injection: serialize objects to JSON and parse nested properties
+
+## 0.5.4
+
+### Patch Changes
+
+- 2167a47: Adds polymarket mcp wrapper
+
+## 0.5.3
+
+### Patch Changes
+
+- 1ec769a: fix: improve type safety across cli and adk package
+- 9ba699c: fix: state persistence
+- 4fbb724: Fix: state management
+- edfe628: Add artifact parsing and rewind functionality
+
+## 0.5.2
+
+### Patch Changes
+
+- ae81c74: Add event compaction feature with configurable summarization
+
+## 0.5.1
+
+### Patch Changes
+
+- d8fd6e8: feat(agent-builder): add static withAgent method for cleaner API usage
+
 ## 0.5.0
 
 ### Minor Changes

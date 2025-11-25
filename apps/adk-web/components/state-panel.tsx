@@ -4,8 +4,6 @@ import CodeEditor from "@uiw/react-textarea-code-editor";
 import { Code2, Edit, Plus, Settings, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-import { StateCard } from "@/components/state-card";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -19,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useJsonEditor } from "@/hooks/use-json-editor";
 import { useStatePanel } from "@/hooks/use-state-panel";
 import type { AgentListItemDto as Agent } from "../Api";
+import { StateCard } from "./state-card";
 
 interface StatePanelProps {
 	selectedAgent: Agent | null;
@@ -71,13 +70,12 @@ export function StatePanel({
 	}
 
 	const stateEntries = Object.entries(currentState?.sessionState || {});
-
 	const handleDeleteState = async (key: string) => {
-		await handleUpdateState(key, undefined);
+		await updateState(key, undefined);
 	};
 
 	return (
-		<div className="h-full flex flex-col bg-background">
+		<div className="h-full bg-background">
 			{/* Header */}
 			<div className="p-4 border-b">
 				<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -207,9 +205,8 @@ export function StatePanel({
 				</Dialog>
 			</div>
 
-			{/* Content */}
-			<ScrollArea className="flex-1 max-h-[calc(100vh-200px)]">
-				<div className="p-4 space-y-3">
+			<ScrollArea className="h-[calc(100%-73px)]">
+				<div className="p-4 space-y-3 w-full pb-8">
 					{isLoading ? (
 						<div className="text-center py-8">
 							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />

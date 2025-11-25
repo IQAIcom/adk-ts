@@ -1,5 +1,75 @@
 # @iqai/adk-cli
 
+## 0.3.28
+
+### Patch Changes
+
+- 8d5ba1e: ADK WEB now supports voice input
+- Updated dependencies [8d5ba1e]
+  - @iqai/adk@0.5.6
+
+## 0.3.27
+
+### Patch Changes
+
+- Updated dependencies [05bb1b8]
+  - @iqai/adk@0.5.5
+
+## 0.3.26
+
+### Patch Changes
+
+- Updated dependencies [2167a47]
+  - @iqai/adk@0.5.4
+
+## 0.3.25
+
+### Patch Changes
+
+- 0082494: fix: env parsing
+
+## 0.3.24
+
+### Patch Changes
+
+- 8143f4f: refactor: simplified agent loaders and managers
+
+## 0.3.23
+
+### Patch Changes
+
+- 737493f: Fix hot reload state sync and State Panel UI issues
+
+## 0.3.22
+
+### Patch Changes
+
+- 1ec769a: fix: improve type safety across cli and adk package
+- 9ba699c: fix: state persistence
+- 4fbb724: Fix: state management
+- 69d3431: fix: state persistence and allows initial state of agents to be passed down to proper sessions
+- Updated dependencies [1ec769a]
+- Updated dependencies [9ba699c]
+- Updated dependencies [4fbb724]
+- Updated dependencies [edfe628]
+  - @iqai/adk@0.5.3
+
+## 0.3.21
+
+### Patch Changes
+
+- Updated dependencies [ae81c74]
+  - @iqai/adk@0.5.2
+
+## 0.3.20
+
+### Patch Changes
+
+- 170dafc: fix: multiple cache file creation
+- 31264cb: Improves the logging for adk run by silencing the logs from agent processes by default
+- Updated dependencies [d8fd6e8]
+  - @iqai/adk@0.5.1
+
 ## 0.3.19
 
 ### Patch Changes

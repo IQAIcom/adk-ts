@@ -2,26 +2,32 @@
 
 import { Activity, Archive, Database, Share2, X } from "lucide-react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 import { EventsPanel } from "@/components/events-panel";
 import { GraphPanel } from "@/components/graph-panel";
 import { SessionsPanel } from "@/components/sessions-panel";
 import { StatePanel } from "@/components/state-panel";
 import { Button } from "@/components/ui/button";
-import { useAgentGraph } from "@/hooks/use-agent-graph";
-import { useEvents } from "@/hooks/use-events";
-import { useSessions } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
 import { PanelId, PanelIdSchema } from "../_schema";
 
 interface SidebarProps {
 	selectedPanel: PanelId | null;
 	onPanelSelect: (panel: PanelId | null) => void;
-	className?: string;
 	selectedAgent?: any | null;
 	currentSessionId?: string | null;
-	onSessionChange?: (sessionId: string | null) => void;
+	sessions: any[];
+	sessionsLoading: boolean;
+	events: any[];
+	eventsLoading: boolean;
+	graph: any;
+	graphLoading: boolean;
+	graphError: any;
+	onCreateSession: (
+		state?: Record<string, any>,
+		sessionId?: string,
+	) => Promise<any>;
+	onDeleteSession: (sessionId: string) => Promise<void>;
+	onSwitchSession: (sessionId: string) => Promise<void>;
 }
 
 const navigationItems: { id: PanelId; label: string; icon: typeof Database }[] =
@@ -35,97 +41,21 @@ const navigationItems: { id: PanelId; label: string; icon: typeof Database }[] =
 export function Sidebar({
 	selectedPanel,
 	onPanelSelect,
-	className,
 	selectedAgent,
-	currentSessionId: initialSessionId,
-	onSessionChange,
+	currentSessionId,
+	sessions,
+	sessionsLoading,
+	events,
+	eventsLoading,
+	graph,
+	graphLoading,
+	graphError,
+	onCreateSession,
+	onDeleteSession,
+	onSwitchSession,
 }: SidebarProps) {
-	// API URL now resolved inside hooks via useApiUrl
-	const _searchParams = useSearchParams();
-
-	// Local session state should be declared before hooks that depend on it
-	const [localSessionId, setLocalSessionId] = useState<string | null>(
-		initialSessionId ?? null,
-	);
-
-	// Manage sessions and events internally
-	const {
-		sessions,
-		isLoading: sessionsLoading,
-		createSession,
-		deleteSession,
-		switchSession,
-	} = useSessions(selectedAgent);
-
-	const { events, isLoading: eventsLoading } = useEvents(
-		selectedAgent,
-		localSessionId ?? null,
-	);
-
-	const {
-		data: graph,
-		isLoading: graphLoading,
-		error: graphError,
-	} = useAgentGraph(selectedAgent);
-
-	// Track previous agent to detect actual agent switch
-	const prevAgentRef = useRef<string | null>(null);
-	useEffect(() => {
-		const currentAgentPath = selectedAgent?.relativePath ?? null;
-		if (currentAgentPath !== prevAgentRef.current) {
-			// Agent changed: clear local session so auto-select can pick correct one for new agent
-			setLocalSessionId(null);
-			onSessionChange?.(null);
-			prevAgentRef.current = currentAgentPath;
-		}
-	}, [selectedAgent, onSessionChange]);
-
-	// Sync incoming initialSessionId prop into local state
-	useEffect(() => {
-		setLocalSessionId(initialSessionId ?? null);
-	}, [initialSessionId]);
-
-	// Auto-select first session when sessions are loaded if no current session (per agent)
-	useEffect(() => {
-		if (sessions.length > 0 && !localSessionId) {
-			const firstSessionId = sessions[0].id;
-			setLocalSessionId(firstSessionId);
-			onSessionChange?.(firstSessionId);
-			// Also sync server-side active session for consistency
-			try {
-				void switchSession(firstSessionId);
-			} catch {}
-		}
-		// If current local session id is no longer present in sessions (e.g., after agent change or deletion), clear it
-		if (localSessionId && !sessions.some((s) => s.id === localSessionId)) {
-			setLocalSessionId(null);
-			onSessionChange?.(null);
-		}
-	}, [sessions, localSessionId, onSessionChange, switchSession]);
-
-	const handleCreateSession = async (
-		state?: Record<string, any>,
-		sessionId?: string,
-	) => {
-		await createSession({ state, sessionId });
-	};
-
-	const handleDeleteSession = async (sessionId: string) => {
-		await deleteSession(sessionId);
-		if (localSessionId === sessionId) {
-			setLocalSessionId(null);
-			onSessionChange?.(null);
-		}
-	};
-
-	const handleSwitchSession = async (sessionId: string) => {
-		await switchSession(sessionId);
-		setLocalSessionId(sessionId);
-		onSessionChange?.(sessionId);
-	};
-
 	return (
-		<div className={cn("flex h-full", className)}>
+		<div className={cn("flex h-full")}>
 			<div className={cn("w-14 border-r bg-card flex flex-col h-full")}>
 				{/* Logo */}
 				<div className="flex items-center justify-center h-[60px] border-b flex-shrink-0">
@@ -169,7 +99,6 @@ export function Sidebar({
 				</div>
 			</div>
 
-			{/* Expanded panel (moved from page.tsx) */}
 			{selectedPanel && (
 				<div className="w-80 border-r bg-background flex flex-col">
 					{/* Panel Header */}
@@ -199,27 +128,27 @@ export function Sidebar({
 						{selectedPanel === "sessions" && (
 							<SessionsPanel
 								sessions={sessions || []}
-								currentSessionId={localSessionId}
-								onCreateSession={handleCreateSession}
-								onDeleteSession={handleDeleteSession}
-								onSwitchSession={handleSwitchSession}
-								isLoading={!!sessionsLoading}
+								currentSessionId={currentSessionId ?? null}
+								onCreateSession={onCreateSession}
+								onDeleteSession={onDeleteSession}
+								onSwitchSession={onSwitchSession}
+								isLoading={sessionsLoading}
 							/>
 						)}
 						{selectedPanel === "events" && (
-							<EventsPanel events={events || []} isLoading={!!eventsLoading} />
+							<EventsPanel events={events || []} isLoading={eventsLoading} />
 						)}
 						{selectedPanel === "state" && (
 							<StatePanel
 								selectedAgent={selectedAgent}
-								currentSessionId={localSessionId}
+								currentSessionId={currentSessionId ?? null}
 							/>
 						)}
 						{selectedPanel === "graph" && (
 							<div className="h-full w-full">
 								<GraphPanel
 									data={graph}
-									isLoading={!!graphLoading}
+									isLoading={graphLoading}
 									error={graphError ?? null}
 								/>
 							</div>

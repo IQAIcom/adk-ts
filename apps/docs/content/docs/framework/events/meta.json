@@ -5,6 +5,7 @@
 		"index",
 		"event-actions",
 		"working-with-events",
+		"compaction",
 		"streaming",
 		"patterns"
 	]

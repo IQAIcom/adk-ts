@@ -1,10 +1,11 @@
 import { Logger } from "@adk/logger/index.js";
 import type { LlmRequest } from "@adk/models";
 import type { Content, Part } from "@google/genai";
-import { type LanguageModel, generateId } from "ai";
+import { generateId, type LanguageModel } from "ai";
 import type { ZodSchema, ZodType } from "zod";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service.js";
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor.js";
+import type { EventsCompactionConfig } from "../events/compaction-config.js";
 import type { Event } from "../events/event.js";
 import type { BaseMemoryService } from "../memory/base-memory-service.js";
 import type { BaseLlm } from "../models/base-llm.js";
@@ -20,17 +21,17 @@ import type {
 	BeforeAgentCallback,
 } from "./base-agent.js";
 import { LangGraphAgent, type LangGraphNode } from "./lang-graph-agent.js";
+import type {
+	AfterModelCallback,
+	AfterToolCallback,
+	BeforeModelCallback,
+	BeforeToolCallback,
+} from "./llm-agent.js";
 import { LlmAgent } from "./llm-agent.js";
 import { LoopAgent } from "./loop-agent.js";
 import { ParallelAgent } from "./parallel-agent.js";
 import { RunConfig } from "./run-config.js";
 import { SequentialAgent } from "./sequential-agent.js";
-import type {
-	BeforeModelCallback,
-	AfterModelCallback,
-	BeforeToolCallback,
-	AfterToolCallback,
-} from "./llm-agent.js";
 
 /**
  * Configuration options for the AgentBuilder
@@ -106,6 +107,11 @@ export interface EnhancedRunner<T = string, M extends boolean = false> {
 		newMessage: FullMessage;
 		runConfig?: RunConfig;
 	}): AsyncIterable<Event>;
+	rewind(params: {
+		userId: string;
+		sessionId: string;
+		rewindBeforeInvocationId: string;
+	});
 	__outputSchema?: ZodSchema;
 }
 
@@ -148,6 +154,7 @@ interface RunnerConfig {
 	sessionService: BaseSessionService;
 	memoryService?: BaseMemoryService;
 	artifactService?: BaseArtifactService;
+	eventsCompactionConfig?: EventsCompactionConfig;
 }
 
 /**
@@ -200,6 +207,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	private sessionOptions?: SessionOptions;
 	private memoryService?: BaseMemoryService;
 	private artifactService?: BaseArtifactService;
+	private eventsCompactionConfig?: EventsCompactionConfig;
 	private agentType: AgentType = "llm";
 	private existingSession?: Session;
 	private existingAgent?: BaseAgent; // If provided, reuse directly
@@ -439,13 +447,21 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	}
 
 	/**
+	 * Convenience method to start building with an existing agent
+	 * @param agent The agent instance to wrap
+	 * @returns New AgentBuilder instance with agent set
+	 */
+	static withAgent(agent: BaseAgent): AgentBuilder<string, false> {
+		return new AgentBuilder(agent.name || "default_agent").withAgent(agent);
+	}
+
+	/**
 	 * Provide an already constructed agent instance. Further definition-mutating calls
 	 * (model/tools/instruction/etc.) will be ignored with a dev warning.
 	 */
 	withAgent(agent: BaseAgent): this {
 		this.existingAgent = agent;
 		this.definitionLocked = true;
-		// Sync name if default
 		if (this.config.name === "default_agent" && agent.name) {
 			this.config.name = agent.name;
 		}
@@ -644,6 +660,27 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	}
 
 	/**
+	 * Configure event compaction for automatic history management
+	 * @param config Event compaction configuration
+	 * @returns This builder instance for chaining
+	 * @example
+	 * ```typescript
+	 * const { runner } = await AgentBuilder
+	 *   .create("assistant")
+	 *   .withModel("gemini-2.5-flash")
+	 *   .withEventsCompaction({
+	 *     compactionInterval: 10,  // Compact every 10 invocations
+	 *     overlapSize: 2,          // Include 2 prior invocations
+	 *   })
+	 *   .build();
+	 * ```
+	 */
+	withEventsCompaction(config: EventsCompactionConfig): this {
+		this.eventsCompactionConfig = config;
+		return this;
+	}
+
+	/**
 	 * Configure with an in-memory session with custom IDs
 	 * Note: In-memory sessions are created automatically by default, use this only if you need custom appName/userId
 	 * @param options Session configuration options (userId and appName)
@@ -686,6 +723,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 				sessionService: this.sessionService,
 				memoryService: this.memoryService,
 				artifactService: this.artifactService,
+				eventsCompactionConfig: this.eventsCompactionConfig,
 			};
 
 			const baseRunner = new Runner(runnerConfig);
@@ -947,17 +985,14 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 
 				return combinedResponse.trim() as T;
 			},
-
-			runAsync(params: {
-				userId: string;
-				sessionId: string;
-				newMessage: FullMessage;
-				runConfig?: RunConfig;
-			}) {
+			runAsync(params) {
 				return baseRunner.runAsync({
 					...params,
 					runConfig: params.runConfig ?? runConfig,
 				});
+			},
+			rewind(params) {
+				return baseRunner.rewind(params);
 			},
 		};
 	}

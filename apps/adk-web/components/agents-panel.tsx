@@ -1,3 +1,4 @@
+import { Bot } from "lucide-react";
 import {
 	Card,
 	CardContent,
@@ -7,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Bot } from "lucide-react";
 import type { AgentListItemDto as Agent } from "../Api";
 
 interface AgentsPanelProps {
@@ -89,23 +89,4 @@ function AgentItem({ agent, isSelected, onSelect }: AgentItemProps) {
 			</div>
 		</button>
 	);
-}
-
-interface StatusIndicatorProps {
-	status?: "running" | "stopped" | "error";
-}
-
-function StatusIndicator({ status }: StatusIndicatorProps) {
-	const getStatusColor = () => {
-		switch (status) {
-			case "running":
-				return "bg-green-500";
-			case "error":
-				return "bg-red-500";
-			default:
-				return "bg-gray-500";
-		}
-	};
-
-	return <div className={cn("w-2 h-2 rounded-full", getStatusColor())} />;
 }

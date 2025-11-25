@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import type {
 	MessageRequest,
 	MessageResponse,
@@ -6,12 +6,16 @@ import type {
 } from "../../common/types";
 import { AgentManager } from "../providers/agent-manager.service";
 import { SessionsService } from "../sessions/sessions.service";
+import { HotReloadService } from "../reload/hot-reload.service";
 
 @Injectable()
 export class MessagingService {
 	constructor(
 		@Inject(AgentManager) private readonly agentManager: AgentManager,
 		@Inject(SessionsService) private readonly sessionsService: SessionsService,
+		@Optional()
+		@Inject(HotReloadService)
+		private readonly hotReload?: HotReloadService,
 	) {}
 
 	async getMessages(agentPath: string): Promise<MessagesResponse> {
@@ -33,6 +37,15 @@ export class MessagingService {
 			message,
 			attachments,
 		);
+
+		// After run completes, broadcast potential state change for this agent/session
+		try {
+			const loaded = await this.sessionsService.ensureAgentLoaded(agentPath);
+			if (loaded) {
+				this.hotReload?.broadcastState(agentPath, loaded.sessionId);
+			}
+		} catch {}
+
 		// Determine the producing agent by inspecting the latest session events
 		let agentName = agentPath;
 		try {

@@ -1,16 +1,23 @@
-import {
-	existsSync,
-	mkdirSync,
-	readFileSync,
-	rmSync,
-	unlinkSync,
-} from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, rmSync, unlinkSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
+import { dirname, join, normalize, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { AgentBuilder, BaseAgent, BuiltAgent } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
 import { findProjectRoot } from "../../common/find-project-root";
+import {
+	isRebuildNeeded as checkRebuildNeeded,
+	createExternalizePlugin,
+} from "./agent-loader/build-utils";
+import { loadEnvironmentVariables as loadEnv } from "./agent-loader/env";
+import { createPathMappingPlugin } from "./agent-loader/path-plugin";
+import { resolveAgentExport as resolveAgentExportHelper } from "./agent-loader/resolver";
+import { normalizePathForEsbuild } from "./agent-loader/utils";
+import type {
+	AgentExportResult,
+	ModuleExport,
+	RequireLike,
+} from "./agent-loader.types";
 
 const ADK_CACHE_DIR = ".adk-cache";
 
@@ -102,126 +109,16 @@ export class AgentLoader {
 	}
 
 	/**
-	 * Parse TypeScript path mappings from tsconfig.json
-	 */
-	private parseTsConfigPaths(projectRoot: string): {
-		baseUrl?: string;
-		paths?: Record<string, string[]>;
-	} {
-		const tsconfigPath = join(projectRoot, "tsconfig.json");
-		if (!existsSync(tsconfigPath)) {
-			return {};
-		}
-
-		try {
-			const tsconfigContent = readFileSync(tsconfigPath, "utf-8");
-			const tsconfig = JSON.parse(tsconfigContent);
-			const compilerOptions = tsconfig.compilerOptions || {};
-
-			return {
-				baseUrl: compilerOptions.baseUrl,
-				paths: compilerOptions.paths,
-			};
-		} catch (error) {
-			this.logger.warn(
-				`Failed to parse tsconfig.json: ${error instanceof Error ? error.message : String(error)}`,
-			);
-			return {};
-		}
-	}
-
-	/**
-	 * Create an esbuild plugin to handle TypeScript path mappings and relative imports
-	 */
-	private createPathMappingPlugin(projectRoot: string) {
-		const { baseUrl, paths } = this.parseTsConfigPaths(projectRoot);
-		const resolvedBaseUrl = baseUrl
-			? resolve(projectRoot, baseUrl)
-			: projectRoot;
-		const logger = this.logger;
-		const quiet = this.quiet;
-		const normalizePath = this.normalizePath.bind(this);
-
-		return {
-			name: "typescript-path-mapping",
-			setup(build: any) {
-				build.onResolve({ filter: /.*/ }, (args: any) => {
-					if (!quiet) {
-						logger.debug(
-							`Resolving import: "${args.path}" from "${args.importer || "unknown"}"`,
-						);
-					}
-					if (paths && !args.path.startsWith(".") && !isAbsolute(args.path)) {
-						for (const [alias, mappings] of Object.entries(paths)) {
-							const aliasPattern = alias.replace("*", "(.*)");
-							const aliasRegex = new RegExp(`^${aliasPattern}$`);
-							const match = args.path.match(aliasRegex);
-
-							if (match) {
-								for (const mapping of mappings) {
-									let resolvedPath = mapping;
-									if (match[1] && mapping.includes("*")) {
-										resolvedPath = mapping.replace("*", match[1]);
-									}
-									const fullPath = normalize(
-										resolve(resolvedBaseUrl, resolvedPath),
-									);
-									const extensions = [".ts", ".js", ".tsx", ".jsx", ""];
-									for (const ext of extensions) {
-										const pathWithExt = ext ? fullPath + ext : fullPath;
-										if (existsSync(pathWithExt)) {
-											logger.debug(
-												`Path mapping resolved: ${args.path} -> ${pathWithExt}`,
-											);
-											return { path: normalizePath(pathWithExt) };
-										}
-									}
-								}
-							}
-						}
-					}
-
-					if (args.path === "env" && baseUrl) {
-						const envPath = resolve(resolvedBaseUrl, "env");
-						const extensions = [".ts", ".js"];
-						for (const ext of extensions) {
-							const pathWithExt = normalize(envPath + ext);
-							if (existsSync(pathWithExt)) {
-								logger.debug(
-									`Direct env import resolved: ${args.path} -> ${pathWithExt}`,
-								);
-								return { path: normalizePath(pathWithExt) };
-							}
-						}
-					}
-
-					if (baseUrl && args.path.startsWith("../")) {
-						const relativePath = args.path.replace("../", "");
-						const fullPath = resolve(resolvedBaseUrl, relativePath);
-						const extensions = [".ts", ".js", ".tsx", ".jsx", ""];
-						for (const ext of extensions) {
-							const pathWithExt = normalize(ext ? fullPath + ext : fullPath);
-							if (existsSync(pathWithExt)) {
-								logger.debug(
-									`Relative import resolved via baseUrl: ${args.path} -> ${pathWithExt}`,
-								);
-								return { path: normalizePath(pathWithExt) };
-							}
-						}
-					}
-					return;
-				});
-			},
-		};
-	}
-
-	/**
 	 * Import a TypeScript file by compiling it on-demand
+	 * @param filePath - Path to the TypeScript file
+	 * @param providedProjectRoot - Optional project root path
+	 * @param forceInvalidateCache - Force cache invalidation (full reload)
 	 */
 	async importTypeScriptFile(
 		filePath: string,
 		providedProjectRoot?: string,
-	): Promise<Record<string, unknown>> {
+		forceInvalidateCache?: boolean,
+	): Promise<ModuleExport> {
 		// Normalize the input file path
 		const normalizedFilePath = normalize(resolve(filePath));
 		const projectRoot =
@@ -239,85 +136,137 @@ export class AgentLoader {
 			if (!existsSync(cacheDir)) {
 				mkdirSync(cacheDir, { recursive: true });
 			}
-			const outFile = normalize(join(cacheDir, `agent-${Date.now()}.cjs`));
+
+			// Deterministic cache file path per source file to avoid unbounded cache growth
+			const cacheKey = createHash("sha1")
+				.update(this.normalizePath(normalizedFilePath))
+				.digest("hex");
+			const outFile = normalize(join(cacheDir, `agent-${cacheKey}.cjs`));
 			this.trackCacheFile(outFile, projectRoot);
+
+			// Define tsconfigPath once for reuse
+			const tsconfigPath = join(projectRoot, "tsconfig.json");
+
+			// Check if we need to rebuild
+			// Force rebuild if explicitly requested (e.g., initial state changed)
+			const needRebuild =
+				forceInvalidateCache ||
+				checkRebuildNeeded(
+					outFile,
+					normalizedFilePath,
+					tsconfigPath,
+					this.logger,
+					this.quiet,
+				);
+
+			if (forceInvalidateCache && !this.quiet) {
+				this.logger.log(`Forcing cache invalidation for ${normalizedFilePath}`);
+			}
 
 			const ALWAYS_EXTERNAL_SCOPES = ["@iqai/"];
 			const alwaysExternal = ["@iqai/adk"];
+			const plugin = createExternalizePlugin(
+				alwaysExternal,
+				ALWAYS_EXTERNAL_SCOPES,
+			);
 
-			const plugin = {
-				name: "externalize-bare-imports",
-				setup(build: {
-					onResolve: (
-						options: { filter: RegExp },
-						callback: (args: {
-							path: string;
-						}) => { path: string; external: boolean } | undefined,
-					) => void;
-				}) {
-					build.onResolve({ filter: /.*/ }, (args: { path: string }) => {
-						const isWindowsAbsolutePath = /^[a-zA-Z]:/.test(args.path);
-						if (
-							args.path.startsWith(".") ||
-							args.path.startsWith("/") ||
-							args.path.startsWith("..") ||
-							isWindowsAbsolutePath
-						) {
-							return;
-						}
-						if (
-							ALWAYS_EXTERNAL_SCOPES.some((s) => args.path.startsWith(s)) ||
-							alwaysExternal.includes(args.path)
-						) {
-							return { path: args.path, external: true };
-						}
-						return { path: args.path, external: true };
-					});
-				},
-			};
-
-			const tsconfigPath = join(projectRoot, "tsconfig.json");
-			const pathMappingPlugin = this.createPathMappingPlugin(projectRoot);
+			const pathMappingPlugin = createPathMappingPlugin(projectRoot, {
+				logger: this.logger,
+				quiet: this.quiet,
+			});
 			const plugins = [pathMappingPlugin, plugin];
 
-			await build({
-				entryPoints: [this.normalizePath(normalizedFilePath)],
-				outfile: outFile,
-				bundle: true,
-				format: "cjs",
-				platform: "node",
-				target: ["node22"],
-				sourcemap: false,
-				logLevel: "silent",
-				plugins,
-				absWorkingDir: projectRoot,
-				external: [...alwaysExternal],
-				...(existsSync(tsconfigPath) ? { tsconfig: tsconfigPath } : {}),
-			});
-
-			const dynamicRequire = createRequire(outFile);
-			let mod: Record<string, unknown>;
-			try {
-				mod = dynamicRequire(outFile) as Record<string, unknown>;
-			} catch (loadErr) {
-				this.logger.warn(
-					`Primary require failed for built agent '${outFile}': ${loadErr instanceof Error ? loadErr.message : String(loadErr)}. Falling back to dynamic import...`,
-				);
+			if (needRebuild) {
+				// Delete old cache file before rebuilding to avoid stale cache on build failure
 				try {
-					mod = (await import(pathToFileURL(outFile).href)) as Record<
-						string,
-						unknown
-					>;
-				} catch (fallbackErr) {
-					throw new Error(
-						`Both require() and import() failed for built agent file '${outFile}': ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`,
+					if (existsSync(outFile)) {
+						unlinkSync(outFile);
+						if (!this.quiet) {
+							this.logger.debug(`Deleted old cache file: ${outFile}`);
+						}
+					}
+				} catch (error) {
+					if (!this.quiet) {
+						this.logger.warn(
+							`Failed to delete old cache file ${outFile}: ${
+								error instanceof Error ? error.message : String(error)
+							}`,
+						);
+					}
+				}
+
+				await build({
+					entryPoints: [normalizePathForEsbuild(normalizedFilePath)],
+					outfile: outFile,
+					bundle: true,
+					format: "cjs",
+					platform: "node",
+					target: ["node22"],
+					sourcemap: false,
+					logLevel: "silent",
+					plugins,
+					absWorkingDir: projectRoot,
+					external: [...alwaysExternal],
+					...(existsSync(tsconfigPath) ? { tsconfig: tsconfigPath } : {}),
+				});
+			}
+
+			const dynamicRequire = createRequire(outFile) as RequireLike;
+			// Bust require cache if we rebuilt the same outFile path
+			try {
+				if (needRebuild) {
+					const resolved = dynamicRequire.resolve
+						? dynamicRequire.resolve(outFile)
+						: outFile;
+					if (dynamicRequire.cache?.[resolved]) {
+						delete dynamicRequire.cache[resolved];
+					}
+				}
+			} catch (error) {
+				if (!this.quiet) {
+					this.logger.warn(
+						`Failed to invalidate require cache for ${outFile}: ${
+							error instanceof Error ? error.message : String(error)
+						}. Stale code may be executed.`,
 					);
 				}
 			}
-			let agentExport = (mod as any)?.agent;
-			if (!agentExport && (mod as any)?.default) {
-				const defaultExport = (mod as any).default as Record<string, unknown>;
-				agentExport = (defaultExport as any)?.agent ?? defaultExport;
+
+			let mod: ModuleExport;
+			try {
+				mod = dynamicRequire(outFile) as ModuleExport;
+			} catch (loadErr) {
+				this.logger.warn(
+					`Primary require failed for built agent '${outFile}': ${
+						loadErr instanceof Error ? loadErr.message : String(loadErr)
+					}. Falling back to dynamic import...`,
+				);
+				try {
+					mod = (await import(pathToFileURL(outFile).href)) as ModuleExport;
+				} catch (fallbackErr) {
+					throw new Error(
+						`Both require() and import() failed for built agent file '${outFile}': ${
+							fallbackErr instanceof Error
+								? fallbackErr.message
+								: String(fallbackErr)
+						}`,
+					);
+				}
+			}
+
+			let agentExport = mod.agent;
+			if (!agentExport && mod.default) {
+				const defaultExport = mod.default;
+				if (
+					defaultExport &&
+					typeof defaultExport === "object" &&
+					"agent" in defaultExport
+				) {
+					const defaultObj = defaultExport as ModuleExport;
+					agentExport = defaultObj.agent ?? defaultExport;
+				} else {
+					agentExport = defaultExport;
+				}
 			}
 
 			if (agentExport) {
@@ -348,290 +297,10 @@ export class AgentLoader {
 	}
 
 	loadEnvironmentVariables(agentFilePath: string): void {
-		// Normalize the path first
-		const normalizedAgentPath = normalize(resolve(agentFilePath));
-		const projectRoot = findProjectRoot(dirname(normalizedAgentPath));
-
-		// Check for multiple env files in priority order
-		const envFiles = [
-			".env.local",
-			".env.development.local",
-			".env.production.local",
-			".env.development",
-			".env.production",
-			".env",
-		];
-
-		for (const envFile of envFiles) {
-			const envPath = join(projectRoot, envFile);
-			if (existsSync(envPath)) {
-				try {
-					const envContent = readFileSync(envPath, "utf8");
-					const envLines = envContent.split("\n");
-					for (const line of envLines) {
-						const trimmedLine = line.trim();
-						if (trimmedLine && !trimmedLine.startsWith("#")) {
-							const [key, ...valueParts] = trimmedLine.split("=");
-							if (key && valueParts.length > 0) {
-								const value = valueParts.join("=").replace(/^"(.*)"$/, "$1");
-								// Set environment variables in current process (only if not already set)
-								if (!process.env[key.trim()]) {
-									process.env[key.trim()] = value.trim();
-								}
-							}
-						}
-					}
-				} catch (error) {
-					this.logger.warn(
-						`Warning: Could not load ${envFile} file: ${
-							error instanceof Error ? error.message : String(error)
-						}`,
-					);
-				}
-			}
-		}
+		loadEnv(agentFilePath, this.logger);
 	}
 
-	/**
-	 * Type guard to check if object is likely a BaseAgent instance
-	 */
-	private isLikelyAgentInstance(obj: unknown): obj is BaseAgent {
-		return (
-			obj != null &&
-			typeof obj === "object" &&
-			typeof (obj as BaseAgent).name === "string" &&
-			typeof (obj as BaseAgent).runAsync === "function"
-		);
-	}
-
-	/**
-	 * Type guard to check if object is an AgentBuilder
-	 */
-	private isAgentBuilder(obj: unknown): obj is AgentBuilder {
-		return (
-			obj != null &&
-			typeof obj === "object" &&
-			typeof (obj as AgentBuilder).build === "function" &&
-			typeof (obj as AgentBuilder).withModel === "function"
-		);
-	}
-
-	/**
-	 * Type guard to check if object is a BuiltAgent
-	 */
-	private isBuiltAgent(obj: unknown): obj is BuiltAgent {
-		return (
-			obj != null &&
-			typeof obj === "object" &&
-			"agent" in (obj as any) &&
-			"runner" in (obj as any) &&
-			"session" in (obj as any)
-		);
-	}
-
-	/**
-	 * Type guard to check if value is a primitive type
-	 */
-	private isPrimitive(
-		v: unknown,
-	): v is null | undefined | string | number | boolean {
-		return v == null || ["string", "number", "boolean"].includes(typeof v);
-	}
-
-	/**
-	 * Safely invoke a function, handling both sync and async results
-	 */
-	private async invokeFunctionSafely(fn: () => unknown): Promise<unknown> {
-		let result = fn();
-		if (result && typeof result === "object" && "then" in (result as any)) {
-			result = await (result as any);
-		}
-		return result;
-	}
-
-	/**
-	 * Extract BaseAgent from different possible types
-	 */
-	private async extractBaseAgent(item: unknown): Promise<BaseAgent | null> {
-		if (this.isLikelyAgentInstance(item)) {
-			return item as BaseAgent;
-		}
-		if (this.isAgentBuilder(item)) {
-			const built = await (item as AgentBuilder).build();
-			return built.agent;
-		}
-		if (this.isBuiltAgent(item)) {
-			return (item as BuiltAgent).agent;
-		}
-		return null;
-	}
-
-	/**
-	 * Search through module exports to find potential agent exports
-	 */
-	private async scanModuleExports(
-		mod: Record<string, unknown>,
-	): Promise<BaseAgent | null> {
-		for (const [key, value] of Object.entries(mod)) {
-			if (key === "default") continue;
-			const keyLower = key.toLowerCase();
-			if (this.isPrimitive(value)) continue;
-
-			const baseAgent = await this.extractBaseAgent(value);
-			if (baseAgent) {
-				return baseAgent;
-			}
-
-			if (value && typeof value === "object" && "agent" in (value as any)) {
-				const container = value as Record<string, unknown>;
-				const containerAgent = await this.extractBaseAgent(
-					(container as any).agent,
-				);
-				if (containerAgent) {
-					return containerAgent;
-				}
-			}
-
-			if (
-				typeof value === "function" &&
-				(() => {
-					if (/(agent|build|create)/i.test(keyLower)) return true;
-					const fnName = (value as { name?: string })?.name;
-					return !!(
-						fnName && /(agent|build|create)/i.test(fnName.toLowerCase())
-					);
-				})()
-			) {
-				try {
-					const functionResult = await this.invokeFunctionSafely(
-						value as () => unknown,
-					);
-					const baseAgent = await this.extractBaseAgent(functionResult);
-					if (baseAgent) {
-						return baseAgent;
-					}
-
-					if (
-						functionResult &&
-						typeof functionResult === "object" &&
-						"agent" in (functionResult as any)
-					) {
-						const container = functionResult as Record<string, unknown>;
-						const containerAgent = await this.extractBaseAgent(
-							(container as any).agent,
-						);
-						if (containerAgent) {
-							return containerAgent;
-						}
-					}
-				} catch (_e) {
-					// Swallow and continue searching
-				}
-			}
-		}
-
-		return null;
-	}
-
-	async resolveAgentExport(mod: Record<string, unknown>): Promise<BaseAgent> {
-		const moduleDefault = (mod as any)?.default as
-			| Record<string, unknown>
-			| undefined;
-		const candidateToResolve: unknown =
-			(mod as any)?.agent ??
-			(moduleDefault as any)?.agent ??
-			moduleDefault ??
-			mod;
-
-		const directResult = await this.tryResolvingDirectCandidate(
-			candidateToResolve,
-			mod,
-		);
-		if (directResult) {
-			return directResult;
-		}
-
-		const exportResult = await this.scanModuleExports(mod);
-		if (exportResult) {
-			return exportResult;
-		}
-
-		if (typeof candidateToResolve === "function") {
-			const functionResult =
-				await this.tryResolvingFunctionCandidate(candidateToResolve);
-			if (functionResult) {
-				return functionResult;
-			}
-		}
-
-		throw new Error(
-			"No agent export resolved (expected BaseAgent, AgentBuilder, or BuiltAgent)",
-		);
-	}
-
-	/**
-	 * Try to resolve a direct candidate (not from scanning exports)
-	 */
-	private async tryResolvingDirectCandidate(
-		candidateToResolve: unknown,
-		mod: Record<string, unknown>,
-	): Promise<BaseAgent | null> {
-		if (
-			this.isPrimitive(candidateToResolve) ||
-			(candidateToResolve && candidateToResolve === (mod as unknown))
-		) {
-			return null;
-		}
-
-		const directAgent = await this.extractBaseAgent(candidateToResolve);
-		if (directAgent) {
-			return directAgent;
-		}
-
-		if (
-			candidateToResolve &&
-			typeof candidateToResolve === "object" &&
-			"agent" in (candidateToResolve as any)
-		) {
-			const container = candidateToResolve as Record<string, unknown>;
-			return await this.extractBaseAgent((container as any).agent);
-		}
-
-		return null;
-	}
-
-	/**
-	 * Try to resolve a function candidate by invoking it
-	 */
-	private async tryResolvingFunctionCandidate(
-		functionCandidate: unknown,
-	): Promise<BaseAgent | null> {
-		try {
-			const functionResult = await this.invokeFunctionSafely(
-				functionCandidate as () => unknown,
-			);
-
-			const directAgent = await this.extractBaseAgent(functionResult);
-			if (directAgent) {
-				return directAgent;
-			}
-
-			if (
-				functionResult &&
-				typeof functionResult === "object" &&
-				"agent" in (functionResult as any)
-			) {
-				const container = functionResult as Record<string, unknown>;
-				return await this.extractBaseAgent((container as any).agent);
-			}
-		} catch (e) {
-			throw new Error(
-				`Failed executing exported agent function: ${
-					e instanceof Error ? e.message : String(e)
-				}`,
-			);
-		}
-
-		return null;
+	async resolveAgentExport(mod: ModuleExport): Promise<AgentExportResult> {
+		return resolveAgentExportHelper(mod);
 	}
 }

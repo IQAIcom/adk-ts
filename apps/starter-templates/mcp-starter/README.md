@@ -32,7 +32,6 @@ A minimal starter template for building Model Context Protocol (MCP) servers usi
 
 ## Getting Started
 
-
 The easiest way to create a new MCP server project using this template is with the ADK CLI:
 
 ```bash
@@ -53,12 +52,11 @@ To run your MCP server in production or for standard development, use:
 pnpm dev
 ```
 
-**Fast Iteration & Agent Setup (ADK CLI)**
+**Fast Iteration & Development Testing**
 
-For rapid prototyping, interactive testing, or initial agent setup, use the ADK CLI:
+For rapid prototyping and testing your MCP server setup:
 ```bash
-adk run   # Interactive CLI chat with your agents
-adk web   # Web interface for easy testing and demonstration
+pnpm dev   # Run server in development mode with hot-reloading
 ```
 
 6. **Configure environment variables:**
@@ -96,7 +94,7 @@ This template includes a weather service example that demonstrates:
    * Environment variable management
    * Service configuration
 
-3. **Weather Service** (`src/services/weatherService.ts`):
+3. **Weather Service** (`src/services/weather-service.ts`):
    * API integration
    * Data transformation
    * Proper error propagation
@@ -112,7 +110,11 @@ To use the weather tool:
 # Set your OpenWeather API key
 export OPENWEATHER_API_KEY=your_api_key_here
 
-# Run the server
+# Run the server in development mode
+pnpm dev
+
+# Or build and run in production mode
+pnpm run build
 pnpm run start
 
 # Connect with an MCP client and use the GET_WEATHER tool
@@ -172,22 +174,70 @@ This template is ready for release management using [Changesets](https://github.
 **Option 1: Direct MCP Server Usage**
 Use the server directly with MCP clients or integrate it into other applications.
 
-**Option 2: With ADK CLI (For Client-Side Testing)**
-While this template creates an MCP *server*, you can create a simple client to test it:
+**Option 2: Test with ADK TypeScript (Recommended)**
+To test your MCP server with ADK TypeScript, create a separate agent project that consumes your MCP server:
 
-1. Install the ADK CLI globally:
+1. **Deploy your MCP server:**
    ```bash
-   npm install -g @iqai/adk-cli
+   pnpm dev  # Run your MCP server in development mode
    ```
 
-2. Create a simple agent that uses your MCP server (in a separate test directory):
+2. **Create a test agent project:**
    ```bash
-   # In a test directory, create an agents/agent.ts file that connects to your MCP server
-   adk run  # Test the integration
+   # In a separate directory, create a new ADK project
+   npm install -g @iqai/adk-cli
+   adk new my-test-agent
+   cd my-test-agent
+   pnpm install
+   ```
+
+3. **Connect to your MCP server using McpToolset:**
+   ```typescript
+   import { McpToolset, AgentBuilder } from "@iqai/adk";
+
+   // Configure connection to your MCP server
+   const mcpConfig = {
+     name: "Weather MCP Client",
+     description: "Client for weather operations",
+     transport: {
+       mode: "stdio",
+       command: "node",
+      args: ["../<your-mcp-server-project>/dist/index.js"], // or the host url
+       env: {
+         OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY,
+         PATH: process.env.PATH || "",
+       },
+     },
+   };
+
+   // Initialize MCP toolset
+   const mcpToolset = new McpToolset(mcpConfig);
+
+   // Get available tools from your MCP server
+   const mcpTools = await mcpToolset.getTools();
+
+   // Create agent with MCP tools
+   const { runner } = await AgentBuilder.create("weather_agent")
+     .withModel("gemini-2.5-flash")
+     .withDescription("Agent that can check weather using MCP tools")
+     .withTools(...mcpTools)
+     .build();
+
+   // Test the integration
+   const response = await runner.ask("What's the weather in London?");
+   console.log(response);
+
+   // Clean up
+   await mcpToolset.close();
+   ```
+
+4. **Run your test agent:**
+   ```bash
+   adk run  # Interactive CLI testing
    adk web  # Web interface for testing
    ```
 
-This approach is useful for testing how your MCP server tools work within the ADK ecosystem.
+This approach allows you to test how your MCP server tools work within the ADK ecosystem using the [McpToolset integration](https://adk.iqai.com/docs/framework/tools/mcp-tools#integration-with-adk-typescript).
 
 ## Using the Server
 

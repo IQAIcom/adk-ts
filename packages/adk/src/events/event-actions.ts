@@ -1,3 +1,15 @@
+import type { Content } from "@google/genai";
+
+/**
+ * Event compaction data structure containing the summarized content
+ * and the timestamp range it covers.
+ */
+export interface EventCompaction {
+	startTimestamp: number;
+	endTimestamp: number;
+	compactedContent: Content;
+}
+
 /**
  * Represents the actions attached to an event.
  */
@@ -35,6 +47,17 @@ export class EventActions {
 	requestedAuthConfigs?: Record<string, any>;
 
 	/**
+	 * Event compaction information. When set, this event represents
+	 * a compaction of events within the specified timestamp range.
+	 */
+	compaction?: EventCompaction;
+
+	/**
+	 * The invocation id to rewind to. This is only set for rewind event.
+	 */
+	rewindBeforeInvocationId?: string;
+
+	/**
 	 * Constructor for EventActions
 	 */
 	constructor(
@@ -45,6 +68,8 @@ export class EventActions {
 			transferToAgent?: string;
 			escalate?: boolean;
 			requestedAuthConfigs?: Record<string, any>;
+			compaction?: EventCompaction;
+			rewindBeforeInvocationId?: string;
 		} = {},
 	) {
 		this.skipSummarization = options.skipSummarization;
@@ -53,5 +78,7 @@ export class EventActions {
 		this.transferToAgent = options.transferToAgent;
 		this.escalate = options.escalate;
 		this.requestedAuthConfigs = options.requestedAuthConfigs;
+		this.compaction = options.compaction;
+		this.rewindBeforeInvocationId = options.rewindBeforeInvocationId;
 	}
 }
