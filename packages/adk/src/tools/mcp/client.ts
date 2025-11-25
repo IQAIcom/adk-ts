@@ -186,7 +186,7 @@ export class McpClientService {
 					if (typeof this.client.close === "function") {
 						await this.client.close();
 					}
-				} catch (err) {
+				} catch (_err) {
 					// Ignore
 				}
 			}
