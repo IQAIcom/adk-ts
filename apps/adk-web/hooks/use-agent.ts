@@ -63,40 +63,35 @@ export function useAgents(currentSessionId?: string | null) {
 		staleTime: 10000,
 	});
 
-	// Update messages when sessionEvents change
 	useEffect(() => {
-		if (selectedAgent) {
-			if (sessionEvents?.events) {
-				// Transform events into messages
-				const asMessages: Message[] = sessionEvents.events
-					.map((ev: EventItemDto, index: number) => {
-						const content = ev.content as any;
-						const textParts = Array.isArray(content?.parts)
-							? content.parts
-									.filter(
-										(p: any) =>
-											typeof p === "object" &&
-											"text" in p &&
-											typeof p.text === "string",
-									)
-									.map((p: any) => p.text)
-							: [];
-						const text = textParts.join("").trim();
-						return {
-							id: index + 1,
-							type: ev.author === "user" ? "user" : "assistant",
-							content: text,
-							timestamp: new Date(ev.timestamp * 1000),
-							author: ev.author,
-						} as Message;
-					})
-					.filter((m: Message) => m.content.length > 0);
+		if (!selectedAgent) return;
 
-				setMessages(asMessages);
-			} else if (!currentSessionId) {
-				// Clear messages only if session ID is explicitly null
-				setMessages([]);
-			}
+		if (sessionEvents?.events) {
+			const asMessages: Message[] = sessionEvents.events
+				.map((ev: EventItemDto, index: number) => {
+					let text = "";
+
+					if (isEventContent(ev.content)) {
+						const textParts = ev.content.parts
+							.filter(isTextPart)
+							.map((p) => p.text);
+
+						text = textParts.join("").trim();
+					}
+
+					return {
+						id: index + 1,
+						type: ev.author === "user" ? "user" : "assistant",
+						content: text,
+						timestamp: new Date(ev.timestamp * 1000),
+						author: ev.author,
+					} as Message;
+				})
+				.filter((m) => m.content.length > 0);
+
+			setMessages(asMessages);
+		} else if (!currentSessionId) {
+			setMessages([]);
 		}
 	}, [sessionEvents, selectedAgent, currentSessionId]);
 
@@ -124,6 +119,7 @@ export function useAgents(currentSessionId?: string | null) {
 			let encodedAttachments:
 				| Array<{ name: string; mimeType: string; data: string }>
 				| undefined;
+
 			if (attachments?.length) {
 				const tooLarge = attachments.filter(
 					(f) => f.size > MAX_FILE_SIZE_BYTES,
@@ -135,6 +131,7 @@ export function useAgents(currentSessionId?: string | null) {
 						)}MB and were skipped: ${tooLarge.map((f) => f.name).join(", ")}`,
 					);
 				}
+
 				const filesToProcess = attachments.filter(
 					(f) => f.size <= MAX_FILE_SIZE_BYTES,
 				);
@@ -185,23 +182,7 @@ export function useAgents(currentSessionId?: string | null) {
 			if (currentSessionId && selectedAgent) {
 				queryClient.invalidateQueries({
 					queryKey: [
-						"events",
-						apiUrl,
-						selectedAgent.relativePath,
-						currentSessionId,
-					],
-				});
-				queryClient.invalidateQueries({
-					queryKey: [
 						"agent-messages",
-						apiUrl,
-						selectedAgent.relativePath,
-						currentSessionId,
-					],
-				});
-				queryClient.invalidateQueries({
-					queryKey: [
-						"state",
 						apiUrl,
 						selectedAgent.relativePath,
 						currentSessionId,
@@ -215,24 +196,17 @@ export function useAgents(currentSessionId?: string | null) {
 		},
 	});
 
-	// Select agent and cancel previous in-flight queries
+	// Select agent
 	const selectAgent = useCallback(
 		(agent: AgentListItemDto) => {
 			if (selectedAgent) {
 				try {
 					queryClient.cancelQueries({
-						queryKey: ["events", apiUrl, selectedAgent.relativePath],
-					});
-					queryClient.cancelQueries({
 						queryKey: ["agent-messages", apiUrl, selectedAgent.relativePath],
-					});
-					queryClient.cancelQueries({
-						queryKey: ["sessions", apiUrl, selectedAgent.relativePath],
 					});
 				} catch {}
 			}
 			setSelectedAgent(agent);
-			// Messages will persist until new session events are fetched
 		},
 		[apiUrl, queryClient, selectedAgent],
 	);
@@ -262,4 +236,30 @@ export function useAgents(currentSessionId?: string | null) {
 		refreshAgents,
 		isSendingMessage: sendMessageMutation.isPending,
 	};
+}
+
+interface TextPart {
+	text: string;
+}
+
+interface EventContent {
+	parts: unknown[];
+}
+
+/** ✅ Type Guards */
+function isEventContent(value: unknown): value is EventContent {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		Array.isArray((value as any).parts)
+	);
+}
+
+function isTextPart(value: unknown): value is TextPart {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"text" in value &&
+		typeof (value as any).text === "string"
+	);
 }
