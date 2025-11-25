@@ -68,7 +68,7 @@ export function useAgents(currentSessionId?: string | null) {
 
 		if (sessionEvents?.events) {
 			const asMessages: Message[] = sessionEvents.events
-				.map((ev: EventItemDto, index: number) => {
+				.map((ev: EventItemDto) => {
 					let text = "";
 
 					if (isEventContent(ev.content)) {
@@ -80,7 +80,7 @@ export function useAgents(currentSessionId?: string | null) {
 					}
 
 					return {
-						id: index + 1,
+						id: ev.timestamp,
 						type: ev.author === "user" ? "user" : "assistant",
 						content: text,
 						timestamp: new Date(ev.timestamp * 1000),
