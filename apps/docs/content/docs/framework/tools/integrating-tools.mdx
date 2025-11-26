@@ -1,0 +1,199 @@
+---
+title: Integrating Tools with Agents
+description: Learn how to connect tools to your agents using LlmAgent and AgentBuilder
+---
+
+There are multiple ways to integrate tools with your agents in ADK-TS. Choose the approach that best fits your needs and development style.
+
+## Using LlmAgent
+
+To use tools with your agent, add them to the agent's configuration by passing an array of tools to the `tools` property of the `LlmAgent` constructor:
+
+```typescript
+import { LlmAgent } from "@iqai/adk";
+import { weatherTool, timeTool, calculatorTool } from "./my-tools";
+
+const agent = new LlmAgent({
+  name: "assistantAgent",
+  description: "A helpful assistant",
+  instruction: `You are a helpful assistant. Use the provided tools when needed to answer user questions.`,
+  tools: [weatherTool, timeTool, calculatorTool],
+});
+```
+
+The agent will automatically have access to these tools and can use them when responding to user queries. The agent uses the tool's name and description to determine when to use it, and it passes the appropriate arguments based on the tool's schema.
+
+## Using AgentBuilder
+
+If you're using the `AgentBuilder` pattern, you can add tools using the `withTools()` method:
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import { weatherTool, timeTool, calculatorTool } from "./my-tools";
+
+const { agent, runner } = await AgentBuilder.create("assistantAgent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("A helpful assistant")
+  .withInstruction(
+    `You are a helpful assistant. Use the provided tools when needed to answer user questions.`
+  )
+  .withTools([weatherTool, timeTool, calculatorTool])
+  .build();
+```
+
+The `withTools()` method accepts the same array of tools and integrates them into the agent's configuration. You can call `withTools()` multiple times to add different groups of tools:
+
+```typescript
+const { agent, runner } = await AgentBuilder.create("complexAgent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent with multiple tool categories")
+  .withInstruction(
+    `You are a complex agent with access to multiple tool categories.`
+  )
+  .withTools([databaseTools, ...analyticsTools])
+  .withTools([searchTools])
+  .build();
+```
+
+## Adding Tools Dynamically
+
+Both approaches allow you to manage tools programmatically. You can conditionally add tools based on configuration or user permissions:
+
+```typescript
+import { LlmAgent } from "@iqai/adk";
+
+const tools = [];
+
+if (config.enableSearch) {
+  tools.push(searchTool);
+}
+
+if (userRole === "admin") {
+  tools.push(systemAdminTool);
+}
+
+if (config.enableAnalytics) {
+  tools.push(...analyticsTool);
+}
+
+const agent = new LlmAgent({
+  name: "dynamicAgent",
+  description: "Agent with dynamic tool configuration",
+  instruction: `You have access to various tools based on your permissions.`,
+  tools: tools,
+});
+```
+
+## Guiding Tool Usage in Agent Instructions
+
+When configuring your agents, provide clear guidance on how and when to use each tool. Focus on the **context and conditions** for tool usage rather than repeating what the tool does (which should be clear from its name and description).
+
+### Focus on Decision Logic
+
+Tell your agent when to use each tool based on user requests, conversation context, or specific conditions:
+
+```typescript
+const agent = new LlmAgent({
+  name: "researchAgent",
+  instruction: `You are a research assistant. Follow these guidelines:
+
+- Use 'searchDocuments' when the user asks about policies or procedures that aren't in your training data
+- Use 'fetchWebContent' to find the most recent information about current events
+- Use 'lookupDatabase' only when you need specific data that the user has explicitly asked for
+- If a tool returns insufficient data, try a different source before giving up`,
+  tools: [searchDocuments, fetchWebContent, lookupDatabase],
+});
+```
+
+### Handle Different Outcomes
+
+Always specify how the agent should respond to different tool results:
+
+```typescript
+const agent = new LlmAgent({
+  name: "authenticationAgent",
+  instruction: `When using the 'validateUser' tool:
+
+- If it returns success, proceed with the requested action
+- If it returns "invalid_credentials", ask the user to try again
+- If it returns "account_locked", escalate to support
+- If it returns "not_found", guide them to create an account`,
+  tools: [validateUser],
+});
+```
+
+### Chain Tools Effectively
+
+When tools work together in sequence, describe the expected workflow:
+
+```typescript
+const agent = new LlmAgent({
+  name: "processingAgent",
+  instruction: `Follow this workflow for data processing:
+
+1. First use 'validateInput' to ensure the data format is correct
+2. Then use 'transformData' to process the data
+3. Finally use 'persistData' to save the results
+
+If any step fails, report the error clearly with the step that failed.
+Do not proceed to the next step if the current step fails.`,
+  tools: [validateInput, transformData, persistData],
+});
+```
+
+## Best Practices for Tool Integration
+
+- **Be Specific**: Clearly indicate when and why each tool should be used
+- **Document Dependencies**: Explain if one tool must be called before another
+- **Handle Failures**: Always guide the agent on how to handle tool errors
+- **Avoid Redundancy**: Don't ask the agent to use a tool for something it already knows
+- **Limit Tool Count**: Keep the number of tools reasonable (typically 5-10 per agent) to avoid decision paralysis
+
+## Tool Integration Patterns
+
+### Sequential Processing
+
+Chain tools in a specific order for data pipelines:
+
+```typescript
+const pipeline = new LlmAgent({
+  name: "dataPipeline",
+  tools: [
+    validateDataTool, // Step 1: Validate input
+    cleanDataTool, // Step 2: Clean/normalize
+    enrichDataTool, // Step 3: Add missing data
+    validateAgainTool, // Step 4: Final validation
+    saveTool, // Step 5: Persist results
+  ],
+});
+```
+
+### Conditional Branching
+
+Different tools for different scenarios:
+
+```typescript
+const conditional = new LlmAgent({
+  name: "conditionalRouter",
+  instruction: `Check the data type first:
+- For CSV files, use csvParserTool
+- For JSON files, use jsonParserTool  
+- For XML files, use xmlParserTool`,
+  tools: [csvParserTool, jsonParserTool, xmlParserTool],
+});
+```
+
+### Fallback Chains
+
+Primary tool with fallbacks:
+
+```typescript
+const withFallback = new LlmAgent({
+  name: "resilientAgent",
+  instruction: `Try these tools in order:
+1. Try 'cachedSearchTool' first for speed
+2. If that returns insufficient results, use 'liveSearchTool'
+3. If both fail, use 'fallbackStaticDataTool'`,
+  tools: [cachedSearchTool, liveSearchTool, fallbackStaticDataTool],
+});
+```

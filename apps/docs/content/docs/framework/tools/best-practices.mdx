@@ -1,0 +1,556 @@
+---
+title: Tools Best Practices
+description: Learn best practices for designing, implementing, and organizing tools in your agents
+---
+
+Following these best practices will help you create robust, maintainable, and effective tools for your agents.
+
+## Use Clear Names and Descriptions
+
+Your tool's name and description are critical because agents use them to decide when and how to call your tool. Make them clear and actionable.
+
+### Good Naming
+
+Choose names that clearly indicate what the tool does:
+
+```typescript
+// Good names - clear and specific
+const getUserProfile = createTool({
+  name: "getUserProfile",
+  description: "Retrieve a user's profile information by ID",
+  // ...
+});
+
+const sendEmail = createTool({
+  name: "sendEmail",
+  description: "Send an email to specified recipients",
+  // ...
+});
+
+const calculateTax = createTool({
+  name: "calculateTax",
+  description: "Calculate tax amount based on income and location",
+  // ...
+});
+
+// Avoid vague names
+const doStuff = createTool({
+  name: "doStuff", // Too vague
+  description: "Does various things", // Unhelpful
+  // ...
+});
+```
+
+### Descriptive Descriptions
+
+Write descriptions from the agent's perspective - tell them what they'll get and when they should use it:
+
+```typescript
+const fetchUserHistory = createTool({
+  name: "fetchUserHistory",
+  // Good: tells agent what it gets and when to use it
+  description:
+    "Fetch the user's order history including dates, amounts, and items. Use this when the user asks about their past purchases or ordering patterns.",
+  inputSchema: z.object({
+    userId: z.string().describe("The user's unique ID"),
+    limit: z
+      .number()
+      .optional()
+      .describe("Maximum number of orders to retrieve (default: 10)"),
+  }),
+  // ...
+});
+```
+
+## Validate Inputs Properly
+
+Always validate tool inputs using Zod schemas. This prevents errors and ensures data quality.
+
+```typescript
+import { z } from "zod";
+import { createTool } from "@iqai/adk";
+
+const validateAndProcessOrder = createTool({
+  name: "processOrder",
+  description: "Process a customer order with validation",
+  inputSchema: z.object({
+    orderId: z.string().min(1).describe("Order ID must not be empty"),
+
+    items: z
+      .array(
+        z.object({
+          productId: z.string().describe("Product ID"),
+          quantity: z
+            .number()
+            .int()
+            .positive()
+            .describe("Quantity must be a positive integer"),
+          price: z.number().positive().describe("Price must be positive"),
+        })
+      )
+      .min(1)
+      .describe("At least one item is required"),
+
+    shippingAddress: z
+      .object({
+        street: z.string().describe("Street address"),
+        city: z.string().describe("City name"),
+        zipCode: z
+          .string()
+          .regex(/^\d{5}(-\d{4})?$/)
+          .describe("Valid US ZIP code"),
+      })
+      .describe("Delivery address"),
+
+    email: z.string().email().describe("Valid email address for confirmation"),
+  }),
+
+  execute: async (input) => {
+    // Input is guaranteed to be valid at this point
+    try {
+      const result = await processOrderInDatabase(input);
+      return { success: true, orderId: result.id };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+});
+```
+
+## Return Structured Results
+
+Always return data in a consistent, structured format. Use objects with clear keys rather than plain strings.
+
+```typescript
+// Good: structured results
+const searchUsers = createTool({
+  name: "searchUsers",
+  description: "Search for users by name or email",
+  inputSchema: z.object({
+    query: z.string().describe("Name or email to search for"),
+  }),
+
+  execute: async (input) => {
+    const results = await database.users.search(input.query);
+
+    // Good: structured response
+    return {
+      success: true,
+      count: results.length,
+      users: results.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        joinDate: user.createdAt,
+      })),
+    };
+  },
+});
+
+// Avoid: unstructured results
+execute: async (input) => {
+  const results = await database.users.search(input.query);
+  return `Found ${results.length} users: ${results
+    .map((u) => u.name)
+    .join(", ")}`; // Hard to parse
+};
+```
+
+## Handle Errors Gracefully
+
+Always catch errors and return meaningful error messages rather than throwing exceptions. This keeps your agents resilient.
+
+```typescript
+const fetchDataFromApi = createTool({
+  name: "fetchDataFromApi",
+  description: "Fetch data from external API",
+  inputSchema: z.object({
+    endpoint: z.string().describe("API endpoint to call"),
+  }),
+
+  execute: async (input) => {
+    try {
+      const response = await fetch(input.endpoint, { timeout: 5000 });
+
+      if (!response.ok) {
+        // Handle HTTP errors
+        if (response.status === 404) {
+          return {
+            success: false,
+            error: "Endpoint not found",
+            statusCode: 404,
+          };
+        }
+
+        if (response.status === 429) {
+          return {
+            success: false,
+            error: "Rate limited. Please try again in a moment.",
+            statusCode: 429,
+          };
+        }
+
+        return {
+          success: false,
+          error: `HTTP ${response.status}`,
+          statusCode: response.status,
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        return {
+          success: false,
+          error: "Network connection failed",
+          details: error.message,
+        };
+      }
+
+      // Handle timeout errors
+      if (error.code === "ETIMEDOUT") {
+        return {
+          success: false,
+          error: "Request timeout after 5 seconds",
+        };
+      }
+
+      // Handle unknown errors
+      return {
+        success: false,
+        error: "Unknown error occurred",
+        details: error.message,
+      };
+    }
+  },
+});
+```
+
+## Organizing Tools by Domain
+
+Group related tools together for better organization and reusability. Create separate tool modules for different domains.
+
+### File Structure Pattern
+
+```
+src/
+  lib/
+    tools/
+      database/
+        index.ts
+        user-tools.ts
+        order-tools.ts
+        product-tools.ts
+
+      external-api/
+        index.ts
+        stripe-tools.ts
+        sendgrid-tools.ts
+
+      internal/
+        index.ts
+        cache-tools.ts
+        logging-tools.ts
+```
+
+### Example Organization
+
+```typescript
+// src/lib/tools/database/user-tools.ts
+import { createTool } from "@iqai/adk";
+import { z } from "zod";
+
+export const getUserById = createTool({
+  name: "getUserById",
+  description: "Fetch a user by their ID",
+  inputSchema: z.object({ userId: z.string() }),
+  execute: async (input) => {
+    // implementation
+  },
+});
+
+export const updateUserProfile = createTool({
+  name: "updateUserProfile",
+  description: "Update a user's profile information",
+  inputSchema: z.object({
+    userId: z.string(),
+    updates: z.record(z.any()),
+  }),
+  execute: async (input) => {
+    // implementation
+  },
+});
+
+export const userTools = [getUserById, updateUserProfile];
+
+// src/lib/tools/database/index.ts
+export * from "./user-tools";
+export * from "./order-tools";
+export * from "./product-tools";
+
+// Usage in agent configuration
+import { userTools, orderTools, productTools } from "@/lib/tools/database";
+
+const agent = new LlmAgent({
+  name: "databaseAgent",
+  tools: [...userTools, ...orderTools, ...productTools],
+});
+```
+
+## Creating Tool Libraries
+
+Build reusable tool libraries for common tasks. This promotes consistency and reduces duplication.
+
+### Generic Database Operations
+
+```typescript
+// src/lib/tools/database/generic-db-tools.ts
+import { createTool } from "@iqai/adk";
+import { z } from "zod";
+
+export function createReadTool<T>(config: {
+  name: string;
+  description: string;
+  table: string;
+  idFieldName?: string;
+  schema: z.ZodSchema;
+}) {
+  return createTool({
+    name: config.name,
+    description: config.description,
+    inputSchema: z.object({
+      id: z.string().describe(`The ${config.idFieldName || "id"} to look up`),
+    }),
+
+    execute: async (input) => {
+      try {
+        const result = await db.table(config.table).findById(input.id);
+
+        if (!result) {
+          return {
+            success: false,
+            error: `No record found with ${config.idFieldName || "id"} ${
+              input.id
+            }`,
+          };
+        }
+
+        return { success: true, data: result };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+  });
+}
+
+// Usage
+const getUserTool = createReadTool({
+  name: "getUser",
+  description: "Get a user by ID",
+  table: "users",
+  schema: userSchema,
+});
+
+const getProductTool = createReadTool({
+  name: "getProduct",
+  description: "Get a product by ID",
+  table: "products",
+  schema: productSchema,
+});
+```
+
+### Integration-Specific Tools
+
+```typescript
+// src/lib/tools/integrations/stripe-tools.ts
+import { Stripe } from "stripe";
+import { createTool } from "@iqai/adk";
+import { z } from "zod";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+export const chargeCustomer = createTool({
+  name: "chargeCustomer",
+  description: "Process a payment charge for a customer",
+  inputSchema: z.object({
+    customerId: z.string().describe("Stripe customer ID"),
+    amount: z
+      .number()
+      .positive()
+      .describe("Amount in cents (e.g., 2500 for $25.00)"),
+    description: z.string().describe("Charge description"),
+  }),
+
+  execute: async (input) => {
+    try {
+      const charge = await stripe.charges.create({
+        customer: input.customerId,
+        amount: input.amount,
+        currency: "usd",
+        description: input.description,
+      });
+
+      return {
+        success: true,
+        chargeId: charge.id,
+        amount: charge.amount,
+        status: charge.status,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  },
+});
+```
+
+## Guiding Tool Usage in Agent Instructions
+
+When your agent has access to multiple tools, provide clear guidance on their usage patterns and priorities.
+
+### Priority Guidance
+
+```typescript
+const agent = new LlmAgent({
+  name: "smartSearchAgent",
+  instruction: `You have access to three search tools with different use cases:
+
+1. 'searchLocalDatabase' - Use FIRST for any queries as it's fastest
+2. 'searchPublicWeb' - Use if local search returns no results
+3. 'searchAcademicJournals' - Use only for research papers and scientific sources
+
+Always try local first, then web, then academic sources. Don't use multiple tools for the same query.`,
+  tools: [searchLocalDatabase, searchPublicWeb, searchAcademicJournals],
+});
+```
+
+### Context-Aware Usage
+
+```typescript
+const agent = new LlmAgent({
+  name: "customerServiceAgent",
+  instruction: `When helping customers, follow these rules:
+
+- If they ask about account info, use 'fetchUserAccount' tool
+- If they report a billing issue, use 'checkBillingHistory' tool
+- If they request a refund, use 'processRefund' tool (only if total purchase > $50)
+- Always check transaction history before processing refunds
+- Never process refunds for digital goods unless authorized by manager`,
+  tools: [fetchUserAccount, checkBillingHistory, processRefund],
+});
+```
+
+### Error Recovery Instructions
+
+```typescript
+const agent = new LlmAgent({
+  name: "resilienceAgent",
+  instruction: `When a tool call fails:
+
+1. Always check the error message carefully
+2. If you get "rate limited", wait and try again in a moment
+3. If you get "not found", try searching with different parameters
+4. If you get "timeout", use the cached version tool instead
+5. If multiple tools fail, ask the user for clarification or escalate to support`,
+  tools: [toolA, toolB, toolC],
+});
+```
+
+## Performance Considerations
+
+### Caching Results
+
+Cache tool results to avoid redundant API calls:
+
+```typescript
+const memoizedTool = createTool({
+  name: "getUserProfile",
+  description: "Get user profile (cached)",
+  inputSchema: z.object({ userId: z.string() }),
+
+  execute: (() => {
+    const cache = new Map();
+
+    return async (input) => {
+      const cacheKey = input.userId;
+
+      if (cache.has(cacheKey)) {
+        return { ...cache.get(cacheKey), fromCache: true };
+      }
+
+      const result = await fetchUserProfile(input.userId);
+      cache.set(cacheKey, result);
+
+      return { ...result, fromCache: false };
+    };
+  })(),
+});
+```
+
+### Rate Limiting
+
+Handle rate limits gracefully:
+
+```typescript
+import { RateLimiter } from "bottleneck";
+
+const limiter = new RateLimiter({
+  maxConcurrent: 1,
+  minTime: 100, // 100ms between calls
+});
+
+const rateLimitedTool = createTool({
+  name: "apiCall",
+  description: "Rate-limited API call",
+  inputSchema: z.object({}),
+
+  execute: async (input) => {
+    return limiter.schedule(() => makeApiCall(input));
+  },
+});
+```
+
+## Testing Tools
+
+Always test your tools thoroughly:
+
+```typescript
+import { describe, it, expect } from "vitest";
+
+describe("getUserProfile", () => {
+  it("returns user data for valid ID", async () => {
+    const result = await getUserProfile.execute({ userId: "123" });
+    expect(result.success).toBe(true);
+    expect(result.data.id).toBe("123");
+  });
+
+  it("returns error for invalid ID", async () => {
+    const result = await getUserProfile.execute({ userId: "invalid" });
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+
+  it("handles network errors gracefully", async () => {
+    // Mock network failure
+    const result = await getUserProfile.execute({ userId: "123" });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Network");
+  });
+});
+```
+
+## Summary
+
+- **Clear Naming**: Use specific, descriptive names and descriptions
+- **Robust Validation**: Always validate inputs with Zod
+- **Structured Results**: Return consistent, parseable data
+- **Error Handling**: Catch and report errors gracefully
+- **Organization**: Group related tools by domain
+- **Reusability**: Build generic tool factories and libraries
+- **Clear Guidance**: Instruct agents on when and how to use each tool
+- **Performance**: Consider caching and rate limiting
+- **Testing**: Thoroughly test all tools before deployment
