@@ -5,10 +5,13 @@
 		"function-tools",
 		"create-tool",
 		"built-in-tools",
+		"tool-context",
+		"integrating-tools",
 		"mcp-tools",
 		"third-party-tools",
 		"google-cloud-tools",
 		"openapi-tools",
-		"authentication"
+		"authentication",
+		"best-practices"
 	]
 }

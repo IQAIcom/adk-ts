@@ -84,50 +84,74 @@ sequenceDiagram
 
 ADK-TS provides several approaches for creating and integrating tools, each suited to different development scenarios:
 
-**[Function Tools](/docs/framework/tools/function-tools)**: Wrap TypeScript functions as tools by extracting metadata from JSDoc comments and function signatures. Useful when you want to turn existing functions into agent tools with minimal changes.
-
-**[createTool](/docs/framework/tools/create-tool)**: A streamlined utility that converts TypeScript functions into tools using explicit Zod schemas. Offers automatic schema generation and better error handling. This is the recommended approach for new tool development.
-
-**[Built-in Tools](/docs/framework/tools/built-in-tools)**: Ready-to-use tools provided by ADK-TS for common operations like search, file manipulation, and user interactions.
-
-**[MCP Tools](/docs/framework/tools/mcp-tools)**: Connect to external systems using the Model Context Protocol standard. Ideal for integrating with third-party services that support MCP.
-
-**[Third-Party Tools](/docs/framework/tools/third-party-tools)**: Integrate existing npm packages and JavaScript libraries as tools for your agents.
-
-**[OpenAPI Tools](/docs/framework/tools/openapi-tools)**: Automatically generate tools from OpenAPI/Swagger specifications to interact with REST APIs.
-
-**[Google Cloud Tools](/docs/framework/tools/google-cloud-tools)**: Specialized tools for Google Cloud Platform services, with built-in authentication and service integration.
-
-**[Authentication](/docs/framework/tools/authentication)**: Learn how to implement authentication flows for tools that access protected APIs and services.
-
-## Guiding Tool Usage in Agent Instructions
-
-When configuring your [agents](/docs/framework/agents), you'll want to provide clear guidance on how and when to use each tool. The key is focusing on the **context and conditions** for tool usage rather than repeating what the tool does (which should be clear from its name and description).
-
-**Focus on Decision Logic**: Tell your agent when to use each tool based on user requests, conversation context, or specific conditions. For example: "Use `searchDocuments` when the user asks about policies or procedures that aren't in your training data."
-
-**Handle Different Outcomes**: Always specify how the agent should respond to different tool results. If `validateUser` returns an error, should the agent ask for different credentials, escalate to human support, or try a different approach?
-
-**Chain Tools Effectively**: When tools work together in sequence, describe the expected workflow clearly. This helps the agent understand dependencies and handle intermediate failures gracefully.
+<Cards>
+  <Card
+    title="🔧 Function Tools"
+    description="Wrap TypeScript functions as tools by extracting metadata from JSDoc comments and function signatures"
+    href="/docs/framework/tools/function-tools"
+  />
+  <Card
+    title="✨ Create Tool"
+    description="Streamlined utility that converts TypeScript functions into tools using Zod schemas"
+    href="/docs/framework/tools/create-tool"
+  />
+  <Card
+    title="⚡ Built-in Tools"
+    description="Ready-to-use tools for search, file manipulation, and user interactions"
+    href="/docs/framework/tools/built-in-tools"
+  />
+  <Card
+    title="🌐 MCP Tools"
+    description="Connect to external systems using the Model Context Protocol standard"
+    href="/docs/framework/tools/mcp-tools"
+  />
+  <Card
+    title="📊 OpenAPI Tools"
+    description="Automatically generate tools from OpenAPI/Swagger specifications"
+    href="/docs/framework/tools/openapi-tools"
+  />
+  <Card
+    title="🔐 Google Cloud Tools"
+    description="Specialized tools for Google Cloud Platform services with built-in authentication"
+    href="/docs/framework/tools/google-cloud-tools"
+  />
+  <Card
+    title="🔑 Authentication"
+    description="Implement secure access to external APIs and services"
+    href="/docs/framework/tools/authentication"
+  />
+  <Card
+    title="📦 Third-Party Tools"
+    description="Integrate existing npm packages and JavaScript libraries as tools"
+    href="/docs/framework/tools/third-party-tools"
+  />
+</Cards>
 
 ## Example: Building a Customer Support Agent
 
-Let's build a practical customer support agent that demonstrates how multiple tools work together to handle real user requests:
+Let's build a simple customer support agent that can look up customer information and create support tickets using two custom tools.
 
 ```typescript
 import { createTool, LlmAgent } from "@iqai/adk";
 import { z } from "zod";
 
 // Tool 1: Look up customer account information
-const lookupCustomer = createTool({
-  name: "lookupCustomer",
+const lookupCustomerTool = createTool({
+  name: "lookupCustomerTool",
   description: "Looks up a customer profile by ID",
   schema: z.object({
     customerId: z.string().describe("Customer identifier (usually email)"),
   }),
-  fn: async ({ customerId }) => {
+  fn: async ({ customerId }: { customerId: string }) => {
     // Simulate database lookup
-    const customerDb = {
+    type Customer = {
+      name: string;
+      tier: string;
+      status: string;
+      lastLogin: string;
+    };
+
+    const customerDb: Record<string, Customer> = {
       "john@example.com": {
         name: "John Smith",
         tier: "premium",
@@ -156,8 +180,8 @@ const lookupCustomer = createTool({
 });
 
 // Tool 2: Create a support ticket
-const createTicket = createTool({
-  name: "createTicket",
+const createTicketTool = createTool({
+  name: "createTicketTool",
   description: "Creates a new support ticket for tracking issues",
   schema: z.object({
     customerId: z.string().describe("Customer identifier"),
@@ -180,525 +204,47 @@ const createTicket = createTool({
       category,
       assignedTeam:
         category === "technical" ? "Engineering" : "General Support",
+      description,
+      customerId,
+      createdAt: new Date().toISOString(),
     };
   },
 });
 
-// Create customer support agent with workflow instructions
-const supportAgent = new LlmAgent({
-  name: "customerSupportAgent",
-  model: "gemini-2.0-flash-exp",
-  instruction: `You are a customer support specialist. Follow this workflow:
-
-**Customer Identification:**
-- Always start by getting the customer's information using 'lookupCustomer'
-- If customer is not found, politely ask them to verify their details
-- If customer account is suspended, explain the status and guide them to resolution
-
-**Issue Resolution:**
-- For active customers, listen to their issue and determine if you can resolve it immediately
-- For complex technical issues or account changes, use 'createTicket' with appropriate priority
-- Set priority to 'urgent' for service outages, 'high' for billing issues affecting service
-- Always explain next steps and provide ticket numbers when created
-
-**Communication Style:**
-- Be helpful and professional
-- Acknowledge premium customers appropriately  
-- Provide realistic timeframes for resolution`,
-
-  tools: [lookupCustomer, createTicket],
-});
-```
-
-**Key Implementation Patterns:**
-
-- **Structured Workflows**: The agent follows a clear customer identification → issue assessment → resolution path
-- **Conditional Logic**: Different responses based on customer tier and account status
-- **Error Recovery**: Graceful handling when customer information isn't found
-- **Business Rules**: Priority assignment based on issue type and customer tier
-
-## Working with ToolContext
-
-When you need your tools to access additional information or interact with services, ADK-TS provides the `ToolContext` class. This context is automatically injected as the second parameter to your tool function when using the `createTool` utility or extending the `BaseTool` class.
-
-<Callout type="info" title="Hidden from Agent">
-  The `toolContext` parameter is invisible to your agent—don't include it in
-  tool descriptions. The agent only sees and provides the business parameters
-  your tool needs to do its job.
-</Callout>
-
-### ToolContext Capabilities
-
-The `ToolContext` class extends `CallbackContext` and provides access to these capabilities for your tools:
-
-**Function Call Identification**
-: Access the `functionCallId` to identify and track the specific tool call. This is useful for logging, debugging, or mapping responses back to original requests. This ID is assigned by the agent system to uniquely identify each tool invocation.
-
-**Event Actions**
-: Access agent flow control through `toolContext.actions`. This allows tools to influence how the agent processes results and routes execution. See the Event Actions Example section below for usage details.
-
-**Artifact Management**
-: List files and artifacts attached to the current session using `listArtifacts()`. This is useful when you need to access user-uploaded files or generated documents during tool execution.
-
-**Memory Access**
-: Search the user's long-term memory with `searchMemory(query)`. This allows tools to retrieve relevant information from previous conversations or stored data, enabling context-aware tool behavior.
-
-### Memory Access Example
-
-Here's an example of a tool that accesses the user's memory:
-
-```typescript
-import { createTool, ToolContext } from "@iqai/adk";
-import { z } from "zod";
-
-const searchUserHistory = createTool({
-  name: "searchUserHistory",
-  description:
-    "Searches the user's conversation history for relevant information",
-  schema: z.object({
-    query: z.string().describe("The search query to find relevant history"),
-  }),
-  fn: async ({ query }, toolContext: ToolContext) => {
-    try {
-      // Use the memory service to search for relevant information
-      const results = await toolContext.searchMemory(query);
-
-      return {
-        status: "success",
-        results: results.items,
-        count: results.items.length,
-      };
-    } catch (error) {
-      console.error("Failed to search memory:", error);
-      return {
-        status: "error",
-        message: `Could not search user history: ${error.message}`,
-      };
-    }
-  },
-});
-```
-
-### Artifact Access Example
-
-Tools can access artifacts (files and documents) stored in the session:
-
-```typescript
-import { createTool, ToolContext } from "@iqai/adk";
-import { z } from "zod";
-
-const processUploadedFile = createTool({
-  name: "processUploadedFile",
-  description: "Processes and analyzes an uploaded file",
-  schema: z.object({
-    filename: z.string().describe("Name of the file to process"),
-    analysisType: z
-      .enum(["summary", "extract", "transform"])
-      .describe("Type of analysis to perform"),
-  }),
-  fn: async ({ filename, analysisType }, toolContext: ToolContext) => {
-    try {
-      // List available artifacts in the session
-      const artifacts = await toolContext.listArtifacts();
-
-      if (!artifacts.includes(filename)) {
-        return {
-          status: "error",
-          message: `File "${filename}" not found in session`,
-        };
-      }
-
-      // Process the file based on analysis type
-      return {
-        status: "success",
-        filename: filename,
-        analysisType: analysisType,
-        processed: true,
-      };
-    } catch (error) {
-      return {
-        status: "error",
-        message: `Failed to process file: ${error.message}`,
-      };
-    }
-  },
-});
-```
-
-### Event Actions Example
-
-Control agent flow using event actions. ToolContext provides access to event actions that can influence how the agent processes results:
-
-```typescript
-import { createTool, ToolContext } from "@iqai/adk";
-import { z } from "zod";
-
-const validateAndRoute = createTool({
-  name: "validateAndRoute",
-  description: "Validates user input and routes to appropriate handler",
-  schema: z.object({
-    userInput: z.string().describe("The user input to validate"),
-  }),
-  fn: async ({ userInput }, toolContext: ToolContext) => {
-    // Analyze the input
-    const isComplex = userInput.length > 500;
-    const requiresEscalation =
-      userInput.toLowerCase().includes("urgent") ||
-      userInput.toLowerCase().includes("emergency");
-
-    if (requiresEscalation) {
-      // Use event actions to signal escalation needs
-      // (Implementation details depend on your agent's configuration)
-      toolContext.actions.transferToAgent = "escalation_specialist";
-
-      return {
-        status: "escalating",
-        message: "This request requires escalation to a specialist.",
-      };
-    }
-
-    return {
-      status: "routed",
-      complexity: isComplex ? "high" : "normal",
-      ready: true,
-    };
-  },
-});
-```
-
-<Callout type="info" title="Advanced Flow Control">
-  Event actions like `transferToAgent` are part of ADK's advanced flow control
-  system. For complete details about how the agent system handles flow control
-  and routing, see the [Agents](/docs/framework/agents) documentation.
-</Callout>
-
-## Integrating Tools with Agents
-
-There are multiple ways to integrate tools with your agents in ADK-TS. Choose the approach that best fits your needs.
-
-### Using LlmAgent
-
-To use tools with your agent, add them to the agent's configuration by passing an array of tools to the `tools` property of the `LlmAgent` constructor:
-
-```typescript
-import { LlmAgent } from "@iqai/adk";
-import { weatherTool, timeTool, calculatorTool } from "./my-tools";
-
-const agent = new LlmAgent({
-  name: "assistantAgent",
-  description: "A helpful assistant",
-  instruction: `You are a helpful assistant. Use the provided tools when needed to answer user questions.`,
-  tools: [weatherTool, timeTool, calculatorTool],
-});
-```
-
-The agent will automatically have access to these tools and can use them when responding to user queries. The agent uses the tool's name and description to determine when to use it, and it passes the appropriate arguments based on the tool's schema.
-
-### Using AgentBuilder
-
-If you're using the `AgentBuilder` pattern, you can add tools using the `withTools()` method:
-
-```typescript
-import { AgentBuilder } from "@iqai/adk";
-import { weatherTool, timeTool, calculatorTool } from "./my-tools";
-
-const agent = new AgentBuilder({
-  name: "assistantAgent",
-  description: "A helpful assistant",
-})
-  .instruction(
-    `You are a helpful assistant. Use the provided tools when needed to answer user questions.`
-  )
-  .withTools([weatherTool, timeTool, calculatorTool])
-  .build();
-```
-
-The `withTools()` method accepts the same array of tools and integrates them into the agent's configuration. You can call `withTools()` multiple times to add different groups of tools:
-
-```typescript
-const agent = new AgentBuilder({
-  name: "complexAgent",
-  description: "An agent with multiple tool categories",
-})
-  .instruction(
-    `You are a complex agent with access to multiple tool categories.`
-  )
-  .withTools([databaseTools, ...analyticsTools])
-  .withTools([searchTools])
-  .build();
-```
-
-### Adding Tools Dynamically
-
-Both approaches allow you to manage tools programmatically. You can conditionally add tools based on configuration or user permissions:
-
-```typescript
-import { LlmAgent } from "@iqai/adk";
-
-const tools = [];
-
-if (config.enableSearch) {
-  tools.push(searchTool);
-}
-
-if (userRole === "admin") {
-  tools.push(systemAdminTool);
-}
-
-if (config.enableAnalytics) {
-  tools.push(...analyticsTool);
-}
-
-const agent = new LlmAgent({
-  name: "dynamicAgent",
-  description: "Agent with dynamic tool configuration",
-  instruction: `You have access to various tools based on your permissions.`,
-  tools: tools,
-});
-```
-
-## Tool Creation Approaches
-
-There are two ways to create tools in ADK-TS:
-
-### 1. Using the `createTool` utility:
-
-This is the recommended approach for most use cases. It provides a clean syntax with Zod schema validation:
-
-```typescript
-import { createTool } from "@iqai/adk";
-import { z } from "zod";
-
-const weatherTool = createTool({
-  name: "getWeather",
-  description: "Gets the current weather for a location",
-  schema: z.object({
-    location: z.string().describe("The city and country/state"),
-    unit: z.enum(["celsius", "fahrenheit"]).optional().default("celsius"),
-  }),
-  fn: async ({ location, unit }, toolContext) => {
-    // Tool implementation
-    // ...
-    return {
-      temperature: 22,
-      conditions: "Sunny",
-      location: location,
-      unit: unit,
-    };
-  },
-});
-```
-
-### 2. Extending the `BaseTool` class:
-
-For more complex tools that need additional customization, you can extend the `BaseTool` class:
-
-```typescript
-import { BaseTool } from "@iqai/adk";
-import type { ToolContext } from "@iqai/adk";
-
-class CustomWeatherTool extends BaseTool {
-  constructor() {
-    super({
-      name: "customWeather",
-      description: "Gets weather with additional features",
-      isLongRunning: false,
-    });
-  }
-
-  // This is the method that's called when the tool is invoked
-  async runAsync(args: any, context: ToolContext): Promise<any> {
-    // Custom implementation
-    // ...
-    return {
-      /* result */
-    };
-  }
-
-  // Provide the function declaration for the LLM
-  getDeclaration() {
-    return {
-      name: this.name,
-      description: this.description,
-      parameters: {
-        type: "object",
-        properties: {
-          location: {
-            type: "string",
-            description: "The city and country/state",
-          },
-          unit: {
-            type: "string",
-            enum: ["celsius", "fahrenheit"],
-            default: "celsius",
-          },
-        },
-        required: ["location"],
-      },
-    };
-  }
-}
-```
-
-More detailed information about creating tools can be found in the [Function Tools](/docs/framework/tools/function-tools) and [createTool](/docs/framework/tools/create-tool) documentation.
-
-## Best Practices for Tool Design
-
-Creating effective tools for AI agents requires careful design. Here are some best practices:
-
-### 1. Use Clear Names and Descriptions
-
-Tools should have intuitive names that clearly indicate their purpose. The description should explain what the tool does, when to use it, and any important constraints:
-
-```typescript
-const userLookupTool = createTool({
-  name: "getUserProfile", // Clear action-oriented name
-  description:
-    "Retrieves a user's profile information by username or email. Use this when you need to access user data for verification or personalization.",
-  // ...
-});
-```
-
-### 2. Validate Inputs Properly
-
-Use Zod schemas to clearly define and validate the expected inputs:
-
-```typescript
-const scheduleTool = createTool({
-  // ...
-  schema: z.object({
-    date: z.string().describe("Date in YYYY-MM-DD format"),
-    startTime: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
-      .describe("Start time in 24-hour format (HH:MM)"),
-    duration: z
-      .number()
-      .min(15)
-      .max(120)
-      .describe("Meeting duration in minutes"),
-  }),
-  // ...
-});
-```
-
-### 3. Return Structured Results
-
-Return consistent object structures that make it easy for the agent to understand the result:
-
-```typescript
-fn: async ({ query }) => {
-  try {
-    const results = await searchDatabase(query);
-    return {
-      status: "success",
-      results: results,
-      count: results.length,
-    };
-  } catch (error) {
-    return {
-      status: "error",
-      message: error.message,
-    };
-  }
+// Create customer support agent with tools for handling inquiries and ticket creation
+export const getCustomerSupportAgent = () => {
+  const customerSupportAgent = new LlmAgent({
+    name: "customer_support_agent",
+    model: "gemini-2.0-flash",
+    description: "Handles customer support inquiries and ticket creation",
+    tools: [lookupCustomerTool, createTicketTool],
+  });
+
+  return customerSupportAgent;
 };
 ```
 
-### 4. Handle Errors Gracefully
+This example demonstrates:
 
-Always handle potential errors and return informative error messages:
+- Creating focused tools with clear responsibilities
+- Defining structured input and output using Zod schemas
+- Implementing practical workflows for customer support scenarios
 
-```typescript
-fn: async ({ userId }) => {
-  try {
-    const user = await getUserById(userId);
+## Best Practices
 
-    if (!user) {
-      return {
-        status: "not_found",
-        message: `No user found with ID: ${userId}`,
-      };
-    }
+Creating effective tools requires careful design. Here are some key principles:
 
-    return {
-      status: "success",
-      user: user,
-    };
-  } catch (error) {
-    console.error(`Error fetching user ${userId}:`, error);
-    return {
-      status: "error",
-      message: "Failed to retrieve user data. Please try again.",
-    };
-  }
-};
-```
+- **Use Clear Names**: Tool names should intuitively indicate their purpose
+- **Structured Input/Output**: Use Zod schemas to define and validate inputs; return consistent object structures
+- **Error Handling**: Always handle errors gracefully and return informative messages
+- **Single Responsibility**: Each tool should have a focused, well-defined purpose
+- **Guide Agent Usage**: Provide clear instructions on when and how your agent should use each tool
 
-## Organizing Tools in Your Application
-
-As your application grows, you might create many tools. Here are some strategies for organizing them effectively:
-
-### Group Tools by Domain
-
-Organize tools into related groups based on their functionality:
-
-```typescript
-// File: tools/database-tools.ts
-export const getUserTool = createTool({
-  /*...*/
-});
-export const createUserTool = createTool({
-  /*...*/
-});
-export const updateUserTool = createTool({
-  /*...*/
-});
-
-// File: tools/analytics-tools.ts
-export const generateReportTool = createTool({
-  /*...*/
-});
-export const trackEventTool = createTool({
-  /*...*/
-});
-
-// File: agent.ts
-import { LlmAgent } from "@iqai/adk";
-import * as dbTools from "./tools/database-tools";
-import * as analyticsTools from "./tools/analytics-tools";
-
-const agent = new LlmAgent({
-  // ...
-  tools: [...Object.values(dbTools), ...Object.values(analyticsTools)],
-});
-```
-
-### Create Tool Libraries
-
-For complex applications, you can create reusable tool libraries that can be shared across agents:
-
-```typescript
-// File: tools/index.ts
-import { BaseTool } from "@iqai/adk";
-
-export function createToolset(config: ToolsetConfig): BaseTool[] {
-  const tools: BaseTool[] = [];
-
-  if (config.includeDatabase) {
-    tools.push(getUserTool, createUserTool);
-  }
-
-  if (config.includeAnalytics) {
-    tools.push(generateReportTool);
-  }
-
-  return tools;
-}
-```
+For detailed best practices, organization strategies, and tool creation approaches, see the dedicated guides in the sidebar.
 
 ## Next Steps
 
-Now that you understand the basics of tools in ADK-TS, you can explore the different types of tools in more depth:
+Ready to explore tools in depth? Here are the recommended next steps:
 
 <Cards>
   <Card
@@ -706,34 +252,19 @@ Now that you understand the basics of tools in ADK-TS, you can explore the diffe
     description="Learn to create custom tools tailored to your application's specific needs"
     href="/docs/framework/tools/function-tools"
   />
-
-<Card
-  title="✨ Create Tool"
-  description="Master the convenient createTool utility for rapid tool development"
-  href="/docs/framework/tools/create-tool"
-/>
-
-<Card
-  title="⚡ Built-in Tools"
-  description="Explore ready-to-use tools for search, file operations, and user interaction"
-  href="/docs/framework/tools/built-in-tools"
-/>
-
-<Card
-  title="🔐 Authentication"
-  description="Implement secure access to external APIs and services"
-  href="/docs/framework/tools/authentication"
-/>
-
-<Card
-  title="📊 OpenAPI Tools"
-  description="Generate tools automatically from REST API specifications"
-  href="/docs/framework/tools/openapi-tools"
-/>
-
   <Card
-    title="🔌 MCP Tools"
-    description="Leverage Model Context Protocol for standardized integrations"
-    href="/docs/framework/tools/mcp-tools"
+    title="✨ Create Tool"
+    description="Master the convenient createTool utility for rapid tool development"
+    href="/docs/framework/tools/create-tool"
+  />
+  <Card
+    title="⚡ Built-in Tools"
+    description="Explore ready-to-use tools for search, file operations, and user interaction"
+    href="/docs/framework/tools/built-in-tools"
+  />
+  <Card
+    title="🔧 ToolContext"
+    description="Access session data, memory, artifacts, and flow control within your tools"
+    href="/docs/framework/tools/tool-context"
   />
 </Cards>

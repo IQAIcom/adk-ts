@@ -1,0 +1,213 @@
+---
+title: ToolContext
+description: Access session data, memory, artifacts, and flow control within your tools
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+When you need your tools to access additional information or interact with services beyond their primary function, ADK-TS provides the `ToolContext` class. This context is automatically injected as the second parameter to your tool function when using the `createTool` utility or extending the `BaseTool` class.
+
+<Callout type="info" title="Hidden from Agent">
+  The `toolContext` parameter is invisible to your agent—don't include it in
+  tool descriptions. The agent only sees and provides the business parameters
+  your tool needs to do its job.
+</Callout>
+
+## ToolContext Capabilities
+
+The `ToolContext` class extends `CallbackContext` and provides access to these capabilities for your tools:
+
+**Function Call Identification**
+: Access the `functionCallId` to identify and track the specific tool call. This is useful for logging, debugging, or mapping responses back to original requests. This ID is assigned by the agent system to uniquely identify each tool invocation.
+
+**Event Actions**
+: Access agent flow control through `toolContext.actions`. This allows tools to influence how the agent processes results and routes execution. See the Event Actions section below for usage details.
+
+**Artifact Management**
+: List files and artifacts attached to the current session using `listArtifacts()`. This is useful when you need to access user-uploaded files or generated documents during tool execution.
+
+**Memory Access**
+: Search the user's long-term memory with `searchMemory(query)`. This allows tools to retrieve relevant information from previous conversations or stored data, enabling context-aware tool behavior.
+
+## Memory Access Example
+
+Here's an example of a tool that accesses the user's memory:
+
+```typescript
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
+
+const searchUserHistory = createTool({
+  name: "searchUserHistory",
+  description:
+    "Searches the user's conversation history for relevant information",
+  schema: z.object({
+    query: z.string().describe("The search query to find relevant history"),
+  }),
+  fn: async ({ query }, toolContext: ToolContext) => {
+    try {
+      // Use the memory service to search for relevant information
+      const results = await toolContext.searchMemory(query);
+
+      return {
+        status: "success",
+        results: results.items,
+        count: results.items.length,
+      };
+    } catch (error) {
+      console.error("Failed to search memory:", error);
+      return {
+        status: "error",
+        message: `Could not search user history: ${error.message}`,
+      };
+    }
+  },
+});
+```
+
+## Artifact Access Example
+
+Tools can access artifacts (files and documents) stored in the session:
+
+```typescript
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
+
+const processUploadedFile = createTool({
+  name: "processUploadedFile",
+  description: "Processes and analyzes an uploaded file",
+  schema: z.object({
+    filename: z.string().describe("Name of the file to process"),
+    analysisType: z
+      .enum(["summary", "extract", "transform"])
+      .describe("Type of analysis to perform"),
+  }),
+  fn: async ({ filename, analysisType }, toolContext: ToolContext) => {
+    try {
+      // List available artifacts in the session
+      const artifacts = await toolContext.listArtifacts();
+
+      if (!artifacts.includes(filename)) {
+        return {
+          status: "error",
+          message: `File "${filename}" not found in session`,
+        };
+      }
+
+      // Process the file based on analysis type
+      return {
+        status: "success",
+        filename: filename,
+        analysisType: analysisType,
+        processed: true,
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        message: `Failed to process file: ${error.message}`,
+      };
+    }
+  },
+});
+```
+
+## Event Actions Example
+
+Control agent flow using event actions. ToolContext provides access to event actions that can influence how the agent processes results:
+
+```typescript
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
+
+const validateAndRoute = createTool({
+  name: "validateAndRoute",
+  description: "Validates user input and routes to appropriate handler",
+  schema: z.object({
+    userInput: z.string().describe("The user input to validate"),
+  }),
+  fn: async ({ userInput }, toolContext: ToolContext) => {
+    // Analyze the input
+    const isComplex = userInput.length > 500;
+    const requiresEscalation =
+      userInput.toLowerCase().includes("urgent") ||
+      userInput.toLowerCase().includes("emergency");
+
+    if (requiresEscalation) {
+      // Use event actions to signal escalation needs
+      // (Implementation details depend on your agent's configuration)
+      toolContext.actions.transferToAgent = "escalation_specialist";
+
+      return {
+        status: "escalating",
+        message: "This request requires escalation to a specialist.",
+      };
+    }
+
+    return {
+      status: "routed",
+      complexity: isComplex ? "high" : "normal",
+      ready: true,
+    };
+  },
+});
+```
+
+<Callout type="info" title="Advanced Flow Control">
+  Event actions like `transferToAgent` are part of ADK's advanced flow control
+  system. For complete details about how the agent system handles flow control
+  and routing, see the [Agents](/docs/framework/agents) documentation.
+</Callout>
+
+## Function Call Tracking
+
+Use the `functionCallId` for advanced logging and debugging:
+
+```typescript
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
+
+const trackableOperation = createTool({
+  name: "trackableOperation",
+  description: "Performs an operation with tracking",
+  schema: z.object({
+    operationId: z.string().describe("The operation identifier"),
+  }),
+  fn: async ({ operationId }, toolContext: ToolContext) => {
+    const callId = toolContext.functionCallId;
+
+    try {
+      console.log(`[${callId}] Starting operation ${operationId}`);
+
+      // Perform the operation
+      const result = await performOperation(operationId);
+
+      console.log(
+        `[${callId}] Operation ${operationId} completed successfully`
+      );
+
+      return {
+        status: "success",
+        callId: callId,
+        operationId: operationId,
+        result: result,
+      };
+    } catch (error) {
+      console.error(`[${callId}] Operation ${operationId} failed:`, error);
+
+      return {
+        status: "error",
+        callId: callId,
+        message: `Operation failed: ${error.message}`,
+      };
+    }
+  },
+});
+```
+
+## Best Practices
+
+- **Don't expose ToolContext to the agent**: Always hide the `toolContext` parameter from the agent's view
+- **Use meaningful context**: Reference the `functionCallId` in logs for traceability
+- **Handle errors gracefully**: Always catch exceptions and return structured error responses
+- **Leverage memory wisely**: Search memory only when necessary to avoid performance impacts
+- **Plan for escalation**: Use event actions to signal when requests need special handling
