@@ -8,10 +8,10 @@
 		"tool-context",
 		"integrating-tools",
 		"mcp-tools",
-		"third-party-tools",
 		"google-cloud-tools",
 		"openapi-tools",
 		"authentication",
+		"third-party-tools",
 		"best-practices"
 	]
 }
