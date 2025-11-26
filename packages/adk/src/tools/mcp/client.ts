@@ -55,6 +55,7 @@ export class McpClientService {
 				},
 				{
 					capabilities: {
+						prompts: {},
 						resources: {},
 						tools: {},
 						sampling: {}, // Enable sampling capability
