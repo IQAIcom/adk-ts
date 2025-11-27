@@ -354,7 +354,7 @@ importers:
         specifier: ^1.19.0
         version: 1.19.0(@modelcontextprotocol/sdk@1.17.5)
       '@modelcontextprotocol/sdk':
-        specifier: ^1.11.1
+        specifier: ^1.17.5
         version: 1.17.5
       '@opentelemetry/api':
         specifier: ^1.9.0
