@@ -287,6 +287,175 @@ const robustTool = createTool({
   approaches work with agents - choose based on your needs
 </Callout>
 
+## Sharing Data Between Tools
+
+Tools often need to pass data to each other. ADK-TS provides two main approaches:
+
+1. **ToolContext State** - Store data in session state for other tools to access
+2. **Return Values** - Return data that the LLM can pass to the next tool
+
+### Using ToolContext to Share Data
+
+All tools in a single agent turn share the same `ToolContext`, making it perfect for passing data between tools:
+
+```typescript
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
+
+// Tool 1: Fetch customer data and store it
+const getCustomer = createTool({
+  name: "getCustomer",
+  description: "Retrieves customer information by ID",
+  schema: z.object({
+    customerId: z.string().describe("The customer's ID"),
+  }),
+  fn: async ({ customerId }, toolContext: ToolContext) => {
+    // Fetch customer data
+    const customer = {
+      id: customerId,
+      name: "John Doe",
+      tier: "premium",
+      accountBalance: 1500,
+    };
+
+    // Store in session state for other tools
+    toolContext.state.set("temp:customer", customer);
+
+    return {
+      status: "success",
+      customer,
+    };
+  },
+});
+
+// Tool 2: Use the stored customer data
+const applyDiscount = createTool({
+  name: "applyDiscount",
+  description: "Applies a discount based on customer tier",
+  schema: z.object({
+    amount: z.number().describe("The order amount"),
+  }),
+  fn: async ({ amount }, toolContext: ToolContext) => {
+    // Retrieve customer data stored by previous tool
+    const customer = toolContext.state.get("temp:customer");
+
+    if (!customer) {
+      return {
+        status: "error",
+        message:
+          "Customer information not found. Please fetch customer data first.",
+      };
+    }
+
+    // Calculate discount based on tier
+    let discount = 0;
+    if (customer.tier === "premium") {
+      discount = amount * 0.15; // 15% for premium
+    } else if (customer.tier === "gold") {
+      discount = amount * 0.1; // 10% for gold
+    }
+
+    const finalAmount = amount - discount;
+
+    return {
+      status: "success",
+      originalAmount: amount,
+      discount,
+      finalAmount,
+      tier: customer.tier,
+    };
+  },
+});
+
+// Tool 3: Process payment using customer data
+const processPayment = createTool({
+  name: "processPayment",
+  description: "Processes a payment for the customer",
+  schema: z.object({
+    amount: z.number().describe("Amount to charge"),
+  }),
+  fn: async ({ amount }, toolContext: ToolContext) => {
+    const customer = toolContext.state.get("temp:customer");
+
+    if (!customer) {
+      return {
+        status: "error",
+        message: "Customer not found",
+      };
+    }
+
+    // Check if customer has sufficient balance
+    if (customer.accountBalance < amount) {
+      return {
+        status: "insufficient_funds",
+        balance: customer.accountBalance,
+        required: amount,
+      };
+    }
+
+    return {
+      status: "success",
+      message: `Payment of $${amount} processed for ${customer.name}`,
+      transactionId: `txn-${Date.now()}`,
+    };
+  },
+});
+
+const agent = new LlmAgent({
+  name: "paymentAgent",
+  tools: [getCustomer, applyDiscount, processPayment],
+});
+```
+
+### Using temp: Prefix for Temporary Data
+
+Use the `temp:` prefix in session state keys for data that's only needed during the current conversation turn. This data is automatically cleaned up:
+
+```typescript
+// Store temporary data
+toolContext.state.set("temp:searchResults", results);
+toolContext.state.set("temp:currentPage", 1);
+
+// Retrieve temporary data
+const results = toolContext.state.get("temp:searchResults");
+```
+
+### Returning Data for LLM to Pass
+
+Alternatively, return structured data that the LLM can understand and pass to the next tool:
+
+```typescript
+const step1 = createTool({
+  name: "step1",
+  description: "First step that generates a user ID",
+  schema: z.object({}),
+  fn: () => {
+    const userId = `user-${Date.now()}`;
+    return {
+      status: "success",
+      userId, // LLM can extract this and pass it to step2
+      message: `Created user with ID: ${userId}`,
+    };
+  },
+});
+
+const step2 = createTool({
+  name: "step2",
+  description: "Second step that uses the user ID from step1",
+  schema: z.object({
+    userId: z.string().describe("The user ID from the previous step"),
+  }),
+  fn: ({ userId }) => {
+    return {
+      status: "success",
+      message: `Processed user ${userId}`,
+    };
+  },
+});
+```
+
+The LLM will see the `userId` in step1's response and automatically pass it to step2.
+
 ## Related Topics
 
 <Cards>
@@ -295,24 +464,24 @@ const robustTool = createTool({
     description="Create tools from TypeScript functions with type inference"
     href="/docs/framework/tools/function-tools"
   />
-
-{" "}
-<Card
-  title="⚡ Built-in Tools"
-  description="Ready-made tools for common tasks"
-  href="/docs/framework/tools/built-in-tools"
-/>
-
-{" "}
-<Card
-  title="🤖 Agents"
-  description="Learn how to configure agents with tools"
-  href="/docs/framework/agents"
-/>
-
+  <Card
+    title="⚡ Built-in Tools"
+    description="Ready-made tools for common tasks"
+    href="/docs/framework/tools/built-in-tools"
+  />
+  <Card
+    title="🔧 ToolContext"
+    description="Learn about ToolContext capabilities and usage"
+    href="/docs/framework/tools/tool-context"
+  />
+  <Card
+    title="🤖 Agents"
+    description="Learn how to configure agents with tools"
+    href="/docs/framework/agents"
+  />
   <Card
     title="💾 Sessions"
-    description="Understand state management and ToolContext"
+    description="Understand state management and persistence"
     href="/docs/framework/sessions"
   />
 </Cards>
