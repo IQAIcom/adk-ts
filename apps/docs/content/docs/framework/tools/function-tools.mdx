@@ -347,11 +347,13 @@ const mapAgent = new LlmAgent({
 
 **Configuration Options:**
 
-- `name` - Override the function name
-- `description` - Explicit tool description (if not provided, falls back to JSDoc)
-- `isLongRunning` - Mark as long-running operation
-- `shouldRetryOnFailure` - Enable automatic retries
-- `maxRetryAttempts` - Maximum retry attempts
+| Option                 | Type      | Required | Description                                                      |
+| ---------------------- | --------- | -------- | ---------------------------------------------------------------- |
+| `name`                 | `string`  | Yes      | Override the function name                                       |
+| `description`          | `string`  | No       | Explicit tool description (if not provided, falls back to JSDoc) |
+| `isLongRunning`        | `boolean` | No       | Mark as long-running operation                                   |
+| `shouldRetryOnFailure` | `boolean` | No       | Enable automatic retries                                         |
+| `maxRetryAttempts`     | `number`  | No       | Maximum retry attempts                                           |
 
 <Callout type="info" title="Description Sources">
   `createFunctionTool` tries to get the description in this order:
@@ -565,10 +567,12 @@ With the `AgentTool` class, you can:
 
 When creating an agent as a tool, the `AgentTool` class accepts these configuration options:
 
-- **name** (`string`): The name of the tool (required)
-- **agent** (`BaseAgent`): The agent instance to use as a tool (required)
-- **description** (`string`, optional): Description of what the tool does (defaults to agent's description)
-- **skipSummarization** (`boolean`, optional): If `true`, returns the agent's response directly without additional LLM processing. If `false` (default), the main agent's LLM processes the response before including it in output
+| Option                | Type        | Required | Description                                                                                                                                                                         |
+| --------------------- | ----------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **name**              | `string`    | Yes      | The name of the tool (required)                                                                                                                                                     |
+| **agent**             | `BaseAgent` | Yes      | The agent instance to use as a tool (required)                                                                                                                                      |
+| **description**       | `string`    | No       | Description of what the tool does (defaults to agent's description)                                                                                                                 |
+| **skipSummarization** | `boolean`   | No       | If `true`, returns the agent's response directly without additional LLM processing. If `false` (default), the main agent's LLM processes the response before including it in output |
 
 ### Example: Summarization Agent-as-Tool
 
