@@ -6,75 +6,111 @@ description: Create custom tools with explicit Zod schema validation
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-`createTool` is an alternative to [Function Tools](/docs/framework/tools/function-tools) that uses explicit Zod schemas for parameter validation instead of relying on TypeScript type inference. This approach gives you more control over parameter validation and error handling.
+`createTool` is an alternative to [Function Tools](/docs/framework/tools/function-tools) that uses explicit Zod schemas for parameter validation instead of relying on TypeScript type inference. This approach gives you fine-grained control over parameter validation, error handling, and input transformations.
+
+Unlike function tools that infer schemas from TypeScript types, `createTool` requires you to explicitly define a Zod schema. This extra step provides stronger validation guarantees and more helpful error messages when the LLM provides invalid inputs.
 
 ## When to Use createTool
 
 Use `createTool` when you need:
 
-- **Explicit validation rules**: Zod provides fine-grained control over what inputs are accepted
-- **Clear error messages**: Zod validation errors are descriptive and help the LLM understand what went wrong
-- **Complex parameter types**: Union types, discriminated unions, or nested objects beyond TypeScript inference
-- **Custom transformations**: Apply transformations to inputs before they reach your function
-- **Better TypeScript inference**: When the schema-based approach gives better IDE support
+- **Explicit validation rules** - Fine-grained control over what inputs are accepted (email formats, number ranges, string patterns)
+- **Clear error messages** - Zod validation errors help the LLM understand what went wrong and how to fix it
+- **Complex parameter types** - Union types, discriminated unions, or nested objects that TypeScript inference can't handle
+- **Custom transformations** - Apply transformations to inputs before they reach your function (trim strings, normalize data)
+- **Better TypeScript inference** - When the schema-based approach gives better IDE autocomplete and type checking
 
 For simpler cases where TypeScript type inference is sufficient, consider using [Function Tools](/docs/framework/tools/function-tools) instead.
 
-## Basic Usage
+## Quick Start
 
-Here's a simple tool using `createTool`:
+Here's a simple example of creating a calculator tool using `createTool`:
 
 ```typescript
-import { createTool } from "@iqai/adk";
+import { createTool, LlmAgent } from "@iqai/adk";
 import { z } from "zod";
-import { LlmAgent } from "@iqai/adk";
 
-const addTool = createTool({
-  name: "add",
-  description: "Adds two numbers together",
+// Create a calculator tool with explicit Zod schema
+const calculatorTool = createTool({
+  name: "calculator_tool",
+  description: "Performs basic arithmetic operations",
   schema: z.object({
-    a: z.number().describe("The first number"),
-    b: z.number().describe("The second number"),
+    operation: z.enum(["add", "subtract", "multiply", "divide"]),
+    a: z.number().describe("First number"),
+    b: z.number().describe("Second number"),
   }),
-  fn: ({ a, b }) => {
-    return { result: a + b };
+  fn: ({ operation, a, b }) => {
+    switch (operation) {
+      case "add":
+        return { result: a + b };
+      case "subtract":
+        return { result: a - b };
+      case "multiply":
+        return { result: a * b };
+      case "divide":
+        return { result: b !== 0 ? a / b : "Cannot divide by zero" };
+      default:
+        return { error: "Unknown operation" };
+    }
   },
 });
 
+// Use the tool with your agent
 const agent = new LlmAgent({
-  name: "calculator",
+  name: "calculator_agent",
+  description: "A simple calculator agent",
   instruction: "Help users with math calculations",
-  tools: [addTool],
+  tools: [calculatorTool],
 });
 ```
 
-## Configuration
+That's it! The `calculatorTool` automatically validates inputs using the Zod schema and returns structured results.
+
+## How createTool Works
+
+When you create a tool with `createTool`, ADK-TS:
+
+1. Converts your Zod schema into a JSON schema the LLM can understand
+2. Validates all inputs against the schema before executing your function
+3. Returns descriptive error messages when validation fails
+4. Handles type conversion between the LLM and your function
+5. Provides automatic access to [`ToolContext`](/docs/framework/tools/tool-context) when needed
+
+## Configuration Options
 
 The `createTool` function accepts a configuration object with these properties:
 
-| Property               | Type       | Required | Description                                                           |
-| ---------------------- | ---------- | -------- | --------------------------------------------------------------------- |
-| `name`                 | string     | Yes      | The tool name used by the LLM                                         |
-| `description`          | string     | Yes      | What the tool does (sent to the LLM)                                  |
-| `schema`               | Zod schema | No       | Validates and defines input parameters                                |
-| `fn`                   | function   | Yes      | The function to execute                                               |
-| `isLongRunning`        | boolean    | No       | Whether this tool performs long-running operations (default: `false`) |
-| `shouldRetryOnFailure` | boolean    | No       | Whether to retry on failure (default: `false`)                        |
-| `maxRetryAttempts`     | number     | No       | Maximum retry attempts (default: `3`)                                 |
+| Option                 | Type        | Required | Description                                                           |
+| ---------------------- | ----------- | -------- | --------------------------------------------------------------------- |
+| `name`                 | `string`    | Yes      | The tool name used by the LLM                                         |
+| `description`          | `string`    | Yes      | What the tool does (sent to the LLM)                                  |
+| `schema`               | `ZodSchema` | No       | Zod schema that validates and defines input parameters                |
+| `fn`                   | `function`  | Yes      | The function to execute (can be sync or async)                        |
+| `isLongRunning`        | `boolean`   | No       | Whether this tool performs long-running operations (default: `false`) |
+| `shouldRetryOnFailure` | `boolean`   | No       | Whether to retry on failure (default: `false`)                        |
+| `maxRetryAttempts`     | `number`    | No       | Maximum retry attempts (default: `3`)                                 |
 
-## Defining Schemas
+<Callout type="info" title="Schema is Optional">
+  If you don't provide a schema, `createTool` uses an empty object schema
+  (`z.object({})`), meaning your tool accepts no parameters. This is useful for
+  tools that don't need input, like getting the current timestamp.
+</Callout>
 
-Zod schemas define what parameters your tool accepts. Here are common patterns:
+## Defining Tool Schemas
 
-### Required Parameters
+[Zod schemas](https://zod.dev/) define what parameters your tool accepts and how they should be validated. ADK-TS converts these schemas into JSON schemas that LLMs can understand.
+
+### Required vs Optional Parameters
+
+Required parameters must be provided by the LLM, while optional parameters can be omitted:
 
 ```typescript
 const searchTool = createTool({
-  name: "search",
+  name: "search_tool",
   description: "Search for information",
   schema: z.object({
-    query: z.string().describe("The search query"),
-    maxResults: z.number().describe("Maximum number of results"),
+    query: z.string().describe("The search query"), // Required
+    maxResults: z.number().describe("Maximum number of results"), // Required
   }),
   fn: ({ query, maxResults }) => {
     return { found: 0, items: [] };
@@ -82,16 +118,16 @@ const searchTool = createTool({
 });
 ```
 
-### Optional Parameters
+Use `.optional()` or `.default()` for optional parameters:
 
 ```typescript
 const filterTool = createTool({
-  name: "filterData",
+  name: "filter_data_tool",
   description: "Filter data with optional criteria",
   schema: z.object({
-    data: z.array(z.string()).describe("Items to filter"),
-    pattern: z.string().optional().describe("Optional filter pattern"),
-    limit: z.number().default(10).describe("Result limit (defaults to 10)"),
+    data: z.array(z.string()).describe("Items to filter"), // Required
+    pattern: z.string().optional().describe("Optional filter pattern"), // Optional
+    limit: z.number().default(10).describe("Result limit (defaults to 10)"), // Optional with default
   }),
   fn: ({ data, pattern, limit }) => {
     return { filtered: data };
@@ -99,127 +135,115 @@ const filterTool = createTool({
 });
 ```
 
-### Union Types and Discriminated Unions
+### Parameter Descriptions
+
+Use `.describe()` to add descriptions to your schema fields. These descriptions are sent to the LLM and help it understand how to use your tool:
+
+```typescript
+const weatherTool = createTool({
+  name: "get_weather_tool",
+  description: "Gets weather information for a location",
+  schema: z.object({
+    city: z.string().describe("The city name (e.g., 'San Francisco')"),
+    units: z
+      .enum(["celsius", "fahrenheit"])
+      .describe("Temperature units to use")
+      .default("celsius"),
+  }),
+  fn: ({ city, units }) => {
+    return { city, temperature: 72, units };
+  },
+});
+```
+
+### Complex Schema Types
+
+Zod supports complex validation patterns that go beyond TypeScript's type system:
+
+**Union Types and Discriminated Unions:**
 
 ```typescript
 const operationTool = createTool({
-  name: "operation",
+  name: "operation_tool",
   description: "Perform operations on data",
   schema: z.discriminatedUnion("type", [
     z.object({
       type: z.literal("sum"),
-      numbers: z.array(z.number()),
+      numbers: z.array(z.number()).describe("Numbers to sum"),
     }),
     z.object({
       type: z.literal("concat"),
-      strings: z.array(z.string()),
+      strings: z.array(z.string()).describe("Strings to concatenate"),
     }),
   ]),
-  fn: ({ type, numbers, strings }) => {
-    if (type === "sum") {
-      return { result: numbers.reduce((a, b) => a + b, 0) };
+  fn: (params) => {
+    if (params.type === "sum") {
+      return { result: params.numbers.reduce((a, b) => a + b, 0) };
     }
-    return { result: strings.join("") };
+    return { result: params.strings.join("") };
   },
 });
 ```
 
-### Enum and Literal Types
+**Enum and Literal Types:**
 
 ```typescript
 const formatTool = createTool({
-  name: "formatData",
+  name: "format_data_tool",
   description: "Format data in different ways",
   schema: z.object({
-    data: z.string(),
+    data: z.string().describe("The data to format"),
     format: z.enum(["json", "csv", "xml"]).describe("Output format"),
-    compress: z.boolean().default(false),
+    compress: z.boolean().default(false).describe("Whether to compress output"),
   }),
   fn: ({ data, format, compress }) => {
-    return { formatted: data, format };
+    return { formatted: data, format, compressed: compress };
   },
 });
 ```
 
-## Advanced Features
-
-### Long-Running Operations
-
-Mark tools that take time to complete:
+**Nested Objects and Arrays:**
 
 ```typescript
-const approvalTool = createTool({
-  name: "requestApproval",
-  description: "Request approval for an action",
+const createUserTool = createTool({
+  name: "create_user_tool",
+  description: "Creates a new user account",
   schema: z.object({
-    action: z.string(),
-    reason: z.string(),
+    username: z.string().min(3).max(20).describe("Username (3-20 characters)"),
+    email: z.string().email().describe("Valid email address"),
+    preferences: z
+      .object({
+        theme: z.enum(["light", "dark"]).default("light"),
+        notifications: z.boolean().default(true),
+      })
+      .optional()
+      .describe("User preferences"),
+    tags: z.array(z.string()).optional().describe("User tags"),
   }),
-  isLongRunning: true, // Mark as long-running
-  fn: async ({ action, reason }, toolContext) => {
-    // Generate request ID
-    const requestId = `req-${Date.now()}`;
-
-    return {
-      status: "pending",
-      requestId,
-      message: "Approval request submitted",
-    };
+  fn: ({ username, email, preferences, tags }) => {
+    return { status: "created", username, email };
   },
 });
 ```
 
-### Retry Configuration
+## Validation and Error Handling
 
-Configure automatic retries for tools that might fail temporarily:
+### Automatic Schema Validation
 
-```typescript
-const apiCallTool = createTool({
-  name: "fetchData",
-  description: "Fetch data from an external API",
-  schema: z.object({
-    endpoint: z.string().url(),
-  }),
-  shouldRetryOnFailure: true,
-  maxRetryAttempts: 5,
-  fn: async ({ endpoint }) => {
-    // This will retry up to 5 times on failure
-    const response = await fetch(endpoint);
-    return { success: response.ok };
-  },
-});
-```
-
-### Accessing ToolContext
-
-Access session state and other context:
-
-```typescript
-const contextAwareTool = createTool({
-  name: "getUserPreference",
-  description: "Get user preferences from session state",
-  schema: z.object({
-    key: z.string(),
-  }),
-  fn: ({ key }, toolContext) => {
-    const value = toolContext.state.get(`user:${key}`);
-    return { key, value };
-  },
-});
-```
-
-## Schema Validation
-
-Zod performs automatic validation of all inputs. If validation fails, the tool returns an error:
+Zod performs automatic validation of all inputs before your function executes. If validation fails, the tool returns a descriptive error message to the LLM:
 
 ```typescript
 const strictTool = createTool({
-  name: "strictOperation",
-  description: "An operation with strict validation",
+  name: "strict_operation_tool",
+  description: "An operation with strict validation rules",
   schema: z.object({
-    email: z.string().email(),
-    age: z.number().min(0).max(150),
-    country: z.string().min(2).max(2), // ISO country code
+    email: z.string().email().describe("Valid email address"),
+    age: z.number().min(0).max(150).describe("Age between 0 and 150"),
+    country: z
+      .string()
+      .length(2)
+      .toUpperCase()
+      .describe("ISO country code (2 characters)"),
   }),
   fn: ({ email, age, country }) => {
     return { valid: true, email, age, country };
@@ -227,23 +251,34 @@ const strictTool = createTool({
 });
 
 // If LLM provides invalid data:
-// - Invalid email format → returns error
-// - Age outside 0-150 → returns error
-// - Country code not 2 chars → returns error
+// - Invalid email format → "Invalid email" error returned to LLM
+// - Age outside 0-150 range → "Number must be between 0 and 150" error
+// - Country code not 2 chars → "String must contain exactly 2 characters" error
 ```
 
 The LLM sees these validation errors and can correct its input and retry.
 
-## Error Handling
+### Runtime Error Handling
 
-`createTool` validates inputs automatically, but you should also handle runtime errors:
+While `createTool` validates inputs automatically, you should still handle runtime errors in your function:
 
 ```typescript
+// Example function to simulate fetching an item
+async function fetchItem(id: string) {
+  // Simulate fetching logic
+  if (id === "valid_id") {
+    return { id, name: "Sample Item" };
+  } else {
+    return null;
+  }
+}
+
+// Define a tool with robust error handling
 const robustTool = createTool({
-  name: "robustOperation",
-  description: "An operation with error handling",
+  name: "robust_operation_tool",
+  description: "An operation with comprehensive error handling",
   schema: z.object({
-    id: z.string(),
+    id: z.string().describe("The item ID to fetch"),
   }),
   fn: async ({ id }) => {
     try {
@@ -264,27 +299,150 @@ const robustTool = createTool({
     } catch (error) {
       return {
         status: "error",
-        message: "An unexpected error occurred",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       };
     }
   },
 });
 ```
 
-## Comparison: createTool vs Function Tools
+### Best Practices for Error Handling
 
-| Feature              | createTool                 | Function Tools            |
-| -------------------- | -------------------------- | ------------------------- |
-| Parameter Definition | Explicit Zod schema        | TypeScript type inference |
-| Validation           | Strict, with custom rules  | Automatic from types      |
-| Setup                | Requires schema definition | Minimal setup             |
-| Control              | Fine-grained               | Simple & straightforward  |
-| Best For             | Complex validation needs   | Quick tool creation       |
+- **Return structured errors**: Include a `status` field to indicate success or failure
+- **Provide helpful messages**: Error messages should help the LLM understand what went wrong
+- **Handle edge cases**: Check for null/undefined values and unexpected inputs
+- **Don't throw errors**: Return error objects instead of throwing exceptions
+
+## Advanced Features
+
+### Accessing ToolContext
+
+Your tools can access the `ToolContext` to interact with session state, memory, artifacts, and more. Simply add a `toolContext` parameter to your function:
+
+```typescript
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
+
+const savePreferencesTool = createTool({
+  name: "save_preferences_tool",
+  description: "Saves user preferences to session state",
+  schema: z.object({
+    theme: z.enum(["light", "dark"]).describe("Theme preference"),
+    language: z.string().describe("Language preference"),
+  }),
+  fn: ({ theme, language }, toolContext: ToolContext) => {
+    // Store preferences in session state
+    toolContext.state.set("userPreferences", { theme, language });
+
+    return {
+      status: "success",
+      message: "Preferences saved successfully",
+    };
+  },
+});
+
+const getPreferencesTool = createTool({
+  name: "get_preferences_tool",
+  description: "Gets user preferences from session state",
+  schema: z.object({}), // No parameters needed
+  fn: (args, toolContext: ToolContext) => {
+    const preferences = toolContext.state.get("userPreferences");
+
+    return {
+      status: "success",
+      preferences: preferences || null,
+    };
+  },
+});
+```
+
+ADK-TS automatically detects when your function has a `toolContext` parameter and injects it at runtime. For more details, see the [ToolContext documentation](/docs/framework/tools/tool-context).
+
+### Long-Running Operations
+
+Mark tools that take time to complete using the `isLongRunning` option:
+
+```typescript
+const approvalTool = createTool({
+  name: "request_approval_tool",
+  description: "Request approval for an action",
+  schema: z.object({
+    action: z.string().describe("The action requiring approval"),
+    reason: z.string().describe("Reason for the request"),
+  }),
+  isLongRunning: true, // Mark as long-running
+  fn: async ({ action, reason }) => {
+    // Generate request ID
+    const requestId = `req-${Date.now()}`;
+
+    return {
+      status: "pending",
+      requestId,
+      message: "Approval request submitted",
+    };
+  },
+});
+```
+
+Long-running tools are perfect for human-in-the-loop workflows, file processing, or operations that take time to complete.
+
+### Retry Configuration
+
+Configure automatic retries for tools that might fail temporarily:
+
+```typescript
+const apiCallTool = createTool({
+  name: "fetch_data_tool",
+  description: "Fetch data from an external API",
+  schema: z.object({
+    endpoint: z.string().url().describe("The API endpoint URL"),
+  }),
+  shouldRetryOnFailure: true,
+  maxRetryAttempts: 5,
+  fn: async ({ endpoint }) => {
+    // This will retry up to 5 times on failure
+    const response = await fetch(endpoint);
+    return {
+      status: response.ok ? "success" : "error",
+      data: response.ok ? await response.json() : null,
+    };
+  },
+});
+```
+
+## createTool vs Function Tools
+
+Both `createTool` and [Function Tools](/docs/framework/tools/function-tools) let you create custom tools, but they take different approaches:
+
+| Feature              | createTool                        | Function Tools                  |
+| -------------------- | --------------------------------- | ------------------------------- |
+| Parameter Definition | Explicit Zod schema               | TypeScript type inference       |
+| Validation           | Strict, with custom rules         | Automatic from types            |
+| Error Messages       | Descriptive Zod validation errors | Generic type mismatch errors    |
+| Setup Complexity     | Requires schema definition        | Minimal setup (JSDoc or direct) |
+| Control Level        | Fine-grained validation control   | Simple & straightforward        |
+| Best For             | Complex validation needs          | Quick tool creation             |
+| Schema Source        | Explicit (Zod)                    | Inferred (TypeScript + JSDoc)   |
 
 <Callout type="info" title="Choosing Between Approaches">
-  - Use **createTool** when you need explicit validation and control - Use
-  **Function Tools** when you want quick setup with minimal boilerplate - Both
-  approaches work with agents - choose based on your needs
+  **Use createTool when:**
+  - You need strict validation (email formats, number ranges, string patterns)
+  - You want helpful error messages for the LLM
+  - You have complex parameter types (unions, discriminated unions, nested objects)
+  - You need custom transformations on inputs
+
+**Use Function Tools when:**
+
+- You want minimal boilerplate and quick setup
+- TypeScript types are sufficient for your validation needs
+- You prefer automatic schema inference
+- You're building simple tools with straightforward parameters
+
+Both approaches work seamlessly with agents - choose based on your validation requirements.
+
 </Callout>
 
 ## Sharing Data Between Tools
@@ -299,12 +457,12 @@ Tools often need to pass data to each other. ADK-TS provides two main approaches
 All tools in a single agent turn share the same `ToolContext`, making it perfect for passing data between tools:
 
 ```typescript
-import { createTool, ToolContext } from "@iqai/adk";
+import { createTool, LlmAgent, ToolContext } from "@iqai/adk";
 import { z } from "zod";
 
 // Tool 1: Fetch customer data and store it
 const getCustomer = createTool({
-  name: "getCustomer",
+  name: "get_customer_tool",
   description: "Retrieves customer information by ID",
   schema: z.object({
     customerId: z.string().describe("The customer's ID"),
@@ -330,7 +488,7 @@ const getCustomer = createTool({
 
 // Tool 2: Use the stored customer data
 const applyDiscount = createTool({
-  name: "applyDiscount",
+  name: "apply_discount_tool",
   description: "Applies a discount based on customer tier",
   schema: z.object({
     amount: z.number().describe("The order amount"),
@@ -369,7 +527,7 @@ const applyDiscount = createTool({
 
 // Tool 3: Process payment using customer data
 const processPayment = createTool({
-  name: "processPayment",
+  name: "process_payment_tool",
   description: "Processes a payment for the customer",
   schema: z.object({
     amount: z.number().describe("Amount to charge"),
@@ -403,6 +561,8 @@ const processPayment = createTool({
 
 const agent = new LlmAgent({
   name: "paymentAgent",
+  description: "Handles customer payments with discounts",
+  model: "gpt-4o-mini",
   tools: [getCustomer, applyDiscount, processPayment],
 });
 ```
@@ -426,7 +586,7 @@ Alternatively, return structured data that the LLM can understand and pass to th
 
 ```typescript
 const step1 = createTool({
-  name: "step1",
+  name: "step1_tool",
   description: "First step that generates a user ID",
   schema: z.object({}),
   fn: () => {
@@ -440,7 +600,7 @@ const step1 = createTool({
 });
 
 const step2 = createTool({
-  name: "step2",
+  name: "step2_tool",
   description: "Second step that uses the user ID from step1",
   schema: z.object({
     userId: z.string().describe("The user ID from the previous step"),
@@ -465,23 +625,18 @@ The LLM will see the `userId` in step1's response and automatically pass it to s
     href="/docs/framework/tools/function-tools"
   />
   <Card
+    title="🔧 ToolContext"
+    description="Access session state, memory, and artifacts in your tools"
+    href="/docs/framework/tools/tool-context"
+  />
+  <Card
     title="⚡ Built-in Tools"
     description="Ready-made tools for common tasks"
     href="/docs/framework/tools/built-in-tools"
   />
   <Card
-    title="🔧 ToolContext"
-    description="Learn about ToolContext capabilities and usage"
-    href="/docs/framework/tools/tool-context"
-  />
-  <Card
-    title="🤖 Agents"
+    title="🤖 LLM Agents"
     description="Learn how to configure agents with tools"
-    href="/docs/framework/agents"
-  />
-  <Card
-    title="💾 Sessions"
-    description="Understand state management and persistence"
-    href="/docs/framework/sessions"
+    href="/docs/framework/agents/llm-agents"
   />
 </Cards>
