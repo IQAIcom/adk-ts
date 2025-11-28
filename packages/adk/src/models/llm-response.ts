@@ -51,8 +51,53 @@ export class LlmResponse {
 
 	error?: Error;
 
+	/** LLM request metadata for debugging */
+	requestMetadata?: {
+		model?: string;
+		config?: any;
+		systemInstruction?: string;
+		tools?: any[];
+		contents?: any[];
+	};
+
+	/** LLM response metadata for debugging */
+	responseMetadata?: {
+		content?: any;
+		finishReason?: string;
+		usageMetadata?: any;
+		functionCalls?: any[];
+		functionResponses?: any[];
+		toolName?: string;
+		toolResult?: any;
+		mergedFrom?: number;
+	};
+
 	constructor(data: Partial<LlmResponse> = {}) {
 		Object.assign(this, data);
+	}
+
+	// Extract function calls from the response content (if any)
+	getFunctionCalls(): any[] {
+		const calls: any[] = [];
+		const content: any = this.content as any;
+		if (content && Array.isArray(content.parts)) {
+			for (const part of content.parts) {
+				if (part.functionCall) calls.push(part.functionCall);
+			}
+		}
+		return calls;
+	}
+
+	// Extract function responses from the response content (if any)
+	getFunctionResponses(): any[] {
+		const responses: any[] = [];
+		const content: any = this.content as any;
+		if (content && Array.isArray(content.parts)) {
+			for (const part of content.parts) {
+				if (part.functionResponse) responses.push(part.functionResponse);
+			}
+		}
+		return responses;
 	}
 
 	static create(generateContentResponse: GenerateContentResponse): LlmResponse {
