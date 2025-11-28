@@ -1,5 +1,5 @@
 import { Logger } from "@adk/logger";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { Client } from "@modelcontextprotocol/sdk/client";
 import type {
 	CallToolResult,
 	Tool as McpTool,
@@ -68,7 +68,7 @@ class McpToolAdapter extends BaseTool {
 		client?: Client,
 		handler?: (name: string, args: unknown) => Promise<CallToolResult>,
 	) {
-		const metadata = (mcpTool.metadata || {}) as McpToolMetadata;
+		const metadata = (mcpTool._meta || {}) as McpToolMetadata;
 
 		super({
 			name: mcpTool.name || `mcp_${Date.now()}`,
@@ -115,8 +115,9 @@ class McpToolAdapter extends BaseTool {
 		this.logger.debug(`Executing MCP tool ${this.name} with args:`, args);
 
 		try {
-			if (typeof this.mcpTool.execute === "function") {
-				return await this.mcpTool.execute(args);
+			// Check if the tool has a custom execute method (not part of standard MCP Tool type)
+			if (typeof (this.mcpTool as any).execute === "function") {
+				return await (this.mcpTool as any).execute(args);
 			}
 
 			if (this.clientService) {
