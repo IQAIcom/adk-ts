@@ -160,8 +160,8 @@ export abstract class BaseTool {
 	 * @returns The result of running the tool
 	 */
 	async runAsync(
-		args: Record<string, any>,
-		context: ToolContext,
+		_args: Record<string, any>,
+		_context: ToolContext,
 	): Promise<any> {
 		throw new Error(`${this.constructor.name} runAsync is not implemented`);
 	}
