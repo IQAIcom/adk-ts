@@ -72,8 +72,8 @@ class McpToolAdapter extends BaseTool {
 
 		if ("metadata" in mcpTool && typeof mcpTool.metadata === "object") {
 			metadata = mcpTool.metadata as McpToolMetadata;
-		} else {
-			metadata = mcpTool._meta || {};
+		} else if (mcpTool._meta && typeof mcpTool._meta === "object") {
+			metadata = mcpTool._meta as McpToolMetadata;
 		}
 
 		super({

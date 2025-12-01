@@ -220,15 +220,20 @@ export class McpSamplingHandler {
 					if (text) parts.push({ text });
 				}
 
-				// Add inline data part
-				parts.push({
-					inlineData: {
-						data: safeText(mcpContent.data),
-						mimeType:
-							safeText(mcpContent.mimeType) ||
-							(mcpContent.type === "image" ? "image/jpeg" : "audio/mpeg"),
-					},
-				});
+				if (mcpContent.data && typeof mcpContent.data === "string") {
+					parts.push({
+						inlineData: {
+							data: mcpContent.data,
+							mimeType:
+								safeText(mcpContent.mimeType) ||
+								(mcpContent.type === "image" ? "image/jpeg" : "audio/mpeg"),
+						},
+					});
+				} else {
+					this.logger.warn(
+						`Missing or invalid 'data' for ${mcpContent.type} content.`,
+					);
+				}
 
 				return parts;
 			}
