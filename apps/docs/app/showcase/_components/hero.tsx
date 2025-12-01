@@ -1,10 +1,6 @@
-import dedent from "dedent";
-import { DynamicCodeBlock } from "fumadocs-ui/components/dynamic-codeblock";
-import Link from "next/link";
-
 export function Hero() {
 	return (
-		<section className="relative flex flex-1 flex-col justify-center items-center px-2 sm:px-4 py-8 sm:py-12 overflow-hidden">
+		<section className="relative flex flex-col justify-center items-center px-2 sm:px-4 py-16 sm:py-24 overflow-hidden">
 			{/* Enhanced Background */}
 			<div className="absolute inset-0 bg-gradient-to-br from-background via-card to-muted/20">
 				<div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-chart-2/5" />
@@ -32,129 +28,30 @@ export function Hero() {
 							stroke="currentColor"
 							viewBox="0 0 24 24"
 						>
-							<title>Lightning Icon</title>
+							<title>Star Icon</title>
 							<path
 								strokeLinecap="round"
 								strokeLinejoin="round"
 								strokeWidth={2}
-								d="M13 10V3L4 14h7v7l9-11h-7z"
+								d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
 							/>
 						</svg>
-						ADK-TS: Build AI Agents in TypeScript
+						Community Showcase
 					</div>
 
 					<h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 animate-fade-in-up animation-delay-200">
-						<span className="text-foreground">Build Sophisticated</span>
+						<span className="text-foreground">Built with</span>
 						<br />
 						<span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium bg-gradient-to-r from-primary to-chart-1 bg-clip-text text-transparent">
-							Multi-Agent AI Systems
+							ADK-TS Framework
 						</span>
 					</h1>
 
 					<p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in-up animation-delay-400">
-						Enterprise-grade framework for hierarchical agents, tool
-						integration, memory management, and real-time streaming
+						Discover the innovative AI agents and applications created by our
+						amazing community.
 					</p>
-
-					{/* Action buttons with enhanced styling */}
-					<div className="flex flex-row gap-3 justify-center mb-12 animate-fade-in-up animation-delay-600">
-						<Link
-							href="/docs/framework/get-started"
-							className="group inline-flex items-center justify-center rounded-lg bg-primary px-4 sm:px-6 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 shadow-lg hover:shadow-primary/25"
-						>
-							Get Started
-							<svg
-								className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<title>Arrow Right Icon</title>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M13 7l5 5m0 0l-5 5m5-5H6"
-								/>
-							</svg>
-						</Link>
-
-						<Link
-							href="/docs/framework/get-started/quickstart"
-							className="group inline-flex items-center justify-center rounded-lg border border-border bg-background/80 backdrop-blur-sm px-4 sm:px-6 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-accent hover:text-accent-foreground hover:scale-105 hover:shadow-lg"
-						>
-							Quick Start
-							<svg
-								className="ml-2 h-4 w-4 opacity-50 transition-all group-hover:opacity-100 group-hover:translate-x-1"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<title>ChevronRight Icon</title>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M9 5l7 7-7 7"
-								/>
-							</svg>
-						</Link>
-					</div>
 				</div>
-
-				{/* Code preview - centered container with left-aligned code */}
-				{/* <div className="relative w-full max-w-2xl mx-auto mb-12 animate-fade-in-up animation-delay-800">
-					<div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-chart-1/20 rounded-lg blur opacity-25 animate-pulse" />
-					<div className="relative bg-card border border-border rounded-lg overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02]">
-						<div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-muted/30 border-b border-border">
-							<div className="flex items-center space-x-2">
-								<div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-								<div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse animation-delay-300" />
-								<div className="w-3 h-3 bg-green-500 rounded-full animate-pulse animation-delay-600" />
-							</div>
-							<span className="text-xs text-muted-foreground font-mono">
-								multi-agent-system.ts
-							</span>
-						</div>
-						<div className="p-3 sm:p-4 overflow-x-auto text-left">
-							<div className="min-w-0">
-								<DynamicCodeBlock
-									lang="typescript"
-									code={dedent`
-                    const workflow = AgentBuilder
-                      .asSequential([researchAgent, analysisAgent])
-                      .withTools([GoogleSearch, DataProcessor])
-                      .withMemory(vectorMemoryService);
-
-                    const result = await workflow.ask(
-                      "Analyze market trends in AI"
-                    );
-                  `}
-								/>
-							</div>
-						</div>
-					</div>
-				</div> */}
-
-				{/* Enhanced feature highlights at the end */}
-				{/* <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-3xl mx-auto animate-fade-in-up animation-delay-1000">
-					<div className="flex items-center justify-center space-x-2 text-sm hover:scale-105 transition-transform duration-300">
-						<div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 animate-pulse" />
-						<span className="text-muted-foreground">Multi-Agent</span>
-					</div>
-					<div className="flex items-center justify-center space-x-2 text-sm hover:scale-105 transition-transform duration-300">
-						<div className="w-2 h-2 bg-chart-1 rounded-full flex-shrink-0 animate-pulse animation-delay-200" />
-						<span className="text-muted-foreground">Tool Integration</span>
-					</div>
-					<div className="flex items-center justify-center space-x-2 text-sm hover:scale-105 transition-transform duration-300">
-						<div className="w-2 h-2 bg-chart-2 rounded-full flex-shrink-0 animate-pulse animation-delay-400" />
-						<span className="text-muted-foreground">Memory Services</span>
-					</div>
-					<div className="flex items-center justify-center space-x-2 text-sm hover:scale-105 transition-transform duration-300">
-						<div className="w-2 h-2 bg-chart-3 rounded-full flex-shrink-0 animate-pulse animation-delay-600" />
-						<span className="text-muted-foreground">Real-time Streaming</span>
-					</div>
-				</div> */}
 			</div>
 
 			{/* Enhanced CSS animations */}
