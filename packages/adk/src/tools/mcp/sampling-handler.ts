@@ -184,7 +184,7 @@ export class McpSamplingHandler {
 		};
 
 		this.logger.debug(
-			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${mcpMessage.content}`,
+			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${Array.isArray(mcpMessage.content) ? "array" : (mcpMessage.content as any)?.type ?? "unknown"}`,
 		);
 
 		return adkContent;
