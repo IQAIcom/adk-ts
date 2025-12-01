@@ -41,7 +41,7 @@ export function useAgents(currentSessionId?: string | null) {
 		retry: 2,
 	});
 
-	// Fetch messages for selected agent and session by transforming events → messages
+	// Fetch messages for selected agent and session
 	const { data: sessionEvents } = useQuery({
 		queryKey: [
 			"agent-messages",
@@ -63,38 +63,37 @@ export function useAgents(currentSessionId?: string | null) {
 		staleTime: 10000,
 	});
 
-	// Update messages when events change
 	useEffect(() => {
-		if (sessionEvents?.events && selectedAgent) {
+		if (!selectedAgent) return;
+
+		if (sessionEvents?.events) {
 			const asMessages: Message[] = sessionEvents.events
-				.map((ev: EventItemDto, index: number) => {
-					const content = ev.content as any;
-					const textParts = Array.isArray(content?.parts)
-						? content.parts
-								.filter(
-									(p: any) =>
-										typeof p === "object" &&
-										"text" in p &&
-										typeof p.text === "string",
-								)
-								.map((p: any) => p.text)
-						: [];
-					const text = textParts.join("").trim();
+				.map((ev: EventItemDto) => {
+					let text = "";
+
+					if (isEventContent(ev.content)) {
+						const textParts = ev.content.parts
+							.filter(isTextPart)
+							.map((p) => p.text);
+
+						text = textParts.join("").trim();
+					}
+
 					return {
-						id: index + 1,
+						id: ev.timestamp,
 						type: ev.author === "user" ? "user" : "assistant",
 						content: text,
 						timestamp: new Date(ev.timestamp * 1000),
 						author: ev.author,
 					} as Message;
 				})
-				.filter((m: Message) => m.content.length > 0);
+				.filter((m) => m.content.length > 0);
 
 			setMessages(asMessages);
-			if (asMessages.length > 0) {
-			}
+		} else if (!currentSessionId) {
+			setMessages([]);
 		}
-	}, [sessionEvents, selectedAgent]);
+	}, [sessionEvents, selectedAgent, currentSessionId]);
 
 	// Send message mutation
 	const sendMessageMutation = useMutation({
@@ -115,24 +114,24 @@ export function useAgents(currentSessionId?: string | null) {
 			};
 			setMessages((prev) => [...prev, userMessage]);
 
-			// Client-side guardrails for attachments
-			const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB default client cap
-
+			// Handle attachments
+			const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 			let encodedAttachments:
 				| Array<{ name: string; mimeType: string; data: string }>
 				| undefined;
-			if (attachments && attachments.length > 0) {
-				// Size filter with toast notifications
+
+			if (attachments?.length) {
 				const tooLarge = attachments.filter(
 					(f) => f.size > MAX_FILE_SIZE_BYTES,
 				);
-				if (tooLarge.length > 0) {
+				if (tooLarge.length) {
 					toast.error(
-						`Some files exceed ${Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024))}MB and were skipped: ${tooLarge
-							.map((f) => f.name)
-							.join(", ")}`,
+						`Some files exceed ${Math.round(
+							MAX_FILE_SIZE_BYTES / (1024 * 1024),
+						)}MB and were skipped: ${tooLarge.map((f) => f.name).join(", ")}`,
 					);
 				}
+
 				const filesToProcess = attachments.filter(
 					(f) => f.size <= MAX_FILE_SIZE_BYTES,
 				);
@@ -142,33 +141,27 @@ export function useAgents(currentSessionId?: string | null) {
 						const reader = new FileReader();
 						reader.onload = () => {
 							const result = reader.result as string;
-							const base64 = result.includes(",")
-								? result.split(",")[1]
-								: result;
-							resolve(base64);
+							resolve(result.includes(",") ? result.split(",")[1] : result);
 						};
 						reader.onerror = () => reject(reader.error);
 						reader.readAsDataURL(file);
 					});
 
 				encodedAttachments = await Promise.all(
-					filesToProcess.map(async (file) => {
-						const mimeType =
+					filesToProcess.map(async (file) => ({
+						name: file.name,
+						mimeType:
 							file.type && file.type !== "application/octet-stream"
 								? file.type
-								: "text/plain";
-						return {
-							name: file.name,
-							mimeType,
-							data: await fileToBase64(file),
-						};
-					}),
+								: "text/plain",
+						data: await fileToBase64(file),
+					})),
 				);
 			}
 
 			const body = { message, attachments: encodedAttachments };
-
 			if (!apiClient) throw new Error("API client not ready");
+
 			try {
 				const res = await apiClient.api.messagingControllerPostAgentMessage(
 					encodeURIComponent(agent.relativePath),
@@ -186,28 +179,10 @@ export function useAgents(currentSessionId?: string | null) {
 			}
 		},
 		onSuccess: () => {
-			// Refresh session events and derived messages
 			if (currentSessionId && selectedAgent) {
 				queryClient.invalidateQueries({
 					queryKey: [
-						"events",
-						apiUrl,
-						selectedAgent.relativePath,
-						currentSessionId,
-					],
-				});
-				queryClient.invalidateQueries({
-					queryKey: [
 						"agent-messages",
-						apiUrl,
-						selectedAgent.relativePath,
-						currentSessionId,
-					],
-				});
-				// Also refresh UI state since the agent may have changed session state
-				queryClient.invalidateQueries({
-					queryKey: [
-						"state",
 						apiUrl,
 						selectedAgent.relativePath,
 						currentSessionId,
@@ -221,24 +196,17 @@ export function useAgents(currentSessionId?: string | null) {
 		},
 	});
 
+	// Select agent
 	const selectAgent = useCallback(
 		(agent: AgentListItemDto) => {
-			// Cancel in-flight queries tied to the previous agent to avoid races
 			if (selectedAgent) {
 				try {
 					queryClient.cancelQueries({
-						queryKey: ["events", apiUrl, selectedAgent.relativePath],
-					});
-					queryClient.cancelQueries({
 						queryKey: ["agent-messages", apiUrl, selectedAgent.relativePath],
-					});
-					queryClient.cancelQueries({
-						queryKey: ["sessions", apiUrl, selectedAgent.relativePath],
 					});
 				} catch {}
 			}
 			setSelectedAgent(agent);
-			setMessages([]);
 		},
 		[apiUrl, queryClient, selectedAgent],
 	);
@@ -268,4 +236,30 @@ export function useAgents(currentSessionId?: string | null) {
 		refreshAgents,
 		isSendingMessage: sendMessageMutation.isPending,
 	};
+}
+
+interface TextPart {
+	text: string;
+}
+
+interface EventContent {
+	parts: unknown[];
+}
+
+/** ✅ Type Guards */
+function isEventContent(value: unknown): value is EventContent {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		Array.isArray((value as any).parts)
+	);
+}
+
+function isTextPart(value: unknown): value is TextPart {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"text" in value &&
+		typeof (value as any).text === "string"
+	);
 }

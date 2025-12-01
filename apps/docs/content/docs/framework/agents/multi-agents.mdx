@@ -19,7 +19,7 @@ ADK-TS provides a robust foundation for multi-agent systems through hierarchical
 
 ## Quick Start Example
 
-Here's a content processing system that demonstrates the core multi-agent patterns:
+Here's a content processing system that analyzes customer feedback using multiple specialized agents working in parallel and sequence:
 
 ```typescript
 import {
@@ -28,10 +28,13 @@ import {
   ParallelAgent,
   AgentBuilder,
 } from "@iqai/adk";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 // Specialist agents for content analysis
-const sentimentAnalyzer = new LlmAgent({
-  name: "sentiment_analyzer",
+const sentimentAnalyzerAgent = new LlmAgent({
+  name: "sentiment_analyzer_agent",
   model: "gemini-2.5-flash",
   description: "Analyzes emotional tone and sentiment",
   instruction:
@@ -39,8 +42,8 @@ const sentimentAnalyzer = new LlmAgent({
   outputKey: "sentiment_analysis",
 });
 
-const topicExtractor = new LlmAgent({
-  name: "topic_extractor",
+const topicExtractorAgent = new LlmAgent({
+  name: "topic_extractor_agent",
   model: "gemini-2.5-flash",
   description: "Identifies key topics and themes",
   instruction:
@@ -49,15 +52,15 @@ const topicExtractor = new LlmAgent({
 });
 
 // Parallel analysis phase
-const analysisPhase = new ParallelAgent({
-  name: "content_analysis",
+const analysisPhaseAgent = new ParallelAgent({
+  name: "content_analysis_agent",
   description: "Perform multiple types of content analysis simultaneously",
-  subAgents: [sentimentAnalyzer, topicExtractor],
+  subAgents: [sentimentAnalyzerAgent, topicExtractorAgent],
 });
 
 // Content processor and formatter
-const contentSummarizer = new LlmAgent({
-  name: "content_summarizer",
+const contentSummarizerAgent = new LlmAgent({
+  name: "content_summarizer_agent",
   model: "gemini-2.5-flash",
   description: "Creates comprehensive summaries",
   instruction:
@@ -66,21 +69,25 @@ const contentSummarizer = new LlmAgent({
 });
 
 // Complete processing pipeline
-const contentProcessor = new SequentialAgent({
-  name: "content_processing_system",
+const contentProcessorAgent = new SequentialAgent({
+  name: "content_processing_system_agent",
   description: "Analyze and summarize content using multiple perspectives",
   subAgents: [
-    analysisPhase, // Parallel: sentiment + topic analysis
-    contentSummarizer, // Sequential: combine insights into summary
+    analysisPhaseAgent, // Parallel: sentiment + topic analysis
+    contentSummarizerAgent, // Sequential: combine insights into summary
   ],
 });
 
 // Usage with AgentBuilder
-const { runner } = await AgentBuilder.withAgent(contentProcessor).build();
+const { runner } = await AgentBuilder.create("root_agent")
+  .withAgent(contentProcessorAgent)
+  .build();
 
 const result = await runner.ask(
   "Analyze this customer feedback: 'I love the new features, but the interface is confusing and slow.'"
 );
+
+console.log("Result:", result);
 ```
 
 ### What Makes This Multi-Agent
@@ -113,26 +120,34 @@ Multi-agent systems in ADK-TS are organized as tree structures where agents have
 ```typescript
 // Establishing agent hierarchy
 const billingAgent = new LlmAgent({
-  name: "billing_specialist",
+  name: "billing_agent",
   description: "Handles billing and payment issues",
 });
 
-const coordinator = new LlmAgent({
-  name: "support_coordinator",
-  description: "Routes customer inquiries to specialists",
-  subAgents: [billingAgent], // Creates parent-child relationship
+const technicalAgent = new LlmAgent({
+  name: "technical_agent",
+  description: "Handles technical support and troubleshooting",
 });
 
-// ADK-TS automatically sets: billingAgent.parentAgent === coordinator
-// Navigate: coordinator.findAgent("billing_specialist") returns billingAgent
-// Access root: billingAgent.rootAgent === coordinator
+const coordinatorAgent = new LlmAgent({
+  name: "coordinator_agent",
+  model: "gemini-2.5-flash",
+  description: "Routes customer inquiries to specialist agents",
+  subAgents: [billingAgent, technicalAgent], // Creates parent-child relationship
+});
+
+// ADK-TS automatically sets: billingAgent.parentAgent === coordinatorAgent
+// Get root agent: billingAgent.rootAgent === coordinatorAgent
+// Navigate hierarchy: coordinatorAgent.findAgent("technical_agent") === technicalAgent
 ```
 
 ### Workflow Agents for Orchestration
 
 ADK-TS provides specialized workflow agents that orchestrate the execution of other agents without performing tasks themselves. These agents control how and when their sub-agents execute, enabling complex coordination patterns.
 
-**SequentialAgent** executes sub-agents one after another in the specified order.
+#### Sequential Workflow Agents
+
+`SequentialAgent` executes sub-agents one after another in the specified order.
 
 - **Execution Flow:** Uses the same `InvocationContext` throughout, enabling seamless state sharing
 - **State Persistence:** Each agent's output is preserved in session state for subsequent agents
@@ -140,83 +155,101 @@ ADK-TS provides specialized workflow agents that orchestrate the execution of ot
 - **Use Cases:** Data processing pipelines, multi-step workflows, validation chains
 
 ```typescript
-// Sequential pipeline example
-const dataFetcher = new LlmAgent({
-  name: "data_fetcher",
+import { LlmAgent, SequentialAgent, FileOperationsTool } from "@iqai/adk";
+
+const dataFetcherAgent = new LlmAgent({
+  name: "data_fetcher_agent",
   model: "gemini-2.5-flash",
+  description: "Fetches the latest market data",
   instruction: "Retrieve the latest market data for analysis",
   outputKey: "raw_data", // Saved to session state
 });
 
-const dataAnalyzer = new LlmAgent({
-  name: "data_analyzer",
+const dataAnalyzerAgent = new LlmAgent({
+  name: "data_analyzer_agent",
   model: "gemini-2.5-flash",
+  description: "Analyzes the fetched market data",
   instruction: "Analyze the market data: {raw_data} and identify key trends", // State injection
   outputKey: "analysis_results",
 });
 
-const reportGenerator = new LlmAgent({
-  name: "report_generator",
+const reportGeneratorAgent = new LlmAgent({
+  name: "report_generator_agent",
   model: "gemini-2.5-flash",
+  description: "Generates a comprehensive report from analysis results",
   instruction:
     "Generate a comprehensive report from analysis: {analysis_results}",
   outputKey: "final_report",
+  tools: [new FileOperationsTool()], // Example tool usage
 });
 
-const marketPipeline = new SequentialAgent({
-  name: "market_analysis_pipeline",
+const marketPipelineAgent = new SequentialAgent({
+  name: "market_pipeline_agent",
   description: "Complete market analysis workflow",
-  subAgents: [dataFetcher, dataAnalyzer, reportGenerator],
+  subAgents: [dataFetcherAgent, dataAnalyzerAgent, reportGeneratorAgent],
 });
 
-// Execution: dataFetcher → dataAnalyzer → reportGenerator
+// Execution: dataFetcherAgent → dataAnalyzerAgent → reportGeneratorAgent
 // State flows: raw_data → analysis_results → final_report
 ```
 
-**ParallelAgent** executes sub-agents simultaneously to improve performance and gather multiple perspectives.
+#### Parallel Workflow Agents
+
+`ParallelAgent` executes sub-agents simultaneously to improve performance and gather multiple perspectives.
 
 - **Concurrent Execution:** All sub-agents run at the same time, reducing total execution time
 - **Branch Isolation:** Each sub-agent gets a unique branch identifier (`ParentName.ChildName`) for isolated execution tracking
 - **Shared State:** Despite branch isolation, all agents share the same session state for data exchange
 - **Synchronization:** The `ParallelAgent` waits for all sub-agents to complete before continuing
 - **Conflict Prevention:** Use distinct `outputKey` values to avoid state overwrites
+- **Use Cases:** Multi-perspective analysis, independent task execution, data aggregation
 
 ```typescript
-// Parallel processing example
-const technicalAnalyzer = new LlmAgent({
-  name: "technical_analyzer",
+import { LlmAgent, ParallelAgent } from "@iqai/adk";
+
+const technicalAnalyzerAgent = new LlmAgent({
+  name: "technical_analyzer_agent",
   model: "gemini-2.5-flash",
+  description: "Analyze data from a technical perspective",
   instruction: "Perform technical analysis on the provided data",
   outputKey: "technical_analysis", // Unique key to avoid conflicts
 });
 
-const fundamentalAnalyzer = new LlmAgent({
-  name: "fundamental_analyzer",
+const fundamentalAnalyzerAgent = new LlmAgent({
+  name: "fundamental_analyzer_agent",
   model: "gemini-2.5-flash",
+  description: "Analyze data from a fundamental perspective",
   instruction: "Perform fundamental analysis on the provided data",
   outputKey: "fundamental_analysis", // Different key
 });
 
-const sentimentAnalyzer = new LlmAgent({
-  name: "sentiment_analyzer",
+const sentimentAnalyzerAgent = new LlmAgent({
+  name: "sentiment_analyzer_agent",
   model: "gemini-2.5-flash",
+  description: "Analyze market sentiment from the data",
   instruction: "Analyze market sentiment from the provided data",
   outputKey: "sentiment_analysis", // Another unique key
 });
 
-const multiPerspectiveAnalysis = new ParallelAgent({
-  name: "multi_perspective_analysis",
+const multiPerspectiveAnalysisAgent = new ParallelAgent({
+  name: "multi_perspective_analysis_agent",
   description: "Analyze data from multiple perspectives simultaneously",
-  subAgents: [technicalAnalyzer, fundamentalAnalyzer, sentimentAnalyzer],
+  subAgents: [
+    technicalAnalyzerAgent,
+    fundamentalAnalyzerAgent,
+    sentimentAnalyzerAgent,
+  ],
 });
 
 // Execution: All three analyzers run concurrently
-// Branch contexts: multi_perspective_analysis.technical_analyzer, etc.
+// Branch contexts: multi_perspective_analysis_agent.technical_analyzer_agent, multi_perspective_analysis_agent.fundamental_analyzer_agent, multi_perspective_analysis_agent.sentiment_analyzer_agent.
 // State populated with: technical_analysis, fundamental_analysis, sentiment_analysis
 // Subsequent agents can access all results: "Combine insights from {technical_analysis}, {fundamental_analysis}, and {sentiment_analysis}"
 ```
 
-**LoopAgent** executes sub-agents repeatedly until specific termination conditions are met.
+#### Loop Workflow Agents
+
+`LoopAgent` executes sub-agents repeatedly until specific termination conditions are met.
 
 - **Termination Control:** Stops when `maxIterations` is reached or any sub-agent escalates with `actions.escalate = true`
 - **State Persistence:** Uses the same `InvocationContext` across iterations, allowing progressive refinement
@@ -224,14 +257,13 @@ const multiPerspectiveAnalysis = new ParallelAgent({
 - **Use Cases:** Iterative improvement, quality assurance, retry logic, convergence-based workflows
 
 ```typescript
-import { LoopAgent, LlmAgent, BaseAgent, Event, EventActions } from "@iqai/adk";
-import { InvocationContext } from "@iqai/adk/types";
+import { LoopAgent, LlmAgent, BaseAgent, Event, EventActions, InvocationContext } from "@iqai/adk";
 
 // Custom agent to control loop termination
-class QualityChecker extends BaseAgent {
+class QualityCheckerAgent extends BaseAgent {
   constructor() {
     super({
-      name: "quality_checker",
+      name: "quality_checker_agent",
       description:
         "Evaluates quality and decides whether to continue iterating",
     });
@@ -263,19 +295,20 @@ class QualityChecker extends BaseAgent {
   }
 }
 
-const contentImprover = new LlmAgent({
-  name: "content_improver",
+const contentImproverAgent = new LlmAgent({
+  name: "content_improver_agent",
   model: "gemini-2.5-flash",
+  description: "Improves content quality based on feedback",
   instruction:
     "Improve the content quality. Rate the current quality from 1-10 and provide an improved version.",
   outputKey: "quality_score", // Will be used by QualityChecker
 });
 
-const iterativeImprovement = new LoopAgent({
-  name: "iterative_improvement",
+const iterativeImprovementAgent = new LoopAgent({
+  name: "iterative_improvement_agent",
   description: "Iteratively improve content until quality standards are met",
   maxIterations: 10, // Safety limit
-  subAgents: [contentImprover, new QualityChecker()],
+  subAgents: [contentImproverAgent, new QualityCheckerAgent()],
 });
 
 // Execution: contentImprover → QualityChecker → repeat until escalation
@@ -304,30 +337,34 @@ The primary communication mechanism in ADK-TS is through shared session state, e
 - Validate state presence before consuming
 
 ```typescript
+import { LlmAgent, SequentialAgent } from "@iqai/adk";
+
 // Producer agent - writes to state
-const dataCollector = new LlmAgent({
-  name: "data_collector",
+const dataCollectorAgent = new LlmAgent({
+  name: "data_collector_agent",
   model: "gemini-2.5-flash",
+  description: "Collects user preferences and demographic information",
   instruction:
     "Collect user preferences and demographic information from the input",
   outputKey: "user_profile", // Saves response to state["user_profile"]
 });
 
 // Consumer agent - reads from state
-const recommendationEngine = new LlmAgent({
-  name: "recommendation_engine",
+const recommendationEngineAgent = new LlmAgent({
+  name: "recommendation_engine_agent",
   model: "gemini-2.5-flash",
+  description: "Generates personalized recommendations based on user profile",
   instruction:
     "Based on the user profile: {user_profile}, generate personalized recommendations", // {user_profile} gets replaced with actual data
 });
 
-const pipeline = new SequentialAgent({
-  name: "personalization_pipeline",
+const personalizationAgent = new SequentialAgent({
+  name: "personalization_agent",
   description: "Collect preferences and generate recommendations",
-  subAgents: [dataCollector, recommendationEngine],
+  subAgents: [dataCollectorAgent, recommendationEngineAgent],
 });
 
-// Flow: dataCollector saves to state → recommendationEngine reads from state
+// Flow: dataCollectorAgent saves to state → recommendationEngineAgent reads from state
 ```
 
 #### Agent Transfer (Dynamic Routing)
@@ -347,30 +384,28 @@ ADK-TS enables intelligent, LLM-driven routing where agents can dynamically tran
 **Configuration:** Use `disallowTransferToParent` and `disallowTransferToPeers` to restrict transfer directions if needed.
 
 ```typescript
-// Specialist agents with clear descriptions
+import { LlmAgent } from "@iqai/adk";
+
+/// Specialist agents with clear descriptions
 const billingAgent = new LlmAgent({
-  name: "billing_specialist",
-  model: "gemini-2.5-flash",
-  description:
-    "Handles billing issues, payment problems, refunds, and subscription management",
+  name: "billing_agent",
+  description: "Handles billing and payment issues",
 });
 
 const technicalAgent = new LlmAgent({
-  name: "technical_specialist",
-  model: "gemini-2.5-flash",
-  description:
-    "Resolves technical issues, bugs, system problems, and integration questions",
+  name: "technical_agent",
+  description: "Handles technical support and troubleshooting",
 });
 
 // Coordinator with clear transfer instructions
-const supportCoordinator = new LlmAgent({
-  name: "support_coordinator",
+const coordinatorAgent = new LlmAgent({
+  name: "coordinator_agent",
   model: "gemini-2.5-flash",
-  description: "Routes customer support requests to appropriate specialists",
+  description: "Routes customer inquiries to specialist agents",
   instruction: `You coordinate customer support. Analyze the user's issue and transfer to the appropriate specialist:
 
-- For billing, payment, subscription, or refund issues → transfer to 'billing_specialist'
-- For technical problems, bugs, or system issues → transfer to 'technical_specialist'  
+- For billing, payment, subscription, or refund issues → transfer to 'billing_agent'
+- For technical problems, bugs, or system issues → transfer to 'technical_agent'  
 - For general questions, handle them yourself
 
 Use the transfer_to_agent function when you identify a specialist who can better help.`,
@@ -378,8 +413,8 @@ Use the transfer_to_agent function when you identify a specialist who can better
 });
 
 // Usage examples:
-// "I was charged twice this month" → transfers to billing_specialist
-// "The app keeps crashing" → transfers to technical_specialist
+// "I was charged twice this month" → transfers to billing_agent
+// "The app keeps crashing" → transfers to technical_agent
 // "What are your business hours?" → handles directly (no transfer)
 ```
 
@@ -404,16 +439,16 @@ Use the transfer_to_agent function when you identify a specialist who can better
 import { AgentTool, LlmAgent } from "@iqai/adk";
 
 // Specialized capability agents
-const dataValidator = new LlmAgent({
-  name: "data_validator",
+const dataValidatorAgent = new LlmAgent({
+  name: "data_validator_agent",
   model: "gemini-2.5-flash",
   description: "Validates data quality and format",
   instruction:
     "Analyze the provided data for completeness, accuracy, and format issues. Return validation results.",
 });
 
-const insightExtractor = new LlmAgent({
-  name: "insight_extractor",
+const insightExtractorAgent = new LlmAgent({
+  name: "insight_extractor_agent",
   model: "gemini-2.5-flash",
   description: "Extracts key insights and patterns from data",
   instruction:
@@ -421,30 +456,30 @@ const insightExtractor = new LlmAgent({
 });
 
 // Orchestrating agent that uses other agents as tools
-const dataAnalyst = new LlmAgent({
-  name: "data_analyst",
+const dataAnalystAgent = new LlmAgent({
+  name: "data_analyst_agent",
   model: "gemini-2.5-flash",
   description:
     "Comprehensive data analysis using validation and insight extraction",
   instruction: `You are a data analyst. For any data analysis request:
-    1. First use the validate_data tool to check data quality
-    2. Then use the extract_insights tool to find patterns
+    1. First use validate_data_tool to check data quality
+    2. Then use the extract_insights_tool to find patterns
     3. Combine the results into a comprehensive analysis report`,
   tools: [
     new AgentTool({
-      name: "validate_data",
-      agent: dataValidator,
+      name: "validate_data_tool",
+      agent: dataValidatorAgent,
       description: "Validate data quality and format",
     }),
     new AgentTool({
-      name: "extract_insights",
-      agent: insightExtractor,
+      name: "extract_insights_tool",
+      agent: insightExtractorAgent,
       description: "Extract key insights from data",
     }),
   ],
 });
 
-// Usage: dataAnalyst can call validate_data and extract_insights as needed
+// Usage: dataAnalystAgent can call validate_data_tool and extract_insights_tool as needed
 // Each tool invocation runs the wrapped agent and returns results
 ```
 
@@ -456,7 +491,7 @@ A central agent intelligently routes requests to specialized agents based on req
 
 **Structure:** Main coordinator agent with specialist sub-agents
 
-**Communication:** LLM-driven agent transfer using AutoFlow
+**Communication:** LLM-driven agent transfer using `AutoFlow`
 
 **Best for:** Customer service systems, help desks, domain-specific routing, request classification
 
@@ -468,9 +503,11 @@ A central agent intelligently routes requests to specialized agents based on req
 - Coordinator handles routing logic and fallback cases
 
 ```typescript
+import { LlmAgent } from "@iqai/adk";
+
 // Specialist agents with clear, distinct descriptions
-const billingSpecialist = new LlmAgent({
-  name: "billing_specialist",
+const billingSpecialistAgent = new LlmAgent({
+  name: "billing_specialist_agent",
   model: "gemini-2.5-flash",
   description:
     "Handles billing issues, payment problems, refunds, and subscription management",
@@ -478,8 +515,8 @@ const billingSpecialist = new LlmAgent({
     "You are a billing specialist. Help customers with payment issues, billing questions, refunds, and subscription management.",
 });
 
-const technicalSpecialist = new LlmAgent({
-  name: "technical_specialist",
+const technicalSupportAgent = new LlmAgent({
+  name: "technical_support_agent",
   model: "gemini-2.5-flash",
   description:
     "Resolves technical problems, system issues, bugs, and integration questions",
@@ -487,8 +524,8 @@ const technicalSpecialist = new LlmAgent({
     "You are a technical support specialist. Help customers resolve technical issues, system problems, and integration questions.",
 });
 
-const generalSupport = new LlmAgent({
-  name: "general_support",
+const generalSupportAgent = new LlmAgent({
+  name: "general_support_agent",
   model: "gemini-2.5-flash",
   description:
     "Provides general information, account questions, and product assistance",
@@ -497,24 +534,28 @@ const generalSupport = new LlmAgent({
 });
 
 // Coordinator with clear routing logic
-const customerServiceRouter = new LlmAgent({
-  name: "customer_service_router",
+const customerServiceAgent = new LlmAgent({
+  name: "customer_service_agent",
   model: "gemini-2.5-flash",
   description: "Routes customer inquiries to appropriate specialists",
   instruction: `You are a customer service coordinator. Analyze customer requests and route them to the appropriate specialist:
 
-- For billing, payments, refunds, or subscription issues → transfer_to_agent('billing_specialist')  
-- For technical problems, bugs, system issues, or integrations → transfer_to_agent('technical_specialist')
-- For general questions, account info, or product features → transfer_to_agent('general_support')
+- For billing, payments, refunds, or subscription issues → transfer_to_agent('billing_specialist_agent')  
+- For technical problems, bugs, system issues, or integrations → transfer_to_agent('technical_support_agent')
+- For general questions, account info, or product features → transfer_to_agent('general_support_agent')
 
 If the request doesn't clearly fit a category, handle it yourself or ask for clarification.`,
-  subAgents: [billingSpecialist, technicalSpecialist, generalSupport],
+  subAgents: [
+    billingSpecialistAgent,
+    technicalSupportAgent,
+    generalSupportAgent,
+  ],
 });
 
 // Usage examples:
-// "I was double-charged this month" → routes to billing_specialist
-// "The app keeps crashing" → routes to technical_specialist
-// "How do I change my password?" → routes to general_support
+// "I was double-charged this month" → routes to billing_specialist_agent
+// "The app keeps crashing" → routes to technical_support_agent
+// "How do I change my password?" → routes to general_support_agent
 ```
 
 ### Sequential Pipeline Pattern
@@ -535,51 +576,62 @@ Multi-step workflows where agents execute in a specific order, with each agent b
 - Failure at any step can halt the entire process
 
 ```typescript
+import { LlmAgent, SequentialAgent } from "@iqai/adk";
+
 // Content creation pipeline example
-const contentResearcher = new LlmAgent({
-  name: "content_researcher",
+const contentResearcherAgent = new LlmAgent({
+  name: "content_researcher_agent",
   model: "gemini-2.5-flash",
+  description: "Researches topics and gathers relevant information",
   instruction:
     "Research the given topic thoroughly. Gather key facts, statistics, and relevant information.",
   outputKey: "research_data", // Output saved to session state
 });
 
-const contentOutliner = new LlmAgent({
-  name: "content_outliner",
+const contentOutlinerAgent = new LlmAgent({
+  name: "content_outliner_agent",
   model: "gemini-2.5-flash",
+  description: "Creates structured outlines from research data",
   instruction:
     "Based on the research data: {research_data}, create a detailed content outline with main points and structure.", // References research_data from state
   outputKey: "content_outline",
 });
 
-const contentWriter = new LlmAgent({
-  name: "content_writer",
+const contentWriterAgent = new LlmAgent({
+  name: "content_writer_agent",
   model: "gemini-2.5-flash",
+  description: "Writes comprehensive articles based on research and outlines",
   instruction:
     "Using the research: {research_data} and outline: {content_outline}, write a comprehensive, well-structured article.", // References both previous outputs
   outputKey: "draft_content",
 });
 
-const contentEditor = new LlmAgent({
-  name: "content_editor",
+const contentEditorAgent = new LlmAgent({
+  name: "content_editor_agent",
   model: "gemini-2.5-flash",
+  description: "Reviews and edits content for quality and accuracy",
   instruction:
     "Review and edit the draft content: {draft_content}. Improve clarity, flow, and accuracy.",
   outputKey: "final_content",
 });
 
 // Sequential pipeline orchestration
-const contentCreationPipeline = new SequentialAgent({
-  name: "content_creation_pipeline",
+const contentCreationPipelineAgent = new SequentialAgent({
+  name: "content_creation_pipeline_agent",
   description: "Complete content creation from research to final edited piece",
-  subAgents: [contentResearcher, contentOutliner, contentWriter, contentEditor],
+  subAgents: [
+    contentResearcherAgent,
+    contentOutlinerAgent,
+    contentWriterAgent,
+    contentEditorAgent,
+  ],
 });
 
 // Execution flow:
-// 1. contentResearcher → state["research_data"]
-// 2. contentOutliner → reads research_data → state["content_outline"]
-// 3. contentWriter → reads research_data + content_outline → state["draft_content"]
-// 4. contentEditor → reads draft_content → state["final_content"]
+// 1. contentResearcherAgent → state["research_data"]
+// 2. contentOutlinerAgent → reads research_data → state["content_outline"]
+// 3. contentWriterAgent → reads research_data + content_outline → state["draft_content"]
+// 4. contentEditorAgent → reads draft_content → state["final_content"]
 ```
 
 ### Parallel Processing Pattern
@@ -600,42 +652,48 @@ Execute independent tasks simultaneously to improve performance, then combine re
 - Results can be combined by subsequent agents
 
 ```typescript
+import { LlmAgent, ParallelAgent, SequentialAgent } from "@iqai/adk";
+
 // Multi-perspective analysis example
-const sentimentAnalyzer = new LlmAgent({
-  name: "sentiment_analyzer",
+const sentimentAnalyzerAgent = new LlmAgent({
+  name: "sentiment_analyzer_agent",
   model: "gemini-2.5-flash",
+  description: "Analyzes sentiment and emotional tone of content",
   instruction:
     "Analyze the sentiment and emotional tone of the provided content. Classify sentiment and provide confidence scores.",
   outputKey: "sentiment_analysis", // Unique key for this perspective
 });
 
-const topicExtractor = new LlmAgent({
-  name: "topic_extractor",
+const topicExtractorAgent = new LlmAgent({
+  name: "topic_extractor_agent",
   model: "gemini-2.5-flash",
+  description: "Extracts and categorizes main topics and themes",
   instruction:
     "Extract and categorize the main topics, themes, and subjects discussed in the content.",
   outputKey: "topic_extraction", // Different key to avoid conflicts
 });
 
-const styleAnalyzer = new LlmAgent({
-  name: "style_analyzer",
+const styleAnalyzerAgent = new LlmAgent({
+  name: "style_analyzer_agent",
   model: "gemini-2.5-flash",
+  description: "Analyzes writing style, tone, and target audience",
   instruction:
     "Analyze the writing style, tone, complexity, and target audience of the content.",
   outputKey: "style_analysis", // Another unique key
 });
 
 // Parallel execution of all analysis types
-const multiPerspectiveAnalysis = new ParallelAgent({
-  name: "multi_perspective_analysis",
+const multiPerspectiveAnalysisAgent = new ParallelAgent({
+  name: "multi_perspective_analysis_agent",
   description: "Analyze content from multiple perspectives simultaneously",
-  subAgents: [sentimentAnalyzer, topicExtractor, styleAnalyzer],
+  subAgents: [sentimentAnalyzerAgent, topicExtractorAgent, styleAnalyzerAgent],
 });
 
 // Optional: Synthesis agent to combine results
-const insightSynthesizer = new LlmAgent({
-  name: "insight_synthesizer",
+const insightSynthesizerAgent = new LlmAgent({
+  name: "insight_synthesizer_agent",
   model: "gemini-2.5-flash",
+  description: "Synthesizes multiple analyses into comprehensive insights",
   instruction: `Synthesize insights from multiple analyses:
     - Sentiment: {sentiment_analysis}
     - Topics: {topic_extraction}  
@@ -646,18 +704,18 @@ const insightSynthesizer = new LlmAgent({
 });
 
 // Complete workflow: parallel analysis + synthesis
-const comprehensiveContentAnalysis = new SequentialAgent({
-  name: "comprehensive_content_analysis",
+const comprehensiveContentAnalysisAgent = new SequentialAgent({
+  name: "comprehensive_content_analysis_agent",
   description: "Multi-perspective analysis with synthesis",
-  subAgents: [multiPerspectiveAnalysis, insightSynthesizer],
+  subAgents: [multiPerspectiveAnalysisAgent, insightSynthesizerAgent],
 });
 
 // Execution:
 // Phase 1 (Parallel): All three analyzers run simultaneously
-//   - sentiment_analyzer → state["sentiment_analysis"]
-//   - topic_extractor → state["topic_extraction"]
-//   - style_analyzer → state["style_analysis"]
-// Phase 2 (Sequential): insightSynthesizer combines all results
+//   - sentiment_analyzer_agent → state["sentiment_analysis"]
+//   - topic_extractor_agent → state["topic_extraction"]
+//   - style_analyzer_agent → state["style_analysis"]
+// Phase 2 (Sequential): insightSynthesizerAgent combines all results
 ```
 
 ### Hierarchical Composition Pattern
@@ -678,19 +736,19 @@ Build complex capabilities by composing specialized agents into reusable tools, 
 - Results flow back through the hierarchy
 
 ```typescript
-import { AgentTool } from "@iqai/adk";
+import { AgentTool, LlmAgent } from "@iqai/adk";
 
 // Foundation layer: Basic capabilities
-const textAnalyzer = new LlmAgent({
-  name: "text_analyzer",
+const textAnalyzerAgent = new LlmAgent({
+  name: "text_analyzer_agent",
   model: "gemini-2.5-flash",
   description: "Analyzes text for sentiment, topics, and key information",
   instruction:
     "Analyze the provided text and extract key information, sentiment, and main topics.",
 });
 
-const dataSummarizer = new LlmAgent({
-  name: "data_summarizer",
+const dataSummarizerAgent = new LlmAgent({
+  name: "data_summarizer_agent",
   model: "gemini-2.5-flash",
   description: "Summarizes complex information into concise insights",
   instruction:
@@ -698,30 +756,30 @@ const dataSummarizer = new LlmAgent({
 });
 
 // Intermediate layer: Composed capabilities
-const contentProcessor = new LlmAgent({
-  name: "content_processor",
+const contentProcessorAgent = new LlmAgent({
+  name: "content_processor_agent",
   model: "gemini-2.5-flash",
   description: "Processes content through analysis and summarization",
   instruction: `Process content through multiple stages:
-    1. Use text_analysis to understand the content structure
-    2. Use summarization to create key insights
+    1. Use text_analysis_tool to understand the content structure
+    2. Use summarization_tool to create key insights
     3. Combine results into a processed content report`,
   tools: [
     new AgentTool({
-      name: "text_analysis",
-      agent: textAnalyzer,
+      name: "text_analysis_tool",
+      agent: textAnalyzerAgent,
       description: "Analyze text for structure and content",
     }),
     new AgentTool({
-      name: "summarization",
-      agent: dataSummarizer,
+      name: "summarization_tool",
+      agent: dataSummarizerAgent,
       description: "Summarize information into key points",
     }),
   ],
 });
 
-const qualityAssessor = new LlmAgent({
-  name: "quality_assessor",
+const qualityAssessorAgent = new LlmAgent({
+  name: "quality_assessor_agent",
   model: "gemini-2.5-flash",
   description: "Assesses content quality and provides improvement suggestions",
   instruction:
@@ -729,31 +787,31 @@ const qualityAssessor = new LlmAgent({
 });
 
 // Top layer: High-level orchestration
-const contentManager = new LlmAgent({
-  name: "content_manager",
+const contentManagerAgent = new LlmAgent({
+  name: "content_manager_agent",
   model: "gemini-2.5-flash",
   description: "Manages end-to-end content processing and quality assurance",
   instruction: `Manage complete content workflow:
-    1. Use process_content to analyze and summarize
-    2. Use assess_quality to evaluate results
+    1. Use process_content_tool to analyze and summarize
+    2. Use assess_quality_tool to evaluate results
     3. Provide final recommendations and processed content`,
   tools: [
     new AgentTool({
-      name: "process_content",
-      agent: contentProcessor,
+      name: "process_content_tool",
+      agent: contentProcessorAgent,
       description: "Process content through analysis and summarization",
     }),
     new AgentTool({
-      name: "assess_quality",
-      agent: qualityAssessor,
+      name: "assess_quality_tool",
+      agent: qualityAssessorAgent,
       description: "Assess content quality and suggest improvements",
     }),
   ],
 });
 
-// Usage: contentManager orchestrates the entire hierarchy
-// contentManager → contentProcessor → textAnalyzer + dataSummarizer
-// contentManager → qualityAssessor
+// Usage: contentManagerAgent orchestrates the entire hierarchy
+// contentManagerAgent → contentProcessorAgent → textAnalyzerAgent + dataSummarizerAgent
+// contentManagerAgent → qualityAssessorAgent
 // Results flow back up through the tool calls
 ```
 
@@ -775,18 +833,22 @@ Improve output quality through structured generation and review cycles, ensuring
 - Can be repeated in loops for iterative refinement
 
 ```typescript
+import { LlmAgent, SequentialAgent, LoopAgent } from "@iqai/adk";
+
 // Generator-Critic workflow for content creation
-const contentGenerator = new LlmAgent({
-  name: "content_generator",
+const contentGeneratorAgent = new LlmAgent({
+  name: "content_generator_agent",
   model: "gemini-2.5-flash",
+  description: "Generates initial content based on requirements",
   instruction:
     "Create comprehensive content based on the provided requirements. Focus on accuracy, clarity, and completeness.",
   outputKey: "initial_content", // Saves generated content
 });
 
-const contentCritic = new LlmAgent({
-  name: "content_critic",
+const contentCriticAgent = new LlmAgent({
+  name: "content_critic_agent",
   model: "gemini-2.5-flash",
+  description: "Evaluates content quality and provides feedback",
   instruction: `Review the content: {initial_content}
     
     Evaluate on these criteria:
@@ -799,9 +861,10 @@ const contentCritic = new LlmAgent({
   outputKey: "review_feedback", // Saves critic's feedback
 });
 
-const contentRefiner = new LlmAgent({
-  name: "content_refiner",
+const contentRefinerAgent = new LlmAgent({
+  name: "content_refiner_agent",
   model: "gemini-2.5-flash",
+  description: "Improves content based on critique feedback",
   instruction: `Improve the original content: {initial_content} based on this feedback: {review_feedback}
     
     Make specific improvements while maintaining the original intent and style. Address each point of feedback systematically.`,
@@ -809,24 +872,24 @@ const contentRefiner = new LlmAgent({
 });
 
 // Sequential workflow: Generate → Critique → Refine
-const qualityContentWorkflow = new SequentialAgent({
-  name: "quality_content_workflow",
+const qualityContentWorkflowAgent = new SequentialAgent({
+  name: "quality_content_workflow_agent",
   description: "Generate high-quality content through review and refinement",
-  subAgents: [contentGenerator, contentCritic, contentRefiner],
+  subAgents: [contentGeneratorAgent, contentCriticAgent, contentRefinerAgent],
 });
 
 // Optional: Iterative version using LoopAgent
-const iterativeQualityWorkflow = new LoopAgent({
-  name: "iterative_quality_workflow",
+const iterativeQualityWorkflowAgent = new LoopAgent({
+  name: "iterative_quality_workflow_agent",
   description: "Repeatedly refine content until quality standards are met",
   maxIterations: 3,
-  subAgents: [contentGenerator, contentCritic, contentRefiner],
+  subAgents: [contentGeneratorAgent, contentCriticAgent, contentRefinerAgent],
 });
 
 // Execution flow:
-// 1. contentGenerator → state["initial_content"]
-// 2. contentCritic → reads initial_content → state["review_feedback"]
-// 3. contentRefiner → reads both → state["refined_content"]
+// 1. contentGeneratorAgent → state["initial_content"]
+// 2. contentCriticAgent → reads initial_content → state["review_feedback"]
+// 3. contentRefinerAgent → reads both → state["refined_content"]
 ```
 
 ### Iterative Refinement Pattern
@@ -847,12 +910,21 @@ Continuously improve results through repeated cycles until quality criteria are 
 - Built-in safety mechanisms to prevent infinite loops
 
 ```typescript
-import { LoopAgent, LlmAgent, BaseAgent, Event, EventActions } from "@iqai/adk";
+import {
+  LoopAgent,
+  LlmAgent,
+  BaseAgent,
+  Event,
+  EventActions,
+  InvocationContext,
+  AgentBuilder,
+} from "@iqai/adk";
 
 // Agent that performs improvements
-const solutionImprover = new LlmAgent({
-  name: "solution_improver",
+const solutionImproverAgent = new LlmAgent({
+  name: "solution_improver_agent",
   model: "gemini-2.5-flash",
+  description: "Analyzes and improves solutions iteratively",
   instruction: `Analyze the current solution: {current_solution} and the original problem: {problem_statement}
     
     Identify specific areas for improvement:
@@ -866,9 +938,10 @@ const solutionImprover = new LlmAgent({
 });
 
 // Agent that evaluates quality
-const qualityEvaluator = new LlmAgent({
-  name: "quality_evaluator",
+const qualityEvaluatorAgent = new LlmAgent({
+  name: "quality_evaluator_agent",
   model: "gemini-2.5-flash",
+  description: "Evaluates solution quality on multiple criteria",
   instruction: `Evaluate the solution: {current_solution} against the problem: {problem_statement}
     
     Rate on a scale of 1-10 considering:
@@ -882,10 +955,10 @@ const qualityEvaluator = new LlmAgent({
 });
 
 // Custom termination agent
-class QualityGate extends BaseAgent {
+class QualityGateAgent extends BaseAgent {
   constructor() {
     super({
-      name: "quality_gate",
+      name: "quality_gate_agent",
       description: "Determines when quality standards are met",
     });
   }
@@ -919,19 +992,25 @@ class QualityGate extends BaseAgent {
 }
 
 // Iterative refinement workflow
-const iterativeImprovement = new LoopAgent({
-  name: "iterative_improvement",
+const iterativeImprovementAgent = new LoopAgent({
+  name: "iterative_improvement_agent",
   description: "Iteratively improve solution until quality standards are met",
   maxIterations: 5, // Prevent infinite loops
-  subAgents: [solutionImprover, qualityEvaluator, new QualityGate()],
+  subAgents: [
+    solutionImproverAgent,
+    qualityEvaluatorAgent,
+    new QualityGateAgent(),
+  ],
 });
 
 // Usage with AgentBuilder
-const { runner } = await AgentBuilder.withAgent(iterativeImprovement).build();
+const { runner } = await AgentBuilder.create("iterative_improvement")
+  .withAgent(iterativeImprovementAgent)
+  .build();
 
 // Execution pattern:
-// Iteration 1: solutionImprover → qualityEvaluator → qualityGate (continue if score < 8)
-// Iteration 2: solutionImprover → qualityEvaluator → qualityGate (continue if score < 8)
+// Iteration 1: solutionImproverAgent → qualityEvaluatorAgent → qualityGateAgent (continue if score < 8)
+// Iteration 2: solutionImproverAgent → qualityEvaluatorAgent → qualityGateAgent (continue if score < 8)
 // ... continues until quality_score >= 8 or maxIterations reached
 ```
 
@@ -958,7 +1037,7 @@ import { z } from "zod";
 
 // Custom tool for human approval integration
 const humanApprovalTool = createTool({
-  name: "request_human_approval",
+  name: "request_human_approval_tool",
   description: "Request human approval for important decisions",
   schema: z.object({
     decision: z.string().describe("The decision requiring approval"),
@@ -987,20 +1066,22 @@ const humanApprovalTool = createTool({
 });
 
 // Workflow with human approval checkpoint
-const proposalAnalyzer = new LlmAgent({
-  name: "proposal_analyzer",
+const proposalAnalyzerAgent = new LlmAgent({
+  name: "proposal_analyzer_agent",
   model: "gemini-2.5-flash",
+  description: "Analyzes proposals for risks, benefits, and feasibility",
   instruction:
     "Analyze the proposal for risks, benefits, and feasibility. Provide a comprehensive assessment.",
   outputKey: "analysis_report",
 });
 
-const approvalGate = new LlmAgent({
-  name: "approval_gate",
+const approvalGateAgent = new LlmAgent({
+  name: "approval_gate_agent",
   model: "gemini-2.5-flash",
+  description: "Requests human approval for important decisions",
   instruction: `Based on the analysis: {analysis_report}, request human approval for proceeding.
     
-    Use the request_human_approval tool with:
+    Use the request_human_approval_tool tool with:
     - Clear description of what needs approval
     - Summary of key findings and reasoning
     - Appropriate urgency level`,
@@ -1008,9 +1089,10 @@ const approvalGate = new LlmAgent({
   outputKey: "approval_decision",
 });
 
-const actionExecutor = new LlmAgent({
-  name: "action_executor",
+const actionExecutorAgent = new LlmAgent({
+  name: "action_executor_agent",
   model: "gemini-2.5-flash",
+  description: "Executes actions based on approval decisions",
   instruction: `Check the approval decision: {approval_decision}
     
     If approved: Proceed with implementation and log the action
@@ -1019,17 +1101,17 @@ const actionExecutor = new LlmAgent({
 });
 
 // Complete human-in-the-loop workflow
-const approvalWorkflow = new SequentialAgent({
-  name: "approval_workflow",
+const approvalWorkflowAgent = new SequentialAgent({
+  name: "approval_workflow_agent",
   description: "Automated workflow with human approval checkpoints",
-  subAgents: [proposalAnalyzer, approvalGate, actionExecutor],
+  subAgents: [proposalAnalyzerAgent, approvalGateAgent, actionExecutorAgent],
 });
 
 // Execution flow:
-// 1. proposalAnalyzer → creates analysis_report
-// 2. approvalGate → requests human approval (workflow pauses)
+// 1. proposalAnalyzerAgent → creates analysis_report
+// 2. approvalGateAgent → requests human approval (workflow pauses)
 // 3. Human reviews and responds via external system
-// 4. actionExecutor → proceeds based on approval decision
+// 4. actionExecutorAgent → proceeds based on approval decision
 ```
 
 ## Best Practices
@@ -1040,7 +1122,7 @@ const approvalWorkflow = new SequentialAgent({
 
 **Clear State Contracts:** Use descriptive, unique state keys (`user_preferences`, `analysis_results`, `validation_status`) and document what data flows between agents. This prevents conflicts and makes debugging much easier.
 
-**Descriptive Agent Names:** Use clear, searchable names for agents (`billing_specialist`, `technical_support`) that make hierarchy navigation and transfer routing more reliable.
+**Descriptive Agent Names:** Use clear, searchable names for agents (`billing_specialist_agent`, `technical_support_agent`) that make hierarchy navigation and transfer routing more reliable.
 
 **Shallow Hierarchies:** Keep agent hierarchies relatively flat (2-3 levels) to reduce complexity and improve maintainability.
 

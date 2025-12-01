@@ -18,62 +18,44 @@ Perfect for workflows where order matters: research before analysis, writing bef
 
 ## Quick Start Example
 
-Here's a market research pipeline that transforms a simple query into comprehensive business intelligence:
+Here's a content creation pipeline that writes, edits, and fact-checks articles in sequence:
 
 ```typescript
-import { LlmAgent, SequentialAgent, WebSearchTool } from "@iqai/adk";
+import { LlmAgent, SequentialAgent } from "@iqai/adk";
 
-// Step 1: Gather raw data
-const researchAgent = new LlmAgent({
-  name: "market-researcher",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Research the given company/topic thoroughly. Focus on:
-    - Current market position and competitors
-    - Recent news and developments
-    - Financial performance and growth trends
-  `,
-  tools: [new WebSearchTool()],
+// Step 1: Create initial content
+const writerAgent = new LlmAgent({
+  name: "writer_agent",
+  description: "Creates engaging and informative articles on given topics",
+  instruction: `Write a comprehensive, engaging article on the given topic. Include an introduction, main points with examples, and a conclusion.`,
+  outputKey: "draft_content", // Key for passing output to next agent
 });
 
-// Step 2: Analyze the collected data
-const analysisAgent = new LlmAgent({
-  name: "business-analyst",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Analyze the research data from the previous step. Identify:
-    - Key opportunities and threats
-    - Market trends and patterns
-    - Competitive advantages and weaknesses
-    Provide data-driven insights with specific examples.
-  `,
+// Step 2: Edit for clarity and style
+const editorAgent = new LlmAgent({
+  name: "editor_agent",
+  description: "Edits content for clarity, grammar, and style",
+  instruction: `Review and edit the article for clarity, grammar, and style. Improve readability while maintaining the original voice and message.`,
+  outputKey: "edited_content", // Key for passing output to next agent
 });
 
-// Step 3: Create actionable recommendations
-const strategistAgent = new LlmAgent({
-  name: "business-strategist",
-  model: "gemini-2.5-flash",
-  instruction: `
-    Based on the research and analysis, create strategic recommendations:
-    - 3-5 specific, actionable strategies
-    - Risk assessment for each recommendation
-    - Timeline and resource requirements
-    Format as an executive summary.
-  `,
+// Step 3: Verify facts and add citations
+const factCheckerAgent = new LlmAgent({
+  name: "fact_checker_agent",
+  description: "Verifies factual claims and adds citations where needed",
+  instruction: `Verify factual claims in the content. Flag any unsupported statements and add citations where needed. Ensure accuracy and credibility.`,
+  outputKey: "verified_content", // Final output key
 });
 
-// Sequential pipeline: research → analyze → strategize
-const marketIntelligencePipeline = new SequentialAgent({
-  name: "market-intelligence-pipeline",
-  description: "Comprehensive market analysis and strategy development",
-  subAgents: [researchAgent, analysisAgent, strategistAgent],
+// Sequential pipeline: write → edit → fact_check
+const contentCreationAgent = new SequentialAgent({
+  name: "content_creation_agent",
+  description: "End-to-end content creation with quality controls",
+  subAgents: [writerAgent, editorAgent, factCheckerAgent],
 });
 
-// Use the pipeline
-const result = await marketIntelligencePipeline.run({
-  message:
-    "Analyze Tesla's position in the EV market and suggest growth strategies",
-});
+// Export the sequential agent for use
+export { contentCreationAgent };
 ```
 
 ### Visual Flow
@@ -81,13 +63,10 @@ const result = await marketIntelligencePipeline.run({
 <Mermaid
   chart="
 flowchart TD
-  U[User Query] --> S[SequentialAgent]
-  S --> R[Research Agent]
-  R --> A[Analysis Agent]
-  A --> T[Strategist Agent]
-  R -. market data .-> S
-  A -. insights + data .-> S
-  T -. strategy + insights + data .-> S
+    A[User Query] --> B[Writer Agent]
+    B --> C[Editor Agent]
+    C --> D[Fact Checker Agent]
+    D --> E[Final Verified Content]
 "
 />
 
@@ -110,7 +89,8 @@ Execution order is guaranteed - no race conditions or unpredictable results. Per
 
 <Callout type="info" title="Data Flow Between Agents">
   Agents automatically share session state, so later agents can reference
-  earlier results. Use descriptive output and clear instructions to help agents understand what information to pass forward.
+  earlier results. Use unique `outputKey` values for each agent and clear
+  instructions to help agents understand what information to pass forward.
 </Callout>
 
 ## Real-World Use Cases

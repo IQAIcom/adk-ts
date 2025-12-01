@@ -1,5 +1,12 @@
 # @iqai/adk-cli
 
+## 0.3.29
+
+### Patch Changes
+
+- 4e7e9e9: Add environment variable validation with clear error messages for missing required variables. Improves developer experience by providing actionable guidance on .env file configuration and distinguishing between required and optional variables.
+- 74223fc: fix: error handling in adk-cli
+
 ## 0.3.28
 
 ### Patch Changes

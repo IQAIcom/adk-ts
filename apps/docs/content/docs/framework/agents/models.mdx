@@ -16,7 +16,7 @@ ADK-TS supports two primary ways to configure models:
 <Cards>
   <Card
     title="🎯 Option 1: Direct Model Names"
-    description="Pass model names directly to agents - Gemini is default, others require environment configuration"
+    description="Pass model names directly to agents. Gemini is default, others require environment configuration"
   />
   <Card
     title="🔌 Option 2: Vercel AI SDK"
@@ -28,95 +28,94 @@ ADK-TS supports two primary ways to configure models:
 
 The simplest approach - pass model names as strings directly to your agents. ADK-TS defaults to **Gemini models** but supports other providers when properly configured.
 
-### Default: Google Gemini Models
+### Default: Google Gemini Models (Easiest Setup)
 
-**Gemini is the default provider**, but you still need to configure your API key:
-
-**1. Set up your Google API key:**
+**For Gemini models (default), you only need to set the API key:**
 
 ```bash
 # .env file
 GOOGLE_API_KEY=your_google_api_key_here
 ```
 
-**2. Use Gemini models directly:**
+That's it! You can now use Gemini models with agents. The framework defaults to `gemini-2.0-flash`:
 
 ```ts
 import { LlmAgent } from "@iqai/adk";
 
-// Default Gemini models (just need GOOGLE_API_KEY in .env)
+// Uses default Gemini model (gemini-2.0-flash)
 const agent = new LlmAgent({
   name: "my_agent",
-  model: "gemini-2.0-flash-exp", // Fast and latest
+  description: "An agent using the default Gemini model",
   instruction: "You are a helpful assistant",
 });
 
-// Other Gemini models
-const fastAgent = new LlmAgent({
-  name: "fast_agent",
-  model: "gemini-2.0-flash", // Fast and efficient
+// Use a different Gemini model
+const advancedAgent = new LlmAgent({
+  name: "advanced_agent",
+  description: "Using a more powerful Gemini model",
+  model: "gemini-2.5-pro", // Just pass the model name
+  instruction: "You are an expert analyst",
 });
 
-const powerfulAgent = new LlmAgent({
-  name: "powerful_agent",
-  model: "gemini-2.0-pro", // Complex reasoning
-});
+export { agent, advancedAgent };
 ```
 
-### Using Other Providers
+### Using Other Providers or Different Gemini Models
 
-To use **non-Gemini models**, you must configure your environment:
+To use **non-Gemini models or change the default Gemini model**, you must configure both the model name and API key:
 
-**1. Set the model name in your environment:**
+**1. Set both the model name and corresponding API key in your `.env` file:**
 
 ```bash
 # .env file
-LLM_MODEL=gpt-4o  # or claude-3-5-sonnet-20241022, etc.
-```
-
-**2. Add the corresponding API key:**
-
-```bash
-# .env file
+# For OpenAI:
 LLM_MODEL=gpt-4o
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Or for Claude:
-LLM_MODEL=claude-3-5-sonnet-20241022
+LLM_MODEL=claude-sonnet-4-5-20250929
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
-# Or for other providers:
-LLM_MODEL=llama-3.1-70b-versatile
+# Or for Groq:
+LLM_MODEL=llama-3.3-70b-versatile
 GROQ_API_KEY=your_groq_api_key_here
+
+# Or for a different Gemini model:
+LLM_MODEL=gemini-2.5-pro
+GOOGLE_API_KEY=your_google_api_key_here
 ```
 
-**3. Use the model name in your agent:**
+**2. Use the model in your agents:**
 
 ```ts
 import { LlmAgent } from "@iqai/adk";
 
+const { LLM_MODEL } = process.env;
+
+// Using environment-configured model
 const agent = new LlmAgent({
   name: "my_agent",
-  model: "gpt-4o", // Must match your .env LLM_MODEL
+  model: LLM_MODEL, // Will use whatever is set in .env
   instruction: "You are a helpful assistant",
 });
+
+// Or directly specify a model name
+const openAiAgent = new LlmAgent({
+  name: "openai_agent",
+  model: "gpt-4o", // Direct model name
+  instruction: "You are an expert assistant",
+});
+
+export { agent, openAiAgent };
 ```
 
-<Callout type="info" title="Environment Configuration Required">
-  - **Gemini models** (default): Only need `GOOGLE_API_KEY` in your environment
-  - **Other providers**: Must set both `LLM_MODEL` and the corresponding API key
-  (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.)
-</Callout>
+## How It Works
 
-### Supported Model Names
+The framework is **smart enough to automatically detect which LLM provider to use** based on the model name you pass. Just set the API key for that provider and pass the model name - the framework handles the rest!
 
-| Provider          | Example Model Names                                    | Required API Key                    |
-| ----------------- | ------------------------------------------------------ | ----------------------------------- |
-| **Google Gemini** | `gemini-2.0-flash`, `gemini-2.0-pro`, `gemini-1.5-pro` | `GOOGLE_API_KEY` (default provider) |
-| **OpenAI**        | `gpt-4o`, `gpt-4`, `gpt-3.5-turbo`                     | `OPENAI_API_KEY`                    |
-| **Anthropic**     | `claude-3-5-sonnet-20241022`, `claude-3-opus`          | `ANTHROPIC_API_KEY`                 |
-| **Groq**          | `llama-3.1-70b-versatile`, `mixtral-8x7b`              | `GROQ_API_KEY`                      |
-| **Mistral**       | `mistral-large-latest`, `codestral-latest`             | `MISTRAL_API_KEY`                   |
+- **Default Gemini**: Only need `GOOGLE_API_KEY` (framework defaults to `gemini-2.0-flash`)
+- **Different model**: Set the corresponding API key and pass the model name (e.g., `model: "gpt-4o"`, `model: "claude-3-5-sonnet-20241022"`)
+- **Provider detection**: Framework automatically recognizes OpenAI, Claude, Groq, and other providers from the model name
 
 ## Option 2: Vercel AI SDK Integration
 
@@ -130,9 +129,7 @@ For more control and advanced features, use model instances from the [Vercel AI 
 # Install the providers you want to use
 npm install @ai-sdk/openai      # For OpenAI models
 npm install @ai-sdk/anthropic   # For Anthropic models
-npm install @ai-sdk/google      # For Google models
 npm install @ai-sdk/mistral     # For Mistral models
-npm install @ai-sdk/groq        # For Groq models
 ```
 
 **2. Configure API Keys:**
@@ -141,9 +138,7 @@ npm install @ai-sdk/groq        # For Groq models
 # .env file
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
-GOOGLE_API_KEY=your_google_api_key_here
 MISTRAL_API_KEY=your_mistral_api_key_here
-GROQ_API_KEY=your_groq_api_key_here
 ```
 
 **3. Use Model Instances:**
@@ -152,42 +147,27 @@ GROQ_API_KEY=your_groq_api_key_here
 import { LlmAgent } from "@iqai/adk";
 import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
-import { google } from "@ai-sdk/google";
 import { mistral } from "@ai-sdk/mistral";
-import { groq } from "@ai-sdk/groq";
 
 // OpenAI models
 const gpt4Agent = new LlmAgent({
   name: "gpt4_agent",
+  description: "GPT-4 powered assistant",
   model: openai("gpt-4o"),
   instruction: "You are a helpful assistant",
 });
-
 // Anthropic models
 const claudeAgent = new LlmAgent({
   name: "claude_agent",
+  description: "Claude powered assistant",
   model: anthropic("claude-3-5-sonnet-20241022"),
   instruction: "You are a helpful assistant",
 });
-
-// Google models via Vercel AI SDK
-const geminiAgent = new LlmAgent({
-  name: "gemini_agent",
-  model: google("gemini-2.0-flash"),
-  instruction: "You are a helpful assistant",
-});
-
 // Mistral models
 const mistralAgent = new LlmAgent({
   name: "mistral_agent",
+  description: "Mistral powered assistant",
   model: mistral("mistral-large-latest"),
-  instruction: "You are a helpful assistant",
-});
-
-// Groq models
-const groqAgent = new LlmAgent({
-  name: "groq_agent",
-  model: groq("llama-3.1-70b-versatile"),
   instruction: "You are a helpful assistant",
 });
 ```

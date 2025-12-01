@@ -11,14 +11,12 @@ Workflow agents orchestrate multiple agents to solve complex problems that requi
 Unlike [LLM Agents](/docs/framework/agents/llm-agents) that use language models for reasoning, workflow agents operate with deterministic logic to ensure predictable, reliable execution patterns. This makes them perfect for building robust multi-step processes where you need guaranteed execution order and consistent results.
 
 <Callout type="info" title="Workflow vs LLM Agents">
-  **Workflow Agents** manage execution flow with predictable patterns
+  - **Workflow Agents** manage execution flow with predictable patterns
   (sequential → parallel → loop → LangGraph).
-  <br />
-  **LLM Agents** use language models for dynamic reasoning and content
-  generation.
-  <br />
-  **Best together:** Use workflow agents to orchestrate LLM agents for complex,
-  multi-step processes.
+  - **LLM Agents** use language
+  models for dynamic reasoning and content generation.
+  - **Best together:** Use
+  workflow agents to orchestrate LLM agents for complex, multi-step processes.
 </Callout>
 
 ## Workflow Types
@@ -63,47 +61,6 @@ Break complex problems into manageable steps. Each sub-agent can focus on what i
 
 **🎯 Specialized Orchestration**  
 Combine different agent types - use LLM agents for reasoning, tool agents for actions, and workflow agents for coordination.
-
-## Quick Start Example
-
-Here's a content creation pipeline that writes, edits, and fact-checks articles:
-
-```typescript
-import { LlmAgent, SequentialAgent } from "@iqai/adk";
-
-// Create specialized agents for each step
-const writer = new LlmAgent({
-  name: "content-writer",
-  model: "gemini-2.5-flash",
-  instruction: "Write engaging, informative articles on the given topic.",
-});
-
-const editor = new LlmAgent({
-  name: "copy-editor",
-  model: "gemini-2.5-flash",
-  instruction:
-    "Edit for clarity, grammar, and style. Maintain the original voice.",
-});
-
-const factChecker = new LlmAgent({
-  name: "fact-checker",
-  model: "gemini-2.5-flash",
-  instruction: "Verify claims and flag anything that needs sources.",
-  tools: [new WebSearchTool()], // Can use tools for research
-});
-
-// Sequential workflow: write → edit → fact-check
-const contentPipeline = new SequentialAgent({
-  name: "content-pipeline",
-  description: "End-to-end content creation with quality controls",
-  subAgents: [writer, editor, factChecker],
-});
-
-// Use it
-const result = await contentPipeline.run({
-  message: "Write about the benefits of renewable energy",
-});
-```
 
 ## Choosing the Right Workflow Type
 
