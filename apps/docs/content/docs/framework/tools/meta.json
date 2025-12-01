@@ -4,8 +4,8 @@
 	"pages": [
 		"function-tools",
 		"create-tool",
-		"built-in-tools",
 		"tool-context",
+		"built-in-tools",
 		"integrating-tools",
 		"mcp-tools",
 		"google-cloud-tools",
