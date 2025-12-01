@@ -230,6 +230,94 @@ This example demonstrates:
 - Defining structured input and output using Zod schemas
 - Implementing practical workflows for customer support scenarios
 
+## Integrating Tools with Agents
+
+There are multiple ways to connect tools to your agents in ADK-TS:
+
+### Using LlmAgent
+
+Add tools directly to the agent's configuration by passing an array to the `tools` property:
+
+```typescript
+import { LlmAgent } from "@iqai/adk";
+import { weatherTool, timeTool, calculatorTool } from "./my-tools";
+
+// Using tools with LlmAgent
+const agent = new LlmAgent({
+  name: "assistant_agent",
+  description: "A helpful assistant",
+  instruction: "Use the provided tools when needed to answer questions",
+  tools: [weatherTool, timeTool, calculatorTool],
+});
+```
+
+### Using AgentBuilder
+
+Add tools using the fluent `withTools()` method:
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import { weatherTool, timeTool, calculatorTool } from "./my-tools";
+
+// Using tools with AgentBuilder
+const { agent } = await AgentBuilder.create("assistant_agent")
+  .withModel("gemini-2.5-flash")
+  .withTools(weatherTool, timeTool, calculatorTool)
+  .build();
+```
+
+### Adding Tools Dynamically
+
+Both approaches support conditional tool addition based on configuration or user permissions:
+
+```typescript
+import { AgentBuilder, LlmAgent } from "@iqai/adk";
+import { searchTool, systemAdminTool } from "./my-tools";
+
+const tools = [];
+const config = { enableSearch: true };
+const userRole = "admin";
+
+if (config.enableSearch) {
+  tools.push(searchTool);
+}
+
+if (userRole === "admin") {
+  tools.push(systemAdminTool);
+}
+
+const agent = new LlmAgent({
+  name: "dynamic_agent",
+  description: "Agent with dynamic tool configuration",
+  tools: tools,
+});
+```
+
+### Guiding Tool Usage
+
+Provide clear guidance in your agent instructions on **when and how** to use each tool:
+
+```typescript
+const agent = new LlmAgent({
+  name: "research_agent",
+  description: "An agent that assists with research tasks using various tools.",
+  instruction: `You are a research assistant. Follow these guidelines:
+
+- Use 'searchDocumentsTool' when the user asks about policies or procedures
+- Use 'fetchWebContentTool' to find current information about recent events
+- Use 'lookupDatabaseTool' only for specific data the user explicitly requests
+- If a tool returns insufficient data, try a different source before giving up`,
+  tools: [searchDocumentsTool, fetchWebContentTool, lookupDatabaseTool],
+});
+```
+
+**Key points for effective tool guidance:**
+
+- Focus on **decision logic** (when to use each tool) rather than repeating what the tool does
+- Specify how to handle different tool outcomes (success, failure, partial results)
+- Describe workflows when tools should be used in sequence
+- Keep instructions clear and concise
+
 ## Best Practices
 
 Creating effective tools requires careful design. Here are some key principles:
