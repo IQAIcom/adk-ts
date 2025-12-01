@@ -184,7 +184,7 @@ export class McpSamplingHandler {
 		};
 
 		this.logger.debug(
-			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${mcpMessage.content.type}`,
+			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${mcpMessage.content}`,
 		);
 
 		return adkContent;
@@ -196,42 +196,55 @@ export class McpSamplingHandler {
 	private convertMcpContentToADKParts(
 		mcpContent: McpSamplingRequest["params"]["messages"][0]["content"],
 	): Part[] {
-		if (mcpContent.type === "text") {
-			// Simple text content - ensure text is a string
-			const textContent = mcpContent.text || "";
-			return [{ text: textContent }];
+		// Helper to safely convert unknown to string
+		const safeText = (value: unknown): string =>
+			typeof value === "string" ? value : "";
+
+		// If content is an array, handle each element recursively
+		if (Array.isArray(mcpContent)) {
+			return mcpContent.flatMap((c) => this.convertMcpContentToADKParts(c));
 		}
 
-		if (mcpContent.type === "image") {
-			// Multimodal content with image
-			const parts: Part[] = [];
+		// Narrow type based on discriminated union
+		switch (mcpContent.type) {
+			case "text":
+				return [{ text: safeText(mcpContent.text) }];
 
-			// Add text part if present - ensure text is a string
-			if (mcpContent.text && typeof mcpContent.text === "string") {
-				parts.push({ text: mcpContent.text });
-			}
+			case "image":
+			case "audio": {
+				const parts: Part[] = [];
 
-			// Add image part
-			if (mcpContent.data && typeof mcpContent.data === "string") {
-				// Convert base64 data to inline data format expected by ADK
-				const mimeType = mcpContent.mimeType || "image/jpeg";
+				// Add text part if present
+				if ("text" in mcpContent) {
+					const text = safeText(mcpContent.text);
+					if (text) parts.push({ text });
+				}
 
+				// Add inline data part
 				parts.push({
 					inlineData: {
-						data: mcpContent.data,
-						mimeType,
+						data: safeText(mcpContent.data),
+						mimeType:
+							safeText(mcpContent.mimeType) ||
+							(mcpContent.type === "image" ? "image/jpeg" : "audio/mpeg"),
 					},
 				});
+
+				return parts;
 			}
 
-			return parts.length > 0 ? parts : [{ text: "" }];
-		}
+			case "tool_use":
+				return [{ text: `[Tool Use: ${safeText(mcpContent.name)}]` }];
 
-		// Fallback for unknown content types
-		this.logger.warn(`Unknown MCP content type: ${mcpContent.type}`);
-		const fallbackText =
-			typeof mcpContent.data === "string" ? mcpContent.data : "";
-		return [{ text: fallbackText }];
+			case "tool_result":
+				return [{ text: `[Tool Result: ${safeText(mcpContent.toolUseId)}]` }];
+
+			default:
+				this.logger.warn(
+					`Unknown MCP content type: ${safeText((mcpContent as any).type)}`,
+				);
+				return [{ text: "" }];
+		}
 	}
 
 	/**
