@@ -6,21 +6,19 @@ interface ProjectCardProps {
 	title: string;
 	description?: string;
 	link?: string;
-	category?: string;
+	tags?: string[];
 	image?: string;
-	isHackathon?: boolean;
 }
 
 export function ProjectCard({
 	title,
 	description,
 	link = "#",
-	category,
+	tags = [],
 	image,
-	isHackathon,
 }: ProjectCardProps) {
 	return (
-		<div className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card/50 transition-all hover:bg-card/80 hover:shadow-lg hover:-translate-y-1">
+		<div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card/50 transition-all hover:bg-card/80 hover:shadow-lg hover:-translate-y-1">
 			<Link
 				href={link}
 				target="_blank"
@@ -55,16 +53,14 @@ export function ProjectCard({
 				<div className="mb-4 flex items-start justify-between">
 					<div className="space-y-1">
 						<div className="flex flex-wrap gap-2 mb-2">
-							{isHackathon && (
-								<span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-									Hackathon
+							{tags.map((tag) => (
+								<span
+									key={tag}
+									className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+								>
+									{tag}
 								</span>
-							)}
-							{category && !isHackathon && (
-								<span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-									{category}
-								</span>
-							)}
+							))}
 						</div>
 						<h3 className="font-semibold text-xl tracking-tight text-foreground">
 							{title}

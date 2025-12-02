@@ -14,12 +14,12 @@ const ShowcasePage = () => {
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						{projects.map((project) => (
 							<ProjectCard
-								key={project.project}
-								title={project.project}
-								description={project.track}
+								key={project.title}
+								title={project.title}
+								description={project.description}
 								link={project.link}
 								image={project.image}
-								isHackathon={project.isHackathon}
+								tags={project.tags}
 							/>
 						))}
 					</div>

@@ -1,67 +1,66 @@
-interface Project {
-	track: string;
-	project: string;
+export interface Project {
+	title: string;
+	description: string;
 	link: string;
 	image?: string;
-	isHackathon: boolean;
+	tags: string[];
 }
 
 export const projects: Project[] = [
-	// Main Track Winners
 	{
-		track: "Agent Application",
-		project: "CodeForge AI",
+		title: "CodeForge AI",
+		description: "AI-powered code generation and review assistant",
 		link: "https://codeforge-adk.vercel.app/",
 		image: "/showcase/project-screenshots/codeforge.jpeg",
-		isHackathon: true,
+		tags: ["Hackathon", "Agent Application"],
 	},
 	{
-		track: "MCP Expansion",
-		project: "OpsPilot",
+		title: "OpsPilot",
+		description: "Intelligent operations management and automation platform",
 		link: "https://opspilot-five.vercel.app/",
 		image: "/showcase/project-screenshots/ops-pilot.jpeg",
-		isHackathon: true,
+		tags: ["Hackathon", "MCP Expansion"],
 	},
 	{
-		track: "Web3/Blockchain",
-		project: "ChainInsight",
+		title: "ChainInsight",
+		description: "Blockchain analytics and insights platform",
 		link: "https://chain-insight-nine.vercel.app/",
 		image: "/showcase/project-screenshots/chain-insight.jpeg",
-		isHackathon: true,
+		tags: ["Hackathon", "Web3"],
 	},
-	// Bonus Track Winners
 	{
-		track: "Most Practical Use Case",
-		project: "Confluent",
+		title: "Confluent",
+		description: "Practical AI solution for real-world use cases",
 		link: "https://github.com/Davidthecode/confluent",
-		isHackathon: true,
+		tags: ["Hackathon", "Agent Application"],
 	},
 	{
-		track: "Best Bot Integration",
-		project: "BingeBird",
+		title: "BingeBird",
+		description: "Smart bot integration for enhanced user experiences",
 		link: "https://github.com/Rohit-KK15/BingeBird-Bot",
 		image: "/showcase/project-screenshots/binge-bird.jpeg",
-		isHackathon: true,
+		tags: ["Hackathon", "Bot Integration"],
 	},
 	{
-		track: "Best Technical Implementation",
-		project: "Obrix",
+		title: "Obrix",
+		description:
+			"Advanced technical implementation showcasing ADK-TS capabilities",
 		link: "https://github.com/akbaridria/obrix",
 		image: "/showcase/project-screenshots/orbix.jpeg",
-		isHackathon: true,
+		tags: ["Hackathon", "Agent Application"],
 	},
 	{
-		track: "Best Improvement to ADK-TS",
-		project: "Bazaaro",
+		title: "Bazaaro",
+		description: "Innovative improvements and extensions to ADK-TS framework",
 		link: "https://github.com/phdargen/bazaaro",
 		image: "/showcase/project-screenshots/bazaaro.jpeg",
-		isHackathon: true,
+		tags: ["Hackathon", "Agent Application"],
 	},
 	{
-		track: "Best Collaboration/Team Agent",
-		project: "On Chain Analysis Agent",
+		title: "On Chain Analysis Agent",
+		description: "Collaborative team agent for blockchain data analysis",
 		link: "https://github.com/jayasaisrikar/on-chain-analysis-agent",
 		image: "/showcase/project-screenshots/on-chain-analysis.jpeg",
-		isHackathon: true,
+		tags: ["Hackathon", "Agent Application"],
 	},
 ];
