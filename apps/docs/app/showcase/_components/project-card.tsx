@@ -21,7 +21,12 @@ export function ProjectCard({
 }: ProjectCardProps) {
 	return (
 		<div className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card/50 transition-all hover:bg-card/80 hover:shadow-lg hover:-translate-y-1">
-			<Link href={link} target="_blank" className="absolute inset-0 z-0">
+			<Link
+				href={link}
+				target="_blank"
+				rel="noopener noreferrer"
+				className="absolute inset-0 z-0"
+			>
 				<span className="sr-only">View {title}</span>
 			</Link>
 			<div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-chart-1/5 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
