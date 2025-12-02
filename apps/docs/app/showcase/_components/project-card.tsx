@@ -5,21 +5,19 @@ import { ExternalLink } from "lucide-react";
 interface ProjectCardProps {
 	title: string;
 	description?: string;
-	developer: string;
 	link?: string;
 	category?: string;
 	image?: string;
-	developerLink?: string;
+	isHackathon?: boolean;
 }
 
 export function ProjectCard({
 	title,
 	description,
-	developer,
 	link = "#",
 	category,
 	image,
-	developerLink,
+	isHackathon,
 }: ProjectCardProps) {
 	return (
 		<div className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card/50 transition-all hover:bg-card/80 hover:shadow-lg hover:-translate-y-1">
@@ -28,7 +26,7 @@ export function ProjectCard({
 			</Link>
 			<div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-chart-1/5 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
 
-			{image && (
+			{image ? (
 				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50 pointer-events-none">
 					<Image
 						src={image}
@@ -37,16 +35,29 @@ export function ProjectCard({
 						className="object-cover transition-transform duration-300 group-hover:scale-105"
 					/>
 				</div>
+			) : (
+				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50 pointer-events-none bg-gradient-to-br from-primary/20 to-chart-1/20 flex items-center justify-center p-6">
+					<h3 className="font-bold text-2xl text-center text-foreground/80 tracking-tight">
+						{title}
+					</h3>
+				</div>
 			)}
 
 			<div className="relative z-10 p-6 pointer-events-none">
 				<div className="mb-4 flex items-start justify-between">
 					<div className="space-y-1">
-						{category && (
-							<span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-								{category}
-							</span>
-						)}
+						<div className="flex flex-wrap gap-2 mb-2">
+							{isHackathon && (
+								<span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+									Hackathon
+								</span>
+							)}
+							{category && !isHackathon && (
+								<span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+									{category}
+								</span>
+							)}
+						</div>
 						<h3 className="font-semibold text-xl tracking-tight text-foreground">
 							{title}
 						</h3>
@@ -59,25 +70,6 @@ export function ProjectCard({
 						{description}
 					</p>
 				)}
-			</div>
-
-			<div className="relative z-10 mt-auto px-6 pb-6 pt-0 pointer-events-none">
-				<div className="flex items-center text-sm text-muted-foreground">
-					<span className="font-medium text-foreground mr-1">Built by:</span>
-					{developerLink ? (
-						<a
-							href={developerLink}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-primary hover:underline relative z-20 pointer-events-auto"
-							onClick={(e) => e.stopPropagation()}
-						>
-							{developer}
-						</a>
-					) : (
-						<span className="text-primary">{developer}</span>
-					)}
-				</div>
 			</div>
 		</div>
 	);
