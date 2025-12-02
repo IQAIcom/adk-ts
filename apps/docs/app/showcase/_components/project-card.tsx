@@ -38,6 +38,9 @@ export function ProjectCard({
 						alt={title}
 						fill
 						className="object-cover transition-transform duration-300 group-hover:scale-105"
+						loading="lazy"
+						placeholder="blur"
+						blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwABmX/9k="
 					/>
 				</div>
 			) : (
@@ -67,7 +70,10 @@ export function ProjectCard({
 							{title}
 						</h3>
 					</div>
-					<ExternalLink className="h-5 w-5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+					<ExternalLink
+						className="h-5 w-5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+						aria-label={`View ${title}`}
+					/>
 				</div>
 
 				{description && (
