@@ -22,15 +22,14 @@ export function ProjectCard({
 	developerLink,
 }: ProjectCardProps) {
 	return (
-		<Link
-			href={link}
-			target="_blank"
-			className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card/50 transition-all hover:bg-card/80 hover:shadow-lg hover:-translate-y-1"
-		>
-			<div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-chart-1/5 opacity-0 transition-opacity group-hover:opacity-100" />
+		<div className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card/50 transition-all hover:bg-card/80 hover:shadow-lg hover:-translate-y-1">
+			<Link href={link} target="_blank" className="absolute inset-0 z-0">
+				<span className="sr-only">View {title}</span>
+			</Link>
+			<div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-chart-1/5 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
 
 			{image && (
-				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50">
+				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50 pointer-events-none">
 					<Image
 						src={image}
 						alt={title}
@@ -40,7 +39,7 @@ export function ProjectCard({
 				</div>
 			)}
 
-			<div className="relative z-10 p-6">
+			<div className="relative z-10 p-6 pointer-events-none">
 				<div className="mb-4 flex items-start justify-between">
 					<div className="space-y-1">
 						{category && (
@@ -62,7 +61,7 @@ export function ProjectCard({
 				)}
 			</div>
 
-			<div className="relative z-10 mt-auto px-6 pb-6 pt-0">
+			<div className="relative z-10 mt-auto px-6 pb-6 pt-0 pointer-events-none">
 				<div className="flex items-center text-sm text-muted-foreground">
 					<span className="font-medium text-foreground mr-1">Built by:</span>
 					{developerLink ? (
@@ -70,7 +69,7 @@ export function ProjectCard({
 							href={developerLink}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="text-primary hover:underline relative z-20"
+							className="text-primary hover:underline relative z-20 pointer-events-auto"
 							onClick={(e) => e.stopPropagation()}
 						>
 							{developer}
@@ -80,6 +79,6 @@ export function ProjectCard({
 					)}
 				</div>
 			</div>
-		</Link>
+		</div>
 	);
 }

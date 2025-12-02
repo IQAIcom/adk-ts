@@ -183,6 +183,19 @@ const ShowcasePage = () => {
 						))}
 					</div>
 				</section>
+
+				{/* Submission Instructions */}
+				<section className="text-center py-12 border-t border-border/50">
+					<p className="text-muted-foreground">
+						Want to showcase your project? Email details to{" "}
+						<a
+							href="mailto:timonwa@iqai.com"
+							className="text-primary hover:underline font-medium"
+						>
+							timonwa@iqai.com
+						</a>
+					</p>
+				</section>
 			</div>
 		</div>
 	);
