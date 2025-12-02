@@ -61,32 +61,6 @@ const projects = [
 		image: "/showcase/project-screenshots/on-chain-analysis.jpeg",
 		isHackathon: true,
 	},
-	// Noteworthy Projects
-	{
-		project: "Chain Pilot",
-		link: "https://dorahacks.io/buidl/35057",
-		isHackathon: true,
-	},
-	{
-		project: "BlockIQ",
-		link: "https://dorahacks.io/buidl/35102",
-		isHackathon: true,
-	},
-	{
-		project: "ReflectIQ",
-		link: "https://dorahacks.io/buidl/34836",
-		isHackathon: true,
-	},
-	{
-		project: "KeeperDCA",
-		link: "https://dorahacks.io/buidl/34989",
-		isHackathon: true,
-	},
-	{
-		project: "Mendel.AI",
-		link: "https://dorahacks.io/buidl/34989",
-		isHackathon: true,
-	},
 ];
 
 const ShowcasePage = () => {
@@ -121,7 +95,7 @@ const ShowcasePage = () => {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline font-medium"
 						>
-							&apos;Show and tell&apos;
+							&apos;Built with ADK-TS&apos;
 						</a>
 						!
 					</p>
