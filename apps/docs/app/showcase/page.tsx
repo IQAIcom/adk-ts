@@ -113,13 +113,17 @@ const ShowcasePage = () => {
 				{/* Submission Instructions */}
 				<section className="text-center py-12 border-t border-border/50">
 					<p className="text-muted-foreground">
-						Want to showcase your project? Email details to{" "}
+						Want to showcase your project? Share it in our GitHub Discussions
+						under{" "}
 						<a
-							href="mailto:timonwa@iqai.com"
+							href="https://github.com/IQAIcom/adk-ts/discussions/404"
+							target="_blank"
+							rel="noopener noreferrer"
 							className="text-primary hover:underline font-medium"
 						>
-							timonwa@iqai.com
+							&apos;Show and tell&apos;
 						</a>
+						!
 					</p>
 				</section>
 			</div>
