@@ -21,7 +21,10 @@ export function Hero() {
 			<div className="relative z-10 w-full max-w-4xl mx-auto text-center">
 				{/* Header section with animations */}
 				<div className="mb-8 animate-fade-in-up">
-					<div className="inline-flex items-center bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-full text-sm font-medium mb-6 hover:bg-primary/15 transition-all duration-300 hover:scale-105">
+					<div
+						className="inline-flex items-center bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-full text-sm font-medium mb-6 hover:bg-primary/15 transition-all duration-300 hover:scale-105"
+						role="presentation"
+					>
 						<svg
 							className="w-3.5 h-3.5 mr-2 animate-pulse"
 							fill="none"
