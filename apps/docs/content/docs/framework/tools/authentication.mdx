@@ -1,400 +1,123 @@
 ---
 title: Authentication
-description: Authentication patterns and secure API access for ADK-TS tools
+description: Secure API access and credential management for ADK-TS tools
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Tool authentication enables secure access to protected resources and APIs. ADK-TS provides built-in authentication classes and mechanisms to handle various authentication scenarios while enabling secure access to external services.
+Authenticate your ADK tools to access protected APIs and services. ADK-TS provides authentication classes for API keys, Bearer tokens, Basic auth, and OAuth 2.0 with automatic token refresh.
 
-## Authentication Approach
+## Supported Auth Methods
 
-ADK-TS implements a flexible and comprehensive authentication system through standardized classes that handle different authentication methods while maintaining security best practices.
+| Method        | Use Case                                    | Token Refresh |
+| ------------- | ------------------------------------------- | ------------- |
+| **API Key**   | Simple API access with static keys          | No            |
+| **Bearer**    | JWT tokens, temporary access tokens         | No            |
+| **Basic**     | Username/password authentication            | No            |
+| **OAuth 2.0** | User authorization flows, long-lived access | Yes           |
 
-### Current Implementation
-
-<Cards>
-  <Card
-    title="� Authentication Classes"
-    description="Built-in AuthScheme and AuthCredential classes"
-  />
-
-{" "}
-<Card
-  title="� Multiple Auth Methods"
-  description="Support for API keys, Basic, Bearer, OAuth2, and OpenID"
-/>
-
-  <Card
-    title="� Credential Management"
-    description="Secure credential handling and token refresh"
-  />
-</Cards>
-
-<Callout type="info" title="Comprehensive Authentication Support">
-  ADK-TS provides comprehensive authentication classes (AuthScheme,
-  AuthCredential) for secure integration with external services and APIs.
+<Callout type="info">
+  All credentials should be stored in environment variables, never hardcoded in
+  your source code.
 </Callout>
 
-## Authentication Components
+## Quick Start
 
-ADK-TS provides several core components for handling authentication:
-
-### Authentication Schemes
-
-Authentication schemes define how authentication should be performed with external services.
-
-```typescript
-import {
-  AuthScheme,
-  AuthSchemeType,
-  ApiKeyScheme,
-  HttpScheme,
-  OAuth2Scheme,
-} from "@iqai/adk";
-
-// API Key authentication
-const apiKeyScheme = new ApiKeyScheme({
-  in: "header",
-  name: "X-API-Key",
-  description: "API key for service access",
-});
-
-// Basic authentication
-const basicScheme = new HttpScheme({
-  scheme: "basic",
-  description: "Basic authentication with username and password",
-});
-
-// Bearer token authentication
-const bearerScheme = new HttpScheme({
-  scheme: "bearer",
-  bearerFormat: "JWT",
-  description: "Bearer token authentication",
-});
-
-// OAuth2 authentication
-const oauth2Scheme = new OAuth2Scheme({
-  flows: {
-    authorizationCode: {
-      authorizationUrl: "https://example.com/oauth/authorize",
-      tokenUrl: "https://example.com/oauth/token",
-      scopes: {
-        read: "Read access",
-        write: "Write access",
-      },
-    },
-  },
-  description: "OAuth2 authentication",
-});
-```
-
-### Authentication Credentials
-
-Authentication credentials store the actual authentication values used for requests.
-
-```typescript
-import {
-  AuthCredential,
-  ApiKeyCredential,
-  BasicAuthCredential,
-  BearerTokenCredential,
-  OAuth2Credential,
-} from "@iqai/adk";
-
-// API Key credential
-const apiKeyCredential = new ApiKeyCredential("my-api-key");
-
-// Basic authentication credential
-const basicCredential = new BasicAuthCredential("username", "password");
-
-// Bearer token credential
-const bearerCredential = new BearerTokenCredential("my-bearer-token");
-
-// OAuth2 credential with refresh capability
-const oauth2Credential = new OAuth2Credential({
-  accessToken: "access-token",
-  refreshToken: "refresh-token",
-  expiresIn: 3600, // seconds
-  refreshFunction: async (refreshToken) => {
-    // Implement token refresh logic
-    const response = await fetch("https://example.com/oauth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-      }),
-    });
-
-    const data = await response.json();
-    return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
-    };
-  },
-});
-```
-
-### Authentication Configuration
-
-AuthConfig ties together schemes and provides context for authentication:
-
-```typescript
-import { AuthConfig, ApiKeyScheme } from "@iqai/adk";
-
-// Create an authentication configuration
-const authConfig = new AuthConfig({
-  authScheme: new ApiKeyScheme({
-    in: "header",
-    name: "X-API-Key",
-  }),
-  context: {
-    serviceName: "weather-api",
-    environment: "production",
-  },
-});
-```
-
-### Authentication Handler
-
-AuthHandler manages the authentication process:
-
-```typescript
-import {
-  AuthHandler,
-  AuthConfig,
-  ApiKeyScheme,
-  ApiKeyCredential,
-} from "@iqai/adk";
-
-// Create an authentication scheme
-const apiKeyScheme = new ApiKeyScheme({
-  in: "header",
-  name: "X-API-Key",
-});
-
-// Create an authentication config
-const authConfig = new AuthConfig({
-  authScheme: apiKeyScheme,
-});
-
-// Create a credential
-const apiKeyCredential = new ApiKeyCredential("my-api-key");
-
-// Create an auth handler
-const authHandler = new AuthHandler({
-  authConfig,
-  credential: apiKeyCredential,
-});
-
-// Use the auth handler in a fetch request
-const response = await fetch("https://api.example.com/data", {
-  headers: {
-    ...authHandler.getHeaders(),
-    "Content-Type": "application/json",
-  },
-});
-```
-
-## Common Authentication Patterns
+Learn how to set up authentication for your tools using ADK-TS authentication classes.
 
 ### API Key Authentication
 
-Using API keys is one of the most common authentication methods for services:
+Use API keys for simple authentication. The key is sent in a custom header with each request.
 
 ```typescript
 import {
-  FunctionTool,
   ApiKeyScheme,
   ApiKeyCredential,
   AuthConfig,
   AuthHandler,
 } from "@iqai/adk";
 
-// Create a function tool with API key authentication
-const weatherTool = new FunctionTool(
-  async (location: string, authHandler: AuthHandler) => {
-    const apiUrl = `https://api.weatherservice.com/forecast?location=${encodeURIComponent(
-      location
-    )}`;
+// 1. Create authentication scheme
+const apiKeyScheme = new ApiKeyScheme({
+  in: "header",
+  name: "X-API-Key",
+});
 
-    // Use the auth handler to get headers
-    const response = await fetch(apiUrl, {
-      headers: authHandler.getHeaders(),
-    });
+// 2. Create credential from environment
+const apiKeyCredential = new ApiKeyCredential(process.env.API_KEY!);
 
-    if (!response.ok) {
-      throw new Error(`Weather API request failed: ${response.statusText}`);
-    }
+// 3. Create auth handler
+const authHandler = new AuthHandler({
+  authConfig: new AuthConfig({ authScheme: apiKeyScheme }),
+  credential: apiKeyCredential,
+});
 
-    return await response.json();
-  },
-  {
-    name: "get_weather",
-    description: "Get weather forecast for a location",
-    authConfig: new AuthConfig({
-      authScheme: new ApiKeyScheme({
-        in: "header",
-        name: "X-API-Key",
-      }),
-    }),
-  }
-);
-
-// Usage with credential from environment
-const apiKey = process.env.WEATHER_API_KEY;
-const credential = new ApiKeyCredential(apiKey);
-const result = await weatherTool.invoke("New York", credential);
+// 4. Use in API requests
+const response = await fetch("https://api.example.com/data", {
+  headers: authHandler.getHeaders(),
+});
 ```
 
-### OAuth 2.0 Authentication
+### Bearer Token Authentication
 
-ADK supports OAuth 2.0 authentication flows with automatic token refresh:
+Use Bearer tokens for JWT-based authentication. The token is sent in the Authorization header.
 
 ```typescript
 import {
-  FunctionTool,
+  HttpScheme,
+  BearerTokenCredential,
+  AuthConfig,
+  AuthHandler,
+} from "@iqai/adk";
+
+const bearerScheme = new HttpScheme({
+  scheme: "bearer",
+  bearerFormat: "JWT",
+});
+
+const bearerCredential = new BearerTokenCredential(process.env.AUTH_TOKEN!);
+
+const authHandler = new AuthHandler({
+  authConfig: new AuthConfig({ authScheme: bearerScheme }),
+  credential: bearerCredential,
+});
+```
+
+### OAuth 2.0 with Token Refresh
+
+OAuth 2.0 credentials support automatic token refresh:
+
+```typescript
+import {
   OAuth2Scheme,
   OAuth2Credential,
   AuthConfig,
+  AuthHandler,
 } from "@iqai/adk";
 
-// Create an OAuth2 scheme
-const googleOAuthScheme = new OAuth2Scheme({
+// Define OAuth2 scheme
+const oauth2Scheme = new OAuth2Scheme({
   flows: {
     authorizationCode: {
       authorizationUrl: "https://accounts.google.com/o/oauth2/auth",
       tokenUrl: "https://oauth2.googleapis.com/token",
       scopes: {
-        "https://www.googleapis.com/auth/drive.readonly":
-          "View files in Google Drive",
-        "https://www.googleapis.com/auth/userinfo.profile": "View user profile",
+        "https://www.googleapis.com/auth/drive.readonly": "View files",
       },
     },
   },
 });
 
-// Create a Google Drive tool with OAuth2 authentication
-const driveFilesTool = new FunctionTool(
-  async (query: string, authHandler: AuthHandler) => {
-    const apiUrl = "https://www.googleapis.com/drive/v3/files";
-    const searchUrl = new URL(apiUrl);
-    searchUrl.searchParams.append("q", query);
-
-    // Check if token needs refresh
-    if (
-      authHandler.credential?.canRefresh() &&
-      (authHandler.credential as OAuth2Credential).isExpired()
-    ) {
-      await authHandler.refreshToken();
-    }
-
-    const response = await fetch(searchUrl.toString(), {
-      headers: authHandler.getHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Google Drive API request failed: ${response.statusText}`
-      );
-    }
-
-    return await response.json();
-  },
-  {
-    name: "search_drive_files",
-    description: "Search for files in Google Drive",
-    authConfig: new AuthConfig({
-      authScheme: googleOAuthScheme,
-    }),
-  }
-);
-
-// Token refresh function
-const refreshFunction = async (refreshToken: string) => {
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  });
-
-  const data = await response.json();
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token || refreshToken,
-    expiresIn: data.expires_in,
-  };
-};
-
-// Create OAuth2 credential with refresh capability
-const oauth2Credential = new OAuth2Credential({
-  accessToken: "current-access-token",
-  refreshToken: "refresh-token",
-  expiresIn: 3600,
-  refreshFunction,
-});
-```
-
-## Secure Credential Management
-
-### Environment Variables
-
-Store sensitive credentials as environment variables:
-
-```typescript
-import dotenv from "dotenv";
-import { ApiKeyCredential } from "@iqai/adk";
-
-// Load environment variables
-dotenv.config();
-
-// Validate required environment variables
-function validateRequiredEnvVars(requiredVars: string[]): void {
-  const missing = requiredVars.filter((key) => !process.env[key]);
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment variables: ${missing.join(", ")}`
-    );
-  }
-}
-
-// Validate environment at startup
-validateRequiredEnvVars(["API_KEY", "OAUTH_CLIENT_ID", "OAUTH_CLIENT_SECRET"]);
-
-// Create credential from environment variable
-const apiKeyCredential = new ApiKeyCredential(process.env.API_KEY!);
-```
-
-### Automatic Token Refresh
-
-ADK's OAuth2Credential supports automatic token refresh:
-
-```typescript
-import { OAuth2Credential } from "@iqai/adk";
-
-// Create an OAuth2 credential with token refresh capability
+// Create credential with refresh function
 const oauth2Credential = new OAuth2Credential({
   accessToken: process.env.ACCESS_TOKEN!,
-  refreshToken: process.env.REFRESH_TOKEN,
-  expiresIn: 3600, // Token expires in 1 hour
+  refreshToken: process.env.REFRESH_TOKEN!,
+  expiresIn: 3600,
   refreshFunction: async (refreshToken) => {
-    // Implement token refresh logic
-    const response = await fetch("https://auth.example.com/token", {
+    const response = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "refresh_token",
         refresh_token: refreshToken,
@@ -412,66 +135,95 @@ const oauth2Credential = new OAuth2Credential({
   },
 });
 
-// Token will automatically refresh when expired
+// Create auth handler
+const authHandler = new AuthHandler({
+  authConfig: new AuthConfig({ authScheme: oauth2Scheme }),
+  credential: oauth2Credential,
+});
+
+// Token automatically refreshes when expired
 if (oauth2Credential.isExpired()) {
   await oauth2Credential.refresh();
 }
 ```
 
-## Advanced Authentication Patterns
+## Using Authentication with Tools
 
-### Authentication Preprocessing
+Integrate authentication into your custom tools by creating an `AuthHandler` in the constructor and using it in your tool's runAsync method.
 
-ADK includes an authentication preprocessor that handles credential management during tool invocation:
+### In Custom Tools
+
+Create a `BaseTool` subclass with authentication by setting up the `AuthHandler` as a private property in the constructor:
 
 ```typescript
 import {
   BaseTool,
   AuthConfig,
   ApiKeyScheme,
-  AuthLlmRequestProcessor,
+  ApiKeyCredential,
+  AuthHandler,
+  ToolContext,
+  FunctionDeclaration,
 } from "@iqai/adk";
+import { Type } from "@google/genai";
 
-class WeatherApiTool extends BaseTool {
+class WeatherTool extends BaseTool {
+  private authHandler: AuthHandler;
+
   constructor() {
     super({
-      name: "get_weather_forecast",
-      description: "Get weather forecast for a location",
-      authConfig: new AuthConfig({
-        authScheme: new ApiKeyScheme({
-          in: "header",
-          name: "X-API-Key",
-          description: "API key for the weather service",
-        }),
-      }),
+      name: "get_weather",
+      description: "Get weather forecast",
+    });
+
+    // Set up authentication manually
+    const apiKeyScheme = new ApiKeyScheme({
+      in: "header",
+      name: "X-API-Key",
+    });
+
+    const apiKeyCredential = new ApiKeyCredential(
+      process.env.WEATHER_API_KEY || ""
+    );
+
+    this.authHandler = new AuthHandler({
+      authConfig: new AuthConfig({ authScheme: apiKeyScheme }),
+      credential: apiKeyCredential,
     });
   }
 
-  async runAsync(args: { location: string }, authHandler: AuthHandler) {
-    const url = new URL("https://api.weather.example/forecast");
-    url.searchParams.append("location", args.location);
+  async runAsync(
+    args: Record<string, any>,
+    context: ToolContext
+  ): Promise<any> {
+    const location = args.location as string;
 
-    const response = await fetch(url.toString(), {
-      headers: authHandler.getHeaders(),
-    });
+    try {
+      const response = await fetch(
+        `https://api.weather.com/forecast?location=${location}`,
+        { headers: this.authHandler.getHeaders() }
+      );
 
-    if (!response.ok) {
-      throw new Error(`Weather API error: ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      return `Unable to fetch weather for ${location}. Please try again later.`;
     }
-
-    return await response.json();
   }
 
-  getDeclaration() {
+  getDeclaration(): FunctionDeclaration {
     return {
       name: this.name,
       description: this.description,
       parameters: {
-        type: "object",
+        type: Type.OBJECT,
         properties: {
           location: {
-            type: "string",
-            description: "Location for the weather forecast",
+            type: Type.STRING,
+            description: "City name",
           },
         },
         required: ["location"],
@@ -479,110 +231,155 @@ class WeatherApiTool extends BaseTool {
     };
   }
 }
-
-// The AuthLlmRequestProcessor will automatically handle authentication
-// during the tool invocation process
 ```
 
-### Error Handling for Authentication
+### In Function Tools
 
-Properly handle authentication errors in tools:
+For function-based tools created with `createTool`, define the `AuthHandler` outside the tool and reference it in the function closure:
 
 ```typescript
-import { FunctionTool, AuthHandler } from "@iqai/adk";
+import {
+  createTool,
+  AuthConfig,
+  ApiKeyScheme,
+  ApiKeyCredential,
+  AuthHandler,
+} from "@iqai/adk";
+import { z } from "zod";
 
-// Create a tool that properly handles authentication errors
-const secureApiTool = new FunctionTool(
-  async (endpoint: string, authHandler: AuthHandler) => {
-    try {
-      // Try to refresh token if it's expired
-      if (authHandler.credential?.canRefresh()) {
-        await authHandler.refreshToken();
-      }
+// Create auth handler outside the tool
+const apiKeyScheme = new ApiKeyScheme({
+  in: "header",
+  name: "X-API-Key",
+});
 
-      const response = await fetch(endpoint, {
-        headers: authHandler.getHeaders(),
-      });
+const apiKeyCredential = new ApiKeyCredential(process.env.WEATHER_API_KEY!);
 
-      if (response.status === 401) {
-        // Authentication failed
-        return {
-          success: false,
-          error: "Authentication failed. Please check credentials.",
-          errorCode: "AUTH_FAILED",
-        };
-      }
+const authHandler = new AuthHandler({
+  authConfig: new AuthConfig({ authScheme: apiKeyScheme }),
+  credential: apiKeyCredential,
+});
 
-      if (response.status === 403) {
-        // Authorization failed (valid credentials but insufficient permissions)
-        return {
-          success: false,
-          error: "Insufficient permissions to access the resource.",
-          errorCode: "FORBIDDEN",
-        };
-      }
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: `API request failed with status ${response.status}`,
-          errorCode: response.status >= 500 ? "SERVER_ERROR" : "CLIENT_ERROR",
-          retryable: response.status >= 500,
-        };
-      }
-
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error) {
-      // Log detailed error internally
-      console.error("API call failed:", error);
-
-      // Return safe error externally (no sensitive information)
-      return {
-        success: false,
-        error: "Service temporarily unavailable",
-        errorCode: "SERVICE_UNAVAILABLE",
-        retryable: true,
-      };
-    }
+// Use in tool
+const weatherTool = createTool({
+  name: "get_weather",
+  description: "Get weather forecast",
+  schema: z.object({
+    location: z.string().describe("City name"),
+  }),
+  fn: async ({ location }) => {
+    const response = await fetch(
+      `https://api.weather.com/forecast?location=${location}`,
+      { headers: authHandler.getHeaders() }
+    );
+    return response.json();
   },
-  {
-    name: "secure_api_call",
-    description: "Make a secure API call with proper error handling",
-  }
-);
+});
 ```
 
-### Rate Limiting and Retry Logic
+## Error Handling
 
-Implement retry logic with backoff for authenticated APIs:
+Properly handle authentication errors including token refresh, 401/403 responses, and network failures:
 
 ```typescript
-import { FunctionTool, AuthHandler } from "@iqai/adk";
+import { AuthHandler } from "@iqai/adk";
 
-// Helper function for implementing retry logic
+async function callAuthenticatedApi(
+  endpoint: string,
+  authHandler: AuthHandler
+) {
+  try {
+    // Refresh token if expired
+    if (authHandler.credential?.canRefresh()) {
+      await authHandler.refreshToken();
+    }
+
+    const response = await fetch(endpoint, {
+      headers: authHandler.getHeaders(),
+    });
+
+    // Handle auth-specific errors
+    if (response.status === 401) {
+      return { success: false, error: "Authentication failed" };
+    }
+
+    if (response.status === 403) {
+      return { success: false, error: "Insufficient permissions" };
+    }
+
+    if (!response.ok) {
+      return { success: false, error: `API error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (error) {
+    console.error("API call failed:", error);
+    return { success: false, error: "Service unavailable" };
+  }
+}
+```
+
+## Credential Management
+
+Manage credentials securely using environment variables and implement retry logic for resilient API calls.
+
+### Environment Variables
+
+Validate that all required environment variables are present at application startup:
+
+```typescript
+import dotenv from "dotenv";
+import { ApiKeyCredential } from "@iqai/adk";
+
+dotenv.config();
+
+// Validate required variables
+const required = ["API_KEY", "CLIENT_ID", "CLIENT_SECRET"];
+const missing = required.filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  throw new Error(`Missing required env vars: ${missing.join(", ")}`);
+}
+
+// Create credentials
+const apiKey = new ApiKeyCredential(process.env.API_KEY!);
+```
+
+### Retry Logic
+
+Implement retry with exponential backoff for transient failures, but skip retries for authentication errors:
+
+```typescript
+import {
+  ApiKeyScheme,
+  AuthConfig,
+  ApiKeyCredential,
+  AuthHandler,
+} from "@iqai/adk";
+
 async function withRetry<T>(
   fn: () => Promise<T>,
-  options = { maxRetries: 3, initialDelay: 1000 }
+  maxRetries = 3,
+  initialDelay = 1000
 ): Promise<T> {
   let lastError: Error | undefined;
 
-  for (let attempt = 0; attempt < options.maxRetries; attempt++) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error as Error;
 
-      // Check if we should retry
-      if (error instanceof Error) {
-        // Don't retry authentication errors
-        if (error.message.includes("Authentication failed")) {
-          throw error;
-        }
+      // Don't retry auth failures
+      if (
+        error instanceof Error &&
+        error.message.includes("Authentication failed")
+      ) {
+        throw error;
       }
 
-      // Calculate backoff delay with exponential increase
-      const delay = options.initialDelay * Math.pow(2, attempt);
+      // Exponential backoff
+      const delay = initialDelay * Math.pow(2, attempt);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
@@ -590,123 +387,41 @@ async function withRetry<T>(
   throw lastError || new Error("Operation failed after retries");
 }
 
-// Tool with retry logic
-const apiWithRetryTool = new FunctionTool(
-  async (endpoint: string, authHandler: AuthHandler) => {
-    return await withRetry(async () => {
-      // Check if token needs refresh
-      if (authHandler.credential?.canRefresh()) {
-        await authHandler.refreshToken();
-      }
+// Usage
+const endpoint = "https://api.example.com/data";
 
-      const response = await fetch(endpoint, {
-        headers: authHandler.getHeaders(),
-      });
+// Create auth handler outside the tool
+const apiKeyScheme = new ApiKeyScheme({
+  in: "header",
+  name: "X-API-Key",
+});
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Authentication failed");
-        }
+const apiKeyCredential = new ApiKeyCredential(process.env.WEATHER_API_KEY!);
 
-        if (response.status === 429) {
-          const retryAfter = response.headers.get("Retry-After");
-          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 1000;
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-          throw new Error("Rate limited, retrying after delay");
-        }
+const authHandler = new AuthHandler({
+  authConfig: new AuthConfig({ authScheme: apiKeyScheme }),
+  credential: apiKeyCredential,
+});
 
-        throw new Error(`API call failed: ${response.statusText}`);
-      }
-
-      return await response.json();
-    });
-  },
-  {
-    name: "api_call_with_retry",
-    description: "Make API calls with automatic retry logic",
-  }
-);
+const result = await withRetry(async () => {
+  const response = await fetch(endpoint, { headers: authHandler.getHeaders() });
+  if (!response.ok) throw new Error(`Failed: ${response.status}`);
+  return response.json();
+});
 ```
 
-## Best Practices
+## Security Best Practices
 
-### Security Guidelines
+Follow these security guidelines to protect your credentials and ensure secure authentication:
 
-<Cards>
-  <Card
-    title="🔐 Environment Variables"
-    description="Store sensitive credentials as environment variables"
-  />
-
-{" "}
-<Card
-  title="🔒 HTTPS Only"
-  description="Always use HTTPS for all credential exchanges"
-/>
-
-{" "}
-<Card
-  title="🔄 Token Refresh"
-  description="Implement automatic token refresh before expiration"
-/>
-
-  <Card
-    title="📝 Limited Logging"
-    description="Never log full credentials in application logs"
-  />
-</Cards>
-
-```typescript
-// Security best practices for credentials
-import { BearerTokenCredential } from "@iqai/adk";
-
-// 1. Load from environment, not hardcoded
-const token = process.env.API_TOKEN;
-if (!token) {
-  throw new Error("Missing API_TOKEN environment variable");
-}
-
-// 2. Create credential
-const credential = new BearerTokenCredential(token);
-
-// 3. Use HTTPS for all requests
-const apiUrl = "https://api.example.com/data";
-
-// 4. Implement proper error handling
-try {
-  const response = await fetch(apiUrl, {
-    headers: credential.getHeaders(),
-  });
-
-  // 5. Check for auth-specific errors
-  if (response.status === 401) {
-    // Handle authentication failure
-  }
-} catch (error) {
-  // 6. Don't expose credentials in error messages
-  console.error("API request failed", {
-    url: apiUrl,
-    statusCode: error.statusCode,
-    // Don't log the actual credential or token
-  });
-}
-```
-
-### Authentication Flow Guidelines
-
-1. **Validate Credentials Early**: Check credential validity at application startup
-2. **Handle Expiration**: Properly handle token expiration and implement refresh
-3. **Secure Storage**: Store credentials securely using environment variables or secret managers
-4. **Scope Limitation**: Request only the minimum required permissions
-5. **Rotation Strategy**: Implement a credential rotation strategy for long-lived applications
-
-### Cross-Cutting Security Concerns
-
-- **Input Validation**: Validate all user inputs before using them in authenticated requests
-- **Response Sanitization**: Never expose sensitive data in error responses
-- **Monitoring**: Set up monitoring for authentication failures and suspicious patterns
-- **Rate Limiting**: Implement rate limiting to prevent brute-force attacks
-- **Secure Configuration**: Store credential configurations securely
+- **Store in environment variables** - Never hardcode credentials
+- **Use HTTPS only** - All authenticated requests must use HTTPS
+- **Implement token refresh** - Refresh tokens before they expire
+- **Never log credentials** - Don't log tokens or API keys
+- **Validate early** - Check credentials at application startup
+- **Minimum permissions** - Request only required scopes
+- **Monitor failures** - Track authentication errors
+- **Rotate regularly** - Update credentials periodically in production
 
 ## Related Topics
 
@@ -716,21 +431,16 @@ try {
     description="Implement authentication in custom tools"
     href="/docs/framework/tools/function-tools"
   />
-
-{" "}
-<Card
-  title="🌐 Built-in Tools"
-  description="Authentication patterns for built-in tools"
-  href="/docs/framework/tools/built-in-tools"
-/>
-
-{" "}
-<Card
-  title="☁️ Google Cloud Tools"
-  description="Google Cloud authentication and service accounts"
-  href="/docs/framework/tools/google-cloud-tools"
-/>
-
+  <Card
+    title="🌐 Built-in Tools"
+    description="Authentication patterns for built-in tools"
+    href="/docs/framework/tools/built-in-tools"
+  />
+  <Card
+    title="☁️ Google Cloud Tools"
+    description="Google Cloud authentication and service accounts"
+    href="/docs/framework/tools/google-cloud-tools"
+  />
   <Card
     title="🌐 Third-Party Tools"
     description="Authentication for external tool integrations"
