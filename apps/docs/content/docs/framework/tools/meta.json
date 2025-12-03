@@ -9,7 +9,7 @@
 		"mcp-tools",
 		"google-cloud-tools",
 		"openapi-tools",
-		"authentication",
-		"third-party-tools"
+		"third-party-tools",
+		"authentication"
 	]
 }
