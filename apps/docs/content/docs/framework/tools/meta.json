@@ -10,7 +10,6 @@
 		"google-cloud-tools",
 		"openapi-tools",
 		"authentication",
-		"third-party-tools",
-		"best-practices"
+		"third-party-tools"
 	]
 }
