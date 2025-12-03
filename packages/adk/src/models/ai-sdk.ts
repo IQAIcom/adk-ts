@@ -49,6 +49,30 @@ export class AiSdkLlm extends BaseLlm {
 		return this.model.includes("gemini") || this.model.includes("google");
 	}
 
+	/**
+	 * Prepare cache-related provider options based on request config.
+	 * For Google models, supports explicit caching via cachedContent name.
+	 * Implicit caching is automatic when requests share common prefixes.
+	 */
+	private prepareCacheOptions(request: LlmRequest): any {
+		const providerOptions: any = {};
+
+		// Handle Google-specific explicit caching
+		// cachedContent should be the cache name returned from GoogleAICacheManager.create()
+		if (this.isGoogleModel() && request.config?.cachedContent) {
+			this.logger.debug(
+				`Using explicit cached content: ${request.config.cachedContent}`,
+			);
+			providerOptions.google = {
+				cachedContent: request.config.cachedContent,
+			};
+		}
+
+		return Object.keys(providerOptions).length > 0
+			? providerOptions
+			: undefined;
+	}
+
 	protected async *generateContentAsyncImpl(
 		request: LlmRequest,
 		stream = false,
@@ -68,16 +92,10 @@ export class AiSdkLlm extends BaseLlm {
 				topP: request.config?.topP,
 			};
 
-			// Add cached content for Google provider if provided in config
-			if (request.config?.cachedContent && this.isGoogleModel()) {
-				this.logger.debug(
-					`Using cached content: ${request.config.cachedContent}`,
-				);
-				requestParams.providerOptions = {
-					google: {
-						cachedContent: request.config.cachedContent,
-					},
-				};
+			// Add cache-related options for explicit caching
+			const providerOptions = this.prepareCacheOptions(request);
+			if (providerOptions) {
+				requestParams.providerOptions = providerOptions;
 			}
 
 			if (stream) {
@@ -118,6 +136,10 @@ export class AiSdkLlm extends BaseLlm {
 
 				const finalUsage = await result.usage;
 				const finishReason = await result.finishReason;
+
+				// Extract cache metadata from provider metadata
+				const cacheMetadata = await this.extractCacheMetadata(result);
+
 				yield new LlmResponse({
 					content: {
 						role: "model",
@@ -132,6 +154,7 @@ export class AiSdkLlm extends BaseLlm {
 						: undefined,
 					finishReason: this.mapFinishReason(finishReason),
 					turnComplete: true,
+					cacheMetadata,
 				});
 			} else {
 				const result = await generateText(requestParams);
@@ -152,6 +175,9 @@ export class AiSdkLlm extends BaseLlm {
 					}
 				}
 
+				// Extract cache metadata from provider metadata
+				const cacheMetadata = this.extractCacheMetadata(result);
+
 				yield new LlmResponse({
 					content: {
 						role: "model",
@@ -166,6 +192,7 @@ export class AiSdkLlm extends BaseLlm {
 						: undefined,
 					finishReason: this.mapFinishReason(result.finishReason),
 					turnComplete: true,
+					cacheMetadata,
 				});
 			}
 		} catch (error) {
@@ -175,6 +202,43 @@ export class AiSdkLlm extends BaseLlm {
 				model: this.model,
 			});
 		}
+	}
+
+	/**
+	 * Extract cache metadata from AI SDK response.
+	 * For Google models, this includes cachedContentTokenCount from usageMetadata.
+	 *
+	 * Note: Gemini 2.5 models automatically provide implicit caching - you'll see
+	 * cachedContentTokenCount in usageMetadata when requests share common prefixes.
+	 */
+	private extractCacheMetadata(result: any): any {
+		try {
+			// For streaming results, we need to await providerMetadata
+			const providerMetadata =
+				result.providerMetadata instanceof Promise
+					? undefined // Will be resolved by caller
+					: result.providerMetadata;
+
+			if (providerMetadata?.google?.usageMetadata) {
+				const usageMetadata = providerMetadata.google.usageMetadata;
+
+				// Log cache hit information
+				if (usageMetadata.cachedContentTokenCount > 0) {
+					this.logger.debug(
+						`Cache hit: ${usageMetadata.cachedContentTokenCount} tokens from cache`,
+					);
+				}
+
+				return {
+					cachedContentTokenCount: usageMetadata.cachedContentTokenCount || 0,
+					// Include other relevant metadata
+					thoughtsTokenCount: usageMetadata.thoughtsTokenCount,
+				};
+			}
+		} catch (err) {
+			this.logger.debug(`Could not extract cache metadata: ${err}`);
+		}
+		return undefined;
 	}
 
 	/**
