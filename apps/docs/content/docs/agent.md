@@ -168,9 +168,11 @@ const calculatorTool = new FunctionTool({
   parameters: {
     expression: { type: "string", description: "Math expression to evaluate" }
   },
-  execute: async ({ expression }) => {
-    return eval(expression); // In real usage, use a safe evaluator
-  }
+execute: async ({ expression }) => {  
+    // Using 'eval()' is insecure. In a real application, use a safe expression  
+    // evaluation library like 'mathjs' to prevent security vulnerabilities.  
+    throw new Error("Insecure 'eval()' removed from example.");  
+  } 
 });
 ```
 
