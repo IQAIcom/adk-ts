@@ -19,6 +19,8 @@ import { LlmEventSummarizer } from "./events/llm-event-summarizer";
 import { Logger } from "./logger";
 import type { BaseMemoryService } from "./memory/base-memory-service";
 import { InMemoryMemoryService } from "./memory/in-memory-memory-service";
+import type { BasePlugin } from "./plugins/base-plugin";
+import { PluginManager } from "./plugins/plugin-manager";
 import type { BaseSessionService } from "./sessions/base-session-service";
 import { InMemorySessionService } from "./sessions/in-memory-session-service";
 import type { Session } from "./sessions/session";
@@ -92,6 +94,11 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 	memoryService?: BaseMemoryService;
 
 	/**
+	 * The plugin manager for the runner.
+	 */
+	pluginManager: PluginManager;
+
+	/**
 	 * Configuration for event compaction.
 	 */
 	eventsCompactionConfig?: EventsCompactionConfig;
@@ -108,6 +115,8 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		sessionService,
 		memoryService,
 		eventsCompactionConfig,
+		plugins,
+		pluginCloseTimeout = 5.0,
 	}: {
 		appName: string;
 		agent: T;
@@ -115,6 +124,8 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		sessionService: BaseSessionService;
 		memoryService?: BaseMemoryService;
 		eventsCompactionConfig?: EventsCompactionConfig;
+		plugins?: BasePlugin[];
+		pluginCloseTimeout?: number;
 	}) {
 		this.appName = appName;
 		this.agent = agent;
@@ -122,6 +133,10 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		this.sessionService = sessionService;
 		this.memoryService = memoryService;
 		this.eventsCompactionConfig = eventsCompactionConfig;
+		this.pluginManager = new PluginManager({
+			plugins: plugins || [],
+			closeTimeout: pluginCloseTimeout,
+		});
 	}
 
 	/**
@@ -230,9 +245,12 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 
 			invocationContext.agent = this._findAgentToRun(session, this.agent);
 
-			// Execute agent within the span context
-			const agentGenerator =
-				invocationContext.agent.runAsync(invocationContext);
+			// Execute agent with plugin callbacks
+			const agentGenerator = this._execWithPlugin(
+				invocationContext,
+				session,
+				(ctx) => ctx.agent.runAsync(ctx),
+			);
 
 			while (true) {
 				const result = await context.with(spanContext, () =>
@@ -274,6 +292,60 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 	}
 
 	/**
+	 * Wraps execution with plugin callbacks.
+	 */
+	private async *_execWithPlugin(
+		invocationContext: InvocationContext,
+		session: Session,
+		executeFn: (ctx: InvocationContext) => AsyncGenerator<Event, void, unknown>,
+	): AsyncGenerator<Event, void, unknown> {
+		const pluginManager = invocationContext.pluginManager;
+
+		// Step 1: Run the before_run callbacks to see if we should early exit.
+		const earlyExitResult = await pluginManager.runBeforeRunCallback({
+			invocationContext,
+		});
+
+		if (earlyExitResult) {
+			const earlyExitEvent = new Event({
+				invocationId: invocationContext.invocationId,
+				author: "model",
+				content: earlyExitResult,
+			});
+			await this.sessionService.appendEvent(session, earlyExitEvent);
+			yield earlyExitEvent;
+			return;
+		}
+
+		// Step 2: Continue with normal execution
+		const agentGenerator = executeFn(invocationContext);
+
+		while (true) {
+			const result = await agentGenerator.next();
+
+			if (result.done) {
+				break;
+			}
+
+			const event = result.value as Event;
+
+			if (!event.partial) {
+				await this.sessionService.appendEvent(session, event);
+			}
+
+			// Step 3: Run the on_event callbacks to optionally modify the event.
+			const modifiedEvent = await pluginManager.runOnEventCallback({
+				invocationContext,
+				event,
+			});
+			yield modifiedEvent || event;
+		}
+
+		// Step 4: Run the after_run callbacks
+		await pluginManager.runAfterRunCallback({ invocationContext });
+	}
+
+	/**
 	 * Appends a new message to the session.
 	 */
 	private async _appendNewMessageToSession(
@@ -286,12 +358,25 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			throw new Error("No parts in the new_message.");
 		}
 
+		// Use a local variable to avoid reassigning the function parameter
+		let userMessage: Content = newMessage;
+
+		// Run on_user_message callback
+		const modifiedUserMessage =
+			await invocationContext.pluginManager.runOnUserMessageCallback({
+				invocationContext,
+				userMessage: userMessage,
+			});
+		if (modifiedUserMessage) {
+			userMessage = modifiedUserMessage;
+		}
+
 		if (this.artifactService && saveInputBlobsAsArtifacts) {
 			// The runner directly saves the artifacts (if applicable) in the
 			// user message and replaces the artifact data with a file name
 			// placeholder.
-			for (let i = 0; i < newMessage.parts.length; i++) {
-				const part = newMessage.parts[i];
+			for (let i = 0; i < userMessage.parts.length; i++) {
+				const part = userMessage.parts[i];
 				if (!part.inlineData) {
 					continue;
 				}
@@ -303,7 +388,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 					filename: fileName,
 					artifact: part,
 				});
-				newMessage.parts[i] = {
+				userMessage.parts[i] = {
 					text: `Uploaded file: ${fileName}. It is saved into artifacts`,
 				};
 			}
@@ -311,7 +396,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 
 		// Ensure the newMessage has the correct role for content filtering
 		const userContent = {
-			...newMessage,
+			...userMessage,
 			role: "user", // Ensure role is set for content filtering
 		};
 
@@ -407,6 +492,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			artifactService: this.artifactService,
 			sessionService: this.sessionService,
 			memoryService: this.memoryService,
+			pluginManager: this.pluginManager,
 			invocationId,
 			agent: this.agent,
 			session,
@@ -469,6 +555,15 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		}
 
 		return undefined;
+	}
+
+	/**
+	 * Closes the runner and its plugin manager.
+	 */
+	async close(): Promise<void> {
+		this.logger.info("Closing runner...");
+		await this.pluginManager.close();
+		this.logger.info("Runner closed.");
 	}
 
 	async rewind(args: {
@@ -648,16 +743,18 @@ export class Runner<T extends BaseAgent = BaseAgent> {
  */
 export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
 	/**
-	 * Deprecated. Please don't use. The in-memory session service for the runner.
-	 */
-	private _inMemorySessionService: InMemorySessionService;
-
-	/**
 	 * Initializes the InMemoryRunner.
 	 */
+
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: <Testing purpose>
+	private _inMemorySessionService: InMemorySessionService;
+
 	constructor(
 		agent: T,
-		{ appName = "InMemoryRunner" }: { appName?: string } = {},
+		{
+			appName = "InMemoryRunner",
+			plugins,
+		}: { appName?: string; plugins?: BasePlugin[] } = {},
 	) {
 		const inMemorySessionService = new InMemorySessionService();
 
@@ -667,6 +764,7 @@ export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
 			artifactService: new InMemoryArtifactService(),
 			sessionService: inMemorySessionService,
 			memoryService: new InMemoryMemoryService(),
+			plugins,
 		});
 
 		this._inMemorySessionService = inMemorySessionService;

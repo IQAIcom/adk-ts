@@ -22,8 +22,8 @@ export class PlanReActPlanner extends BasePlanner {
 	 * Builds the planning instruction for the Plan-Re-Act planner
 	 */
 	buildPlanningInstruction(
-		readonlyContext: ReadonlyContext,
-		llmRequest: LlmRequest,
+		_readonlyContext: ReadonlyContext,
+		_llmRequest: LlmRequest,
 	): string {
 		return this._buildNlPlannerInstruction();
 	}
@@ -32,7 +32,7 @@ export class PlanReActPlanner extends BasePlanner {
 	 * Processes the LLM response for planning
 	 */
 	processPlanningResponse(
-		callbackContext: CallbackContext,
+		_callbackContext: CallbackContext,
 		responseParts: Part[],
 	): Part[] | undefined {
 		if (!responseParts || responseParts.length === 0) {
