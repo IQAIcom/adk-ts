@@ -1,6 +1,6 @@
 {
 	"name": "adk-shade-agent",
-	"version": "0.0.1",
+	"version": "0.5.0",
 	"description": "adk-shade-agent is a starter project for creating simple adk agent",
 	"type": "commonjs",
 	"private": true,
@@ -35,7 +35,7 @@
 	"homepage": "https://github.com/IQAICOM/adk-agent-starter#readme",
 	"dependencies": {
 		"@hono/node-server": "^1.19.2",
-		"@iqai/adk": "^0.5.4",
+		"@iqai/adk": "0.5.7",
 		"@neardefi/shade-agent-js": "^1.0.4",
 		"chainsig.js": "^1.1.11",
 		"cors": "^2.8.5",
