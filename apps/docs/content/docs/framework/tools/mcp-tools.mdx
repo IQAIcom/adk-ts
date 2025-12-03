@@ -177,9 +177,21 @@ All wrapper functions accept a configuration object. Only `env` is typically req
 | `retryOptions.initialDelay` | number          | No       | Initial retry delay in ms (default: 200)                                                                                                              |
 | `samplingHandler`           | SamplingHandler | No       | Handler for MCP sampling requests (advanced use)                                                                                                      |
 
+## McpToolset Methods
+
+Both wrapper functions and direct `McpToolset` usage return `McpToolset` instances with the following methods:
+
+- `getTools(context?)` - Retrieve tools from MCP server
+- `setSamplingHandler(handler)` - Set LLM sampling handler
+- `removeSamplingHandler()` - Remove sampling handler
+- `refreshTools(context?)` - Clear cache and fetch tools again
+- `close()` - Close connection and cleanup resources
+
 ## Using McpToolset for Custom Servers
 
-For custom MCP servers not covered by wrapper functions, use `McpToolset` directly. This provides full control over connection configuration, tool discovery, and filtering.
+For custom MCP servers not covered by wrapper functions, use `McpToolset` directly to **connect to and consume** MCP servers. This provides full control over connection configuration, tool discovery, and filtering.
+
+**Note:** This is for connecting TO existing MCP servers, not for creating them. See "Exposing ADK-TS Tools as MCP Server" below for creating servers.
 
 ### Connection Types
 
@@ -190,16 +202,34 @@ For custom MCP servers not covered by wrapper functions, use `McpToolset` direct
 
 ### Configuration Parameters
 
-| Parameter                   | Type             | Required | Description                                      |
-| --------------------------- | ---------------- | -------- | ------------------------------------------------ |
-| `name`                      | string           | Yes      | Display name for the MCP client                  |
-| `description`               | string           | Yes      | Description of the client's purpose              |
-| `transport`                 | McpTransportType | Yes      | Connection configuration (stdio or SSE)          |
-| `timeout`                   | number           | No       | Request timeout in milliseconds (default: 30000) |
-| `retryOptions.maxRetries`   | number           | No       | Max retry attempts (default: 3)                  |
-| `retryOptions.initialDelay` | number           | No       | Initial retry delay in ms (default: 200)         |
-| `debug`                     | boolean          | No       | Enable debug logging                             |
-| `samplingHandler`           | SamplingHandler  | No       | Handle MCP sampling requests                     |
+#### McpConfig Parameters
+
+| Parameter                   | Type             | Required | Description                                                       |
+| --------------------------- | ---------------- | -------- | ----------------------------------------------------------------- |
+| `name`                      | string           | Yes      | Display name for the MCP client                                   |
+| `description`               | string           | Yes      | Description of the client's purpose                               |
+| `transport`                 | McpTransportType | Yes      | Connection configuration (stdio or SSE)                           |
+| `timeout`                   | number           | No       | Request timeout in milliseconds                                   |
+| `retryOptions.maxRetries`   | number           | No       | Maximum number of retries for failed requests                     |
+| `retryOptions.initialDelay` | number           | No       | Initial delay before retry in milliseconds                        |
+| `retryOptions.maxDelay`     | number           | No       | Maximum delay between retries in milliseconds                     |
+| `headers`                   | Record           | No       | Custom headers for requests                                       |
+| `cacheConfig.enabled`       | boolean          | No       | Whether to cache tools (default: true)                            |
+| `cacheConfig.maxAge`        | number           | No       | Maximum age of cached tools in milliseconds                       |
+| `cacheConfig.maxSize`       | number           | No       | Maximum number of tools to cache                                  |
+| `debug`                     | boolean          | No       | Enable debug logging                                              |
+| `samplingHandler`           | SamplingHandler  | No       | Handler for MCP sampling requests (allows MCP servers to use LLM) |
+
+#### McpToolset Constructor
+
+```typescript
+new McpToolset(config: McpConfig, toolFilter?: string[] | Function)
+```
+
+| Parameter    | Type                 | Required | Description                                                                 |
+| ------------ | -------------------- | -------- | --------------------------------------------------------------------------- |
+| `config`     | McpConfig            | Yes      | Configuration object (see table above)                                      |
+| `toolFilter` | string[] \| Function | No       | Filter tools by name array or custom function `(tool, context?) => boolean` |
 
 ### Stdio Connection (Local Server)
 
@@ -220,7 +250,7 @@ const mcpConfig: McpConfig = {
 const toolset = new McpToolset(mcpConfig);
 const tools = await toolset.getTools();
 
-const agent = new LlmAgent({
+const fileAgent = new LlmAgent({
   name: "file_agent",
   model: "gemini-2.5-flash",
   description: "An agent that manages file operations in allowed directories",
@@ -252,7 +282,7 @@ const remoteConfig: McpConfig = {
 const toolset = new McpToolset(remoteConfig);
 const tools = await toolset.getTools();
 
-const agent = new LlmAgent({
+const apiAgent = new LlmAgent({
   name: "api_agent",
   model: "gemini-2.5-flash",
   description: "An agent that interacts with remote API endpoints",
@@ -277,55 +307,105 @@ await toolset.close();
 - Working with remote endpoints requiring custom headers
 - Building custom tool filtering or schema adaptation
 
-## Exposing ADK-TS Tools as MCP Server
+## Creating MCP Servers with ADK-TS
 
-You can expose your ADK-TS tools as an MCP server, allowing other applications that support MCP to use your tools. This is useful for:
+You can create your own MCP servers to expose custom tools and functionality to any MCP client (including ADK agents, Claude Desktop, etc.). ADK provides a starter template using **FastMCP** for building MCP servers quickly.
 
-- **Interoperability**: Make your tools available to any MCP-compatible client (Claude Desktop, other ADK agents, etc.)
-- **Code Reuse**: Share tool implementations across different applications
-- **Distributed Architecture**: Run tools as separate services that multiple agents can access
+### Quick Start
 
-### How It Works
+Create a new MCP server project using the ADK CLI:
 
-1. Define your tools as classes with `name`, `description`, and an `execute` method
-2. Create an MCP server using `createMcpServer` with your tools
-3. Start the server with your preferred transport (stdio for local, SSE for remote)
-4. Other MCP clients can now connect and use your tools
+```bash
+# Install the ADK CLI globally
+npm install -g @iqai/adk-cli
 
-### Basic Example
+# Create a new MCP server project using the starter template
+adk new --template mcp-starter my-mcp-server
 
-```typescript
-import { createMcpServer } from "@iqai/adk";
+# Navigate to the project directory
+cd my-mcp-server
 
-class CustomAnalysisTool {
-  name = "analyze_document";
-  description = "Analyzes documents and extracts insights";
+# Install dependencies
+pnpm install
 
-  async execute(args: { content: string }) {
-    return {
-      summary: "Key findings...",
-      topics: ["topic1", "topic2"],
-    };
-  }
-}
-
-const mcpServer = createMcpServer({
-  name: "Analysis Server",
-  description: "Document analysis tools via MCP",
-  tools: [new CustomAnalysisTool()],
-});
-
-// Start with stdio transport (for local process communication)
-await mcpServer.start({ transport: { mode: "stdio" } });
-
-// Or start with SSE transport (for remote HTTP access)
-// await mcpServer.start({ transport: { mode: "sse", port: 8080 } });
+# Start the development server (in a separate terminal)
+pnpm dev
 ```
 
-### Transport Options
+### Example MCP Server
 
-- **Stdio**: For local process communication. Other applications spawn your server as a child process.
-- **SSE**: For remote HTTP access. Clients connect via Server-Sent Events over HTTP.
+Here's a simple weather MCP server structure:
+
+```typescript
+// src/index.ts
+import { FastMCP } from "fastmcp";
+import { weatherTool } from "./tools/weather.js";
+
+async function main() {
+  const server = new FastMCP({
+    name: "Weather MCP Server",
+    version: "1.0.0",
+  });
+
+  server.addTool(weatherTool);
+
+  await server.start({
+    transportType: "stdio",
+  });
+}
+
+main().catch(console.error);
+```
+
+```typescript
+// src/tools/weather.ts
+import { z } from "zod";
+
+export const weatherTool = {
+  name: "get_weather",
+  description: "Get current weather for a city",
+  parameters: z.object({
+    city: z.string().describe("City name"),
+  }),
+  execute: async ({ city }: { city: string }) => {
+    // Your weather API logic here
+    return { temperature: 72, condition: "Sunny" };
+  },
+};
+```
+
+### Using Your MCP Server with ADK Agents
+
+Once created, connect to your custom MCP server from an ADK agent:
+
+```typescript
+import { McpToolset, LlmAgent } from "@iqai/adk";
+
+const customToolset = new McpToolset({
+  name: "My Custom Server",
+  description: "Custom MCP server with weather tools",
+  transport: {
+    mode: "stdio",
+    command: "node",
+    args: ["./my-mcp-server/dist/index.js"],
+  },
+});
+
+const tools = await customToolset.getTools();
+
+const agent = new LlmAgent({
+  name: "weather_agent",
+  model: "gemini-2.5-flash",
+  description: "An agent with access to custom weather tools",
+  tools,
+});
+```
+
+### Learn More
+
+- Check the [MCP Starter Template](https://github.com/IQAIcom/adk-ts/tree/main/apps/starter-templates/mcp-starter) for complete examples
+- See [MCP Integration Examples](https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/11-mcp-integrations) for advanced patterns
+- Visit [FastMCP Documentation](https://github.com/jlowin/fastmcp) for detailed FastMCP usage
 
 ## Best Practices
 
