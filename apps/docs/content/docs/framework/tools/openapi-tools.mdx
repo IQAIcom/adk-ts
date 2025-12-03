@@ -1,199 +1,192 @@
 ---
 title: OpenAPI Tools
-description: Create tools for REST API integration using OpenAPI specifications
+description: Integrate REST APIs using OpenAPI specifications with ADK-TS
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-# OpenAPI Tools
+Integrate REST APIs documented with OpenAPI specifications into your ADK agents. You can use the built-in `HttpRequestTool` for general API access or create type-safe custom tools with generated TypeScript types.
 
-OpenAPI tools enable integration with REST APIs based on OpenAPI specifications. ADK-TS will support automatic tool generation from OpenAPI specs in future releases.
-
-<Callout type="info" title="Future Enhancement">
-Automatic OpenAPI tool generation is planned for a future release. The current approach requires manual tool creation but provides full flexibility and control.
+<Callout type="info">
+  ADK-TS does not include automatic tool generation from OpenAPI specs. Use
+  `HttpRequestTool` for quick integration or create custom typed tools for
+  better type safety and control.
 </Callout>
 
-## Understanding OpenAPI Specifications
+## Quick Integration: Use HttpRequestTool
 
-OpenAPI (formerly known as Swagger) is a specification format for REST APIs that describes available endpoints, operations, parameters, authentication requirements, and response formats. OpenAPI specifications can be in JSON or YAML format.
+For simple API access, use the built-in `HttpRequestTool`:
 
-### Key OpenAPI Components
+```typescript
+import { HttpRequestTool, AgentBuilder } from "@iqai/adk";
 
-- **Paths**: Define available endpoints and HTTP methods
-- **Parameters**: Specify path, query, header, and body parameters
-- **Components**: Reusable schemas for requests and responses
-- **Security Schemes**: Authentication requirements
-- **Servers**: Base URLs for API requests
+const { runner } = await AgentBuilder.create("api-agent")
+  .withModel("gemini-2.5-flash")
+  .withTools(new HttpRequestTool())
+  .withInstruction(
+    `
+    You can make HTTP requests using http_request tool.
+    Include authentication headers and handle responses appropriately.
+  `
+  )
+  .build();
 
-## Working with OpenAPI Specifications
+// Agent can now call any API by constructing requests
+await runner.ask(
+  "Get the current weather for London from api.openweathermap.org"
+);
+```
 
-When working with OpenAPI specifications, you'll need to:
+## Type-Safe Integration: Generate TypeScript Types
 
-1. **Parse the Specification**: Use an OpenAPI parser library to read and interpret the specification document.
+For better type safety and IDE support, generate types from your OpenAPI spec and create custom tools:
 
-2. **Analyze API Structure**:
+### Step 1: Generate Types
 
-   - Identify endpoints and available operations
-   - Understand parameter requirements and data types
-   - Map security requirements
-
-3. **Generate TypeScript Types**: Use tools like `openapi-typescript` to generate type definitions from the OpenAPI schema:
+Install and run `openapi-typescript` against your OpenAPI spec:
 
 ```bash
-# Install the tool
-npm install --save-dev openapi-typescript
+# Install the package
+pnpm add -D openapi-typescript
 
-# Generate types from OpenAPI spec
-npx openapi-typescript openapi.yaml --output schema.ts
+# From a local file
+pnpx openapi-typescript ./your-api-spec.json -o ./api-types.ts
+
+# From a URL
+pnpx openapi-typescript https://your-api.com/openapi.json -o ./api-types.ts
 ```
 
-## Current Implementation Approaches
+### Step 2: Create Custom Typed Tools
 
-Until native OpenAPI tool generation is available in ADK-TS, you can:
+### Option A: With Native Fetch
 
-### Parse OpenAPI at Runtime
+Use the generated types for full type safety with standard `fetch`:
 
 ```typescript
-import SwaggerParser from "@apidevtools/swagger-parser";
 import { BaseTool } from "@iqai/adk";
+import type { paths } from "./api-types";
 
-async function createToolsFromOpenApi(specUrl: string) {
-  try {
-    // Parse and validate the OpenAPI spec
-    const api = await SwaggerParser.validate(specUrl);
-
-    // Create tools for each operation
-    const tools = [];
-
-    // Process API paths and operations
-    for (const [path, pathItem] of Object.entries(api.paths)) {
-      for (const [method, operation] of Object.entries(pathItem)) {
-        if (method === "parameters" || method === "$ref") continue;
-
-        // Create a tool for this operation
-        const operationId = operation.operationId || `${method}-${path}`;
-
-        // Create and add tool
-        // (Actual implementation would be more complex)
-        tools.push(new OpenAPIOperationTool(api, path, method, operation));
-      }
-    }
-
-    return tools;
-  } catch (error) {
-    console.error("Error parsing OpenAPI spec:", error);
-    return [];
-  }
-}
-
-// Example OpenAPI operation tool
-class OpenAPIOperationTool extends BaseTool {
-  constructor(api, path, method, operation) {
+class UserApiTool extends BaseTool {
+  constructor(private baseUrl: string, private apiKey: string) {
     super({
-      name: operation.operationId || `${method}-${path}`,
-      description:
-        operation.summary || operation.description || `${method} ${path}`,
+      name: "user_api",
+      description: "Manage users via API",
+    });
+  }
+
+  async runAsync(args: { userId: string }) {
+    // Extract types from your OpenAPI spec
+    type GetUserResponse =
+      paths["/users/{userId}"]["get"]["responses"]["200"]["content"]["application/json"];
+
+    const response = await fetch(`${this.baseUrl}/users/${args.userId}`, {
+      headers: { Authorization: `Bearer ${this.apiKey}` },
     });
 
-    this.api = api;
-    this.path = path;
-    this.method = method;
-    this.operation = operation;
+    // Response is fully typed
+    const data: GetUserResponse = await response.json();
+    return { success: true, user: data };
   }
-
-  // Tool implementation would go here
 }
 ```
 
-### Generate Code from Specifications
+**Option B: With openapi-fetch (Recommended)**
 
-You can also use code generation to create typed API clients:
+For cleaner code and built-in error handling:
+
+Install `openapi-fetch`:
+
+```bash
+pnpm add openapi-fetch
+```
+
+Create the tool:
 
 ```typescript
-// Example: Using code generation with openapi-generator
-// 1. Install the generator
-// npm install @openapitools/openapi-generator-cli -D
-
-// 2. Generate a TypeScript client
-// npx @openapitools/openapi-generator-cli generate -i openapi.yaml -g typescript-axios -o generated-client
-
-// 3. Create an ADK wrapper for the generated client
 import { BaseTool } from "@iqai/adk";
-import { DefaultApi } from "./generated-client";
+import createClient from "openapi-fetch";
+import type { paths } from "./api-types";
 
-class GeneratedApiTool extends BaseTool {
-  private api: DefaultApi;
+class UserApiTool extends BaseTool {
+  private client: ReturnType<typeof createClient<paths>>;
 
-  constructor(apiConfig) {
+  constructor(baseUrl: string, apiKey: string) {
     super({
-      name: "api_tool",
-      description: "Generated API integration from OpenAPI spec",
+      name: "user_api",
+      description: "Manage users via API",
     });
-    this.api = new DefaultApi(apiConfig);
+
+    this.client = createClient<paths>({
+      baseUrl,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
   }
 
-  // Implement tool methods to proxy to generated client
+  async runAsync(args: { userId: string }) {
+    // Fully typed request and response with automatic path substitution
+    const { data, error } = await this.client.GET("/users/{userId}", {
+      params: { path: { userId: args.userId } },
+    });
+
+    if (error) return { success: false, error };
+    return { success: true, user: data };
+  }
 }
 ```
 
-## Best Practices for OpenAPI Integration
+## Using Schema Components
 
-When building OpenAPI-based tools:
+Extract reusable types from your OpenAPI spec:
 
-1. **Validate Specifications**: Ensure your OpenAPI document is valid before attempting to parse or generate code
-2. **Handle Schema References**: Resolve `$ref` references properly when parsing specifications
+```typescript
+import type { paths, components } from "./api-types";
 
-3. **Type Safety**: Use generated TypeScript types to ensure type safety when interacting with APIs
+// Use schema definitions
+type User = components["schemas"]["User"];
+type CreateUserRequest = components["schemas"]["CreateUserRequest"];
 
-4. **Version Management**: Provide clear version handling when the OpenAPI spec evolves
+// Use path types
+type GetUserResponse =
+  paths["/users/{userId}"]["get"]["responses"]["200"]["content"]["application/json"];
+```
 
-5. **Error Handling**: Handle specification parsing errors and API client errors gracefully
+## When to Use Each Approach
 
-## Future Roadmap
+| Approach           | Best For                                                                    |
+| ------------------ | --------------------------------------------------------------------------- |
+| `HttpRequestTool`  | Quick prototypes, agents that need general API access, simple integrations  |
+| Custom Typed Tools | Production apps, type safety requirements, complex APIs with many endpoints |
 
-<Callout type="info" title="Planned Features">
-  Future versions of ADK-TS will include: - Automatic tool generation from
-  OpenAPI specifications - Built-in OpenAPI parser and validator - Advanced
-  authentication flow handling - Dynamic tool registration and discovery
-</Callout>
+## Best Practices
 
-### Expected OpenAPI Features
-
-- **OpenAPIToolset Class**: Automatic tool generation from OpenAPI specifications
-- **Schema Validation**: Built-in request/response validation based on OpenAPI schemas
-- **Operation Discovery**: Automatic endpoint discovery and mapping from specifications
-- **Auth Integration**: Seamless handling of OpenAPI security schemes
-- **Type Generation**: TypeScript type generation from OpenAPI schemas
+- **Use HttpRequestTool** for quick prototypes and general API access
+- **Create custom tools** when you need type safety and specific API operations
+- **Regenerate types** when your OpenAPI spec changes
+- **Handle errors** appropriately in your tool implementations
+- **Store API keys** securely using environment variables
 
 ## Related Topics
 
 <Cards>
   <Card
+    title="🔧 Function Tools"
+    description="Create custom tools for API operations"
+    href="/docs/framework/tools/function-tools"
+  />
+  <Card
     title="🌐 Built-in Tools"
     description="Explore other built-in tool capabilities"
     href="/docs/framework/tools/built-in-tools"
   />
-
-{" "}
-
-<Card
-  title="🔧 Function Tools"
-  description="Create custom tools for API operations"
-  href="/docs/framework/tools/function-tools"
-/>
-
-{" "}
-
-<Card
-  title="🔐 Authentication"
-  description="Secure API access and credential management"
-  href="/docs/framework/tools/authentication"
-/>
-
+  <Card
+    title="🔐 Authentication"
+    description="Secure API access and credential management"
+    href="/docs/framework/tools/authentication"
+  />
   <Card
     title="🤖 Agents"
-    description="Learn how agents use API tools"
+    description="Learn how agents use tools"
     href="/docs/framework/agents"
   />
 </Cards>
