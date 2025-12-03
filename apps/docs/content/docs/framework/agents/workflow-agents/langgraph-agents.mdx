@@ -11,8 +11,8 @@ LangGraph agents orchestrate sophisticated workflows with conditional branching,
 Unlike simple workflow patterns ([sequential](/docs/framework/agents/workflow-agents/sequential-agents), [parallel](/docs/framework/agents/workflow-agents/parallel-agents), [loop](/docs/framework/agents/workflow-agents/loop-agents)), LangGraph agents handle complex decision trees, conditional flows, and dynamic routing based on content analysis, user preferences, or business rules.
 
 <Callout type="info" title="Advanced Orchestration">
-  - **Power:** Handle complex branching logic and conditional workflows
-  - **Flexibility:** Dynamic routing based on content, context, or business rules
+  - **Power:** Handle complex branching logic and conditional workflows -
+  **Flexibility:** Dynamic routing based on content, context, or business rules
   - **Best for:** Sophisticated processes that require intelligent
   decision-making
 </Callout>
@@ -24,139 +24,225 @@ Here's a customer support system that intelligently routes inquiries based on an
 ```typescript
 import { LlmAgent, LangGraphAgent } from "@iqai/adk";
 
-// Step 1: Analyze incoming inquiry
-const inquiryAnalyzer = new LlmAgent({
-  name: "inquiry-analyzer",
+// Analyze incoming customer inquiry
+const inquiryAnalyzerAgent = new LlmAgent({
+  name: "inquiry_analyzer_agent",
   model: "gemini-2.5-flash",
+  description:
+    "Analyzes customer inquiries to determine category, urgency, and routing",
   instruction: `
     Analyze the customer inquiry and determine:
-    - Category: technical, billing, general, complaint, refund
+    - Category: technical, billing, refund, general, complaint
     - Urgency: low, medium, high, critical
     - Complexity: simple, moderate, complex
     - Sentiment: positive, neutral, negative, angry
-    
-    Output as JSON with these fields.
+
+    Output as JSON with these exact fields: category, urgency, complexity, sentiment.
   `,
-  outputKey: "analysis",
+  outputKey: "inquiry_analysis",
 });
 
-// Specialized handlers for different types
-const technicalSupport = new LlmAgent({
-  name: "technical-support",
+// Specialized support agents
+const technicalSupportAgent = new LlmAgent({
+  name: "technical_support_agent",
   model: "gemini-2.5-flash",
-  instruction:
-    "Handle technical issues with step-by-step troubleshooting guidance.",
+  description: "Handles technical issues with step-by-step troubleshooting",
+  instruction: `
+    Provide technical support for the customer's issue:
+    - Diagnose the technical problem
+    - Provide step-by-step troubleshooting guidance
+    - Offer workarounds or solutions
+    - Escalate to engineering if needed
+
+    Be patient, clear, and technically accurate.
+  `,
   outputKey: "technical_response",
 });
 
-const billingSupport = new LlmAgent({
-  name: "billing-support",
+const billingSupportAgent = new LlmAgent({
+  name: "billing_support_agent",
   model: "gemini-2.5-flash",
-  instruction:
-    "Handle billing inquiries with account-specific information and resolution steps.",
+  description: "Handles billing inquiries and payment issues",
+  instruction: `
+    Handle billing and payment-related inquiries:
+    - Review account charges and billing history
+    - Explain billing policies and charges
+    - Process refunds or adjustments when appropriate
+    - Escalate complex billing disputes
+
+    Be transparent about charges and helpful with resolutions.
+  `,
   outputKey: "billing_response",
 });
 
-const escalationHandler = new LlmAgent({
-  name: "escalation-handler",
+const escalationHandlerAgent = new LlmAgent({
+  name: "escalation_handler_agent",
   model: "gemini-2.5-flash",
-  instruction:
-    "Handle escalated issues requiring human intervention with empathy and next steps.",
+  description: "Handles escalated cases requiring human intervention",
+  instruction: `
+    Handle escalated customer cases with empathy and urgency:
+    - Acknowledge the customer's frustration
+    - Provide immediate relief or compensation if appropriate
+    - Escalate to appropriate internal teams
+    - Provide clear next steps and timelines
+    - Follow up personally on resolution
+
+    Show genuine concern and commitment to resolution.
+  `,
   outputKey: "escalation_response",
 });
 
-const generalSupport = new LlmAgent({
-  name: "general-support",
+const generalSupportAgent = new LlmAgent({
+  name: "general_support_agent",
   model: "gemini-2.5-flash",
-  instruction:
-    "Handle general inquiries with helpful information and guidance.",
+  description: "Handles general inquiries and provides information",
+  instruction: `
+    Provide helpful information and support for general inquiries:
+    - Answer questions about products/services
+    - Provide account information and guidance
+    - Direct to appropriate resources
+    - Offer proactive assistance
+
+    Be friendly, informative, and proactive.
+  `,
   outputKey: "general_response",
 });
 
-// Define the workflow graph with conditional routing
-const supportWorkflow = new LangGraphAgent({
-  name: "customer-support-workflow",
-  description: "Intelligent customer support routing and handling",
+/**
+ * Customer Support Workflow
+ *
+ * Implements the following routing logic:
+ * 1. Analyze Inquiry -> Decision
+ * 2. Decision Branches:
+ *    - Critical/Angry -> Escalation Handler
+ *    - Technical -> Technical Support -> End
+ *    - Billing/Refund -> Billing Support -> Resolved?
+ *      - No -> Escalation Handler -> End
+ *      - Yes -> End
+ *    - General -> General Support -> End
+ */
+const supportWorkflowAgent = new LangGraphAgent({
+  name: "support_workflow_agent",
+  description:
+    "Intelligent customer support routing and handling system using LangGraph for agent orchestration.",
+  rootNode: "analyze",
+  maxSteps: 10,
   nodes: [
     {
-      id: "analyze",
-      agent: inquiryAnalyzer,
-      next: (ctx) => {
-        const analysis = JSON.parse(ctx.session.state.get("analysis", "{}"));
-
-        // Route based on analysis results
-        if (analysis.urgency === "critical" || analysis.sentiment === "angry") {
-          return "escalate";
-        }
-
-        switch (analysis.category) {
-          case "technical":
-            return "technical";
-          case "billing":
-          case "refund":
-            return "billing";
-          default:
-            return "general";
+      name: "analyze",
+      agent: inquiryAnalyzerAgent,
+      targets: ["escalate", "technical", "billing", "general"],
+    },
+    {
+      name: "technical",
+      agent: technicalSupportAgent,
+      condition: (event: any) => {
+        try {
+          // Parse JSON analysis from the previous event
+          const analysis = JSON.parse(
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+          );
+          // Route to technical support if category matches and not critical/angry
+          return (
+            analysis.category === "technical" &&
+            analysis.urgency !== "critical" &&
+            analysis.sentiment !== "angry"
+          );
+        } catch {
+          return false;
         }
       },
     },
     {
-      id: "technical",
-      agent: technicalSupport,
-      next: () => "end",
-    },
-    {
-      id: "billing",
-      agent: billingSupport,
-      next: (ctx) => {
-        // Check if billing issue was resolved
-        const response = ctx.session.state.get("billing_response", "");
-        return response.includes("unresolved") ? "escalate" : "end";
+      name: "billing",
+      agent: billingSupportAgent,
+      targets: ["escalate"], // Can escalate if unresolved
+      condition: (event: any) => {
+        try {
+          // Parse JSON analysis from the previous event
+          const analysis = JSON.parse(
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+          );
+          // Route to billing support if category matches and not critical/angry
+          return (
+            ["billing", "refund"].includes(analysis.category) &&
+            analysis.urgency !== "critical" &&
+            analysis.sentiment !== "angry"
+          );
+        } catch {
+          return false;
+        }
       },
     },
     {
-      id: "escalate",
-      agent: escalationHandler,
-      next: () => "end",
+      name: "escalate",
+      agent: escalationHandlerAgent,
+      condition: (event: any) => {
+        try {
+          // Parse JSON analysis from the previous event
+          const analysis = JSON.parse(
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+          );
+
+          // Escalate if critical, angry, or complaint
+          if (
+            analysis.urgency === "critical" ||
+            analysis.sentiment === "angry" ||
+            analysis.category === "complaint"
+          ) {
+            return true;
+          }
+
+          // Also escalate if billing agent mentions escalation
+          return event.content.toLowerCase().includes("escalate");
+        } catch {
+          return false;
+        }
+      },
     },
     {
-      id: "general",
-      agent: generalSupport,
-      next: () => "end",
+      name: "general",
+      agent: generalSupportAgent,
+      condition: (event: any) => {
+        try {
+          // Parse JSON analysis from the previous event
+          const analysis = JSON.parse(
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+          );
+          // Route to general support if category matches and not critical/angry
+          return (
+            analysis.category === "general" &&
+            analysis.urgency !== "critical" &&
+            analysis.sentiment !== "angry"
+          );
+        } catch {
+          return false;
+        }
+      },
     },
   ],
-  startNode: "analyze",
 });
 
-// Usage: Intelligent routing based on inquiry content
-const result = await supportWorkflow.run({
-  message:
-    "My billing is completely wrong and I'm very frustrated! I need this fixed immediately!",
-});
-// → Routes to escalation due to angry sentiment and billing category
+// Export the main workflow agent for use in other modules
+export { supportWorkflowAgent };
 ```
 
 ### Visual Flow
 
 <Mermaid
   chart="
-flowchart TD
-  Start[Customer Inquiry] --> Analyze[Analyze Inquiry]
-  
-  Analyze --> Decision{Analysis Results}
-  
-  Decision -->|Critical/Angry| Escalate[Escalation Handler]
-  Decision -->|Technical| Tech[Technical Support]
-  Decision -->|Billing/Refund| Billing[Billing Support]
-  Decision -->|General| General[General Support]
-  
-  Billing --> BillingCheck{Resolved?}
-  BillingCheck -->|No| Escalate
-  BillingCheck -->|Yes| End[Complete]
-  
-  Tech --> End
-  Escalate --> End
-  General --> End
+graph TD
+    Start[Customer Inquiry] --> A[Analyze Inquiry]
+    A[Analyze Inquiry] -->|Critical/Angry| B[Escalation Handler]
+    A -->|Technical| C[Technical Support]
+    A -->|Billing/Refund| D[Billing Support]
+    D -->|Not Resolved| B
+    D -->|Resolved| E[End]
+    A -->|General| F[General Support]
+    B --> E
+    C --> E
+    F --> E
+    E[End]
 "
 />
 
@@ -180,14 +266,24 @@ LangGraph agents enable sophisticated workflow orchestration through conditional
 
 **🔀 Conditional Flows**
 
-```typescript
-next: (ctx) => {
-  const analysis = ctx.session.state.get("analysis");
+Conditional flows determine which path the workflow takes based on the results of previous steps. Each node can have a `condition` function that evaluates the current context and returns `true` to execute that node, or routes to alternative targets when conditions aren't met.
 
-  if (analysis.urgency === "critical") return "escalate";
-  if (analysis.category === "technical") return "tech-support";
-  return "general-support";
-};
+```typescript
+// Example: Route based on analysis results
+{
+  name: "technical-support",
+  agent: technicalSupportAgent,
+  condition: (event: any) => {
+    try {
+      const analysis = JSON.parse(event.content);
+      // Execute this node if category is technical and not critical
+      return analysis.category === "technical" &&
+             analysis.urgency !== "critical";
+    } catch {
+      return false;
+    }
+  },
+}
 ```
 
 **📊 State Management**
@@ -202,72 +298,6 @@ next: (ctx) => {
   - **Plan thoroughly:** Map out all possible paths before implementation
   - **Handle edge cases:** Always have fallback routes for unexpected conditions
 </Callout>
-
-## Advanced Patterns
-
-### Multi-Stage Decision Trees
-
-```typescript
-const nodes = [
-  {
-    id: "initial-triage",
-    agent: triageAgent,
-    next: (ctx) => {
-      const triage = ctx.session.state.get("triage");
-      return triage.requiresHuman ? "human-review" : "automated-processing";
-    },
-  },
-  {
-    id: "automated-processing",
-    agent: automatedProcessor,
-    next: (ctx) => {
-      const result = ctx.session.state.get("automated_result");
-      return result.confidence > 0.9 ? "finalize" : "human-review";
-    },
-  },
-  {
-    id: "human-review",
-    agent: humanReviewAgent,
-    next: () => "finalize",
-  },
-  {
-    id: "finalize",
-    agent: finalizationAgent,
-    next: () => "end",
-  },
-];
-```
-
-### Loop Within Graph
-
-```typescript
-{
-  id: "quality-check",
-  agent: qualityAssessor,
-  next: (ctx) => {
-    const quality = ctx.session.state.get("quality_score");
-    const attempts = ctx.session.state.get("improvement_attempts", 0);
-
-    if (quality >= 8) return "approve";
-    if (attempts >= 3) return "escalate";
-    return "improve"; // Loop back for another improvement cycle
-  }
-}
-```
-
-### Parallel Processing Integration
-
-```typescript
-{
-  id: "parallel-analysis",
-  agent: parallelAnalysisAgent, // This could be a ParallelAgent
-  next: (ctx) => {
-    const results = ctx.session.state.get("parallel_results");
-    const consensus = analyzeConsensus(results);
-    return consensus.agreement > 0.8 ? "proceed" : "additional-review";
-  }
-}
-```
 
 ## Real-World Use Cases
 
@@ -293,8 +323,7 @@ Transaction Analysis → Risk Scoring → Investigation Routing → Evidence Gat
 
 <Callout type="success" title="Perfect for Complex Decision Trees">
   - **Use when:** You need sophisticated branching logic and conditional
-  workflows
-  - **Benefit:** Handle complex processes that simple linear or
+  workflows - **Benefit:** Handle complex processes that simple linear or
   parallel patterns can't address
 </Callout>
 
@@ -315,67 +344,157 @@ Transaction Analysis → Risk Scoring → Investigation Routing → Evidence Gat
 - Workflow complexity outweighs the benefits
 - Debugging and maintenance overhead is too high
 
+## Advanced Patterns
+
+### Multi-Stage Decision Trees
+
+Build complex workflows with multiple evaluation points and conditional routing based on accumulated results. Use when you need sophisticated decision trees that adapt based on intermediate outcomes, such as triage systems that require multiple assessment stages before final resolution.
+
+```typescript
+const multiStageWorkflow = new LangGraphAgent({
+  name: "multi_stage_workflow",
+  description: "Multi-stage decision tree with triage and processing phases",
+  rootNode: "initial-triage",
+  maxSteps: 10,
+  nodes: [
+    {
+      name: "initial-triage",
+      agent: triageAgent,
+      targets: ["automated-processing", "human-review"],
+    },
+    {
+      name: "automated-processing",
+      agent: automatedProcessor,
+      targets: ["finalize", "human-review"],
+      condition: (event: any) => {
+        // Route based on confidence score
+        const result = JSON.parse(event.content);
+        return result.confidence > 0.9;
+      },
+    },
+    {
+      name: "human-review",
+      agent: humanReviewAgent,
+      targets: ["finalize"],
+    },
+    {
+      name: "finalize",
+      agent: finalizationAgent,
+    },
+  ],
+});
+```
+
+### Loop Within Graph
+
+Create iterative workflows that can repeat processing steps until conditions are met. Use for quality assurance, iterative improvement, or validation loops where work needs to be refined through multiple cycles before completion.
+
+```typescript
+const iterativeWorkflow = new LangGraphAgent({
+  name: "iterative_workflow",
+  description: "Quality improvement loop with maximum attempts",
+  rootNode: "process",
+  maxSteps: 15, // Allow more steps for iterations
+  nodes: [
+    {
+      name: "process",
+      agent: contentProcessor,
+      targets: ["quality-check"],
+    },
+    {
+      name: "quality-check",
+      agent: qualityAssessor,
+      targets: ["approve", "improve", "escalate"],
+      condition: (event: any) => {
+        const quality = JSON.parse(event.content);
+        const attempts =
+          event.session?.state?.get("improvement_attempts", 0) || 0;
+
+        if (quality.score >= 8) return true; // Approve
+        if (attempts >= 3) return false; // Escalate (condition false means try next target)
+        return false; // Improve (loop back)
+      },
+    },
+    {
+      name: "improve",
+      agent: improvementAgent,
+      targets: ["process"], // Loop back to process
+    },
+    {
+      name: "approve",
+      agent: approvalAgent,
+    },
+    {
+      name: "escalate",
+      agent: escalationAgent,
+    },
+  ],
+});
+```
+
+### Parallel Processing Integration
+
+Integrate parallel processing capabilities within graph workflows to handle concurrent tasks. Use when you need to combine the benefits of parallel execution with conditional routing, such as consensus-based decision making or multi-perspective analysis.
+
+```typescript
+const parallelIntegratedWorkflow = new LangGraphAgent({
+  name: "parallel_integrated_workflow",
+  description: "Workflow integrating parallel analysis for consensus decisions",
+  rootNode: "parallel-analysis",
+  maxSteps: 8,
+  nodes: [
+    {
+      name: "parallel-analysis",
+      agent: parallelAnalysisAgent, // ParallelAgent handling concurrent tasks
+      targets: ["proceed", "additional-review"],
+      condition: (event: any) => {
+        const results = JSON.parse(event.content);
+        const consensus = analyzeConsensus(results);
+        return consensus.agreement > 0.8; // Proceed if high agreement
+      },
+    },
+    {
+      name: "proceed",
+      agent: nextStepAgent,
+    },
+    {
+      name: "additional-review",
+      agent: reviewAgent,
+    },
+  ],
+});
+```
+
 ## Design Best Practices
 
-### 1. Start with Flow Mapping
+### Design Principles
 
-```
-Before coding, map out:
-- All possible entry points
-- Decision criteria at each branch
-- All possible exit conditions
-- Error handling and fallback paths
-```
+**Start Simple:** Begin with basic routing logic and add complexity gradually. Map out all possible paths before implementation to avoid unexpected edge cases and ensure comprehensive coverage.
 
-### 2. Keep Nodes Focused
+**Keep Nodes Focused:** Design each node with a single, clear responsibility. A routing node should only handle decision logic, while processing nodes focus solely on their specific tasks. This separation improves maintainability and testing.
 
-```typescript
-// Good: Single responsibility
-const riskAssessor = new LlmAgent({
-  instruction: "Assess financial risk only",
-});
+**Handle Edge Cases:** Always provide fallback routes for unexpected conditions and malformed data. Include error handling nodes and default paths to ensure your graph can reach a terminal state under all circumstances.
 
-// Avoid: Multiple responsibilities
-const everythingAgent = new LlmAgent({
-  instruction: "Assess risk, make decisions, and format output",
-});
-```
+**Test Thoroughly:** Validate every possible execution path through your graph with real data. Test both expected scenarios and edge cases to ensure robust error handling and predictable behavior.
 
-### 3. Handle Edge Cases
+### Communication Patterns
 
-```typescript
-next: (ctx) => {
-  const analysis = ctx.session.state.get("analysis");
+**State Management:** Use descriptive, unique state keys and document data flow between nodes. Clear state contracts prevent conflicts and make debugging easier when nodes don't receive expected data.
 
-  // Always handle missing or malformed data
-  if (!analysis) return "error-handler";
+**Progress Feedback:** Provide meaningful progress updates during execution. Users need visibility into long-running workflows, especially those with multiple decision points and processing stages.
 
-  // Provide fallback for unexpected values
-  switch (analysis.category) {
-    case "technical":
-      return "tech-support";
-    case "billing":
-      return "billing-support";
-    default:
-      return "general-support"; // Fallback
-  }
-};
-```
+### Development Tips
 
-### 4. Test All Paths
+**Flow Mapping:** Plan your graph structure thoroughly before coding. Identify all entry points, decision criteria, and exit conditions to create a comprehensive workflow design.
 
-```
-Ensure every possible route through your graph:
-- Has been tested with real data
-- Handles expected and edge case scenarios
-- Has appropriate error handling
-- Can reach a terminal state
-```
+**Documentation:** Document complex routing logic and state dependencies. Clear documentation is essential for maintaining and debugging sophisticated graph workflows.
+
+**Complexity Awareness:** Be mindful of debugging challenges with complex graphs. Start with simpler patterns and gradually add sophistication as you understand the interaction patterns.
 
 <Callout type="warn" title="Graph Complexity Warning">
-  - **Start simple:** Complex graphs are hard to debug and maintain
-  - **Document thoroughly:** Clear documentation is crucial for complex flows
-  - **Test extensively:** Every path and edge case should be tested
+  - **Start simple:** Complex graphs are hard to debug and maintain - **Document
+  thoroughly:** Clear documentation is crucial for complex flows - **Test
+  extensively:** Every path and edge case should be tested
 </Callout>
 
 ## Related Topics
@@ -396,13 +515,11 @@ Ensure every possible route through your graph:
     description="Can be used as nodes for iterative processing within graphs"
     href="/docs/framework/agents/workflow-agents/loop-agents"
   />
-  
   <Card
     title="🏗️ Agent Builder"
     description="Fluent API for creating LangGraph workflows with asLangGraph()"
     href="/docs/framework/agents/agent-builder"
   />
-
   <Card
     title="🤖 LLM Agents"
     description="Individual agents that serve as nodes in LangGraph workflows"

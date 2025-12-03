@@ -57,7 +57,9 @@ const v0 = await ctx.loadArtifact('document.txt', 0);
 const latestDoc = await ctx.loadArtifact('document.txt');
 ```
 
-To list versions, call the underlying service (if you hold a reference). Contexts do not expose version listing.
+### Listing Versions
+
+The `listVersions` method (on the service, not context) can be used to find all existing version numbers for an artifact. Contexts do not expose version listing.
 
 ```typescript
 import { InMemoryArtifactService } from '@iqai/adk';
@@ -73,9 +75,22 @@ const versions = await artifactService.listVersions({
 // e.g., [0, 1, 2]
 ```
 
-Deletion removes all versions of a filename in the current scope.
+## Deletion
+
+Deletion removes all versions of a filename in the current scope. The `deleteArtifact` method permanently removes the artifact and all its versions.
+
+<Callout type="warning" title="Direct Service Access Required">
+The `deleteArtifact` method is not available through `CallbackContext` or `ToolContext` for safety reasons. You must access it directly through the artifact service instance.
+</Callout>
+
+### Basic Deletion
 
 ```typescript
+import { InMemoryArtifactService } from '@iqai/adk';
+
+const artifactService = new InMemoryArtifactService();
+
+// Delete an artifact (removes all versions)
 await artifactService.deleteArtifact({
   appName: 'my_app',
   userId: 'u1',
@@ -83,5 +98,14 @@ await artifactService.deleteArtifact({
   filename: 'document.txt'
 });
 ```
+
+### Deletion Behavior
+
+- **All Versions Removed**: Deletion removes all versions of the artifact, not just the latest
+- **Scope-Aware**: Deletion respects the artifact's scope (session or user namespace)
+- **Irreversible**: Once deleted, artifacts cannot be recovered (unless you have backups)
+- **No Context Access**: Must be called directly on the artifact service, not through contexts
+
+
 
 

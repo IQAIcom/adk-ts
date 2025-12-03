@@ -1,8 +1,8 @@
-import type { TsConfigPaths } from "../agent-loader.types";
-import { TsConfigSchema } from "../agent-loader.types";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Logger } from "@nestjs/common";
+import type { TsConfigPaths } from "../agent-loader.types";
+import { TsConfigSchema } from "../agent-loader.types";
 
 export function parseTsConfigPaths(
 	projectRoot: string,

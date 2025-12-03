@@ -1,7 +1,7 @@
 export { FunctionTool } from "./function-tool";
 export {
-	buildFunctionDeclaration,
 	type BuildFunctionDeclarationOptions,
+	buildFunctionDeclaration,
 } from "./function-utils";
 
 /**

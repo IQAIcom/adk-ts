@@ -156,7 +156,10 @@ export function ViewOptions(props: { markdownUrl: string; githubUrl: string }) {
 					>
 						{item.icon}
 						{item.title}
-						<ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
+						<ExternalLinkIcon
+							className="text-fd-muted-foreground size-3.5 ms-auto"
+							aria-label={`Open ${item.title}`}
+						/>
 					</a>
 				))}
 			</PopoverContent>

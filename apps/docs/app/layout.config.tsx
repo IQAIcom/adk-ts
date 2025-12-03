@@ -17,4 +17,16 @@ export const baseOptions: BaseLayoutProps = {
 		),
 	},
 	githubUrl: "https://github.com/IQAICOM/adk-ts",
+	links: [
+		{
+			text: "Documentation",
+			url: "/docs",
+			active: "nested-url",
+		},
+		{
+			text: "Showcase",
+			url: "/showcase",
+			active: "nested-url",
+		},
+	],
 };

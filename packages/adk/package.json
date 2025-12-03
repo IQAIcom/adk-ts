@@ -1,6 +1,6 @@
 {
 	"name": "@iqai/adk",
-	"version": "0.5.6",
+	"version": "0.5.7",
 	"description": "Agent Development Kit for TypeScript with multi-provider LLM support",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -35,7 +35,7 @@
 		"@google-cloud/storage": "^7.17.0",
 		"@google-cloud/vertexai": "^1.10.0",
 		"@google/genai": "^1.19.0",
-		"@modelcontextprotocol/sdk": "^1.17.5",
+		"@modelcontextprotocol/sdk": "^1.23.0",
 		"@opentelemetry/api": "^1.9.0",
 		"@opentelemetry/auto-instrumentations-node": "^0.63.0",
 		"@opentelemetry/exporter-trace-otlp-http": "^0.204.0",

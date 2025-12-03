@@ -2,12 +2,11 @@ import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "node:util";
-import type { BaseAgent, BuiltAgent } from "@iqai/adk";
+import type { BuiltAgent } from "@iqai/adk";
 import { FullMessage, InMemorySessionService } from "@iqai/adk";
 import { Injectable, Logger } from "@nestjs/common";
-import type { Agent, ContentPart, LoadedAgent } from "../../common/types";
+import type { Agent, LoadedAgent } from "../../common/types";
 import { AgentLoader } from "./agent-loader.service";
-import type { ModuleExport, SessionState } from "./agent-loader.types";
 import {
 	clearAgentSessions as clearAgentSessionsHelper,
 	createRunnerWithSession as createRunnerWithSessionHelper,
@@ -19,6 +18,8 @@ import {
 import { extractInitialState as extractInitialStateHelper } from "./agent-manager/state";
 import { AgentScanner } from "./agent-scanner.service";
 
+const _DEFAULT_APP_NAME = "adk-server";
+const _USER_ID_PREFIX = "user_";
 @Injectable()
 export class AgentManager {
 	private agents = new Map<string, Agent>();
@@ -144,12 +145,15 @@ export class AgentManager {
 			return { session: sessionIdToUse };
 		} catch (error) {
 			const agentName = agent?.name ?? agentPath;
-			this.logger.error(
-				`Failed to load agent "${agentName}": ${error instanceof Error ? error.message : String(error)}`,
-			);
-			throw new Error(
-				`Failed to load agent: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			const message = error instanceof Error ? error.message : String(error);
+
+			// log without stack
+			this.logger.error(`Failed to load agent "${agentName}": ${message}`);
+
+			// rethrow without stack
+			const cleanError = new Error(`Failed to load agent: ${message}`);
+			cleanError.stack = undefined;
+			throw cleanError;
 		}
 	}
 
@@ -166,40 +170,34 @@ export class AgentManager {
 		return agent;
 	}
 
-	private async loadAgentModule(
-		agent: Agent,
-		forceInvalidateCache?: boolean,
-	): Promise<{ agent: BaseAgent; builtAgent?: BuiltAgent }> {
+	private async loadAgentModule(agent: Agent, forceInvalidateCache?: boolean) {
 		// Try both .js and .ts files, prioritizing .js if it exists
 		// Normalize paths for cross-platform compatibility
 		let agentFilePath = normalize(join(agent.absolutePath, "agent.js"));
 		if (!existsSync(agentFilePath)) {
 			agentFilePath = normalize(join(agent.absolutePath, "agent.ts"));
 		}
-
 		if (!existsSync(agentFilePath)) {
 			throw new Error(
 				`No agent.js or agent.ts file found in ${agent.absolutePath}`,
 			);
 		}
 
-		// Load environment variables from the project directory before importing
 		this.loader.loadEnvironmentVariables(agentFilePath);
-
 		const agentFileUrl = pathToFileURL(agentFilePath).href;
 
 		// Use dynamic import to load the agent
 		// For TS files, pass the project root to avoid redundant project root discovery
-		const agentModule: ModuleExport = agentFilePath.endsWith(".ts")
+		const agentModule: any = agentFilePath.endsWith(".ts")
 			? await this.loader.importTypeScriptFile(
 					agentFilePath,
 					agent.projectRoot,
 					forceInvalidateCache,
 				)
-			: ((await import(agentFileUrl)) as ModuleExport);
+			: ((await import(agentFileUrl)) as any);
 
 		const agentResult = await this.loader.resolveAgentExport(
-			agentModule as ModuleExport,
+			agentModule as any,
 		);
 
 		// Validate basic shape
@@ -214,9 +212,7 @@ export class AgentManager {
 	}
 
 	async stopAgent(agentPath: string): Promise<void> {
-		// Deprecated: explicit stop not needed; keep method no-op for backward compatibility
 		this.loadedAgents.delete(agentPath);
-		this.builtAgents.delete(agentPath);
 		const agent = this.agents.get(agentPath);
 		if (agent) {
 			agent.instance = undefined;
@@ -228,7 +224,6 @@ export class AgentManager {
 		message: string,
 		attachments?: Array<{ name: string; mimeType: string; data: string }>,
 	): Promise<string> {
-		// Auto-start the agent if it's not already running
 		if (!this.loadedAgents.has(agentPath)) {
 			await this.startAgent(agentPath);
 		}
@@ -239,7 +234,6 @@ export class AgentManager {
 		}
 
 		try {
-			// Build FullMessage (text + optional attachments)
 			const fullMessage: FullMessage = {
 				parts: [
 					{ text: message },
@@ -249,24 +243,26 @@ export class AgentManager {
 				],
 			};
 
-			// Always run against the CURRENT loadedAgent.sessionId (switchable)
 			let accumulated = "";
 			for await (const event of loadedAgent.runner.runAsync({
 				userId: loadedAgent.userId,
 				sessionId: loadedAgent.sessionId,
 				newMessage: fullMessage,
 			})) {
-				const parts = (event?.content?.parts || []) as ContentPart[];
-				accumulated += parts.map((p) => (p?.text ? p.text : "")).join("");
+				const parts = event?.content?.parts;
+				if (Array.isArray(parts)) {
+					accumulated += parts
+						.map((p: any) =>
+							p && typeof p === "object" && "text" in p ? p.text : "",
+						)
+						.join("");
+				}
 			}
 			return accumulated.trim();
 		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(
-				`Error sending message to agent ${agentPath}: ${errorMessage}`,
-			);
-			throw new Error(`Failed to send message to agent: ${errorMessage}`);
+			const msg = error instanceof Error ? error.message : String(error);
+			this.logger.error(`Error sending message to agent ${agentPath}: ${msg}`);
+			throw new Error(`Failed to send message to agent: ${msg}`);
 		}
 	}
 
@@ -274,7 +270,7 @@ export class AgentManager {
 	 * Get initial state for an agent path
 	 * Public method that can be called by other services
 	 */
-	getInitialStateForAgent(agentPath: string): SessionState | undefined {
+	getInitialStateForAgent(agentPath: string) {
 		const agent = this.agents.get(agentPath);
 		if (!agent) {
 			return undefined;
@@ -294,10 +290,7 @@ export class AgentManager {
 	/**
 	 * Extract initial state from an agent result
 	 */
-	private extractInitialState(agentResult: {
-		agent: BaseAgent;
-		builtAgent?: BuiltAgent;
-	}): SessionState | undefined {
+	private extractInitialState(agentResult: { agent: any; builtAgent?: any }) {
 		return extractInitialStateHelper(agentResult, this.logger);
 	}
 
@@ -360,6 +353,5 @@ export class AgentManager {
 		for (const [agentPath] of Array.from(this.loadedAgents.entries())) {
 			this.stopAgent(agentPath);
 		}
-		this.builtAgents.clear();
 	}
 }

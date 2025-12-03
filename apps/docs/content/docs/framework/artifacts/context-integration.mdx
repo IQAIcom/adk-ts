@@ -31,6 +31,10 @@ class CallbackContext {
 }
 ```
 
+<Callout type="info" title="Artifact Deletion">
+The `deleteArtifact` method is not exposed through `CallbackContext` or `ToolContext` for safety reasons. To delete artifacts, access the artifact service directly. See [Best Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion) for cleanup strategies.
+</Callout>
+
 ### Basic Usage in Callbacks
 
 ```typescript
@@ -180,6 +184,10 @@ class ToolContext extends CallbackContext {
   async listArtifacts(): Promise<string[]>
 }
 ```
+
+<Callout type="info" title="Artifact Deletion">
+The `deleteArtifact` method is not exposed through `ToolContext` for safety reasons. To delete artifacts, access the artifact service directly. See [Best Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion) for cleanup strategies.
+</Callout>
 
 ### File Processing Tools
 

@@ -8,6 +8,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import z from "zod";
 import { environmentEnum, envSchema } from "../common/schema";
 import { HttpModule } from "./http.module";
+import { PrettyErrorFilter } from "./filters/pretty-error.filter";
 import { AgentManager } from "./providers/agent-manager.service";
 import { DIRECTORIES_TO_SKIP } from "./providers/agent-scanner.service";
 import { HotReloadService } from "./reload/hot-reload.service";
@@ -219,6 +220,12 @@ export async function startHttpServer(
 		},
 	);
 
+	// Apply global exception filter for pretty error formatting
+	const showStackTraces =
+		process.env.ADK_DEBUG_NEST === "1" || process.env.NODE_ENV !== "production";
+	app.useGlobalFilters(new PrettyErrorFilter(showStackTraces));
+
+	// CORS parity with previous Hono app.use("/*", cors())
 	app.enableCors({
 		origin: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

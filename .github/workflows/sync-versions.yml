@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,6 +27,9 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
+      - name: Install dependencies
+        run: pnpm install
+
       - name: Run version sync
         run: pnpm sync-versions
 
@@ -37,6 +41,7 @@ jobs:
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
+
       - name: Commit and push changes
         if: steps.changes.outputs.has_changes == 'true'
         run: |

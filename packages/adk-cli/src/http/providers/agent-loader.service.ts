@@ -1,95 +1,102 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, rmSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, statSync, unlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, normalize, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Injectable, Logger } from "@nestjs/common";
 import { findProjectRoot } from "../../common/find-project-root";
-import {
-	isRebuildNeeded as checkRebuildNeeded,
-	createExternalizePlugin,
-} from "./agent-loader/build-utils";
-import { loadEnvironmentVariables as loadEnv } from "./agent-loader/env";
-import { createPathMappingPlugin } from "./agent-loader/path-plugin";
-import { resolveAgentExport as resolveAgentExportHelper } from "./agent-loader/resolver";
-import { normalizePathForEsbuild } from "./agent-loader/utils";
-import type {
-	AgentExportResult,
-	ModuleExport,
-	RequireLike,
-} from "./agent-loader.types";
-
-const ADK_CACHE_DIR = ".adk-cache";
+import { AgentResolver } from "./agent-loader/agent-resolver";
+import { CACHE_DIR, CacheUtils } from "./agent-loader/cache-utils";
+import { EnvUtils } from "./agent-loader/env-utils";
+import { ErrorHandlingUtils } from "./agent-loader/error-handling-utils";
+import { PathUtils } from "./agent-loader/path-utils";
+import { TypeGuards } from "./agent-loader/type-guards";
+import type { AgentExportResult, ModuleExport } from "./agent-loader.types";
 
 @Injectable()
 export class AgentLoader {
 	private logger: Logger;
 	private static cacheCleanupRegistered = false;
+	private readonly cacheUtils: CacheUtils;
+	private readonly envUtils: EnvUtils;
+	private readonly pathUtils: PathUtils;
+	private readonly errorUtils: ErrorHandlingUtils;
+	private readonly guards: TypeGuards;
+	private readonly resolver: AgentResolver;
 	private static activeCacheFiles = new Set<string>();
 	private static projectRoots = new Set<string>();
 
 	constructor(private quiet = false) {
 		this.logger = new Logger("agent-loader");
 		this.registerCleanupHandlers();
+
+		this.cacheUtils = new CacheUtils(this.logger, this.quiet);
+		this.envUtils = new EnvUtils(this.logger, this.quiet);
+		this.pathUtils = new PathUtils(this.logger, this.quiet);
+		this.errorUtils = new ErrorHandlingUtils(this.logger);
+		this.guards = new TypeGuards();
+		this.resolver = new AgentResolver(this.logger, this.quiet, this.guards);
 	}
 
-	/**
-	 * Register error handlers (no automatic cache cleanup)
-	 */
 	private registerCleanupHandlers(): void {
-		if (AgentLoader.cacheCleanupRegistered) {
-			return;
-		}
+		if (AgentLoader.cacheCleanupRegistered) return;
 		AgentLoader.cacheCleanupRegistered = true;
 
 		process.on("uncaughtException", (error) => {
 			this.logger.error("Uncaught exception:", error);
 			process.exit(1);
 		});
-
 		process.on("unhandledRejection", (reason, promise) => {
 			this.logger.error("Unhandled rejection at:", promise, "reason:", reason);
 			process.exit(1);
 		});
 	}
 
-	/**
-	 * Clean up all cache files from all project roots
-	 * (manual or test/debug use only)
-	 */
 	static cleanupAllCacheFiles(logger?: Logger, quiet = false): void {
-		try {
-			// Clean individual tracked files first
-			for (const filePath of AgentLoader.activeCacheFiles) {
-				try {
-					if (existsSync(filePath)) {
-						unlinkSync(filePath);
-					}
-				} catch {}
-			}
-			AgentLoader.activeCacheFiles.clear();
+		CacheUtils.cleanupAllCacheFiles(logger, quiet);
+	}
 
-			// Clean entire cache directories
-			for (const projectRoot of AgentLoader.projectRoots) {
-				const cacheDir = join(projectRoot, ADK_CACHE_DIR);
-				try {
-					if (existsSync(cacheDir)) {
-						rmSync(cacheDir, { recursive: true, force: true });
-						if (!quiet) {
-							logger?.log(`Cleaned cache directory: ${cacheDir}`);
-						}
-					}
-				} catch (error) {
-					if (!quiet) {
-						logger?.warn(`Failed to clean cache directory ${cacheDir}:`, error);
-					}
-				}
+	loadEnvironmentVariables(agentFilePath: string): void {
+		this.envUtils.loadEnvironmentVariables(agentFilePath);
+	}
+
+	/**
+	 * Check if a rebuild is needed based on file modification times
+	 */
+	private isRebuildNeeded(
+		outFile: string,
+		sourceFile: string,
+		tsconfigPath: string,
+	): boolean {
+		if (!existsSync(outFile)) {
+			return true;
+		}
+
+		try {
+			const outStat = statSync(outFile);
+			const srcStat = statSync(sourceFile);
+			const tsconfigMtime = existsSync(tsconfigPath)
+				? statSync(tsconfigPath).mtimeMs
+				: 0;
+
+			const needRebuild = !(
+				outStat.mtimeMs >= srcStat.mtimeMs && outStat.mtimeMs >= tsconfigMtime
+			);
+
+			if (!needRebuild && !this.quiet) {
+				this.logger.debug(`Reusing cached build: ${outFile}`);
 			}
-			AgentLoader.projectRoots.clear();
+
+			return needRebuild;
 		} catch (error) {
-			if (!quiet) {
-				logger?.warn("Error during cache cleanup:", error);
+			if (!this.quiet) {
+				this.logger.warn(
+					`Failed to check cache freshness for ${outFile}: ${
+						error instanceof Error ? error.message : String(error)
+					}. Forcing rebuild.`,
+				);
 			}
+			return true;
 		}
 	}
 
@@ -119,7 +126,6 @@ export class AgentLoader {
 		providedProjectRoot?: string,
 		forceInvalidateCache?: boolean,
 	): Promise<ModuleExport> {
-		// Normalize the input file path
 		const normalizedFilePath = normalize(resolve(filePath));
 		const projectRoot =
 			providedProjectRoot ?? findProjectRoot(dirname(normalizedFilePath));
@@ -132,52 +138,37 @@ export class AgentLoader {
 
 		try {
 			const { build } = await import("esbuild");
-			const cacheDir = join(projectRoot, ADK_CACHE_DIR);
+			const cacheDir = join(projectRoot, CACHE_DIR);
 			if (!existsSync(cacheDir)) {
 				mkdirSync(cacheDir, { recursive: true });
 			}
 
-			// Deterministic cache file path per source file to avoid unbounded cache growth
+			// Deterministic cache file path per source file
 			const cacheKey = createHash("sha1")
-				.update(this.normalizePath(normalizedFilePath))
+				.update(this.pathUtils.normalizePath(normalizedFilePath))
 				.digest("hex");
 			const outFile = normalize(join(cacheDir, `agent-${cacheKey}.cjs`));
-			this.trackCacheFile(outFile, projectRoot);
+			this.cacheUtils.trackCacheFile(outFile, projectRoot);
 
-			// Define tsconfigPath once for reuse
 			const tsconfigPath = join(projectRoot, "tsconfig.json");
 
 			// Check if we need to rebuild
 			// Force rebuild if explicitly requested (e.g., initial state changed)
 			const needRebuild =
 				forceInvalidateCache ||
-				checkRebuildNeeded(
-					outFile,
-					normalizedFilePath,
-					tsconfigPath,
-					this.logger,
-					this.quiet,
-				);
+				this.isRebuildNeeded(outFile, normalizedFilePath, tsconfigPath);
 
 			if (forceInvalidateCache && !this.quiet) {
 				this.logger.log(`Forcing cache invalidation for ${normalizedFilePath}`);
 			}
 
-			const ALWAYS_EXTERNAL_SCOPES = ["@iqai/"];
-			const alwaysExternal = ["@iqai/adk"];
-			const plugin = createExternalizePlugin(
-				alwaysExternal,
-				ALWAYS_EXTERNAL_SCOPES,
-			);
-
-			const pathMappingPlugin = createPathMappingPlugin(projectRoot, {
-				logger: this.logger,
-				quiet: this.quiet,
-			});
-			const plugins = [pathMappingPlugin, plugin];
+			const plugins = [
+				this.pathUtils.createPathMappingPlugin(projectRoot),
+				this.pathUtils.createExternalizePlugin(),
+			];
 
 			if (needRebuild) {
-				// Delete old cache file before rebuilding to avoid stale cache on build failure
+				// Delete old cache file before rebuilding
 				try {
 					if (existsSync(outFile)) {
 						unlinkSync(outFile);
@@ -196,7 +187,7 @@ export class AgentLoader {
 				}
 
 				await build({
-					entryPoints: [normalizePathForEsbuild(normalizedFilePath)],
+					entryPoints: [this.pathUtils.normalizePath(normalizedFilePath)],
 					outfile: outFile,
 					bundle: true,
 					format: "cjs",
@@ -206,20 +197,21 @@ export class AgentLoader {
 					logLevel: "silent",
 					plugins,
 					absWorkingDir: projectRoot,
-					external: [...alwaysExternal],
+					external: ["@iqai/adk"],
 					...(existsSync(tsconfigPath) ? { tsconfig: tsconfigPath } : {}),
 				});
 			}
 
-			const dynamicRequire = createRequire(outFile) as RequireLike;
-			// Bust require cache if we rebuilt the same outFile path
+			const dynamicRequire = createRequire(outFile);
+
+			// Bust require cache if we rebuilt
 			try {
 				if (needRebuild) {
-					const resolved = dynamicRequire.resolve
-						? dynamicRequire.resolve(outFile)
+					const resolved = (dynamicRequire as any).resolve
+						? (dynamicRequire as any).resolve(outFile)
 						: outFile;
-					if (dynamicRequire.cache?.[resolved]) {
-						delete dynamicRequire.cache[resolved];
+					if ((dynamicRequire as any).cache?.[resolved]) {
+						delete (dynamicRequire as any).cache[resolved];
 					}
 				}
 			} catch (error) {
@@ -233,6 +225,7 @@ export class AgentLoader {
 			}
 
 			let mod: ModuleExport;
+
 			try {
 				mod = dynamicRequire(outFile) as ModuleExport;
 			} catch (loadErr) {
@@ -244,63 +237,48 @@ export class AgentLoader {
 				try {
 					mod = (await import(pathToFileURL(outFile).href)) as ModuleExport;
 				} catch (fallbackErr) {
-					throw new Error(
-						`Both require() and import() failed for built agent file '${outFile}': ${
-							fallbackErr instanceof Error
-								? fallbackErr.message
-								: String(fallbackErr)
-						}`,
+					// Handle env-related import errors
+					mod = await this.errorUtils.handleImportError(
+						fallbackErr,
+						outFile,
+						projectRoot,
 					);
 				}
 			}
 
-			let agentExport = mod.agent;
-			if (!agentExport && mod.default) {
-				const defaultExport = mod.default;
-				if (
-					defaultExport &&
-					typeof defaultExport === "object" &&
-					"agent" in defaultExport
-				) {
-					const defaultObj = defaultExport as ModuleExport;
-					agentExport = defaultObj.agent ?? defaultExport;
-				} else {
-					agentExport = defaultExport;
-				}
-			}
-
-			if (agentExport) {
-				const isPrimitive = (
-					v: unknown,
-				): v is null | undefined | string | number | boolean =>
-					v == null || ["string", "number", "boolean"].includes(typeof v);
-				if (!isPrimitive(agentExport)) {
-					this.logger.log(
-						`TS agent imported via esbuild: ${normalizedFilePath} ✅`,
-					);
-					return { agent: agentExport as unknown };
-				}
-				this.logger.log(
-					`Ignoring primitive 'agent' export in ${normalizedFilePath}; scanning module for factory...`,
-				);
-			}
+			this.logger.log(
+				`TS agent imported via esbuild: ${normalizedFilePath} ✅`,
+			);
 			return mod;
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
+
+			const envCheck = this.errorUtils.isMissingEnvError(e);
+			if (!envCheck.isMissing) {
+				if ("formatUserError" in this.errorUtils) {
+					this.logger.error(this.errorUtils.formatUserError(e));
+				} else {
+					this.logger.error(`❌ Error loading TypeScript agent: ${msg}`);
+				}
+			}
+
 			if (/Cannot find module/.test(msg)) {
 				this.logger.error(
-					`Module resolution failed while loading agent file '${normalizedFilePath}'.\n> ${msg}\nThis usually means the dependency is declared in a parent workspace package (e.g. @iqai/adk) and got externalized,\nbut is not installed in the agent project's own node_modules (common with PNPM isolated hoisting).\nFix: add it to the agent project's package.json or run: pnpm add <missing-pkg> -F <agent-workspace>.`,
+					`Module resolution failed while loading agent file '${filePath}'.\n> ${msg}\n` +
+						"This usually means the dependency is declared in a parent workspace package and got externalized,\n" +
+						"but is not installed in the agent project's own node_modules.\n" +
+						"Fix: add it to the agent project's package.json or run: pnpm add <missing-pkg> -F <agent-workspace>.",
 				);
 			}
+
 			throw new Error(`Failed to import TS agent via esbuild: ${msg}`);
 		}
 	}
 
-	loadEnvironmentVariables(agentFilePath: string): void {
-		loadEnv(agentFilePath, this.logger);
-	}
-
 	async resolveAgentExport(mod: ModuleExport): Promise<AgentExportResult> {
-		return resolveAgentExportHelper(mod);
+		const agent = await this.resolver.resolveAgentExport(
+			mod as unknown as Record<string, unknown>,
+		);
+		return { agent };
 	}
 }
