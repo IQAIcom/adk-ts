@@ -82,7 +82,10 @@ export class AiSdkLlm extends BaseLlm {
 			const systemMessage = request.getSystemInstructionText();
 			const tools = this.convertToAiSdkTools(request);
 
-			const requestParams: any = {
+			// Build the common request object and assert it's one of the inferred types.
+			// We add providerOptions later (some inferred shapes may not expose it publicly),
+			// so assert a writable extension when attaching providerOptions.
+			const requestParams = {
 				model: this.modelInstance,
 				messages,
 				system: systemMessage,
@@ -90,16 +93,16 @@ export class AiSdkLlm extends BaseLlm {
 				maxTokens: request.config?.maxOutputTokens,
 				temperature: request.config?.temperature,
 				topP: request.config?.topP,
-			};
+			} as AiSdkRequest & { providerOptions?: unknown };
 
-			// Add cache-related options for explicit caching
+			// Add cache-related options for explicit caching (provider-specific)
 			const providerOptions = this.prepareCacheOptions(request);
 			if (providerOptions) {
 				requestParams.providerOptions = providerOptions;
 			}
 
 			if (stream) {
-				const result = streamText(requestParams);
+				const result = streamText(requestParams as StreamParams);
 
 				let accumulatedText = "";
 
@@ -157,7 +160,7 @@ export class AiSdkLlm extends BaseLlm {
 					cacheMetadata,
 				});
 			} else {
-				const result = await generateText(requestParams);
+				const result = await generateText(requestParams as GenerateParams);
 
 				const parts: Part[] = [];
 				if (result.text) {
@@ -487,3 +490,7 @@ export class AiSdkLlm extends BaseLlm {
 		}
 	}
 }
+
+type StreamParams = Parameters<typeof streamText>[0];
+type GenerateParams = Parameters<typeof generateText>[0];
+type AiSdkRequest = StreamParams | GenerateParams;
