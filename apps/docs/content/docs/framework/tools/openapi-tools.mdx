@@ -6,7 +6,7 @@ description: Integrate REST APIs using OpenAPI specifications with ADK-TS
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Integrate REST APIs documented with OpenAPI specifications into your ADK agents. You can use the built-in `HttpRequestTool` for general API access or create type-safe custom tools with generated TypeScript types.
+Integrate REST APIs documented with [OpenAPI specifications](https://swagger.io/specification/) into your ADK agents. You can use the built-in `HttpRequestTool` for general API access or create type-safe custom tools with generated TypeScript types.
 
 <Callout type="info">
   ADK-TS does not include automatic tool generation from OpenAPI specs. Use
@@ -14,9 +14,16 @@ Integrate REST APIs documented with OpenAPI specifications into your ADK agents.
   better type safety and control.
 </Callout>
 
+## Two Approaches
+
+| Approach           | Type Safety | Setup Time | Best For                                              |
+| ------------------ | ----------- | ---------- | ----------------------------------------------------- |
+| `HttpRequestTool`  | None        | Instant    | Quick prototypes, dynamic APIs, general HTTP requests |
+| Custom Typed Tools | Full        | Medium     | Production apps, complex APIs, IDE autocomplete       |
+
 ## Quick Integration: Use HttpRequestTool
 
-For simple API access, use the built-in `HttpRequestTool`:
+For simple API access, use the built-in [`HttpRequestTool`](http://localhost:3000/docs/framework/tools/built-in-tools#httprequesttool):
 
 ```typescript
 import { HttpRequestTool, AgentBuilder } from "@iqai/adk";
