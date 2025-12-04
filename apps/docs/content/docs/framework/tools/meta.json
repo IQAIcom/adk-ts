@@ -2,13 +2,12 @@
 	"title": "Tools",
 	"icon": "Wrench",
 	"pages": [
-		"index",
 		"function-tools",
 		"create-tool",
+		"tool-context",
 		"built-in-tools",
-		"google-cloud-tools",
 		"mcp-tools",
-		"agentkit",
+		"google-cloud-tools",
 		"openapi-tools",
 		"third-party-tools",
 		"authentication"

@@ -1,0 +1,194 @@
+---
+title: AgentKit MCP Extension
+description: This guide shows how to integrate Coinbase AgentKit into ADK-TS using the Model Context Protocol (MCP).
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+By using AgentKit's MCP extension, you can unlock blockchain capabilities for your ADK-TS agents. This integration allows you to leverage Coinbase's on-chain tools and services seamlessly within your agent architecture.
+
+**How it works:** AgentKit exposes its action providers as MCP tools, which are then converted into ADK `BaseTool` instances that your agents can use directly.
+
+<Callout type="success" title="Demo Project Available">
+  Check out the [complete working
+  implementation](https://github.com/IQAIcom/coinbase-agent) to see how all the
+  pieces fit together in a real project.
+</Callout>
+
+## Installation
+
+Install the required packages:
+
+```bash
+# Core dependencies
+pnpm install @coinbase/agentkit @coinbase/agentkit-model-context-protocol @iqai/adk
+
+# Additional dependencies for wallet management
+pnpm install viem @types/node --save-dev
+```
+
+## Environment Setup
+
+Create a `.env` file in your project root with your credentials. You can obtain Coinbase API keys from the [CDP Portal](https://portal.cdp.coinbase.com/projects/api-keys):
+
+```bash
+# .env
+WALLET_PRIVATE_KEY=0x_your_wallet_private_key
+CDP_API_KEY_ID=your_cdp_api_key_id
+CDP_API_KEY_SECRET=your_cdp_api_key_secret
+```
+
+## AgentKit Configuration
+
+Create a helper function to initialize AgentKit with a wallet provider. This example uses Viem for wallet management:
+
+```ts
+// src/getAgentKit.ts
+import { AgentKit, ViemWalletProvider } from "@coinbase/agentkit";
+import { type Address, createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { base } from "viem/chains";
+
+export async function getAgentKit(): Promise<AgentKit> {
+  try {
+    // Create wallet account from private key
+    const account = privateKeyToAccount(
+      process.env.WALLET_PRIVATE_KEY as Address
+    );
+
+    // Create wallet client for Base network
+    const client = createWalletClient({
+      account,
+      chain: base,
+      transport: http(),
+    });
+
+    // Wrap client in AgentKit's wallet provider
+    const walletProvider = new ViemWalletProvider(client);
+
+    // Initialize AgentKit with the wallet provider
+    // Add action providers here: walletActionProvider(), cdpApiActionProvider(), etc.
+    const agentkit = await AgentKit.from({
+      walletProvider,
+      actionProviders: [], // Add your desired action providers
+    });
+
+    return agentkit;
+  } catch (error) {
+    console.error("Error initializing AgentKit:", error);
+    throw new Error("Failed to initialize AgentKit");
+  }
+}
+```
+
+<Callout type="info" title="Action Providers">
+  You can add various action providers to enable different capabilities: -
+  `walletActionProvider()` - Basic wallet operations (balance, transfer) -
+  `pythActionProvider()` - Price feed data See the [full list of action
+  providers](https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md#action-providers)
+  for more options.
+</Callout>
+
+## Convert AgentKit MCP Tools to ADK-TS Tools
+
+The conversion process has two steps:
+
+1. Get MCP tools from AgentKit using `getMcpTools()`
+2. Convert each MCP tool to an ADK `BaseTool` using `convertMcpToolToBaseTool()`
+
+Create a helper function to handle this conversion:
+
+```ts
+// src/agents/coinbase-agent/tools.ts
+import { getMcpTools } from "@coinbase/agentkit-model-context-protocol";
+import { type BaseTool, convertMcpToolToBaseTool } from "@iqai/adk";
+import { getAgentKit } from "../../getAgentKit";
+
+export async function getAgentKitTools(): Promise<BaseTool[]> {
+  // Initialize AgentKit instance
+  const agentKit = await getAgentKit();
+
+  // Get MCP tools and their handler from AgentKit
+  const { tools, toolHandler } = await getMcpTools(agentKit);
+
+  // Convert each MCP tool to an ADK BaseTool
+  const baseTools = await Promise.all(
+    tools.map(async (mcpTool) =>
+      convertMcpToolToBaseTool({
+        mcpTool,
+        toolHandler,
+      })
+    )
+  );
+
+  return baseTools;
+}
+```
+
+## Create Your Coinbase Agent
+
+Now you can create an ADK-TS agent equipped with AgentKit capabilities:
+
+```ts
+// src/agents/coinbase-agent/agent.ts
+import { AgentBuilder } from "@iqai/adk";
+import { getAgentKitTools } from "./tools";
+
+export async function getCoinbaseAgent() {
+  // Get the converted AgentKit tools
+  const coinbaseTools = await getAgentKitTools();
+
+  // Build the agent with AgentKit capabilities
+  const { agent, runner } = await AgentBuilder.create("coinbase_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "AI agent with blockchain capabilities via Coinbase AgentKit"
+    )
+    .withInstruction(
+      `You are a cryptocurrency assistant with blockchain capabilities.
+      You can check token prices, manage wallets, and perform on-chain transactions.
+      `
+    )
+    .withTools(...coinbaseTools)
+    .build();
+
+  return { agent, runner };
+}
+
+// Usage example
+async function main() {
+  const { runner } = await getCoinbaseAgent();
+  const response = await runner.ask("What's the current price of Bitcoin?");
+  console.log(response);
+}
+
+main().catch((err) => {
+  console.error(err);
+});
+```
+
+## Next Steps
+
+Now that you have integrated AgentKit with ADK-TS, you can:
+
+- Add more action providers to enable additional blockchain capabilities
+- Implement custom tools alongside AgentKit tools
+- Create multi-agent workflows with specialized crypto agents
+- Add session management for persistent agent state
+
+## Additional Resources
+
+**AgentKit Documentation**
+
+- [Coinbase AgentKit Docs](https://docs.cdp.coinbase.com/agent-kit) - Official documentation and guides
+- [AgentKit GitHub](https://github.com/coinbase/agentkit) - Source code and examples
+- [Action Providers List](https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md#action-providers) - Available blockchain capabilities
+
+**ADK-TS Documentation**
+
+- [MCP Tools Guide](/docs/framework/tools/mcp-tools) - Learn more about Model Context Protocol integration
+- [Agent Builder](/docs/framework/agents/agent-builder) - Advanced agent configuration options
+
+**Example Projects**
+
+- [Demo Coinbase Agent](https://github.com/IQAIcom/coinbase-agent) - Complete working implementation

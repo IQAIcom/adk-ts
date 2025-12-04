@@ -36,7 +36,7 @@ const ShowcasePage = () => {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline font-medium"
 						>
-							&apos;Built with ADK-TS&apos;
+							&apos;Show & Tell&apos;
 						</a>
 						!
 					</p>
