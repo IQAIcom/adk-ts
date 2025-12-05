@@ -16,6 +16,7 @@ export class EventsService {
 		if (!loaded) {
 			return { events: [], totalCount: 0 };
 		}
+
 		return this.sessionsService.getSessionEvents(loaded, sessionId);
 	}
 }

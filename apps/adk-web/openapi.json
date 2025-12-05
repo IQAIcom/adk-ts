@@ -747,6 +747,16 @@
 					"isFinalResponse": {
 						"type": "boolean",
 						"example": false
+					},
+					"requestMetadata": {
+						"type": "object",
+						"nullable": true,
+						"description": "LLM request metadata for debugging"
+					},
+					"responseMetadata": {
+						"type": "object",
+						"nullable": true,
+						"description": "LLM response metadata for debugging"
 					}
 				},
 				"required": [

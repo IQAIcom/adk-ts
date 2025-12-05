@@ -337,6 +337,13 @@ function buildResponseEvent(
 		content,
 		actions: toolContext.actions,
 		branch: invocationContext.branch,
+		// Add metadata for tool responses
+		responseMetadata: {
+			content: content,
+			functionResponses: [partFunctionResponse.functionResponse],
+			toolName: tool.name,
+			toolResult: result,
+		},
 	});
 }
 
@@ -380,6 +387,14 @@ export function mergeParallelFunctionResponseEvents(
 	}
 	mergedActions.requestedAuthConfigs = mergedRequestedAuthConfigs;
 
+	// Merge response metadata from all events
+	const mergedFunctionResponses: any[] = [];
+	for (const event of functionResponseEvents) {
+		if (event.responseMetadata?.functionResponses) {
+			mergedFunctionResponses.push(...event.responseMetadata.functionResponses);
+		}
+	}
+
 	// Create the new merged event
 	const mergedEvent = new Event({
 		invocationId: Event.newId(),
@@ -387,6 +402,12 @@ export function mergeParallelFunctionResponseEvents(
 		branch: baseEvent.branch,
 		content: { role: "user", parts: mergedParts },
 		actions: mergedActions,
+		// Preserve metadata from merged function responses
+		responseMetadata: {
+			content: { role: "user", parts: mergedParts },
+			functionResponses: mergedFunctionResponses,
+			mergedFrom: functionResponseEvents.length,
+		},
 	});
 
 	// Use the base_event timestamp
