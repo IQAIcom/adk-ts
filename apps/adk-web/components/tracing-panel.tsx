@@ -2,6 +2,7 @@
 
 import { Activity, Bot, CheckCircle, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
+import { EventItemDto as Event } from "@/Api";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -246,9 +247,9 @@ const getEventName = (event: Event) => {
 		const text = contentWithParts?.parts?.[0]?.text || "";
 		return text.length > 60 ? `${text.substring(0, 60)}...` : text;
 	}
-	if (functionCallsArray?.length > 0)
+	if (functionCallsArray.length > 0)
 		return functionCallsArray[0].functionCall.name;
-	if (functionResponsesArray?.length > 0)
+	if (functionResponsesArray.length > 0)
 		return `${functionResponsesArray[0].functionResponse.name}-response`;
 	if (event.isFinalResponse) return "final-answer";
 	return event.author;
@@ -256,9 +257,8 @@ const getEventName = (event: Event) => {
 
 const getEventIcon = (event: Event) => {
 	if (event.author === "user") return null;
-	if ((event.functionCalls as FunctionCall[])?.length > 0)
-		return <Wrench className="w-4 h-4" />;
-	if ((event.functionResponses as FunctionResponse[])?.length > 0)
+	if (event.functionCalls.length > 0) return <Wrench className="w-4 h-4" />;
+	if (event.functionResponses.length > 0)
 		return <Activity className="w-4 h-4" />;
 	if (event.isFinalResponse) return <CheckCircle className="w-4 h-4" />;
 	return <Bot className="w-4 h-4" />;
@@ -266,10 +266,8 @@ const getEventIcon = (event: Event) => {
 
 const getEventColor = (event: Event) => {
 	if (event.author === "user") return "";
-	if ((event.functionCalls as FunctionCall[])?.length > 0)
-		return "text-orange-400";
-	if ((event.functionResponses as FunctionResponse[])?.length > 0)
-		return "text-purple-400";
+	if (event.functionCalls.length > 0) return "text-orange-400";
+	if (event.functionResponses.length > 0) return "text-purple-400";
 	if (event.isFinalResponse) return "text-green-400";
 	return "text-gray-400";
 };
@@ -333,19 +331,6 @@ function formatDuration(ms: number) {
 	if (ms < 1000) return `${ms}ms`;
 	return `${(ms / 1000).toFixed(2)}s`;
 }
-
-interface Event {
-	id: string;
-	author: string;
-	timestamp: number;
-	content?: unknown;
-	functionCalls?: unknown;
-	functionResponses?: unknown;
-	isFinalResponse?: boolean;
-	branch?: string;
-	requestMetadata?: unknown;
-}
-
 export interface TracingPanelProps {
 	events: Event[];
 	isLoading?: boolean;
