@@ -1,56 +1,146 @@
 "use client";
 
 import { Activity, Bot, CheckCircle, Wrench } from "lucide-react";
-import { EventItemDto as Event } from "@/Api";
+import { useMemo, useState } from "react";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+	PaginationLink,
+	PaginationNext,
+	PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-export interface TracingPanelProps {
-	events: Event[];
-	isLoading?: boolean;
-}
+export function TracingPanel({
+	events,
+	isLoading = false,
+	pageSize = 10,
+}: TracingPanelProps) {
+	const [currentPage, setCurrentPage] = useState(1);
 
-interface EventNode {
-	event: Event;
-	children: EventNode[];
-	displayName: string;
-	color: string;
-	icon: React.ReactNode | null;
-	duration: string; // formatted
-	rawDuration: number; // ms
-}
+	const rootNodes = useMemo(() => buildUserMessageTree(events), [events]);
 
-export function TracingPanel({ events, isLoading = false }: TracingPanelProps) {
-	if (isLoading)
+	const totalPages = Math.ceil(rootNodes.length / pageSize);
+	const startIdx = (currentPage - 1) * pageSize;
+	const endIdx = startIdx + pageSize;
+	const paginatedNodes = rootNodes.slice(startIdx, endIdx);
+
+	if (isLoading) {
 		return (
 			<div className="text-center text-muted-foreground py-12 text-sm">
 				Loading traces…
 			</div>
 		);
+	}
 
-	if (!events || events.length === 0)
+	if (!events || events.length === 0) {
 		return (
 			<div className="text-center text-muted-foreground py-12 text-sm">
 				No trace data
 			</div>
 		);
-
-	const rootNodes = buildUserMessageTree(events);
+	}
 
 	return (
-		<div className="text-slate-100 p-6 px-2 max-h-screen">
-			<ScrollArea className="h-[calc(100%-73px)]">
-				<div className="space-y-4">
-					{rootNodes.map((node) => (
+		<div className="text-slate-100 p-6 px-2 max-h-screen flex flex-col">
+			<div className="flex items-center justify-between mb-4 px-2">
+				<div className="text-sm text-slate-400">
+					{rootNodes.length} {rootNodes.length === 1 ? "trace" : "traces"}
+				</div>
+			</div>
+
+			<ScrollArea className="flex-1">
+				<div className="space-y-4 pb-4">
+					{paginatedNodes.map((node) => (
 						<TimelineNode key={node.event.id} node={node} depth={0} />
 					))}
 				</div>
 			</ScrollArea>
+
+			{totalPages > 1 && (
+				<div className="mt-4">
+					<Pagination>
+						<PaginationContent>
+							<PaginationItem>
+								<PaginationPrevious
+									onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+									className={
+										currentPage === 1
+											? "pointer-events-none opacity-50"
+											: "cursor-pointer"
+									}
+								/>
+							</PaginationItem>
+
+							{Array.from({ length: totalPages }, (_, i) => i + 1).map(
+								(page) => {
+									// Show first page, last page, current page, and pages around current
+									const showPage =
+										page === 1 ||
+										page === totalPages ||
+										Math.abs(page - currentPage) <= 1;
+
+									const showEllipsisBefore =
+										page === currentPage - 2 && currentPage > 3;
+									const showEllipsisAfter =
+										page === currentPage + 2 && currentPage < totalPages - 2;
+
+									if (showEllipsisBefore) {
+										return (
+											<PaginationItem key={`ellipsis-before-${page}`}>
+												<PaginationEllipsis />
+											</PaginationItem>
+										);
+									}
+
+									if (showEllipsisAfter) {
+										return (
+											<PaginationItem key={`ellipsis-after-${page}`}>
+												<PaginationEllipsis />
+											</PaginationItem>
+										);
+									}
+
+									if (!showPage) return null;
+
+									return (
+										<PaginationItem key={page}>
+											<PaginationLink
+												onClick={() => setCurrentPage(page)}
+												isActive={currentPage === page}
+												className="cursor-pointer"
+											>
+												{page}
+											</PaginationLink>
+										</PaginationItem>
+									);
+								},
+							)}
+
+							<PaginationItem>
+								<PaginationNext
+									onClick={() =>
+										setCurrentPage((p) => Math.min(totalPages, p + 1))
+									}
+									className={
+										currentPage === totalPages
+											? "pointer-events-none opacity-50"
+											: "cursor-pointer"
+									}
+								/>
+							</PaginationItem>
+						</PaginationContent>
+					</Pagination>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -67,7 +157,7 @@ function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 							<div
 								className={cn(
 									"cursor-pointer bg-secondary flex items-start gap-2 rounded-md",
-									"p-1 border rounded",
+									"p-1 border rounded hover:bg-secondary/80 transition-colors",
 								)}
 							>
 								<TimelineDot node={node} />
@@ -88,7 +178,7 @@ function TimelineNode({ node, depth }: { node: EventNode; depth: number }) {
 						</CollapsibleContent>
 					</Collapsible>
 				) : (
-					<div className="flex items-start gap-2">
+					<div className="flex items-start gap-2 p-1 rounded hover:bg-secondary/50 transition-colors">
 						<TimelineDot node={node} />
 						<EventContent node={node} />
 					</div>
@@ -104,7 +194,7 @@ const TimelineDot = ({ node }: { node: EventNode }) => {
 	return (
 		<div
 			className={cn(
-				"w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
+				"w-6 h-6 rounded-full flex items-center justify-center shrink-0",
 				"bg-slate-700",
 				node.color,
 			)}
@@ -132,7 +222,10 @@ const EventContent = ({ node }: { node: EventNode }) => {
 						</span>
 					)}
 					{requestMetadataObj?.model && (
-						<span title={requestMetadataObj.model} className="font-mono">
+						<span
+							title={requestMetadataObj.model}
+							className="font-mono truncate"
+						>
 							{requestMetadataObj.model}
 						</span>
 					)}
@@ -163,8 +256,9 @@ const getEventName = (event: Event) => {
 
 const getEventIcon = (event: Event) => {
 	if (event.author === "user") return null;
-	if (event.functionCalls?.length > 0) return <Wrench className="w-4 h-4" />;
-	if (event.functionResponses?.length > 0)
+	if ((event.functionCalls as FunctionCall[])?.length > 0)
+		return <Wrench className="w-4 h-4" />;
+	if ((event.functionResponses as FunctionResponse[])?.length > 0)
 		return <Activity className="w-4 h-4" />;
 	if (event.isFinalResponse) return <CheckCircle className="w-4 h-4" />;
 	return <Bot className="w-4 h-4" />;
@@ -172,8 +266,10 @@ const getEventIcon = (event: Event) => {
 
 const getEventColor = (event: Event) => {
 	if (event.author === "user") return "";
-	if (event.functionCalls?.length > 0) return "text-orange-400";
-	if (event.functionResponses?.length > 0) return "text-purple-400";
+	if ((event.functionCalls as FunctionCall[])?.length > 0)
+		return "text-orange-400";
+	if ((event.functionResponses as FunctionResponse[])?.length > 0)
+		return "text-purple-400";
 	if (event.isFinalResponse) return "text-green-400";
 	return "text-gray-400";
 };
@@ -236,6 +332,34 @@ function formatDuration(ms: number) {
 	if (!ms || ms < 1) return "0ms";
 	if (ms < 1000) return `${ms}ms`;
 	return `${(ms / 1000).toFixed(2)}s`;
+}
+
+interface Event {
+	id: string;
+	author: string;
+	timestamp: number;
+	content?: unknown;
+	functionCalls?: unknown;
+	functionResponses?: unknown;
+	isFinalResponse?: boolean;
+	branch?: string;
+	requestMetadata?: unknown;
+}
+
+export interface TracingPanelProps {
+	events: Event[];
+	isLoading?: boolean;
+	pageSize?: number;
+}
+
+interface EventNode {
+	event: Event;
+	children: EventNode[];
+	displayName: string;
+	color: string;
+	icon: React.ReactNode | null;
+	duration: string;
+	rawDuration: number;
 }
 
 interface ContentParts {
