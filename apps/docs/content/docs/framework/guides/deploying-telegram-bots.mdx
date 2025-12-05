@@ -1,0 +1,191 @@
+---
+title: Deploying Telegram Bots
+description: Complete guide to deploying ADK Telegram bots
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+This guide covers deploying ADK Telegram bots using the MCP Telegram server. ADK Telegram bots use the Model Context Protocol (MCP) to connect your agent to Telegram. The `@iqai/mcp-telegram` server handles communication with Telegram's Bot API using the Telegraf library.
+
+## Architecture Overview
+
+ADK Telegram bots use **polling mode** by default. The MCP server actively polls Telegram's API for new messages and uses sampling to request LLM completions from your agent, enabling bi-directional communication.
+
+**Key characteristics:**
+- **HTTP Server**: Not required
+- **Port Binding**: Not required  
+- **HTTPS**: Not required
+- **Service Type**: Long-running background process
+
+## Environment Variables
+
+Required environment variables:
+
+```env
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+GOOGLE_API_KEY=your_google_api_key_here
+LLM_MODEL=gemini-2.5-flash
+ADK_DEBUG=false
+```
+
+For details on obtaining your Telegram bot token, see the [MCP Telegram documentation](/docs/mcp-servers/telegram).
+
+## Deployment Platforms
+
+### Render
+
+<Callout type="warn">
+**Important**: Use "Background Worker" service type, not "Web Service". Render Web Services require binding to `$PORT`, but Telegram polling agents don't expose HTTP endpoints. This causes health check failures and service restarts.
+</Callout>
+
+1. **Service Type**: Select "Background Worker"
+2. **Build Command**: `pnpm install && pnpm build`
+3. **Start Command**: `node dist/index.js`
+4. **Environment Variables**: Add all required variables in Render dashboard:
+   - `TELEGRAM_BOT_TOKEN`
+   - `GOOGLE_API_KEY`
+   - `LLM_MODEL`
+   - `ADK_DEBUG` (optional)
+
+For more details, see [GitHub Issue #345](https://github.com/IQAIcom/adk-ts/issues/345).
+
+### Railway
+
+1. **Create New Project**: Connect your GitHub repository or deploy from Docker image
+2. **Service Type**: Railway automatically detects long-running processes
+3. **Build Command**: `pnpm install && pnpm build` (or use Railway's auto-detection)
+4. **Start Command**: `node dist/index.js`
+5. **Environment Variables**: Add in Railway dashboard under "Variables"
+
+### Heroku
+
+1. **Create App**: `heroku create your-app-name`
+2. **Buildpacks**: Heroku auto-detects Node.js
+3. **Procfile**: Create `Procfile` with:
+   ```
+   worker: node dist/index.js
+   ```
+4. **Scale**: `heroku ps:scale worker=1`
+5. **Environment Variables**: 
+   ```bash
+   heroku config:set TELEGRAM_BOT_TOKEN=your_token
+   heroku config:set GOOGLE_API_KEY=your_key
+   heroku config:set LLM_MODEL=gemini-2.5-flash
+   ```
+
+### Docker
+
+Create a `Dockerfile` in your project root:
+
+```dockerfile
+FROM node:20-alpine
+
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY tsconfig.json ./
+COPY src ./src
+RUN pnpm build
+
+ENV NODE_ENV=production
+
+CMD ["node", "dist/index.js"]
+```
+
+**Build and Run**:
+```bash
+docker build -t telegram-bot .
+docker run --env-file .env telegram-bot
+```
+
+
+## Deployment Checklist
+
+### Pre-Deployment
+
+- [ ] Bot token obtained from [@BotFather](https://t.me/botfather)
+- [ ] AI API key configured (Google AI, OpenAI, etc.)
+- [ ] Environment variables documented
+
+### Build & Deploy
+
+- [ ] Code pushed to repository (if using CI/CD)
+- [ ] Dockerfile created (if using Docker)
+- [ ] Build command configured
+- [ ] Start command configured
+- [ ] Service type selected correctly (Background Worker vs Web Service)
+- [ ] Environment variables added to platform
+
+### Post-Deployment
+
+- [ ] Service is running and healthy
+- [ ] Logs show successful initialization
+- [ ] Bot responds to test messages
+- [ ] Health checks passing (if applicable)
+- [ ] Monitoring set up
+
+## Troubleshooting
+
+### Service Keeps Restarting (Render)
+
+**Problem**: Service appears unhealthy and restarts
+
+**Solution**: Switch to "Background Worker" service type instead of "Web Service"
+
+### Bot Not Responding
+
+**Check**:
+1. Bot token is correct
+2. Bot is running (check logs)
+3. Bot has necessary permissions in Telegram
+4. Environment variables are set correctly
+
+
+### MCP Server Not Starting
+
+**Check**:
+1. All required environment variables are set
+2. `TELEGRAM_BOT_TOKEN` is valid
+3. Dependencies are installed (`pnpm install`)
+4. Build completed successfully (`pnpm build`)
+
+## Example: Complete Deployment on Railway
+
+1. **Prepare code**:
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+```
+
+2. **Deploy to Railway**:
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Login and create project
+railway login
+railway init
+
+# Add environment variables
+railway variables set TELEGRAM_BOT_TOKEN=your_token
+railway variables set GOOGLE_API_KEY=your_key
+railway variables set LLM_MODEL=gemini-2.5-flash
+
+# Deploy
+railway up
+```
+
+3. **Verify**: Check Railway logs and test bot by sending a message to your Telegram bot
+
+## Next Steps
+
+- [MCP Telegram Documentation](/docs/mcp-servers/telegram) - Learn about MCP Telegram features
+- [Deploying Agents](/docs/framework/guides/deploying-agents) - General deployment guide
+- [Telegram Bot API](https://core.telegram.org/bots/api) - Official Telegram documentation
+
+

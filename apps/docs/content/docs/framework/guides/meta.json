@@ -1,5 +1,5 @@
 {
 	"title": "Guides",
 	"icon": "BookOpen",
-	"pages": ["agent-instructions", "deploying-agents"]
+	"pages": ["agent-instructions", "deploying-agents", "deploying-telegram-bots"]
 }
