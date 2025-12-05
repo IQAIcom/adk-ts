@@ -1,6 +1,6 @@
 import { Logger } from "@adk/logger";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { CreateMessageRequestSchema } from "@modelcontextprotocol/sdk/types.js";
@@ -55,9 +55,6 @@ export class McpClientService {
 				},
 				{
 					capabilities: {
-						prompts: {},
-						resources: {},
-						tools: {},
 						sampling: {}, // Enable sampling capability
 					},
 				},
@@ -126,7 +123,7 @@ export class McpClientService {
 					...(this.config.headers || {}),
 				};
 
-				return new SSEClientTransport(
+				return new StreamableHTTPClientTransport(
 					new URL(this.config.transport.serverUrl),
 					{
 						requestInit: {
