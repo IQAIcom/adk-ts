@@ -1,6 +1,7 @@
 import type { Content } from "@google/genai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
 import type { BaseMemoryService } from "../memory/base-memory-service";
+import type { PluginManager } from "../plugins/plugin-manager";
 import type { BaseSessionService } from "../sessions/base-session-service";
 import type { Session } from "../sessions/session";
 import type { ActiveStreamingTool } from "./active-streaming-tool";
@@ -105,6 +106,11 @@ export class InvocationContext {
 	readonly memoryService?: BaseMemoryService;
 
 	/**
+	 * The plugin manager for this invocation context.
+	 */
+	readonly pluginManager: PluginManager;
+
+	/**
 	 * The id of this invocation context. Readonly.
 	 */
 	readonly invocationId: string;
@@ -176,6 +182,7 @@ export class InvocationContext {
 		artifactService?: BaseArtifactService;
 		sessionService: BaseSessionService;
 		memoryService?: BaseMemoryService;
+		pluginManager: PluginManager;
 		invocationId?: string;
 		branch?: string;
 		agent: BaseAgent;
@@ -190,6 +197,7 @@ export class InvocationContext {
 		this.artifactService = options.artifactService;
 		this.sessionService = options.sessionService;
 		this.memoryService = options.memoryService;
+		this.pluginManager = options.pluginManager;
 		this.invocationId = options.invocationId || newInvocationContextId();
 		this.branch = options.branch;
 		this.agent = options.agent;
@@ -235,6 +243,7 @@ export class InvocationContext {
 			artifactService: this.artifactService,
 			sessionService: this.sessionService,
 			memoryService: this.memoryService,
+			pluginManager: this.pluginManager, // Share the same plugin manager
 			invocationId: this.invocationId, // Keep same invocation ID
 			branch: this.branch ? `${this.branch}.${agent.name}` : agent.name, // Update branch
 			agent: agent, // Update to the new agent
