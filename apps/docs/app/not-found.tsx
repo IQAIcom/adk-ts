@@ -595,14 +595,14 @@ const PopularSections = () => {
 			href: "/docs/cli",
 		},
 		{
-			title: "API Reference",
-			description: "Complete API documentation and examples",
-			href: "/docs/framework/api-reference",
+			title: "Agent Builder",
+			description: "Fluent API for creating multi-agent workflows",
+			href: "docs/framework/agents/agent-builder",
 		},
 		{
 			title: "Guides & Tutorials",
 			description: "In-depth guides for common use cases",
-			href: "/docs/framework/guides",
+			href: "docs/framework/guides/agent-instructions",
 		},
 	];
 	return (
