@@ -1,6 +1,39 @@
 import Link from "next/link";
 import LibrarianScene from "@/components/librarian-scene";
 
+const popularSections = [
+	{
+		title: "Home",
+		description: "Go back to the home page",
+		href: "/",
+	},
+	{
+		title: "Getting Started",
+		description: "Quick setup guide and first steps",
+		href: "/docs/framework/get-started",
+	},
+	{
+		title: "MCP Servers",
+		description: "Connect Claude to external tools and data sources",
+		href: "/docs/mcp-servers",
+	},
+	{
+		title: "CLI",
+		description: "Command-line interface for Claude integration",
+		href: "/docs/cli",
+	},
+	{
+		title: "Agent Builder",
+		description: "Fluent API for creating multi-agent workflows",
+		href: "/docs/framework/agents/agent-builder",
+	},
+	{
+		title: "Guides & Tutorials",
+		description: "In-depth guides for common use cases",
+		href: "/docs/framework/guides/agent-instructions",
+	},
+];
+
 export default function NotFound() {
 	return (
 		<main className="flex flex-col flex-1 items-center justify-center px-6 py-24 bg-gradient-to-b from-background via-card/40 to-muted/40">
@@ -16,52 +49,24 @@ export default function NotFound() {
 					resource you're looking for might have been moved or doesn't exist.
 				</p>
 
-				<PopularSections />
+				<PopularSections sections={popularSections} />
 			</div>
 		</main>
 	);
 }
 
-const PopularSections = () => {
-	const popularSections = [
-		{
-			title: "Home",
-			description: "Go back to the home page",
-			href: "/",
-		},
-		{
-			title: "Getting Started",
-			description: "Quick setup guide and first steps",
-			href: "/docs/framework/get-started",
-		},
-		{
-			title: "MCP Servers",
-			description: "Connect Claude to external tools and data sources",
-			href: "/docs/mcp-servers",
-		},
-		{
-			title: "CLI",
-			description: "Command-line interface for Claude integration",
-			href: "/docs/cli",
-		},
-		{
-			title: "Agent Builder",
-			description: "Fluent API for creating multi-agent workflows",
-			href: "/docs/framework/agents/agent-builder",
-		},
-		{
-			title: "Guides & Tutorials",
-			description: "In-depth guides for common use cases",
-			href: "/docs/framework/guides/agent-instructions",
-		},
-	];
+const PopularSections = ({
+	sections,
+}: {
+	sections: typeof popularSections;
+}) => {
 	return (
 		<div className="w-full max-w-2xl rounded-xl border border-border/70 bg-card/70 p-6 text-left backdrop-blur">
 			<p className="mb-5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
 				Popular sections
 			</p>
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-				{popularSections.map((section) => (
+				{sections.map((section) => (
 					<Link
 						href={section.href}
 						key={section.title}
