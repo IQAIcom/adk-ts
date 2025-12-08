@@ -597,12 +597,12 @@ const PopularSections = () => {
 		{
 			title: "Agent Builder",
 			description: "Fluent API for creating multi-agent workflows",
-			href: "docs/framework/agents/agent-builder",
+			href: "/docs/framework/agents/agent-builder",
 		},
 		{
 			title: "Guides & Tutorials",
 			description: "In-depth guides for common use cases",
-			href: "docs/framework/guides/agent-instructions",
+			href: "/docs/framework/guides/agent-instructions",
 		},
 	];
 	return (
