@@ -88,7 +88,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Instantiate the agent
-const myAgent = new Agent({
+const myAgent = new LlmAgent({
   name: "simple_query_assistant",
   model: "gemini-2.5-flash", // Or "gpt-4-turbo", "claude-3-opus"
   description: "A basic assistant to answer questions.",
@@ -229,7 +229,7 @@ class CalculatorTool extends BaseTool {
 }
 
 // Create an agent equipped with the calculator tool
-const mathAgent = new Agent({
+const mathAgent = new LlmAgent({
   name: "math_assistant_agent",
   model: "gpt-4-turbo", // Choose a model proficient with tool usage
   instructions:
@@ -276,7 +276,7 @@ const parallelAnalysis = await AgentBuilder
 ```typescript
 import { Agent, InMemorySessionService } from '@iqai/adk';
 
-const agent = new Agent({
+const agent = new LlmAgent({
   name: "persistent_assistant",
   model: "gpt-4-turbo",
   sessionService: new InMemorySessionService(),
