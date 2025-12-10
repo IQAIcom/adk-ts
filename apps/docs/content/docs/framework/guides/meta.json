@@ -1,5 +1,9 @@
 {
 	"title": "Guides",
 	"icon": "BookOpen",
-	"pages": ["agent-instructions", "deploying-agents", "deploying-telegram-bots"]
+	"pages": [
+		"agent-instructions",
+		"deploying-agents",
+		"coinbase-agentkit-adkts-integration"
+	]
 }

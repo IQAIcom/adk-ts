@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.5.7
+
+### Patch Changes
+
+- b938be4: fix: underlying type errors with Model Context Protocol versioning
+
 ## 0.5.6
 
 ### Patch Changes
