@@ -33,7 +33,7 @@ export class ReflectAndRetryToolPlugin extends BasePlugin {
 	throwExceptionIfRetryExceeded: boolean;
 	scope: TrackingScope;
 	private _scopedFailureCounters: Record<string, PerToolFailuresCounter>;
-	private _lock: Promise<undefined | ToolFailureResponse>;
+	private _lock: Promise<ToolFailureResponse | undefined>;
 
 	constructor({
 		name = "reflect_retry_tool_plugin",
