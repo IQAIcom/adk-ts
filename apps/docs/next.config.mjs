@@ -2,6 +2,21 @@ import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
 
+const frameworkSections = [
+	"tools",
+	"get-started",
+	"agents",
+	"runtime",
+	"sessions",
+	"evaluation",
+	"artifacts",
+	"callbacks",
+	"context",
+	"deploy",
+	"events",
+	"guides",
+];
+
 /** @type {import('next').NextConfig} */
 const config = {
 	reactStrictMode: true,
@@ -25,6 +40,36 @@ const config = {
 			},
 		];
 	},
+	async redirects() {
+		const pluginRedirects = [
+			{
+				source: "/plugins",
+				destination: "/",
+				permanent: true,
+			},
+			{
+				source: "/plugins/:slug*",
+				destination: "/",
+				permanent: true,
+			},
+		];
+
+		const frameworkRedirects = frameworkSections.flatMap((section) => [
+			{
+				source: `/docs/${section}`,
+				destination: `/docs/framework/${section}`,
+				permanent: true,
+			},
+			{
+				source: `/docs/${section}/:path*`,
+				destination: `/docs/framework/${section}/:path*`,
+				permanent: true,
+			},
+		]);
+
+		return [...pluginRedirects, ...frameworkRedirects];
+	},
+
 	// This is required to support PostHog trailing slash API requests
 	skipTrailingSlashRedirect: true,
 };
