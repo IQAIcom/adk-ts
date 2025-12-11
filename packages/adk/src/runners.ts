@@ -116,7 +116,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		memoryService,
 		eventsCompactionConfig,
 		plugins,
-		pluginCloseTimeout = 5.0,
+		pluginCloseTimeout = 5000,
 	}: {
 		appName: string;
 		agent: T;
