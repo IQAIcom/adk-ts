@@ -15,6 +15,11 @@ interface LangfusePluginOptions {
 	flushInterval?: number;
 }
 
+type InvocationLike = Pick<
+	InvocationContext,
+	"invocationId" | "userId" | "session" | "appName" | "branch"
+>;
+
 export class LangfusePlugin extends BasePlugin {
 	private client: Langfuse;
 	private traces: Map<string, any> = new Map();
@@ -38,7 +43,7 @@ export class LangfusePlugin extends BasePlugin {
 	// Helpers
 	// ---------------------------------------------
 
-	private getOrCreateTrace(ctx: InvocationContext): any {
+	private getOrCreateTrace(ctx: InvocationLike): any {
 		if (this.traces.has(ctx.invocationId)) {
 			return this.traces.get(ctx.invocationId)!;
 		}
@@ -150,7 +155,10 @@ export class LangfusePlugin extends BasePlugin {
 		agent: BaseAgent;
 		callbackContext: CallbackContext;
 	}) {
-		const trace = this.getOrCreateTrace(params.callbackContext);
+		const trace = this.getOrCreateTrace(
+			params.callbackContext.invocationContext,
+		);
+
 		const spanKey = this.getSpanKey(
 			params.callbackContext.invocationId,
 			`agent:${params.agent.name}`,
@@ -162,7 +170,7 @@ export class LangfusePlugin extends BasePlugin {
 				agentName: params.agent.name,
 				agentType: params.agent.constructor.name,
 			},
-			input: params.callbackContext.input,
+			input: params.callbackContext.invocationContext.userContent,
 		});
 
 		this.spans.set(spanKey, span);
@@ -202,7 +210,9 @@ export class LangfusePlugin extends BasePlugin {
 		callbackContext: CallbackContext;
 		llmRequest: LlmRequest;
 	}) {
-		const trace = this.getOrCreateTrace(params.callbackContext);
+		const trace = this.getOrCreateTrace(
+			params.callbackContext.invocationContext,
+		);
 		const genKey = this.getGenerationKey(
 			params.callbackContext.invocationId,
 			params.llmRequest.model || "unknown",
@@ -358,7 +368,7 @@ export class LangfusePlugin extends BasePlugin {
 		toolArgs: any;
 		toolContext: ToolContext;
 	}) {
-		const trace = this.getOrCreateTrace(params.toolContext);
+		const trace = this.getOrCreateTrace(params.toolContext.invocationContext);
 		const spanKey = this.getSpanKey(
 			params.toolContext.invocationId,
 			`tool:${params.tool.name}`,
