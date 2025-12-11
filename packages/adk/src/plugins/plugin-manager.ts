@@ -224,7 +224,7 @@ export class PluginManager {
 
 		if (Object.keys(failures).length > 0) {
 			const summary = Object.entries(failures)
-				.map(([name, error]) => `'${name}': ${(error as Error).message}`)
+				.map(([name, error]) => `'${name}': ${error instanceof Error ? error.message : String(error)}`)
 				.join(", ");
 
 			throw new Error(`Failed to close plugins: ${summary}`);
