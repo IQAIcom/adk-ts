@@ -140,7 +140,7 @@ export class ReflectAndRetryToolPlugin extends BasePlugin {
 			return this._getToolRetryExceedMsg(tool, toolArgs, error);
 		});
 
-		return this._lock as unknown as Record<string, any>;
+		return this._lock;
 	}
 
 	private _getScopeKey(toolContext: ToolContext): string {
