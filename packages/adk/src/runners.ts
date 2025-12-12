@@ -329,10 +329,6 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 
 			const event = result.value as Event;
 
-			if (!event.partial) {
-				await this.sessionService.appendEvent(session, event);
-			}
-
 			// Step 3: Run the on_event callbacks to optionally modify the event.
 			const modifiedEvent = await pluginManager.runOnEventCallback({
 				invocationContext,

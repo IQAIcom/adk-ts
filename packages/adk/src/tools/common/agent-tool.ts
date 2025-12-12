@@ -169,7 +169,7 @@ export class AgentTool extends BaseTool {
 			}
 
 			// Access the parent invocation context through the protected property
-			const parentInvocation = (context as any)._invocationContext;
+			const parentInvocation = context.invocationContext;
 
 			// Create a child invocation context that shares the same session
 			// but has a different invocation ID for tracking
@@ -180,6 +180,7 @@ export class AgentTool extends BaseTool {
 				artifactService: parentInvocation.artifactService,
 				sessionService: parentInvocation.sessionService,
 				memoryService: parentInvocation.memoryService,
+				pluginManager: parentInvocation.pluginManager,
 				runConfig: parentInvocation.runConfig,
 				userContent: {
 					role: "user" as const,
