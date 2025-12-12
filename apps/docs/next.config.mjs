@@ -42,44 +42,20 @@ const config = {
 	},
 	async redirects() {
 		// Redirect old doc from brain.iqai.com to new doc site
-		const pluginRedirects = [
-			{
-				source: "/plugins",
-				destination: "/",
-				permanent: true,
-			},
-			{
-				source: "/plugins/:slug*",
-				destination: "/",
-				permanent: true,
-			},
-		];
-
-		const clientsRedirects = [
-			{
-				source: "/clients",
-				destination: "/",
-				permanent: true,
-			},
-			{
-				source: "/clients/:slug*",
-				destination: "/",
-				permanent: true,
-			},
-		];
-
-		const gettingStartedRedirects = [
-			{
-				source: "/getting-started",
-				destination: "/",
-				permanent: true,
-			},
-			{
-				source: "/getting-started/:slug*",
-				destination: "/",
-				permanent: true,
-			},
-		];
+		const oldDocRedirects = ["plugins", "clients", "getting-started"].flatMap(
+			(path) => [
+				{
+					source: `/${path}`,
+					destination: "/",
+					permanent: true,
+				},
+				{
+					source: `/${path}/:slug*`,
+					destination: "/",
+					permanent: true,
+				},
+			],
+		);
 
 		// Redirect framework sections to new /docs/framework/ path
 		const frameworkRedirects = frameworkSections.flatMap((section) => [
@@ -128,13 +104,7 @@ const config = {
 			},
 		];
 
-		return [
-			...pluginRedirects,
-			...frameworkRedirects,
-			...otherRedirects,
-			...clientsRedirects,
-			...gettingStartedRedirects,
-		];
+		return [...oldDocRedirects, ...frameworkRedirects, ...otherRedirects];
 	},
 
 	// This is required to support PostHog trailing slash API requests
