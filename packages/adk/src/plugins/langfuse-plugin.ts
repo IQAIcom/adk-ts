@@ -68,7 +68,7 @@ export class LangfusePlugin extends BasePlugin {
 	}
 
 	private getGenerationKey(invocationId: string, model: string): string {
-		return `${invocationId}:gen:${model}:${Date.now()}`;
+  return `${invocationId}:gen:${model}:${crypto.randomUUID()}`;
 	}
 
 	// ---------------------------------------------
