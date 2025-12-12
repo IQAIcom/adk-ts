@@ -74,6 +74,20 @@ export class EventItemDto {
 	@ApiProperty({ type: [Object] }) functionResponses!: any[];
 	@ApiProperty({ required: false, nullable: true }) branch?: string;
 	@ApiProperty({ example: false }) isFinalResponse!: boolean;
+	@ApiProperty({
+		type: Object,
+		required: false,
+		nullable: true,
+		description: "LLM request metadata for debugging",
+	})
+	requestMetadata?: any;
+	@ApiProperty({
+		type: Object,
+		required: false,
+		nullable: true,
+		description: "LLM response metadata for debugging",
+	})
+	responseMetadata?: any;
 }
 
 export class EventsResponseDto {
