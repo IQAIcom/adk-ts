@@ -461,11 +461,6 @@ type InvocationLike = Pick<
 	InvocationContext,
 	"invocationId" | "userId" | "session" | "appName" | "branch"
 >;
-
-/**
- * Inferred interface for Langfuse Trace object
- * Based on methods observed in Langfuse SDK usage
- */
 interface LangfuseTrace {
 	event(params: {
 		name: string;
@@ -498,10 +493,6 @@ interface LangfuseTrace {
 	}): void;
 }
 
-/**
- * Inferred interface for Langfuse Span object
- * Based on methods observed in Langfuse SDK usage
- */
 interface LangfuseSpan {
 	update(params: {
 		output?: any;
@@ -513,10 +504,6 @@ interface LangfuseSpan {
 	end(): void;
 }
 
-/**
- * Inferred interface for Langfuse Generation object
- * Based on methods observed in Langfuse SDK usage
- */
 interface LangfuseGeneration {
 	update(params: {
 		output?: any;
