@@ -31,8 +31,9 @@ export abstract class BasePlugin {
 		return undefined;
 	}
 
-	async afterRunCallback?(_params: {
+async afterRunCallback?(_params: {
 		invocationContext: InvocationContext;
+		result?: any;
 	}): Promise<void> {
 		return;
 	}
@@ -48,11 +49,13 @@ export abstract class BasePlugin {
 		return undefined;
 	}
 
-	async afterAgentCallback?(_params: {
+async afterAgentCallback?(_params: {
 		agent: BaseAgent;
 		callbackContext: CallbackContext;
+		result?: any;
 	}): Promise<Content | undefined> {
 		return undefined;
+	}
 	}
 
 	async beforeModelCallback?(_params: {
@@ -62,18 +65,22 @@ export abstract class BasePlugin {
 		return undefined;
 	}
 
-	async afterModelCallback?(_params: {
+async afterModelCallback?(_params: {
 		callbackContext: CallbackContext;
 		llmResponse: LlmResponse;
+		llmRequest?: LlmRequest;
 	}): Promise<LlmResponse | undefined> {
 		return undefined;
 	}
+	}
 
-	async onModelErrorCallback?(_params: {
+async onModelErrorCallback?(_params: {
 		callbackContext: CallbackContext;
 		llmRequest: LlmRequest;
-		error: Error;
+		error: unknown;
 	}): Promise<LlmResponse | undefined> {
+		return undefined;
+	}
 		return undefined;
 	}
 
@@ -94,12 +101,14 @@ export abstract class BasePlugin {
 		return undefined;
 	}
 
-	async onToolErrorCallback?(_params: {
+async onToolErrorCallback?(_params: {
 		tool: BaseTool;
 		toolArgs: Record<string, any>;
 		toolContext: ToolContext;
-		error: Error;
+		error: unknown;
 	}): Promise<Record<string, any> | undefined> {
+		return undefined;
+	}
 		return undefined;
 	}
 }
