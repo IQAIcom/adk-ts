@@ -41,6 +41,7 @@ const config = {
 		];
 	},
 	async redirects() {
+		// Redirect old doc from brain.iqai.com to new doc site
 		const pluginRedirects = [
 			{
 				source: "/plugins",
@@ -54,6 +55,33 @@ const config = {
 			},
 		];
 
+		const clientsRedirects = [
+			{
+				source: "/clients",
+				destination: "/",
+				permanent: true,
+			},
+			{
+				source: "/clients/:slug*",
+				destination: "/",
+				permanent: true,
+			},
+		];
+
+		const gettingStartedRedirects = [
+			{
+				source: "/getting-started",
+				destination: "/",
+				permanent: true,
+			},
+			{
+				source: "/getting-started/:slug*",
+				destination: "/",
+				permanent: true,
+			},
+		];
+
+		// Redirect framework sections to new /docs/framework/ path
 		const frameworkRedirects = frameworkSections.flatMap((section) => [
 			{
 				source: `/docs/${section}`,
@@ -67,7 +95,46 @@ const config = {
 			},
 		]);
 
-		return [...pluginRedirects, ...frameworkRedirects];
+		const otherRedirects = [
+			{
+				source: "/docs/framework",
+				destination: "/docs",
+				permanent: true,
+			},
+			{
+				source: "/docs/framework/sessions",
+				destination: "/docs/framework/sessions/session",
+				permanent: true,
+			},
+			{
+				source: "/docs/framework/callbacks/design-patterns",
+				destination: "/docs/framework/callbacks",
+				permanent: true,
+			},
+			{
+				source: "/docs/framework/callbacks/context-patterns",
+				destination: "/docs/framework/callbacks/callback-patterns",
+				permanent: true,
+			},
+			{
+				source: "/docs/framework/deploy",
+				destination: "/docs/framework/guides/deploying-agents",
+				permanent: true,
+			},
+			{
+				source: "/docs/framework/deploy/cloud-run",
+				destination: "/docs/framework/guides/deploying-agents",
+				permanent: true,
+			},
+		];
+
+		return [
+			...pluginRedirects,
+			...frameworkRedirects,
+			...otherRedirects,
+			...clientsRedirects,
+			...gettingStartedRedirects,
+		];
 	},
 
 	// This is required to support PostHog trailing slash API requests
