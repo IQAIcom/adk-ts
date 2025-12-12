@@ -313,7 +313,7 @@ export class TelemetryService {
 		try {
 			return JSON.stringify(obj);
 		} catch (e) {
-			return "_enot serializable>";
+   return "<not serializable>";
 		}
 	}
 
