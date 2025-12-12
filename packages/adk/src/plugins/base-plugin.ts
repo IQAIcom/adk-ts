@@ -94,12 +94,14 @@ export abstract class BasePlugin {
 		return undefined;
 	}
 
-	async onToolErrorCallback?(_params: {
+async onToolErrorCallback?(_params: {
 		tool: BaseTool;
 		toolArgs: Record<string, any>;
 		toolContext: ToolContext;
-		error: Error;
+		error: unknown;
 	}): Promise<Record<string, any> | undefined> {
+		return undefined;
+	}
 		return undefined;
 	}
 }
