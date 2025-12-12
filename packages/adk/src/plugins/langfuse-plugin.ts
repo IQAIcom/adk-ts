@@ -2,29 +2,15 @@ import { BaseAgent, CallbackContext, InvocationContext } from "@adk/agents";
 import { Event } from "@adk/events";
 import { LlmRequest, LlmResponse } from "@adk/models";
 import { BaseTool, ToolContext } from "@adk/tools";
+import { Content } from "@google/genai";
 import { Langfuse } from "langfuse";
 import { BasePlugin } from "./base-plugin";
 
-interface LangfusePluginOptions {
-	name?: string;
-	publicKey: string;
-	secretKey: string;
-	baseUrl?: string;
-	release?: string;
-	flushAt?: number;
-	flushInterval?: number;
-}
-
-type InvocationLike = Pick<
-	InvocationContext,
-	"invocationId" | "userId" | "session" | "appName" | "branch"
->;
-
 export class LangfusePlugin extends BasePlugin {
 	private client: Langfuse;
-	private traces: Map<string, any> = new Map();
-	private spans: Map<string, any> = new Map();
-	private generations: Map<string, any> = new Map();
+	private traces: Map<string, LangfuseTrace> = new Map();
+	private spans: Map<string, LangfuseSpan> = new Map();
+	private generations: Map<string, LangfuseGeneration> = new Map();
 
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
@@ -43,7 +29,7 @@ export class LangfusePlugin extends BasePlugin {
 	// Helpers
 	// ---------------------------------------------
 
-	private getOrCreateTrace(ctx: InvocationLike): any {
+	private getOrCreateTrace(ctx: InvocationLike): LangfuseTrace {
 		if (this.traces.has(ctx.invocationId)) {
 			return this.traces.get(ctx.invocationId)!;
 		}
@@ -57,7 +43,7 @@ export class LangfusePlugin extends BasePlugin {
 				appName: ctx.appName,
 				branch: ctx.branch,
 			},
-		});
+		}) as LangfuseTrace;
 
 		this.traces.set(ctx.invocationId, trace);
 		return trace;
@@ -75,7 +61,7 @@ export class LangfusePlugin extends BasePlugin {
 	// User message
 	// ---------------------------------------------
 	async onUserMessageCallback(params: {
-		userMessage: any;
+		userMessage: Content;
 		invocationContext: InvocationContext;
 	}) {
 		const trace = this.getOrCreateTrace(params.invocationContext);
@@ -459,4 +445,86 @@ export class LangfusePlugin extends BasePlugin {
 		// Ensure all pending events are sent before shutting down
 		await this.client.shutdownAsync();
 	}
+}
+
+interface LangfusePluginOptions {
+	name?: string;
+	publicKey: string;
+	secretKey: string;
+	baseUrl?: string;
+	release?: string;
+	flushAt?: number;
+	flushInterval?: number;
+}
+
+type InvocationLike = Pick<
+	InvocationContext,
+	"invocationId" | "userId" | "session" | "appName" | "branch"
+>;
+
+/**
+ * Inferred interface for Langfuse Trace object
+ * Based on methods observed in Langfuse SDK usage
+ */
+interface LangfuseTrace {
+	event(params: {
+		name: string;
+		metadata?: Record<string, any>;
+		input?: any;
+		output?: any;
+	}): void;
+
+	span(params: {
+		name: string;
+		metadata?: Record<string, any>;
+		input?: any;
+		output?: any;
+	}): LangfuseSpan;
+
+	generation(params: {
+		name: string;
+		model?: string;
+		modelParameters?: Record<string, any>;
+		input?: any;
+		output?: any;
+		metadata?: Record<string, any>;
+		usage_details?: Record<string, number>;
+	}): LangfuseGeneration;
+
+	update(params: {
+		output?: any;
+		statusMessage?: string;
+		metadata?: Record<string, any>;
+	}): void;
+}
+
+/**
+ * Inferred interface for Langfuse Span object
+ * Based on methods observed in Langfuse SDK usage
+ */
+interface LangfuseSpan {
+	update(params: {
+		output?: any;
+		metadata?: Record<string, any>;
+		level?: "DEFAULT" | "DEBUG" | "WARNING" | "ERROR";
+		statusMessage?: string;
+	}): void;
+
+	end(): void;
+}
+
+/**
+ * Inferred interface for Langfuse Generation object
+ * Based on methods observed in Langfuse SDK usage
+ */
+interface LangfuseGeneration {
+	update(params: {
+		output?: any;
+		usage_details?: Record<string, number>;
+		metadata?: Record<string, any>;
+		level?: "DEFAULT" | "DEBUG" | "WARNING" | "ERROR";
+		statusMessage?: string;
+	}): void;
+
+	end(): void;
 }
