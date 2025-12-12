@@ -75,7 +75,7 @@ export class TelemetryService {
 					// High-level LLM tracing is provided through dedicated ADK spans.
 					"@opentelemetry/instrumentation-http": {
 						ignoreIncomingRequestHook: (req) => {
-							// Ignore incoming requests_reqe're usually making outgoing calls)
+							// Ignore incoming requests (we're usually making outgoing calls)
 							return true;
 						},
 					},
@@ -313,7 +313,7 @@ export class TelemetryService {
 		try {
 			return JSON.stringify(obj);
 		} catch (e) {
-			return "_enot serializable>";
+			return "<not serializable>";
 		}
 	}
 
