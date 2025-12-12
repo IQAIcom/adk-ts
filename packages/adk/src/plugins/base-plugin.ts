@@ -72,11 +72,13 @@ async afterAgentCallback?(_params: {
 		return undefined;
 	}
 
-	async onModelErrorCallback?(_params: {
+async onModelErrorCallback?(_params: {
 		callbackContext: CallbackContext;
 		llmRequest: LlmRequest;
-		error: Error;
+		error: unknown;
 	}): Promise<LlmResponse | undefined> {
+		return undefined;
+	}
 		return undefined;
 	}
 
