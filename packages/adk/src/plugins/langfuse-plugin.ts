@@ -29,7 +29,7 @@ export class LangfusePlugin extends BasePlugin {
 	// Helpers
 	// ---------------------------------------------
 
-	private getOrCreateTrace(ctx: InvocationLike): LangfuseTrace {
+	private getOrCreateTrace(ctx: InvocationLike) {
 		if (this.traces.has(ctx.invocationId)) {
 			return this.traces.get(ctx.invocationId)!;
 		}
@@ -43,17 +43,17 @@ export class LangfusePlugin extends BasePlugin {
 				appName: ctx.appName,
 				branch: ctx.branch,
 			},
-		}) as LangfuseTrace;
+		});
 
 		this.traces.set(ctx.invocationId, trace);
 		return trace;
 	}
 
-	private getSpanKey(invocationId: string, name: string): string {
+	private getSpanKey(invocationId: string, name: string) {
 		return `${invocationId}:${name}`;
 	}
 
-	private getGenerationKey(invocationId: string, model: string): string {
+	private getGenerationKey(invocationId: string, model: string) {
 		return `${invocationId}:gen:${model}:${crypto.randomUUID()}`;
 	}
 
@@ -439,11 +439,11 @@ export class LangfusePlugin extends BasePlugin {
 	// ---------------------------------------------
 	// Cleanup
 	// ---------------------------------------------
-	async flush(): Promise<void> {
+	async flush() {
 		await this.client.flushAsync();
 	}
 
-	async close(): Promise<void> {
+	async close() {
 		// Ensure all pending events are sent before shutting down
 		await this.client.shutdownAsync();
 	}
