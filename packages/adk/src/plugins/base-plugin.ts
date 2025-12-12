@@ -49,11 +49,13 @@ async afterRunCallback?(_params: {
 		return undefined;
 	}
 
-	async afterAgentCallback?(_params: {
+async afterAgentCallback?(_params: {
 		agent: BaseAgent;
 		callbackContext: CallbackContext;
+		result?: any;
 	}): Promise<Content | undefined> {
 		return undefined;
+	}
 	}
 
 	async beforeModelCallback?(_params: {
