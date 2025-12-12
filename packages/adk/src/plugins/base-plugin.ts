@@ -65,11 +65,13 @@ async afterAgentCallback?(_params: {
 		return undefined;
 	}
 
-	async afterModelCallback?(_params: {
+async afterModelCallback?(_params: {
 		callbackContext: CallbackContext;
 		llmResponse: LlmResponse;
+		llmRequest?: LlmRequest;
 	}): Promise<LlmResponse | undefined> {
 		return undefined;
+	}
 	}
 
 async onModelErrorCallback?(_params: {
