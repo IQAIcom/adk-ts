@@ -31,8 +31,9 @@ export abstract class BasePlugin {
 		return undefined;
 	}
 
-	async afterRunCallback?(_params: {
+async afterRunCallback?(_params: {
 		invocationContext: InvocationContext;
+		result?: any;
 	}): Promise<void> {
 		return;
 	}
