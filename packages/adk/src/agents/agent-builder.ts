@@ -10,6 +10,7 @@ import type { Event } from "../events/event.js";
 import type { BaseMemoryService } from "../memory/base-memory-service.js";
 import type { BaseLlm } from "../models/base-llm.js";
 import type { BasePlanner } from "../planners/base-planner.js";
+import { BasePlugin } from "../plugins/base-plugin.js";
 import { Runner } from "../runners.js";
 import type { BaseSessionService } from "../sessions/base-session-service.js";
 import { InMemorySessionService } from "../sessions/in-memory-session-service.js";
@@ -57,6 +58,7 @@ export interface AgentBuilderConfig {
 	outputKey?: string;
 	inputSchema?: ZodSchema;
 	outputSchema?: ZodSchema;
+	plugins?: BasePlugin[];
 }
 
 /**
@@ -122,7 +124,7 @@ export interface BuiltAgent<T = string, M extends boolean = false> {
 	agent: BaseAgent;
 	runner: EnhancedRunner<T, M>;
 	session: Session;
-	sessionService: BaseSessionService; // newly exposed for external session operations
+	sessionService: BaseSessionService;
 }
 
 /**
@@ -177,27 +179,11 @@ interface RunnerConfig {
  *   .withInstruction("You are a research assistant")
  *   .build();
  *
- * // With code executor for running code
+ * // With plugins
  * const { runner } = await AgentBuilder
- *   .create("code-agent")
+ *   .create("monitored-agent")
  *   .withModel("gemini-2.5-flash")
- *   .withCodeExecutor(new ContainerCodeExecutor())
- *   .withInstruction("You can execute code to solve problems")
- *   .build();
- *
- * // With memory and artifact services
- * const { runner } = await AgentBuilder
- *   .create("persistent-agent")
- *   .withModel("gemini-2.5-flash")
- *   .withMemory(new RedisMemoryService())
- *   .withArtifactService(new S3ArtifactService())
- *   .withSessionService(new DatabaseSessionService(), { userId: "user123", appName: "myapp" })
- *   .build();
- *
- * // Multi-agent workflow
- * const { runner } = await AgentBuilder
- *   .create("workflow")
- *   .asSequential([agent1, agent2])
+ *   .withPlugins(new LoggingPlugin(), new MetricsPlugin())
  *   .build();
  * ```
  */
@@ -210,8 +196,8 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	private eventsCompactionConfig?: EventsCompactionConfig;
 	private agentType: AgentType = "llm";
 	private existingSession?: Session;
-	private existingAgent?: BaseAgent; // If provided, reuse directly
-	private definitionLocked = false; // Lock further definition mutation after withAgent
+	private existingAgent?: BaseAgent;
+	private definitionLocked = false;
 	private logger = new Logger({ name: "AgentBuilder" });
 	private runConfig?: RunConfig;
 
@@ -443,6 +429,29 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	withAfterToolCallback(callback: AfterToolCallback): this {
 		this.warnIfLocked("withAfterToolCallback");
 		this.config.afterToolCallback = callback;
+		return this;
+	}
+
+	/**
+	 * Add plugins to the agent for lifecycle hooks and behavior extensions
+	 * @param plugins Plugin instances to add to the agent
+	 * @returns This builder instance for chaining
+	 * @example
+	 * ```typescript
+	 * const { runner } = await AgentBuilder
+	 *   .create("monitored-agent")
+	 *   .withModel("gemini-2.5-flash")
+	 *   .withPlugins(
+	 *     new LoggingPlugin(),
+	 *     new MetricsPlugin(),
+	 *     new RateLimitPlugin()
+	 *   )
+	 *   .build();
+	 * ```
+	 */
+	withPlugins(...plugins: BasePlugin[]): this {
+		this.warnIfLocked("withPlugins");
+		this.config.plugins = [...(this.config.plugins || []), ...plugins];
 		return this;
 	}
 
@@ -800,6 +809,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 					sessionService: this.sessionService,
 					inputSchema: this.config.inputSchema,
 					outputSchema: this.config.outputSchema,
+					plugins: this.config.plugins,
 				});
 			}
 			case "sequential":
@@ -907,9 +917,9 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 		baseRunner: Runner,
 		session: Session,
 	): EnhancedRunner<T, TMulti> {
-		const sessionOptions = this.sessionOptions; // Capture sessionOptions in closure
+		const sessionOptions = this.sessionOptions;
 		const outputSchema = this.config.outputSchema;
-		const agentType = this.agentType; // capture agent type for aggregation logic
+		const agentType = this.agentType;
 		const isMulti = agentType === "parallel" || agentType === "sequential";
 		const subAgentNames = this.config.subAgents?.map((a) => a.name) || [];
 		const runConfig = this.runConfig;
@@ -924,9 +934,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 							? { parts: message.contents[message.contents.length - 1].parts }
 							: message;
 				let combinedResponse = "";
-				// Track per-agent incremental text
 				const perAgentBuffers: Record<string, string> = {};
-				// Track authors that produced any text (excluding 'user')
 				const authors: Set<string> = new Set();
 
 				if (!sessionOptions?.userId) {
@@ -961,14 +969,12 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 				}
 
 				if (isMulti) {
-					// Always return ordered array for multi-agent
 					return subAgentNames.map((name) => ({
 						agent: name,
 						response: (perAgentBuffers[name] || "").trim(),
 					}));
 				}
 
-				// Single-agent path with optional schema parsing
 				if (outputSchema) {
 					try {
 						const parsed = JSON.parse(combinedResponse);
