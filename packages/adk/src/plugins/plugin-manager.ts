@@ -188,8 +188,9 @@ export class PluginManager {
 					return result;
 				}
 			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : String(err);
 				throw new Error(
-					`Error in plugin '${plugin.name}' during '${name}' callback: ${err}`,
+					`Error in plugin '${plugin.name}' during '${name}' callback: ${errorMessage}`,
 				);
 			}
 		}
@@ -224,7 +225,10 @@ export class PluginManager {
 
 		if (Object.keys(failures).length > 0) {
 			const summary = Object.entries(failures)
-				.map(([name, error]) => `'${name}': ${error instanceof Error ? error.message : String(error)}`)
+				.map(
+					([name, error]) =>
+						`'${name}': ${error instanceof Error ? error.message : String(error)}`,
+				)
 				.join(", ");
 
 			throw new Error(`Failed to close plugins: ${summary}`);
