@@ -76,7 +76,7 @@ export class ReflectAndRetryToolPlugin extends BasePlugin {
 			return this._handleToolError(tool, toolArgs, toolContext, error);
 		}
 
-		await this._resetFailuresForTool(toolContext, tool.name);
+		this._resetFailuresForTool(toolContext, tool.name);
 		return undefined;
 	}
 
@@ -154,7 +154,7 @@ export class ReflectAndRetryToolPlugin extends BasePlugin {
 		}
 	}
 
-private _resetFailuresForTool(
+	private _resetFailuresForTool(
 		toolContext: ToolContext,
 		toolName: string,
 	): void {
