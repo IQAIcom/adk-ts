@@ -154,10 +154,10 @@ export class ReflectAndRetryToolPlugin extends BasePlugin {
 		}
 	}
 
-	private async _resetFailuresForTool(
+private _resetFailuresForTool(
 		toolContext: ToolContext,
 		toolName: string,
-	): Promise<void> {
+	): void {
 		const scopeKey = this._getScopeKey(toolContext);
 		const counters = this._scopedFailureCounters[scopeKey];
 		if (counters) {
