@@ -280,8 +280,8 @@ export class LangfusePlugin extends BasePlugin {
 						usageDetails.total = usage.totalTokenCount;
 					}
 					// Handle cached tokens if available
-					if ((usage as any).cachedContentTokenCount !== undefined) {
-						usageDetails.cached = (usage as any).cachedContentTokenCount;
+					if (usage.cachedContentTokenCount !== undefined) {
+						usageDetails.cached = usage.cachedContentTokenCount;
 					}
 				}
 
