@@ -248,9 +248,11 @@ export class LangfusePlugin extends BasePlugin {
 		const model = params.llmRequest?.model || "unknown";
 
 		// Find the most recent generation for this invocation and model
-		const genKey = Array.from(this.generations.keys()).find((key) =>
-			key.startsWith(`${params.callbackContext.invocationId}:gen:${model}`),
-		);
+		const genKey = Array.from(this.generations.keys())
+			.reverse()
+			.find((key) =>
+				key.startsWith(`${params.callbackContext.invocationId}:gen:${model}`),
+			);
 
 		if (genKey) {
 			const generation = this.generations.get(genKey);
