@@ -1,9 +1,9 @@
 import {
+	context,
 	DiagConsoleLogger,
 	DiagLogLevel,
-	type Tracer,
-	context,
 	diag,
+	type Tracer,
 	trace,
 } from "@opentelemetry/api";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
@@ -19,7 +19,6 @@ import type { Event } from "./events/event";
 import type { LlmRequest } from "./models/llm-request";
 import type { LlmResponse } from "./models/llm-response";
 import type { BaseTool } from "./tools";
-import type { ToolContext } from "./tools/tool-context";
 
 export interface TelemetryConfig {
 	appName: string;

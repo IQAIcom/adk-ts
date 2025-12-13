@@ -168,10 +168,23 @@ export abstract class BaseAgent {
 		parentContext: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
 		const ctx = this.createInvocationContext(parentContext);
-		// TODO: support before/after_agent_callback
+
+		const beforeEvent = await this.handleBeforeAgentCallback(ctx);
+		if (beforeEvent) {
+			yield beforeEvent;
+		}
+
+		if (ctx.endInvocation) {
+			return;
+		}
 
 		for await (const event of this.runLiveImpl(ctx)) {
 			yield event;
+		}
+
+		const afterEvent = await this.handleAfterAgentCallback(ctx);
+		if (afterEvent) {
+			yield afterEvent;
 		}
 	}
 
@@ -285,40 +298,57 @@ export abstract class BaseAgent {
 
 	/**
 	 * Runs the beforeAgentCallback if it exists.
+	 * First runs plugin callbacks, then runs canonical callbacks if no override provided.
 	 *
 	 * @returns An event if callback provides content or changed state.
 	 */
 	private async handleBeforeAgentCallback(
 		ctx: InvocationContext,
 	): Promise<Event | undefined> {
-		let retEvent: Event | undefined;
-
-		if (this.canonicalBeforeAgentCallbacks.length === 0) {
-			return retEvent;
-		}
 		const callbackContext = new CallbackContext(ctx);
 
-		for (const callback of this.canonicalBeforeAgentCallbacks) {
-			let beforeAgentCallbackContent = callback(callbackContext);
+		// Run callbacks from the plugins first
+		let beforeAgentCallbackContent =
+			await ctx.pluginManager?.runBeforeAgentCallback({
+				agent: this,
+				callbackContext,
+			});
 
-			if (beforeAgentCallbackContent instanceof Promise) {
-				beforeAgentCallbackContent = await beforeAgentCallbackContent;
-			}
+		// If no overrides are provided from the plugins, run the canonical callbacks
+		if (
+			!beforeAgentCallbackContent &&
+			this.canonicalBeforeAgentCallbacks.length > 0
+		) {
+			for (const callback of this.canonicalBeforeAgentCallbacks) {
+				let result = callback(callbackContext);
 
-			if (beforeAgentCallbackContent) {
-				retEvent = new Event({
-					invocationId: ctx.invocationId,
-					author: this.name,
-					branch: ctx.branch,
-					content: beforeAgentCallbackContent,
-					actions: callbackContext.eventActions,
-				});
-				ctx.endInvocation = true;
-				return retEvent;
+				if (result instanceof Promise) {
+					result = await result;
+				}
+
+				if (result) {
+					beforeAgentCallbackContent = result;
+					break;
+				}
 			}
 		}
+
+		// Process the override content if it exists
+		if (beforeAgentCallbackContent) {
+			const retEvent = new Event({
+				invocationId: ctx.invocationId,
+				author: this.name,
+				branch: ctx.branch,
+				content: beforeAgentCallbackContent,
+				actions: callbackContext.eventActions,
+			});
+			ctx.endInvocation = true;
+			return retEvent;
+		}
+
+		// Process state changes if they exist
 		if (callbackContext.state.hasDelta()) {
-			retEvent = new Event({
+			return new Event({
 				invocationId: ctx.invocationId,
 				author: this.name,
 				branch: ctx.branch,
@@ -326,46 +356,49 @@ export abstract class BaseAgent {
 			});
 		}
 
-		return retEvent;
+		return undefined;
 	}
 
 	/**
 	 * Runs the afterAgentCallback if it exists.
+	 * First runs plugin callbacks, then runs canonical callbacks if no override provided.
 	 *
 	 * @returns An event if callback provides content or changed state.
 	 */
 	private async handleAfterAgentCallback(
 		invocationContext: InvocationContext,
 	): Promise<Event | undefined> {
-		let retEvent: Event | undefined;
-
-		if (this.canonicalAfterAgentCallbacks.length === 0) {
-			return retEvent;
-		}
-
 		const callbackContext = new CallbackContext(invocationContext);
-		let afterAgentCallbackContent: Content | undefined;
 
-		for (const callback of this.canonicalAfterAgentCallbacks) {
-			afterAgentCallbackContent = await callback(callbackContext);
+		// Run callbacks from the plugins first
+		let afterAgentCallbackContent =
+			await invocationContext.pluginManager?.runAfterAgentCallback({
+				agent: this,
+				callbackContext,
+			});
 
-			if (afterAgentCallbackContent instanceof Promise) {
-				afterAgentCallbackContent = await afterAgentCallbackContent;
-			}
+		// If no overrides are provided from the plugins, run the canonical callbacks
+		if (
+			!afterAgentCallbackContent &&
+			this.canonicalAfterAgentCallbacks.length > 0
+		) {
+			for (const callback of this.canonicalAfterAgentCallbacks) {
+				let result = callback(callbackContext);
 
-			if (afterAgentCallbackContent) {
-				retEvent = new Event({
-					invocationId: invocationContext.invocationId,
-					author: this.name,
-					branch: invocationContext.branch,
-					content: afterAgentCallbackContent,
-					actions: callbackContext.eventActions,
-				});
-				return retEvent;
+				if (result instanceof Promise) {
+					result = await result;
+				}
+
+				if (result) {
+					afterAgentCallbackContent = result;
+					break;
+				}
 			}
 		}
-		if (callbackContext.state.hasDelta()) {
-			retEvent = new Event({
+
+		// Process the override content if it exists
+		if (afterAgentCallbackContent) {
+			return new Event({
 				invocationId: invocationContext.invocationId,
 				author: this.name,
 				branch: invocationContext.branch,
@@ -374,7 +407,18 @@ export abstract class BaseAgent {
 			});
 		}
 
-		return retEvent;
+		// Process state changes if they exist
+		if (callbackContext.state.hasDelta()) {
+			return new Event({
+				invocationId: invocationContext.invocationId,
+				author: this.name,
+				branch: invocationContext.branch,
+				content: afterAgentCallbackContent,
+				actions: callbackContext.eventActions,
+			});
+		}
+
+		return undefined;
 	}
 
 	/**

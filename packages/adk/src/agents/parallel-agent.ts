@@ -29,6 +29,7 @@ export function createBranchContextForSubAgent(
 		activeStreamingTools: invocationContext.activeStreamingTools,
 		transcriptionCache: invocationContext.transcriptionCache,
 		runConfig: invocationContext.runConfig,
+		pluginManager: invocationContext.pluginManager,
 	});
 }
 
@@ -163,10 +164,10 @@ export class ParallelAgent extends BaseAgent {
 	/**
 	 * Core logic to run this agent via video/audio-based conversation
 	 */
+	// biome-ignore lint/correctness/useYield: AsyncGenerator requires having at least one yield statement
 	protected async *runLiveImpl(
 		_ctx: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
 		throw new Error("This is not supported yet for ParallelAgent.");
-		// biome-ignore lint/correctness/useYield: AsyncGenerator requires having at least one yield statement
 	}
 }

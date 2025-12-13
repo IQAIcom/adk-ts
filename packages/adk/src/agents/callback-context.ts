@@ -93,4 +93,8 @@ export class CallbackContext extends ReadonlyContext {
 	get eventActions(): EventActions {
 		return this._eventActions;
 	}
+
+	get invocationContext(): InvocationContext {
+		return this._invocationContext;
+	}
 }

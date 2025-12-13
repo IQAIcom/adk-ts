@@ -16,6 +16,7 @@ export * from "./flows";
 export * from "./memory";
 export * from "./models";
 export * from "./planners";
+export * from "./plugins";
 export * from "./sessions";
 export * from "./tools";
 export * from "./utils";
