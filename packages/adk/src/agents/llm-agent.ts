@@ -1,5 +1,5 @@
 import { Logger } from "@adk/logger";
-import { BasePlugin } from "@adk/plugins";
+
 import type { GenerateContentConfig } from "@google/genai";
 import type { LanguageModel } from "ai";
 import type { z } from "zod";
@@ -14,6 +14,7 @@ import { LLMRegistry } from "../models/llm-registry";
 import type { LlmRequest } from "../models/llm-request";
 import type { LlmResponse } from "../models/llm-response";
 import type { BasePlanner } from "../planners/base-planner";
+import type { BasePlugin } from "../plugins/base-plugin";
 import type { BaseSessionService } from "../sessions/base-session-service";
 import type { BaseTool } from "../tools/base/base-tool";
 import { FunctionTool } from "../tools/function/function-tool";

@@ -1,7 +1,16 @@
 export { BasePlugin } from "./base-plugin";
 
+export type {
+	InvocationLike,
+	LangfuseGeneration,
+	LangfuseSpan,
+	LangfuseTrace,
+} from "./langfuse-plugin";
+
+export { LangfusePlugin } from "./langfuse-plugin";
+
+export type { PluginCallbackName } from "./plugin-manager";
 export {
-	PluginCallbackName,
 	PluginManager,
 	pluginCallbackNameSchema,
 } from "./plugin-manager";

@@ -557,9 +557,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 	 * Closes the runner and its plugin manager.
 	 */
 	async close(): Promise<void> {
-		this.logger.info("Closing runner...");
 		await this.pluginManager.close();
-		this.logger.info("Runner closed.");
 	}
 
 	async rewind(args: {
@@ -591,15 +589,10 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			throw new Error(`Invocation ID not found: ${rewindBeforeInvocationId}`);
 		}
 
-		const stateDelta = await this._computeStateDeltaForRewind(
-			session,
-			rewindEventIndex,
-		);
-
-		const artifactDelta = await this._computeArtifactDeltaForRewind(
-			session,
-			rewindEventIndex,
-		);
+		const [stateDelta, artifactDelta] = await Promise.all([
+			this._computeStateDeltaForRewind(session, rewindEventIndex),
+			this._computeArtifactDeltaForRewind(session, rewindEventIndex),
+		]);
 
 		const rewindEvent = new Event({
 			invocationId: newInvocationContextId(),

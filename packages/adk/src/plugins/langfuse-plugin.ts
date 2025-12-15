@@ -18,7 +18,7 @@ export class LangfusePlugin extends BasePlugin {
 		this.client = new Langfuse({
 			publicKey: options.publicKey,
 			secretKey: options.secretKey,
-			baseUrl: options.baseUrl ?? "https://cloud.langfuse.com",
+			baseUrl: options.baseUrl ?? "https://us.cloud.langfuse.com",
 			release: options.release,
 			flushAt: options.flushAt,
 			flushInterval: options.flushInterval,
@@ -173,6 +173,8 @@ export class LangfusePlugin extends BasePlugin {
 			params.callbackContext.invocationId,
 			`agent:${params.agent.name}`,
 		);
+
+		console.log("spanKey", spanKey);
 		const span = this.spans.get(spanKey);
 
 		if (span) {
@@ -199,10 +201,15 @@ export class LangfusePlugin extends BasePlugin {
 		const trace = this.getOrCreateTrace(
 			params.callbackContext.invocationContext,
 		);
+
+		console.log("trace", JSON.stringify(trace, null, 2));
+
 		const genKey = this.getGenerationKey(
 			params.callbackContext.invocationId,
 			params.llmRequest.model || "unknown",
 		);
+
+		console.log("genKey", genKey);
 
 		// Extract model parameters from config
 		const modelParameters: Record<string, any> = {};
@@ -451,7 +458,7 @@ export class LangfusePlugin extends BasePlugin {
 	}
 }
 
-interface LangfusePluginOptions {
+export interface LangfusePluginOptions {
 	name?: string;
 	publicKey: string;
 	secretKey: string;
@@ -461,11 +468,11 @@ interface LangfusePluginOptions {
 	flushInterval?: number;
 }
 
-type InvocationLike = Pick<
+export type InvocationLike = Pick<
 	InvocationContext,
 	"invocationId" | "userId" | "session" | "appName" | "branch"
 >;
-interface LangfuseTrace {
+export interface LangfuseTrace {
 	event(params: {
 		name: string;
 		metadata?: Record<string, any>;
@@ -497,7 +504,7 @@ interface LangfuseTrace {
 	}): void;
 }
 
-interface LangfuseSpan {
+export interface LangfuseSpan {
 	update(params: {
 		output?: any;
 		metadata?: Record<string, any>;
@@ -508,7 +515,7 @@ interface LangfuseSpan {
 	end(): void;
 }
 
-interface LangfuseGeneration {
+export interface LangfuseGeneration {
 	update(params: {
 		output?: any;
 		usage_details?: Record<string, number>;
