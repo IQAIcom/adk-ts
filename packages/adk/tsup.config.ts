@@ -6,7 +6,6 @@ export default defineConfig({
 	},
 	format: ["cjs", "esm"],
 	dts: true,
-	watch: true,
 	splitting: true,
 	clean: true,
 });
