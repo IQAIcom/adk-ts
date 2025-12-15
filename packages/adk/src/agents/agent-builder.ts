@@ -157,6 +157,7 @@ interface RunnerConfig {
 	memoryService?: BaseMemoryService;
 	artifactService?: BaseArtifactService;
 	eventsCompactionConfig?: EventsCompactionConfig;
+	plugins?: BasePlugin[];
 }
 
 /**
@@ -733,6 +734,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 				memoryService: this.memoryService,
 				artifactService: this.artifactService,
 				eventsCompactionConfig: this.eventsCompactionConfig,
+				plugins: this.config.plugins,
 			};
 
 			const baseRunner = new Runner(runnerConfig);

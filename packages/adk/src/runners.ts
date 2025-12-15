@@ -301,6 +301,8 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 	): AsyncGenerator<Event, void, unknown> {
 		const pluginManager = invocationContext.pluginManager;
 
+		console.log("pluginManager plugins", pluginManager);
+
 		// Step 1: Run the before_run callbacks to see if we should early exit.
 		const earlyExitResult = await pluginManager.runBeforeRunCallback({
 			invocationContext,

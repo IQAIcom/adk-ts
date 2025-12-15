@@ -50,6 +50,10 @@ export class PluginManager {
 		return this.plugins.find((p) => p.name === name);
 	}
 
+	getPlugins() {
+		return this.plugins;
+	}
+
 	runOnUserMessageCallback(params: {
 		userMessage: Content;
 		invocationContext: InvocationContext;
