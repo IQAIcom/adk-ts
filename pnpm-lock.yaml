@@ -419,6 +419,9 @@ importers:
       kysely:
         specifier: ^0.28.5
         version: 0.28.8
+      langfuse:
+        specifier: ^3.38.6
+        version: 3.38.6
       openai:
         specifier: ^5.20.0
         version: 5.23.2(ws@8.18.3)(zod@4.1.13)

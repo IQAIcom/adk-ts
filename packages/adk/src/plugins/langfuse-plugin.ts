@@ -19,14 +19,10 @@ export class LangfusePlugin extends BasePlugin {
 			secretKey: options.secretKey,
 			baseUrl: options.baseUrl ?? "https://us.cloud.langfuse.com",
 			release: options.release,
-			flushAt: options.flushAt ?? 1, //
+			flushAt: options.flushAt ?? 1,
 			flushInterval: options.flushInterval ?? 1000,
 		});
 	}
-
-	// ---------------------------------------------
-	// Helpers
-	// ---------------------------------------------
 
 	private getOrCreateTrace(ctx: InvocationLike) {
 		if (this.traces.has(ctx.invocationId)) {
@@ -56,9 +52,6 @@ export class LangfusePlugin extends BasePlugin {
 		return `${invocationId}:gen:${model}:${crypto.randomUUID()}`;
 	}
 
-	// ---------------------------------------------
-	// User message
-	// ---------------------------------------------
 	async onUserMessageCallback(params: {
 		userMessage: Content;
 		invocationContext: InvocationContext;
@@ -73,9 +66,6 @@ export class LangfusePlugin extends BasePlugin {
 		return undefined;
 	}
 
-	// ---------------------------------------------
-	// Run start / finish
-	// ---------------------------------------------
 	async beforeRunCallback(params: { invocationContext: InvocationContext }) {
 		this.getOrCreateTrace(params.invocationContext);
 		return undefined;
@@ -97,9 +87,6 @@ export class LangfusePlugin extends BasePlugin {
 		return undefined;
 	}
 
-	// ---------------------------------------------
-	// Event callback
-	// ---------------------------------------------
 	async onEventCallback(params: {
 		invocationContext: InvocationContext;
 		event: Event;
@@ -120,9 +107,6 @@ export class LangfusePlugin extends BasePlugin {
 		return undefined;
 	}
 
-	// ---------------------------------------------
-	// Agent callbacks
-	// ---------------------------------------------
 	async beforeAgentCallback(params: {
 		agent: BaseAgent;
 		callbackContext: CallbackContext;
@@ -169,9 +153,6 @@ export class LangfusePlugin extends BasePlugin {
 		return undefined;
 	}
 
-	// ---------------------------------------------
-	// LLM callbacks
-	// ---------------------------------------------
 	async beforeModelCallback(params: {
 		callbackContext: CallbackContext;
 		llmRequest: LlmRequest;
@@ -239,9 +220,6 @@ export class LangfusePlugin extends BasePlugin {
 		return undefined;
 	}
 
-	// ---------------------------------------------
-	// Tool callbacks
-	// ---------------------------------------------
 	async beforeToolCallback(params: {
 		tool: BaseTool;
 		toolArgs: any;
@@ -284,9 +262,6 @@ export class LangfusePlugin extends BasePlugin {
 		return undefined;
 	}
 
-	// ---------------------------------------------
-	// Cleanup
-	// ---------------------------------------------
 	async flush() {
 		await this.client.flushAsync();
 	}
@@ -310,6 +285,7 @@ export type InvocationLike = Pick<
 	InvocationContext,
 	"invocationId" | "userId" | "session" | "appName" | "branch"
 >;
+
 export interface LangfuseTrace {
 	event(params: {
 		name: string;
