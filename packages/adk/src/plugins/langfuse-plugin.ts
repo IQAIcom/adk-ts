@@ -2,15 +2,15 @@ import { BaseAgent, CallbackContext, InvocationContext } from "@adk/agents";
 import { Event } from "@adk/events";
 import { LlmRequest, LlmResponse } from "@adk/models";
 import { BaseTool, ToolContext } from "@adk/tools";
-import { Content } from "@google/genai";
+import { Content, Part } from "@google/genai";
 import { Langfuse } from "langfuse";
 import { BasePlugin } from "./base-plugin";
 
 export class LangfusePlugin extends BasePlugin {
 	private client: Langfuse;
 	private traces: Map<string, LangfuseTrace> = new Map();
-	private spans: Map<string, LangfuseSpan> = new Map();
-	private generations: Map<string, LangfuseGeneration> = new Map();
+	private spanStack: Map<string, LangfuseSpan[]> = new Map();
+	private currentGeneration: Map<string, LangfuseGeneration> = new Map();
 
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
@@ -24,19 +24,144 @@ export class LangfusePlugin extends BasePlugin {
 		});
 	}
 
+	/**
+	 * Serializes Google GenAI Content to a clean format for Langfuse
+	 */
+	private serializeContent(content?: Content): any {
+		if (!content) return null;
+
+		return {
+			role: content.role,
+			parts: content.parts?.map((part) => this.serializePart(part)) || [],
+		};
+	}
+
+	/**
+	 * Serializes a Part to extract meaningful data
+	 */
+	private serializePart(part: Part): any {
+		const serialized: any = {};
+
+		if (part.text !== undefined) {
+			serialized.text = part.text;
+		}
+
+		if (part.functionCall) {
+			serialized.functionCall = {
+				name: part.functionCall.name,
+				args: part.functionCall.args,
+				id: part.functionCall.id,
+			};
+		}
+
+		if (part.functionResponse) {
+			serialized.functionResponse = {
+				name: part.functionResponse.name,
+				response: part.functionResponse.response,
+				id: part.functionResponse.id,
+			};
+		}
+
+		if (part.inlineData) {
+			serialized.inlineData = {
+				mimeType: part.inlineData.mimeType,
+				data: `<${part.inlineData.data?.length || 0} bytes>`,
+			};
+		}
+
+		if (part.fileData) {
+			serialized.fileData = {
+				mimeType: part.fileData.mimeType,
+				fileUri: part.fileData.fileUri,
+			};
+		}
+
+		if (part.thought !== undefined) {
+			serialized.thought = part.thought;
+		}
+
+		if (part.executableCode) {
+			serialized.executableCode = {
+				language: part.executableCode.language,
+				code: part.executableCode.code,
+			};
+		}
+
+		if (part.codeExecutionResult) {
+			serialized.codeExecutionResult = {
+				outcome: part.codeExecutionResult.outcome,
+				output: part.codeExecutionResult.output,
+			};
+		}
+
+		return serialized;
+	}
+
+	/**
+	 * Serializes an array of Content objects
+	 */
+	private serializeContents(contents?: Content[]): any {
+		if (!contents || contents.length === 0) return null;
+		return contents.map((c) => this.serializeContent(c));
+	}
+
+	/**
+	 * Extracts text from Content for display purposes
+	 */
+	private extractTextFromContent(content?: Content): string {
+		if (!content || !content.parts) return "";
+		return content.parts
+			.filter((part) => part.text)
+			.map((part) => part.text)
+			.join("\n");
+	}
+
+	/**
+	 * Gets the current parent span for nesting
+	 */
+	private getCurrentSpan(invocationId: string): LangfuseSpan | undefined {
+		const stack = this.spanStack.get(invocationId);
+		return stack && stack.length > 0 ? stack[stack.length - 1] : undefined;
+	}
+
+	/**
+	 * Pushes a span onto the stack
+	 */
+	private pushSpan(invocationId: string, span: LangfuseSpan): void {
+		if (!this.spanStack.has(invocationId)) {
+			this.spanStack.set(invocationId, []);
+		}
+		this.spanStack.get(invocationId)!.push(span);
+	}
+
+	/**
+	 * Pops a span from the stack
+	 */
+	private popSpan(invocationId: string): void {
+		const stack = this.spanStack.get(invocationId);
+		if (stack && stack.length > 0) {
+			stack.pop();
+		}
+	}
+
 	private getOrCreateTrace(ctx: InvocationLike) {
 		if (this.traces.has(ctx.invocationId)) {
 			return this.traces.get(ctx.invocationId)!;
 		}
 
+		// Extract user input text from Content
+		const userInput = ctx.userContent?.parts?.[0]?.text || "";
+
 		const trace = this.client.trace({
 			id: ctx.invocationId,
-			name: "agent-invocation",
+			name: `${ctx.agent.name}-invocation`,
 			userId: ctx.userId,
 			sessionId: ctx.session?.id,
+			input: userInput,
 			metadata: {
 				appName: ctx.appName,
 				branch: ctx.branch,
+				agentName: ctx.agent.name,
 			},
 		});
 
@@ -44,25 +169,12 @@ export class LangfusePlugin extends BasePlugin {
 		return trace;
 	}
 
-	private getSpanKey(invocationId: string, name: string) {
-		return `${invocationId}:${name}`;
-	}
-
-	private getGenerationKey(invocationId: string, model: string) {
-		return `${invocationId}:gen:${model}:${crypto.randomUUID()}`;
-	}
-
 	async onUserMessageCallback(params: {
 		userMessage: Content;
 		invocationContext: InvocationContext;
 	}) {
-		const trace = this.getOrCreateTrace(params.invocationContext);
-
-		trace.event({
-			name: "user_message",
-			input: params.userMessage,
-		});
-
+		// Trace is already created with the user input, so we just ensure it exists
+		this.getOrCreateTrace(params.invocationContext);
 		return undefined;
 	}
 
@@ -79,7 +191,14 @@ export class LangfusePlugin extends BasePlugin {
 
 		if (trace) {
 			if (params.result !== undefined) {
-				trace.update({ output: params.result });
+				const output =
+					typeof params.result === "object" && params.result.content
+						? this.extractTextFromContent(params.result.content)
+						: params.result;
+
+				trace.update({
+					output,
+				});
 			}
 			trace.update({ statusMessage: "completed" });
 		}
@@ -93,14 +212,20 @@ export class LangfusePlugin extends BasePlugin {
 	}) {
 		const trace = this.getOrCreateTrace(params.invocationContext);
 
+		// Log events as trace-level events for visibility
 		trace.event({
 			name: params.event.constructor.name || "event",
-			input: params.event.content,
+			input: this.serializeContent(params.event.content),
 			metadata: {
 				id: params.event.id,
 				author: params.event.author,
 				partial: params.event.partial,
 				branch: params.event.branch,
+				timestamp: params.event.timestamp,
+				isFinalResponse: params.event.isFinalResponse(),
+				hasFunctionCalls: params.event.getFunctionCalls().length > 0,
+				hasFunctionResponses: params.event.getFunctionResponses().length > 0,
+				textPreview: this.extractTextFromContent(params.event.content),
 			},
 		});
 
@@ -115,20 +240,25 @@ export class LangfusePlugin extends BasePlugin {
 			params.callbackContext.invocationContext,
 		);
 
-		const spanKey = this.getSpanKey(
-			params.callbackContext.invocationId,
-			`agent:${params.agent.name}`,
-		);
+		const parentSpan = this.getCurrentSpan(params.callbackContext.invocationId);
 
-		const span = trace.span({
-			name: `agent:${params.agent.name}`,
-			input: params.callbackContext.invocationContext.userContent,
-			metadata: {
-				agentType: params.agent.constructor.name,
-			},
-		});
+		const span = parentSpan
+			? parentSpan.span({
+					name: params.agent.name,
+					metadata: {
+						agentType: params.agent.constructor.name,
+						branch: params.callbackContext.invocationContext.branch,
+					},
+				})
+			: trace.span({
+					name: params.agent.name,
+					metadata: {
+						agentType: params.agent.constructor.name,
+						branch: params.callbackContext.invocationContext.branch,
+					},
+				});
 
-		this.spans.set(spanKey, span);
+		this.pushSpan(params.callbackContext.invocationId, span);
 		return undefined;
 	}
 
@@ -137,17 +267,21 @@ export class LangfusePlugin extends BasePlugin {
 		callbackContext: CallbackContext;
 		result?: any;
 	}) {
-		const spanKey = this.getSpanKey(
+		const currentSpan = this.getCurrentSpan(
 			params.callbackContext.invocationId,
-			`agent:${params.agent.name}`,
 		);
 
-		const span = this.spans.get(spanKey);
+		if (currentSpan) {
+			const output =
+				typeof params.result === "object" && params.result.content
+					? this.extractTextFromContent(params.result.content)
+					: params.result;
 
-		if (span) {
-			span.update({ output: params.result });
-			span.end();
-			this.spans.delete(spanKey);
+			currentSpan.update({
+				output,
+			});
+			currentSpan.end();
+			this.popSpan(params.callbackContext.invocationId);
 		}
 
 		return undefined;
@@ -161,27 +295,35 @@ export class LangfusePlugin extends BasePlugin {
 			params.callbackContext.invocationContext,
 		);
 
-		const genKey = this.getGenerationKey(
-			params.callbackContext.invocationId,
-			params.llmRequest.model || "unknown",
-		);
+		const parentSpan = this.getCurrentSpan(params.callbackContext.invocationId);
 
-		console.info("[Langfuse] LLM start", {
-			genKey,
-			model: params.llmRequest.model,
-		});
+		const genKey = `${params.callbackContext.invocationId}:${params.llmRequest.model}`;
 
-		const generation = trace.generation({
-			name: `llm:${params.llmRequest.model || "unknown"}`,
-			model: params.llmRequest.model,
-			input: params.llmRequest.contents,
-			metadata: {
-				systemInstruction: params.llmRequest.getSystemInstructionText(),
-				hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
-			},
-		});
+		const generation = parentSpan
+			? parentSpan.generation({
+					name: params.llmRequest.model || "unknown",
+					model: params.llmRequest.model,
+					input: this.serializeContents(params.llmRequest.contents),
+					metadata: {
+						systemInstruction: params.llmRequest.getSystemInstructionText(),
+						hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
+						toolCount: Object.keys(params.llmRequest.toolsDict).length,
+						toolNames: Object.keys(params.llmRequest.toolsDict),
+					},
+				})
+			: trace.generation({
+					name: params.llmRequest.model || "unknown",
+					model: params.llmRequest.model,
+					input: this.serializeContents(params.llmRequest.contents),
+					metadata: {
+						systemInstruction: params.llmRequest.getSystemInstructionText(),
+						hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
+						toolCount: Object.keys(params.llmRequest.toolsDict).length,
+						toolNames: Object.keys(params.llmRequest.toolsDict),
+					},
+				});
 
-		this.generations.set(genKey, generation);
+		this.currentGeneration.set(genKey, generation);
 		return undefined;
 	}
 
@@ -191,20 +333,13 @@ export class LangfusePlugin extends BasePlugin {
 		llmRequest?: LlmRequest;
 	}) {
 		const model = params.llmRequest?.model || "unknown";
+		const genKey = `${params.callbackContext.invocationId}:${model}`;
 
-		const genKey = Array.from(this.generations.keys())
-			.reverse()
-			.find((key) =>
-				key.startsWith(`${params.callbackContext.invocationId}:gen:${model}`),
-			);
-
-		if (!genKey) return undefined;
-
-		const generation = this.generations.get(genKey);
+		const generation = this.currentGeneration.get(genKey);
 		if (!generation) return undefined;
 
 		generation.update({
-			output: params.llmResponse.text ?? params.llmResponse.content,
+			output: this.serializeContent(params.llmResponse.content),
 			usage_details: params.llmResponse.usageMetadata && {
 				input: params.llmResponse.usageMetadata.promptTokenCount,
 				output: params.llmResponse.usageMetadata.candidatesTokenCount,
@@ -212,11 +347,14 @@ export class LangfusePlugin extends BasePlugin {
 			},
 			metadata: {
 				finishReason: params.llmResponse.finishReason,
+				textPreview:
+					params.llmResponse.text ||
+					this.extractTextFromContent(params.llmResponse.content),
 			},
 		});
 
 		generation.end();
-		this.generations.delete(genKey);
+		this.currentGeneration.delete(genKey);
 		return undefined;
 	}
 
@@ -227,17 +365,27 @@ export class LangfusePlugin extends BasePlugin {
 	}) {
 		const trace = this.getOrCreateTrace(params.toolContext.invocationContext);
 
-		const spanKey = this.getSpanKey(
-			params.toolContext.invocationId,
-			`tool:${params.tool.name}`,
-		);
+		const parentSpan = this.getCurrentSpan(params.toolContext.invocationId);
 
-		const span = trace.span({
-			name: `tool:${params.tool.name}`,
-			input: params.toolArgs,
-		});
+		const span = parentSpan
+			? parentSpan.span({
+					name: params.tool.name,
+					input: params.toolArgs,
+					metadata: {
+						toolType: params.tool.constructor.name,
+						functionCallId: params.toolContext.functionCallId,
+					},
+				})
+			: trace.span({
+					name: params.tool.name,
+					input: params.toolArgs,
+					metadata: {
+						toolType: params.tool.constructor.name,
+						functionCallId: params.toolContext.functionCallId,
+					},
+				});
 
-		this.spans.set(spanKey, span);
+		this.pushSpan(params.toolContext.invocationId, span);
 		return undefined;
 	}
 
@@ -246,17 +394,21 @@ export class LangfusePlugin extends BasePlugin {
 		toolContext: ToolContext;
 		result: any;
 	}) {
-		const spanKey = this.getSpanKey(
-			params.toolContext.invocationId,
-			`tool:${params.tool.name}`,
-		);
+		const currentSpan = this.getCurrentSpan(params.toolContext.invocationId);
 
-		const span = this.spans.get(spanKey);
-
-		if (span) {
-			span.update({ output: params.result });
-			span.end();
-			this.spans.delete(spanKey);
+		if (currentSpan) {
+			currentSpan.update({
+				output: params.result,
+				metadata: {
+					resultType: typeof params.result,
+					resultPreview:
+						typeof params.result === "string"
+							? params.result.slice(0, 200)
+							: JSON.stringify(params.result, null, 2).slice(0, 200),
+				},
+			});
+			currentSpan.end();
+			this.popSpan(params.toolContext.invocationId);
 		}
 
 		return undefined;
@@ -283,7 +435,13 @@ export interface LangfusePluginOptions {
 
 export type InvocationLike = Pick<
 	InvocationContext,
-	"invocationId" | "userId" | "session" | "appName" | "branch"
+	| "invocationId"
+	| "userId"
+	| "session"
+	| "appName"
+	| "branch"
+	| "userContent"
+	| "agent"
 >;
 
 export interface LangfuseTrace {
@@ -319,6 +477,23 @@ export interface LangfuseTrace {
 }
 
 export interface LangfuseSpan {
+	span(params: {
+		name: string;
+		metadata?: Record<string, any>;
+		input?: any;
+		output?: any;
+	}): LangfuseSpan;
+
+	generation(params: {
+		name: string;
+		model?: string;
+		modelParameters?: Record<string, any>;
+		input?: any;
+		output?: any;
+		metadata?: Record<string, any>;
+		usage_details?: Record<string, number>;
+	}): LangfuseGeneration;
+
 	update(params: {
 		output?: any;
 		metadata?: Record<string, any>;
