@@ -1,380 +1,199 @@
 ---
 title: OpenAPI Tools
-description: Create tools for REST API integration using OpenAPI specifications
+description: Integrate REST APIs using OpenAPI specifications with ADK-TS
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
-OpenAPI tools enable integration with REST APIs based on OpenAPI specifications. While ADK TypeScript doesn't currently include automatic tool generation from OpenAPI specs, you can manually create API tools using the existing HttpRequestTool and FunctionTool components.
+Integrate REST APIs documented with [OpenAPI specifications](https://swagger.io/specification/) into your ADK agents. You can use the built-in `HttpRequestTool` for general API access or create type-safe custom tools with generated TypeScript types.
 
-## Current Implementation Approach
-
-ADK TypeScript provides foundational tools for API integration that can be combined to work with OpenAPI-documented services.
-
-### Available Components
-
-<Cards>
-  <Card
-    title="🌐 HttpRequestTool"
-    description="Make HTTP requests to REST API endpoints"
-  />
-
-  <Card
-    title="🔧 FunctionTool"
-    description="Create custom wrappers for specific API operations"
-  />
-
-  <Card
-    title="🔐 Authentication"
-    description="Handle API authentication and credentials"
-  />
-</Cards>
-
-<Callout type="info" title="Future Enhancement">
-Automatic OpenAPI tool generation is planned for a future release. The current approach requires manual tool creation but provides full flexibility and control.
+<Callout type="info">
+  ADK-TS does not include automatic tool generation from OpenAPI specs. Use
+  `HttpRequestTool` for quick integration or create custom typed tools for
+  better type safety and control.
 </Callout>
 
-## Manual API Tool Creation
+## Two Approaches
 
-### Using HttpRequestTool
+| Approach           | Type Safety | Setup Time | Best For                                              |
+| ------------------ | ----------- | ---------- | ----------------------------------------------------- |
+| `HttpRequestTool`  | None        | Instant    | Quick prototypes, dynamic APIs, general HTTP requests |
+| Custom Typed Tools | Full        | Medium     | Production apps, complex APIs, IDE autocomplete       |
 
-The HttpRequestTool provides a general-purpose solution for API integration:
+## Quick Integration: Use HttpRequestTool
+
+For simple API access, use the built-in [`HttpRequestTool`](http://localhost:3000/docs/framework/tools/built-in-tools#httprequesttool):
 
 ```typescript
-import { HttpRequestTool, LlmAgent } from '@iqai/adk';
+import { HttpRequestTool, AgentBuilder } from "@iqai/adk";
 
-const httpTool = new HttpRequestTool();
+const { runner } = await AgentBuilder.create("api-agent")
+  .withModel("gemini-2.5-flash")
+  .withTools(new HttpRequestTool())
+  .withInstruction(
+    `
+    You can make HTTP requests using http_request tool.
+    Include authentication headers and handle responses appropriately.
+  `
+  )
+  .build();
 
-const apiAgent = new LlmAgent({
-  name: 'api-agent',
-  model: 'gemini-2.5-flash',
-  description: 'Agent that can interact with REST APIs',
-  instruction: `
-    You can make HTTP requests to APIs using the http_request tool.
-    When calling APIs:
-    - Use the correct HTTP method (GET, POST, PUT, DELETE)
-    - Include required headers and authentication
-    - Format request bodies as JSON strings when needed
-    - Parse and interpret the response data
-  `,
-  tools: [httpTool]
-});
+// Agent can now call any API by constructing requests
+await runner.ask(
+  "Get the current weather for London from api.openweathermap.org"
+);
 ```
 
-### Creating Specific API Tools
+## Type-Safe Integration: Generate TypeScript Types
 
-For better control and LLM understanding, create specific tools for individual API operations:
+For better type safety and IDE support, generate types from your OpenAPI spec and create custom tools:
 
-```typescript
-import { FunctionTool } from '@iqai/adk';
+### Step 1: Generate Types
 
-// Create a specific tool for weather API
-async function getWeather(location: string, apiKey: string) {
-  const response = await fetch(
-    `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}`
-  );
+Install and run `openapi-typescript` against your OpenAPI spec:
 
-  if (!response.ok) {
-    return {
-      error: `Weather API error: ${response.status} ${response.statusText}`
-    };
-  }
+```bash
+# Install the package
+pnpm add -D openapi-typescript
 
-  const data = await response.json();
-  return {
-    location: data.name,
-    temperature: Math.round(data.main.temp - 273.15), // Convert from Kelvin
-    description: data.weather[0].description,
-    humidity: data.main.humidity
-  };
-}
+# From a local file
+pnpx openapi-typescript ./your-api-spec.json -o ./api-types.ts
 
-const weatherTool = new FunctionTool(getWeather, {
-  name: 'get_weather',
-  description: 'Get current weather information for a specific location'
-});
+# From a URL
+pnpx openapi-typescript https://your-api.com/openapi.json -o ./api-types.ts
 ```
 
-### API Wrapper Class Pattern
+### Step 2: Create Custom Typed Tools
 
-For complex APIs, create wrapper classes that encapsulate multiple operations:
+### Option A: With Native Fetch
+
+Use the generated types for full type safety with standard `fetch`:
 
 ```typescript
-import { BaseTool } from '@iqai/adk';
+import { BaseTool } from "@iqai/adk";
+import type { paths } from "./api-types";
 
-interface ApiConfig {
-  baseUrl: string;
-  apiKey: string;
-  timeout?: number;
-}
-
-class ApiTool extends BaseTool {
-  private config: ApiConfig;
-
-  constructor(config: ApiConfig) {
+class UserApiTool extends BaseTool {
+  constructor(private baseUrl: string, private apiKey: string) {
     super({
-      name: 'api_tool',
-      description: 'Custom API integration tool'
-    });
-    this.config = config;
-  }
-
-  async runAsync(args: {
-    operation: string;
-    path: string;
-    method?: string;
-    body?: string;
-    headers?: Record<string, string>;
-  }) {
-    try {
-      const url = `${this.config.baseUrl}${args.path}`;
-      const headers = {
-        'Authorization': `Bearer ${this.config.apiKey}`,
-        'Content-Type': 'application/json',
-        ...args.headers
-      };
-
-      const response = await fetch(url, {
-        method: args.method || 'GET',
-        headers,
-        body: args.body,
-        signal: AbortSignal.timeout(this.config.timeout || 10000)
-      });
-
-      const responseData = await response.text();
-
-      return {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        data: responseData
-      };
-    } catch (error) {
-      return {
-        error: `API request failed: ${error instanceof Error ? error.message : String(error)}`
-      };
-    }
-  }
-
-  getDeclaration() {
-    return {
-      name: this.name,
-      description: this.description,
-      parameters: {
-        type: 'object',
-        properties: {
-          operation: {
-            type: 'string',
-            description: 'The API operation to perform'
-          },
-          path: {
-            type: 'string',
-            description: 'API endpoint path'
-          },
-          method: {
-            type: 'string',
-            description: 'HTTP method (GET, POST, PUT, DELETE)',
-            enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
-          },
-          body: {
-            type: 'string',
-            description: 'Request body as JSON string'
-          },
-          headers: {
-            type: 'object',
-            description: 'Additional request headers'
-          }
-        },
-        required: ['operation', 'path']
-      }
-    };
-  }
-}
-```
-
-## OpenAPI Specification Guidance
-
-### Reading OpenAPI Specs
-
-When working with OpenAPI specifications manually:
-
-1. **Identify Endpoints**: Review the `paths` object for available operations
-2. **Understand Parameters**: Check path, query, header, and body parameters
-3. **Review Authentication**: Check `securitySchemes` for auth requirements
-4. **Study Responses**: Understand expected response formats and status codes
-
-### Implementation Strategy
-
-1. **Start Simple**: Begin with basic GET operations using HttpRequestTool
-2. **Add Authentication**: Implement required auth patterns
-3. **Create Specific Tools**: Build dedicated tools for frequently used operations
-4. **Error Handling**: Implement robust error handling and validation
-5. **Testing**: Thoroughly test all API interactions
-
-## Authentication Patterns
-
-### API Key Authentication
-
-```typescript
-async function callApiWithKey(endpoint: string, apiKey: string, params?: Record<string, string>) {
-  const url = new URL(endpoint);
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.append(key, value);
+      name: "user_api",
+      description: "Manage users via API",
     });
   }
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      'X-API-Key': apiKey,
-      'Content-Type': 'application/json'
-    }
-  });
+  async runAsync(args: { userId: string }) {
+    // Extract types from your OpenAPI spec
+    type GetUserResponse =
+      paths["/users/{userId}"]["get"]["responses"]["200"]["content"]["application/json"];
 
-  return response.json();
-}
-```
+    const response = await fetch(`${this.baseUrl}/users/${args.userId}`, {
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+    });
 
-### Bearer Token Authentication
-
-```typescript
-async function callApiWithToken(endpoint: string, token: string, data?: any) {
-  const response = await fetch(endpoint, {
-    method: data ? 'POST' : 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: data ? JSON.stringify(data) : undefined
-  });
-
-  return response.json();
-}
-```
-
-## Error Handling Best Practices
-
-### Response Validation
-
-```typescript
-async function safeApiCall(url: string, options: RequestInit = {}) {
-  try {
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      return {
-        error: `HTTP ${response.status}: ${response.statusText}`,
-        status: response.status
-      };
-    }
-
-    const contentType = response.headers.get('content-type');
-    if (contentType?.includes('application/json')) {
-      const data = await response.json();
-      return { data, status: response.status };
-    } else {
-      const text = await response.text();
-      return { data: text, status: response.status };
-    }
-  } catch (error) {
-    return {
-      error: `Network error: ${error instanceof Error ? error.message : String(error)}`
-    };
+    // Response is fully typed
+    const data: GetUserResponse = await response.json();
+    return { success: true, user: data };
   }
 }
 ```
 
-### Retry Logic
+**Option B: With openapi-fetch (Recommended)**
+
+For cleaner code and built-in error handling:
+
+Install `openapi-fetch`:
+
+```bash
+pnpm add openapi-fetch
+```
+
+Create the tool:
 
 ```typescript
-async function apiCallWithRetry(
-  url: string,
-  options: RequestInit = {},
-  maxRetries = 3
-) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options);
-      if (response.ok || response.status < 500) {
-        return response;
-      }
-    } catch (error) {
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-    }
+import { BaseTool } from "@iqai/adk";
+import createClient from "openapi-fetch";
+import type { paths } from "./api-types";
+
+class UserApiTool extends BaseTool {
+  private client: ReturnType<typeof createClient<paths>>;
+
+  constructor(baseUrl: string, apiKey: string) {
+    super({
+      name: "user_api",
+      description: "Manage users via API",
+    });
+
+    this.client = createClient<paths>({
+      baseUrl,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  }
+
+  async runAsync(args: { userId: string }) {
+    // Fully typed request and response with automatic path substitution
+    const { data, error } = await this.client.GET("/users/{userId}", {
+      params: { path: { userId: args.userId } },
+    });
+
+    if (error) return { success: false, error };
+    return { success: true, user: data };
   }
 }
 ```
 
-## Future Roadmap
+## Using Schema Components
 
-<Callout type="info" title="Planned Features">
-Future versions of ADK TypeScript will include:
-- Automatic tool generation from OpenAPI specifications
-- Built-in OpenAPI parser and validator
-- Advanced authentication flow handling
-- Dynamic tool registration and discovery
-</Callout>
+Extract reusable types from your OpenAPI spec:
 
-### Expected Features
+```typescript
+import type { paths, components } from "./api-types";
 
-- **OpenAPIToolset Class**: Automatic tool generation from specifications
-- **Schema Validation**: Built-in request/response validation
-- **Operation Discovery**: Automatic endpoint discovery and mapping
-- **Auth Integration**: Seamless authentication handling
-- **Type Generation**: TypeScript type generation from schemas
+// Use schema definitions
+type User = components["schemas"]["User"];
+type CreateUserRequest = components["schemas"]["CreateUserRequest"];
+
+// Use path types
+type GetUserResponse =
+  paths["/users/{userId}"]["get"]["responses"]["200"]["content"]["application/json"];
+```
+
+## When to Use Each Approach
+
+| Approach           | Best For                                                                    |
+| ------------------ | --------------------------------------------------------------------------- |
+| `HttpRequestTool`  | Quick prototypes, agents that need general API access, simple integrations  |
+| Custom Typed Tools | Production apps, type safety requirements, complex APIs with many endpoints |
 
 ## Best Practices
 
-### Tool Design
-
-- **Single Responsibility**: Create focused tools for specific operations
-- **Clear Descriptions**: Provide detailed tool descriptions for LLM understanding
-- **Error Handling**: Implement comprehensive error handling
-- **Parameter Validation**: Validate inputs before making API calls
-
-### Agent Instructions
-
-- **API Documentation**: Provide clear instructions about API usage
-- **Error Recovery**: Define how to handle API failures
-- **Rate Limiting**: Inform agents about API rate limits
-- **Data Formats**: Explain expected request and response formats
-
-### Security Considerations
-
-- **Credential Management**: Store API keys and tokens securely
-- **Environment Variables**: Use environment variables for sensitive data
-- **Access Controls**: Implement appropriate access restrictions
-- **Audit Logging**: Log API usage for security and compliance
+- **Use HttpRequestTool** for quick prototypes and general API access
+- **Create custom tools** when you need type safety and specific API operations
+- **Regenerate types** when your OpenAPI spec changes
+- **Handle errors** appropriately in your tool implementations
+- **Store API keys** securely using environment variables
 
 ## Related Topics
 
 <Cards>
   <Card
-    title="🌐 Built-in Tools"
-    description="Explore HttpRequestTool and other built-in capabilities"
-    href="/docs/framework/tools/built-in-tools"
-  />
-
-  <Card
     title="🔧 Function Tools"
-    description="Create custom tools for specific API operations"
+    description="Create custom tools for API operations"
     href="/docs/framework/tools/function-tools"
   />
-
+  <Card
+    title="🌐 Built-in Tools"
+    description="Explore other built-in tool capabilities"
+    href="/docs/framework/tools/built-in-tools"
+  />
   <Card
     title="🔐 Authentication"
     description="Secure API access and credential management"
     href="/docs/framework/tools/authentication"
   />
-
   <Card
     title="🤖 Agents"
-    description="Learn how agents coordinate API tools"
+    description="Learn how agents use tools"
     href="/docs/framework/agents"
   />
 </Cards>
