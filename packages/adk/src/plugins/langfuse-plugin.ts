@@ -3,14 +3,19 @@ import { Event } from "@adk/events";
 import { LlmRequest, LlmResponse } from "@adk/models";
 import { BaseTool, ToolContext } from "@adk/tools";
 import { Content, Part } from "@google/genai";
-import { Langfuse } from "langfuse";
+import {
+	Langfuse,
+	LangfuseGenerationClient,
+	LangfuseSpanClient,
+	LangfuseTraceClient,
+} from "langfuse";
 import { BasePlugin } from "./base-plugin";
 
 export class LangfusePlugin extends BasePlugin {
 	private client: Langfuse;
-	private traces: Map<string, LangfuseTrace> = new Map();
-	private spanStack: Map<string, LangfuseSpan[]> = new Map();
-	private currentGeneration: Map<string, LangfuseGeneration> = new Map();
+	private traces: Map<string, LangfuseTraceClient> = new Map();
+	private spanStack: Map<string, LangfuseSpanClient[]> = new Map();
+	private currentGeneration: Map<string, LangfuseGenerationClient> = new Map();
 
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
@@ -119,7 +124,7 @@ export class LangfusePlugin extends BasePlugin {
 	/**
 	 * Gets the current parent span for nesting
 	 */
-	private getCurrentSpan(invocationId: string): LangfuseSpan | undefined {
+	private getCurrentSpan(invocationId: string): LangfuseSpanClient | undefined {
 		const stack = this.spanStack.get(invocationId);
 		return stack && stack.length > 0 ? stack[stack.length - 1] : undefined;
 	}
@@ -127,7 +132,7 @@ export class LangfusePlugin extends BasePlugin {
 	/**
 	 * Pushes a span onto the stack
 	 */
-	private pushSpan(invocationId: string, span: LangfuseSpan): void {
+	private pushSpan(invocationId: string, span: LangfuseSpanClient): void {
 		if (!this.spanStack.has(invocationId)) {
 			this.spanStack.set(invocationId, []);
 		}
@@ -200,7 +205,6 @@ export class LangfusePlugin extends BasePlugin {
 					output,
 				});
 			}
-			trace.update({ statusMessage: "completed" });
 		}
 
 		return undefined;
@@ -340,7 +344,7 @@ export class LangfusePlugin extends BasePlugin {
 
 		generation.update({
 			output: this.serializeContent(params.llmResponse.content),
-			usage_details: params.llmResponse.usageMetadata && {
+			usage: params.llmResponse.usageMetadata && {
 				input: params.llmResponse.usageMetadata.promptTokenCount,
 				output: params.llmResponse.usageMetadata.candidatesTokenCount,
 				total: params.llmResponse.usageMetadata.totalTokenCount,
@@ -443,75 +447,3 @@ export type InvocationLike = Pick<
 	| "userContent"
 	| "agent"
 >;
-
-export interface LangfuseTrace {
-	event(params: {
-		name: string;
-		metadata?: Record<string, any>;
-		input?: any;
-		output?: any;
-	}): void;
-
-	span(params: {
-		name: string;
-		metadata?: Record<string, any>;
-		input?: any;
-		output?: any;
-	}): LangfuseSpan;
-
-	generation(params: {
-		name: string;
-		model?: string;
-		modelParameters?: Record<string, any>;
-		input?: any;
-		output?: any;
-		metadata?: Record<string, any>;
-		usage_details?: Record<string, number>;
-	}): LangfuseGeneration;
-
-	update(params: {
-		output?: any;
-		statusMessage?: string;
-		metadata?: Record<string, any>;
-	}): void;
-}
-
-export interface LangfuseSpan {
-	span(params: {
-		name: string;
-		metadata?: Record<string, any>;
-		input?: any;
-		output?: any;
-	}): LangfuseSpan;
-
-	generation(params: {
-		name: string;
-		model?: string;
-		modelParameters?: Record<string, any>;
-		input?: any;
-		output?: any;
-		metadata?: Record<string, any>;
-		usage_details?: Record<string, number>;
-	}): LangfuseGeneration;
-
-	update(params: {
-		output?: any;
-		metadata?: Record<string, any>;
-		level?: "DEFAULT" | "DEBUG" | "WARNING" | "ERROR";
-		statusMessage?: string;
-	}): void;
-
-	end(): void;
-}
-
-export interface LangfuseGeneration {
-	update(params: {
-		output?: any;
-		usage_details?: Record<string, number>;
-		metadata?: Record<string, any>;
-		level?: "DEFAULT" | "DEBUG" | "WARNING" | "ERROR";
-		statusMessage?: string;
-	}): void;
-
-	end(): void;
-}
