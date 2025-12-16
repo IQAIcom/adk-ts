@@ -307,13 +307,8 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		});
 
 		if (earlyExitResult) {
-			const earlyExitEvent = new Event({
-				invocationId: invocationContext.invocationId,
-				author: "model",
-				content: earlyExitResult,
-			});
-			await this.sessionService.appendEvent(session, earlyExitEvent);
-			yield earlyExitEvent;
+			await this.sessionService.appendEvent(session, earlyExitResult);
+			yield earlyExitResult;
 			return;
 		}
 
