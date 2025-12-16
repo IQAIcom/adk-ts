@@ -51,8 +51,8 @@ This MCP server connects to CoinGecko's remote endpoint, eliminating the need fo
       description: "Client for premium CoinGecko market data",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "mcp-remote@latest", "https://mcp.pro-api.coingecko.com/mcp"],
+        command: "npx",
+        args: ["-y", "mcp-remote@latest", "https://mcp.pro-api.coingecko.com/mcp"],
         env: {
           COINGECKO_PRO_API_KEY: process.env.COINGECKO_PRO_API_KEY || "",
           PATH: process.env.PATH || "",
@@ -79,6 +79,9 @@ dotenv.config();
 async function main() {
   // Initialize CoinGecko Pro MCP toolset
   const toolset = McpCoinGeckoPro({
+    env: {
+      COINGECKO_PRO_API_KEY: process.env.COINGECKO_PRO_API_KEY,
+    },
     debug: false,
     retryOptions: {
       maxRetries: 3,
