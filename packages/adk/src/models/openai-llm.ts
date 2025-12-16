@@ -622,16 +622,39 @@ export class OpenAiLlm extends BaseLlm {
 	private get client(): OpenAI {
 		if (!this._client) {
 			const apiKey = process.env.OPENAI_API_KEY;
+			const azureOpenAiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+			const azureOpenAiDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+			const azureOpenAiApiVersion = process.env.AZURE_OPENAI_API_VERSION;
+			const azureOpenAiApiKey = process.env.AZURE_OPENAI_API_KEY;
 
-			if (!apiKey) {
+			if (!apiKey && !azureOpenAiApiKey) {
 				throw new Error(
-					"OPENAI_API_KEY environment variable is required for OpenAI models",
+					"OPENAI_API_KEY or AZURE_OPENAI_API_KEY environment variable is required for OpenAI models",
 				);
 			}
 
-			this._client = new OpenAI({
-				apiKey,
-			});
+			if (
+				azureOpenAiApiKey &&
+				(!azureOpenAiEndpoint ||
+					!azureOpenAiDeployment ||
+					!azureOpenAiApiVersion)
+			) {
+				throw new Error(
+					"When using Azure OpenAI, please set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT, and AZURE_OPENAI_API_VERSION environment variables instead of OPENAI_API_KEY.",
+				);
+			}
+
+			if (azureOpenAiApiKey) {
+				const baseURL = `${azureOpenAiEndpoint}/openai/v1/`;
+				this._client = new OpenAI({
+					baseURL: baseURL,
+					apiKey: azureOpenAiApiKey,
+				});
+			} else {
+				this._client = new OpenAI({
+					apiKey,
+				});
+			}
 		}
 		return this._client;
 	}

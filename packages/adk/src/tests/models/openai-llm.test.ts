@@ -26,6 +26,13 @@ describe("OpenAiLlm", () => {
 
 	beforeEach(() => {
 		originalEnv = { ...process.env };
+
+		delete process.env.OPENAI_API_KEY;
+		delete process.env.AZURE_OPENAI_API_KEY;
+		delete process.env.AZURE_OPENAI_ENDPOINT;
+		delete process.env.AZURE_OPENAI_DEPLOYMENT;
+		delete process.env.AZURE_OPENAI_API_VERSION;
+
 		process.env.OPENAI_API_KEY = "test-key";
 		llm = new OpenAiLlm();
 	});
@@ -232,7 +239,7 @@ describe("OpenAiLlm", () => {
 			process.env.OPENAI_API_KEY = undefined;
 			const llm2 = new OpenAiLlm();
 			expect(() => (llm2 as any).client).toThrow(
-				/OPENAI_API_KEY environment variable is required/,
+				/OPENAI_API_KEY or AZURE_OPENAI_API_KEY environment variable is required/,
 			);
 		});
 
@@ -240,6 +247,26 @@ describe("OpenAiLlm", () => {
 			process.env.OPENAI_API_KEY = "test-key";
 			const llm2 = new OpenAiLlm();
 			expect((llm2 as any).client).toBeDefined();
+		});
+
+		it("should return a client if AZURE_OPENAI_API_KEY is set", () => {
+			process.env.OPENAI_API_KEY = undefined;
+			process.env.AZURE_OPENAI_API_KEY = "test-azure-key";
+			process.env.AZURE_OPENAI_ENDPOINT = "https://test.openai.azure.com";
+			process.env.AZURE_OPENAI_DEPLOYMENT = "test-deployment";
+			process.env.AZURE_OPENAI_API_VERSION = "2023-05-15";
+			const llm2 = new OpenAiLlm();
+			expect((llm2 as any).client).toBeDefined();
+		});
+
+		it("should throw if AZURE_OPENAI_API_KEY is set but other Azure vars are missing", () => {
+			process.env.OPENAI_API_KEY = undefined;
+			process.env.AZURE_OPENAI_API_KEY = "test-azure-key";
+			process.env.AZURE_OPENAI_ENDPOINT = undefined;
+			const llm2 = new OpenAiLlm();
+			expect(() => (llm2 as any).client).toThrow(
+				/When using Azure OpenAI, please set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT, and AZURE_OPENAI_API_VERSION/,
+			);
 		});
 	});
 
