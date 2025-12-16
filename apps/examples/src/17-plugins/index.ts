@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { env } from "node:process";
 import { AgentBuilder, LangfusePlugin } from "@iqai/adk";
+import { openrouter } from "@openrouter/ai-sdk-provider";
 import dedent from "dedent";
 import { z } from "zod";
 import { ask } from "../utils";
@@ -35,7 +36,7 @@ async function main() {
 
 	// Build agent
 	const { runner } = await AgentBuilder.withModel(
-		env.LLM_MODEL || "gemini-2.0-flash",
+		openrouter("openai/gpt-4.1-mini"),
 	)
 		.withOutputSchema(outputSchema)
 		.withQuickSession({

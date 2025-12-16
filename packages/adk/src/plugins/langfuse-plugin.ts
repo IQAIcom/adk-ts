@@ -14,14 +14,13 @@ export class LangfusePlugin extends BasePlugin {
 
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
-
 		this.client = new Langfuse({
 			publicKey: options.publicKey,
 			secretKey: options.secretKey,
 			baseUrl: options.baseUrl ?? "https://us.cloud.langfuse.com",
 			release: options.release,
-			flushAt: options.flushAt,
-			flushInterval: options.flushInterval,
+			flushAt: options.flushAt ?? 1, //
+			flushInterval: options.flushInterval ?? 1000,
 		});
 	}
 
@@ -68,7 +67,6 @@ export class LangfusePlugin extends BasePlugin {
 
 		trace.event({
 			name: "user_message",
-			metadata: { message: params.userMessage },
 			input: params.userMessage,
 		});
 
@@ -79,7 +77,6 @@ export class LangfusePlugin extends BasePlugin {
 	// Run start / finish
 	// ---------------------------------------------
 	async beforeRunCallback(params: { invocationContext: InvocationContext }) {
-		// Initialize trace
 		this.getOrCreateTrace(params.invocationContext);
 		return undefined;
 	}
@@ -91,14 +88,9 @@ export class LangfusePlugin extends BasePlugin {
 		const trace = this.traces.get(params.invocationContext.invocationId);
 
 		if (trace) {
-			// Update trace with final output if available
 			if (params.result !== undefined) {
-				trace.update({
-					output: params.result,
-				});
+				trace.update({ output: params.result });
 			}
-
-			// Finalize the trace
 			trace.update({ statusMessage: "completed" });
 		}
 
@@ -114,21 +106,15 @@ export class LangfusePlugin extends BasePlugin {
 	}) {
 		const trace = this.getOrCreateTrace(params.invocationContext);
 
-		// Extract event type and payload
-		const eventType = params.event.constructor.name || "event";
-		const eventPayload = {
-			id: params.event.id,
-			author: params.event.author,
-			timestamp: params.event.timestamp,
-			content: params.event.content,
-			partial: params.event.partial,
-			branch: params.event.branch,
-		};
-
 		trace.event({
-			name: eventType,
-			metadata: eventPayload,
+			name: params.event.constructor.name || "event",
 			input: params.event.content,
+			metadata: {
+				id: params.event.id,
+				author: params.event.author,
+				partial: params.event.partial,
+				branch: params.event.branch,
+			},
 		});
 
 		return undefined;
@@ -152,15 +138,13 @@ export class LangfusePlugin extends BasePlugin {
 
 		const span = trace.span({
 			name: `agent:${params.agent.name}`,
+			input: params.callbackContext.invocationContext.userContent,
 			metadata: {
-				agentName: params.agent.name,
 				agentType: params.agent.constructor.name,
 			},
-			input: params.callbackContext.invocationContext.userContent,
 		});
 
 		this.spans.set(spanKey, span);
-
 		return undefined;
 	}
 
@@ -174,16 +158,10 @@ export class LangfusePlugin extends BasePlugin {
 			`agent:${params.agent.name}`,
 		);
 
-		console.log("spanKey", spanKey);
 		const span = this.spans.get(spanKey);
 
 		if (span) {
-			span.update({
-				output: params.result,
-				metadata: {
-					completed: true,
-				},
-			});
+			span.update({ output: params.result });
 			span.end();
 			this.spans.delete(spanKey);
 		}
@@ -202,48 +180,27 @@ export class LangfusePlugin extends BasePlugin {
 			params.callbackContext.invocationContext,
 		);
 
-		console.log("trace", JSON.stringify(trace, null, 2));
-
 		const genKey = this.getGenerationKey(
 			params.callbackContext.invocationId,
 			params.llmRequest.model || "unknown",
 		);
 
-		console.log("genKey", genKey);
-
-		// Extract model parameters from config
-		const modelParameters: Record<string, any> = {};
-		if (params.llmRequest.config) {
-			const config = params.llmRequest.config;
-			if (config.temperature !== undefined)
-				modelParameters.temperature = config.temperature;
-			if (config.maxOutputTokens !== undefined)
-				modelParameters.maxTokens = config.maxOutputTokens;
-			if (config.topP !== undefined) modelParameters.topP = config.topP;
-			if (config.topK !== undefined) modelParameters.topK = config.topK;
-			if (config.stopSequences !== undefined)
-				modelParameters.stopSequences = config.stopSequences;
-		}
-
-		// Convert Content[] to a format suitable for Langfuse
-		const input = params.llmRequest.contents.map((content) => ({
-			role: content.role,
-			parts: content.parts,
-		}));
+		console.info("[Langfuse] LLM start", {
+			genKey,
+			model: params.llmRequest.model,
+		});
 
 		const generation = trace.generation({
 			name: `llm:${params.llmRequest.model || "unknown"}`,
 			model: params.llmRequest.model,
-			modelParameters,
-			input,
+			input: params.llmRequest.contents,
 			metadata: {
-				hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
 				systemInstruction: params.llmRequest.getSystemInstructionText(),
+				hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
 			},
 		});
 
 		this.generations.set(genKey, generation);
-
 		return undefined;
 	}
 
@@ -254,106 +211,31 @@ export class LangfusePlugin extends BasePlugin {
 	}) {
 		const model = params.llmRequest?.model || "unknown";
 
-		// Find the most recent generation for this invocation and model
 		const genKey = Array.from(this.generations.keys())
 			.reverse()
 			.find((key) =>
 				key.startsWith(`${params.callbackContext.invocationId}:gen:${model}`),
 			);
 
-		if (genKey) {
-			const generation = this.generations.get(genKey);
+		if (!genKey) return undefined;
 
-			if (generation) {
-				// Extract output from LlmResponse
-				const output = params.llmResponse.content
-					? {
-							role: params.llmResponse.content.role,
-							parts: params.llmResponse.content.parts,
-						}
-					: params.llmResponse.text || params.llmResponse.errorMessage;
+		const generation = this.generations.get(genKey);
+		if (!generation) return undefined;
 
-				// Extract usage metadata if available
-				const usageDetails: Record<string, number> = {};
-				if (params.llmResponse.usageMetadata) {
-					const usage = params.llmResponse.usageMetadata;
-					if (usage.promptTokenCount !== undefined) {
-						usageDetails.input = usage.promptTokenCount;
-					}
-					if (usage.candidatesTokenCount !== undefined) {
-						usageDetails.output = usage.candidatesTokenCount;
-					}
-					if (usage.totalTokenCount !== undefined) {
-						usageDetails.total = usage.totalTokenCount;
-					}
-					// Handle cached tokens if available
-					if (usage.cachedContentTokenCount !== undefined) {
-						usageDetails.cached = usage.cachedContentTokenCount;
-					}
-				}
+		generation.update({
+			output: params.llmResponse.text ?? params.llmResponse.content,
+			usage_details: params.llmResponse.usageMetadata && {
+				input: params.llmResponse.usageMetadata.promptTokenCount,
+				output: params.llmResponse.usageMetadata.candidatesTokenCount,
+				total: params.llmResponse.usageMetadata.totalTokenCount,
+			},
+			metadata: {
+				finishReason: params.llmResponse.finishReason,
+			},
+		});
 
-				generation.update({
-					output,
-					...(Object.keys(usageDetails).length > 0 && {
-						usage_details: usageDetails,
-					}),
-					metadata: {
-						finishReason: params.llmResponse.finishReason,
-						responseId: params.llmResponse.id,
-						partial: params.llmResponse.partial,
-						turnComplete: params.llmResponse.turnComplete,
-						...(params.llmResponse.groundingMetadata && {
-							groundingMetadata: params.llmResponse.groundingMetadata,
-						}),
-					},
-				});
-
-				generation.end();
-				this.generations.delete(genKey);
-			}
-		}
-
-		return undefined;
-	}
-
-	async onModelErrorCallback(params: {
-		callbackContext: CallbackContext;
-		llmRequest: LlmRequest;
-		error: Error;
-	}) {
-		const model = params.llmRequest.model || "unknown";
-
-		// Find the most recent generation for this invocation and model
-		const genKey = Array.from(this.generations.keys())
-			.reverse()
-			.find((key) =>
-				key.startsWith(`${params.callbackContext.invocationId}:gen:${model}`),
-			);
-
-		if (genKey) {
-			const generation = this.generations.get(genKey);
-
-			if (generation) {
-				generation.update({
-					level: "ERROR",
-					statusMessage: params.error.message,
-					output: {
-						error: params.error.message,
-					},
-					metadata: {
-						error: {
-							name: params.error.name,
-							message: params.error.message,
-							stack: params.error.stack,
-						},
-					},
-				});
-
-				generation.end();
-				this.generations.delete(genKey);
-			}
-		}
-
+		generation.end();
+		this.generations.delete(genKey);
 		return undefined;
 	}
 
@@ -366,6 +248,7 @@ export class LangfusePlugin extends BasePlugin {
 		toolContext: ToolContext;
 	}) {
 		const trace = this.getOrCreateTrace(params.toolContext.invocationContext);
+
 		const spanKey = this.getSpanKey(
 			params.toolContext.invocationId,
 			`tool:${params.tool.name}`,
@@ -373,21 +256,15 @@ export class LangfusePlugin extends BasePlugin {
 
 		const span = trace.span({
 			name: `tool:${params.tool.name}`,
-			metadata: {
-				toolName: params.tool.name,
-				toolDescription: params.tool.description,
-			},
 			input: params.toolArgs,
 		});
 
 		this.spans.set(spanKey, span);
-
 		return undefined;
 	}
 
 	async afterToolCallback(params: {
 		tool: BaseTool;
-		toolArgs: any;
 		toolContext: ToolContext;
 		result: any;
 	}) {
@@ -395,49 +272,11 @@ export class LangfusePlugin extends BasePlugin {
 			params.toolContext.invocationId,
 			`tool:${params.tool.name}`,
 		);
+
 		const span = this.spans.get(spanKey);
 
 		if (span) {
-			span.update({
-				output: params.result,
-				metadata: {
-					completed: true,
-				},
-			});
-			span.end();
-			this.spans.delete(spanKey);
-		}
-
-		return undefined;
-	}
-
-	async onToolErrorCallback(params: {
-		tool: BaseTool;
-		toolArgs: any;
-		toolContext: ToolContext;
-		error: Error;
-	}) {
-		const spanKey = this.getSpanKey(
-			params.toolContext.invocationId,
-			`tool:${params.tool.name}`,
-		);
-		const span = this.spans.get(spanKey);
-
-		if (span) {
-			span.update({
-				level: "ERROR",
-				statusMessage: params.error.message,
-				output: {
-					error: params.error.message,
-				},
-				metadata: {
-					error: {
-						name: params.error.name,
-						message: params.error.message,
-						stack: params.error.stack,
-					},
-				},
-			});
+			span.update({ output: params.result });
 			span.end();
 			this.spans.delete(spanKey);
 		}
@@ -453,7 +292,6 @@ export class LangfusePlugin extends BasePlugin {
 	}
 
 	async close() {
-		// Ensure all pending events are sent before shutting down
 		await this.client.shutdownAsync();
 	}
 }
