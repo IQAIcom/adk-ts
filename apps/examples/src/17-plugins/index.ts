@@ -26,11 +26,16 @@ async function main() {
 		fun_fact: z.string(),
 	});
 
-	// Initialize plugin
+	if (!env.DEV_LANGFUSE_PUBLIC_KEY || !env.DEV_LANGFUSE_SECRET_KEY) {
+		throw new Error(
+			"Langfuse environment variables DEV_LANGFUSE_PUBLIC_KEY and DEV_LANGFUSE_SECRET_KEY must be set to run this example.",
+		);
+	}
+
 	const langfusePlugin = new LangfusePlugin({
 		name: "simple-agent",
-		publicKey: env.DEV_LANGFUSE_PUBLIC_KEY,
-		secretKey: env.DEV_LANGFUSE_SECRET_KEY,
+		publicKey: env.DEV_LANGFUSE_PUBLIC_KEY!,
+		secretKey: env.DEV_LANGFUSE_SECRET_KEY!,
 		baseUrl: env.LANGFUSE_BASEURL,
 	});
 
