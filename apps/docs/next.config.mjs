@@ -71,38 +71,35 @@ const config = {
 			},
 		]);
 
-		const otherRedirects = [
+		const specificRedirects = [
+			{ from: "/docs/framework", to: "/docs" },
 			{
-				source: "/docs/framework",
-				destination: "/docs",
-				permanent: true,
+				from: "/docs/framework/sessions",
+				to: "/docs/framework/sessions/session",
 			},
 			{
-				source: "/docs/framework/sessions",
-				destination: "/docs/framework/sessions/session",
-				permanent: true,
+				from: "/docs/framework/callbacks/design-patterns",
+				to: "/docs/framework/callbacks",
 			},
 			{
-				source: "/docs/framework/callbacks/design-patterns",
-				destination: "/docs/framework/callbacks",
-				permanent: true,
+				from: "/docs/framework/callbacks/context-patterns",
+				to: "/docs/framework/callbacks/callback-patterns",
 			},
 			{
-				source: "/docs/framework/callbacks/context-patterns",
-				destination: "/docs/framework/callbacks/callback-patterns",
-				permanent: true,
+				from: "/docs/framework/deploy",
+				to: "/docs/framework/guides/deploying-agents",
 			},
 			{
-				source: "/docs/framework/deploy",
-				destination: "/docs/framework/guides/deploying-agents",
-				permanent: true,
-			},
-			{
-				source: "/docs/framework/deploy/cloud-run",
-				destination: "/docs/framework/guides/deploying-agents",
-				permanent: true,
+				from: "/docs/framework/deploy/cloud-run",
+				to: "/docs/framework/guides/deploying-agents",
 			},
 		];
+
+		const otherRedirects = specificRedirects.map(({ from, to }) => ({
+			source: from,
+			destination: to,
+			permanent: true,
+		}));
 
 		return [...oldDocRedirects, ...frameworkRedirects, ...otherRedirects];
 	},
