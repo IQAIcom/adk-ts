@@ -14,8 +14,11 @@ import { BasePlugin } from "./base-plugin";
 export class LangfusePlugin extends BasePlugin {
 	private client: Langfuse;
 	private traces: Map<string, LangfuseTraceClient> = new Map();
-	private spanStack: Map<string, LangfuseSpanClient[]> = new Map();
-	private currentGeneration: Map<string, LangfuseGenerationClient> = new Map();
+
+	// Changed to track spans per invocation with a hierarchy
+	private agentSpans: Map<string, LangfuseSpanClient> = new Map();
+	private toolSpans: Map<string, LangfuseSpanClient> = new Map();
+	private generations: Map<string, LangfuseGenerationClient> = new Map();
 
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
@@ -32,7 +35,7 @@ export class LangfusePlugin extends BasePlugin {
 	/**
 	 * Serializes Google GenAI Content to a clean format for Langfuse
 	 */
-	private serializeContent(content?: Content): any {
+	private serializeContent(content?: Content) {
 		if (!content) return null;
 
 		return {
@@ -44,7 +47,7 @@ export class LangfusePlugin extends BasePlugin {
 	/**
 	 * Serializes a Part to extract meaningful data
 	 */
-	private serializePart(part: Part): any {
+	private serializePart(part: Part) {
 		const serialized: any = {};
 
 		if (part.text !== undefined) {
@@ -105,7 +108,7 @@ export class LangfusePlugin extends BasePlugin {
 	/**
 	 * Serializes an array of Content objects
 	 */
-	private serializeContents(contents?: Content[]): any {
+	private serializeContents(contents?: Content[]) {
 		if (!contents || contents.length === 0) return null;
 		return contents.map((c) => this.serializeContent(c));
 	}
@@ -113,7 +116,7 @@ export class LangfusePlugin extends BasePlugin {
 	/**
 	 * Extracts text from Content for display purposes
 	 */
-	private extractTextFromContent(content?: Content): string {
+	private extractTextFromContent(content?: Content) {
 		if (!content || !content.parts) return "";
 		return content.parts
 			.filter((part) => part.text)
@@ -122,33 +125,33 @@ export class LangfusePlugin extends BasePlugin {
 	}
 
 	/**
-	 * Gets the current parent span for nesting
+	 * Gets the agent span key
 	 */
-	private getCurrentSpan(invocationId: string): LangfuseSpanClient | undefined {
-		const stack = this.spanStack.get(invocationId);
-		return stack && stack.length > 0 ? stack[stack.length - 1] : undefined;
+	private getAgentSpanKey(invocationId: string, agentName: string) {
+		return `${invocationId}:agent:${agentName}`;
 	}
 
 	/**
-	 * Pushes a span onto the stack
+	 * Gets the tool span key
 	 */
-	private pushSpan(invocationId: string, span: LangfuseSpanClient): void {
-		if (!this.spanStack.has(invocationId)) {
-			this.spanStack.set(invocationId, []);
-		}
-		this.spanStack.get(invocationId)!.push(span);
+	private getToolSpanKey(
+		invocationId: string,
+		toolName: string,
+		functionCallId?: string,
+	): string {
+		return `${invocationId}:tool:${toolName}:${functionCallId || "unknown"}`;
 	}
 
 	/**
-	 * Pops a span from the stack
+	 * Gets the generation key
 	 */
-	private popSpan(invocationId: string): void {
-		const stack = this.spanStack.get(invocationId);
-		if (stack && stack.length > 0) {
-			stack.pop();
-		}
+	private getGenerationKey(invocationId: string, model?: string) {
+		return `${invocationId}:gen:${model || "unknown"}`;
 	}
 
+	/**
+	 * Gets or creates the root trace for an invocation
+	 */
 	private getOrCreateTrace(ctx: InvocationLike) {
 		if (this.traces.has(ctx.invocationId)) {
 			return this.traces.get(ctx.invocationId)!;
@@ -167,6 +170,7 @@ export class LangfusePlugin extends BasePlugin {
 				appName: ctx.appName,
 				branch: ctx.branch,
 				agentName: ctx.agent.name,
+				agentType: ctx.agent.constructor.name,
 			},
 		});
 
@@ -178,13 +182,34 @@ export class LangfusePlugin extends BasePlugin {
 		userMessage: Content;
 		invocationContext: InvocationContext;
 	}) {
-		// Trace is already created with the user input, so we just ensure it exists
-		this.getOrCreateTrace(params.invocationContext);
+		// Create trace with user input
+		const trace = this.getOrCreateTrace(params.invocationContext);
+
+		// Log user message as an event for visibility
+		trace.event({
+			name: "user_message",
+			input: this.serializeContent(params.userMessage),
+			metadata: {
+				textPreview: this.extractTextFromContent(params.userMessage),
+			},
+		});
+
 		return undefined;
 	}
 
 	async beforeRunCallback(params: { invocationContext: InvocationContext }) {
-		this.getOrCreateTrace(params.invocationContext);
+		const trace = this.getOrCreateTrace(params.invocationContext);
+
+		// Log run start
+		trace.event({
+			name: "run_start",
+			metadata: {
+				agentName: params.invocationContext.agent.name,
+				sessionId: params.invocationContext.session.id,
+				timestamp: Date.now(),
+			},
+		});
+
 		return undefined;
 	}
 
@@ -195,16 +220,40 @@ export class LangfusePlugin extends BasePlugin {
 		const trace = this.traces.get(params.invocationContext.invocationId);
 
 		if (trace) {
+			// Extract and format output
+			let output: any;
+			let outputText = "";
+
 			if (params.result !== undefined) {
-				const output =
-					typeof params.result === "object" && params.result.content
-						? this.extractTextFromContent(params.result.content)
-						: params.result;
+				if (typeof params.result === "object" && params.result.content) {
+					output = this.serializeContent(params.result.content);
+					outputText = this.extractTextFromContent(params.result.content);
+				} else {
+					output = params.result;
+					outputText =
+						typeof params.result === "string"
+							? params.result
+							: JSON.stringify(params.result);
+				}
 
 				trace.update({
 					output,
+					metadata: {
+						outputText,
+						completedAt: Date.now(),
+					},
 				});
 			}
+
+			// Log run completion event
+			trace.event({
+				name: "run_complete",
+				output,
+				metadata: {
+					outputPreview: outputText.slice(0, 200),
+					timestamp: Date.now(),
+				},
+			});
 		}
 
 		return undefined;
@@ -215,10 +264,17 @@ export class LangfusePlugin extends BasePlugin {
 		event: Event;
 	}) {
 		const trace = this.getOrCreateTrace(params.invocationContext);
+		const agentSpanKey = this.getAgentSpanKey(
+			params.invocationContext.invocationId,
+			params.event.author,
+		);
+		const agentSpan = this.agentSpans.get(agentSpanKey);
 
-		// Log events as trace-level events for visibility
-		trace.event({
-			name: params.event.constructor.name || "event",
+		// Log events under the current agent span if available, otherwise under trace
+		const parent = agentSpan || trace;
+
+		parent.event({
+			name: `${params.event.author}:${params.event.constructor.name}`,
 			input: this.serializeContent(params.event.content),
 			metadata: {
 				id: params.event.id,
@@ -244,25 +300,61 @@ export class LangfusePlugin extends BasePlugin {
 			params.callbackContext.invocationContext,
 		);
 
-		const parentSpan = this.getCurrentSpan(params.callbackContext.invocationId);
+		const agentSpanKey = this.getAgentSpanKey(
+			params.callbackContext.invocationId,
+			params.agent.name,
+		);
 
+		// Get input for the agent
+		const userContent = params.callbackContext.invocationContext.userContent;
+		const input = userContent ? this.serializeContent(userContent) : null;
+
+		// Check if there's a parent agent span (for sub-agents)
+		const parentAgent = params.agent.parentAgent;
+		const parentSpan = parentAgent
+			? this.agentSpans.get(
+					this.getAgentSpanKey(
+						params.callbackContext.invocationId,
+						parentAgent.name,
+					),
+				)
+			: undefined;
+
+		// Create agent span either under parent agent or trace
 		const span = parentSpan
 			? parentSpan.span({
 					name: params.agent.name,
+					input,
 					metadata: {
 						agentType: params.agent.constructor.name,
+						description: params.agent.description,
 						branch: params.callbackContext.invocationContext.branch,
+						hasSubAgents: params.agent.subAgents.length > 0,
+						subAgentCount: params.agent.subAgents.length,
+						subAgentNames: params.agent.subAgents.map((a) => a.name),
+						parentAgent: parentAgent?.name,
+						inputText: userContent
+							? this.extractTextFromContent(userContent)
+							: "",
 					},
 				})
 			: trace.span({
 					name: params.agent.name,
+					input,
 					metadata: {
 						agentType: params.agent.constructor.name,
+						description: params.agent.description,
 						branch: params.callbackContext.invocationContext.branch,
+						hasSubAgents: params.agent.subAgents.length > 0,
+						subAgentCount: params.agent.subAgents.length,
+						subAgentNames: params.agent.subAgents.map((a) => a.name),
+						inputText: userContent
+							? this.extractTextFromContent(userContent)
+							: "",
 					},
 				});
 
-		this.pushSpan(params.callbackContext.invocationId, span);
+		this.agentSpans.set(agentSpanKey, span);
 		return undefined;
 	}
 
@@ -271,21 +363,63 @@ export class LangfusePlugin extends BasePlugin {
 		callbackContext: CallbackContext;
 		result?: any;
 	}) {
-		const currentSpan = this.getCurrentSpan(
+		const agentSpanKey = this.getAgentSpanKey(
 			params.callbackContext.invocationId,
+			params.agent.name,
 		);
+		const agentSpan = this.agentSpans.get(agentSpanKey);
 
-		if (currentSpan) {
-			const output =
-				typeof params.result === "object" && params.result.content
-					? this.extractTextFromContent(params.result.content)
-					: params.result;
+		if (agentSpan) {
+			// Extract and format output
+			let output: any;
+			let outputText = "";
 
-			currentSpan.update({
+			if (params.result !== undefined) {
+				if (typeof params.result === "object" && params.result.content) {
+					output = this.serializeContent(params.result.content);
+					outputText = this.extractTextFromContent(params.result.content);
+				} else {
+					output = params.result;
+					outputText =
+						typeof params.result === "string"
+							? params.result
+							: JSON.stringify(params.result);
+				}
+			}
+
+			agentSpan.update({
 				output,
+				metadata: {
+					outputText,
+					completedAt: Date.now(),
+				},
 			});
-			currentSpan.end();
-			this.popSpan(params.callbackContext.invocationId);
+			agentSpan.end();
+
+			// Propagate output to parent agent span if exists
+			const parentAgent = params.agent.parentAgent;
+			if (parentAgent) {
+				const parentSpanKey = this.getAgentSpanKey(
+					params.callbackContext.invocationId,
+					parentAgent.name,
+				);
+				const parentSpan = this.agentSpans.get(parentSpanKey);
+
+				if (parentSpan) {
+					// Log sub-agent completion in parent
+					parentSpan.event({
+						name: `${params.agent.name}_completed`,
+						output,
+						metadata: {
+							subAgentName: params.agent.name,
+							outputPreview: outputText.slice(0, 200),
+							timestamp: Date.now(),
+						},
+					});
+				}
+			}
+
+			this.agentSpans.delete(agentSpanKey);
 		}
 
 		return undefined;
@@ -295,39 +429,58 @@ export class LangfusePlugin extends BasePlugin {
 		callbackContext: CallbackContext;
 		llmRequest: LlmRequest;
 	}) {
-		const trace = this.getOrCreateTrace(
-			params.callbackContext.invocationContext,
+		const agentSpanKey = this.getAgentSpanKey(
+			params.callbackContext.invocationId,
+			params.callbackContext.agentName,
+		);
+		const agentSpan = this.agentSpans.get(agentSpanKey);
+
+		// Create generation under the current agent span
+		if (!agentSpan) {
+			console.warn(
+				`No agent span found for ${agentSpanKey}, cannot create generation`,
+			);
+			return undefined;
+		}
+
+		const genKey = this.getGenerationKey(
+			params.callbackContext.invocationId,
+			params.llmRequest.model,
 		);
 
-		const parentSpan = this.getCurrentSpan(params.callbackContext.invocationId);
+		const inputContents = this.serializeContents(params.llmRequest.contents);
+		const systemInstruction = params.llmRequest.getSystemInstructionText();
 
-		const genKey = `${params.callbackContext.invocationId}:${params.llmRequest.model}`;
+		const generation = agentSpan.generation({
+			name: `${params.callbackContext.agentName}:llm`,
+			model: params.llmRequest.model,
+			input: inputContents,
+			metadata: {
+				systemInstruction,
+				hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
+				toolCount: Object.keys(params.llmRequest.toolsDict).length,
+				toolNames: Object.keys(params.llmRequest.toolsDict),
+				modelConfig: params.llmRequest.config
+					? {
+							temperature: params.llmRequest.config.temperature,
+							maxOutputTokens: params.llmRequest.config.maxOutputTokens,
+							topK: params.llmRequest.config.topK,
+							topP: params.llmRequest.config.topP,
+						}
+					: undefined,
+				contentCount: params.llmRequest.contents?.length || 0,
+				lastContentPreview:
+					params.llmRequest.contents?.length > 0
+						? this.extractTextFromContent(
+								params.llmRequest.contents[
+									params.llmRequest.contents.length - 1
+								],
+							)
+						: "",
+			},
+		});
 
-		const generation = parentSpan
-			? parentSpan.generation({
-					name: params.llmRequest.model || "unknown",
-					model: params.llmRequest.model,
-					input: this.serializeContents(params.llmRequest.contents),
-					metadata: {
-						systemInstruction: params.llmRequest.getSystemInstructionText(),
-						hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
-						toolCount: Object.keys(params.llmRequest.toolsDict).length,
-						toolNames: Object.keys(params.llmRequest.toolsDict),
-					},
-				})
-			: trace.generation({
-					name: params.llmRequest.model || "unknown",
-					model: params.llmRequest.model,
-					input: this.serializeContents(params.llmRequest.contents),
-					metadata: {
-						systemInstruction: params.llmRequest.getSystemInstructionText(),
-						hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
-						toolCount: Object.keys(params.llmRequest.toolsDict).length,
-						toolNames: Object.keys(params.llmRequest.toolsDict),
-					},
-				});
-
-		this.currentGeneration.set(genKey, generation);
+		this.generations.set(genKey, generation);
 		return undefined;
 	}
 
@@ -336,14 +489,21 @@ export class LangfusePlugin extends BasePlugin {
 		llmResponse: LlmResponse;
 		llmRequest?: LlmRequest;
 	}) {
-		const model = params.llmRequest?.model || "unknown";
-		const genKey = `${params.callbackContext.invocationId}:${model}`;
+		const genKey = this.getGenerationKey(
+			params.callbackContext.invocationId,
+			params.llmRequest?.model,
+		);
 
-		const generation = this.currentGeneration.get(genKey);
+		const generation = this.generations.get(genKey);
 		if (!generation) return undefined;
 
+		const outputContent = this.serializeContent(params.llmResponse.content);
+		const outputText =
+			params.llmResponse.text ||
+			this.extractTextFromContent(params.llmResponse.content);
+
 		generation.update({
-			output: this.serializeContent(params.llmResponse.content),
+			output: outputContent,
 			usage: params.llmResponse.usageMetadata && {
 				input: params.llmResponse.usageMetadata.promptTokenCount,
 				output: params.llmResponse.usageMetadata.candidatesTokenCount,
@@ -351,14 +511,88 @@ export class LangfusePlugin extends BasePlugin {
 			},
 			metadata: {
 				finishReason: params.llmResponse.finishReason,
-				textPreview:
-					params.llmResponse.text ||
-					this.extractTextFromContent(params.llmResponse.content),
+				textPreview: outputText?.slice(0, 500),
+				outputText,
+				partial: params.llmResponse.partial,
+				turnComplete: params.llmResponse.turnComplete,
+				candidateIndex: params.llmResponse.candidateIndex,
 			},
 		});
 
 		generation.end();
-		this.currentGeneration.delete(genKey);
+
+		// Log generation completion in agent span
+		const agentSpanKey = this.getAgentSpanKey(
+			params.callbackContext.invocationId,
+			params.callbackContext.agentName,
+		);
+		const agentSpan = this.agentSpans.get(agentSpanKey);
+
+		if (agentSpan) {
+			agentSpan.event({
+				name: "llm_response",
+				output: outputContent,
+				metadata: {
+					model: params.llmRequest?.model,
+					finishReason: params.llmResponse.finishReason,
+					outputPreview: outputText?.slice(0, 200),
+					tokenCount: params.llmResponse.usageMetadata?.totalTokenCount,
+					timestamp: Date.now(),
+				},
+			});
+		}
+
+		this.generations.delete(genKey);
+		return undefined;
+	}
+
+	async onModelErrorCallback(params: {
+		callbackContext: CallbackContext;
+		llmRequest: LlmRequest;
+		error: Error;
+	}) {
+		const genKey = this.getGenerationKey(
+			params.callbackContext.invocationId,
+			params.llmRequest.model,
+		);
+
+		const generation = this.generations.get(genKey);
+		if (generation) {
+			generation.update({
+				level: "ERROR",
+				statusMessage: params.error.message,
+				metadata: {
+					errorName: params.error.name,
+					errorStack: params.error.stack,
+					errorMessage: params.error.message,
+					model: params.llmRequest.model,
+					systemInstruction: params.llmRequest.getSystemInstructionText(),
+				},
+			});
+			generation.end();
+			this.generations.delete(genKey);
+		}
+
+		// Also log error event in agent span
+		const agentSpanKey = this.getAgentSpanKey(
+			params.callbackContext.invocationId,
+			params.callbackContext.agentName,
+		);
+		const agentSpan = this.agentSpans.get(agentSpanKey);
+
+		if (agentSpan) {
+			agentSpan.event({
+				name: "llm_error",
+				metadata: {
+					errorName: params.error.name,
+					errorMessage: params.error.message,
+					errorStack: params.error.stack,
+					model: params.llmRequest.model,
+					timestamp: Date.now(),
+				},
+			});
+		}
+
 		return undefined;
 	}
 
@@ -367,52 +601,154 @@ export class LangfusePlugin extends BasePlugin {
 		toolArgs: any;
 		toolContext: ToolContext;
 	}) {
-		const trace = this.getOrCreateTrace(params.toolContext.invocationContext);
+		const agentSpanKey = this.getAgentSpanKey(
+			params.toolContext.invocationId,
+			params.toolContext.agentName,
+		);
+		const agentSpan = this.agentSpans.get(agentSpanKey);
 
-		const parentSpan = this.getCurrentSpan(params.toolContext.invocationId);
+		// Create tool span under the current agent span
+		if (!agentSpan) {
+			console.warn(
+				`No agent span found for ${agentSpanKey}, cannot create tool span`,
+			);
+			return undefined;
+		}
 
-		const span = parentSpan
-			? parentSpan.span({
-					name: params.tool.name,
-					input: params.toolArgs,
-					metadata: {
-						toolType: params.tool.constructor.name,
-						functionCallId: params.toolContext.functionCallId,
-					},
-				})
-			: trace.span({
-					name: params.tool.name,
-					input: params.toolArgs,
-					metadata: {
-						toolType: params.tool.constructor.name,
-						functionCallId: params.toolContext.functionCallId,
-					},
-				});
+		const toolSpanKey = this.getToolSpanKey(
+			params.toolContext.invocationId,
+			params.tool.name,
+			params.toolContext.functionCallId,
+		);
 
-		this.pushSpan(params.toolContext.invocationId, span);
+		const span = agentSpan.span({
+			name: `${params.tool.name}`,
+			input: params.toolArgs,
+			metadata: {
+				toolType: params.tool.constructor.name,
+				description: params.tool.description,
+				functionCallId: params.toolContext.functionCallId,
+				isLongRunning: params.tool.isLongRunning,
+				shouldRetryOnFailure: params.tool.shouldRetryOnFailure,
+				maxRetryAttempts: params.tool.maxRetryAttempts,
+				argsPreview:
+					typeof params.toolArgs === "string"
+						? params.toolArgs.slice(0, 200)
+						: JSON.stringify(params.toolArgs, null, 2).slice(0, 200),
+			},
+		});
+
+		this.toolSpans.set(toolSpanKey, span);
 		return undefined;
 	}
 
 	async afterToolCallback(params: {
 		tool: BaseTool;
+		toolArgs: any;
 		toolContext: ToolContext;
 		result: any;
 	}) {
-		const currentSpan = this.getCurrentSpan(params.toolContext.invocationId);
+		const toolSpanKey = this.getToolSpanKey(
+			params.toolContext.invocationId,
+			params.tool.name,
+			params.toolContext.functionCallId,
+		);
+		const toolSpan = this.toolSpans.get(toolSpanKey);
 
-		if (currentSpan) {
-			currentSpan.update({
+		if (toolSpan) {
+			const resultPreview =
+				typeof params.result === "string"
+					? params.result.slice(0, 200)
+					: JSON.stringify(params.result, null, 2).slice(0, 200);
+
+			toolSpan.update({
 				output: params.result,
 				metadata: {
 					resultType: typeof params.result,
-					resultPreview:
-						typeof params.result === "string"
-							? params.result.slice(0, 200)
-							: JSON.stringify(params.result, null, 2).slice(0, 200),
+					resultPreview,
+					completedAt: Date.now(),
 				},
 			});
-			currentSpan.end();
-			this.popSpan(params.toolContext.invocationId);
+			toolSpan.end();
+
+			// Log tool completion in agent span
+			const agentSpanKey = this.getAgentSpanKey(
+				params.toolContext.invocationId,
+				params.toolContext.agentName,
+			);
+			const agentSpan = this.agentSpans.get(agentSpanKey);
+
+			if (agentSpan) {
+				agentSpan.event({
+					name: `${params.tool.name}_completed`,
+					output: params.result,
+					metadata: {
+						toolName: params.tool.name,
+						functionCallId: params.toolContext.functionCallId,
+						resultPreview,
+						timestamp: Date.now(),
+					},
+				});
+			}
+
+			this.toolSpans.delete(toolSpanKey);
+		}
+
+		return undefined;
+	}
+
+	async onToolErrorCallback(params: {
+		tool: BaseTool;
+		toolArgs: any;
+		toolContext: ToolContext;
+		error: Error;
+	}) {
+		const toolSpanKey = this.getToolSpanKey(
+			params.toolContext.invocationId,
+			params.tool.name,
+			params.toolContext.functionCallId,
+		);
+		const toolSpan = this.toolSpans.get(toolSpanKey);
+
+		if (toolSpan) {
+			toolSpan.update({
+				level: "ERROR",
+				statusMessage: params.error.message,
+				metadata: {
+					errorName: params.error.name,
+					errorStack: params.error.stack,
+					errorMessage: params.error.message,
+					toolArgs: params.toolArgs,
+					argsPreview:
+						typeof params.toolArgs === "string"
+							? params.toolArgs.slice(0, 200)
+							: JSON.stringify(params.toolArgs, null, 2).slice(0, 200),
+				},
+			});
+			toolSpan.end();
+			this.toolSpans.delete(toolSpanKey);
+		}
+
+		// Also log error event in agent span
+		const agentSpanKey = this.getAgentSpanKey(
+			params.toolContext.invocationId,
+			params.toolContext.agentName,
+		);
+		const agentSpan = this.agentSpans.get(agentSpanKey);
+
+		if (agentSpan) {
+			agentSpan.event({
+				name: `${params.tool.name}_error`,
+				metadata: {
+					errorName: params.error.name,
+					errorMessage: params.error.message,
+					errorStack: params.error.stack,
+					toolName: params.tool.name,
+					functionCallId: params.toolContext.functionCallId,
+					toolArgs: params.toolArgs,
+					timestamp: Date.now(),
+				},
+			});
 		}
 
 		return undefined;
