@@ -2,7 +2,7 @@ import { BaseAgent, CallbackContext, InvocationContext } from "@adk/agents";
 import { Event } from "@adk/events";
 import { LlmRequest, LlmResponse } from "@adk/models";
 import { BaseTool, ToolContext } from "@adk/tools";
-import { Content, Part } from "@google/genai";
+import { Content } from "@google/genai";
 import {
 	Langfuse,
 	LangfuseGenerationClient,
@@ -14,8 +14,6 @@ import { BasePlugin } from "./base-plugin";
 export class LangfusePlugin extends BasePlugin {
 	private client: Langfuse;
 	private traces: Map<string, LangfuseTraceClient> = new Map();
-
-	// Changed to track spans per invocation with a hierarchy
 	private agentSpans: Map<string, LangfuseSpanClient> = new Map();
 	private toolSpans: Map<string, LangfuseSpanClient> = new Map();
 	private generations: Map<string, LangfuseGenerationClient> = new Map();
@@ -32,146 +30,52 @@ export class LangfusePlugin extends BasePlugin {
 		});
 	}
 
-	/**
-	 * Serializes Google GenAI Content to a clean format for Langfuse
-	 */
-	private serializeContent(content?: Content) {
-		if (!content) return null;
+	private toPlainText(data: any): string {
+		if (data === null || data === undefined) return "";
+		if (typeof data === "string") return data;
 
-		return {
-			role: content.role,
-			parts: content.parts?.map((part) => this.serializePart(part)) || [],
-		};
+		// Handle Content parts (Google GenAI)
+		if (typeof data === "object" && data.parts) {
+			return data.parts
+				.map((p: any) => {
+					if (p.text) return p.text;
+					if (p.functionCall) return `[Call: ${p.functionCall.name}]`;
+					if (p.functionResponse)
+						return `[Response: ${p.functionResponse.name}]`;
+					if (p.thought) return `[Thought: ${p.thought}]`;
+					return "";
+				})
+				.filter(Boolean)
+				.join("\n");
+		}
+
+		if (Array.isArray(data))
+			return data.map((i) => this.toPlainText(i)).join("\n");
+		if (typeof data === "object" && data.content)
+			return this.toPlainText(data.content);
+
+		try {
+			return JSON.stringify(data);
+		} catch {
+			return String(data);
+		}
 	}
 
-	/**
-	 * Serializes a Part to extract meaningful data
-	 */
-	private serializePart(part: Part) {
-		const serialized: any = {};
-
-		if (part.text !== undefined) {
-			serialized.text = part.text;
-		}
-
-		if (part.functionCall) {
-			serialized.functionCall = {
-				name: part.functionCall.name,
-				args: part.functionCall.args,
-				id: part.functionCall.id,
-			};
-		}
-
-		if (part.functionResponse) {
-			serialized.functionResponse = {
-				name: part.functionResponse.name,
-				response: part.functionResponse.response,
-				id: part.functionResponse.id,
-			};
-		}
-
-		if (part.inlineData) {
-			serialized.inlineData = {
-				mimeType: part.inlineData.mimeType,
-				data: `<${part.inlineData.data?.length || 0} bytes>`,
-			};
-		}
-
-		if (part.fileData) {
-			serialized.fileData = {
-				mimeType: part.fileData.mimeType,
-				fileUri: part.fileData.fileUri,
-			};
-		}
-
-		if (part.thought !== undefined) {
-			serialized.thought = part.thought;
-		}
-
-		if (part.executableCode) {
-			serialized.executableCode = {
-				language: part.executableCode.language,
-				code: part.executableCode.code,
-			};
-		}
-
-		if (part.codeExecutionResult) {
-			serialized.codeExecutionResult = {
-				outcome: part.codeExecutionResult.outcome,
-				output: part.codeExecutionResult.output,
-			};
-		}
-
-		return serialized;
-	}
-
-	/**
-	 * Serializes an array of Content objects
-	 */
-	private serializeContents(contents?: Content[]) {
-		if (!contents || contents.length === 0) return null;
-		return contents.map((c) => this.serializeContent(c));
-	}
-
-	/**
-	 * Extracts text from Content for display purposes
-	 */
-	private extractTextFromContent(content?: Content) {
-		if (!content || !content.parts) return "";
-		return content.parts
-			.filter((part) => part.text)
-			.map((part) => part.text)
-			.join("\n");
-	}
-
-	/**
-	 * Gets the agent span key
-	 */
 	private getAgentSpanKey(invocationId: string, agentName: string) {
 		return `${invocationId}:agent:${agentName}`;
 	}
 
-	/**
-	 * Gets the tool span key
-	 */
-	private getToolSpanKey(
-		invocationId: string,
-		toolName: string,
-		functionCallId?: string,
-	): string {
-		return `${invocationId}:tool:${toolName}:${functionCallId || "unknown"}`;
-	}
-
-	/**
-	 * Gets the generation key
-	 */
-	private getGenerationKey(invocationId: string, model?: string) {
-		return `${invocationId}:gen:${model || "unknown"}`;
-	}
-
-	/**
-	 * Gets or creates the root trace for an invocation
-	 */
 	private getOrCreateTrace(ctx: InvocationLike) {
-		if (this.traces.has(ctx.invocationId)) {
-			return this.traces.get(ctx.invocationId)!;
-		}
+		let trace = this.traces.get(ctx.invocationId);
+		if (trace) return trace;
 
-		// Extract user input text from Content
-		const userInput = ctx.userContent?.parts?.[0]?.text || "";
-
-		const trace = this.client.trace({
+		trace = this.client.trace({
 			id: ctx.invocationId,
-			name: `${ctx.agent.name}-invocation`,
+			name: `${ctx.agent.name}-session`,
 			userId: ctx.userId,
 			sessionId: ctx.session?.id,
-			input: userInput,
-			metadata: {
-				appName: ctx.appName,
-				branch: ctx.branch,
-				agentName: ctx.agent.name,
-				agentType: ctx.agent.constructor.name,
-			},
+			input: this.toPlainText(ctx.userContent),
+			metadata: { appName: ctx.appName, branch: ctx.branch },
 		});
 
 		this.traces.set(ctx.invocationId, trace);
@@ -179,137 +83,72 @@ export class LangfusePlugin extends BasePlugin {
 	}
 
 	async onUserMessageCallback(params: {
+		invocationContext: InvocationContext;
 		userMessage: Content;
-		invocationContext: InvocationContext;
-	}) {
-		// Create trace with user input
+	}): Promise<Content | undefined> {
 		const trace = this.getOrCreateTrace(params.invocationContext);
-
-		// Log user message as an event for visibility
-		trace.event({
-			name: "user_message",
-			input: this.serializeContent(params.userMessage),
-			metadata: {
-				textPreview: this.extractTextFromContent(params.userMessage),
-			},
-		});
-
+		trace.update({ input: this.toPlainText(params.userMessage) });
 		return undefined;
 	}
 
-	async beforeRunCallback(params: { invocationContext: InvocationContext }) {
-		const trace = this.getOrCreateTrace(params.invocationContext);
-
-		// Log run start
-		trace.event({
-			name: "run_start",
-			metadata: {
-				agentName: params.invocationContext.agent.name,
-				sessionId: params.invocationContext.session.id,
-				timestamp: Date.now(),
-			},
-		});
-
-		return undefined;
-	}
-
-	async afterRunCallback(params: {
+	async beforeRunCallback(params: {
 		invocationContext: InvocationContext;
-		result?: any;
-	}) {
-		const trace = this.traces.get(params.invocationContext.invocationId);
-
-		if (trace) {
-			// Extract and format output
-			let output: any;
-			let outputText = "";
-
-			if (params.result !== undefined) {
-				if (typeof params.result === "object" && params.result.content) {
-					output = this.serializeContent(params.result.content);
-					outputText = this.extractTextFromContent(params.result.content);
-				} else {
-					output = params.result;
-					outputText =
-						typeof params.result === "string"
-							? params.result
-							: JSON.stringify(params.result);
-				}
-
-				trace.update({
-					output,
-					metadata: {
-						outputText,
-						completedAt: Date.now(),
-					},
-				});
-			}
-
-			// Log run completion event
-			trace.event({
-				name: "run_complete",
-				output,
-				metadata: {
-					outputPreview: outputText.slice(0, 200),
-					timestamp: Date.now(),
-				},
-			});
-		}
-
+	}): Promise<Event | undefined> {
+		this.getOrCreateTrace(params.invocationContext);
 		return undefined;
 	}
 
 	async onEventCallback(params: {
 		invocationContext: InvocationContext;
 		event: Event;
-	}) {
+	}): Promise<Event | undefined> {
 		const trace = this.getOrCreateTrace(params.invocationContext);
-		const agentSpanKey = this.getAgentSpanKey(
-			params.invocationContext.invocationId,
-			params.event.author,
+		const agentSpan = this.agentSpans.get(
+			this.getAgentSpanKey(
+				params.invocationContext.invocationId,
+				params.event.author,
+			),
 		);
-		const agentSpan = this.agentSpans.get(agentSpanKey);
-
-		// Log events under the current agent span if available, otherwise under trace
 		const parent = agentSpan || trace;
 
 		parent.event({
-			name: `${params.event.author}:${params.event.constructor.name}`,
-			input: this.serializeContent(params.event.content),
-			metadata: {
-				id: params.event.id,
-				author: params.event.author,
-				partial: params.event.partial,
-				branch: params.event.branch,
-				timestamp: params.event.timestamp,
-				isFinalResponse: params.event.isFinalResponse(),
-				hasFunctionCalls: params.event.getFunctionCalls().length > 0,
-				hasFunctionResponses: params.event.getFunctionResponses().length > 0,
-				textPreview: this.extractTextFromContent(params.event.content),
-			},
+			name: `Event: ${params.event.constructor.name}`,
+			input: this.toPlainText(params.event.content),
+			metadata: { author: params.event.author },
 		});
-
 		return undefined;
+	}
+
+	async afterRunCallback(params: {
+		invocationContext: InvocationContext;
+		result?: any;
+	}): Promise<void> {
+		const trace = this.traces.get(params.invocationContext.invocationId);
+
+		console.log(
+			"this.toPlainText(params.result)",
+			this.toPlainText(params.result),
+			"Here we are",
+		);
+
+		if (trace) {
+			trace.update({ output: this.toPlainText(params.result) });
+			this.traces.delete(params.invocationContext.invocationId);
+		}
 	}
 
 	async beforeAgentCallback(params: {
 		agent: BaseAgent;
 		callbackContext: CallbackContext;
-	}) {
+	}): Promise<Content | undefined> {
 		const trace = this.getOrCreateTrace(
 			params.callbackContext.invocationContext,
 		);
-
 		const agentSpanKey = this.getAgentSpanKey(
 			params.callbackContext.invocationId,
 			params.agent.name,
 		);
 
-		// Get input for the agent
-		const userContent = params.callbackContext.invocationContext.userContent;
-		const input = userContent ? this.serializeContent(userContent) : null;
-
-		// Check if there's a parent agent span (for sub-agents)
 		const parentAgent = params.agent.parentAgent;
 		const parentSpan = parentAgent
 			? this.agentSpans.get(
@@ -318,41 +157,14 @@ export class LangfusePlugin extends BasePlugin {
 						parentAgent.name,
 					),
 				)
-			: undefined;
+			: trace;
 
-		// Create agent span either under parent agent or trace
-		const span = parentSpan
-			? parentSpan.span({
-					name: params.agent.name,
-					input,
-					metadata: {
-						agentType: params.agent.constructor.name,
-						description: params.agent.description,
-						branch: params.callbackContext.invocationContext.branch,
-						hasSubAgents: params.agent.subAgents.length > 0,
-						subAgentCount: params.agent.subAgents.length,
-						subAgentNames: params.agent.subAgents.map((a) => a.name),
-						parentAgent: parentAgent?.name,
-						inputText: userContent
-							? this.extractTextFromContent(userContent)
-							: "",
-					},
-				})
-			: trace.span({
-					name: params.agent.name,
-					input,
-					metadata: {
-						agentType: params.agent.constructor.name,
-						description: params.agent.description,
-						branch: params.callbackContext.invocationContext.branch,
-						hasSubAgents: params.agent.subAgents.length > 0,
-						subAgentCount: params.agent.subAgents.length,
-						subAgentNames: params.agent.subAgents.map((a) => a.name),
-						inputText: userContent
-							? this.extractTextFromContent(userContent)
-							: "",
-					},
-				});
+		const span = parentSpan!.span({
+			name: `Agent: ${params.agent.name}`,
+			input: this.toPlainText(
+				params.callbackContext.invocationContext.userContent,
+			),
+		});
 
 		this.agentSpans.set(agentSpanKey, span);
 		return undefined;
@@ -362,125 +174,41 @@ export class LangfusePlugin extends BasePlugin {
 		agent: BaseAgent;
 		callbackContext: CallbackContext;
 		result?: any;
-	}) {
+	}): Promise<Content | undefined> {
 		const agentSpanKey = this.getAgentSpanKey(
 			params.callbackContext.invocationId,
 			params.agent.name,
 		);
-		const agentSpan = this.agentSpans.get(agentSpanKey);
-
-		if (agentSpan) {
-			// Extract and format output
-			let output: any;
-			let outputText = "";
-
-			if (params.result !== undefined) {
-				if (typeof params.result === "object" && params.result.content) {
-					output = this.serializeContent(params.result.content);
-					outputText = this.extractTextFromContent(params.result.content);
-				} else {
-					output = params.result;
-					outputText =
-						typeof params.result === "string"
-							? params.result
-							: JSON.stringify(params.result);
-				}
-			}
-
-			agentSpan.update({
-				output,
-				metadata: {
-					outputText,
-					completedAt: Date.now(),
-				},
-			});
-			agentSpan.end();
-
-			// Propagate output to parent agent span if exists
-			const parentAgent = params.agent.parentAgent;
-			if (parentAgent) {
-				const parentSpanKey = this.getAgentSpanKey(
-					params.callbackContext.invocationId,
-					parentAgent.name,
-				);
-				const parentSpan = this.agentSpans.get(parentSpanKey);
-
-				if (parentSpan) {
-					// Log sub-agent completion in parent
-					parentSpan.event({
-						name: `${params.agent.name}_completed`,
-						output,
-						metadata: {
-							subAgentName: params.agent.name,
-							outputPreview: outputText.slice(0, 200),
-							timestamp: Date.now(),
-						},
-					});
-				}
-			}
-
+		const span = this.agentSpans.get(agentSpanKey);
+		if (span) {
+			span.update({ output: this.toPlainText(params.result) });
+			span.end();
 			this.agentSpans.delete(agentSpanKey);
 		}
-
 		return undefined;
 	}
 
 	async beforeModelCallback(params: {
 		callbackContext: CallbackContext;
 		llmRequest: LlmRequest;
-	}) {
-		const agentSpanKey = this.getAgentSpanKey(
-			params.callbackContext.invocationId,
-			params.callbackContext.agentName,
+	}): Promise<LlmResponse | undefined> {
+		const agentSpan = this.agentSpans.get(
+			this.getAgentSpanKey(
+				params.callbackContext.invocationId,
+				params.callbackContext.agentName,
+			),
 		);
-		const agentSpan = this.agentSpans.get(agentSpanKey);
+		const parent =
+			agentSpan ||
+			this.getOrCreateTrace(params.callbackContext.invocationContext);
 
-		// Create generation under the current agent span
-		if (!agentSpan) {
-			console.warn(
-				`No agent span found for ${agentSpanKey}, cannot create generation`,
-			);
-			return undefined;
-		}
-
-		const genKey = this.getGenerationKey(
-			params.callbackContext.invocationId,
-			params.llmRequest.model,
-		);
-
-		const inputContents = this.serializeContents(params.llmRequest.contents);
-		const systemInstruction = params.llmRequest.getSystemInstructionText();
-
-		const generation = agentSpan.generation({
-			name: `${params.callbackContext.agentName}:llm`,
+		const generation = parent.generation({
+			name: `Model: ${params.callbackContext.agentName}`,
 			model: params.llmRequest.model,
-			input: inputContents,
-			metadata: {
-				systemInstruction,
-				hasTools: Object.keys(params.llmRequest.toolsDict).length > 0,
-				toolCount: Object.keys(params.llmRequest.toolsDict).length,
-				toolNames: Object.keys(params.llmRequest.toolsDict),
-				modelConfig: params.llmRequest.config
-					? {
-							temperature: params.llmRequest.config.temperature,
-							maxOutputTokens: params.llmRequest.config.maxOutputTokens,
-							topK: params.llmRequest.config.topK,
-							topP: params.llmRequest.config.topP,
-						}
-					: undefined,
-				contentCount: params.llmRequest.contents?.length || 0,
-				lastContentPreview:
-					params.llmRequest.contents?.length > 0
-						? this.extractTextFromContent(
-								params.llmRequest.contents[
-									params.llmRequest.contents.length - 1
-								],
-							)
-						: "",
-			},
+			input: this.toPlainText(params.llmRequest.contents),
 		});
 
-		this.generations.set(genKey, generation);
+		this.generations.set(params.callbackContext.invocationId, generation);
 		return undefined;
 	}
 
@@ -488,277 +216,95 @@ export class LangfusePlugin extends BasePlugin {
 		callbackContext: CallbackContext;
 		llmResponse: LlmResponse;
 		llmRequest?: LlmRequest;
-	}) {
-		const genKey = this.getGenerationKey(
-			params.callbackContext.invocationId,
-			params.llmRequest?.model,
-		);
-
-		const generation = this.generations.get(genKey);
-		if (!generation) return undefined;
-
-		const outputContent = this.serializeContent(params.llmResponse.content);
-		const outputText =
-			params.llmResponse.text ||
-			this.extractTextFromContent(params.llmResponse.content);
-
-		generation.update({
-			output: outputContent,
-			usage: params.llmResponse.usageMetadata && {
-				input: params.llmResponse.usageMetadata.promptTokenCount,
-				output: params.llmResponse.usageMetadata.candidatesTokenCount,
-				total: params.llmResponse.usageMetadata.totalTokenCount,
-			},
-			metadata: {
-				finishReason: params.llmResponse.finishReason,
-				textPreview: outputText?.slice(0, 500),
-				outputText,
-				partial: params.llmResponse.partial,
-				turnComplete: params.llmResponse.turnComplete,
-				candidateIndex: params.llmResponse.candidateIndex,
-			},
-		});
-
-		generation.end();
-
-		// Log generation completion in agent span
-		const agentSpanKey = this.getAgentSpanKey(
-			params.callbackContext.invocationId,
-			params.callbackContext.agentName,
-		);
-		const agentSpan = this.agentSpans.get(agentSpanKey);
-
-		if (agentSpan) {
-			agentSpan.event({
-				name: "llm_response",
-				output: outputContent,
-				metadata: {
-					model: params.llmRequest?.model,
-					finishReason: params.llmResponse.finishReason,
-					outputPreview: outputText?.slice(0, 200),
-					tokenCount: params.llmResponse.usageMetadata?.totalTokenCount,
-					timestamp: Date.now(),
+	}): Promise<LlmResponse | undefined> {
+		const gen = this.generations.get(params.callbackContext.invocationId);
+		if (gen) {
+			gen.update({
+				output: this.toPlainText(params.llmResponse.content),
+				usage: {
+					input: params.llmResponse.usageMetadata?.promptTokenCount,
+					output: params.llmResponse.usageMetadata?.candidatesTokenCount,
 				},
 			});
+			gen.end();
+			this.generations.delete(params.callbackContext.invocationId);
 		}
-
-		this.generations.delete(genKey);
 		return undefined;
 	}
 
 	async onModelErrorCallback(params: {
 		callbackContext: CallbackContext;
 		llmRequest: LlmRequest;
-		error: Error;
-	}) {
-		const genKey = this.getGenerationKey(
-			params.callbackContext.invocationId,
-			params.llmRequest.model,
-		);
-
-		const generation = this.generations.get(genKey);
-		if (generation) {
-			generation.update({
-				level: "ERROR",
-				statusMessage: params.error.message,
-				metadata: {
-					errorName: params.error.name,
-					errorStack: params.error.stack,
-					errorMessage: params.error.message,
-					model: params.llmRequest.model,
-					systemInstruction: params.llmRequest.getSystemInstructionText(),
-				},
-			});
-			generation.end();
-			this.generations.delete(genKey);
+		error: unknown;
+	}): Promise<LlmResponse | undefined> {
+		const gen = this.generations.get(params.callbackContext.invocationId);
+		if (gen) {
+			gen.update({ level: "ERROR", statusMessage: String(params.error) });
+			gen.end();
+			this.generations.delete(params.callbackContext.invocationId);
 		}
-
-		// Also log error event in agent span
-		const agentSpanKey = this.getAgentSpanKey(
-			params.callbackContext.invocationId,
-			params.callbackContext.agentName,
-		);
-		const agentSpan = this.agentSpans.get(agentSpanKey);
-
-		if (agentSpan) {
-			agentSpan.event({
-				name: "llm_error",
-				metadata: {
-					errorName: params.error.name,
-					errorMessage: params.error.message,
-					errorStack: params.error.stack,
-					model: params.llmRequest.model,
-					timestamp: Date.now(),
-				},
-			});
-		}
-
 		return undefined;
 	}
 
 	async beforeToolCallback(params: {
 		tool: BaseTool;
-		toolArgs: any;
+		toolArgs: Record<string, any>;
 		toolContext: ToolContext;
-	}) {
-		const agentSpanKey = this.getAgentSpanKey(
-			params.toolContext.invocationId,
-			params.toolContext.agentName,
+	}): Promise<Record<string, any> | undefined> {
+		const agentSpan = this.agentSpans.get(
+			this.getAgentSpanKey(
+				params.toolContext.invocationId,
+				params.toolContext.agentName,
+			),
 		);
-		const agentSpan = this.agentSpans.get(agentSpanKey);
+		const parent =
+			agentSpan || this.getOrCreateTrace(params.toolContext as any);
 
-		// Create tool span under the current agent span
-		if (!agentSpan) {
-			console.warn(
-				`No agent span found for ${agentSpanKey}, cannot create tool span`,
-			);
-			return undefined;
-		}
-
-		const toolSpanKey = this.getToolSpanKey(
-			params.toolContext.invocationId,
-			params.tool.name,
-			params.toolContext.functionCallId,
-		);
-
-		const span = agentSpan.span({
-			name: `${params.tool.name}`,
-			input: params.toolArgs,
-			metadata: {
-				toolType: params.tool.constructor.name,
-				description: params.tool.description,
-				functionCallId: params.toolContext.functionCallId,
-				isLongRunning: params.tool.isLongRunning,
-				shouldRetryOnFailure: params.tool.shouldRetryOnFailure,
-				maxRetryAttempts: params.tool.maxRetryAttempts,
-				argsPreview:
-					typeof params.toolArgs === "string"
-						? params.toolArgs.slice(0, 200)
-						: JSON.stringify(params.toolArgs, null, 2).slice(0, 200),
-			},
+		const toolSpan = parent.span({
+			name: `Tool: ${params.tool.name}`,
+			input: this.toPlainText(params.toolArgs),
 		});
 
-		this.toolSpans.set(toolSpanKey, span);
+		this.toolSpans.set(
+			`${params.toolContext.invocationId}:${params.toolContext.functionCallId}`,
+			toolSpan,
+		);
 		return undefined;
 	}
 
 	async afterToolCallback(params: {
 		tool: BaseTool;
-		toolArgs: any;
+		toolArgs: Record<string, any>;
 		toolContext: ToolContext;
-		result: any;
-	}) {
-		const toolSpanKey = this.getToolSpanKey(
-			params.toolContext.invocationId,
-			params.tool.name,
-			params.toolContext.functionCallId,
-		);
-		const toolSpan = this.toolSpans.get(toolSpanKey);
-
-		if (toolSpan) {
-			const resultPreview =
-				typeof params.result === "string"
-					? params.result.slice(0, 200)
-					: JSON.stringify(params.result, null, 2).slice(0, 200);
-
-			toolSpan.update({
-				output: params.result,
-				metadata: {
-					resultType: typeof params.result,
-					resultPreview,
-					completedAt: Date.now(),
-				},
-			});
-			toolSpan.end();
-
-			// Log tool completion in agent span
-			const agentSpanKey = this.getAgentSpanKey(
-				params.toolContext.invocationId,
-				params.toolContext.agentName,
-			);
-			const agentSpan = this.agentSpans.get(agentSpanKey);
-
-			if (agentSpan) {
-				agentSpan.event({
-					name: `${params.tool.name}_completed`,
-					output: params.result,
-					metadata: {
-						toolName: params.tool.name,
-						functionCallId: params.toolContext.functionCallId,
-						resultPreview,
-						timestamp: Date.now(),
-					},
-				});
-			}
-
-			this.toolSpans.delete(toolSpanKey);
+		result: Record<string, any>;
+	}): Promise<Record<string, any> | undefined> {
+		const key = `${params.toolContext.invocationId}:${params.toolContext.functionCallId}`;
+		const span = this.toolSpans.get(key);
+		if (span) {
+			span.update({ output: this.toPlainText(params.result) });
+			span.end();
+			this.toolSpans.delete(key);
 		}
-
 		return undefined;
 	}
 
 	async onToolErrorCallback(params: {
 		tool: BaseTool;
-		toolArgs: any;
+		toolArgs: Record<string, any>;
 		toolContext: ToolContext;
-		error: Error;
-	}) {
-		const toolSpanKey = this.getToolSpanKey(
-			params.toolContext.invocationId,
-			params.tool.name,
-			params.toolContext.functionCallId,
-		);
-		const toolSpan = this.toolSpans.get(toolSpanKey);
-
-		if (toolSpan) {
-			toolSpan.update({
-				level: "ERROR",
-				statusMessage: params.error.message,
-				metadata: {
-					errorName: params.error.name,
-					errorStack: params.error.stack,
-					errorMessage: params.error.message,
-					toolArgs: params.toolArgs,
-					argsPreview:
-						typeof params.toolArgs === "string"
-							? params.toolArgs.slice(0, 200)
-							: JSON.stringify(params.toolArgs, null, 2).slice(0, 200),
-				},
-			});
-			toolSpan.end();
-			this.toolSpans.delete(toolSpanKey);
+		error: unknown;
+	}): Promise<Record<string, any> | undefined> {
+		const key = `${params.toolContext.invocationId}:${params.toolContext.functionCallId}`;
+		const span = this.toolSpans.get(key);
+		if (span) {
+			span.update({ level: "ERROR", statusMessage: String(params.error) });
+			span.end();
+			this.toolSpans.delete(key);
 		}
-
-		// Also log error event in agent span
-		const agentSpanKey = this.getAgentSpanKey(
-			params.toolContext.invocationId,
-			params.toolContext.agentName,
-		);
-		const agentSpan = this.agentSpans.get(agentSpanKey);
-
-		if (agentSpan) {
-			agentSpan.event({
-				name: `${params.tool.name}_error`,
-				metadata: {
-					errorName: params.error.name,
-					errorMessage: params.error.message,
-					errorStack: params.error.stack,
-					toolName: params.tool.name,
-					functionCallId: params.toolContext.functionCallId,
-					toolArgs: params.toolArgs,
-					timestamp: Date.now(),
-				},
-			});
-		}
-
 		return undefined;
 	}
 
-	async flush() {
-		await this.client.flushAsync();
-	}
-
-	async close() {
+	async close(): Promise<void> {
 		await this.client.shutdownAsync();
 	}
 }
