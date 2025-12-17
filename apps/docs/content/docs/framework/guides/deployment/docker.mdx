@@ -141,7 +141,7 @@ Now that your image is in a registry, deploy it to a cloud platform.
 2. Create a new project/service
 3. Select **"Deploy from Docker Image"** or similar option
 4. Enter your image name (e.g., `username/my-adk-agent:latest`)
-5. Add your environment variables (see Prerequisites section of this guide)
+5. Add your environment variables from your project's `.env` file  
 6. Click Deploy
 
 The platform will pull your image from the registry and run it.
@@ -185,7 +185,7 @@ If you pushed your image to a registry (Step 3 from Option 1):
 docker pull username/my-adk-agent:latest
 
 # Run it in the background
-docker run -d --restart unless-stopped --name my-agent username/my-adk-agent:latest
+docker run -d --restart unless-stopped --name my-adk-agent username/my-adk-agent:latest
 ```
 
 **Option B: Use Docker Compose**
