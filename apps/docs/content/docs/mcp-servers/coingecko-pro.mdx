@@ -1,0 +1,194 @@
+---
+title: MCP CoinGecko Pro
+description: Access premium cryptocurrency market data and analytics with enhanced features and higher rate limits using MCP CoinGecko Pro.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Name**: MCP CoinGecko Pro
+- **Package**: Remote endpoint (no installation required)
+- **Endpoint**: `https://mcp.pro-api.coingecko.com/mcp`
+
+## Overview
+
+MCP CoinGecko Pro is a Model Context Protocol server that provides access to CoinGecko's professional-grade cryptocurrency market data API. Unlike the free CoinGecko API, the Pro version offers enhanced features, higher rate limits, and more comprehensive data access, making it ideal for production applications and professional trading operations.
+
+This MCP server connects to CoinGecko's remote endpoint, eliminating the need for local package installation and providing seamless access to real-time cryptocurrency data.
+
+<Callout type="info" title="Pro vs Free">
+  CoinGecko Pro offers higher rate limits, more frequent data updates, and
+  access to premium endpoints not available in the free tier. Use
+  `McpCoinGeckoPro` for production applications and `McpCoinGecko` for
+  development/testing. For detailed pricing and plan comparison, visit
+  [CoinGecko API Pricing](https://www.coingecko.com/en/api/pricing).
+</Callout>
+
+## Usage with ADK-TS
+
+<Tabs items={['Simple', 'Verbose']}>
+  <Tab value="Simple">
+    ```typescript
+    import { McpCoinGeckoPro } from "@iqai/adk";
+
+    const toolset = McpCoinGeckoPro({
+      env: {
+        COINGECKO_PRO_API_KEY: process.env.COINGECKO_PRO_API_KEY,
+      },
+    });
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import { McpToolset } from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "CoinGecko Pro MCP Client",
+      description: "Client for premium CoinGecko market data",
+      transport: {
+        mode: "stdio",
+        command: "npx",
+        args: ["-y", "mcp-remote@latest", "https://mcp.pro-api.coingecko.com/mcp"],
+        env: {
+          COINGECKO_PRO_API_KEY: process.env.COINGECKO_PRO_API_KEY || "",
+          PATH: process.env.PATH || "",
+        },
+      },
+    });
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+</Tabs>
+
+## Complete Integration Example
+
+Here's a complete example of building a cryptocurrency analysis agent using MCP CoinGecko Pro:
+
+```typescript
+import { McpCoinGeckoPro, AgentBuilder } from "@iqai/adk";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+async function main() {
+  // Initialize CoinGecko Pro MCP toolset
+  const toolset = McpCoinGeckoPro({
+    env: {
+      COINGECKO_PRO_API_KEY: process.env.COINGECKO_PRO_API_KEY,
+    },
+    debug: false,
+    retryOptions: {
+      maxRetries: 3,
+      initialDelay: 500,
+    },
+  });
+
+  // Get available tools
+  const coinGeckoTools = await toolset.getTools();
+
+  // Create agent with CoinGecko Pro tools
+  const { runner } = await AgentBuilder.create("crypto_analyst_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "A professional cryptocurrency analyst with access to real-time market data"
+    )
+    .withTools(...coinGeckoTools)
+    .build();
+
+  try {
+    // Example queries
+    const priceAnalysis = await runner.ask(
+      "What's the current price of Bitcoin and Ethereum? Compare their 24h price changes."
+    );
+    console.log(priceAnalysis);
+
+    const marketCap = await runner.ask(
+      "Show me the top 10 cryptocurrencies by market cap"
+    );
+    console.log(marketCap);
+
+    const trendingCoins = await runner.ask(
+      "What are the trending cryptocurrencies today?"
+    );
+    console.log(trendingCoins);
+
+    const defiAnalysis = await runner.ask(
+      "Analyze the current DeFi market trends and identify top Protocols"
+    );
+    console.log(defiAnalysis);
+  } finally {
+    // Clean up resources
+    await toolset.close();
+  }
+}
+
+main().catch(console.error);
+```
+
+## Real-World Use Cases
+
+- **Trading Bots**: Build AI-powered trading bots that need real-time price data and market analytics
+- **Portfolio Management**: Create intelligent portfolio tracking and rebalancing agents
+- **Market Analysis**: Develop AI assistants that analyze cryptocurrency market trends and provide insights
+- **DeFi Applications**: Create DeFi agents that need accurate pricing data for yield farming and liquidity provision
+- **Price Monitoring**: Implement automated alert systems based on price movements and market conditions
+
+## Environment Variables
+
+Configure the following environment variables to use MCP CoinGecko Pro:
+
+| Variable                | Required | Description                                          |
+| ----------------------- | -------- | ---------------------------------------------------- |
+| `COINGECKO_PRO_API_KEY` | Yes      | Your CoinGecko Pro API key for authenticated access  |
+| `PATH`                  | No       | System PATH (automatically included if not provided) |
+| `DEBUG`                 | No       | Enable debug logging for troubleshooting             |
+
+**Getting Your API Key:**
+
+To obtain a CoinGecko Pro API key:
+
+1. Visit [CoinGecko API Plans](https://www.coingecko.com/en/api/pricing)
+2. Choose a Pro plan that fits your needs
+3. Sign up and obtain your API key from the dashboard
+4. Add the key to your environment variables
+
+## Best Practices
+
+- **Rate Limit Management**: Configure retry options with appropriate delays to handle rate limiting gracefully
+- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
+- **Caching**: Implement caching for frequently accessed data to reduce API calls and stay within rate limits
+- **Error Handling**: Be prepared to handle different error scenarios. Implement retry logic with exponential backoff for rate limit errors.
+- **API Key Security**: Store your API key in environment variables, never hardcode it in your source code
+
+## Troubleshooting
+
+**API Key Not Working**
+
+- Verify your API key is correctly set in environment variables
+- Ensure the key is from a valid Pro subscription
+- Check that the key hasn't expired
+
+**Connection Timeout**
+
+- Check your internet connection
+- Verify CoinGecko API status at [status.coingecko.com](https://status.coingecko.com/)
+- Increase retry delay in `retryOptions` configuration
+
+**Tool Not Found or Invalid Schema**
+
+- Call `await toolset.getTools()` to refresh and get the latest tool schemas
+- Check the [CoinGecko API Documentation](https://www.coingecko.com/en/api/documentation) for API changes
+
+## Resources
+
+- [CoinGecko API Documentation](https://www.coingecko.com/en/api/documentation) - Complete API reference and endpoint documentation
+- [CoinGecko Pro Plans](https://www.coingecko.com/en/api/pricing) - Pricing and plan comparison for Pro subscriptions
+- [CoinGecko API Status](https://status.coingecko.com/) - Real-time API status and incident reports
+- [CoinGecko MCP Server](https://docs.coingecko.com/docs/mcp-server) - Official MCP server documentation
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards

@@ -1,0 +1,466 @@
+---
+title: Docker
+description: Deploy ADK-TS agents using Docker containers
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Docker allows you to package your ADK-TS agent with all its dependencies into a portable container that can run anywhere. **Best for**: Flexible deployment, any hosting provider, and local development. Docker offers platform-agnostic, reproducible builds with wide hosting options, though it requires container management and orchestration setup. This guide covers creating optimized Docker images and deploying them to various platforms.
+
+## Prerequisites
+
+- **Docker**: Installed and configured - [Get Docker](https://docs.docker.com/get-docker/)
+- **ADK-TS Project**: Your agent code ready to containerize
+- **Container Registry Account**: DockerHub, GitHub Container Registry, or AWS ECR (for publishing)
+- **Hosting Platform**: Choose from Railway, AWS, Google Cloud, or any Docker-compatible host
+
+## Deployment Options
+
+You can deploy Docker containers using:
+
+1. **Container Registry + Cloud Platform**: Build locally, push to registry, deploy to cloud
+2. **Direct Docker Host**: Deploy to a server running Docker
+3. **Docker Compose**: Manage multi-container deployments locally or on a server
+
+## Option 1: Deploy via Container Registry
+
+### Step 1: Create Dockerfile
+
+Create a `Dockerfile` in your project root:
+
+```dockerfile
+# Use Node.js 20 Alpine as the base image (lightweight Linux distribution)
+FROM node:20-alpine
+
+# Enable pnpm package manager and set a specific version for consistency
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package files first for better Docker layer caching
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies using frozen lockfile for reproducible builds
+RUN pnpm install --frozen-lockfile
+
+# Copy TypeScript config and source code
+COPY tsconfig.json ./
+COPY src ./src
+
+# Build the project
+RUN pnpm build
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Define the command to run when the container starts
+CMD ["node", "dist/index.js"]
+```
+
+### Step 2: Build Docker Image
+
+Docker needs to build your code into an image. The architecture (CPU type) matters because your local machine might be different from where you'll deploy.
+
+**If you're just testing locally**, build for your machine:
+
+```bash
+docker build -t my-adk-agent:latest .
+```
+
+**For deployment to cloud platforms** (Railway, AWS, Google Cloud, etc.), most use AMD64 processors. Build specifically for that:
+
+```bash
+docker buildx build --platform linux/amd64 -t my-adk-agent:latest .
+```
+
+<Callout type="info" title="Why AMD64?">
+  If you're on an Apple Silicon Mac (M1/M2/M3), your computer uses ARM64. But
+  most cloud providers use AMD64 processors. Building with `--platform
+  linux/amd64` ensures your image works on cloud servers.
+</Callout>
+
+### Step 3: Push to Container Registry
+
+Choose ONE registry to store your Docker image. This makes it accessible to cloud platforms.
+
+**Option A: Docker Hub** (Easiest for beginners)
+
+1. Create a free account at [hub.docker.com](https://hub.docker.com)
+2. Run these commands (replace `username` with your Docker Hub username):
+
+```bash
+# Login to Docker Hub
+docker login
+
+# Tag your image with your username
+docker tag my-adk-agent:latest username/my-adk-agent:latest
+
+# Upload to Docker Hub
+docker push username/my-adk-agent:latest
+```
+
+**Option B: GitHub Container Registry** (If you use GitHub)
+
+1. Create a GitHub Personal Access Token with `write:packages` permission
+2. Run these commands (replace `USERNAME` and `$GITHUB_TOKEN`):
+
+```bash
+# Login to GitHub Container Registry
+echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+
+# Tag your image
+docker tag my-adk-agent:latest ghcr.io/username/my-adk-agent:latest
+
+# Upload to GitHub
+docker push ghcr.io/username/my-adk-agent:latest
+```
+
+**Option C: AWS ECR** (If you use AWS)
+
+Requires AWS CLI installed and configured. Replace `region` and `aws_account_id`:
+
+```bash
+# Login to AWS ECR
+aws ecr get-login-password --region region | docker login --username AWS --password-stdin aws_account_id.dkr.ecr.region.amazonaws.com
+
+# Tag your image
+docker tag my-adk-agent:latest aws_account_id.dkr.ecr.region.amazonaws.com/my-adk-agent:latest
+
+# Upload to AWS
+docker push aws_account_id.dkr.ecr.region.amazonaws.com/my-adk-agent:latest
+```
+
+### Step 4: Deploy to Cloud Platform
+
+Now that your image is in a registry, deploy it to a cloud platform.
+
+**For Railway, Render, or Fly.io:**
+
+1. Go to your platform's dashboard
+2. Create a new project/service
+3. Select **"Deploy from Docker Image"** or similar option
+4. Enter your image name (e.g., `username/my-adk-agent:latest`)
+5. Add your environment variables from your project's `.env` file  
+6. Click Deploy
+
+The platform will pull your image from the registry and run it.
+
+**For AWS (ECS), Google Cloud (Cloud Run), or Azure (Container Instances):**
+
+1. Navigate to the container service in the cloud console
+2. Create a new container instance/service
+3. Specify your container registry image URL
+4. Configure environment variables, memory, and CPU limits
+5. Deploy the service
+
+Each platform has slightly different interfaces, but the core concept is the same: point to your Docker image and configure settings.
+
+## Option 2: Deploy to Docker Host
+
+This option is for deploying directly to your own server (VPS, dedicated server, etc.) instead of using a managed cloud platform.
+
+### Step 1: Prepare Your Server
+
+First, install Docker on your Linux server. SSH into your server and run:
+
+```bash
+# For Ubuntu/Debian servers
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+```
+
+For other operating systems, see [Docker's installation guide](https://docs.docker.com/engine/install/).
+
+### Step 2: Deploy Your Container
+
+You have two options for running your container on the server:
+
+**Option A: Pull from Registry**
+
+If you pushed your image to a registry (Step 3 from Option 1):
+
+```bash
+# Pull your image from the registry
+docker pull username/my-adk-agent:latest
+
+# Run it in the background
+docker run -d --restart unless-stopped --name my-adk-agent username/my-adk-agent:latest
+```
+
+**Option B: Use Docker Compose**
+
+For easier management, create a `docker-compose.yml` file on your server:
+
+```yaml
+version: "3.8"
+
+services:
+  agent:
+    image: username/my-adk-agent:latest
+    container_name: my-adk-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge
+```
+
+Then start your agent:
+
+```bash
+docker-compose up -d
+```
+
+### Step 3: Configure Environment Variables
+
+Create a `.env` file on your server with your agent's configuration:
+
+```bash
+GOOGLE_API_KEY=your_api_key_here
+LLM_MODEL=gemini-2.5-flash
+ADK_DEBUG=false
+DISCORD_TOKEN=your_token_here
+```
+
+<Callout type="warn" title="Never Commit Secrets">
+  Add `.env` to your `.gitignore` to prevent committing sensitive data. Never
+  share this file publicly.
+</Callout>
+
+## Verifying Deployment
+
+After deploying, verify your agent is running correctly.
+
+### Check Container Status
+
+List all running containers to confirm yours is active:
+
+```bash
+docker ps
+```
+
+You should see your container in the list. If not, check if it exited:
+
+```bash
+docker ps -a
+```
+
+### View Logs
+
+Check your agent's output to ensure it started properly:
+
+```bash
+# See recent logs
+docker logs my-agent
+
+# Watch logs in real-time
+docker logs -f my-agent
+```
+
+### Test Your Agent
+
+Depending on your agent type:
+
+- **Discord bots**: Send a command in your Discord server
+- **Telegram bots**: Send a message to your bot
+- **API agents**: Make a test HTTP request to your endpoint
+- **CLI agents**: Check logs for expected startup messages
+
+## Monitoring and Updates
+
+### Updating Your Deployment
+
+When you have new code changes:
+
+**For registry-based deployments:**
+
+1. Rebuild your image locally with changes
+2. Push the new version to your registry
+3. On your deployment platform or server, pull the new image and restart:
+
+```bash
+docker pull username/my-adk-agent:latest
+docker stop my-agent
+docker rm my-agent
+docker run -d --restart unless-stopped --name my-agent username/my-adk-agent:latest
+```
+
+**For Docker Compose:**
+
+```bash
+docker-compose pull
+docker-compose up -d
+```
+
+### Monitoring Container Health
+
+Keep an eye on resource usage to prevent issues:
+
+- View real-time stats: `docker stats my-agent`
+- Check detailed configuration: `docker inspect my-agent`
+- Review logs regularly for errors
+
+## Advanced Configuration
+
+### Optimized Multi-Stage Dockerfile
+
+For production deployments, use multi-stage builds to create smaller, more secure images. This separates the build process from the final runtime image:
+
+```dockerfile
+# Build stage - compiles TypeScript
+FROM node:20-alpine AS builder
+
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY tsconfig.json ./
+COPY src ./src
+RUN pnpm build
+
+# Production stage - runs the compiled code
+FROM node:20-alpine
+
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+WORKDIR /app
+
+# Only install production dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy compiled code from build stage
+COPY --from=builder /app/dist ./dist
+
+ENV NODE_ENV=production
+CMD ["node", "dist/index.js"]
+```
+
+Benefits: Smaller images (no dev dependencies), faster deployments, improved security.
+
+### Health Checks
+
+Add a health check to automatically restart failed containers:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "console.log('healthy')" || exit 1
+```
+
+### Resource Limits and Persistent Data
+
+When running containers, you can set resource limits and mount volumes for data persistence. See your platform's documentation for specific instructions on configuring these settings through their dashboard or CLI.
+
+## Troubleshooting
+
+### Build Failures
+
+**Dependencies fail to install**
+
+- Clear Docker's build cache and rebuild: `docker build --no-cache -t my-adk-agent:latest .`
+- Check your internet connection and package registry availability
+
+**Out of disk space**
+
+- Clean up unused Docker resources: `docker system prune -a`
+- Free up space on your machine
+
+**TypeScript compilation errors**
+
+- Review build logs for specific error messages
+- Verify `tsconfig.json` is correctly configured
+- Ensure all dependencies are listed in `package.json`
+
+### Container Won't Start
+
+**Container exits immediately after starting**
+
+- Check logs for error messages: `docker logs my-agent`
+- Verify your start command in the Dockerfile is correct
+- Ensure all required environment variables are set
+
+**Environment variables not loading**
+
+- Double-check variable names match exactly what your code expects
+- Verify the `.env` file is in the correct location
+- Check platform documentation for how to set environment variables
+
+### Registry Push Failures
+
+- Confirm you're logged in to the registry
+- Verify the image name format matches your registry's requirements
+- Check you have permission to push to the repository
+- Ensure stable internet connection
+
+### Runtime Issues
+
+**Agent stops responding or crashes**
+
+- Review logs for error messages or stack traces
+- Check if you've hit resource limits (memory/CPU)
+- Verify all required environment variables are set correctly
+- Test external API connectivity if your agent depends on third-party services
+
+## Best Practices
+
+### Image Optimization
+
+- Use Alpine-based images (smaller size)
+- Implement multi-stage builds
+- Add a `.dockerignore` file to exclude unnecessary files
+- Combine RUN commands to minimize image layers
+
+### Security
+
+- Never run containers as root user
+- Use specific version tags instead of `latest` in production
+- Keep base images updated with security patches
+- Store secrets using environment variables, never hardcode them
+
+### Development Workflow
+
+- Tag images with version numbers or git commit SHAs for tracking
+- Test images locally before deploying to production
+- Implement CI/CD pipelines for automated builds
+- Use separate Dockerfiles for development and production if needed
+
+### Production Deployment
+
+- Use restart policies for automatic recovery from failures
+- Set resource limits to prevent one container from consuming all server resources
+- Implement health checks for monitoring
+- Monitor logs regularly and set up alerts for critical errors
+
+### Example .dockerignore
+
+Exclude unnecessary files from your Docker build to reduce image size:
+
+```
+node_modules
+dist
+.git
+.env
+.env.*
+*.log
+.DS_Store
+coverage
+.vscode
+.idea
+README.md
+.gitignore
+```
+
+## Next Steps
+
+- Deploy your Docker image to [Railway](/docs/framework/guides/deployment/railway) for managed hosting
+- Explore container orchestration with Kubernetes (guide coming soon)
+- Learn production best practices (guide coming soon)
+- Set up monitoring and alerting for your deployed agents
