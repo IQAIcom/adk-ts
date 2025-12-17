@@ -1,0 +1,62 @@
+---
+title: Deployment
+description: Learn how to deploy ADK-TS agents to various platforms and environments
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Deploy your ADK-TS agents to production using various platforms and deployment strategies. Choose the approach that best fits your infrastructure and requirements.
+
+## Available Deployment Guides
+
+<Cards>
+  <Card
+    title="🚂 Railway"
+    description="Deploy using Railway's container hosting platform"
+    href="/docs/guides/deployment/railway"
+  />
+  <Card
+    title="🐳 Docker"
+    description="Deploy using Docker containers"
+    href="/docs/guides/deployment/docker"
+  />
+</Cards>
+
+## Coming Soon
+
+We're working on guides for additional platforms:
+
+- **⚡ Vercel** - Serverless deployment for API-based agents
+- **☁️ AWS** - Cloud infrastructure deployment
+- **☁️ Google Cloud** - Cloud Run and GKE deployment
+- **⚓ Kubernetes** - Container orchestration for scalable deployments
+
+<Callout type="info" title="Contributions Welcome">
+  Have experience deploying ADK-TS agents to other platforms? We welcome
+  contributions! Share your deployment guides by opening a pull request on
+  [GitHub](https://github.com/IQAIcom/adk-ts/pulls) or start a discussion in our
+  [community forum](https://github.com/IQAIcom/adk-ts/discussions).
+</Callout>
+
+## Prerequisites
+
+Before deploying your agent, ensure you have:
+
+- **Built and tested** your ADK-TS agent locally
+- **Environment variables** documented and ready to configure
+- **Dependencies** properly defined in `package.json`
+- **Production configuration** prepared (API keys, database connections, etc.)
+
+## General Best Practices
+
+- **Environment Variables**: Never commit sensitive data; use platform-specific secret management
+- **Health Checks**: Implement health check endpoints for monitoring
+- **Logging**: Configure proper logging for production debugging
+- **Error Handling**: Ensure graceful error handling and recovery
+- **Resource Limits**: Set appropriate memory and CPU limits
+- **Monitoring**: Set up monitoring and alerting for your deployed agents
+
+## Next Steps
+
+Choose a deployment platform from the guides above to get started, or explore our other guides for best practices and troubleshooting tips.
