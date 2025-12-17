@@ -3,9 +3,9 @@ title: Overview
 description: IQAI-built MCP servers for enhanced ADK TypeScript functionality
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
-import Link from 'fumadocs-core/link';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+import Link from "fumadocs-core/link";
 
 IQAI has developed a collection of specialized Model Context Protocol (MCP) servers designed to enhance and extend the capabilities of ADK TypeScript agents. These servers provide seamless integration with various external services and data sources.
 
@@ -26,6 +26,11 @@ IQAI has developed a collection of specialized Model Context Protocol (MCP) serv
     title="💰 MCP BAMM"
     description="Borrow Automated Market Maker operations on Fraxtal"
     href="/docs/mcp-servers/bamm"
+  />
+  <Card
+    title="🦎 MCP CoinGecko Pro"
+    description="Access premium cryptocurrency market data and analytics with enhanced features"
+    href="/docs/mcp-servers/coingecko-pro"
   />
   <Card
     title="💬 MCP Discord"
@@ -74,7 +79,9 @@ To use these MCP servers with your ADK TypeScript agents, you'll need to:
 4. **Start using** the enhanced functionality
 
 <Callout type="info" title="Prerequisites">
-Make sure you have the basic MCP integration set up in your ADK TypeScript project. See the [MCP Tools](/docs/tools/mcp-tools) section for general MCP integration guidance.
+  Make sure you have the basic MCP integration set up in your ADK TypeScript
+  project. See the [MCP Tools](/docs/tools/mcp-tools) section for general MCP
+  integration guidance.
 </Callout>
 
 ## Integration Example
@@ -259,6 +266,7 @@ try {
 ## Integration with ADK TypeScript
 
 All IQAI MCP servers are designed to work seamlessly with:
+
 - **Wrapper functions** like `McpAtp()`, `McpNearAgent()`, etc. for supported servers
 - **`McpToolset` class** for connecting to any MCP server when no wrapper is available
 
