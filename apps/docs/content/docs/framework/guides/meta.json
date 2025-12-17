@@ -4,6 +4,7 @@
 	"pages": [
 		"agent-instructions",
 		"deploying-agents",
-		"coinbase-agentkit-adkts-integration"
+		"coinbase-agentkit-adkts-integration",
+		"deploying-telegram-bots"
 	]
 }
