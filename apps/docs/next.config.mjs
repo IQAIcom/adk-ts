@@ -87,11 +87,19 @@ const config = {
 			},
 			{
 				from: "/docs/framework/deploy",
-				to: "/docs/framework/guides/deploying-agents",
+				to: "/docs/framework/guides/deployment",
 			},
 			{
 				from: "/docs/framework/deploy/cloud-run",
-				to: "/docs/framework/guides/deploying-agents",
+				to: "/docs/framework/guides/deployment",
+			},
+			{
+				from: "/docs/framework/guides/deploying-agents",
+				to: "/docs/framework/guides/deployment",
+			},
+			{
+				from: "/docs/framework/guides/coinbase-agentkit-adkts-integration",
+				to: "/docs/framework/guides/integrations/coinbase-agentkit",
 			},
 		];
 
