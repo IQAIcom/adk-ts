@@ -63,6 +63,7 @@
 	},
 	"peerDependencies": {
 		"better-sqlite3": "^11.10.0",
+		"langfuse": "^3.38.6",
 		"mysql2": "^3.14.1",
 		"pg": "^8.16.0"
 	},
@@ -74,6 +75,9 @@
 			"optional": true
 		},
 		"pg": {
+			"optional": true
+		},
+		"langfuse": {
 			"optional": true
 		}
 	},
