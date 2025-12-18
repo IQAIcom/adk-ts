@@ -394,6 +394,9 @@ export class AiSdkLlm extends BaseLlm {
 		switch (finishReason) {
 			case "stop":
 			case "end_of_message":
+			case "tool-calls":
+			case "tool_calls":
+			case "function_call":
 				return "STOP";
 			case "length":
 			case "max_tokens":
