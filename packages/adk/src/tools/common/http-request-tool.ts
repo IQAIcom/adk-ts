@@ -145,7 +145,7 @@ export class HttpRequestTool extends BaseTool {
 		try {
 			JSON.parse(str);
 			return true;
-		} catch (_e) {
+		} catch {
 			return false;
 		}
 	}
