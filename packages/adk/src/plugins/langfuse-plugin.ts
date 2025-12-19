@@ -173,16 +173,14 @@ export class LangfusePlugin extends BasePlugin {
 		if (!model) return;
 
 		const key = `${invocationId}:${agentName}`;
-		if (!this.modelsUsed.has(key)) {
-			this.modelsUsed.set(key, new Set());
-		}
-		this.modelsUsed.get(key)!.add(model);
+		const models = this.modelsUsed.get(key) ?? new Set();
+		models.add(model);
+		this.modelsUsed.set(key, models);
 
 		// Track key per invocation
-		if (!this.modelsUsedKeysByInvocation.has(invocationId)) {
-			this.modelsUsedKeysByInvocation.set(invocationId, new Set());
-		}
-		this.modelsUsedKeysByInvocation.get(invocationId)!.add(key);
+		const keys = this.modelsUsedKeysByInvocation.get(invocationId) ?? new Set();
+		keys.add(key);
+		this.modelsUsedKeysByInvocation.set(invocationId, keys);
 	}
 
 	private recordTokenUsage(
