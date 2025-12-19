@@ -621,7 +621,7 @@ export class LangfusePlugin extends BasePlugin {
 		this.recordModelUsage(
 			params.callbackContext.invocationId,
 			params.callbackContext.agentName,
-			params.llmRequest.model,
+			params.llmRequest?.model,
 		);
 
 		generation.end();
