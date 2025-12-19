@@ -173,10 +173,9 @@ export class LangfusePlugin extends BasePlugin {
 		if (!model) return;
 
 		const key = `${invocationId}:${agentName}`;
-		if (!this.modelsUsed.has(key)) {
-			this.modelsUsed.set(key, new Set());
-		}
-		this.modelsUsed.get(key)!.add(model);
+		const models = this.modelsUsed.get(key) ?? new Set();
+		models.add(model);
+		this.modelsUsed.set(key, models);
 
 		// Track key per invocation
 		if (!this.modelsUsedKeysByInvocation.has(invocationId)) {
