@@ -178,10 +178,9 @@ export class LangfusePlugin extends BasePlugin {
 		this.modelsUsed.set(key, models);
 
 		// Track key per invocation
-		if (!this.modelsUsedKeysByInvocation.has(invocationId)) {
-			this.modelsUsedKeysByInvocation.set(invocationId, new Set());
-		}
-		this.modelsUsedKeysByInvocation.get(invocationId)!.add(key);
+		const keys = this.modelsUsedKeysByInvocation.get(invocationId) ?? new Set();
+		keys.add(key);
+		this.modelsUsedKeysByInvocation.set(invocationId, keys);
 	}
 
 	private recordTokenUsage(
