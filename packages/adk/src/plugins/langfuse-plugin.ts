@@ -23,6 +23,7 @@ export class LangfusePlugin extends BasePlugin {
 		{ inputTokens: number; outputTokens: number; totalTokens: number }
 	>();
 	private modelsUsed = new Map<string, Set<string>>();
+	private modelsUsedKeysByInvocation = new Map<string, Set<string>>();
 
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
@@ -176,6 +177,12 @@ export class LangfusePlugin extends BasePlugin {
 			this.modelsUsed.set(key, new Set());
 		}
 		this.modelsUsed.get(key)!.add(model);
+
+		// Track key per invocation
+		if (!this.modelsUsedKeysByInvocation.has(invocationId)) {
+			this.modelsUsedKeysByInvocation.set(invocationId, new Set());
+		}
+		this.modelsUsedKeysByInvocation.get(invocationId)!.add(key);
 	}
 
 	private recordTokenUsage(
@@ -397,14 +404,19 @@ export class LangfusePlugin extends BasePlugin {
 			},
 		});
 
-		// Clean up
 		this.lastEventByInvocation.delete(params.invocationContext.invocationId);
 		this.tokenUsage.delete(params.invocationContext.invocationId);
+		const keysForInvocation = this.modelsUsedKeysByInvocation.get(
+			params.invocationContext.invocationId,
+		);
 
-		for (const key of this.modelsUsed.keys()) {
-			if (key.startsWith(params.invocationContext.invocationId)) {
+		if (keysForInvocation) {
+			for (const key of keysForInvocation) {
 				this.modelsUsed.delete(key);
 			}
+			this.modelsUsedKeysByInvocation.delete(
+				params.invocationContext.invocationId,
+			);
 		}
 	}
 
