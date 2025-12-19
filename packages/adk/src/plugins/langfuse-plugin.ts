@@ -389,20 +389,22 @@ export class LangfusePlugin extends BasePlugin {
 			});
 		}
 
-		const usage = this.tokenUsage.get(params.invocationContext.invocationId);
+        const usage = this.tokenUsage.get(params.invocationContext.invocationId);
 
-		trace.update({
-			metadata: {
-				usage: {
-					input: usage.inputTokens,
-					output: usage.outputTokens,
-					total: usage.totalTokens,
+		if (usage) {
+			trace.update({
+				metadata: {
+					usage: {
+						input: usage.inputTokens,
+						output: usage.outputTokens,
+						total: usage.totalTokens,
+					},
+					totalInputTokens: usage.inputTokens,
+					totalOutputTokens: usage.outputTokens,
+					totalTokens: usage.totalTokens,
 				},
-				totalInputTokens: usage.inputTokens,
-				totalOutputTokens: usage.outputTokens,
-				totalTokens: usage.totalTokens,
-			},
-		});
+			});
+		}
 
 		this.lastEventByInvocation.delete(params.invocationContext.invocationId);
 		this.tokenUsage.delete(params.invocationContext.invocationId);
@@ -631,7 +633,7 @@ export class LangfusePlugin extends BasePlugin {
 		this.recordModelUsage(
 			params.callbackContext.invocationId,
 			params.callbackContext.agentName,
-			params.llmRequest.model,
+			params.llmRequest?.model,
 		);
 
 		generation.end();
