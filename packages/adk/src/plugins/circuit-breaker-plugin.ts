@@ -107,7 +107,6 @@ export class CircuitBreakerPlugin extends BasePlugin {
 		if (state.failures >= this.failureThreshold) {
 			this._enterOpenState(state);
 		} else if (state.state === CircuitStateType.HALF_OPEN) {
-			// failure during half-open -> open again
 			this._enterOpenState(state);
 		}
 	}
@@ -116,7 +115,6 @@ export class CircuitBreakerPlugin extends BasePlugin {
 		this._enterClosedState(state);
 	}
 
-	// --- Tool callbacks ---
 	async beforeToolCallback(params: {
 		tool: BaseTool;
 		toolArgs: Record<string, any>;
@@ -159,7 +157,6 @@ export class CircuitBreakerPlugin extends BasePlugin {
 		return undefined;
 	}
 
-	// --- Agent callbacks ---
 	async beforeAgentCallback(params: {
 		agent: BaseAgent;
 		callbackContext: CallbackContext;
