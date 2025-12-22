@@ -1,5 +1,26 @@
 # @iqai/adk
 
+## 0.5.8
+
+### Patch Changes
+
+- d92892c: - Added aggregated token usage tracking (input, output, total) across agents, nested agents, and LLM generations.
+  - Introduced model usage tracking per agent and invocation for improved model attribution.
+  - Embedded aggregated token and model usage data into Langfuse agent spans and root trace metadata.
+  - Ensured compatibility with nested agents without modifying the existing span hierarchy.
+  - Implemented cleanup of internal token and model tracking maps after each invocation to prevent memory leaks.
+  - Improved event naming with descriptive suffixes (`.function_call`, `.final_response`, `.event`).
+  - Included `finishReason` in event metadata for enhanced execution context and observability.
+- 0ada268: Added full plugin support across the agent lifecycle, enabling interception and extension of agent behavior during execution, model calls, and tool invocations.
+
+  - Integrated plugin manager into `BaseAgent`, giving plugins priority over canonical callbacks.
+  - Added `plugins` configuration to `AgentBuilder` and introduced `withPlugins()` API.
+  - Updated `LlmAgent` and `BaseAgent` flows to run plugin lifecycle hooks (`before/after agent`, `before/after model`, `before/after tool`, error hooks, etc.).
+  - Plugins can now override or modify behavior at multiple stages.
+
+  - Fully backward compatible (optional chaining, canonical callbacks still work).
+  - Enables custom logging, monitoring, request rewriting, caching, rate limiting, and more via plugins.
+
 ## 0.5.7
 
 ### Patch Changes
