@@ -82,8 +82,8 @@ export class McpSamplingHandler {
 				mcpParams.systemPrompt,
 			);
 
-			const requestModel =
-				mcpParams.modelPreferences?.hints?.[0]?.name || "gemini-2.0-flash";
+            const requestModel =
+                mcpParams.modelPreferences?.hints?.find(h => h?.name)?.name || "gemini-2.0-flash";
 
 			// Prepare ADK request - create a proper LlmRequest instance
 			const adkRequest = new LlmRequest({
