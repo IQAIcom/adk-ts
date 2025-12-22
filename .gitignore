@@ -62,6 +62,9 @@ temp-examples/
 # Crush workspace
 .crush/
 
+# Adk cache
+.adk-cache
+
 # parcel-bundler cache
 .cache
 .parcel-cache

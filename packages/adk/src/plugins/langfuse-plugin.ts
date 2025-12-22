@@ -17,9 +17,13 @@ export class LangfusePlugin extends BasePlugin {
 	private agentSpans: Map<string, LangfuseSpanClient> = new Map();
 	private toolSpans: Map<string, LangfuseSpanClient> = new Map();
 	private generations: Map<string, LangfuseGenerationClient> = new Map();
-
-	// Store the last event for each invocation to use as output
 	private lastEventByInvocation: Map<string, Event> = new Map();
+	private tokenUsage = new Map<
+		string,
+		{ inputTokens: number; outputTokens: number; totalTokens: number }
+	>();
+	private modelsUsed = new Map<string, Set<string>>();
+	private modelsUsedKeysByInvocation = new Map<string, Set<string>>();
 
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
@@ -161,6 +165,47 @@ export class LangfusePlugin extends BasePlugin {
 		return contents.map((c) => this.serializeContent(c));
 	}
 
+	private recordModelUsage(
+		invocationId: string,
+		agentName: string,
+		model?: string,
+	) {
+		if (!model) return;
+
+		const key = `${invocationId}:${agentName}`;
+		const models = this.modelsUsed.get(key) ?? new Set();
+		models.add(model);
+		this.modelsUsed.set(key, models);
+
+		// Track key per invocation
+		const keys = this.modelsUsedKeysByInvocation.get(invocationId) ?? new Set();
+		keys.add(key);
+		this.modelsUsedKeysByInvocation.set(invocationId, keys);
+	}
+
+	private recordTokenUsage(
+		invocationId: string,
+		usage?: {
+			input?: number;
+			output?: number;
+			total?: number;
+		},
+	) {
+		if (!usage) return;
+
+		const current = this.tokenUsage.get(invocationId) ?? {
+			inputTokens: 0,
+			outputTokens: 0,
+			totalTokens: 0,
+		};
+
+		this.tokenUsage.set(invocationId, {
+			inputTokens: current.inputTokens + (usage.input ?? 0),
+			outputTokens: current.outputTokens + (usage.output ?? 0),
+			totalTokens: current.totalTokens + (usage.total ?? 0),
+		});
+	}
+
 	private getAgentSpanKey(invocationId: string, agentName: string): string {
 		return `${invocationId}:agent:${agentName}`;
 	}
@@ -262,8 +307,15 @@ export class LangfusePlugin extends BasePlugin {
 			);
 		}
 
+		const name =
+			params.event.getFunctionCalls().length > 0
+				? `${params.event.author}.function_call`
+				: params.event.isFinalResponse()
+					? `${params.event.author}.final_response`
+					: `${params.event.author}.event`;
+
 		parent.event({
-			name: params.event.author,
+			name,
 			input: this.serializeContent(params.event.content),
 			metadata: {
 				eventId: params.event.id,
@@ -275,6 +327,7 @@ export class LangfusePlugin extends BasePlugin {
 				hasFunctionCalls: params.event.getFunctionCalls().length > 0,
 				hasFunctionResponses: params.event.getFunctionResponses().length > 0,
 				textPreview: eventText.slice(0, 200),
+				finishReason: params.event.finishReason,
 			},
 		});
 
@@ -334,8 +387,37 @@ export class LangfusePlugin extends BasePlugin {
 			});
 		}
 
-		// Clean up
+        const usage = this.tokenUsage.get(params.invocationContext.invocationId);
+
+		if (usage) {
+			trace.update({
+				metadata: {
+					usage: {
+						input: usage.inputTokens,
+						output: usage.outputTokens,
+						total: usage.totalTokens,
+					},
+					totalInputTokens: usage.inputTokens,
+					totalOutputTokens: usage.outputTokens,
+					totalTokens: usage.totalTokens,
+				},
+			});
+		}
+
 		this.lastEventByInvocation.delete(params.invocationContext.invocationId);
+		this.tokenUsage.delete(params.invocationContext.invocationId);
+		const keysForInvocation = this.modelsUsedKeysByInvocation.get(
+			params.invocationContext.invocationId,
+		);
+
+		if (keysForInvocation) {
+			for (const key of keysForInvocation) {
+				this.modelsUsed.delete(key);
+			}
+			this.modelsUsedKeysByInvocation.delete(
+				params.invocationContext.invocationId,
+			);
+		}
 	}
 
 	async beforeAgentCallback(params: {
@@ -395,6 +477,8 @@ export class LangfusePlugin extends BasePlugin {
 			params.agent.name,
 		);
 		const span = this.agentSpans.get(agentSpanKey);
+		const modelKey = `${params.callbackContext.invocationId}:${params.agent.name}`;
+		const models = Array.from(this.modelsUsed.get(modelKey) ?? []);
 
 		if (!span) return undefined;
 
@@ -424,8 +508,10 @@ export class LangfusePlugin extends BasePlugin {
 			metadata: {
 				outputText,
 				completedAt: Date.now(),
+				...(models.length > 0 && { modelsUsed: models }),
 			},
 		});
+
 		span.end();
 
 		// Propagate to parent agent
@@ -533,6 +619,20 @@ export class LangfusePlugin extends BasePlugin {
 				candidateIndex: params.llmResponse.candidateIndex,
 			},
 		});
+
+		if (params.llmResponse.usageMetadata) {
+			this.recordTokenUsage(params.callbackContext.invocationId, {
+				input: params.llmResponse.usageMetadata.promptTokenCount,
+				output: params.llmResponse.usageMetadata.candidatesTokenCount,
+				total: params.llmResponse.usageMetadata.totalTokenCount,
+			});
+		}
+
+		this.recordModelUsage(
+			params.callbackContext.invocationId,
+			params.callbackContext.agentName,
+			params.llmRequest?.model,
+		);
 
 		generation.end();
 
