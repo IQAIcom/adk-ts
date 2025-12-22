@@ -3,7 +3,6 @@ import type {
 	CreateMessageRequest,
 	CreateMessageResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import type { z } from "zod";
 
 export type McpConfig = {
 	// Basic configuration
