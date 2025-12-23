@@ -257,7 +257,14 @@ const multiPerspectiveAnalysisAgent = new ParallelAgent({
 - **Use Cases:** Iterative improvement, quality assurance, retry logic, convergence-based workflows
 
 ```typescript
-import { LoopAgent, LlmAgent, BaseAgent, Event, EventActions, InvocationContext } from "@iqai/adk";
+import {
+  LoopAgent,
+  LlmAgent,
+  BaseAgent,
+  Event,
+  EventActions,
+  InvocationContext,
+} from "@iqai/adk";
 
 // Custom agent to control loop termination
 class QualityCheckerAgent extends BaseAgent {
@@ -1178,7 +1185,7 @@ const approvalWorkflowAgent = new SequentialAgent({
   <Card
     title="💾 Sessions & State"
     description="Manage data flow and persistence across agent interactions"
-    href="/docs/framework/sessions/session"
+    href="/docs/framework/session-state-memory/session"
   />
   <Card
     title="📊 Callbacks"

@@ -1,0 +1,309 @@
+---
+title: Vertex AI Sessions
+description: Enterprise-scale session management with Google Cloud Vertex AI
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Vertex AI Session Service provides cloud-managed session storage with enterprise-scale reliability, automatic backups, and seamless integration with Google Cloud's AI platform.
+
+## Overview
+
+The Vertex AI Session Service connects to Google Cloud's Vertex AI Agent Engine, offering:
+
+- **Managed Infrastructure**: No database setup or maintenance required
+- **Automatic Scaling**: Handle any number of concurrent sessions
+- **High Availability**: Built-in redundancy and backups
+- **Integration**: Works seamlessly with other Vertex AI services
+- **Security**: Enterprise-grade authentication and encryption
+
+## Prerequisites
+
+Before using Vertex AI Session Service, you need:
+
+1. **Google Cloud Project** with Vertex AI API enabled
+2. **Agent Engine** instance created in Vertex AI
+3. **Authentication** configured (Application Default Credentials recommended)
+
+### Setting Up Google Cloud
+
+1. Create or select a project in [Google Cloud Console](https://console.cloud.google.com)
+2. Enable the Vertex AI API
+3. Create an Agent Engine instance or use Reasoning Engine
+4. Set up authentication:
+
+```bash
+# Install Google Cloud SDK if needed
+gcloud auth application-default login
+```
+
+<Callout type="info" title="Agent Engine vs Reasoning Engine">
+  Vertex AI Agent Engine is the newer managed service. You can also use
+  Reasoning Engine IDs as the `appName` parameter if you have existing reasoning
+  engines.
+</Callout>
+
+## Installation
+
+Install the ADK package (Vertex AI dependencies are included):
+
+```bash
+pnpm install @iqai/adk
+```
+
+## Basic Usage
+
+### Initialize the Service
+
+```typescript
+import { VertexAiSessionService } from "@iqai/adk";
+
+const sessionService = new VertexAiSessionService({
+  project: "your-gcp-project-id",
+  location: "us-central1",
+  agentEngineId: "your-agent-engine-id", // Optional
+});
+```
+
+### Configuration Options
+
+| Option          | Type   | Description                      | Required |
+| --------------- | ------ | -------------------------------- | -------- |
+| `project`       | string | Google Cloud project ID          | No\*     |
+| `location`      | string | GCP region (e.g., 'us-central1') | No\*     |
+| `agentEngineId` | string | Agent Engine instance ID         | No       |
+
+\*If not provided, these are inferred from the `appName` parameter in session operations.
+
+## Creating Sessions
+
+### With Agent Engine ID
+
+```typescript
+async function createAgentSession() {
+  const session = await sessionService.createSession(
+    "my-travel-agent",
+    "user123",
+    {
+      current_step: "welcome",
+      "user:language": "en",
+      "user:timezone": "America/New_York",
+    }
+  );
+
+  console.log("Session ID:", session.id);
+  console.log("Created:", session.createTime);
+  return session;
+}
+```
+
+### With Reasoning Engine Path
+
+If you're using Reasoning Engine, provide the full resource path as `appName`:
+
+```typescript
+async function createReasoningEngineSession() {
+  const session = await sessionService.createSession(
+    "projects/my-project/locations/us-central1/reasoningEngines/12345",
+    "user123",
+    { current_step: "start" }
+  );
+  return session;
+}
+```
+
+The service automatically parses the path to extract project, location, and engine ID.
+
+## Session Operations
+
+### Get Session
+
+Retrieve an existing session:
+
+```typescript
+async function retrieveSession() {
+  const session = await sessionService.getSession({
+    appName: "my-travel-agent",
+    userId: "user123",
+    sessionId: "session-abc-123",
+  });
+  return session;
+}
+```
+
+### List Sessions
+
+Get all sessions for a user:
+
+```typescript
+async function listUserSessions() {
+  const response = await sessionService.listSessions(
+    "my-travel-agent",
+    "user123"
+  );
+
+  console.log("Found sessions:", response.sessions.length);
+  response.sessions.forEach((session) => {
+    console.log(`- ${session.id} (updated: ${session.lastUpdateTime})`);
+  });
+  return response;
+}
+```
+
+### Append Events
+
+Add events to the session history:
+
+```typescript
+import { Event } from "@iqai/adk";
+
+async function addEventToSession(session: Session) {
+  const event = new Event({
+    content: {
+      role: "user",
+      parts: [{ text: "I want to book a flight to Paris" }],
+    },
+  });
+
+  const updatedSession = await sessionService.appendEvent(session, event);
+  return updatedSession;
+}
+```
+
+### Delete Session
+
+Remove a session and all its data:
+
+```typescript
+async function removeSession() {
+  await sessionService.deleteSession(
+    "my-travel-agent",
+    "user123",
+    "session-abc-123"
+  );
+}
+```
+
+## State Management
+
+Vertex AI sessions support all state scoping features:
+
+```typescript
+async function createSessionWithState() {
+  const session = await sessionService.createSession("my-agent", "user123", {
+    // Session-scoped
+    current_page: "checkout",
+    cart_items: ["item1", "item2"],
+
+    // User-scoped (persists across sessions)
+    "user:theme": "dark",
+    "user:notifications_enabled": true,
+
+    // App-scoped (shared across all users)
+    "app:feature_flags": { newUI: true },
+    "app:version": "2.0.0",
+  });
+  return session;
+}
+```
+
+State updates are automatically synchronized with Vertex AI:
+
+```typescript
+import { EventActions } from "@iqai/adk";
+
+async function updateSessionState(session: Session) {
+  const event = new Event({
+    actions: new EventActions({
+      stateDelta: {
+        current_page: "confirmation",
+        "user:last_purchase": new Date().toISOString(),
+      },
+    }),
+  });
+
+  await sessionService.appendEvent(session, event);
+}
+```
+
+## Using with AgentBuilder
+
+Integrate seamlessly with your agents:
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+async function setupTravelAgent() {
+  const { runner } = await AgentBuilder.create("travel-assistant")
+    .withModel("gemini-2.0-flash-exp")
+    .withSessionService(sessionService)
+    .build();
+
+  const result = await runner.query({
+    userId: "user123",
+    sessionId: "session-abc-123",
+    message: "Show me flights to Paris in March",
+  });
+  return { runner, result };
+}
+```
+
+## Resource Paths
+
+Vertex AI uses hierarchical resource paths. The session service handles this automatically:
+
+### Automatic Path Construction
+
+When you provide simple names, the service constructs full paths:
+
+```typescript
+// You provide:
+createSession("my-agent", "user123", initialState);
+
+// Service constructs:
+// projects/{project}/locations/{location}/reasoningEngines/my-agent
+```
+
+### Full Path Support
+
+You can also provide complete resource paths:
+
+```typescript
+async function createSessionWithFullPath() {
+  const fullPath =
+    "projects/my-project/locations/us-central1/reasoningEngines/12345";
+  const session = await sessionService.createSession(fullPath, "user123", {});
+  return session;
+}
+```
+
+## Best Practices
+
+- **Regional Deployment**: Choose the region closest to your users for lower latency (e.g., `us-central1` for US users, `europe-west1` for EU users)
+- **State Organization**: Keep state values small and JSON-serializable; use artifacts for large data like transcripts
+- **Error Handling**: Wrap session operations in try/catch blocks to handle network issues and quota limits gracefully
+- **Cost Optimization**: Delete sessions when conversations end to avoid unnecessary storage costs
+- **Authentication**: Always use Application Default Credentials or service accounts, never hardcode credentials
+- **IAM Permissions**: Grant minimal required permissions (Vertex AI User role) following principle of least privilege
+- **Monitoring**: Track usage in Google Cloud Console to stay within quota limits
+- **Retry Logic**: Implement exponential backoff for transient errors like quota exhaustion
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="💬 Session"
+    description="Learn about session lifecycle and management"
+    href="/docs/framework/session-state-memory/session"
+  />
+  <Card
+    title="🗂️ State"
+    description="Master state storage and scoping"
+    href="/docs/framework/session-state-memory/state"
+  />
+  <Card
+    title="🧠 Memory"
+    description="Add Vertex AI RAG for long-term memory"
+    href="/docs/framework/session-state-memory/memory"
+  />
+</Cards>

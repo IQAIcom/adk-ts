@@ -657,7 +657,7 @@ export const agent = new LlmAgent({
 
 Provides long-term memory storage for persisting information across conversations and sessions. Your agent can store user facts, preferences, history, and learned insights.
 
-This is particularly valuable for personal assistants and customer service where your agents automatically query relevant memories. See [Sessions & Memory](/docs/framework/sessions/session).
+This is particularly valuable for personal assistants and customer service where your agents automatically query relevant memories. See [Session & Memory](/docs/framework/session-state-memory/session).
 
 ```ts
 import { LlmAgent, InMemoryMemoryService } from "@iqai/adk";
@@ -677,7 +677,7 @@ export const agent = new LlmAgent({
 
 Manages conversation state, message history, and ephemeral data during a single session. It handles the LLM context and tracks intermediate results between agent calls.
 
-`AgentBuilder` provides this automatically, but you can customize it for multi-tenant apps or custom storage needs. See [Sessions & Memory](/docs/framework/sessions/session).
+`AgentBuilder` provides this automatically, but you can customize it for multi-tenant apps or custom storage needs. See [Session & Memory](/docs/framework/session-state-memory/session).
 
 ```ts
 import { LlmAgent, InMemorySessionService } from "@iqai/adk";
@@ -889,7 +889,7 @@ This example demonstrates a **focused, production-ready research analyst** with:
   <Card
     title="🧠 Sessions & Memory"
     description="Manage conversation state, memory, and session persistence"
-    href="/docs/framework/sessions/session"
+    href="/docs/framework/session-state-memory/session"
   />
   <Card
     title="👥 Multi-Agent Systems"
