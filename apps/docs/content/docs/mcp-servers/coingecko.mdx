@@ -1,0 +1,150 @@
+---
+title: MCP CoinGecko
+description: Access cryptocurrency market data and analytics using the free CoinGecko MCP API endpoint
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+- **Name**: MCP CoinGecko
+- **Package**: Remote endpoint (no installation required)
+- **Endpoint**: `https://mcp.api.coingecko.com/mcp`
+
+## Overview
+
+MCP CoinGecko is a Model Context Protocol server that provides access to CoinGecko's free cryptocurrency market data API. This MCP server connects to CoinGecko's remote endpoint, eliminating the need for local package installation and providing seamless access to real-time cryptocurrency data.
+
+<Callout type="info" title="Free vs Pro">
+  CoinGecko offers a free tier with basic rate limits suitable for development and testing. For production applications requiring higher rate limits and premium features, consider using `McpCoinGeckoPro`. For detailed pricing and plan comparison, visit [CoinGecko API Pricing](https://www.coingecko.com/en/api/pricing).
+</Callout>
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpCoinGecko} from "@iqai/adk";
+
+    const toolset = McpCoinGecko()
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "CoinGecko MCP Client",
+      description: "Client for CoinGecko market data",
+      transport: {
+        mode: "stdio",
+        command: "npx",
+        args: ["-y", "mcp-remote@latest", "https://mcp.api.coingecko.com/mcp"],
+        env: {
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "coingecko-mcp-server": {
+          "command": "npx",
+          "args": ["-y", "mcp-remote@latest", "https://mcp.api.coingecko.com/mcp"],
+          "env": {}
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Features
+
+- Access to CoinGecko's free cryptocurrency market data API
+- Real-time price data and market information
+- No API key required for basic functionality
+- Remote endpoint connection (no local installation needed)
+
+## Environment Variables
+
+No environment variables are required for basic functionality. The free CoinGecko API endpoint is publicly accessible.
+
+- `PATH`: Automatically included if not provided (for system compatibility)
+
+## Usage Examples
+
+Here's a complete example of using MCP CoinGecko with an ADK agent:
+
+```typescript
+import { McpCoinGecko, AgentBuilder } from "@iqai/adk";
+
+async function main() {
+  // Initialize CoinGecko MCP toolset
+  const toolset = McpCoinGecko();
+
+  // Get available tools
+  const coinGeckoTools = await toolset.getTools();
+
+  // Create agent with CoinGecko tools
+  const { runner } = await AgentBuilder.create("crypto_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("A cryptocurrency market data assistant")
+    .withTools(...coinGeckoTools)
+    .build();
+
+  try {
+    // Example queries
+    const response = await runner.ask("What's the current price of Bitcoin?");
+    console.log(response);
+  } finally {
+    // Clean up resources
+    await toolset.close();
+  }
+}
+
+main().catch(console.error);
+```
+
+## Best Practices
+
+- **Rate Limit Management**: The free tier has rate limits. Configure retry options with appropriate delays to handle rate limiting gracefully
+- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
+- **Caching**: Implement caching for frequently accessed data to reduce API calls and stay within rate limits
+- **Error Handling**: Be prepared to handle different error scenarios. Implement retry logic with exponential backoff for rate limit errors
+
+## Troubleshooting
+
+**Connection Timeout**
+
+- Check your internet connection
+- Verify CoinGecko API status at [status.coingecko.com](https://status.coingecko.com/)
+- Increase retry delay in `retryOptions` configuration
+
+**Rate Limit Errors**
+
+- The free tier has rate limits. Consider upgrading to CoinGecko Pro for higher limits
+- Implement caching to reduce API calls
+- Add retry logic with exponential backoff
+
+**Tool Not Found or Invalid Schema**
+
+- Call `await toolset.getTools()` to refresh and get the latest tool schemas
+- Check the [CoinGecko API Documentation](https://www.coingecko.com/en/api/documentation) for API changes
+
+## Resources
+
+- [CoinGecko API Documentation](https://www.coingecko.com/en/api/documentation) - Complete API reference and endpoint documentation
+- [CoinGecko API Pricing](https://www.coingecko.com/en/api/pricing) - Pricing and plan comparison
+- [CoinGecko API Status](https://status.coingecko.com/) - Real-time API status and incident reports
+- [CoinGecko MCP Server](https://docs.coingecko.com/docs/mcp-server) - Official MCP server documentation
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
+
