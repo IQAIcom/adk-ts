@@ -143,8 +143,7 @@ export class CircuitBreakerPlugin extends BasePlugin {
 		const state = this._getState(this.toolCircuits, key);
 		this._recordFailure(state);
 
-		if (this.throwOnOpen) throw params.error;
-		return undefined;
+		throw params.error;
 	}
 
 	async afterToolCallback(params: {
