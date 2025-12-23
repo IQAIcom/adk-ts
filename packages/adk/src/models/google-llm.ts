@@ -7,6 +7,10 @@ import {
 } from "@google/genai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
+import {
+	CacheMetadata,
+	GeminiContextCacheManager,
+} from "./gemini-context-manager";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -50,18 +54,34 @@ export class GoogleLlm extends BaseLlm {
 		];
 	}
 
-	/**
-	 * Main content generation method - handles both streaming and non-streaming
-	 */
 	protected async *generateContentAsyncImpl(
 		llmRequest: LlmRequest,
 		stream = false,
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		this.preprocessRequest(llmRequest);
+		let cacheMetadata: CacheMetadata | null = null;
+		let cacheManager: GeminiContextCacheManager | null = null;
+
+		if (llmRequest.cacheConfig) {
+			this.logger.debug("Handling context caching");
+			cacheManager = new GeminiContextCacheManager(this.apiClient, this.logger);
+			cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
+			if (cacheMetadata) {
+				if (cacheMetadata.cacheName) {
+					this.logger.debug(`Using cache: ${cacheMetadata.cacheName}`);
+				} else {
+					this.logger.debug("Cache fingerprint only, no active cache");
+				}
+			}
+		}
 
 		const model = llmRequest.model || this.model;
 		const contents = this.convertContents(llmRequest.contents || []);
 		const config = llmRequest.config;
+
+		this.logger.info(
+			`Sending request to model: ${model}, backend: ${this.apiBackend}, stream: ${stream}`,
+		);
 
 		if (stream) {
 			const responses = await this.apiClient.models.generateContentStream({
@@ -94,7 +114,6 @@ export class GoogleLlm extends BaseLlm {
 						!llmResponse.content.parts ||
 						!this.hasInlineData(resp))
 				) {
-					// Yield merged content - equivalent to Python's types.ModelContent(parts=parts)
 					const parts: Part[] = [];
 					if (thoughtText) {
 						parts.push({ text: thoughtText, thought: true } as Part);
@@ -116,7 +135,6 @@ export class GoogleLlm extends BaseLlm {
 				yield llmResponse;
 			}
 
-			// Final yield condition - equivalent to Python's final check
 			if (
 				(text || thoughtText) &&
 				response &&
@@ -131,13 +149,22 @@ export class GoogleLlm extends BaseLlm {
 					parts.push({ text });
 				}
 
-				yield new LlmResponse({
+				const finalResponse = new LlmResponse({
 					content: {
 						parts,
 						role: "model",
 					},
 					usageMetadata,
 				});
+
+				if (cacheMetadata && cacheManager) {
+					cacheManager.populateCacheMetadataInResponse(
+						finalResponse,
+						cacheMetadata,
+					);
+				}
+
+				yield finalResponse;
 			}
 		} else {
 			const response = await this.apiClient.models.generateContent({
@@ -145,10 +172,21 @@ export class GoogleLlm extends BaseLlm {
 				contents,
 				config,
 			});
-			const llmResponse = LlmResponse.create(response);
+
+			this.logger.info("Response received from model");
 			this.logger.debug(
-				`Google response: ${llmResponse.usageMetadata?.candidatesTokenCount || 0} tokens`,
+				`Google response: ${response.usageMetadata?.candidatesTokenCount || 0} tokens`,
 			);
+
+			const llmResponse = LlmResponse.create(response);
+
+			if (cacheMetadata && cacheManager) {
+				cacheManager.populateCacheMetadataInResponse(
+					llmResponse,
+					cacheMetadata,
+				);
+			}
+
 			yield llmResponse;
 		}
 	}
@@ -157,8 +195,6 @@ export class GoogleLlm extends BaseLlm {
 	 * Connects to the Gemini model and returns an llm connection.
 	 */
 	override connect(_llmRequest: LlmRequest): BaseLLMConnection {
-		// This would need to be implemented with proper connection handling
-		// For now, throw an error as in the base class
 		throw new Error(`Live connection is not supported for ${this.model}.`);
 	}
 
@@ -174,7 +210,6 @@ export class GoogleLlm extends BaseLlm {
 	 * Convert LlmRequest contents to GoogleGenAI format
 	 */
 	private convertContents(contents: any[]): Content[] {
-		// Convert from LlmRequest format to GoogleGenAI format
 		return contents.map((content) => ({
 			role: content.role === "assistant" ? "model" : content.role,
 			parts: content.parts || [{ text: content.content || "" }],
@@ -216,7 +251,6 @@ export class GoogleLlm extends BaseLlm {
 	 */
 	get apiClient(): GoogleGenAI {
 		if (!this._apiClient) {
-			// Check for environment variables first
 			const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
 			const apiKey = process.env.GOOGLE_API_KEY;
 			const project = process.env.GOOGLE_CLOUD_PROJECT;
@@ -247,7 +281,6 @@ export class GoogleLlm extends BaseLlm {
 	 */
 	get apiBackend(): GoogleLLMVariant {
 		if (!this._apiBackend) {
-			// Check if using Vertex AI based on environment or client configuration
 			const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
 			this._apiBackend = useVertexAI
 				? GoogleLLMVariant.VERTEX_AI
