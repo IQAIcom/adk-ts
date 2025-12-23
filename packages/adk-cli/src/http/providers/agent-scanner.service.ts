@@ -91,7 +91,7 @@ export class AgentScanner {
 
 						// Try to get the actual agent name if it's already loaded
 						const loadedAgent = loadedAgents.get(relativePath);
-						let agentName = relativePath.split(/[/\\]/).pop() || "unknown";
+						let agentName: string | null = null;
 
 						if (loadedAgent?.agent?.name) {
 							agentName = loadedAgent.agent.name;
@@ -99,8 +99,7 @@ export class AgentScanner {
 							// Try to quickly extract name from agent file if not loaded
 							try {
 								const agentFilePath = normalize(join(dir, item));
-								agentName =
-									this.extractAgentNameFromFile(agentFilePath) || agentName;
+								agentName = this.extractAgentNameFromFile(agentFilePath);
 							} catch (error) {
 								if (!this.quiet) {
 									this.logger.warn(
@@ -110,6 +109,11 @@ export class AgentScanner {
 									);
 								}
 							}
+						}
+
+						// Fallback to directory-based name only if no name extracted from file
+						if (!agentName) {
+							agentName = relativePath.split(/[/\\]/).pop() || "unknown";
 						}
 
 						// Store the agent with consistent keys
