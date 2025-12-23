@@ -1,4 +1,5 @@
 import { Logger } from "@adk/logger";
+
 import type { GenerateContentConfig } from "@google/genai";
 import type { LanguageModel } from "ai";
 import type { z } from "zod";
@@ -13,6 +14,7 @@ import { LLMRegistry } from "../models/llm-registry";
 import type { LlmRequest } from "../models/llm-request";
 import type { LlmResponse } from "../models/llm-response";
 import type { BasePlanner } from "../planners/base-planner";
+import type { BasePlugin } from "../plugins/base-plugin";
 import type { BaseSessionService } from "../sessions/base-session-service";
 import type { BaseTool } from "../tools/base/base-tool";
 import { FunctionTool } from "../tools/function/function-tool";
@@ -191,6 +193,13 @@ export interface LlmAgentConfig<T extends BaseLlm = BaseLlm> {
 	planner?: BasePlanner;
 
 	/**
+	 * Extend or intercept the agent’s behavior.
+	 * Each plugin may implement callbacks for model calls, tool calls,
+	 * events, and agent lifecycle.
+	 */
+	plugins?: BasePlugin[];
+
+	/**
 	 * Memory service for long-term storage and retrieval
 	 */
 	memoryService?: BaseMemoryService;
@@ -311,6 +320,12 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	public planner?: BasePlanner;
 
 	/**
+	 * Plugins active on this agent, enabling lifecycle hooks for
+	 * model requests, tools, events, and agent actions.
+	 */
+	public plugins?: BasePlugin[];
+
+	/**
 	 * Memory service for long-term storage and retrieval
 	 */
 	private memoryService?: BaseMemoryService;
@@ -406,6 +421,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 		this.afterModelCallback = config.afterModelCallback;
 		this.beforeToolCallback = config.beforeToolCallback;
 		this.afterToolCallback = config.afterToolCallback;
+		this.plugins = config.plugins;
 
 		// Validate output schema configuration
 		this.validateOutputSchemaConfig();

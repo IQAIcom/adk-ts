@@ -7,12 +7,15 @@
 		"abi",
 		"atp",
 		"bamm",
+		"coingecko",
+		"coingecko-pro",
 		"discord",
 		"fraxlend",
 		"iqwiki",
 		"near-agent",
 		"near-intents",
 		"odos",
+		"polymarket",
 		"telegram",
 		"upbit"
 	]
