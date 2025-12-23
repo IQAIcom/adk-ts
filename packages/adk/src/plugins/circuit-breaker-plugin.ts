@@ -98,15 +98,17 @@ export class CircuitBreakerPlugin extends BasePlugin {
 				return false;
 			case CircuitStateType.HALF_OPEN:
 				return true;
+			default:
+				return false;
 		}
-		return false;
 	}
 
 	private _recordFailure(state: CircuitState) {
 		state.failures += 1;
-		if (state.failures >= this.failureThreshold) {
-			this._enterOpenState(state);
-		} else if (state.state === CircuitStateType.HALF_OPEN) {
+		if (
+			state.state === CircuitStateType.HALF_OPEN ||
+			state.failures >= this.failureThreshold
+		) {
 			this._enterOpenState(state);
 		}
 	}
@@ -168,8 +170,11 @@ export class CircuitBreakerPlugin extends BasePlugin {
 		const state = this._getState(this.agentCircuits, key);
 
 		if (!this._canAttemptCall(state)) {
-			if (this.throwOnOpen)
+			if (this.throwOnOpen) {
 				throw new Error(`Circuit breaker open for agent ${params.agent.name}`);
+			}
+			// Silently block the call by returning empty content, which stops agent execution.
+			return { parts: [] };
 		}
 
 		return undefined;
