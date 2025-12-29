@@ -52,8 +52,6 @@ export class SingleFlow extends BaseLlmFlow {
 			codeExecutionResponseProcessor, // Phase 7: Code Execution
 		);
 
-		this.logger.debug(
-			"SingleFlow initialized with processors including context cache",
-		);
+		this.logger.debug("SingleFlow initialized with processors");
 	}
 }
