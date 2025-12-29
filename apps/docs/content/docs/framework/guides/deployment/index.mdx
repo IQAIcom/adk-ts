@@ -6,31 +6,205 @@ description: Learn how to deploy ADK-TS agents to various platforms and environm
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Deploy your ADK-TS agents to production using various platforms and deployment strategies. Choose the approach that best fits your infrastructure and requirements.
+Deploy your ADK-TS agents to production using various platforms and deployment strategies. This guide covers core deployment concepts and platform-specific implementations.
 
-## Available Deployment Guides
+## Quick Start Decision Tree
+
+Choose your deployment path based on your needs:
 
 <Cards>
   <Card
-    title="🚂 Railway"
-    description="Deploy using Railway's container hosting platform"
+    title="🚀 Quick & Managed"
+    description="Railway - easiest deployment, auto-detect or use Docker (5-15 min)"
     href="/docs/guides/deployment/railway"
   />
   <Card
-    title="🐳 Docker"
-    description="Deploy using Docker containers"
+    title="⚡ Serverless API"
+    description="Vercel - serverless functions for API agents and webhooks (5-10 min)"
+    href="/docs/guides/deployment/vercel"
+  />
+  <Card
+    title="🔧 Self-Hosted & Flexible"
+    description="Docker - full control, deploy anywhere you want (30+ min)"
     href="/docs/guides/deployment/docker"
   />
 </Cards>
+
+## Platform Comparison
+
+| Feature            | Railway                                        | Vercel                                       | Docker (Self-Hosted)                        |
+| ------------------ | ---------------------------------------------- | -------------------------------------------- | ------------------------------------------- |
+| **Setup Time**     | 5 minutes (auto-deploy) to 15 minutes (Docker) | 5-10 minutes                                 | 30+ minutes                                 |
+| **Docker Required**| No (Nixpacks auto-detect) or optional          | No (auto-detect)                             | Yes                                        |
+| **Cost**           | $5+/month per service                          | Free tier, then pay-per-use                  | Variable (server cost)                      |
+| **Infrastructure** | Fully managed                                  | Fully managed (serverless)                   | Self-managed                                |
+| **Scaling**        | Automatic                                      | Automatic (zero to thousands)                | Manual configuration                        |
+| **CI/CD**          | Built-in GitHub integration                    | Built-in GitHub integration                  | Requires setup                              |
+| **Control**        | Limited (platform constraints)                 | Limited (serverless constraints)             | Full control                                |
+| **Use Case**       | Always-on agents, background tasks             | API routes, webhooks, request-response       | Custom needs, complex workloads             |
+| **Best For**       | Discord bots, long-running agents              | API agents, serverless workflows             | High-scale, cost optimization, flexibility  |
+| **Execution Time** | Unlimited                                      | 60-900 seconds (plan dependent)              | Unlimited                                   |
+| **Monitoring**     | Built-in dashboard                             | Built-in analytics and logs                  | Requires setup                              |
+
+## Docker Fundamentals
+
+Railway can auto-deploy without Docker knowledge (using Nixpacks), but understanding Docker basics helps if you need custom configurations. Docker is required for self-hosted deployments.
+
+### What is Docker?
+
+Docker packages your ADK-TS agent with all its dependencies into a **container** - a lightweight, portable unit that runs consistently across any environment. This eliminates "works on my machine" problems.
+
+**Key concepts:**
+
+- **Image**: A blueprint containing your code, dependencies, and runtime. Built once, deployed anywhere.
+- **Container**: A running instance of an image. Your agent executes inside this isolated environment.
+- **Registry**: A storage service for Docker images (like DockerHub, GitHub Container Registry, or AWS ECR).
+
+### Platform Architecture
+
+Your local machine might use a different processor architecture than cloud servers:
+
+- **ARM64**: Apple Silicon Macs (M1/M2/M3/M4) and some modern servers
+- **AMD64**: Most cloud providers (Railway, AWS, Google Cloud, Azure)
+
+When deploying to cloud platforms, build specifically for AMD64:
+
+```bash
+docker buildx build --platform linux/amd64 -t my-agent:latest .
+```
+
+<Callout type="info" title="Why This Matters">
+  If you build on Apple Silicon without specifying `--platform linux/amd64`,
+  your image won't run on most cloud servers. Always specify the platform for
+  production builds.
+</Callout>
+
+### Container Registries
+
+After building your image, push it to a registry so cloud platforms can access it:
+
+**DockerHub** (Easiest for beginners)
+
+- Free tier available
+- Public and private repositories
+- `docker.io/username/image:tag`
+
+**GitHub Container Registry** (If you use GitHub)
+
+- Integrated with GitHub repos
+- Fine-grained access control
+- `ghcr.io/username/image:tag`
+
+**AWS ECR** (If you use AWS)
+
+- Integrated with AWS services
+- Regional deployment
+- `aws_account_id.dkr.ecr.region.amazonaws.com/image:tag`
+
+## Dockerfile Reference
+
+Use this standard Dockerfile for ADK-TS agents. Both Railway and Docker deployments use this same configuration.
+
+### Basic Dockerfile
+
+Create a `Dockerfile` in your project root:
+
+```dockerfile
+# Use Node.js 20 Alpine as the base image (lightweight Linux distribution)
+FROM node:20-alpine
+
+# Enable pnpm package manager and set a specific version for consistency
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package files first for better Docker layer caching
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies using frozen lockfile for reproducible builds
+RUN pnpm install --frozen-lockfile
+
+# Copy TypeScript config and source code
+COPY tsconfig.json ./
+COPY src ./src
+
+# Build the project
+RUN pnpm build
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Define the command to run when the container starts
+CMD ["node", "dist/index.js"]
+```
+
+### Multi-Stage Dockerfile (Advanced)
+
+For production deployments, use multi-stage builds to create smaller, more secure images:
+
+```dockerfile
+# Build stage - compiles TypeScript
+FROM node:20-alpine AS builder
+
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY tsconfig.json ./
+COPY src ./src
+RUN pnpm build
+
+# Production stage - runs the compiled code
+FROM node:20-alpine
+
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+WORKDIR /app
+
+# Only install production dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy compiled code from build stage
+COPY --from=builder /app/dist ./dist
+
+ENV NODE_ENV=production
+CMD ["node", "dist/index.js"]
+```
+
+**Benefits**: Smaller images (no dev dependencies), faster deployments, improved security.
+
+### .dockerignore
+
+Create a `.dockerignore` file to exclude unnecessary files from your Docker build:
+
+```
+node_modules
+dist
+.git
+.env
+.env.*
+*.log
+.DS_Store
+coverage
+.vscode
+.idea
+README.md
+.gitignore
+```
+
+This reduces image size and prevents accidentally including sensitive data.
 
 ## Coming Soon
 
 We're working on guides for additional platforms:
 
-- **⚡ Vercel** - Serverless deployment for API-based agents
-- **☁️ AWS** - Cloud infrastructure deployment
+- **☁️ AWS** - Cloud infrastructure deployment (Lambda, ECS, EC2)
 - **☁️ Google Cloud** - Cloud Run and GKE deployment
 - **⚓ Kubernetes** - Container orchestration for scalable deployments
+- **🔷 Azure** - Azure Functions and Container Instances
 
 <Callout type="info" title="Contributions Welcome">
   Have experience deploying ADK-TS agents to other platforms? We welcome
