@@ -62,7 +62,7 @@ The default LLM is Google Gemini. You can get a Google API key from [Google AI S
 
 > Note: Some examples require additional configuration or dependencies. Please check the [`.env.example`](.env.example) file for specific instructions.
 
-1. **Run Examples**
+4. **Run Examples**
 
 To explore the examples, you can either browse all available examples or run a specific one directly:
 
