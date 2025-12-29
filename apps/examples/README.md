@@ -42,7 +42,7 @@ For the examples to work correctly, you need to build the core ADK-TS package fi
    pnpm build
  ```
 
-1. **Configure Environment Variables**
+3. **Configure Environment Variables**
 
 Create a `.env` file in the **examples directory** (not in the root folder) and add your API keys and optional model configuration. This file is used to set environment variables that the examples will use.
 
