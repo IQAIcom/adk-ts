@@ -9,30 +9,9 @@ import type {
 	GoogleGenAI,
 	Tool,
 } from "@google/genai";
+import { CacheMetadata } from "./cache-metadata";
 import type { LlmRequest } from "./llm-request";
 import type { LlmResponse } from "./llm-response";
-
-export class CacheMetadata {
-	cacheName?: string;
-	expireTime: number;
-	fingerprint: string;
-	invocationsUsed: number;
-	contentsCount: number;
-	createdAt?: number;
-
-	constructor(params: Partial<CacheMetadata>) {
-		this.cacheName = params.cacheName;
-		this.expireTime = params.expireTime ?? 0;
-		this.fingerprint = params.fingerprint ?? "";
-		this.invocationsUsed = params.invocationsUsed ?? 0;
-		this.contentsCount = params.contentsCount ?? 0;
-		this.createdAt = params.createdAt;
-	}
-
-	modelCopy(): CacheMetadata {
-		return new CacheMetadata({ ...this });
-	}
-}
 
 export class GeminiContextCacheManager {
 	private readonly genaiClient: GoogleGenAI;
@@ -54,13 +33,15 @@ export class GeminiContextCacheManager {
 		if (cacheMeta) {
 			this.logger.debug("Found existing cache metadata:", cacheMeta);
 			if (await this.isCacheValid(llmRequest, cacheConfig)) {
-				cacheMeta.invocationsUsed += 1;
-				const cacheName = cacheMeta.cacheName;
-				const contentsCount = cacheMeta.contentsCount;
+				const updatedMeta = cacheMeta.copy({
+					invocationsUsed: (cacheMeta.invocationsUsed ?? 0) + 1,
+				});
+				const cacheName = updatedMeta.cacheName;
+				const contentsCount = updatedMeta.contentsCount;
 				if (cacheName) {
 					this.applyCacheToRequest(llmRequest, cacheName, contentsCount);
 				}
-				return cacheMeta.modelCopy();
+				return updatedMeta;
 			}
 
 			if (cacheMeta.cacheName) {
@@ -123,12 +104,14 @@ export class GeminiContextCacheManager {
 		if (!cache || !cache.cacheName) return false;
 
 		const now = Date.now() / 1000;
-		if (now >= cache.expireTime) {
+		const expireTime = cache.expireTime ?? 0;
+		if (now >= expireTime) {
 			this.logger.info("Cache expired:", cache.cacheName);
 			return false;
 		}
 
-		if (cache.invocationsUsed >= cacheConfig.cacheIntervals) {
+		const invocationsUsed = cache.invocationsUsed ?? 0;
+		if (invocationsUsed >= cacheConfig.cacheIntervals) {
 			this.logger.info("Cache exceeded intervals:", cache.cacheName);
 			return false;
 		}
@@ -146,7 +129,7 @@ export class GeminiContextCacheManager {
 	): string {
 		const seen = new WeakSet();
 
-		function canonicalize(value: unknown) {
+		function canonicalize(value: unknown): unknown {
 			if (value && typeof value === "object") {
 				if (seen.has(value as object)) return "[Circular]";
 				seen.add(value as object);
@@ -314,6 +297,6 @@ export class GeminiContextCacheManager {
 		llmResponse: LlmResponse,
 		cacheMetadata: CacheMetadata,
 	): void {
-		llmResponse.cacheMetadata = cacheMetadata.modelCopy();
+		llmResponse.cacheMetadata = cacheMetadata.copy();
 	}
 }

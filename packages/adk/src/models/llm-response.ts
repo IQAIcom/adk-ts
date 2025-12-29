@@ -3,7 +3,7 @@ import type {
 	GenerateContentResponseUsageMetadata,
 	GroundingMetadata,
 } from "@google/genai";
-import type { CacheMetadata } from "./gemini-context-manager";
+import { CacheMetadata } from "./cache-metadata";
 
 interface Candidate {
 	content?: Content;
