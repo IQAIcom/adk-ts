@@ -8,18 +8,32 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Deploy your ADK-TS agents to production using various platforms and deployment strategies. Choose the approach that best fits your infrastructure and requirements.
 
-## Available Deployment Guides
+## Platform Guides
+
+Deploy to popular cloud platforms with step-by-step instructions:
 
 <Cards>
   <Card
     title="🚂 Railway"
     description="Deploy using Railway's container hosting platform"
-    href="/docs/guides/deployment/railway"
+    href="/docs/framework/guides/deployment/railway"
   />
   <Card
     title="🐳 Docker"
-    description="Deploy using Docker containers"
-    href="/docs/guides/deployment/docker"
+    description="Deploy using Docker containers to any platform"
+    href="/docs/framework/guides/deployment/docker"
+  />
+</Cards>
+
+## Agent-Specific Guides
+
+Deployment guides for specific agent types with unique requirements:
+
+<Cards>
+  <Card
+    title="📱 Telegram Bots"
+    description="Deploy polling-based Telegram bots as background workers"
+    href="/docs/framework/guides/deployment/telegram"
   />
 </Cards>
 
