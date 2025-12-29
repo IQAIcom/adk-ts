@@ -152,36 +152,36 @@ describe("BaseAgent", () => {
 				implMock: "runLiveImplMock" as const,
 				traceName: "agent_run_live [test_agent]",
 			},
-		])(
-			"$method should trace and call the internal implementation",
-			async ({ method, implMock, traceName }) => {
-				const events = [];
-				for await (const event of agent[method](mockContext)) {
-					events.push(event);
-				}
-				expect(telemetryService.traceAsyncGenerator).toHaveBeenCalledWith(
-					traceName,
-					expect.anything(),
-				);
-				expect(agent[implMock]).toHaveBeenCalledOnce();
-				expect(events).toHaveLength(1);
-			},
-		);
+		])("$method should trace and call the internal implementation", async ({
+			method,
+			implMock,
+			traceName,
+		}) => {
+			const events = [];
+			for await (const event of agent[method](mockContext)) {
+				events.push(event);
+			}
+			expect(telemetryService.traceAsyncGenerator).toHaveBeenCalledWith(
+				traceName,
+				expect.anything(),
+			);
+			expect(agent[implMock]).toHaveBeenCalledOnce();
+			expect(events).toHaveLength(1);
+		});
 
 		it.each([
 			{ method: "runAsyncImpl" as const, name: "runAsyncImpl" },
 			{ method: "runLiveImpl" as const, name: "runLiveImpl" },
-		])(
-			"should throw if $name is not implemented in a subclass",
-			async ({ method }) => {
-				class BadAgent extends BaseAgent {}
-				const badAgent = new BadAgent({ name: "bad" });
-				const generator = badAgent[method](mockContext);
-				await expect(generator.next()).rejects.toThrow(
-					`${method} for BadAgent is not implemented.`,
-				);
-			},
-		);
+		])("should throw if $name is not implemented in a subclass", async ({
+			method,
+		}) => {
+			class BadAgent extends BaseAgent {}
+			const badAgent = new BadAgent({ name: "bad" });
+			const generator = badAgent[method](mockContext);
+			await expect(generator.next()).rejects.toThrow(
+				`${method} for BadAgent is not implemented.`,
+			);
+		});
 	});
 
 	describe("Callback Handling", () => {

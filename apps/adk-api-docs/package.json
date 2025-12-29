@@ -1,0 +1,20 @@
+{
+	"name": "adk-api-docs",
+	"version": "0.1.0",
+	"description": "API documentation for ADK TypeScript package",
+	"private": true,
+	"scripts": {
+		"build": "typedoc --options typedoc.json",
+		"dev": "pnpm run docs:build && pnpm run docs:serve",
+		"docs:build": "typedoc --options typedoc.json",
+		"docs:serve": "npx http-server api -p 4000 -o",
+		"docs:clean": "rimraf ./api"
+	},
+	"devDependencies": {
+		"http-server": "^14.1.1",
+		"typedoc": "^0.26.11"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	}
+}
