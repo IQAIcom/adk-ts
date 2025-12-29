@@ -105,7 +105,8 @@ The main configuration is in `typedoc.json`:
   "readme": "../../packages/adk/README.md",
   "excludePrivate": true,
   "excludeExternals": true,
-  "githubPages": true
+  "githubPages": true,
+  "excludeReferences": true
 }
 ```
 
@@ -116,6 +117,7 @@ Key settings:
 - **`readme`**: Uses ADK package README as main page
 - **`excludePrivate/excludeExternals`**: Controls visibility of APIs
 - **`githubPages`**: Optimized for GitHub Pages deployment
+- **`excludeReferences`**: Hides "Re-exports" to reduce clutter from barrel exports
 
 ### Package Configuration
 

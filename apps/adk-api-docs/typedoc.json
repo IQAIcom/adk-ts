@@ -60,5 +60,6 @@
 	"gitRemote": "origin",
 	"githubPages": true,
 	"disableSources": false,
-	"sourceLinkTemplate": "https://github.com/IQAIcom/adk-ts/blob/{gitRevision}/{path}#L{line}"
+	"sourceLinkTemplate": "https://github.com/IQAIcom/adk-ts/blob/{gitRevision}/{path}#L{line}",
+	"excludeReferences": true
 }
