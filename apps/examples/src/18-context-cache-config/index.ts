@@ -45,7 +45,7 @@ const saveCountryTool = createTool({
 		- Tourism and cultural highlights
 
 		The stored information persists throughout the conversation session
-		and can be retrieved using the view_last_country tool.
+		and can be retrieved using the view_last_country or view_first_country tools.
 
 		Use this tool whenever you provide detailed information about a country
 		to maintain conversation context and enable follow-up queries.
@@ -57,9 +57,25 @@ const saveCountryTool = createTool({
 		area_km2: z.number().optional().describe("Total area in square kilometers"),
 		currency: z.string().optional().describe("Official currency"),
 		languages: z.array(z.string()).optional().describe("Official languages"),
+		fun_fact: z.string().describe("An interesting fact about the country"),
+		historical_note: z.string().optional().describe("Historical context"),
+		tourist_attractions: z
+			.array(z.string())
+			.optional()
+			.describe("Major tourist destinations"),
 	}),
 	fn: (
-		{ country, capital, population, area_km2, currency, languages },
+		{
+			country,
+			capital,
+			population,
+			area_km2,
+			currency,
+			languages,
+			fun_fact,
+			historical_note,
+			tourist_attractions,
+		},
 		context,
 	) => {
 		const countryData = {
@@ -69,6 +85,9 @@ const saveCountryTool = createTool({
 			area_km2,
 			currency,
 			languages,
+			fun_fact,
+			historical_note,
+			tourist_attractions,
 			timestamp: new Date().toISOString(),
 		};
 
@@ -98,8 +117,8 @@ const viewLastCountryTool = createTool({
 		Use this tool when:
 		- The user asks about the "last country" or "previous country"
 		- You need to compare countries discussed in the conversation
-		- The user wants to recall information from earlier in the session
-		- You need context about what was discussed before
+		- The user wants to recall the most recent information
+		- You need context about what was just discussed
 
 		Returns null if no country has been saved yet in this session.
 	`,
@@ -111,12 +130,49 @@ const viewLastCountryTool = createTool({
 			? {
 					found: true,
 					...data,
-					note: "This data was retrieved from conversation memory",
+					note: "This data was retrieved from conversation memory (most recent)",
 				}
 			: {
 					found: false,
 					message: "No country information has been saved in this session yet",
 				};
+	},
+});
+
+const viewFirstCountryTool = createTool({
+	name: "view_first_country",
+	description: dedent`
+		Retrieve the FIRST country information discussed in this session.
+
+		This tool accesses the conversation memory to recall details about
+		the first country that was discussed and saved. It returns all available
+		information from the beginning of the conversation.
+
+		Use this tool when:
+		- The user asks about the "first country" or "initial country"
+		- You need to compare the first and last countries discussed
+		- The user wants to recall what started the conversation
+		- The user asks "what was the first country we discussed"
+
+		Returns null if no country has been saved yet in this session.
+	`,
+	schema: z.object({}),
+	fn: (_, context) => {
+		const history = context.state.get("countryHistory", []) || [];
+
+		if (history.length === 0) {
+			return {
+				found: false,
+				message: "No country information has been saved in this session yet",
+			};
+		}
+
+		const firstCountry = history[0];
+		return {
+			found: true,
+			...firstCountry,
+			note: "This is the first country discussed in this session",
+		};
 	},
 });
 
@@ -241,7 +297,8 @@ async function main() {
 
 		1. **Save Information**: Use the save_country_info tool whenever you provide
 		   detailed country information. This maintains conversation context and enables
-		   follow-up queries and comparisons.
+		   follow-up queries and comparisons. IMPORTANT: Include all required fields
+		   (country, capital, fun_fact) and optional fields when saving.
 
 		2. **Be Comprehensive**: Provide thorough answers that cover multiple aspects
 		   of the query. Don't just answer the literal question—offer relevant context
@@ -260,9 +317,10 @@ async function main() {
 		   in perspective.
 
 		6. **Use Tools Effectively**:
-		   - save_country_info: Save detailed information after providing it
-		   - view_last_country: Retrieve previously discussed country data
-		   - compare_countries: Access conversation history for comparisons
+		   - save_country_info: Save detailed information after providing it (include ALL fields)
+		   - view_last_country: Retrieve the most recently discussed country data
+		   - view_first_country: Retrieve the FIRST country discussed in the session
+		   - compare_countries: Access full conversation history for comparisons
 
 		7. **Maintain Objectivity**: Present information neutrally, acknowledging
 		   different perspectives on controversial topics. Focus on factual, verifiable
@@ -274,26 +332,37 @@ async function main() {
 
 		**Structured Output Format:**
 
-		Your responses must follow the defined output schema, including:
-		- country: Full official country name
-		- capital: Capital city name (or note if no official capital)
+		Your responses MUST follow the defined output schema, including these REQUIRED fields:
+		- country: Full official country name (REQUIRED)
+		- capital: Capital city name (REQUIRED)
+		- fun_fact: An interesting, lesser-known fact (REQUIRED)
+
+		And these OPTIONAL fields:
 		- population: Current population estimate
 		- area_km2: Total area in square kilometers
 		- currency: Official currency name and code
 		- languages: Array of official languages
-		- fun_fact: An interesting, lesser-known fact
 		- historical_note: Significant historical context
 		- tourist_attractions: Array of major tourist destinations
+
+		CRITICAL: When using the view_first_country or view_last_country tools, you MUST
+		return the retrieved country data in the proper schema format. If the tool returns
+		country information, extract the fields and return them. Never return an error object
+		or explanation text as your final response - always return valid country data.
 
 		**Example Interaction Patterns:**
 
 		User: "Tell me about Japan"
 		Assistant: [Provides comprehensive information covering geography, population,
-		culture, economy, and saves the data using save_country_info tool]
+		culture, economy, and saves the data using save_country_info tool with ALL fields]
 
 		User: "What about South Korea?"
 		Assistant: [Provides information about South Korea, naturally comparing aspects
-		to Japan since it was recently discussed, saves new data]
+		to Japan since it was recently discussed, saves new data with ALL fields]
+
+		User: "What was the first country we discussed?"
+		Assistant: [Uses view_first_country tool to retrieve Japan's data, then returns
+		it in the proper schema format with country, capital, fun_fact, and other fields]
 
 		User: "Compare these two countries"
 		Assistant: [Uses compare_countries tool to retrieve both and provides detailed
@@ -318,11 +387,15 @@ async function main() {
 		3. Suggest where the user might find that information
 		4. Offer to answer related questions you can address
 
+		However, when recalling saved country information using tools, you MUST return
+		the data in the proper schema format. Never return error messages or explanations
+		as your final output - always return valid country data matching the schema.
+
 		**Conversation Memory:**
 
 		You maintain state throughout the conversation. Use your tools to:
-		- Build a history of countries discussed
-		- Enable natural references to "the previous country" or "earlier we discussed"
+		- Build a history of countries discussed (in order)
+		- Enable natural references to "the previous country" or "the first country"
 		- Provide comparative context when moving between countries
 		- Recall specific details without asking the user to repeat information
 
@@ -334,14 +407,19 @@ async function main() {
 	const startTime = Date.now();
 
 	const { runner } = await AgentBuilder.withModel(
-		openrouter("openai/gpt-4.1-mini"),
+		openrouter("google/gemini-2.5-flash"),
 	)
 		.withDescription(
 			"Advanced geography and cultural research assistant with comprehensive knowledge",
 		)
 		.withInstruction(longInstruction)
 		.withOutputSchema(outputSchema)
-		.withTools(saveCountryTool, viewLastCountryTool, compareCountriesTool)
+		.withTools(
+			saveCountryTool,
+			viewLastCountryTool,
+			viewFirstCountryTool,
+			compareCountriesTool,
+		)
 		.withSessionService(sessionService, {
 			state: {
 				lastCountry: null,
