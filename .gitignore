@@ -74,6 +74,12 @@ apps/examples/src/sqlite-runner-example/data/*
 # PgLite
 apps/examples/src/pglite-runner-example/data/*
 
+# API Documentation generated files
+apps/adk-api-docs/api/
+apps/adk-api-docs/_site/
+apps/adk-api-docs/.jekyll-metadata
+apps/adk-api-docs/Gemfile.lock
+
 # To ignore all lock files that are not pnpm
 # This is useful if you want to ensure that only pnpm lock files are present in the repository
 package-lock.json

@@ -16,10 +16,10 @@
 		"Module",
 		"Namespace",
 		"Enum",
-		"Enumeration Member",
+		"EnumMember",
 		"Class",
 		"Interface",
-		"Type alias",
+		"TypeAlias",
 		"Constructor",
 		"Property",
 		"Variable",
@@ -27,9 +27,8 @@
 		"Accessor",
 		"Method",
 		"Parameter",
-		"Other Kind",
-		"Type literal",
-		"Type parameter",
+		"TypeLiteral",
+		"TypeParameter",
 		"Reference"
 	],
 	"categorizeByGroup": true,
@@ -57,11 +56,9 @@
 	},
 	"treatWarningsAsErrors": false,
 	"intentionallyNotExported": [],
-	"plugin": ["typedoc-plugin-markdown", "typedoc-plugin-frontmatter"],
 	"gitRevision": "main",
 	"gitRemote": "origin",
 	"githubPages": true,
 	"disableSources": false,
-	"sourceLinkTemplate": "https://github.com/IQAIcom/adk-ts/blob/{gitRevision}/{path}#L{line}",
-	"customCss": "./_includes/custom.css"
+	"sourceLinkTemplate": "https://github.com/IQAIcom/adk-ts/blob/{gitRevision}/{path}#L{line}"
 }

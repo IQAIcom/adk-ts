@@ -12,7 +12,7 @@ highlighter: rouge
 theme: just-the-docs
 
 # Just the Docs theme settings
-logo: "/assets/images/logo.png"
+# logo: "/assets/images/logo.png"  # Commented out until logo is added
 
 # Enable search
 search_enabled: true
@@ -89,7 +89,7 @@ defaults:
       parent: "API Reference"
   - scope:
       path: ""
-      type: "guides" 
+      type: "guides"
     values:
       layout: "default"
       parent: "Guides"
