@@ -1,123 +1,178 @@
-# ADK Documentation
+<div align="center">
 
-This directory contains the complete documentation for ADK TypeScript, built using Jekyll with the Just the Docs theme.
+<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="80" />
 
-## Structure
+<br/>
+
+# ADK API Documentation
+
+**Complete documentation for ADK TypeScript, built using TypeDoc with comprehensive API references and guides.**
+
+*Auto-generated • Type-safe • Developer-friendly*
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@iqai/adk">
+    <img src="https://img.shields.io/npm/v/@iqai/adk" alt="NPM Version" />
+  </a>
+  <a href="https://adk.iqai.com/docs">
+    <img src="https://img.shields.io/badge/docs-live-blue" alt="Documentation" />
+  </a>
+  <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md">
+    <img src="https://img.shields.io/npm/l/@iqai/adk" alt="License" />
+  </a>
+  <a href="https://github.com/IQAIcom/adk-ts">
+    <img src="https://img.shields.io/github/stars/IQAIcom/adk-ts?style=social" alt="GitHub Stars" />
+  </a>
+</p>
+
+---
+
+</div>
+
+## 📖 About
+
+This directory contains the complete documentation for ADK TypeScript, built using TypeDoc for automatic API reference generation. The documentation provides comprehensive coverage of all ADK features, including API references, guides, and examples.
+
+## 📁 Structure
 
 ```
-docs/
-├── _config.yml          # Jekyll configuration
-├── _includes/           # Custom CSS and includes
-├── _guides/            # Tutorial and guide content
-├── api/                # Auto-generated TypeDoc API docs
-├── index.md            # Homepage
-├── api.md              # API reference index
-├── guides.md           # Guides index
-└── Gemfile             # Ruby dependencies
+adk-api-docs/
+├── package.json         # Project configuration and scripts
+├── typedoc.json        # TypeDoc configuration
+├── README.md           # This file
+├── node_modules/       # Dependencies
+└── api/                # Auto-generated TypeDoc output (created on build)
 ```
 
-## Development
+## 🚀 Development
 
 ### Prerequisites
 
-- Ruby 3.1+
-- Bundler
-- Node.js 18+ (for TypeDoc generation)
+Before building the documentation, ensure you have:
+
+- [Node.js](https://nodejs.org) (version 18 or later)
+- [pnpm](https://pnpm.io) (recommended package manager)
+- Basic familiarity with [TypeDoc](https://typedoc.org/) and documentation generation
 
 ### Setup
 
-1. Install Ruby dependencies:
+1. **Install dependencies** from the workspace root:
    ```bash
-   cd docs && bundle install
+   pnpm install
    ```
 
-2. Install TypeDoc dependencies:
+2. **Navigate to the API docs directory**:
    ```bash
-   cd .. && pnpm install
+   cd apps/adk-api-docs
    ```
 
 ### Building Documentation
 
-1. Generate API documentation:
+1. **Generate API documentation**:
    ```bash
    pnpm run docs:build
    ```
 
-2. Serve locally:
+2. **Clean previous builds**:
+   ```bash
+   pnpm run docs:clean
+   ```
+
+3. **Build and serve documentation**:
+   ```bash
+   pnpm run dev
+   ```
+
+4. **Just serve existing documentation**:
    ```bash
    pnpm run docs:serve
    ```
 
-3. Or run both:
-   ```bash
-   pnpm run docs:dev
-   ```
+The generated documentation will be available in the `api/` directory and served at `http://localhost:4000`.
 
-The site will be available at `http://localhost:4000`.
+## 🛠️ Configuration
 
-### Adding Content
+### TypeDoc Configuration
 
-#### Guides
+The main configuration is in `typedoc.json`:
 
-Create new guide files in `_guides/` directory:
-
-```markdown
----
-layout: default
-title: Your Guide Title
-parent: Guides
-nav_order: 4
----
-
-# Your Guide Title
-
-Content goes here...
+```json
+{
+  "entryPoints": ["../../packages/adk/src/index.ts"],
+  "out": "./api",
+  "theme": "default",
+  "name": "@iqai/adk API Documentation",
+  "readme": "../../packages/adk/README.md",
+  "excludePrivate": true,
+  "excludeExternals": true,
+  "githubPages": true
+}
 ```
 
-#### API Documentation
-
-API documentation is automatically generated from TypeScript source code using TypeDoc. The configuration is in `../typedoc.json`.
-
-## Deployment
-
-Documentation is automatically built and deployed via GitHub Actions when changes are pushed to the main branch.
-
-The workflow:
-1. Installs dependencies
-2. Builds the ADK package
-3. Generates TypeDoc API documentation
-4. Builds Jekyll site
-5. Deploys to GitHub Pages
-
-## Configuration
-
-### Jekyll (_config.yml)
-
 Key settings:
-- `title`: Site title
-- `baseurl`: Base URL for GitHub Pages
-- `theme`: just-the-docs
-- Navigation and search settings
+- **`entryPoints`**: Main TypeScript files to document
+- **`out`**: Output directory (`./api`)
+- **`name`**: Documentation site title
+- **`readme`**: Uses ADK package README as main page
+- **`excludePrivate/excludeExternals`**: Controls visibility of APIs
+- **`githubPages`**: Optimized for GitHub Pages deployment
 
-### TypeDoc (../typedoc.json)
+### Package Configuration
 
-Key settings:
-- `entryPoints`: Main TypeScript files to document
-- `out`: Output directory for generated docs
-- Plugins for markdown and frontmatter generation
+The `package.json` contains scripts for building and serving documentation:
 
-## Customization
+- `pnpm run docs:build` - Generate TypeDoc documentation
+- `pnpm run docs:serve` - Serve documentation on port 4000
+- `pnpm run docs:clean` - Remove existing documentation
+- `pnpm run dev` - Build and serve in one command
 
-### Styling
+## 🚀 Deployment
 
-Custom CSS is in `_includes/custom.css` and loaded via the Jekyll configuration.
+Documentation is automatically built and deployed to GitHub Pages via GitHub Actions when changes are pushed to the main or develop branches.
 
-### Theme Options
+The deployment workflow (`.github/workflows/docs.yml`):
+1. Triggers on changes to ADK source code or documentation files
+2. Installs Node.js 20 and pnpm dependencies
+3. Builds the `@iqai/adk` package
+4. Generates TypeDoc documentation in `apps/adk-api-docs/api`
+5. Deploys to GitHub Pages (main branch only)
 
-Just the Docs theme supports extensive customization:
-- Color schemes
-- Navigation structure  
-- Search configuration
-- Callout styles
+The documentation is automatically published at the configured GitHub Pages URL.
 
-See the [Just the Docs documentation](https://just-the-docs.github.io/just-the-docs/) for details.
+## 🎨 Customization
+
+### Adding New Content
+
+API documentation is automatically generated from TypeScript source code comments. To add or improve documentation:
+
+1. **Add JSDoc comments** to TypeScript source files in `packages/adk/src/`
+2. **Use TypeDoc tags** for enhanced documentation:
+   ```typescript
+   /**
+    * Creates a new agent with the specified configuration.
+    * 
+    * @param config - The agent configuration
+    * @returns A configured agent instance
+    * @example
+    * ```typescript
+    * const agent = createAgent({ name: 'MyAgent' });
+    * ```
+    */
+   export function createAgent(config: AgentConfig): Agent {
+     // implementation
+   }
+   ```
+3. **Rebuild documentation** to see changes
+
+### Styling and Theme
+
+TypeDoc provides several built-in themes and supports custom styling:
+- Default theme with responsive design
+- Custom CSS can be added via TypeDoc configuration
+- Plugin ecosystem for enhanced features
+
+## 📚 Resources
+
+- [TypeDoc Documentation](https://typedoc.org/) - Complete TypeDoc reference
+- [ADK Live Documentation](https://adk.iqai.com/docs) - Published documentation site
+- [TSDoc Reference](https://tsdoc.org/) - Documentation comment standards
