@@ -65,7 +65,7 @@ export class LlmResponse {
 			generateContentResponse.candidates.length > 0
 		) {
 			const candidate = generateContentResponse.candidates[0];
-			if (candidate.content && (candidate.content as any).parts) {
+			if (candidate.content?.parts) {
 				return new LlmResponse({
 					content: candidate.content,
 					groundingMetadata: candidate.groundingMetadata,

@@ -5,7 +5,7 @@ import type {
 	GenerateContentConfig,
 	LiveConnectConfig,
 } from "@google/genai";
-import type { CacheMetadata } from "./gemini-context-manager";
+import { CacheMetadata } from "./cache-metadata";
 
 /**
  * LLM request class that allows passing in tools, output schema and system
