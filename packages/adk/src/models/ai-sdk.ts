@@ -10,6 +10,7 @@ import {
 	type Tool,
 } from "ai";
 import { BaseLlm } from "./base-llm";
+import { CacheMetadata } from "./cache-metadata";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -132,6 +133,8 @@ export class AiSdkLlm extends BaseLlm {
 					}
 				}
 
+				const cacheMetadata = this.extractCacheMetadata(result);
+
 				yield new LlmResponse({
 					content: {
 						role: "model",
@@ -146,6 +149,7 @@ export class AiSdkLlm extends BaseLlm {
 						: undefined,
 					finishReason: this.mapFinishReason(result.finishReason),
 					turnComplete: true,
+					cacheMetadata,
 				});
 			}
 		} catch (error) {
@@ -402,4 +406,47 @@ export class AiSdkLlm extends BaseLlm {
 				return "FINISH_REASON_UNSPECIFIED";
 		}
 	}
+
+	/**
+	 * Extract cache metadata from AI SDK response.
+	 * For Google models, this includes cachedContentTokenCount from usageMetadata.
+	 *
+	 * Note: Gemini 2.5 models automatically provide implicit caching - you'll see
+	 * cachedContentTokenCount in usageMetadata when requests share common prefixes.
+	 */
+
+	private extractCacheMetadata(
+		result: Awaited<ReturnType<typeof generateText>>,
+	): CacheMetadata | undefined {
+		try {
+			const googleMetadata = result.providerMetadata?.google as
+				| GoogleMetadata
+				| undefined;
+
+			const cachedTokens =
+				googleMetadata?.usageMetadata?.cachedContentTokenCount;
+
+			if (typeof cachedTokens === "number" && cachedTokens > 0) {
+				this.logger.debug(`Cache hit: ${cachedTokens} tokens from cache`);
+
+				return new CacheMetadata({
+					fingerprint: `google-cache-${Date.now()}`,
+					contentsCount: cachedTokens,
+					invocationsUsed: 1,
+				});
+			}
+		} catch (error) {
+			this.logger.warn(`Failed to extract cache metadata: ${String(error)}`, {
+				error,
+			});
+		}
+
+		return undefined;
+	}
+}
+
+interface GoogleMetadata {
+	usageMetadata?: {
+		cachedContentTokenCount?: number;
+	};
 }
