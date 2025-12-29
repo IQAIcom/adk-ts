@@ -34,7 +34,7 @@ Before running the examples, here's what you need:
   pnpm install
 ```
 
-1. **Build the ADK-TS Package**
+2. **Build the ADK-TS Package**
 
 For the examples to work correctly, you need to build the core ADK-TS package first. This step compiles the TypeScript code and prepares the necessary files.
 
