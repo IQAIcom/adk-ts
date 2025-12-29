@@ -39,11 +39,24 @@ Conceptually, `session.state` is a collection (dictionary or Map) holding key-va
 Use `{key}` placeholders inside `LlmAgent.instruction` (auto-injected). Add `?` to make a key optional.
 
 ```typescript
-const agent = new LlmAgent({
-  name: "Guide",
-  model: "gemini-2.0-flash",
-  instruction: "Welcome back! Theme: {user:theme?}. Step: {current_step}.",
-});
+import { AgentBuilder, InMemorySessionService } from "@iqai/adk";
+
+const sessionService = new InMemorySessionService();
+
+async function runAgent() {
+  const { runner } = await AgentBuilder.create("guide")
+    .withModel("gemini-2.0-flash")
+    .withInstruction("Welcome! Theme: {user:theme?}. Step: {current_step}.")
+    .withSessionService(sessionService, {
+      userId: "user123",
+      appName: "my-app",
+      initialState: { current_step: "welcome", "user:theme": "dark" },
+    })
+    .build();
+
+  const result = await runner.query({ message: "Start" });
+  return result;
+}
 ```
 
 ### Using `{key}` Templating

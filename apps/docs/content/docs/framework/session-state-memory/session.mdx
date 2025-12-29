@@ -9,7 +9,7 @@ Sessions represent one conversation thread. They keep the message history and sc
 
 ## The Session Object
 
-When a user starts interacting with your agent, the `SessionService` creates a `Session` object (`google.adk.sessions.Session`). This object acts as the container holding everything related to that _one specific chat thread_. Here are its key properties:
+When a user starts interacting with your agent, the `SessionService` creates a `session` object (`google.adk.sessions.Session`). This object acts as the container holding everything related to that _one specific chat thread_. Here are its key properties:
 
 - **Identification (`id`, `appName`, `userId`):** Unique labels for the conversation.
   - `id`: A unique identifier for _this specific_ conversation thread, essential for retrieving it later. A SessionService object can handle multiple `Session`(s). This field identifies which particular session object are we referring to. For example, "test_id_modification".
@@ -21,15 +21,15 @@ When a user starts interacting with your agent, the `SessionService` creates a `
 
 ## Managing Sessions with a `SessionService`
 
-As seen above, you don't typically create or manage `Session` objects directly. Instead, you use a **`SessionService`**. This service acts as the central manager responsible for the entire lifecycle of your conversation sessions.
+As seen above, you don't typically create or manage `session` objects directly. Instead, you use a **`SessionService`**. This service acts as the central manager responsible for the entire lifecycle of your conversation sessions.
 
 Its core responsibilities include:
 
-- **Starting New Conversations:** Creating fresh `Session` objects when a user begins an interaction.
-- **Resuming Existing Conversations:** Retrieving a specific `Session` (using its ID) so the agent can continue where it left off.
+- **Starting New Conversations:** Creating fresh `session` objects when a user begins an interaction.
+- **Resuming Existing Conversations:** Retrieving a specific `session` (using its ID) so the agent can continue where it left off.
 - **Saving Progress:** Appending new interactions (`Event` objects) to a session's history. This is also the mechanism through which session `state` gets updated (more in the `State` section).
 - **Listing Conversations:** Finding the active session threads for a particular user and application.
-- **Cleaning Up:** Deleting `Session` objects and their associated data when conversations are finished or no longer needed.
+- **Cleaning Up:** Deleting `session` objects and their associated data when conversations are finished or no longer needed.
 
 ## Implementation Options
 
@@ -53,6 +53,28 @@ async function createSession() {
 ```
 
 Use when you don't need persistence between restarts.
+
+### Using Sessions with an Agent
+
+```typescript
+import { AgentBuilder, InMemorySessionService } from "@iqai/adk";
+
+const sessionService = new InMemorySessionService();
+
+async function runAgent() {
+  const { runner } = await AgentBuilder.create("my-agent")
+    .withModel("gemini-2.0-flash")
+    .withSessionService(sessionService, {
+      userId: "user123",
+      appName: "my-app",
+    })
+    .build();
+
+  const result = await runner.ask("Hello!");
+  console.log(result);
+  return result;
+}
+```
 
 ### Database (production-ready persistence)
 
@@ -172,17 +194,17 @@ Use when you want fully managed persistence and scale.
 
 ## Session Lifecycle
 
-Here’s a simplified flow of how `Session` and `SessionService` work together during a conversation turn:
+Here's a simplified flow of how `session` and `SessionService` work together during a conversation turn:
 
 1.  **Start or Resume:** Your application needs to use the `SessionService` to either `createSession` (for a new chat) or use an existing session id.
-2.  **Context Provided:** The `Runner` gets the appropriate `Session` object from the appropriate service method, providing the agent with access to the corresponding Session's `state` and `events`.
+2.  **Context Provided:** The `runner` gets the appropriate `session` object from the appropriate service method, providing the agent with access to the corresponding Session's `state` and `events`.
 3.  **Agent Processing:** The user prompts the agent with a query. The agent analyzes the query and potentially the session `state` and `events` history to determine the response.
-4.  **Response & State Update:** The agent generates a response (and potentially flags data to be updated in the `state`). The `Runner` packages this as an `Event`.
-5.  **Save Interaction:** The `Runner` calls `sessionService.appendEvent(session, event)` with the `session` and the new `event` as the arguments. The service adds the `Event` to the history and updates the session's `state` in storage based on information within the event. The session's `lastUpdateTime` also get updated.
-6.  **Ready for Next:** The agent's response goes to the user. The updated `Session` is now stored by the `SessionService`, ready for the next turn (which restarts the cycle at step 1, usually with the continuation of the conversation in the current session).
+4.  **Response & State Update:** The agent generates a response (and potentially flags data to be updated in the `state`). The `runner` packages this as an `Event`.
+5.  **Save Interaction:** The `runner` calls `sessionService.appendEvent(session, event)` with the `session` and the new `event` as the arguments. The service adds the `Event` to the history and updates the session's `state` in storage based on information within the event. The session's `lastUpdateTime` also get updated.
+6.  **Ready for Next:** The agent's response goes to the user. The updated `session` is now stored by the `SessionService`, ready for the next turn (which restarts the cycle at step 1, usually with the continuation of the conversation in the current session).
 7.  **End Conversation:** When the conversation is over, your application calls `sessionService.deleteSession(...)` to clean up the stored session data if it is no longer required.
 
-This cycle highlights how the `SessionService` ensures conversational continuity by managing the history and state associated with each `Session` object.
+This cycle highlights how the `SessionService` ensures conversational continuity by managing the history and state associated with each `session` object.
 
 ## Related Topics
 

@@ -101,24 +101,27 @@ async function searchSemanticMemories() {
 Attach a memory service at runtime:
 
 ```typescript
-import { AgentBuilder, Runner, InMemoryMemoryService } from "@iqai/adk";
+import {
+  AgentBuilder,
+  InMemorySessionService,
+  InMemoryMemoryService,
+} from "@iqai/adk";
 
-async function setupMemoryAgent() {
-  // Via AgentBuilder
-  const { runner } = await AgentBuilder.create("memory-agent")
-    .withModel("your-model-id")
-    .withMemory(new InMemoryMemoryService())
+const sessionService = new InMemorySessionService();
+const memoryService = new InMemoryMemoryService();
+
+async function runAgentWithMemory() {
+  const { runner } = await AgentBuilder.create("assistant")
+    .withModel("gemini-2.0-flash")
+    .withSessionService(sessionService, {
+      userId: "user123",
+      appName: "my-app",
+    })
+    .withMemory(memoryService)
     .build();
 
-  // Or via Runner directly
-  const runner2 = new Runner({
-    appName: "my-app",
-    agent: myAgent,
-    sessionService: mySessionService,
-    memoryService: new InMemoryMemoryService(),
-  });
-
-  return { runner, runner2 };
+  const result = await runner.query({ message: "Remember: I like pizza" });
+  return result;
 }
 ```
 
@@ -173,7 +176,7 @@ class CustomMemoryTool extends BaseTool {
 ### How Memory Works in Practice
 
 1. Events are appended to the Session during a turn.
-2. Runner ingests the session into memory (if configured).
+2. Runner ingests the Session into memory (if configured).
 3. Later turns search memory and use results for better answers.
 
 ### Can an agent access more than one memory service?
