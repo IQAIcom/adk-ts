@@ -1,0 +1,23 @@
+{
+	"name": "adk-api-docs",
+	"version": "0.1.0",
+	"description": "API documentation for ADK TypeScript package",
+	"private": true,
+	"scripts": {
+		"build": "typedoc --options typedoc.json && bundle exec jekyll build",
+		"dev": "npm run docs:build && bundle exec jekyll serve --incremental",
+		"docs:build": "typedoc --options typedoc.json",
+		"docs:serve": "bundle exec jekyll serve --incremental",
+		"docs:install": "bundle install",
+		"docs:clean": "rm -rf api/*",
+		"install:deps": "bundle install"
+	},
+	"devDependencies": {
+		"typedoc": "^0.26.11",
+		"typedoc-plugin-markdown": "^4.2.10",
+		"typedoc-plugin-frontmatter": "^1.0.0"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	}
+}
