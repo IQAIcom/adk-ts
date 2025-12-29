@@ -14,6 +14,7 @@ on:
       - 'packages/adk/src/**'
       - 'apps/adk-api-docs/**'
       - 'packages/adk/README.md'
+
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -47,21 +48,6 @@ jobs:
       - name: Build ADK package
         run: pnpm --filter @iqai/adk build
 
-      - name: Install TypeDoc dependencies
-        run: pnpm --filter adk-api-docs install
-
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.1'
-          bundler-cache: true
-          working-directory: apps/adk-api-docs
-
-      - name: Install Ruby dependencies
-        run: |
-          cd apps/adk-api-docs
-          bundle install
-
       - name: Generate TypeDoc API documentation
         run: |
           cd apps/adk-api-docs
@@ -71,17 +57,10 @@ jobs:
         id: pages
         uses: actions/configure-pages@v3
 
-      - name: Build Jekyll site
-        run: |
-          cd apps/adk-api-docs
-          bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
-        env:
-          JEKYLL_ENV: production
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/adk-api-docs/_site
+          path: apps/adk-api-docs/api
 
   # Deployment job
   deploy:

@@ -4,15 +4,14 @@
 	"description": "API documentation for ADK TypeScript package",
 	"private": true,
 	"scripts": {
-		"build": "typedoc --options typedoc.json && bundle exec jekyll build",
-		"dev": "npm run docs:build && bundle exec jekyll serve --incremental",
+		"build": "typedoc --options typedoc.json",
+		"dev": "npm run docs:build && npm run docs:serve",
 		"docs:build": "typedoc --options typedoc.json",
-		"docs:serve": "bundle exec jekyll serve --incremental",
-		"docs:install": "bundle install",
-		"docs:clean": "rm -rf api/*",
-		"install:deps": "bundle install"
+		"docs:serve": "npx http-server api -p 4000 -o",
+		"docs:clean": "rm -rf api/*"
 	},
 	"devDependencies": {
+		"http-server": "^14.1.1",
 		"typedoc": "^0.26.11"
 	},
 	"engines": {
