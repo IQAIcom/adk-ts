@@ -6,6 +6,7 @@ import {
 	responseProcessor as codeExecutionResponseProcessor,
 } from "./code-execution";
 import { requestProcessor as contentRequestProcessor } from "./contents";
+import { requestProcessor as contextCacheRequestProcessor } from "./context-cache-processor";
 import { requestProcessor as identityRequestProcessor } from "./identity";
 import { requestProcessor as instructionsRequestProcessor } from "./instructions";
 import {
@@ -20,17 +21,12 @@ import { sharedMemoryRequestProcessor } from "./shared-memory";
  *
  * A single flow only considers an agent itself and tools.
  * No sub-agents are allowed for single flow.
- *
- * This matches the Python implementation's SingleFlow class.
  */
 export class SingleFlow extends BaseLlmFlow {
-	/**
-	 * Constructor for SingleFlow
-	 */
 	constructor() {
 		super();
 
-		// Add request processors (matching Python implementation)
+		// Add request processors
 		this.requestProcessors.push(
 			basicRequestProcessor,
 			authRequestProcessor, // Phase 3: Auth preprocessor
@@ -38,22 +34,26 @@ export class SingleFlow extends BaseLlmFlow {
 			identityRequestProcessor,
 			contentRequestProcessor,
 			sharedMemoryRequestProcessor,
+			// Add context cache processor early so caching info is available
+			contextCacheRequestProcessor,
 			// Some implementations of NL Planning mark planning contents as thoughts
 			// in the post processor. Since these need to be unmarked, NL Planning
 			// should be after contents.
 			nlPlanningRequestProcessor, // Phase 5: NL Planning
 			// Code execution should be after the contents as it mutates the contents
 			// to optimize data files.
-			codeExecutionRequestProcessor, // Phase 5: Code Execution (placeholder)
+			codeExecutionRequestProcessor, // Phase 5: Code Execution
 		);
 
 		// Add response processors
 		this.responseProcessors.push(
 			nlPlanningResponseProcessor, // Phase 5: NL Planning
-			outputSchemaResponseProcessor, // Phase 6: Output Schema validation and parsing - validates response against agent's output schema
-			codeExecutionResponseProcessor, // Phase 7: Code Execution (placeholder)
+			outputSchemaResponseProcessor, // Phase 6: Output Schema validation
+			codeExecutionResponseProcessor, // Phase 7: Code Execution
 		);
 
-		this.logger.debug("SingleFlow initialized with processors");
+		this.logger.debug(
+			"SingleFlow initialized with processors including context cache",
+		);
 	}
 }
