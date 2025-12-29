@@ -1,5 +1,10 @@
 {
 	"title": "Guides",
 	"icon": "BookOpen",
-	"pages": ["deployment", "integrations", "agent-instructions"]
+	"pages": [
+		"deployment",
+		"integrations",
+		"agent-instructions",
+		"deploying-telegram-bots"
+	]
 }

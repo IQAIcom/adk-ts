@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
 	"vcs": {
 		"enabled": false,
 		"clientKind": "git",
@@ -9,13 +9,13 @@
 		"ignoreUnknown": false,
 		"includes": [
 			"**",
-			"!**/node_modules/**",
-			"!**/coverage/**",
-			"!**/dist/**",
+			"!**/node_modules",
+			"!**/coverage",
+			"!**/dist",
 			"!**/*.lock",
 			"!**/*.log",
 			"!**/.next",
-			"!**/packages/adk/src/cli/browser/**",
+			"!**/packages/adk/src/cli/browser",
 			"!**/Api.ts"
 		]
 	},
@@ -29,7 +29,8 @@
 		"rules": {
 			"recommended": true,
 			"suspicious": {
-				"noExplicitAny": "off"
+				"noExplicitAny": "off",
+				"useBiomeIgnoreFolder": "error"
 			},
 			"complexity": {
 				"noForEach": "off",
@@ -58,6 +59,11 @@
 		},
 		"parser": {
 			"unsafeParameterDecoratorsEnabled": true
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
 		}
 	},
 	"overrides": [

@@ -387,7 +387,7 @@ export class LangfusePlugin extends BasePlugin {
 			});
 		}
 
-        const usage = this.tokenUsage.get(params.invocationContext.invocationId);
+		const usage = this.tokenUsage.get(params.invocationContext.invocationId);
 
 		if (usage) {
 			trace.update({
