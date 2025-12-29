@@ -1,5 +1,6 @@
 packages:
   - 'apps/docs'
+  - 'apps/adk-api-docs'
   - 'apps/examples'
   - 'packages/*'
   - 'apps/adk-web'

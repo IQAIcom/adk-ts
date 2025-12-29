@@ -1,0 +1,77 @@
+name: Build and Deploy ADK API Documentation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/adk/src/**'
+      - 'apps/adk-api-docs/**'
+      - 'packages/adk/README.md'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'packages/adk/src/**'
+      - 'apps/adk-api-docs/**'
+      - 'packages/adk/README.md'
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build ADK package
+        run: pnpm --filter @iqai/adk build
+
+      - name: Generate TypeDoc API documentation
+        run: |
+          cd apps/adk-api-docs
+          pnpm run docs:build
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/adk-api-docs/api
+
+  # Deployment job
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
