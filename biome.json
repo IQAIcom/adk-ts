@@ -61,6 +61,11 @@
 			"unsafeParameterDecoratorsEnabled": true
 		}
 	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
 	"overrides": [
 		{
 			"includes": ["**/*.test.ts", "**/*.spec.ts"],
