@@ -22,7 +22,7 @@ Choose Vercel when your agent:
 - Long-running background tasks (use Railway or Docker instead)
 - Always-on Discord/Telegram bots (use Railway instead)
 - Stateful applications requiring persistent connections
-- Tasks requiring execution beyond [Fluid Compute limits](https://vercel.com/docs/functions)
+- Tasks requiring execution beyond [Fluid Compute limits](https://vercel.com/docs/fluid-compute)
 
 **Not sure?** See the [Platform Comparison](/docs/guides/deployment#platform-comparison) to help decide.
 
@@ -49,7 +49,7 @@ Vercel deploys your code as [serverless functions](https://vercel.com/docs/funct
 - Execute on-demand when triggered by HTTP requests
 - Auto-scale from zero to thousands of concurrent executions
 - Have execution time limits (60-900 seconds depending on plan)
-- Support [Fluid Compute](https://vercel.com/kb/guide/ai-agents) for AI agents (extended durations, background tasks)
+- Support Fluid Compute for [AI agents](https://vercel.com/kb/guide/ai-agents) (extended durations, background tasks)
 
 ### Typical Use Cases
 
@@ -197,16 +197,18 @@ Vercel will automatically:
 
 ### Step 4: Configure Environment Variables
 
-In the Vercel dashboard:
+See [Environment Variables](/docs/guides/deployment#environment-variables) for a complete list of common ADK-TS variables and security best practices.
+
+**In Vercel:**
 
 1. Go to your project **Settings** → **Environment Variables**
 2. Add required variables:
-   - `GOOGLE_API_KEY` (for Gemini models)
-   - `OPENAI_API_KEY` (for OpenAI models)
+   - `OPENAI_API_KEY` or `GOOGLE_API_KEY` (depending on your LLM provider)
    - `LLM_MODEL` (e.g., `gpt-4`, `gemini-2.5-flash`)
    - Any other API keys your agent needs
+3. Select which environments to apply them to (Production, Preview, Development)
 
-See [Environment Variables](/docs/guides/deployment#environment-variables) for security best practices.
+Vercel encrypts all environment variables automatically.
 
 <Callout type="info" title="Automatic Redeployment">
   Every push to your connected branch triggers automatic redeployment. Changes

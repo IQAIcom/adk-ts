@@ -88,13 +88,19 @@ git push origin main
 
 ### Step 4: Configure Environment Variables
 
-While Railway is building, add your environment variables:
+See [Environment Variables](/docs/guides/deployment#environment-variables) for a complete list of common ADK-TS variables and security best practices.
+
+**In Railway:**
 
 1. In your Railway project, click the **"Variables"** tab
 2. Click **"New Variable"** for each required variable
-3. Add your configuration (e.g., `GOOGLE_API_KEY`, `LLM_MODEL`, `DISCORD_TOKEN`)
+3. Add your configuration:
+   - `OPENAI_API_KEY` or `GOOGLE_API_KEY` (depending on your LLM provider)
+   - `LLM_MODEL` (e.g., `gpt-4`, `gemini-2.5-flash`)
+   - Bot tokens (`DISCORD_TOKEN`, `TELEGRAM_BOT_TOKEN`, etc.)
+   - Any other variables your agent needs
 
-See [Environment Variables](/docs/guides/deployment#environment-variables) for security best practices.
+Railway encrypts all environment variables automatically.
 
 ### Step 5: Monitor Deployment
 
@@ -198,16 +204,9 @@ In the Railway dashboard:
 
 ### Step 3: Configure Environment Variables
 
-See [Environment Variables](/docs/guides/deployment#environment-variables) for an overview and security best practices.
+See [Environment Variables](/docs/guides/deployment#environment-variables) for a complete list of common ADK-TS variables and security best practices.
 
-**In Railway:**
-
-1. In your Railway project, find the **"Variables"** tab
-2. Click **"New Variable"** for each variable you need
-3. Copy the variable names and values from your local `.env` file
-4. Add them one by one (e.g., `GOOGLE_API_KEY`, `LLM_MODEL`, `DISCORD_TOKEN`)
-
-Railway encrypts environment variables automatically.
+Add variables in the Railway dashboard Variables tab (same process as Option 1).
 
 ### Step 4: Deploy
 
