@@ -191,11 +191,6 @@ Create a `Procfile` in your project root (no file extension) with the following 
 worker: node dist/index.js
 ```
 
-<Callout type="info" title="Why 'worker' not 'web'?">
-  The `web` process type expects your app to bind to `$PORT`. Since Telegram
-  bots don't serve HTTP, use `worker` to run as a background process.
-</Callout>
-
 ### Step 4: Add Environment Variables
 
 Set the required environment variables for your bot:
