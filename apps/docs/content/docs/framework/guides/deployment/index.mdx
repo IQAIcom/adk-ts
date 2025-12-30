@@ -32,19 +32,19 @@ Choose your deployment path based on your needs:
 
 ## Platform Comparison
 
-| Feature            | Railway                                        | Vercel                                       | Docker (Self-Hosted)                        |
-| ------------------ | ---------------------------------------------- | -------------------------------------------- | ------------------------------------------- |
-| **Setup Time**     | 5 minutes (auto-deploy) to 15 minutes (Docker) | 5-10 minutes                                 | 30+ minutes                                 |
-| **Docker Required**| No (Nixpacks auto-detect) or optional          | No (auto-detect)                             | Yes                                        |
-| **Cost**           | $5+/month per service                          | Free tier, then pay-per-use                  | Variable (server cost)                      |
-| **Infrastructure** | Fully managed                                  | Fully managed (serverless)                   | Self-managed                                |
-| **Scaling**        | Automatic                                      | Automatic (zero to thousands)                | Manual configuration                        |
-| **CI/CD**          | Built-in GitHub integration                    | Built-in GitHub integration                  | Requires setup                              |
-| **Control**        | Limited (platform constraints)                 | Limited (serverless constraints)             | Full control                                |
-| **Use Case**       | Always-on agents, background tasks             | API routes, webhooks, request-response       | Custom needs, complex workloads             |
-| **Best For**       | Discord bots, long-running agents              | API agents, serverless workflows             | High-scale, cost optimization, flexibility  |
-| **Execution Time** | Unlimited                                      | 60-900 seconds (plan dependent)              | Unlimited                                   |
-| **Monitoring**     | Built-in dashboard                             | Built-in analytics and logs                  | Requires setup                              |
+| Feature             | Railway                                        | Vercel                                 | Docker (Self-Hosted)                       |
+| ------------------- | ---------------------------------------------- | -------------------------------------- | ------------------------------------------ |
+| **Setup Time**      | 5 minutes (auto-deploy) to 15 minutes (Docker) | 5-10 minutes                           | 30+ minutes                                |
+| **Docker Required** | No (Nixpacks auto-detect) or optional          | No (auto-detect)                       | Yes                                        |
+| **Cost**            | $5+/month per service                          | Free tier, then pay-per-use            | Variable (server cost)                     |
+| **Infrastructure**  | Fully managed                                  | Fully managed (serverless)             | Self-managed                               |
+| **Scaling**         | Automatic                                      | Automatic (zero to thousands)          | Manual configuration                       |
+| **CI/CD**           | Built-in GitHub integration                    | Built-in GitHub integration            | Requires setup                             |
+| **Control**         | Limited (platform constraints)                 | Limited (serverless constraints)       | Full control                               |
+| **Use Case**        | Always-on agents, background tasks             | API routes, webhooks, request-response | Custom needs, complex workloads            |
+| **Best For**        | Discord bots, long-running agents              | API agents, serverless workflows       | High-scale, cost optimization, flexibility |
+| **Execution Time**  | Unlimited                                      | 60-900 seconds (plan dependent)        | Unlimited                                  |
+| **Monitoring**      | Built-in dashboard                             | Built-in analytics and logs            | Requires setup                             |
 
 ## Docker Fundamentals
 
@@ -222,6 +222,7 @@ Environment variables configure your ADK-TS agent's runtime behavior without har
 Most ADK-TS agents need these environment variables:
 
 **LLM Provider API Keys:**
+
 ```bash
 # For OpenAI models (GPT-4, GPT-3.5)
 OPENAI_API_KEY=sk-...
@@ -234,6 +235,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 **Model Configuration:**
+
 ```bash
 # Specify which model to use
 LLM_MODEL=gpt-4
@@ -248,6 +250,7 @@ LLM_MAX_TOKENS=2000
 ```
 
 **Agent-Specific Variables:**
+
 ```bash
 # For Discord bots
 DISCORD_TOKEN=...
@@ -269,6 +272,7 @@ PINECONE_ENVIRONMENT=...
 ```
 
 **Application Settings:**
+
 ```bash
 # Environment type
 NODE_ENV=production
@@ -321,26 +325,6 @@ LOG_LEVEL=debug
 5. **Document required variables** in your README for team members
 6. **Use different values** for development, staging, and production
 7. **Validate required variables** at startup to catch configuration errors early
-
-### Accessing Environment Variables
-
-In your ADK-TS agent code:
-
-```typescript
-// Access environment variables
-const apiKey = process.env.OPENAI_API_KEY;
-const model = process.env.LLM_MODEL || "gpt-4"; // with default
-
-// Validate required variables at startup
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY environment variable is required");
-}
-
-// Use in AgentBuilder
-const agent = new AgentBuilder()
-  .withModel(process.env.LLM_MODEL || "gpt-4")
-  .buildLlm();
-```
 
 ### Platform-Specific Setup
 
