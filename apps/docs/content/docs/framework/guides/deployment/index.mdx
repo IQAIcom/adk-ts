@@ -35,35 +35,9 @@ Choose your deployment path based on your needs:
   />
 </Cards>
 
-## Platform Comparison
-
-| Feature             | Railway                                        | Vercel                                 | AWS                                                | Docker (Self-Hosted)                       |
-| ------------------- | ---------------------------------------------- | -------------------------------------- | -------------------------------------------------- | ------------------------------------------ |
-| **Setup Time**      | 5 minutes (auto-deploy) to 15 minutes (Docker) | 5-10 minutes                           | 15-60 minutes (Lambda faster, ECS/EC2 longer)      | 30+ minutes                                |
-| **Docker Required** | No (Nixpacks auto-detect) or optional          | No (auto-detect)                       | Optional (Lambda supports code/containers)         | Yes                                        |
-| **Cost**            | $5+/month per service                          | Free tier, then pay-per-use            | Pay-per-use (Lambda) or hourly (ECS/EC2)           | Variable (server cost)                     |
-| **Infrastructure**  | Fully managed                                  | Fully managed (serverless)             | Fully managed (managed containers) to self-managed | Self-managed                               |
-| **Scaling**         | Automatic                                      | Automatic (zero to thousands)          | Automatic (Lambda/ECS) or manual (EC2)             | Manual configuration                       |
-| **CI/CD**           | Built-in GitHub integration                    | Built-in GitHub integration            | Requires setup (CodePipeline, GitHub Actions)      | Requires setup                             |
-| **Control**         | Limited (platform constraints)                 | Limited (serverless constraints)       | High (extensive AWS services)                      | Full control                               |
-| **Use Case**        | Always-on agents, background tasks             | API routes, webhooks, request-response | Flexible (API to long-running to custom infra)     | Custom needs, complex workloads            |
-| **Best For**        | Discord bots, long-running agents              | API agents, serverless workflows       | Enterprise, AWS ecosystem, scalable cloud          | High-scale, cost optimization, flexibility |
-| **Execution Time**  | Unlimited                                      | 60-900 seconds (plan dependent)        | 15 min (Lambda), unlimited (ECS/EC2)               | Unlimited                                  |
-| **Monitoring**      | Built-in dashboard                             | Built-in analytics and logs            | CloudWatch (comprehensive)                         | Requires setup                             |
-
 ## Docker Fundamentals
 
 Railway can auto-deploy without Docker knowledge (using Nixpacks), but understanding Docker basics helps if you need custom configurations. Docker is required for self-hosted deployments.
-
-### What is Docker?
-
-Docker packages your ADK-TS agent with all its dependencies into a **container** - a lightweight, portable unit that runs consistently across any environment. This eliminates "works on my machine" problems.
-
-**Key concepts:**
-
-- **Image**: A blueprint containing your code, dependencies, and runtime. Built once, deployed anywhere.
-- **Container**: A running instance of an image. Your agent executes inside this isolated environment.
-- **Registry**: A storage service for Docker images (like DockerHub, GitHub Container Registry, or AWS ECR).
 
 ### Platform Architecture
 
@@ -360,12 +334,14 @@ These issues are common across all deployment platforms. For platform-specific t
 **Problem**: Deployment fails during the build step
 
 **Common Causes:**
+
 - Missing dependencies in `package.json`
 - TypeScript compilation errors
 - Incompatible Node.js version
 - Build scripts not configured correctly
 
 **Solutions:**
+
 - Test the build locally first: `pnpm build`
 - Ensure `package.json` includes all required dependencies
 - Verify Node.js version compatibility (ADK-TS requires Node.js ≥22)
@@ -379,6 +355,7 @@ These issues are common across all deployment platforms. For platform-specific t
 **Cause**: Image built for wrong CPU architecture (e.g., ARM64 image on AMD64 server)
 
 **Solutions:**
+
 - Always specify platform when building for cloud deployment:
   ```bash
   docker buildx build --platform linux/amd64 -t my-agent:latest .
@@ -390,12 +367,14 @@ These issues are common across all deployment platforms. For platform-specific t
 **Problem**: Agent can't access API keys or configuration
 
 **Common Causes:**
+
 - Variables not set in deployment platform
 - Typos in variable names (case-sensitive)
 - Variables not available in correct environment (dev/staging/prod)
 - `.env` file committed to git (security risk)
 
 **Solutions:**
+
 - Verify variables are set in platform dashboard
 - Check variable names match exactly (e.g., `OPENAI_API_KEY` not `OPENAI_KEY`)
 - Redeploy after adding new variables
@@ -407,12 +386,14 @@ These issues are common across all deployment platforms. For platform-specific t
 **Problem**: Container starts but immediately exits
 
 **Common Causes:**
+
 - Missing `CMD` or incorrect entry point in Dockerfile
 - Application crashes on startup
 - Required environment variables missing
 - Port conflicts
 
 **Solutions:**
+
 - Check container logs for error messages
 - Ensure Dockerfile has proper `CMD` directive:
   ```dockerfile
@@ -429,12 +410,14 @@ These issues are common across all deployment platforms. For platform-specific t
 **Problem**: `pnpm install` or `npm install` fails during deployment
 
 **Common Causes:**
+
 - Lockfile not committed to repository
 - Network issues accessing npm registry
 - Private packages without authentication
 - Disk space issues
 
 **Solutions:**
+
 - Always commit `pnpm-lock.yaml` or `package-lock.json`
 - Use `--frozen-lockfile` flag for reproducible builds
 - Configure registry authentication for private packages
@@ -445,12 +428,14 @@ These issues are common across all deployment platforms. For platform-specific t
 **Problem**: Agent crashes or gets killed unexpectedly
 
 **Common Causes:**
+
 - Insufficient memory allocation
 - Memory leaks in agent code
 - Large file processing
 - Too many concurrent requests
 
 **Solutions:**
+
 - Increase memory limits in platform configuration
 - Monitor memory usage and optimize agent code
 - Implement streaming for large data processing
@@ -462,12 +447,14 @@ These issues are common across all deployment platforms. For platform-specific t
 **Problem**: Agent can't connect to external services (APIs, databases)
 
 **Common Causes:**
+
 - Firewall/security group blocking connections
 - Incorrect API endpoints or URLs
 - SSL/TLS certificate issues
 - Timeout configurations too strict
 
 **Solutions:**
+
 - Verify firewall rules allow outbound connections
 - Check API endpoints are correct and accessible
 - Ensure SSL certificates are valid
