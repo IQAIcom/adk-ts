@@ -10,7 +10,10 @@ export const projects: Project[] = [
 	{
 		title: "Rogue",
 		description:
-			"Rogue ends crypto analysis paralysis by continuously scanning markets, combining on-chain data, social sentiment and advanced technical analysis to produce high-conviction signals and automate execution, monitoring, and risk-managed trade lifecycle.",
+			"Rogue ends crypto analysis paralysis by continuously scanning markets, " +
+			"combining on-chain data, social sentiment and advanced technical analysis " +
+			"to produce high-conviction signals and automate execution, monitoring, " +
+			"and risk-managed trade lifecycle.",
 		link: "https://rogue-adk.vercel.app",
 		image: "/showcase/project-screenshots/Rogue.jpeg",
 		tags: ["Hackathon", "Web3", "Agent Application"],
