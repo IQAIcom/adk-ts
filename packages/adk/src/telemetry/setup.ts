@@ -14,10 +14,10 @@ import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentation
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import {
-	detectResources,
-	envDetector,
-	processDetector,
-	resourceFromAttributes,
+	detectResourcesSync,
+	envDetectorSync,
+	processDetectorSync,
+	Resource,
 } from "@opentelemetry/resources";
 import {
 	MeterProvider,
@@ -82,19 +82,18 @@ export class SetupService {
 			config.enableAutoInstrumentation ?? DEFAULTS.ENABLE_AUTO_INSTRUMENTATION;
 
 		try {
-			// Initialize tracing
-			if (enableTracing) {
-				this.initializeTracing(config, resource);
-			}
-
-			// Initialize metrics
-			if (enableMetrics) {
-				this.initializeMetrics(config, resource);
-			}
-
-			// Initialize NodeSDK for auto-instrumentation
+			// If auto-instrumentation is enabled, use NodeSDK which handles everything
 			if (enableAutoInstrumentation) {
 				await this.initializeAutoInstrumentation(config, resource);
+			} else {
+				// Manual initialization without NodeSDK
+				if (enableTracing) {
+					this.initializeTracing(config, resource);
+				}
+
+				if (enableMetrics) {
+					this.initializeMetrics(config, resource);
+				}
 			}
 
 			this.isInitialized = true;
@@ -110,10 +109,10 @@ export class SetupService {
 	/**
 	 * Create OpenTelemetry resource with auto-detection
 	 */
-	private async createResource(config: TelemetryConfig) {
-		// Auto-detect resource from environment
-		const detectedResource = await detectResources({
-			detectors: [envDetector, processDetector],
+	private createResource(config: TelemetryConfig): Resource {
+		// Auto-detect resource from environment (synchronously)
+		const detectedResource = detectResourcesSync({
+			detectors: [envDetectorSync, processDetectorSync],
 		});
 
 		// Build custom attributes
@@ -143,7 +142,7 @@ export class SetupService {
 		Object.assign(customAttributes, envAttributes);
 
 		// Merge all resources
-		const customResource = resourceFromAttributes(customAttributes);
+		const customResource = new Resource(customAttributes);
 		return detectedResource.merge(customResource);
 	}
 
@@ -170,10 +169,8 @@ export class SetupService {
 			spanProcessors: [spanProcessor],
 		});
 
+		// Only register if not using auto-instrumentation (NodeSDK will register it)
 		this.tracerProvider.register();
-
-		// Set global tracer provider
-		trace.setGlobalTracerProvider(this.tracerProvider);
 
 		diag.debug("Tracing provider initialized");
 	}
@@ -215,11 +212,46 @@ export class SetupService {
 	 */
 	private async initializeAutoInstrumentation(
 		config: TelemetryConfig,
-		resource: any,
+		resource: Resource,
 	): Promise<void> {
-		// NodeSDK will use the already-configured providers
+		const enableTracing = config.enableTracing ?? DEFAULTS.ENABLE_TRACING;
+		const enableMetrics = config.enableMetrics ?? DEFAULTS.ENABLE_METRICS;
+
+		// Create exporters
+		const traceExporter = enableTracing
+			? new OTLPTraceExporter({
+					url: config.otlpEndpoint,
+					headers: config.otlpHeaders,
+				})
+			: undefined;
+
+		const metricsEndpoint = config.otlpEndpoint.replace(
+			"/v1/traces",
+			"/v1/metrics",
+		);
+		const metricReader = enableMetrics
+			? new PeriodicExportingMetricReader({
+					exporter: new OTLPMetricExporter({
+						url: metricsEndpoint,
+						headers: config.otlpHeaders,
+					}),
+					exportIntervalMillis:
+						config.metricExportIntervalMs ?? DEFAULTS.METRIC_EXPORT_INTERVAL_MS,
+				})
+			: undefined;
+
+		// Create sampler if sampling ratio is specified
+		const sampler =
+			config.samplingRatio !== undefined
+				? new TraceIdRatioBasedSampler(config.samplingRatio)
+				: undefined;
+
+		// NodeSDK will configure and register all providers
 		this.sdk = new NodeSDK({
 			resource,
+			traceExporter,
+			metricReader,
+			sampler,
 			instrumentations: [
 				getNodeAutoInstrumentations({
 					// Ignore incoming HTTP requests (we're usually making outgoing calls)
@@ -231,7 +263,7 @@ export class SetupService {
 		});
 
 		await this.sdk.start();
-		diag.debug("Auto-instrumentation initialized");
+		diag.debug("Auto-instrumentation initialized with NodeSDK");
 	}
 
 	/**
