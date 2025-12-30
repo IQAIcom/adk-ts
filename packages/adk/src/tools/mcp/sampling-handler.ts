@@ -82,8 +82,9 @@ export class McpSamplingHandler {
 				mcpParams.systemPrompt,
 			);
 
-			// Extract model from request if available, otherwise use default
-			const requestModel = (mcpParams.model as string) || "gemini-2.0-flash";
+			const requestModel =
+				mcpParams.modelPreferences?.hints?.find((h) => h?.name)?.name ||
+				"gemini-2.0-flash";
 
 			// Prepare ADK request - create a proper LlmRequest instance
 			const adkRequest = new LlmRequest({

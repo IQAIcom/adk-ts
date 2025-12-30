@@ -62,6 +62,9 @@ temp-examples/
 # Crush workspace
 .crush/
 
+# Adk cache
+.adk-cache
+
 # parcel-bundler cache
 .cache
 .parcel-cache
@@ -70,6 +73,9 @@ apps/examples/src/sqlite-runner-example/data/*
 
 # PgLite
 apps/examples/src/pglite-runner-example/data/*
+
+# API Documentation generated files
+apps/adk-api-docs/api/
 
 # To ignore all lock files that are not pnpm
 # This is useful if you want to ensure that only pnpm lock files are present in the repository
