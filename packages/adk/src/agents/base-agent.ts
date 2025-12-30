@@ -137,27 +137,59 @@ export abstract class BaseAgent {
 		parentContext: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
 		const ctx = this.createInvocationContext(parentContext);
+		const startTime = Date.now();
+		let status: "success" | "error" = "success";
 
-		const beforeEvent = await this.handleBeforeAgentCallback(ctx);
-		if (beforeEvent) {
-			yield beforeEvent;
-		}
+		try {
+			// Trace agent invocation with standard attributes
+			telemetryService.traceAgentInvocation(
+				{
+					name: this.name,
+					description: this.description,
+				},
+				ctx,
+			);
 
-		if (ctx.endInvocation) {
-			return;
-		}
+			// Record agent invocation metric
+			telemetryService.recordAgentInvocation({
+				agentName: this.name,
+				environment: process.env.NODE_ENV,
+				status: "success",
+			});
 
-		for await (const event of this.runAsyncImpl(ctx)) {
-			yield event;
-		}
+			const beforeEvent = await this.handleBeforeAgentCallback(ctx);
+			if (beforeEvent) {
+				yield beforeEvent;
+			}
 
-		if (ctx.endInvocation) {
-			return;
-		}
+			if (ctx.endInvocation) {
+				return;
+			}
 
-		const afterEvent = await this.handleAfterAgentCallback(ctx);
-		if (afterEvent) {
-			yield afterEvent;
+			for await (const event of this.runAsyncImpl(ctx)) {
+				yield event;
+			}
+
+			if (ctx.endInvocation) {
+				return;
+			}
+
+			const afterEvent = await this.handleAfterAgentCallback(ctx);
+			if (afterEvent) {
+				yield afterEvent;
+			}
+		} catch (error) {
+			status = "error";
+			telemetryService.recordError("agent", this.name);
+			throw error;
+		} finally {
+			// Record agent duration metric
+			const durationMs = Date.now() - startTime;
+			telemetryService.recordAgentDuration(durationMs, {
+				agentName: this.name,
+				environment: process.env.NODE_ENV,
+				status,
+			});
 		}
 	}
 

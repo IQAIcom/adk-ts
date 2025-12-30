@@ -157,6 +157,8 @@ export async function handleFunctionCallsAsync(
 		const tracer = telemetryService.getTracer();
 		const span = tracer.startSpan(`execute_tool ${tool.name}`);
 		const spanContext = trace.setSpan(context.active(), span);
+		const toolStartTime = Date.now();
+		let toolStatus: "success" | "error" = "success";
 
 		try {
 			// Execute tool within the span context
@@ -236,11 +238,38 @@ export async function handleFunctionCallsAsync(
 
 			functionResponseEvents.push(functionResponse.event);
 			span.setStatus({ code: 1 }); // OK
+
+			// Record tool execution metrics
+			telemetryService.recordToolExecution({
+				toolName: tool.name,
+				agentName: agent.name,
+				environment: process.env.NODE_ENV,
+				status: toolStatus,
+			});
 		} catch (error) {
+			toolStatus = "error";
 			span.recordException(error as Error);
 			span.setStatus({ code: 2, message: (error as Error).message });
+
+			// Record error metrics
+			telemetryService.recordToolExecution({
+				toolName: tool.name,
+				agentName: agent.name,
+				environment: process.env.NODE_ENV,
+				status: toolStatus,
+			});
+			telemetryService.recordError("tool", tool.name);
+
 			throw error;
 		} finally {
+			// Record tool duration
+			const toolDuration = Date.now() - toolStartTime;
+			telemetryService.recordToolDuration(toolDuration, {
+				toolName: tool.name,
+				agentName: agent.name,
+				environment: process.env.NODE_ENV,
+				status: toolStatus,
+			});
 			span.end();
 		}
 	}
