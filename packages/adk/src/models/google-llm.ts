@@ -7,7 +7,7 @@ import {
 } from "@google/genai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
-import { CacheMetadata } from "./cache-metadata";
+import type { CacheMetadata } from "./cache-metadata";
 import { GeminiContextCacheManager } from "./gemini-context-manager";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
@@ -44,7 +44,6 @@ export class GoogleLlm extends BaseLlm {
 	 */
 	static override supportedModels(): string[] {
 		return [
-			"google/gemini-.*",
 			"gemini-.*",
 			// fine-tuned vertex endpoint pattern
 			"projects/.+/locations/.+/endpoints/.+",
