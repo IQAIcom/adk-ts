@@ -92,10 +92,10 @@ const saveCountryTool = createTool({
 		};
 
 		context.state.set("lastCountry", countryData);
-context.state.set("countryHistory", [
-	...context.state.get("countryHistory", []),
-	countryData,
-]);
+		context.state.set("countryHistory", [
+			...context.state.get("countryHistory", []),
+			countryData,
+		]);
 
 		return {
 			success: true,
