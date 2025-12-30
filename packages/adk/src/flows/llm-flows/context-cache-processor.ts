@@ -51,6 +51,8 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 		let cacheMetadata: CacheMetadata | undefined;
 		let previousTokenCount: number | undefined;
 
+		console.log("cache metadata", JSON.stringify(cacheMetadata, null, 2));
+
 		// Traverse events from most recent to oldest
 		for (let i = events.length - 1; i >= 0; i--) {
 			const event = events[i];

@@ -226,6 +226,7 @@ export class GeminiContextCacheManager {
 			throw new Error("Model name is required to create a Gemini cache.");
 		}
 
+		console.log("Creating cache with contents:", cacheContents);
 		const createCacheConfig: CreateCachedContentConfig = {
 			contents: cacheContents,
 			ttl: cacheConfig.ttlString,
