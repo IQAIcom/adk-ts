@@ -1,11 +1,11 @@
 import { Logger } from "@adk/logger";
 import type { Content, Part } from "@google/genai";
 import {
-	AssistantContent,
+	type AssistantContent,
 	generateText,
 	jsonSchema,
 	type LanguageModel,
-	ModelMessage,
+	type ModelMessage,
 	streamText,
 	type Tool,
 } from "ai";
@@ -430,7 +430,7 @@ export class AiSdkLlm extends BaseLlm {
 				this.logger.debug(`Cache hit: ${cachedTokens} tokens from cache`);
 
 				return new CacheMetadata({
-					fingerprint: `google-cache-${randomUUID()}`,
+					fingerprint: `google-cache-${crypto.randomUUID()}`,
 					contentsCount: cachedTokens,
 					invocationsUsed: 1,
 				});
