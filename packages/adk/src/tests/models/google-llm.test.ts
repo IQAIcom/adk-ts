@@ -32,8 +32,8 @@ describe("GoogleLlm", () => {
 
 	it("supportedModels returns expected patterns", () => {
 		expect(GoogleLlm.supportedModels()).toEqual([
-			"google/.*",
 			"gemini-.*",
+			"google/.*",
 			"projects/.+/locations/.+/endpoints/.+",
 			"projects/.+/locations/.+/publishers/google/models/gemini.+",
 		]);
