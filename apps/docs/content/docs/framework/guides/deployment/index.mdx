@@ -24,6 +24,11 @@ Choose your deployment path based on your needs:
     href="/docs/guides/deployment/vercel"
   />
   <Card
+    title="☁️ Enterprise Cloud"
+    description="AWS - Lambda, ECS Fargate, or EC2 for scalable cloud deployment (15-60 min)"
+    href="/docs/guides/deployment/aws"
+  />
+  <Card
     title="🔧 Self-Hosted & Flexible"
     description="Docker - full control, deploy anywhere you want (30+ min)"
     href="/docs/guides/deployment/docker"
@@ -32,19 +37,19 @@ Choose your deployment path based on your needs:
 
 ## Platform Comparison
 
-| Feature             | Railway                                        | Vercel                                 | Docker (Self-Hosted)                       |
-| ------------------- | ---------------------------------------------- | -------------------------------------- | ------------------------------------------ |
-| **Setup Time**      | 5 minutes (auto-deploy) to 15 minutes (Docker) | 5-10 minutes                           | 30+ minutes                                |
-| **Docker Required** | No (Nixpacks auto-detect) or optional          | No (auto-detect)                       | Yes                                        |
-| **Cost**            | $5+/month per service                          | Free tier, then pay-per-use            | Variable (server cost)                     |
-| **Infrastructure**  | Fully managed                                  | Fully managed (serverless)             | Self-managed                               |
-| **Scaling**         | Automatic                                      | Automatic (zero to thousands)          | Manual configuration                       |
-| **CI/CD**           | Built-in GitHub integration                    | Built-in GitHub integration            | Requires setup                             |
-| **Control**         | Limited (platform constraints)                 | Limited (serverless constraints)       | Full control                               |
-| **Use Case**        | Always-on agents, background tasks             | API routes, webhooks, request-response | Custom needs, complex workloads            |
-| **Best For**        | Discord bots, long-running agents              | API agents, serverless workflows       | High-scale, cost optimization, flexibility |
-| **Execution Time**  | Unlimited                                      | 60-900 seconds (plan dependent)        | Unlimited                                  |
-| **Monitoring**      | Built-in dashboard                             | Built-in analytics and logs            | Requires setup                             |
+| Feature             | Railway                                        | Vercel                                 | AWS                                                | Docker (Self-Hosted)                       |
+| ------------------- | ---------------------------------------------- | -------------------------------------- | -------------------------------------------------- | ------------------------------------------ |
+| **Setup Time**      | 5 minutes (auto-deploy) to 15 minutes (Docker) | 5-10 minutes                           | 15-60 minutes (Lambda faster, ECS/EC2 longer)      | 30+ minutes                                |
+| **Docker Required** | No (Nixpacks auto-detect) or optional          | No (auto-detect)                       | Optional (Lambda supports code/containers)         | Yes                                        |
+| **Cost**            | $5+/month per service                          | Free tier, then pay-per-use            | Pay-per-use (Lambda) or hourly (ECS/EC2)           | Variable (server cost)                     |
+| **Infrastructure**  | Fully managed                                  | Fully managed (serverless)             | Fully managed (managed containers) to self-managed | Self-managed                               |
+| **Scaling**         | Automatic                                      | Automatic (zero to thousands)          | Automatic (Lambda/ECS) or manual (EC2)             | Manual configuration                       |
+| **CI/CD**           | Built-in GitHub integration                    | Built-in GitHub integration            | Requires setup (CodePipeline, GitHub Actions)      | Requires setup                             |
+| **Control**         | Limited (platform constraints)                 | Limited (serverless constraints)       | High (extensive AWS services)                      | Full control                               |
+| **Use Case**        | Always-on agents, background tasks             | API routes, webhooks, request-response | Flexible (API to long-running to custom infra)     | Custom needs, complex workloads            |
+| **Best For**        | Discord bots, long-running agents              | API agents, serverless workflows       | Enterprise, AWS ecosystem, scalable cloud          | High-scale, cost optimization, flexibility |
+| **Execution Time**  | Unlimited                                      | 60-900 seconds (plan dependent)        | 15 min (Lambda), unlimited (ECS/EC2)               | Unlimited                                  |
+| **Monitoring**      | Built-in dashboard                             | Built-in analytics and logs            | CloudWatch (comprehensive)                         | Requires setup                             |
 
 ## Docker Fundamentals
 
@@ -201,7 +206,6 @@ This reduces image size and prevents accidentally including sensitive data.
 
 We're working on guides for additional platforms:
 
-- **☁️ AWS** - Cloud infrastructure deployment (Lambda, ECS, EC2)
 - **☁️ Google Cloud** - Cloud Run and GKE deployment
 - **⚓ Kubernetes** - Container orchestration for scalable deployments
 - **🔷 Azure** - Azure Functions and Container Instances
@@ -320,6 +324,7 @@ LOG_LEVEL=debug
 3. **Use platform secret management** in production:
    - Railway: Variables tab in dashboard
    - Vercel: Environment Variables in project settings
+   - AWS: Systems Manager Parameter Store or Secrets Manager
    - Docker: `--env-file`, `-e` flags, or secrets management
 4. **Rotate API keys regularly** and use scoped permissions where possible
 5. **Document required variables** in your README for team members
@@ -332,6 +337,7 @@ Each deployment platform handles environment variables differently:
 
 - **Railway**: Set in the Variables tab of your project dashboard ([Railway guide](/docs/guides/deployment/railway))
 - **Vercel**: Set in Settings → Environment Variables ([Vercel guide](/docs/guides/deployment/vercel))
+- **AWS**: Use AWS Systems Manager Parameter Store, Secrets Manager, or Lambda environment variables ([AWS guide](/docs/guides/deployment/aws))
 - **Docker**: Pass via `-e` flags, `.env` files, or `docker-compose.yml` ([Docker guide](/docs/guides/deployment/docker))
 
 See the platform-specific guides for detailed instructions on how to configure environment variables for your chosen deployment method.
