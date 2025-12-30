@@ -21,12 +21,14 @@ Choose Railway when you:
 ## Prerequisites
 
 **Required:**
+
 - **Railway Account**: Sign up at [railway.app](https://railway.app)
 - **GitHub Repository**: Your ADK-TS project pushed to GitHub
 - **Built and tested** ADK-TS agent locally
 - **Environment variables** documented
 
 **Optional (only for custom Docker builds):**
+
 - **Docker**: Installed locally - [Get Docker](https://docs.docker.com/get-docker/)
 - **DockerHub Account**: For pre-built image deployment
 
@@ -45,6 +47,7 @@ This is the easiest way to deploy - Railway automatically detects your Node.js/T
 ### When to Use This Option
 
 Use Nixpacks auto-deploy when your agent:
+
 - Uses standard ADK-TS features (LLM APIs, tools, memory)
 - Has a typical TypeScript build process
 - Doesn't need special system dependencies or custom build steps
@@ -103,17 +106,20 @@ Railway encrypts all environment variables automatically.
 ### Step 5: Monitor Deployment
 
 Railway automatically deploys after the build completes. Check the **"Deployments"** tab to see:
+
 - Build logs (dependency installation, TypeScript compilation)
 - Runtime logs (your agent starting up)
 - Deployment status
 
 <Callout type="success" title="Automatic Updates">
-  Every time you push to your connected branch, Railway automatically rebuilds and redeploys your agent. No manual steps needed!
+  Every time you push to your connected branch, Railway automatically rebuilds
+  and redeploys your agent. No manual steps needed!
 </Callout>
 
 ### Verifying Your Deployment
 
 After deployment:
+
 - Check Railway logs for successful startup messages
 - Test your agent (send a Discord message, make an API call, etc.)
 - Monitor the Railway dashboard for resource usage and errors
@@ -125,21 +131,16 @@ Use this option when you need more control over the build process or have specia
 ### When to Use This Option
 
 Use a custom Dockerfile when your agent needs:
+
 - **System-level dependencies** (ffmpeg, Chrome/Puppeteer, image processing libraries)
 - **Custom build processes** or optimizations
 - **Multi-stage builds** for smaller production images
 - **Non-standard runtime** configurations
 - **Specific versions** of Node.js or system packages
 
-### Step 1: Add Dockerfile
+### Step 1: Push Dockerfile to GitHub
 
-Use the standard [ADK-TS Dockerfile](/docs/guides/deployment#dockerfile-reference) from the main deployment guide, or create a custom one for your needs.
-
-Also create a [.dockerignore file](/docs/guides/deployment#dockerignore) to optimize builds.
-
-### Step 2: Push to GitHub
-
-Commit your Dockerfile and push:
+Commit and push your `Dockerfile` to your GitHub repository:
 
 ```bash
 git add Dockerfile .dockerignore
@@ -147,46 +148,86 @@ git commit -m "Add Dockerfile for Railway deployment"
 git push origin main
 ```
 
-### Step 3: Connect to Railway
+### Step 2: Connect to Railway
 
 1. Log in to [Railway](https://railway.app)
 2. Click **"New Project"**
 3. Select **"Deploy from GitHub repo"**
-4. Choose your repository
-5. Railway will detect the Dockerfile and use it instead of Nixpacks
+4. Authorize Railway to access your GitHub account (first time only)
+5. Choose your repository from the list
+6. Select the branch to deploy (usually main)
+7. Railway will detect the Dockerfile and use it instead of Nixpacks
 
-### Step 4: Configure Environment Variables
+### Step 3: Configure Environment Variables
 
-Same as Option 1 - add variables in the Railway dashboard Variables tab.
+Add your environment variables in Railway's "Variables" tab, just like in Option 1.
 
-### Step 5: Monitor Deployment
+### Step 4: Automatic Deployment
 
-Railway builds using your Dockerfile and deploys automatically. Monitor the build logs for any Docker-specific issues.
+Railway now handles everything automatically:
+
+- First deployment: Detects your Dockerfile, builds the image, and deploys
+- Future updates: Every time you push to your connected branch, Railway rebuilds and redeploys
+- No manual steps needed after initial setup
 
 ## Option 3: Deploy from DockerHub
 
 ### Step 1: Build and Push Docker Image
 
-Use the standard [ADK-TS Dockerfile](/docs/guides/deployment#dockerfile-reference) from the main deployment guide.
+Create a `Dockerfile` in your project root:
+
+```dockerfile
+# Use Node.js 20 Alpine as the base image (lightweight Linux distribution)
+FROM node:20-alpine
+
+# Enable pnpm package manager and set a specific version for consistency
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package files first for better Docker layer caching
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies using frozen lockfile for reproducible builds
+RUN pnpm install --frozen-lockfile
+
+# Copy TypeScript config and source code
+COPY tsconfig.json ./
+COPY src ./src
+
+# Build the project
+RUN pnpm build
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Define the command to run when the container starts
+CMD ["node", "dist/index.js"]
+```
 
 **Build for Railway:**
 
-Railway uses AMD64 processors. See [Platform Architecture](/docs/guides/deployment#platform-architecture) for details.
+Railway uses AMD64 processors, so build specifically for that platform:
 
 ```bash
 # Build for Railway (AMD64 platform)
 docker buildx build --platform linux/amd64 -t your_docker_username/your_agent_name:tag .
 ```
 
+Replace `your_docker_username` with your Docker Hub username, `your_agent_name` with your project name, and `tag` with a version (like `v1.0` or `latest`).
+
 **Push to DockerHub:**
 
-See the [Docker deployment guide](/docs/guides/deployment/docker#step-3-push-to-container-registry) for detailed registry setup instructions.
+1. Login to Docker Hub:
 
 ```bash
-# Login to Docker Hub
 docker login
+```
 
-# Push your image
+2. Push your image:
+
+```bash
 docker push your_docker_username/your_agent_name:tag
 ```
 
