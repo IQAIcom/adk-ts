@@ -213,6 +213,145 @@ We're working on guides for additional platforms:
   [community forum](https://github.com/IQAIcom/adk-ts/discussions).
 </Callout>
 
+## Environment Variables
+
+Environment variables configure your ADK-TS agent's runtime behavior without hardcoding values in your code. They store API keys, model settings, and other configuration that varies between environments.
+
+### Common ADK-TS Environment Variables
+
+Most ADK-TS agents need these environment variables:
+
+**LLM Provider API Keys:**
+```bash
+# For OpenAI models (GPT-4, GPT-3.5)
+OPENAI_API_KEY=sk-...
+
+# For Google AI models (Gemini)
+GOOGLE_API_KEY=...
+
+# For Anthropic models (Claude)
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**Model Configuration:**
+```bash
+# Specify which model to use
+LLM_MODEL=gpt-4
+# or
+LLM_MODEL=gemini-2.5-flash
+# or
+LLM_MODEL=claude-sonnet-4
+
+# Optional: Temperature, max tokens, etc.
+LLM_TEMPERATURE=0.7
+LLM_MAX_TOKENS=2000
+```
+
+**Agent-Specific Variables:**
+```bash
+# For Discord bots
+DISCORD_TOKEN=...
+DISCORD_CLIENT_ID=...
+
+# For Telegram bots
+TELEGRAM_BOT_TOKEN=...
+
+# For Slack bots
+SLACK_BOT_TOKEN=...
+SLACK_SIGNING_SECRET=...
+
+# Database connections
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+
+# Memory/RAG services
+PINECONE_API_KEY=...
+PINECONE_ENVIRONMENT=...
+```
+
+**Application Settings:**
+```bash
+# Environment type
+NODE_ENV=production
+
+# Debug mode
+ADK_DEBUG=false
+
+# Logging level
+LOG_LEVEL=info
+```
+
+### Example .env File
+
+For local development, create a `.env` file in your project root:
+
+```bash
+# .env - Local development configuration
+# NEVER commit this file to version control!
+
+# LLM Configuration
+OPENAI_API_KEY=sk-proj-...
+GOOGLE_API_KEY=AIzaSy...
+LLM_MODEL=gemini-2.5-flash
+
+# Bot Tokens
+DISCORD_TOKEN=MTIzNDU2Nzg5...
+
+# Application Settings
+NODE_ENV=development
+ADK_DEBUG=true
+LOG_LEVEL=debug
+```
+
+### Security Best Practices
+
+<Callout type="warn" title="Never Commit Secrets">
+  Always add `.env` to your `.gitignore` to prevent committing sensitive data.
+  Never share environment files publicly or include them in Docker images.
+</Callout>
+
+**Follow these rules:**
+
+1. **Never hardcode secrets** in your source code
+2. **Use .env files locally** for development (add to `.gitignore`)
+3. **Use platform secret management** in production:
+   - Railway: Variables tab in dashboard
+   - Vercel: Environment Variables in project settings
+   - Docker: `--env-file`, `-e` flags, or secrets management
+4. **Rotate API keys regularly** and use scoped permissions where possible
+5. **Document required variables** in your README for team members
+6. **Use different values** for development, staging, and production
+7. **Validate required variables** at startup to catch configuration errors early
+
+### Accessing Environment Variables
+
+In your ADK-TS agent code:
+
+```typescript
+// Access environment variables
+const apiKey = process.env.OPENAI_API_KEY;
+const model = process.env.LLM_MODEL || "gpt-4"; // with default
+
+// Validate required variables at startup
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error("OPENAI_API_KEY environment variable is required");
+}
+
+// Use in AgentBuilder
+const agent = new AgentBuilder()
+  .withModel(process.env.LLM_MODEL || "gpt-4")
+  .buildLlm();
+```
+
+### Platform-Specific Setup
+
+Each deployment platform handles environment variables differently:
+
+- **Railway**: Set in the Variables tab of your project dashboard ([Railway guide](/docs/guides/deployment/railway))
+- **Vercel**: Set in Settings → Environment Variables ([Vercel guide](/docs/guides/deployment/vercel))
+- **Docker**: Pass via `-e` flags, `.env` files, or `docker-compose.yml` ([Docker guide](/docs/guides/deployment/docker))
+
+See the platform-specific guides for detailed instructions on how to configure environment variables for your chosen deployment method.
+
 ## Prerequisites
 
 Before deploying your agent, ensure you have:
