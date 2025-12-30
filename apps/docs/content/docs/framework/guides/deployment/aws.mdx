@@ -36,13 +36,13 @@ AWS provides three primary deployment paths for ADK-TS agents:
 
 <Tabs items={['Lambda', 'ECS Fargate', 'EC2']}>
   <Tab value="Lambda">
-    ## AWS Lambda (Serverless API Agents)
+    **AWS Lambda (Serverless API Agents)**
 
     AWS Lambda is a serverless compute service for running code in response to events. **Best for**: API-based agents, webhook handlers, and request-response workflows with execution under 15 minutes.
 
-    ### When to Use Lambda
+    **When to Use Lambda**
 
-    **Use Lambda when your agent:**
+    Use Lambda when your agent:
 
     - Responds to HTTP requests (API Gateway, webhooks)
     - Has predictable, short-lived executions (under 15 minutes)
@@ -57,14 +57,14 @@ AWS provides three primary deployment paths for ADK-TS agents:
     - Stateful applications requiring persistent connections
     - Tasks requiring large compute resources (10GB memory limit)
 
-    ### Prerequisites
+    **Prerequisites**
 
     - **AWS Account** with appropriate permissions
     - **AWS CLI** installed and configured ([guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html))
     - **Docker** installed for container image builds
     - **Built and tested** API-based ADK-TS agent locally
 
-    ### Deployment Steps
+    **Deployment Steps**
 
     <Accordions>
       <Accordion title="Step 1: Create Dockerfile for Lambda">
@@ -216,9 +216,9 @@ AWS provides three primary deployment paths for ADK-TS agents:
       </Accordion>
     </Accordions>
 
-    ### Testing Lambda Deployment
+    **Testing Lambda Deployment**
 
-    **Invoke Lambda directly:**
+    Invoke Lambda directly:
 
     ```bash
     aws lambda invoke \
@@ -230,7 +230,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
     cat response.json
     ```
 
-    **Or test via API Gateway endpoint:**
+    Or test via API Gateway endpoint:
 
     ```bash
     curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/chat \
@@ -238,7 +238,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
       -d '{"message": "Hello, what can you do?"}'
     ```
 
-    ### Updating Lambda Deployment
+    **Updating Lambda Deployment**
 
     ```bash
     # Rebuild and push new image
@@ -255,13 +255,13 @@ AWS provides three primary deployment paths for ADK-TS agents:
   </Tab>
 
   <Tab value="ECS Fargate">
-    ## AWS ECS Fargate (Managed Containers)
+    **AWS ECS Fargate (Managed Containers)**
 
     AWS ECS (Elastic Container Service) with Fargate is a fully managed container orchestration service. **Best for**: Long-running agents, Discord bots, background tasks, and stateful applications.
 
-    ### When to Use ECS Fargate
+    **When to Use ECS Fargate**
 
-    **Use ECS Fargate when your agent:**
+    Use ECS Fargate when your agent:
 
     - Runs continuously (Discord bots, Telegram bots, background workers)
     - Needs persistent connections or stateful execution
@@ -274,14 +274,14 @@ AWS provides three primary deployment paths for ADK-TS agents:
     - Simple API endpoints with low traffic (use Lambda instead)
     - Maximum cost optimization (use EC2 with reserved instances)
 
-    ### Prerequisites
+    **Prerequisites**
 
     - **AWS Account** with appropriate permissions
     - **AWS CLI** installed and configured
     - **Docker** installed
     - **AWS Copilot CLI** installed (recommended) - [installation guide](https://aws.github.io/copilot-cli/docs/getting-started/install/)
 
-    ### Deployment Methods
+    **Deployment Methods**
 
     <Tabs items={['AWS Copilot (Recommended)', 'AWS CDK (Advanced)']}>
       <Tab value="AWS Copilot (Recommended)">
@@ -392,14 +392,14 @@ AWS provides three primary deployment paths for ADK-TS agents:
           </Accordion>
         </Accordions>
 
-        ### Updating ECS Deployment
+        **Updating ECS Deployment**
 
         ```bash
         # Make code changes, then redeploy
         copilot deploy --name agent-service --env production
         ```
 
-        ### Monitoring
+        **Monitoring**
 
         View logs in CloudWatch:
 
@@ -504,7 +504,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
           </Accordion>
         </Accordions>
 
-        ### Updating ECS Deployment
+        **Updating ECS Deployment**
 
         ```bash
         # Update infrastructure code, then redeploy
@@ -515,13 +515,13 @@ AWS provides three primary deployment paths for ADK-TS agents:
   </Tab>
 
   <Tab value="EC2">
-    ## AWS EC2 (Virtual Machines)
+    **AWS EC2 (Virtual Machines)**
 
     AWS EC2 provides virtual servers with full control over the operating system and configuration. **Best for**: High-scale deployments, cost optimization with reserved instances, and custom infrastructure requirements.
 
-    ### When to Use EC2
+    **When to Use EC2**
 
-    **Use EC2 when you need:**
+    Use EC2 when you need:
 
     - **Maximum control** over infrastructure and configuration
     - **Cost optimization** with reserved instances or spot instances
@@ -535,13 +535,13 @@ AWS provides three primary deployment paths for ADK-TS agents:
     - Variable workloads (Lambda or Fargate scale better)
     - If you want to avoid infrastructure management
 
-    ### Prerequisites
+    **Prerequisites**
 
     - **AWS Account** with EC2 permissions
     - **SSH key pair** for instance access
     - **Security group** configured for your agent's requirements
 
-    ### Deployment Steps
+    **Deployment Steps**
 
     <Accordions>
       <Accordion title="Step 1: Launch EC2 Instance">
@@ -695,7 +695,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
       </Accordion>
     </Accordions>
 
-    ### Monitoring EC2 Deployment
+    **Monitoring EC2 Deployment**
 
     <Tabs items={['PM2', 'Docker', 'systemd', 'CloudWatch']}>
       <Tab value="PM2">
@@ -730,7 +730,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
       </Tab>
     </Tabs>
 
-    ### Updating EC2 Deployment
+    **Updating EC2 Deployment**
 
     ```bash
     # SSH into instance
@@ -760,7 +760,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
 
 See [Environment Variables](/docs/guides/deployment#environment-variables) for a complete list of common ADK-TS variables and security best practices.
 
-### AWS-Specific Environment Variable Management
+**AWS-Specific Environment Variable Management**
 
 <Tabs items={['Lambda', 'ECS Fargate', 'EC2']}>
   <Tab value="Lambda">
@@ -782,7 +782,7 @@ See [Environment Variables](/docs/guides/deployment#environment-variables) for a
   </Tab>
 </Tabs>
 
-### Fetching Secrets from Parameter Store (EC2/ECS)
+**Fetching Secrets from Parameter Store (EC2/ECS)**
 
 ```typescript
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
@@ -807,7 +807,7 @@ const apiKey = await getSecret("/adk-agent/production/OPENAI_API_KEY");
 
 See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for general deployment issues.
 
-### AWS-Specific Issues
+**AWS-Specific Issues**
 
 <Accordions>
   <Accordion title="Lambda Container Image Too Large">
@@ -878,7 +878,7 @@ See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for
 
 See [General Best Practices](/docs/guides/deployment#general-best-practices) for universal deployment guidance.
 
-### AWS-Specific Best Practices
+**AWS-Specific Best Practices**
 
 <Accordions>
   <Accordion title="Cost Optimization">
