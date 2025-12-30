@@ -22,7 +22,7 @@ import { ask } from "../utils";
  *    docker run -d --name jaeger -p 4318:4318 -p 16686:16686 jaegertracing/all-in-one:latest
  *
  * 2. Run this example:
- *    pnpm run example 09-observability
+ *    pnpm run dev --name 09-observability
  *
  * 3. View traces at http://localhost:16686
  */
