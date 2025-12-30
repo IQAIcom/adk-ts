@@ -305,72 +305,68 @@ Railway provides real-time logs in the **"Logs"** tab of your deployment. Use th
 
 ## Troubleshooting
 
-See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for general deployment issues (build failures, platform mismatches, environment variables, container startup).
+### Docker Push Fails
 
-### Railway-Specific Issues
+**Problem**: Can't push image to Docker Hub
 
-**Railway Build Fails**
+- Verify you're logged in (run `docker login`)
+- Check your image name format matches `username/image:tag`
+- Confirm you have permission to push to this repository
+- Check your internet connection
 
-- Click on the failed deployment in Railway dashboard to view detailed build logs
-- Check for GitHub repository connection issues
-- Verify Railway can access your repository (check permissions)
-- Look for build timeout issues (Railway has build time limits)
+### Missing Environment Variables
 
-**Deployment Stuck or Not Starting**
+**Problem**: Agent crashes or features don't work
 
-- Check Railway's status page for platform issues
-- Verify your plan has sufficient resources available
-- Review Railway logs for deployment errors
-- Try redeploying from the Railway dashboard
+- Go to Railway's **"Variables"** tab and verify all variables are present
+- Check that variable names match exactly what your code expects (case-sensitive)
+- Look for typos in variable values
+- Restart the deployment after adding missing variables
 
-**GitHub CI Not Triggering**
+### Build Failures
 
-- Verify Railway is connected to the correct repository and branch
-- Check that Dockerfile exists in repository root
-- Ensure you've enabled automatic deployments in Railway settings
-- Review GitHub webhook settings in Railway
+**Problem**: Railway build fails
 
-**Railway Dashboard Issues**
+- Click on the failed deployment to view detailed build logs
+- Look for error messages about missing dependencies or syntax errors
+- Verify your `Dockerfile` has correct syntax
+- Ensure all dependencies are listed in `package.json`
+- Check for TypeScript compilation errors in the logs
 
-- Clear browser cache and cookies
-- Try a different browser
-- Check Railway status page for outages
-- Contact Railway support if issues persist
+### Agent Not Starting
+
+**Problem**: Deployment succeeds but agent doesn't run
+
+- Check Railway logs for runtime error messages
+- Verify the `CMD` in your Dockerfile points to the correct file
+- Ensure all required environment variables are set
+- Confirm your build process creates the expected output files (check `dist/` folder exists)
 
 ## Best Practices
 
-See [General Best Practices](/docs/guides/deployment#general-best-practices) for universal deployment guidance (security, version control, monitoring, resource management).
+### Version Control
 
-### Railway-Specific Best Practices
+- Use specific image tags (like `v1.0`, `v1.1`) instead of `latest` for better tracking
+- Tag images with version numbers or git commit hashes
 
-**Cost Management**
+### Cost Management
 
 - Set resource limits in Railway's settings to prevent unexpected charges
-- Monitor usage in Railway's dashboard regularly
-- Use Railway's sleep feature for non-critical or development deployments
-- Review Railway's pricing tiers and optimize for your usage pattern
-- Set up billing alerts to avoid surprises
+- Monitor usage in Railway's dashboard
+- Use Railway's sleep feature for non-critical deployments
 
-**Deployment Strategy**
+### Reliability
 
-- Use Railway's preview environments to test changes before deploying to production
-- Enable automatic deployments for development, manual for production
-- Tag Docker images with version numbers for DockerHub deployments
-- Use Railway's rollback feature if deployments fail
-
-**Monitoring and Reliability**
-
-- Regularly check Railway's logs for errors and warnings
-- Set up external monitoring for critical agents (uptime checks)
 - Enable health checks if your agent exposes an HTTP endpoint
-- Use Railway's metrics dashboard to track resource usage
+- Use Railway's preview environments to test changes before deploying to production
+- Monitor logs regularly to catch issues early
 
-**Team Collaboration**
+### Security
 
-- Use Railway's team features for collaborative deployments
-- Document deployment process in your repository README
-- Use Railway's audit logs to track changes and deployments
-- Set up proper access controls for production environments
+- Never commit environment variables or secrets to git
+- Railway automatically encrypts environment variables
+- Rotate API keys and tokens regularly
+- Use Railway's audit logs to track changes
 
 ## Next Steps
 
