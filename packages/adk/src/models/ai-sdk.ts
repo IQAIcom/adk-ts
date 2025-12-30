@@ -429,11 +429,11 @@ export class AiSdkLlm extends BaseLlm {
 			if (typeof cachedTokens === "number" && cachedTokens > 0) {
 				this.logger.debug(`Cache hit: ${cachedTokens} tokens from cache`);
 
-				return new CacheMetadata({
-					fingerprint: `google-cache-${Date.now()}`,
-					contentsCount: cachedTokens,
-					invocationsUsed: 1,
-				});
+return new CacheMetadata({
+	fingerprint: `google-cache-${randomUUID()}`,
+	contentsCount: cachedTokens,
+	invocationsUsed: 1,
+});
 			}
 		} catch (error) {
 			this.logger.warn(`Failed to extract cache metadata: ${String(error)}`, {
