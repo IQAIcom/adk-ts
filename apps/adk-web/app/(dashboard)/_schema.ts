@@ -10,7 +10,13 @@ export interface Message {
 }
 
 // Centralized Panel ID schema for type-safe usage across the app
-export const PanelIdSchema = z.enum(["sessions", "events", "state", "graph"]);
+export const PanelIdSchema = z.enum([
+	"sessions",
+	"events",
+	"state",
+	"graph",
+	"trace",
+]);
 export type PanelId = z.infer<typeof PanelIdSchema>;
 export const PANEL_IDS = PanelIdSchema.options;
 export const isPanelId = (value: unknown): value is PanelId =>
