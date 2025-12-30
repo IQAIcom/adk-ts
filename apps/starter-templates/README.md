@@ -1,19 +1,13 @@
-
 <div align="center">
-
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
-
-<br/>
-
-# ADK Starter Templates
-
-**Ready-to-use project templates for building AI agents with the Agent Development Kit (ADK) for TypeScript**
-
-_Quick Start • Multiple Frameworks • Production Ready_
+  <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
+  <br/>
+  <h1>ADK Starter Templates</h1>
+  <b>Ready-to-use project templates for building AI agents with the Agent Development Kit (ADK) for TypeScript</b>
+  <br/>
+  <i>Quick Start • Multiple Frameworks • Production Ready</i>
+</div>
 
 ---
-
-</div>
 
 This directory contains starter templates for ADK projects. These templates are **not published to npm** and are excluded from the main workspace to prevent build issues during the release process.
 
