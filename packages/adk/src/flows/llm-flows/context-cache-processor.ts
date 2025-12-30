@@ -12,6 +12,18 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 		llmRequest: LlmRequest,
 	): AsyncGenerator<Event, void, unknown> {
 		const agent = invocationContext.agent;
+		console.log("invocationContext", invocationContext.userContent);
+		console.log(agent);
+		const canonicalModel = (agent as any).canonicalModel;
+		const providerName =
+			typeof canonicalModel === "string"
+				? "StringModel"
+				: canonicalModel?.constructor?.name || "UnknownProvider";
+		const modelName =
+			typeof canonicalModel === "string"
+				? (canonicalModel as string)
+				: canonicalModel?.model;
+		console.log("LLM provider", providerName, "model", modelName);
 
 		if (invocationContext.contextCacheConfig) {
 			console.log(

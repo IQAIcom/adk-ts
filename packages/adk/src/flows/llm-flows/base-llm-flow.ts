@@ -212,7 +212,7 @@ export abstract class BaseLlmFlow {
 
 		yield finalizedEvent;
 
-		if (!finalizedEvent.partial && finalizedEvent.cacheMetadata) {
+		if (!finalizedEvent.partial) {
 			await invocationContext.sessionService.appendEvent(
 				invocationContext.session,
 				finalizedEvent,

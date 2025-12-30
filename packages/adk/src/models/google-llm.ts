@@ -45,9 +45,8 @@ export class GoogleLlm extends BaseLlm {
 	static override supportedModels(): string[] {
 		return [
 			"gemini-.*",
-			// fine-tuned vertex endpoint pattern
+			"google/.*",
 			"projects/.+/locations/.+/endpoints/.+",
-			// vertex gemini long name
 			"projects/.+/locations/.+/publishers/google/models/gemini.+",
 		];
 	}
