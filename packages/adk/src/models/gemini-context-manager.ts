@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { ContextCacheConfig } from "@adk/agents/context-cache-config";
-import { Logger } from "@adk/logger";
+import type { Logger } from "@adk/logger";
 import type {
 	CachedContent,
 	CreateCachedContentConfig,
@@ -25,7 +25,7 @@ export class GeminiContextCacheManager {
 	async handleContextCaching(
 		llmRequest: LlmRequest,
 	): Promise<CacheMetadata | null> {
-		const cacheConfig = llmRequest.cacheConfig;
+		const cacheConfig = llmRequest.contextCacheConfig;
 		if (!cacheConfig) return null;
 
 		const cacheMeta = llmRequest.cacheMetadata;

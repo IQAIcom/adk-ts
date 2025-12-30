@@ -212,6 +212,13 @@ export abstract class BaseLlmFlow {
 
 		yield finalizedEvent;
 
+		if (!finalizedEvent.partial && finalizedEvent.cacheMetadata) {
+			await invocationContext.sessionService.appendEvent(
+				invocationContext.session,
+				finalizedEvent,
+			);
+		}
+
 		// Handle function calls
 		const functionCalls = finalizedEvent.getFunctionCalls();
 		if (functionCalls && functionCalls.length > 0) {
@@ -634,6 +641,12 @@ export abstract class BaseLlmFlow {
 		});
 
 		const event = new Event(eventData);
+
+		console.log("llmResponse.cacheMetadata", llmResponse.cacheMetadata);
+
+		if (llmResponse.cacheMetadata) {
+			event.cacheMetadata = llmResponse.cacheMetadata;
+		}
 
 		if (event.content) {
 			const functionCalls = event.getFunctionCalls();

@@ -60,7 +60,7 @@ export class GoogleLlm extends BaseLlm {
 		let cacheMetadata: CacheMetadata | null = null;
 		let cacheManager: GeminiContextCacheManager | null = null;
 
-		if (llmRequest.cacheConfig) {
+		if (llmRequest.contextCacheConfig) {
 			this.logger.debug("Handling context caching");
 			cacheManager = new GeminiContextCacheManager(this.apiClient, this.logger);
 			cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
@@ -120,16 +120,24 @@ export class GoogleLlm extends BaseLlm {
 						parts.push({ text });
 					}
 
-					yield new LlmResponse({
-						content: {
-							parts,
-							role: "model",
-						},
+					const responseWithCache = new LlmResponse({
+						content: { parts, role: "model" },
 						usageMetadata,
 					});
+
+					if (cacheMetadata && cacheManager) {
+						cacheManager.populateCacheMetadataInResponse(
+							responseWithCache,
+							cacheMetadata,
+						);
+					}
+
+					yield responseWithCache;
+
 					thoughtText = "";
 					text = "";
 				}
+
 				yield llmResponse;
 			}
 

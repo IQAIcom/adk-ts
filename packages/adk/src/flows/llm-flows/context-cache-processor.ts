@@ -1,7 +1,7 @@
-import { InvocationContext } from "../../agents/invocation-context";
-import { Event } from "../../events/event";
-import { CacheMetadata } from "../../models/cache-metadata";
-import { LlmRequest } from "../../models/llm-request";
+import type { InvocationContext } from "../../agents/invocation-context";
+import type { Event } from "../../events/event";
+import type { CacheMetadata } from "../../models/cache-metadata";
+import type { LlmRequest } from "../../models/llm-request";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
 export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
@@ -14,7 +14,11 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 		const agent = invocationContext.agent;
 
 		if (invocationContext.contextCacheConfig) {
-			llmRequest.cacheConfig = invocationContext.contextCacheConfig;
+			console.log(
+				"Applying context cache config to LLM request",
+				invocationContext.contextCacheConfig,
+			);
+			llmRequest.contextCacheConfig = invocationContext.contextCacheConfig;
 
 			const [latestCacheMetadata, previousTokenCount] =
 				this.findCacheInfoFromEvents(
@@ -51,11 +55,12 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 		let cacheMetadata: CacheMetadata | undefined;
 		let previousTokenCount: number | undefined;
 
-		console.log("cache metadata", JSON.stringify(cacheMetadata, null, 2));
-
 		// Traverse events from most recent to oldest
 		for (let i = events.length - 1; i >= 0; i--) {
 			const event = events[i];
+			console.log(
+				`   Event ${i}: author=${event.author}, hasCacheMeta=${!!event.cacheMetadata}, invocationId=${event.invocationId}`,
+			);
 
 			if (event.author !== agentName) {
 				continue;

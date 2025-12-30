@@ -8,4 +8,5 @@ export default defineConfig({
 	dts: true,
 	splitting: true,
 	clean: true,
+	watch: true,
 });

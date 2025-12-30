@@ -1,11 +1,11 @@
-import { ContextCacheConfig } from "@adk/agents/context-cache-config";
+import type { ContextCacheConfig } from "@adk/agents/context-cache-config";
 import type { BaseTool } from "@adk/tools";
 import type {
 	Content,
 	GenerateContentConfig,
 	LiveConnectConfig,
 } from "@google/genai";
-import { CacheMetadata } from "./cache-metadata";
+import type { CacheMetadata } from "./cache-metadata";
 
 /**
  * LLM request class that allows passing in tools, output schema and system
@@ -37,7 +37,7 @@ export class LlmRequest {
 	/**
 	 * Context cache config for the request.
 	 */
-	cacheConfig?: ContextCacheConfig;
+	contextCacheConfig?: ContextCacheConfig;
 
 	/**
 	 * Cache metadata from previous requests, used for cache management.
@@ -65,7 +65,7 @@ export class LlmRequest {
 		config?: GenerateContentConfig;
 		liveConnectConfig?: LiveConnectConfig;
 		toolsDict?: Record<string, BaseTool>;
-		cacheConfig?: ContextCacheConfig;
+		contextCacheConfig?: ContextCacheConfig;
 		cacheMetadata?: CacheMetadata;
 		cacheableContentsTokenCount?: number;
 	}) {
@@ -75,7 +75,7 @@ export class LlmRequest {
 		this.liveConnectConfig =
 			data?.liveConnectConfig ?? ({} as LiveConnectConfig);
 		this.toolsDict = data?.toolsDict ?? {};
-		this.cacheConfig = data?.cacheConfig;
+		this.contextCacheConfig = data?.contextCacheConfig;
 		this.cacheMetadata = data?.cacheMetadata;
 		this.cacheableContentsTokenCount = data?.cacheableContentsTokenCount;
 	}
