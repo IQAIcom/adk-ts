@@ -7,23 +7,6 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Vercel is a serverless platform optimized for frontend frameworks and API routes. **Best for**: API-based agents, webhook handlers, and request-response workflows with automatic scaling.
 
-## When to Use Vercel
-
-Choose Vercel when your agent:
-
-- Responds to HTTP requests (API endpoints, webhooks)
-- Has predictable, short-lived executions (under 15 minutes)
-- Benefits from automatic scaling based on traffic
-- Integrates with frontend applications (Next.js, React, etc.)
-- Needs edge deployment for global low latency
-
-**Not suitable for:**
-
-- Long-running background tasks (use Railway or Docker instead)
-- Always-on Discord/Telegram bots (use Railway instead)
-- Stateful applications requiring persistent connections
-- Tasks requiring execution beyond [Fluid Compute limits](https://vercel.com/docs/fluid-compute)
-
 ## Prerequisites
 
 **Required:**
