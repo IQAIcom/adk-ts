@@ -48,8 +48,6 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 			return [undefined, undefined];
 		}
 
-		console.log("invocationContext", invocationContext.contextCacheConfig);
-
 		let cacheMetadata: CacheMetadata | undefined;
 		let previousTokenCount: number | undefined;
 
@@ -61,9 +59,6 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 				continue;
 			}
 
-			console.log("cacheMetadata", cacheMetadata);
-			console.log("event.cacheMetadata", event.cacheMetadata);
-
 			// Look for cache metadata
 			if (!cacheMetadata && event.cacheMetadata) {
 				const hasActiveCache =
@@ -71,8 +66,6 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 					event.invocationId !== currentInvocationId &&
 					event.cacheMetadata.cacheName !== undefined &&
 					event.cacheMetadata.cacheName !== null;
-
-				console.log("event", event.cacheMetadata);
 
 				if (hasActiveCache) {
 					// Different invocation with active cache → increment invocations_used

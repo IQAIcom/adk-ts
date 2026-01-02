@@ -330,8 +330,6 @@ export class GeminiContextCacheManager {
 			config: cacheConfig,
 		});
 
-		console.log("cachedContent", cachedContent);
-
 		this.logger.debug("Cache created successfully:", cachedContent);
 
 		// Set precise creation timestamp right after cache creation
