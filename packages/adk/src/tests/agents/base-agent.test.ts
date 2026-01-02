@@ -1,13 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BaseAgent, type SingleAgentCallback } from "../../agents/base-agent";
 import type { InvocationContext } from "../../agents/invocation-context";
 import { Event } from "../../events/event";
 import { telemetryService } from "../../telemetry";
 
+// Mock telemetry to verify calls and prevent actual telemetry in tests
+// Note: All telemetry methods have built-in safety guards, so mocking is
+// optional but useful for verifying telemetry behavior in tests
 vi.mock("../../telemetry", () => ({
 	telemetryService: {
 		traceAsyncGenerator: vi.fn((_name, gen) => gen),
-		traceAgentInvocation: vi.fn(() => ({ end: vi.fn() })),
+		traceAgentInvocation: vi.fn(),
 		recordAgentInvocation: vi.fn(),
 		recordAgentDuration: vi.fn(),
 		recordError: vi.fn(),

@@ -1,5 +1,5 @@
 import { BaseLlm, type LlmRequest } from "@adk/models";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@adk/helpers/logger", () => ({
 	Logger: vi.fn(() => ({
@@ -7,6 +7,7 @@ vi.mock("@adk/helpers/logger", () => ({
 		error: vi.fn(),
 	})),
 }));
+
 const mockSetAttributes = vi.fn();
 const mockRecordException = vi.fn();
 const mockSetStatus = vi.fn();
@@ -20,6 +21,9 @@ const mockSpan = {
 const mockTracer = {
 	startActiveSpan: vi.fn((name, fn) => fn(mockSpan)),
 };
+
+// Mock telemetry tracer
+// Note: Telemetry has built-in safety guards, so mocking is optional
 vi.mock("../telemetry", () => ({
 	tracer: mockTracer,
 }));
