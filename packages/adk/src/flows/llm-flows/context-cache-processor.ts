@@ -70,7 +70,7 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 				if (hasActiveCache) {
 					// Different invocation with active cache → increment invocations_used
 					cacheMetadata = event.cacheMetadata.copy({
-						invocationsUsed: event.cacheMetadata.invocationsUsed + 1,
+						invocationsUsed: (event.cacheMetadata.invocationsUsed || 0) + 1,
 					});
 				} else {
 					// Same invocation or no active cache
