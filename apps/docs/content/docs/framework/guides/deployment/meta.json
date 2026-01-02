@@ -1,5 +1,5 @@
 {
 	"title": "Deployment",
 	"icon": "Cloud",
-	"pages": ["railway", "docker", "telegram"]
+	"pages": ["docker", "aws", "railway", "vercel", "telegram"]
 }

@@ -6,26 +6,38 @@ description: Learn how to deploy ADK-TS agents to various platforms and environm
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Deploy your ADK-TS agents to production using various platforms and deployment strategies. Choose the approach that best fits your infrastructure and requirements.
+Deploy your ADK-TS agents to production using various platforms and deployment strategies. This guide covers core deployment concepts and platform-specific implementations.
 
-## Platform Guides
+## Quick Start Decision Tree
+
+### Platform Guides
 
 Deploy to popular cloud platforms with step-by-step instructions:
 
 <Cards>
   <Card
-    title="🚂 Railway"
-    description="Deploy using Railway's container hosting platform"
+    title="🚀 Quick & Managed"
+    description="Railway - easiest deployment, auto-detect or use Docker (5-15 min)"
     href="/docs/framework/guides/deployment/railway"
   />
   <Card
-    title="🐳 Docker"
-    description="Deploy using Docker containers to any platform"
+    title="⚡ Serverless API"
+    description="Vercel - serverless functions for API agents and webhooks (5-10 min)"
+    href="/docs/framework/guides/deployment/vercel"
+  />
+  <Card
+    title="☁️ Enterprise Cloud"
+    description="AWS - Lambda, ECS Fargate, or EC2 for scalable cloud deployment (15-60 min)"
+    href="/docs/framework/guides/deployment/aws"
+  />
+  <Card
+    title="🔧 Self-Hosted & Flexible"
+    description="Docker - full control, deploy anywhere you want (30+ min)"
     href="/docs/framework/guides/deployment/docker"
   />
 </Cards>
 
-## Agent-Specific Guides
+### Agent-Specific Guides
 
 Deployment guides for specific agent types with unique requirements:
 
@@ -41,8 +53,6 @@ Deployment guides for specific agent types with unique requirements:
 
 We're working on guides for additional platforms:
 
-- **⚡ Vercel** - Serverless deployment for API-based agents
-- **☁️ AWS** - Cloud infrastructure deployment
 - **☁️ Google Cloud** - Cloud Run and GKE deployment
 - **⚓ Kubernetes** - Container orchestration for scalable deployments
 
