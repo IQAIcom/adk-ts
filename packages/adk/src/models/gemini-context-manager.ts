@@ -191,10 +191,13 @@ export class GeminiContextCacheManager {
 		}
 
 		if (llmRequest.config?.tools) {
-			const toolsData = llmRequest.config.tools.map((tool: any) =>
-				typeof tool.toJSON === "function" ? tool.toJSON() : tool,
-			);
-			fingerprintData.tools = toolsData;
+			const allDeclarations = (llmRequest.config.tools || [])
+				.flatMap((tool: any) => tool.functionDeclarations || [])
+				.sort((a, b) => a.name.localeCompare(b.name));
+
+			if (allDeclarations.length > 0) {
+				fingerprintData.tools = [{ functionDeclarations: allDeclarations }];
+			}
 		}
 
 		if (llmRequest.config?.toolConfig) {
