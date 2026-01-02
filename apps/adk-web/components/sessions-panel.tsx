@@ -1,7 +1,7 @@
 "use client";
 
 import { Database, Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { SessionCard } from "@/components/session-card";
 import {
@@ -55,6 +55,11 @@ export function SessionsPanel({
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
+
+	// Sort sessions by lastUpdateTime in reverse chronological order (newest first)
+	const sortedSessions = useMemo(() => {
+		return [...sessions].sort((a, b) => b.lastUpdateTime - a.lastUpdateTime);
+	}, [sessions]);
 
 	const handleCreateSession = async () => {
 		setIsCreating(true);
@@ -223,7 +228,7 @@ export function SessionsPanel({
 						<div className="text-center text-muted-foreground py-8">
 							Loading sessions...
 						</div>
-					) : sessions.length === 0 ? (
+					) : sortedSessions.length === 0 ? (
 						<div className="text-center text-muted-foreground py-8">
 							<Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
 							<p className="text-sm">No sessions found</p>
@@ -232,7 +237,7 @@ export function SessionsPanel({
 							</p>
 						</div>
 					) : (
-						sessions.map((session) => (
+						sortedSessions.map((session) => (
 							<SessionCard
 								key={session.id}
 								session={session}
