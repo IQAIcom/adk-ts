@@ -38,41 +38,6 @@ Choose Vercel when your agent:
 - Understanding of serverless function concepts
 - Familiarity with API routes and HTTP request/response patterns
 
-## Understanding Vercel for ADK-TS Agents
-
-### Serverless Functions
-
-Vercel deploys your code as [serverless functions](https://vercel.com/docs/functions) that:
-
-- Execute on-demand when triggered by HTTP requests
-- Auto-scale from zero to thousands of concurrent executions
-- Have execution time limits (60-900 seconds depending on plan)
-- Support Fluid Compute for [AI agents](https://vercel.com/kb/guide/ai-agents) (extended durations, background tasks)
-
-### Typical Use Cases
-
-**API Agents**: Expose LLM capabilities via REST API
-
-```typescript
-// api/chat.ts - Vercel serverless function
-export default async function handler(req, res) {
-  const agent = new AgentBuilder().withModel("gpt-4").buildLlm();
-
-  const response = await agent.ask(req.body.message);
-  return res.json({ response });
-}
-```
-
-**Webhook Handlers**: Process webhooks from external services
-
-```typescript
-// api/webhook.ts
-export default async function handler(req, res) {
-  // Handle Telegram webhook, GitHub webhook, etc.
-  // Process with ADK-TS agent
-}
-```
-
 ## Deployment Option 1: Auto-Deploy from GitHub (Recommended)
 
 This is the easiest way to deploy - Vercel automatically detects your Node.js/TypeScript project.
