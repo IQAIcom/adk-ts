@@ -249,6 +249,38 @@ AWS provides three primary deployment paths for ADK-TS agents:
       --region us-east-1
     ```
 
+    **Environment Variables for Lambda**
+
+    Your Lambda function needs these environment variables:
+
+    **Common Variables:**
+    - `GOOGLE_API_KEY` - For Google AI models
+    - `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`)
+    - `NODE_ENV` - Set to `production`
+
+    **Set via AWS CLI:**
+
+    ```bash
+    aws lambda update-function-configuration \
+      --function-name adk-agent \
+      --environment "Variables={
+        GOOGLE_API_KEY=your_api_key,
+        LLM_MODEL=gemini-2.5-flash,
+        NODE_ENV=production
+      }" \
+      --region us-east-1
+    ```
+
+    **Or via AWS Console:**
+    1. Go to Lambda → Functions → your-function
+    2. Click **Configuration** → **Environment variables**
+    3. Add each variable with its value
+    4. Click **Save**
+
+    <Callout type="info" title="Encryption">
+      Lambda encrypts environment variables at rest automatically. For sensitive data, use AWS Secrets Manager.
+    </Callout>
+
   </Tab>
 
   <Tab value="ECS Fargate">
@@ -510,6 +542,65 @@ AWS provides three primary deployment paths for ADK-TS agents:
       </Tab>
     </Tabs>
 
+    **Environment Variables for ECS Fargate**
+
+    Your ECS tasks need these environment variables:
+
+    **Common Variables:**
+    - `GOOGLE_API_KEY` - For Google AI models
+    - `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`)
+    - `DISCORD_TOKEN` - For Discord bots
+    - `TELEGRAM_BOT_TOKEN` - For Telegram bots
+    - `NODE_ENV` - Set to `production`
+
+    **Using AWS Systems Manager Parameter Store:**
+
+    ```bash
+    # Store secrets in Parameter Store
+    aws ssm put-parameter \
+      --name "/adk-agent/production/GOOGLE_API_KEY" \
+      --value "your_api_key" \
+      --type "SecureString" \
+      --region us-east-1
+
+    # Reference in Copilot manifest.yml
+    secrets:
+      GOOGLE_API_KEY: /adk-agent/production/GOOGLE_API_KEY
+    ```
+
+    **Or use AWS Secrets Manager:**
+
+    ```bash
+    # Create secret
+    aws secretsmanager create-secret \
+      --name adk-agent/google-api-key \
+      --secret-string "your_api_key" \
+      --region us-east-1
+    ```
+
+    **Fetch at runtime (TypeScript):**
+
+    ```typescript
+    import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+
+    const client = new SSMClient({ region: "us-east-1" });
+
+    async function getSecret(name: string): Promise<string> {
+      const command = new GetParameterCommand({
+        Name: name,
+        WithDecryption: true,
+      });
+      const response = await client.send(command);
+      return response.Parameter?.Value || "";
+    }
+
+    const apiKey = await getSecret("/adk-agent/production/GOOGLE_API_KEY");
+    ```
+
+    <Callout type="warn" title="Never Use Plain Environment Variables">
+      For ECS, always use Parameter Store or Secrets Manager for sensitive data. Never put secrets in plain `environment` field in task definitions.
+    </Callout>
+
   </Tab>
 
   <Tab value="EC2">
@@ -752,81 +843,61 @@ AWS provides three primary deployment paths for ADK-TS agents:
     docker run -d --name adk-agent --restart unless-stopped --env-file .env adk-agent:latest
     ```
 
+    **Environment Variables for EC2**
+
+    Your EC2 instance needs these environment variables:
+
+    **Common Variables:**
+    - `GOOGLE_API_KEY` - For Google AI models
+    - `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`)
+    - `DISCORD_TOKEN` - For Discord bots
+    - `TELEGRAM_BOT_TOKEN` - For Telegram bots
+    - `NODE_ENV` - Set to `production`
+
+    **Using .env file (simplest):**
+
+    Create a `.env` file on your EC2 instance:
+
+    ```bash
+    GOOGLE_API_KEY=your_api_key_here
+    LLM_MODEL=gemini-2.5-flash
+    DISCORD_TOKEN=your_discord_token
+    NODE_ENV=production
+    ```
+
+    Set proper permissions:
+
+    ```bash
+    chmod 600 .env
+    ```
+
+    **Using AWS Systems Manager Parameter Store (recommended):**
+
+    Store secrets in Parameter Store and fetch at runtime:
+
+    ```typescript
+    import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+
+    const client = new SSMClient({ region: "us-east-1" });
+
+    async function getSecret(name: string): Promise<string> {
+      const command = new GetParameterCommand({
+        Name: name,
+        WithDecryption: true,
+      });
+      const response = await client.send(command);
+      return response.Parameter?.Value || "";
+    }
+
+    const apiKey = await getSecret("/adk-agent/production/GOOGLE_API_KEY");
+    ```
+
+    <Callout type="warn" title="Never Commit .env Files">
+      Add `.env` to your `.gitignore`. Never commit environment files to version control.
+    </Callout>
+
   </Tab>
 </Tabs>
-
-## Environment Variables
-
-**Common ADK-TS Environment Variables**
-
-Your agent needs these environment variables configured:
-
-**LLM Provider API Keys:**
-
-- `GOOGLE_API_KEY` - For Google AI models
-
-**Model Configuration:**
-
-- `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`, `claude-sonnet-4`)
-- `LLM_TEMPERATURE` - Optional: Temperature setting (0.0-1.0)
-- `LLM_MAX_TOKENS` - Optional: Maximum tokens for responses
-
-**Agent-Specific Variables:**
-
-- `DISCORD_TOKEN`, `DISCORD_CLIENT_ID` - For Discord bots
-- `TELEGRAM_BOT_TOKEN` - For Telegram bots
-- `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` - For Slack bots
-- `DATABASE_URL` - For database connections
-
-<Callout type="warn" title="Never Commit Secrets">
-  Never hardcode API keys in your code. Always use environment variables and AWS
-  secret management services.
-</Callout>
-
-**AWS-Specific Environment Variable Management**
-
-<Tabs items={['Lambda', 'ECS Fargate', 'EC2']}>
-  <Tab value="Lambda">
-    - Set via `aws lambda update-function-configuration --environment`
-    - Or use AWS Console → Lambda → Configuration → Environment variables
-    - Encrypted at rest automatically
-  </Tab>
-
-{" "}
-
-<Tab value="ECS Fargate">
-  - Store secrets in AWS Systems Manager Parameter Store or Secrets Manager -
-  Reference in task definition with `secrets` field - Never use plain
-  `environment` field for sensitive data
-</Tab>
-
-  <Tab value="EC2">
-    - Use `.env` file with proper permissions (`chmod 600 .env`)
-    - Or use AWS Systems Manager Parameter Store and fetch at runtime
-    - Or use instance metadata service for IAM role credentials
-  </Tab>
-</Tabs>
-
-**Fetching Secrets from Parameter Store (EC2/ECS)**
-
-```typescript
-import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
-
-const client = new SSMClient({ region: "us-east-1" });
-
-async function getSecret(name: string): Promise<string> {
-  const command = new GetParameterCommand({
-    Name: name,
-    WithDecryption: true,
-  });
-
-  const response = await client.send(command);
-  return response.Parameter?.Value || "";
-}
-
-// Usage
-const apiKey = await getSecret("/adk-agent/production/OPENAI_API_KEY");
-```
 
 ## Troubleshooting
 
