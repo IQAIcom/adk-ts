@@ -821,7 +821,6 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 					inputSchema: this.config.inputSchema,
 					outputSchema: this.config.outputSchema,
 					plugins: this.config.plugins,
-					contextCacheConfig: this.contextCacheConfig,
 				});
 			}
 			case "sequential":

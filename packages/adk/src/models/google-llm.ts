@@ -1,6 +1,5 @@
 import {
 	type Content,
-	FinishReason,
 	type GenerateContentResponse,
 	GoogleGenAI,
 	type Part,
@@ -15,12 +14,112 @@ import { LlmResponse } from "./llm-response";
 const AGENT_ENGINE_TELEMETRY_TAG = "remote_reasoning_engine";
 const AGENT_ENGINE_TELEMETRY_ENV_VARIABLE_NAME = "GOOGLE_CLOUD_AGENT_ENGINE_ID";
 
+const RESOURCE_EXHAUSTED_POSSIBLE_FIX_MESSAGE = `
+On how to mitigate this issue, please refer to:
+`;
+
 /**
  * Google LLM Variant enum
  */
 enum GoogleLLMVariant {
 	VERTEX_AI = "VERTEX_AI",
 	GEMINI_API = "GEMINI_API",
+}
+
+class ResourceExhaustedError extends Error {
+	code: number;
+	details: any;
+	response: any;
+
+	constructor(originalError: any) {
+		const baseMessage = originalError.message || String(originalError);
+		super(`${RESOURCE_EXHAUSTED_POSSIBLE_FIX_MESSAGE}\n\n${baseMessage}`);
+		this.name = "ResourceExhaustedError";
+		this.code = originalError.code || 429;
+		this.details = originalError.details;
+		this.response = originalError.response;
+	}
+}
+
+/**
+ * Streaming response aggregator for handling partial responses
+ */
+class StreamingResponseAggregator {
+	private thoughtText = "";
+	private text = "";
+	private lastUsageMetadata: any = null;
+
+	async *processResponse(
+		response: GenerateContentResponse,
+	): AsyncGenerator<LlmResponse, void, unknown> {
+		const llmResponse = LlmResponse.create(response);
+		this.lastUsageMetadata = llmResponse.usageMetadata;
+
+		if (llmResponse.content?.parts?.[0]?.text) {
+			const part0 = llmResponse.content.parts[0];
+			if ((part0 as any).thought) {
+				this.thoughtText += part0.text;
+			} else {
+				this.text += part0.text;
+			}
+			llmResponse.partial = true;
+		} else if (
+			(this.thoughtText || this.text) &&
+			(!llmResponse.content ||
+				!llmResponse.content.parts ||
+				!this.hasInlineData(response))
+		) {
+			// Send accumulated text as a complete response
+			const parts: Part[] = [];
+			if (this.thoughtText) {
+				parts.push({ text: this.thoughtText, thought: true } as Part);
+			}
+			if (this.text) {
+				parts.push({ text: this.text });
+			}
+
+			yield new LlmResponse({
+				content: { parts, role: "model" },
+				usageMetadata: this.lastUsageMetadata,
+			});
+
+			this.thoughtText = "";
+			this.text = "";
+		}
+
+		yield llmResponse;
+	}
+
+	close(): LlmResponse | null {
+		if (this.text || this.thoughtText) {
+			const parts: Part[] = [];
+			if (this.thoughtText) {
+				parts.push({ text: this.thoughtText, thought: true } as Part);
+			}
+			if (this.text) {
+				parts.push({ text: this.text });
+			}
+
+			const finalResponse = new LlmResponse({
+				content: {
+					parts,
+					role: "model",
+				},
+				usageMetadata: this.lastUsageMetadata,
+			});
+
+			this.thoughtText = "";
+			this.text = "";
+
+			return finalResponse;
+		}
+		return null;
+	}
+
+	private hasInlineData(response: GenerateContentResponse): boolean {
+		const parts = response.candidates?.[0]?.content?.parts;
+		return parts?.some((part) => (part as any)?.inlineData) || false;
+	}
 }
 
 /**
@@ -56,13 +155,15 @@ export class GoogleLlm extends BaseLlm {
 		stream = false,
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		this.preprocessRequest(llmRequest);
+
 		let cacheMetadata: CacheMetadata | null = null;
 		let cacheManager: GeminiContextCacheManager | null = null;
 
-		if (llmRequest.contextCacheConfig) {
+		if (llmRequest.cacheConfig) {
 			this.logger.debug("Handling context caching");
 			cacheManager = new GeminiContextCacheManager(this.apiClient, this.logger);
 			cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
+
 			if (cacheMetadata) {
 				if (cacheMetadata.cacheName) {
 					this.logger.debug(`Using cache: ${cacheMetadata.cacheName}`);
@@ -80,119 +181,63 @@ export class GoogleLlm extends BaseLlm {
 			`Sending request to model: ${model}, backend: ${this.apiBackend}, stream: ${stream}`,
 		);
 
-		if (stream) {
-			const responses = await this.apiClient.models.generateContentStream({
-				model,
-				contents,
-				config,
-			});
+		try {
+			if (stream) {
+				const responses = await this.apiClient.models.generateContentStream({
+					model,
+					contents,
+					config,
+				});
 
-			let response: GenerateContentResponse | null = null;
-			let thoughtText = "";
-			let text = "";
-			let usageMetadata: any = null;
+				const aggregator = new StreamingResponseAggregator();
 
-			for await (const resp of responses) {
-				response = resp; // Track the latest response
-				const llmResponse = LlmResponse.create(resp);
-				usageMetadata = llmResponse.usageMetadata;
-
-				if (llmResponse.content?.parts?.[0]?.text) {
-					const part0 = llmResponse.content.parts[0];
-					if ((part0 as any).thought) {
-						thoughtText += part0.text;
-					} else {
-						text += part0.text;
+				for await (const resp of responses) {
+					for await (const llmResponse of aggregator.processResponse(resp)) {
+						yield llmResponse;
 					}
-					llmResponse.partial = true;
-				} else if (
-					(thoughtText || text) &&
-					(!llmResponse.content ||
-						!llmResponse.content.parts ||
-						!this.hasInlineData(resp))
-				) {
-					const parts: Part[] = [];
-					if (thoughtText) {
-						parts.push({ text: thoughtText, thought: true } as Part);
-					}
-					if (text) {
-						parts.push({ text });
-					}
+				}
 
-					const responseWithCache = new LlmResponse({
-						content: { parts, role: "model" },
-						usageMetadata,
-					});
-
+				// Get final aggregated response
+				const closeResult = aggregator.close();
+				if (closeResult) {
+					// Populate cache metadata in the final aggregated response for streaming
 					if (cacheMetadata && cacheManager) {
 						cacheManager.populateCacheMetadataInResponse(
-							responseWithCache,
+							closeResult,
 							cacheMetadata,
 						);
 					}
-
-					yield responseWithCache;
-
-					thoughtText = "";
-					text = "";
+					yield closeResult;
 				}
-
-				yield llmResponse;
-			}
-
-			if (
-				(text || thoughtText) &&
-				response &&
-				response.candidates &&
-				response.candidates[0]?.finishReason === FinishReason.STOP
-			) {
-				const parts: Part[] = [];
-				if (thoughtText) {
-					parts.push({ text: thoughtText, thought: true } as Part);
-				}
-				if (text) {
-					parts.push({ text });
-				}
-
-				const finalResponse = new LlmResponse({
-					content: {
-						parts,
-						role: "model",
-					},
-					usageMetadata,
+			} else {
+				const response = await this.apiClient.models.generateContent({
+					model,
+					contents,
+					config,
 				});
+
+				this.logger.info("Response received from model");
+				this.logger.debug(
+					`Google response: ${response.usageMetadata?.candidatesTokenCount || 0} tokens`,
+				);
+
+				const llmResponse = LlmResponse.create(response);
 
 				if (cacheMetadata && cacheManager) {
 					cacheManager.populateCacheMetadataInResponse(
-						finalResponse,
+						llmResponse,
 						cacheMetadata,
 					);
 				}
 
-				yield finalResponse;
+				yield llmResponse;
 			}
-		} else {
-			const response = await this.apiClient.models.generateContent({
-				model,
-				contents,
-				config,
-			});
-
-			this.logger.info("Response received from model");
-			this.logger.debug(
-				`Google response: ${response.usageMetadata?.candidatesTokenCount || 0} tokens`,
-			);
-
-			const llmResponse = LlmResponse.create(response);
-
-			if (cacheMetadata && cacheManager) {
-				cacheManager.populateCacheMetadataInResponse(
-					llmResponse,
-					cacheMetadata,
-				);
+		} catch (error: any) {
+			// Enhance 429 errors with helpful guidance
+			if (error.code === 429 || error.status === 429) {
+				throw new ResourceExhaustedError(error);
 			}
-
-			yield llmResponse;
+			throw error;
 		}
 	}
 
@@ -201,14 +246,6 @@ export class GoogleLlm extends BaseLlm {
 	 */
 	override connect(_llmRequest: LlmRequest): BaseLLMConnection {
 		throw new Error(`Live connection is not supported for ${this.model}.`);
-	}
-
-	/**
-	 * Check if response has inline data
-	 */
-	private hasInlineData(response: GenerateContentResponse): boolean {
-		const parts = response.candidates?.[0]?.content?.parts;
-		return parts?.some((part) => (part as any)?.inlineData) || false;
 	}
 
 	/**
@@ -230,6 +267,7 @@ export class GoogleLlm extends BaseLlm {
 			if (llmRequest.config) {
 				(llmRequest.config as any).labels = undefined;
 			}
+
 			if (llmRequest.contents) {
 				for (const content of llmRequest.contents) {
 					if (!content.parts) continue;

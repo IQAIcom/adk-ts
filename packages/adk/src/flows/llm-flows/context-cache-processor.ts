@@ -12,25 +12,9 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 		llmRequest: LlmRequest,
 	): AsyncGenerator<Event, void, unknown> {
 		const agent = invocationContext.agent;
-		console.log("invocationContext", invocationContext.userContent);
-		console.log(agent);
-		const canonicalModel = (agent as any).canonicalModel;
-		const providerName =
-			typeof canonicalModel === "string"
-				? "StringModel"
-				: canonicalModel?.constructor?.name || "UnknownProvider";
-		const modelName =
-			typeof canonicalModel === "string"
-				? (canonicalModel as string)
-				: canonicalModel?.model;
-		console.log("LLM provider", providerName, "model", modelName);
 
 		if (invocationContext.contextCacheConfig) {
-			console.log(
-				"Applying context cache config to LLM request",
-				invocationContext.contextCacheConfig,
-			);
-			llmRequest.contextCacheConfig = invocationContext.contextCacheConfig;
+			llmRequest.cacheConfig = invocationContext.contextCacheConfig;
 
 			const [latestCacheMetadata, previousTokenCount] =
 				this.findCacheInfoFromEvents(
@@ -70,9 +54,6 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 		// Traverse events from most recent to oldest
 		for (let i = events.length - 1; i >= 0; i--) {
 			const event = events[i];
-			console.log(
-				`   Event ${i}: author=${event.author}, hasCacheMeta=${!!event.cacheMetadata}, invocationId=${event.invocationId}`,
-			);
 
 			if (event.author !== agentName) {
 				continue;

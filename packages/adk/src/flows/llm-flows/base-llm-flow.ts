@@ -642,8 +642,6 @@ export abstract class BaseLlmFlow {
 
 		const event = new Event(eventData);
 
-		console.log("llmResponse.cacheMetadata", llmResponse.cacheMetadata);
-
 		if (llmResponse.cacheMetadata) {
 			event.cacheMetadata = llmResponse.cacheMetadata;
 		}

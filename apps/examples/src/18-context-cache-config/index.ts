@@ -5,7 +5,6 @@ import {
 	createTool,
 	InMemorySessionService,
 } from "@iqai/adk";
-import { openrouter } from "@openrouter/ai-sdk-provider";
 import dedent from "dedent";
 import { z } from "zod";
 import { ask } from "../utils";
@@ -222,7 +221,7 @@ async function main() {
 
 	// Configure context caching with parameters matching the Python example
 	const cacheConfig = new ContextCacheConfig({
-		minTokens: 4096, // Minimum tokens required to enable caching
+		minTokens: 100, // Minimum tokens required to enable caching
 		ttlSeconds: 600, // Cache TTL: 10 minutes
 		cacheIntervals: 3, // Maximum invocations before cache refresh
 	});
@@ -406,9 +405,7 @@ async function main() {
 
 	const startTime = Date.now();
 
-	const { runner } = await AgentBuilder.withModel(
-		openrouter("google/gemini-2.5-flash"),
-	)
+	const { runner } = await AgentBuilder.withModel("gemini-2.5-flash")
 		.withDescription(
 			"Advanced geography and cultural research assistant with comprehensive knowledge",
 		)

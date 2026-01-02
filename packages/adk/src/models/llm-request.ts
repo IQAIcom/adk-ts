@@ -37,7 +37,7 @@ export class LlmRequest {
 	/**
 	 * Context cache config for the request.
 	 */
-	contextCacheConfig?: ContextCacheConfig;
+	cacheConfig?: ContextCacheConfig;
 
 	/**
 	 * Cache metadata from previous requests, used for cache management.
@@ -65,7 +65,7 @@ export class LlmRequest {
 		config?: GenerateContentConfig;
 		liveConnectConfig?: LiveConnectConfig;
 		toolsDict?: Record<string, BaseTool>;
-		contextCacheConfig?: ContextCacheConfig;
+		cacheConfig?: ContextCacheConfig;
 		cacheMetadata?: CacheMetadata;
 		cacheableContentsTokenCount?: number;
 	}) {
@@ -75,7 +75,7 @@ export class LlmRequest {
 		this.liveConnectConfig =
 			data?.liveConnectConfig ?? ({} as LiveConnectConfig);
 		this.toolsDict = data?.toolsDict ?? {};
-		this.contextCacheConfig = data?.contextCacheConfig;
+		this.cacheConfig = data?.cacheConfig;
 		this.cacheMetadata = data?.cacheMetadata;
 		this.cacheableContentsTokenCount = data?.cacheableContentsTokenCount;
 	}
