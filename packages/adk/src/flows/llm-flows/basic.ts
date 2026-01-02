@@ -61,7 +61,7 @@ class BasicLlmRequestProcessor extends BaseLlmRequestProcessor {
 						logger.debug(
 							`Skipping request-level output schema for agent ${agent.name} because tools/transfers are present. Schema will be validated during response processing.`,
 						);
-					} catch (e) {
+					} catch (_e) {
 						// ignore logger errors
 					}
 				})();

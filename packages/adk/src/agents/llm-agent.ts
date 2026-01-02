@@ -25,7 +25,6 @@ import {
 	type BeforeAgentCallback,
 } from "./base-agent";
 import type { CallbackContext } from "./callback-context";
-import { ContextCacheConfig } from "./context-cache-config";
 import type { InvocationContext } from "./invocation-context";
 import type { ReadonlyContext } from "./readonly-context";
 
@@ -262,12 +261,6 @@ export interface LlmAgentConfig<T extends BaseLlm = BaseLlm> {
 	 * Callback or list of callbacks to be called after calling a tool
 	 */
 	afterToolCallback?: AfterToolCallback;
-
-	/**
-	 * Optional configuration controlling context caching behavior for this agent.
-	 * Overrides any inherited configuration from ancestor agents or invocation context.
-	 */
-	contextCacheConfig?: ContextCacheConfig;
 }
 
 /**
@@ -331,15 +324,6 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	 * model requests, tools, events, and agent actions.
 	 */
 	public plugins?: BasePlugin[];
-
-	/**
-	 * Optional configuration controlling context caching behavior for this agent.
-	 *
-	 * When defined, this configuration enables reuse of cached LLM context for
-	 * requests issued by this agent. If undefined, the agent will inherit the
-	 * context cache configuration from its parent agent or invocation context.
-	 */
-	public contextCacheConfig?: ContextCacheConfig;
 
 	/**
 	 * Memory service for long-term storage and retrieval
@@ -438,7 +422,6 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 		this.beforeToolCallback = config.beforeToolCallback;
 		this.afterToolCallback = config.afterToolCallback;
 		this.plugins = config.plugins;
-		this.contextCacheConfig = config.contextCacheConfig;
 
 		// Validate output schema configuration
 		this.validateOutputSchemaConfig();
