@@ -28,7 +28,7 @@ export function shouldCaptureContent(): boolean {
 export function safeJsonStringify(obj: any): string {
 	try {
 		return JSON.stringify(obj);
-	} catch (error) {
+	} catch {
 		return "<serialization_failed>";
 	}
 }
