@@ -24,11 +24,11 @@ Choose AWS when you need:
 
 AWS provides three primary deployment paths for ADK-TS agents:
 
-| Option | Best For | Execution Time | Complexity | Cost Model |
-|--------|----------|----------------|------------|------------|
-| **Lambda** | API endpoints, webhooks, short tasks | 15 minutes max | Low | Pay-per-invocation |
-| **ECS Fargate** | Long-running agents, Discord bots, background tasks | Unlimited | Medium | Pay-per-hour (running containers) |
-| **EC2** | High-scale, custom infrastructure, cost optimization | Unlimited | High | Pay-per-hour (instance uptime) |
+| Option          | Best For                                             | Execution Time | Complexity | Cost Model                        |
+| --------------- | ---------------------------------------------------- | -------------- | ---------- | --------------------------------- |
+| **Lambda**      | API endpoints, webhooks, short tasks                 | 15 minutes max | Low        | Pay-per-invocation                |
+| **ECS Fargate** | Long-running agents, Discord bots, background tasks  | Unlimited      | Medium     | Pay-per-hour (running containers) |
+| **EC2**         | High-scale, custom infrastructure, cost optimization | Unlimited      | High       | Pay-per-hour (instance uptime)    |
 
 ## Choose Your Deployment Method
 
@@ -184,8 +184,6 @@ AWS provides three primary deployment paths for ADK-TS agents:
       </Accordion>
 
       <Accordion title="Step 5: Set Environment Variables">
-        See [Environment Variables](/docs/guides/deployment#environment-variables) for common ADK-TS variables.
-
         ```bash
         aws lambda update-function-configuration \
           --function-name adk-agent \
@@ -250,6 +248,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
       --image-uri ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest \
       --region us-east-1
     ```
+
   </Tab>
 
   <Tab value="ECS Fargate">
@@ -510,6 +509,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
         ```
       </Tab>
     </Tabs>
+
   </Tab>
 
   <Tab value="EC2">
@@ -751,12 +751,37 @@ AWS provides three primary deployment paths for ADK-TS agents:
     docker buildx build -t adk-agent:latest .
     docker run -d --name adk-agent --restart unless-stopped --env-file .env adk-agent:latest
     ```
+
   </Tab>
 </Tabs>
 
 ## Environment Variables
 
-See [Environment Variables](/docs/guides/deployment#environment-variables) for a complete list of common ADK-TS variables and security best practices.
+**Common ADK-TS Environment Variables**
+
+Your agent needs these environment variables configured:
+
+**LLM Provider API Keys:**
+
+- `GOOGLE_API_KEY` - For Google AI models
+
+**Model Configuration:**
+
+- `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`, `claude-sonnet-4`)
+- `LLM_TEMPERATURE` - Optional: Temperature setting (0.0-1.0)
+- `LLM_MAX_TOKENS` - Optional: Maximum tokens for responses
+
+**Agent-Specific Variables:**
+
+- `DISCORD_TOKEN`, `DISCORD_CLIENT_ID` - For Discord bots
+- `TELEGRAM_BOT_TOKEN` - For Telegram bots
+- `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` - For Slack bots
+- `DATABASE_URL` - For database connections
+
+<Callout type="warn" title="Never Commit Secrets">
+  Never hardcode API keys in your code. Always use environment variables and AWS
+  secret management services.
+</Callout>
 
 **AWS-Specific Environment Variable Management**
 
@@ -767,11 +792,12 @@ See [Environment Variables](/docs/guides/deployment#environment-variables) for a
     - Encrypted at rest automatically
   </Tab>
 
-  <Tab value="ECS Fargate">
-    - Store secrets in AWS Systems Manager Parameter Store or Secrets Manager
-    - Reference in task definition with `secrets` field
-    - Never use plain `environment` field for sensitive data
-  </Tab>
+{" "}
+<Tab value="ECS Fargate">
+  - Store secrets in AWS Systems Manager Parameter Store or Secrets Manager -
+  Reference in task definition with `secrets` field - Never use plain
+  `environment` field for sensitive data
+</Tab>
 
   <Tab value="EC2">
     - Use `.env` file with proper permissions (`chmod 600 .env`)
@@ -803,7 +829,57 @@ const apiKey = await getSecret("/adk-agent/production/OPENAI_API_KEY");
 
 ## Troubleshooting
 
-See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for general deployment issues.
+**Common Deployment Issues**
+
+<Accordions>
+  <Accordion title="Missing Environment Variables">
+    **Problem**: Agent crashes or API keys not found
+
+    **Solutions**:
+    - Verify environment variables are set in AWS service configuration
+    - Check variable names match exactly (case-sensitive)
+    - For Lambda: Use `aws lambda get-function-configuration` to verify
+    - For ECS: Check task definition environment variables
+    - For EC2: Verify `.env` file exists and has correct permissions
+    - Redeploy after adding missing variables
+
+  </Accordion>
+
+  <Accordion title="Build Failures">
+    **Problem**: Docker build fails or deployment fails
+
+    **Solutions**:
+    - Test build locally first: `docker buildx build --platform linux/amd64 .`
+    - Review CloudWatch Logs for specific error messages
+    - Ensure all dependencies are in `package.json`
+    - Check TypeScript compilation succeeds locally
+    - Verify Dockerfile syntax is correct
+    - Ensure sufficient disk space for build
+
+  </Accordion>
+
+  <Accordion title="Container/Function Not Starting">
+    **Problem**: Service deployed but not running
+
+    **Solutions**:
+    - Check CloudWatch Logs for runtime error messages
+    - Verify entry point/command is correct in Dockerfile or configuration
+    - Ensure all required environment variables are set
+    - Check IAM roles have necessary permissions
+    - Verify security groups allow required network access
+
+  </Accordion>
+
+  <Accordion title="Platform Architecture Mismatch">
+    **Problem**: "exec format error" or container won't start
+
+    **Solutions**:
+    - Always build for AMD64: `docker buildx build --platform linux/amd64`
+    - AWS Lambda, ECS, and most EC2 instances use AMD64 architecture
+    - Don't build on Apple Silicon without specifying platform
+
+  </Accordion>
+</Accordions>
 
 **AWS-Specific Issues**
 
@@ -816,6 +892,7 @@ See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for
     - Remove unnecessary dependencies from production
     - Use Lambda layers for common dependencies
     - Consider ECS Fargate for larger images
+
   </Accordion>
 
   <Accordion title="Lambda Timeout (15 minutes)">
@@ -826,6 +903,7 @@ See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for
     - Split work into smaller tasks
     - Use ECS Fargate or EC2 for long-running tasks
     - Implement async processing with SQS + Lambda
+
   </Accordion>
 
   <Accordion title="ECS Task Failing to Start">
@@ -837,6 +915,7 @@ See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for
     - Ensure task execution role has ECR pull permissions
     - Check CPU/memory limits are sufficient
     - Verify secrets exist in Parameter Store/Secrets Manager
+
   </Accordion>
 
   <Accordion title="ECS Out of Memory">
@@ -847,6 +926,7 @@ See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for
     - Monitor memory usage with CloudWatch Container Insights
     - Optimize agent memory usage
     - Use larger Fargate task size
+
   </Accordion>
 
   <Accordion title="EC2 Connection Timeout">
@@ -857,6 +937,7 @@ See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for
     - Check instance is in running state
     - Verify correct key pair is used
     - Check network ACLs and route tables
+
   </Accordion>
 
   <Accordion title="High AWS Costs">
@@ -869,6 +950,7 @@ See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for
     - Implement auto-scaling to match demand
     - Consider reserved instances for predictable workloads
     - Use cost allocation tags to track spending
+
   </Accordion>
 </Accordions>
 
@@ -888,41 +970,39 @@ See [General Best Practices](/docs/guides/deployment#general-best-practices) for
     - Monitor costs with AWS Cost Explorer and budgets
   </Accordion>
 
-  <Accordion title="Security">
-    - Never commit AWS credentials to version control
-    - Use IAM roles instead of access keys (EC2, ECS, Lambda)
-    - Store secrets in AWS Secrets Manager or Systems Manager Parameter Store
-    - Encrypt environment variables and secrets at rest
-    - Use VPC for network isolation (ECS, EC2)
-    - Implement least-privilege IAM policies
-    - Enable CloudTrail for audit logging
-    - Rotate credentials regularly
-  </Accordion>
+{" "}
+<Accordion title="Security">
+  - Never commit AWS credentials to version control - Use IAM roles instead of
+  access keys (EC2, ECS, Lambda) - Store secrets in AWS Secrets Manager or
+  Systems Manager Parameter Store - Encrypt environment variables and secrets at
+  rest - Use VPC for network isolation (ECS, EC2) - Implement least-privilege
+  IAM policies - Enable CloudTrail for audit logging - Rotate credentials
+  regularly
+</Accordion>
 
-  <Accordion title="Monitoring and Logging">
-    - Use CloudWatch for centralized logging
-    - Enable Container Insights for ECS metrics
-    - Set up CloudWatch alarms for errors and performance
-    - Use AWS X-Ray for distributed tracing (optional)
-    - Implement structured logging with JSON format
-    - Set appropriate log retention periods
-  </Accordion>
+{" "}
+<Accordion title="Monitoring and Logging">
+  - Use CloudWatch for centralized logging - Enable Container Insights for ECS
+  metrics - Set up CloudWatch alarms for errors and performance - Use AWS X-Ray
+  for distributed tracing (optional) - Implement structured logging with JSON
+  format - Set appropriate log retention periods
+</Accordion>
 
-  <Accordion title="Infrastructure as Code">
-    - Use AWS CDK or CloudFormation for reproducible deployments
-    - Use AWS Copilot for simplified ECS deployments
-    - Version control all infrastructure code
-    - Separate environments (dev, staging, production)
-    - Implement CI/CD pipelines with CodePipeline or GitHub Actions
-  </Accordion>
+{" "}
+<Accordion title="Infrastructure as Code">
+  - Use AWS CDK or CloudFormation for reproducible deployments - Use AWS Copilot
+  for simplified ECS deployments - Version control all infrastructure code -
+  Separate environments (dev, staging, production) - Implement CI/CD pipelines
+  with CodePipeline or GitHub Actions
+</Accordion>
 
-  <Accordion title="High Availability">
-    - Deploy across multiple Availability Zones
-    - Use Application Load Balancer for ECS services (if exposing HTTP)
-    - Implement health checks for all services
-    - Use auto-scaling for fault tolerance
-    - Set up CloudWatch alarms for critical issues
-  </Accordion>
+{" "}
+<Accordion title="High Availability">
+  - Deploy across multiple Availability Zones - Use Application Load Balancer
+  for ECS services (if exposing HTTP) - Implement health checks for all services
+  - Use auto-scaling for fault tolerance - Set up CloudWatch alarms for critical
+  issues
+</Accordion>
 
   <Accordion title="Performance">
     - Choose appropriate instance/task sizes for workload
