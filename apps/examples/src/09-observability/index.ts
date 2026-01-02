@@ -77,9 +77,9 @@ async function initializeTelemetryService() {
 			otlpEndpoint: "http://localhost:4318/v1/traces",
 			environment: env.NODE_ENV || "development",
 
-			// Enable all features
+			// Enable features (Jaeger only supports traces, not metrics)
 			enableTracing: true,
-			enableMetrics: true,
+			enableMetrics: false, // Jaeger doesn't support metrics endpoint
 			enableAutoInstrumentation: true,
 
 			// Privacy: disable content capture for production
@@ -123,6 +123,8 @@ async function initializeTelemetryService() {
 		console.log("✅ Telemetry initialized with Langfuse");
 		console.log(`📊 View traces at: ${langfuseHost}\n`);
 	}
+
+	return useJaeger;
 }
 
 async function main() {
@@ -133,7 +135,7 @@ async function main() {
 
 	try {
 		// Initialize telemetry system
-		await initializeTelemetryService();
+		const useJaeger = await initializeTelemetryService();
 
 		// Create weather agent with automatic telemetry
 		const { runner } = await AgentBuilder.create("weather_agent")
@@ -160,14 +162,21 @@ async function main() {
 		console.log("   • LLM calls (tokens, model, parameters)");
 		console.log("   • HTTP requests (auto-instrumented)");
 		console.log();
-		console.log("📈 Metrics collected:");
-		console.log("   • adk.agent.invocations (counter)");
-		console.log("   • adk.agent.duration (histogram)");
-		console.log("   • adk.tool.executions (counter)");
-		console.log("   • adk.tool.duration (histogram)");
-		console.log("   • adk.llm.calls (counter)");
-		console.log("   • adk.llm.tokens (histogram - input/output/total)");
-		console.log();
+
+		if (!useJaeger) {
+			console.log("📈 Metrics collected:");
+			console.log("   • adk.agent.invocations (counter)");
+			console.log("   • adk.agent.duration (histogram)");
+			console.log("   • adk.tool.executions (counter)");
+			console.log("   • adk.tool.duration (histogram)");
+			console.log("   • adk.llm.calls (counter)");
+			console.log("   • adk.llm.tokens (histogram - input/output/total)");
+			console.log();
+		} else {
+			console.log("ℹ️  Note: Metrics disabled (Jaeger only supports traces)");
+			console.log();
+		}
+
 		console.log("-".repeat(60));
 		console.log();
 

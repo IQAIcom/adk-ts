@@ -72,8 +72,8 @@ export class SetupService {
 		// Set up diagnostic logging
 		diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
 
-		// Detect resources
-		const resource = await this.createResource(config);
+		// Detect resources (synchronous in v2.x)
+		const resource = this.createResource(config);
 
 		// Apply defaults
 		const enableTracing = config.enableTracing ?? DEFAULTS.ENABLE_TRACING;
@@ -111,9 +111,9 @@ export class SetupService {
 	/**
 	 * Create OpenTelemetry resource with auto-detection
 	 */
-	private async createResource(config: TelemetryConfig): Promise<Resource> {
-		// Auto-detect resource from environment
-		const detectedResource = await detectResources({
+	private createResource(config: TelemetryConfig): Resource {
+		// Auto-detect resource from environment (synchronous in v2.x)
+		const detectedResource = detectResources({
 			detectors: [envDetector, processDetector],
 		});
 
@@ -186,6 +186,16 @@ export class SetupService {
 			"/v1/traces",
 			"/v1/metrics",
 		);
+
+		// Warn if using Jaeger (which doesn't support metrics)
+		if (
+			config.otlpEndpoint.includes("localhost:4318") ||
+			config.otlpEndpoint.includes("jaeger")
+		) {
+			diag.warn(
+				"Jaeger typically only supports traces, not metrics. Consider using Prometheus or a full OTLP backend for metrics.",
+			);
+		}
 
 		const metricExporter = new OTLPMetricExporter({
 			url: metricsEndpoint,
