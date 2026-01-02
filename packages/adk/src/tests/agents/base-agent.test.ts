@@ -7,6 +7,10 @@ import { telemetryService } from "../../telemetry";
 vi.mock("../../telemetry", () => ({
 	telemetryService: {
 		traceAsyncGenerator: vi.fn((_name, gen) => gen),
+		traceAgentInvocation: vi.fn(() => ({ end: vi.fn() })),
+		recordAgentInvocation: vi.fn(),
+		recordAgentDuration: vi.fn(),
+		recordError: vi.fn(),
 	},
 }));
 
