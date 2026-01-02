@@ -793,6 +793,7 @@ Your agent needs these environment variables configured:
   </Tab>
 
 {" "}
+
 <Tab value="ECS Fargate">
   - Store secrets in AWS Systems Manager Parameter Store or Secrets Manager -
   Reference in task definition with `secrets` field - Never use plain
@@ -971,6 +972,7 @@ See [General Best Practices](/docs/guides/deployment#general-best-practices) for
   </Accordion>
 
 {" "}
+
 <Accordion title="Security">
   - Never commit AWS credentials to version control - Use IAM roles instead of
   access keys (EC2, ECS, Lambda) - Store secrets in AWS Secrets Manager or
@@ -981,6 +983,7 @@ See [General Best Practices](/docs/guides/deployment#general-best-practices) for
 </Accordion>
 
 {" "}
+
 <Accordion title="Monitoring and Logging">
   - Use CloudWatch for centralized logging - Enable Container Insights for ECS
   metrics - Set up CloudWatch alarms for errors and performance - Use AWS X-Ray
@@ -989,6 +992,7 @@ See [General Best Practices](/docs/guides/deployment#general-best-practices) for
 </Accordion>
 
 {" "}
+
 <Accordion title="Infrastructure as Code">
   - Use AWS CDK or CloudFormation for reproducible deployments - Use AWS Copilot
   for simplified ECS deployments - Version control all infrastructure code -
@@ -997,6 +1001,7 @@ See [General Best Practices](/docs/guides/deployment#general-best-practices) for
 </Accordion>
 
 {" "}
+
 <Accordion title="High Availability">
   - Deploy across multiple Availability Zones - Use Application Load Balancer
   for ECS services (if exposing HTTP) - Implement health checks for all services
@@ -1015,9 +1020,9 @@ See [General Best Practices](/docs/guides/deployment#general-best-practices) for
 
 ## Next Steps
 
-- Explore [Railway](/docs/guides/deployment/railway) for simpler managed deployment
-- Review [Vercel](/docs/guides/deployment/vercel) for serverless API agents
-- Learn about [Docker deployment](/docs/guides/deployment/docker) for self-hosted options
+- Explore [Railway](/docs/framework/guides/deployment/railway) for simpler managed deployment
+- Review [Vercel](/docs/framework/guides/deployment/vercel) for serverless API agents
+- Learn about [Docker deployment](/docs/framework/guides/deployment/docker) for self-hosted options
 - Set up monitoring and alerting for your agents
 - Implement CI/CD pipelines for automated deployments
 
