@@ -84,6 +84,12 @@ docker build -t my-adk-agent:latest .
 docker buildx build --platform linux/amd64 -t my-adk-agent:latest .
 ```
 
+<Callout type="info" title="Why AMD64?">
+  If you're on an Apple Silicon Mac (M1/M2/M3), your computer uses ARM64. But
+  most cloud providers use AMD64 processors. Building with `--platform
+  linux/amd64` ensures your image works on cloud servers.
+</Callout>
+
 ### Step 3: Push to Container Registry
 
 Choose ONE registry to store your Docker image. This makes it accessible to cloud platforms.
@@ -465,5 +471,6 @@ README.md
 ## Next Steps
 
 - Deploy your Docker image to [Railway](/docs/guides/deployment/railway) for managed hosting
+- Learn production best practices (guide coming soon)
 - Explore container orchestration with Kubernetes (guide coming soon)
 - Set up monitoring and alerting for your deployed agents
