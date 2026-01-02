@@ -36,22 +36,21 @@ Choose Railway when you:
 
 Railway offers three deployment methods:
 
-1. **GitHub Auto-Deploy (Nixpacks)**: Railway automatically detects and builds your project (Recommended - No Docker needed)
+1. **GitHub Auto-Deploy (Railpack)**: Railway automatically detects and builds your project (Recommended - No Docker needed)
 2. **GitHub with Dockerfile**: Use a custom Dockerfile for advanced build requirements
 3. **DockerHub Image**: Build locally, push to DockerHub, deploy from Railway
 
-## Option 1: GitHub Auto-Deploy with Nixpacks (Recommended)
+## Option 1: GitHub Auto-Deploy with Railpack (Recommended)
 
-This is the easiest way to deploy - Railway automatically detects your Node.js/TypeScript project and handles everything for you. **No Docker knowledge required.**
+This is the easiest way to deploy - Railway automatically detects your Node.js/TypeScript project and handles everything for you using **Railpack**, Railway's modern build system. **No Docker knowledge required.**
 
 ### When to Use This Option
 
-Use Nixpacks auto-deploy when your agent:
+Use Railpack auto-deploy when your agent:
 
 - Uses standard ADK-TS features (LLM APIs, tools, memory)
 - Has a typical TypeScript build process
 - Doesn't need special system dependencies or custom build steps
-- **This covers most ADK-TS agents**
 
 ### Step 1: Prepare Your Project
 
@@ -154,7 +153,7 @@ git push origin main
 4. Authorize Railway to access your GitHub account (first time only)
 5. Choose your repository from the list
 6. Select the branch to deploy (usually main)
-7. Railway will detect the Dockerfile and use it instead of Nixpacks
+7. Railway will detect the Dockerfile and use it for building
 
 ### Step 3: Configure Environment Variables
 
@@ -367,5 +366,5 @@ Railway provides real-time logs in the **"Logs"** tab of your deployment. Use th
 ## Next Steps
 
 - Explore the [Docker deployment guide](/docs/framework/guides/deployment/docker) for self-hosted options
-  Learn production best practices (guide coming soon)
+- Learn production best practices (guide coming soon)
 - Set up monitoring and alerting for your agent
