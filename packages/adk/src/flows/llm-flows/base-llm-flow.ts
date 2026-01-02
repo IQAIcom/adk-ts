@@ -212,13 +212,6 @@ export abstract class BaseLlmFlow {
 
 		yield finalizedEvent;
 
-		if (!finalizedEvent.partial) {
-			await invocationContext.sessionService.appendEvent(
-				invocationContext.session,
-				finalizedEvent,
-			);
-		}
-
 		// Handle function calls
 		const functionCalls = finalizedEvent.getFunctionCalls();
 		if (functionCalls && functionCalls.length > 0) {

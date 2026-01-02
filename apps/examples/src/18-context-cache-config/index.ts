@@ -63,30 +63,9 @@ const saveCountryTool = createTool({
 			.optional()
 			.describe("Major tourist destinations"),
 	}),
-	fn: (
-		{
-			country,
-			capital,
-			population,
-			area_km2,
-			currency,
-			languages,
-			fun_fact,
-			historical_note,
-			tourist_attractions,
-		},
-		context,
-	) => {
+	fn: (params, context) => {
 		const countryData = {
-			country,
-			capital,
-			population,
-			area_km2,
-			currency,
-			languages,
-			fun_fact,
-			historical_note,
-			tourist_attractions,
+			...params,
 			timestamp: new Date().toISOString(),
 		};
 
@@ -98,7 +77,7 @@ const saveCountryTool = createTool({
 
 		return {
 			success: true,
-			message: `Successfully saved comprehensive information about ${country}`,
+			message: `Successfully saved comprehensive information about ${params.country}`,
 			data: countryData,
 		};
 	},
@@ -157,7 +136,7 @@ const viewFirstCountryTool = createTool({
 	`,
 	schema: z.object({}),
 	fn: (_, context) => {
-		const history = context.state.get("countryHistory", []) || [];
+		const history = context.state.get("countryHistory", []);
 
 		if (history.length === 0) {
 			return {
@@ -195,7 +174,7 @@ const compareCountriesTool = createTool({
 	`,
 	schema: z.object({}),
 	fn: (_, context) => {
-		const history = context.state.get("countryHistory", []) || [];
+		const history = context.state.get("countryHistory", []);
 
 		if (history.length === 0) {
 			return {
@@ -219,7 +198,6 @@ async function main() {
 
 	const sessionService = new InMemorySessionService();
 
-	// Configure context caching with parameters matching the Python example
 	const cacheConfig = new ContextCacheConfig({
 		minTokens: 100, // Minimum tokens required to enable caching
 		ttlSeconds: 600, // Cache TTL: 10 minutes
