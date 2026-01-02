@@ -156,8 +156,15 @@ export class GoogleLlm extends BaseLlm {
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		this.preprocessRequest(llmRequest);
 
+		// Ensure model is set on the request for downstream components (like cache manager)
+		if (!llmRequest.model) {
+			llmRequest.model = this.model;
+		}
+
 		let cacheMetadata: CacheMetadata | null = null;
 		let cacheManager: GeminiContextCacheManager | null = null;
+
+		console.log("llmRequest.cacheConfig", llmRequest.cacheConfig);
 
 		if (llmRequest.cacheConfig) {
 			this.logger.debug("Handling context caching");

@@ -31,7 +31,9 @@ export class GeminiContextCacheManager {
 				const cacheName = llmRequest.cacheMetadata.cacheName;
 				const cacheContentsCount = llmRequest.cacheMetadata.contentsCount;
 
-				this.applyCacheToRequest(llmRequest, cacheName!, cacheContentsCount);
+				if (cacheName) {
+					this.applyCacheToRequest(llmRequest, cacheName, cacheContentsCount);
+				}
 
 				return llmRequest.cacheMetadata.copy();
 			}
@@ -64,10 +66,10 @@ export class GeminiContextCacheManager {
 					cacheContentsCount,
 				);
 
-				if (cacheMetadata) {
+				if (cacheMetadata?.cacheName) {
 					this.applyCacheToRequest(
 						llmRequest,
-						cacheMetadata.cacheName!,
+						cacheMetadata.cacheName,
 						cacheContentsCount,
 					);
 					return cacheMetadata;
@@ -92,9 +94,9 @@ export class GeminiContextCacheManager {
 			});
 		}
 
-		// No existing cache metadata - return fingerprint-only metadata
+		// No existing cache metadata - attempt to create one immediately
 		this.logger.debug(
-			"No existing cache metadata, creating fingerprint-only metadata",
+			"No existing cache metadata, attempting to create new cache",
 		);
 		const totalContentsCount = llmRequest.contents.length;
 		const fingerprint = this.generateCacheFingerprint(
@@ -102,6 +104,21 @@ export class GeminiContextCacheManager {
 			totalContentsCount,
 		);
 
+		const cacheMetadata = await this.createNewCacheWithContents(
+			llmRequest,
+			totalContentsCount,
+		);
+
+		if (cacheMetadata?.cacheName) {
+			this.applyCacheToRequest(
+				llmRequest,
+				cacheMetadata.cacheName,
+				totalContentsCount,
+			);
+			return cacheMetadata;
+		}
+
+		// Fallback to fingerprint-only metadata
 		return new CacheMetadata({
 			fingerprint,
 			contentsCount: totalContentsCount,
@@ -112,6 +129,8 @@ export class GeminiContextCacheManager {
 
 	private async isCacheValid(llmRequest: LlmRequest): Promise<boolean> {
 		const cacheMetadata = llmRequest.cacheMetadata;
+		this.logger.debug("Validating cache metadata", cacheMetadata);
+
 		if (!cacheMetadata) {
 			return false;
 		}
@@ -129,12 +148,17 @@ export class GeminiContextCacheManager {
 		}
 
 		// Check if cache has been used for too many invocations
+		if (!llmRequest.cacheConfig) {
+			this.logger.warn("Missing cache config during validation");
+			return false;
+		}
+
 		if (
 			(cacheMetadata.invocationsUsed ?? 0) >
-			llmRequest.cacheConfig!.cacheIntervals
+			llmRequest.cacheConfig.cacheIntervals
 		) {
 			this.logger.info(
-				`Cache exceeded cache intervals: ${cacheMetadata.cacheName} (${cacheMetadata.invocationsUsed} > ${llmRequest.cacheConfig!.cacheIntervals} intervals)`,
+				`Cache exceeded cache intervals: ${cacheMetadata.cacheName} (${cacheMetadata.invocationsUsed} > ${llmRequest.cacheConfig.cacheIntervals} intervals)`,
 			);
 			return false;
 		}
@@ -144,6 +168,10 @@ export class GeminiContextCacheManager {
 			llmRequest,
 			cacheMetadata.contentsCount,
 		);
+
+		this.logger.debug("Current fingerprint:", currentFingerprint);
+		this.logger.debug("Cached fingerprint:", cacheMetadata.fingerprint);
+
 		if (currentFingerprint !== cacheMetadata.fingerprint) {
 			this.logger.debug("Cache content fingerprint mismatch");
 			return false;
@@ -200,19 +228,51 @@ export class GeminiContextCacheManager {
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
 	): Promise<CacheMetadata | null> {
-		// Check if we have token count from previous response for cache size validation
-		if (llmRequest.cacheableContentsTokenCount === undefined) {
-			this.logger.info(
-				"No previous token count available, skipping cache creation for initial request",
-			);
+		if (!llmRequest.cacheConfig) {
+			this.logger.warn("Missing cache config in createNewCacheWithContents");
 			return null;
 		}
 
-		if (
-			llmRequest.cacheableContentsTokenCount < llmRequest.cacheConfig!.minTokens
-		) {
+		const minTokens = llmRequest.cacheConfig.minTokens;
+
+		// Check if we have token count from previous response
+		let tokenCount = llmRequest.cacheableContentsTokenCount;
+
+		// If no previous token count, try to count tokens or check if minTokens is 0
+		if (tokenCount === undefined) {
+			if (minTokens === 0) {
+				// If minTokens is 0, we can skip counting and proceed
+				this.logger.debug(
+					"No previous token count, but minTokens is 0, proceeding with cache creation",
+				);
+			} else {
+				// Try to count tokens using the API
+				this.logger.debug(
+					"No previous token count, attempting to count tokens using API",
+				);
+				try {
+					// We need to count tokens for the content we intend to cache
+					// Note: This adds latency to the first request
+					const countResult = await this.genaiClient.models.countTokens({
+						model: llmRequest.model,
+						contents: llmRequest.contents.slice(0, cacheContentsCount),
+					});
+					tokenCount = countResult.totalTokens;
+					this.logger.debug(`Counted tokens: ${tokenCount}`);
+				} catch (e) {
+					this.logger.warn(
+						"Failed to count tokens for cache decision, skipping cache creation:",
+						e,
+					);
+					return null;
+				}
+			}
+		}
+
+		// Validate token count if we have one (or computed one)
+		if (tokenCount !== undefined && tokenCount < minTokens) {
 			this.logger.info(
-				`Previous request too small for caching (${llmRequest.cacheableContentsTokenCount} < ${llmRequest.cacheConfig!.minTokens} tokens)`,
+				`Request too small for caching (${tokenCount} < ${minTokens} tokens)`,
 			);
 			return null;
 		}
@@ -229,24 +289,18 @@ export class GeminiContextCacheManager {
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
 	): Promise<CacheMetadata> {
+		if (!llmRequest.cacheConfig) {
+			throw new Error("Cache config is required to create cache");
+		}
+
 		// Prepare cache contents (first N contents + system instruction + tools)
 		const cacheContents = llmRequest.contents.slice(0, cacheContentsCount);
 
 		const cacheConfig: any = {
 			contents: cacheContents,
-			ttl: llmRequest.cacheConfig!.ttlString,
+			ttl: llmRequest.cacheConfig.ttlString,
 			displayName: `adk-cache-${Math.floor(Date.now() / 1000)}-${cacheContentsCount}contents`,
 		};
-
-		// const response = await ai.caches.create({
-		// 	model: "gemini-2.0-flash-001",
-		// 	config: {
-		// 		contents: contents,
-		// 		displayName: "test cache",
-		// 		systemInstruction: "What is the sum of the two pdfs?",
-		// 		ttl: "86400s",
-		// 	},
-		// });
 
 		// Add system instruction if present
 		if (llmRequest.config?.systemInstruction) {
@@ -278,6 +332,8 @@ export class GeminiContextCacheManager {
 
 		console.log("cachedContent", cachedContent);
 
+		this.logger.debug("Cache created successfully:", cachedContent);
+
 		// Set precise creation timestamp right after cache creation
 		const createdAt = Date.now() / 1000;
 		this.logger.info(`Cache created successfully: ${cachedContent.name}`);
@@ -285,7 +341,7 @@ export class GeminiContextCacheManager {
 		// Return complete cache metadata with precise timing
 		return new CacheMetadata({
 			cacheName: cachedContent.name,
-			expireTime: createdAt + llmRequest.cacheConfig!.ttlSeconds,
+			expireTime: createdAt + llmRequest.cacheConfig.ttlSeconds,
 			fingerprint: this.generateCacheFingerprint(
 				llmRequest,
 				cacheContentsCount,
@@ -311,6 +367,7 @@ export class GeminiContextCacheManager {
 		cacheName: string,
 		cacheContentsCount: number,
 	): void {
+		// Clear system instruction, tools, and toolConfig as they're in the cache
 		if (llmRequest.config) {
 			llmRequest.config.systemInstruction = undefined;
 			llmRequest.config.tools = undefined;
@@ -322,17 +379,18 @@ export class GeminiContextCacheManager {
 			llmRequest.config = {};
 		}
 
-		console.log("llmRequest.config.cachedContent", cacheName);
+		this.logger.debug("Setting cached content reference:", cacheName);
 
 		llmRequest.config.cachedContent = cacheName;
 
+		// Remove cached contents from the request
 		llmRequest.contents = llmRequest.contents.slice(cacheContentsCount);
 	}
 
 	public populateCacheMetadataInResponse(
 		llmResponse: LlmResponse,
 		cacheMetadata: CacheMetadata,
-	): void {
+	) {
 		llmResponse.cacheMetadata = cacheMetadata.copy();
 	}
 }
