@@ -182,6 +182,7 @@ export class AgentTool extends BaseTool {
 				memoryService: parentInvocation.memoryService,
 				pluginManager: parentInvocation.pluginManager,
 				runConfig: parentInvocation.runConfig,
+				contextCacheConfig: parentInvocation.contextCacheConfig,
 				userContent: {
 					role: "user" as const,
 					parts: [{ text: String(input) }],

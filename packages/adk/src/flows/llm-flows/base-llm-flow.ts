@@ -635,6 +635,10 @@ export abstract class BaseLlmFlow {
 
 		const event = new Event(eventData);
 
+		if (llmResponse.cacheMetadata) {
+			event.cacheMetadata = llmResponse.cacheMetadata;
+		}
+
 		if (event.content) {
 			const functionCalls = event.getFunctionCalls();
 			if (functionCalls) {
