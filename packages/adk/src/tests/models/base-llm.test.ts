@@ -1,5 +1,5 @@
 import { BaseLlm, type LlmRequest } from "@adk/models";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@adk/helpers/logger", () => ({
 	Logger: vi.fn(() => ({
@@ -7,6 +7,7 @@ vi.mock("@adk/helpers/logger", () => ({
 		error: vi.fn(),
 	})),
 }));
+
 const mockSetAttributes = vi.fn();
 const mockRecordException = vi.fn();
 const mockSetStatus = vi.fn();
@@ -18,8 +19,11 @@ const mockSpan = {
 	end: mockEnd,
 };
 const mockTracer = {
-	startActiveSpan: vi.fn((name, fn) => fn(mockSpan)),
+	startActiveSpan: vi.fn((_name, fn) => fn(mockSpan)),
 };
+
+// Mock telemetry tracer
+// Note: Telemetry has built-in safety guards, so mocking is optional
 vi.mock("../telemetry", () => ({
 	tracer: mockTracer,
 }));
@@ -30,8 +34,8 @@ class TestLlm extends BaseLlm {
 		super(model);
 	}
 	protected async *generateContentAsyncImpl(
-		llmRequest: LlmRequest,
-		stream?: boolean,
+		_llmRequest: LlmRequest,
+		_stream?: boolean,
 	): AsyncGenerator<any, void, unknown> {
 		for (const resp of this.implResponses) {
 			yield resp;

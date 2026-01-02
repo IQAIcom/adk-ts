@@ -1,3 +1,4 @@
+import type { SpanContext } from "@opentelemetry/api";
 import type { Content } from "@google/genai";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
 import type { BaseMemoryService } from "../memory/base-memory-service";
@@ -9,6 +10,23 @@ import type { BaseAgent } from "./base-agent";
 import type { LiveRequestQueue } from "./live-request-queue";
 import type { RunConfig } from "./run-config";
 import type { TranscriptionEntry } from "./transcription-entry";
+
+/**
+ * Transfer context for multi-agent workflows
+ * Tracks the chain of agent transfers for telemetry
+ */
+export interface TransferContext {
+	/** Array of agent names in transfer order */
+	transferChain: string[];
+	/** Current depth in transfer chain (0 = root) */
+	transferDepth: number;
+	/** Name of the root agent that started the chain */
+	rootAgentName: string;
+	/** Span context of the root agent for linking */
+	rootSpanContext?: SpanContext;
+	/** Span context of the previous agent in the chain */
+	previousSpanContext?: SpanContext;
+}
 
 /**
  * Error thrown when the number of LLM calls exceed the limit.
@@ -169,6 +187,12 @@ export class InvocationContext {
 	runConfig?: RunConfig;
 
 	/**
+	 * Transfer context for multi-agent workflows
+	 * Tracks agent transfer chain for telemetry
+	 */
+	transferContext?: TransferContext;
+
+	/**
 	 * A container to keep track of different kinds of costs incurred as a part
 	 * of this invocation.
 	 */
@@ -193,6 +217,7 @@ export class InvocationContext {
 		activeStreamingTools?: Record<string, ActiveStreamingTool>;
 		transcriptionCache?: TranscriptionEntry[];
 		runConfig?: RunConfig;
+		transferContext?: TransferContext;
 	}) {
 		this.artifactService = options.artifactService;
 		this.sessionService = options.sessionService;
@@ -208,6 +233,7 @@ export class InvocationContext {
 		this.activeStreamingTools = options.activeStreamingTools;
 		this.transcriptionCache = options.transcriptionCache;
 		this.runConfig = options.runConfig;
+		this.transferContext = options.transferContext;
 	}
 
 	/**
@@ -254,6 +280,7 @@ export class InvocationContext {
 			activeStreamingTools: this.activeStreamingTools,
 			transcriptionCache: this.transcriptionCache,
 			runConfig: this.runConfig,
+			transferContext: this.transferContext, // Propagate transfer context
 		});
 	}
 }

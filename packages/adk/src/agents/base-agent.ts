@@ -137,27 +137,101 @@ export abstract class BaseAgent {
 		parentContext: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
 		const ctx = this.createInvocationContext(parentContext);
+		const startTime = Date.now();
+		let status: "success" | "error" = "success";
 
-		const beforeEvent = await this.handleBeforeAgentCallback(ctx);
-		if (beforeEvent) {
-			yield beforeEvent;
-		}
+		try {
+			// Initialize or update transfer context
+			if (!ctx.transferContext) {
+				// This is the root agent - initialize transfer context
+				ctx.transferContext = {
+					transferChain: [this.name],
+					transferDepth: 0,
+					rootAgentName: this.name,
+				};
+			} else {
+				// This is a transferred agent - update chain
+				const previousAgentName =
+					ctx.transferContext.transferChain[
+						ctx.transferContext.transferChain.length - 1
+					];
 
-		if (ctx.endInvocation) {
-			return;
-		}
+				// Add event for transfer received
+				telemetryService.addEvent("agent_transfer_received", {
+					source_agent: previousAgentName,
+					transfer_chain: JSON.stringify(ctx.transferContext.transferChain),
+					transfer_depth: ctx.transferContext.transferDepth,
+				});
 
-		for await (const event of this.runAsyncImpl(ctx)) {
-			yield event;
-		}
+				// Update transfer chain
+				ctx.transferContext = {
+					...ctx.transferContext,
+					transferChain: [...ctx.transferContext.transferChain, this.name],
+					transferDepth: ctx.transferContext.transferDepth + 1,
+				};
+			}
 
-		if (ctx.endInvocation) {
-			return;
-		}
+			// Trace agent invocation with standard attributes
+			telemetryService.traceAgentInvocation(
+				{
+					name: this.name,
+					description: this.description,
+				},
+				ctx,
+			);
 
-		const afterEvent = await this.handleAfterAgentCallback(ctx);
-		if (afterEvent) {
-			yield afterEvent;
+			// Add transfer tracking attributes if this is a transferred agent
+			if (ctx.transferContext.transferDepth > 0) {
+				telemetryService.setActiveSpanAttributes({
+					"adk.agent.depth": ctx.transferContext.transferDepth,
+					"adk.transfer.chain": JSON.stringify(
+						ctx.transferContext.transferChain,
+					),
+					"adk.transfer.depth": ctx.transferContext.transferDepth,
+					"adk.transfer.root_agent": ctx.transferContext.rootAgentName,
+				});
+			}
+
+			// Record agent invocation metric
+			telemetryService.recordAgentInvocation({
+				agentName: this.name,
+				environment: process.env.NODE_ENV,
+				status: "success",
+			});
+
+			const beforeEvent = await this.handleBeforeAgentCallback(ctx);
+			if (beforeEvent) {
+				yield beforeEvent;
+			}
+
+			if (ctx.endInvocation) {
+				return;
+			}
+
+			for await (const event of this.runAsyncImpl(ctx)) {
+				yield event;
+			}
+
+			if (ctx.endInvocation) {
+				return;
+			}
+
+			const afterEvent = await this.handleAfterAgentCallback(ctx);
+			if (afterEvent) {
+				yield afterEvent;
+			}
+		} catch (error) {
+			status = "error";
+			telemetryService.recordError("agent", this.name);
+			throw error;
+		} finally {
+			// Record agent duration metric
+			const durationMs = Date.now() - startTime;
+			telemetryService.recordAgentDuration(durationMs, {
+				agentName: this.name,
+				environment: process.env.NODE_ENV,
+				status,
+			});
 		}
 	}
 
@@ -319,12 +393,38 @@ export abstract class BaseAgent {
 			!beforeAgentCallbackContent &&
 			this.canonicalBeforeAgentCallbacks.length > 0
 		) {
-			for (const callback of this.canonicalBeforeAgentCallbacks) {
-				let result = callback(callbackContext);
+			for (let i = 0; i < this.canonicalBeforeAgentCallbacks.length; i++) {
+				const callback = this.canonicalBeforeAgentCallbacks[i];
 
-				if (result instanceof Promise) {
-					result = await result;
-				}
+				// Wrap callback execution with tracing
+				const result = await telemetryService.withSpan(
+					`callback [before_agent] ${this.name}`,
+					async (span) => {
+						// Set callback attributes
+						telemetryService.traceCallback(
+							"before_agent",
+							callback.name,
+							i,
+							this.name,
+							ctx,
+						);
+
+						let callbackResult = callback(callbackContext);
+
+						if (callbackResult instanceof Promise) {
+							callbackResult = await callbackResult;
+						}
+
+						// Record if callback returned override
+						if (callbackResult) {
+							telemetryService.setActiveSpanAttributes({
+								"adk.callback.override_returned": true,
+							});
+						}
+
+						return callbackResult;
+					},
+				);
 
 				if (result) {
 					beforeAgentCallbackContent = result;
@@ -382,12 +482,38 @@ export abstract class BaseAgent {
 			!afterAgentCallbackContent &&
 			this.canonicalAfterAgentCallbacks.length > 0
 		) {
-			for (const callback of this.canonicalAfterAgentCallbacks) {
-				let result = callback(callbackContext);
+			for (let i = 0; i < this.canonicalAfterAgentCallbacks.length; i++) {
+				const callback = this.canonicalAfterAgentCallbacks[i];
 
-				if (result instanceof Promise) {
-					result = await result;
-				}
+				// Wrap callback execution with tracing
+				const result = await telemetryService.withSpan(
+					`callback [after_agent] ${this.name}`,
+					async (span) => {
+						// Set callback attributes
+						telemetryService.traceCallback(
+							"after_agent",
+							callback.name,
+							i,
+							this.name,
+							invocationContext,
+						);
+
+						let callbackResult = callback(callbackContext);
+
+						if (callbackResult instanceof Promise) {
+							callbackResult = await callbackResult;
+						}
+
+						// Record if callback returned override
+						if (callbackResult) {
+							telemetryService.setActiveSpanAttributes({
+								"adk.callback.override_returned": true,
+							});
+						}
+
+						return callbackResult;
+					},
+				);
 
 				if (result) {
 					afterAgentCallbackContent = result;
