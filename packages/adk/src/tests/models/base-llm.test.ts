@@ -19,7 +19,7 @@ const mockSpan = {
 	end: mockEnd,
 };
 const mockTracer = {
-	startActiveSpan: vi.fn((name, fn) => fn(mockSpan)),
+	startActiveSpan: vi.fn((_name, fn) => fn(mockSpan)),
 };
 
 // Mock telemetry tracer
@@ -34,8 +34,8 @@ class TestLlm extends BaseLlm {
 		super(model);
 	}
 	protected async *generateContentAsyncImpl(
-		llmRequest: LlmRequest,
-		stream?: boolean,
+		_llmRequest: LlmRequest,
+		_stream?: boolean,
 	): AsyncGenerator<any, void, unknown> {
 		for (const resp of this.implResponses) {
 			yield resp;
