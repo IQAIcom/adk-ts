@@ -166,3 +166,107 @@ export interface TelemetryStats {
 	totalTokens: number;
 	errors: number;
 }
+
+/**
+ * Parameters for tracing a callback execution
+ */
+export interface TraceCallbackParams {
+	callbackType:
+		| "before_agent"
+		| "after_agent"
+		| "before_tool"
+		| "after_tool"
+		| "before_model"
+		| "after_model";
+	callbackName?: string;
+	callbackIndex: number;
+	targetName?: string;
+	invocationContext?: InvocationContext;
+}
+
+/**
+ * Enhanced tool span attributes with execution tracking
+ */
+export interface EnhancedToolSpanAttributes extends ToolSpanAttributes {
+	executionOrder?: number;
+	parallelGroup?: string;
+	retryCount?: number;
+	isCallbackOverride?: boolean;
+}
+
+/**
+ * Enhanced LLM span attributes with streaming metrics
+ */
+export interface EnhancedLlmSpanAttributes extends LlmSpanAttributes {
+	streaming?: boolean;
+	timeToFirstTokenMs?: number;
+	chunkCount?: number;
+	cachedTokens?: number;
+	contextWindowUsedPct?: number;
+}
+
+/**
+ * Parameters for tracing an agent transfer
+ */
+export interface TraceAgentTransferParams {
+	sourceAgent: string;
+	targetAgent: string;
+	reason?: string;
+	transferContext: import("../agents/invocation-context").TransferContext;
+	invocationContext?: InvocationContext;
+}
+
+/**
+ * Error span attributes
+ */
+export interface ErrorSpanAttributes {
+	errorCategory:
+		| "tool_error"
+		| "model_error"
+		| "transfer_error"
+		| "callback_error"
+		| "memory_error"
+		| "session_error"
+		| "plugin_error"
+		| "unknown_error";
+	errorRecoverable: boolean;
+	errorRetryRecommended: boolean;
+	errorMessage: string;
+	errorStack?: string;
+}
+
+/**
+ * Parameters for tracing memory operations
+ */
+export interface TraceMemoryParams {
+	operation: "search" | "insert" | "delete";
+	query?: string;
+	resultsCount?: number;
+	sessionId: string;
+	invocationContext?: InvocationContext;
+}
+
+/**
+ * Parameters for tracing session operations
+ */
+export interface TraceSessionParams {
+	operation: "create" | "get" | "update" | "delete";
+	sessionId: string;
+	userId?: string;
+	found?: boolean;
+}
+
+/**
+ * Parameters for tracing plugin hooks
+ */
+export interface TracePluginParams {
+	pluginName: string;
+	hook:
+		| "before_agent"
+		| "after_agent"
+		| "before_model"
+		| "after_model"
+		| "on_event";
+	agentName?: string;
+	invocationContext?: InvocationContext;
+}

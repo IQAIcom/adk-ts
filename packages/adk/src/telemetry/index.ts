@@ -50,16 +50,23 @@ import { tracingService } from "./tracing";
 export {
 	ADK_ATTRS,
 	ADK_SYSTEM_NAME,
+	ATTRIBUTE_TIERS,
+	CALLBACK_TYPES,
 	DEFAULTS,
 	ENV_VARS,
+	ERROR_CATEGORIES,
 	METRICS,
 	OPERATIONS,
 	SEMCONV,
+	SPAN_PATTERNS,
 } from "./constants";
 // Export types
 export type {
 	AgentMetricDimensions,
 	AgentSpanAttributes,
+	EnhancedLlmSpanAttributes,
+	EnhancedToolSpanAttributes,
+	ErrorSpanAttributes,
 	LlmMetricDimensions,
 	LlmSpanAttributes,
 	TelemetryConfig,
@@ -67,7 +74,12 @@ export type {
 	ToolMetricDimensions,
 	ToolSpanAttributes,
 	TraceAgentParams,
+	TraceAgentTransferParams,
+	TraceCallbackParams,
 	TraceLlmParams,
+	TraceMemoryParams,
+	TracePluginParams,
+	TraceSessionParams,
 	TraceToolParams,
 } from "./types";
 
@@ -219,6 +231,138 @@ export class TelemetryService {
 	 */
 	addEvent(name: string, attributes?: Record<string, any>): void {
 		tracingService.addEvent(name, attributes);
+	}
+
+	/**
+	 * Trace a callback execution
+	 */
+	traceCallback(
+		callbackType: string,
+		callbackName: string | undefined,
+		callbackIndex: number,
+		targetName?: string,
+		invocationContext?: InvocationContext,
+	): void {
+		tracingService.traceCallback(
+			callbackType,
+			callbackName,
+			callbackIndex,
+			targetName,
+			invocationContext,
+		);
+	}
+
+	/**
+	 * Trace an agent transfer
+	 */
+	traceAgentTransfer(
+		sourceAgent: string,
+		targetAgent: string,
+		transferChain: string[],
+		transferDepth: number,
+		reason?: string,
+		invocationContext?: InvocationContext,
+	): void {
+		tracingService.traceAgentTransfer(
+			sourceAgent,
+			targetAgent,
+			transferChain,
+			transferDepth,
+			reason,
+			invocationContext,
+		);
+	}
+
+	/**
+	 * Record enhanced tool execution attributes
+	 */
+	traceEnhancedTool(
+		executionOrder?: number,
+		parallelGroup?: string,
+		retryCount?: number,
+		isCallbackOverride?: boolean,
+	): void {
+		tracingService.traceEnhancedTool(
+			executionOrder,
+			parallelGroup,
+			retryCount,
+			isCallbackOverride,
+		);
+	}
+
+	/**
+	 * Record enhanced LLM attributes
+	 */
+	traceEnhancedLlm(
+		streaming?: boolean,
+		timeToFirstTokenMs?: number,
+		chunkCount?: number,
+		cachedTokens?: number,
+		contextWindowUsedPct?: number,
+	): void {
+		tracingService.traceEnhancedLlm(
+			streaming,
+			timeToFirstTokenMs,
+			chunkCount,
+			cachedTokens,
+			contextWindowUsedPct,
+		);
+	}
+
+	/**
+	 * Record standardized error information
+	 */
+	traceError(
+		error: Error,
+		category:
+			| "tool_error"
+			| "model_error"
+			| "transfer_error"
+			| "callback_error"
+			| "memory_error"
+			| "session_error"
+			| "plugin_error"
+			| "unknown_error",
+		recoverable = false,
+		retryRecommended = false,
+	): void {
+		tracingService.traceError(error, category, recoverable, retryRecommended);
+	}
+
+	/**
+	 * Trace memory operations
+	 */
+	traceMemoryOperation(
+		operation: "search" | "insert" | "delete",
+		sessionId: string,
+		query?: string,
+		resultsCount?: number,
+		invocationContext?: InvocationContext,
+	): void {
+		tracingService.traceMemoryOperation(
+			operation,
+			sessionId,
+			query,
+			resultsCount,
+			invocationContext,
+		);
+	}
+
+	/**
+	 * Trace plugin hook execution
+	 */
+	tracePluginHook(
+		pluginName: string,
+		hook: string,
+		agentName?: string,
+		invocationContext?: InvocationContext,
+	): void {
+		tracingService.tracePluginHook(
+			pluginName,
+			hook,
+			agentName,
+			invocationContext,
+		);
 	}
 
 	// --- Metrics Methods ---

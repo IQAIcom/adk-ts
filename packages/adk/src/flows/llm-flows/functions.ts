@@ -139,6 +139,9 @@ export async function handleFunctionCallsAsync(
 
 	const functionResponseEvents: Event[] = [];
 
+	// Track execution order for telemetry
+	let executionOrder = 0;
+
 	for (const functionCall of functionCalls) {
 		if (filters && functionCall.id && !filters.has(functionCall.id)) {
 			continue;
@@ -155,10 +158,11 @@ export async function handleFunctionCallsAsync(
 
 		// Create tracing span for tool execution (matching Python pattern)
 		const tracer = telemetryService.getTracer();
-		const span = tracer.startSpan(`execute_tool ${tool.name}`);
+		const span = tracer.startSpan(`execute_tool [${tool.name}]`);
 		const spanContext = trace.setSpan(context.active(), span);
 		const toolStartTime = Date.now();
 		let toolStatus: "success" | "error" = "success";
+		let wasOverridden = false;
 
 		try {
 			// Execute tool within the span context
@@ -170,6 +174,7 @@ export async function handleFunctionCallsAsync(
 					for (const cb of agent.canonicalBeforeToolCallbacks) {
 						const maybeOverride = await cb(tool, argsForTool, toolContext);
 						if (maybeOverride !== null && maybeOverride !== undefined) {
+							wasOverridden = true;
 							// Build event directly from override and skip actual tool
 							const overriddenEvent = buildResponseEvent(
 								tool,
@@ -182,7 +187,18 @@ export async function handleFunctionCallsAsync(
 								tool,
 								argsForTool,
 								overriddenEvent,
+								undefined, // llmRequest
+								invocationContext,
 							);
+
+							// Record enhanced tool attributes
+							telemetryService.traceEnhancedTool(
+								executionOrder,
+								undefined, // parallelGroup not used in sequential execution
+								0, // no retry
+								true, // callback override
+							);
+
 							return { result: maybeOverride, event: overriddenEvent };
 						}
 					}
@@ -226,6 +242,16 @@ export async function handleFunctionCallsAsync(
 					tool,
 					argsForTool,
 					functionResponseEvent,
+					undefined, // llmRequest
+					invocationContext,
+				);
+
+				// Record enhanced tool attributes
+				telemetryService.traceEnhancedTool(
+					executionOrder,
+					undefined, // parallelGroup not used in sequential execution
+					0, // no retry
+					wasOverridden,
 				);
 
 				return { result, event: functionResponseEvent };
@@ -246,8 +272,19 @@ export async function handleFunctionCallsAsync(
 				environment: process.env.NODE_ENV,
 				status: toolStatus,
 			});
+
+			// Increment execution order for next tool
+			executionOrder++;
 		} catch (error) {
 			toolStatus = "error";
+
+			// Record error with telemetry
+			telemetryService.traceError(
+				error as Error,
+				"tool_error",
+				false, // not recoverable by default
+				false, // retry not recommended by default
+			);
 			span.recordException(error as Error);
 			span.setStatus({ code: 2, message: (error as Error).message });
 

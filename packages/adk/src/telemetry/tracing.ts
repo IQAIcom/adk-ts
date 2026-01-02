@@ -130,10 +130,6 @@ export class TracingService {
 
 			// ADK-specific attributes
 			[ADK_ATTRS.TOOL_NAME]: tool.name,
-			[ADK_ATTRS.TOOL_ARGS]: captureContent ? safeJsonStringify(args) : "{}",
-			[ADK_ATTRS.TOOL_RESPONSE]: captureContent
-				? safeJsonStringify(toolResponse)
-				: "{}",
 			[ADK_ATTRS.EVENT_ID]: functionResponseEvent.invocationId,
 
 			// Session context
@@ -147,6 +143,26 @@ export class TracingService {
 		});
 
 		span.setAttributes(attributes);
+
+		// Add input/output as events (preferred for observability platforms)
+		if (captureContent) {
+			// Tool input event
+			span.addEvent("gen_ai.tool.input", {
+				"gen_ai.tool.input": safeJsonStringify(args),
+			});
+
+			// Tool output event
+			span.addEvent("gen_ai.tool.output", {
+				"gen_ai.tool.output": safeJsonStringify(toolResponse),
+			});
+
+			// Also set as attributes for backward compatibility
+			span.setAttribute(ADK_ATTRS.TOOL_ARGS, safeJsonStringify(args));
+			span.setAttribute(
+				ADK_ATTRS.TOOL_RESPONSE,
+				safeJsonStringify(toolResponse),
+			);
+		}
 
 		// Add LLM request if provided
 		if (llmRequest && captureContent) {
@@ -356,6 +372,252 @@ export class TracingService {
 		if (span && attributes) {
 			span.addEvent(name, formatSpanAttributes(attributes));
 		}
+	}
+
+	/**
+	 * Trace a callback execution
+	 * Wraps callback execution in a span with appropriate attributes
+	 */
+	traceCallback(
+		callbackType: string,
+		callbackName: string | undefined,
+		callbackIndex: number,
+		targetName?: string,
+		invocationContext?: InvocationContext,
+	): void {
+		const span = trace.getActiveSpan();
+		if (!span) return;
+
+		const attributes = formatSpanAttributes({
+			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.EXECUTE_CALLBACK,
+			[ADK_ATTRS.CALLBACK_TYPE]: callbackType,
+			[ADK_ATTRS.CALLBACK_NAME]: callbackName || "<anonymous>",
+			[ADK_ATTRS.CALLBACK_INDEX]: callbackIndex,
+			...(invocationContext && {
+				[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
+				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
+				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
+			}),
+			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+		});
+
+		span.setAttributes(attributes);
+	}
+
+	/**
+	 * Trace an agent transfer
+	 * Records transfer events and attributes for multi-agent workflows
+	 */
+	traceAgentTransfer(
+		sourceAgent: string,
+		targetAgent: string,
+		transferChain: string[],
+		transferDepth: number,
+		reason?: string,
+		invocationContext?: InvocationContext,
+	): void {
+		const span = trace.getActiveSpan();
+		if (!span) return;
+
+		const attributes = formatSpanAttributes({
+			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.TRANSFER_AGENT,
+			[ADK_ATTRS.TRANSFER_SOURCE_AGENT]: sourceAgent,
+			[ADK_ATTRS.TRANSFER_TARGET_AGENT]: targetAgent,
+			[ADK_ATTRS.TRANSFER_CHAIN]: JSON.stringify(transferChain),
+			[ADK_ATTRS.TRANSFER_DEPTH]: transferDepth,
+			[ADK_ATTRS.TRANSFER_ROOT_AGENT]: transferChain[0] || sourceAgent,
+			...(reason && { [ADK_ATTRS.TRANSFER_REASON]: reason }),
+			...(invocationContext && {
+				[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
+				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
+				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
+			}),
+			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+		});
+
+		span.setAttributes(attributes);
+
+		// Add transfer event
+		span.addEvent("agent_transfer_initiated", {
+			target_agent: targetAgent,
+			transfer_depth: transferDepth,
+		});
+	}
+
+	/**
+	 * Record enhanced tool execution attributes
+	 * Extends the basic tool tracing with execution order and parallel tracking
+	 */
+	traceEnhancedTool(
+		executionOrder?: number,
+		parallelGroup?: string,
+		retryCount?: number,
+		isCallbackOverride?: boolean,
+	): void {
+		const span = trace.getActiveSpan();
+		if (!span) return;
+
+		const attributes: Record<string, any> = {};
+
+		if (executionOrder !== undefined) {
+			attributes[ADK_ATTRS.TOOL_EXECUTION_ORDER] = executionOrder;
+		}
+		if (parallelGroup !== undefined) {
+			attributes[ADK_ATTRS.TOOL_PARALLEL_GROUP] = parallelGroup;
+		}
+		if (retryCount !== undefined) {
+			attributes[ADK_ATTRS.TOOL_RETRY_COUNT] = retryCount;
+		}
+		if (isCallbackOverride !== undefined) {
+			attributes[ADK_ATTRS.TOOL_IS_CALLBACK_OVERRIDE] = isCallbackOverride;
+		}
+
+		if (Object.keys(attributes).length > 0) {
+			span.setAttributes(formatSpanAttributes(attributes));
+		}
+	}
+
+	/**
+	 * Record enhanced LLM attributes
+	 * Extends basic LLM tracing with streaming metrics
+	 */
+	traceEnhancedLlm(
+		streaming?: boolean,
+		timeToFirstTokenMs?: number,
+		chunkCount?: number,
+		cachedTokens?: number,
+		contextWindowUsedPct?: number,
+	): void {
+		const span = trace.getActiveSpan();
+		if (!span) return;
+
+		const attributes: Record<string, any> = {};
+
+		if (streaming !== undefined) {
+			attributes[ADK_ATTRS.LLM_STREAMING] = streaming;
+		}
+		if (timeToFirstTokenMs !== undefined) {
+			attributes[ADK_ATTRS.LLM_TIME_TO_FIRST_TOKEN] = timeToFirstTokenMs;
+		}
+		if (chunkCount !== undefined) {
+			attributes[ADK_ATTRS.LLM_CHUNK_COUNT] = chunkCount;
+		}
+		if (cachedTokens !== undefined) {
+			attributes[ADK_ATTRS.LLM_CACHED_TOKENS] = cachedTokens;
+		}
+		if (contextWindowUsedPct !== undefined) {
+			attributes[ADK_ATTRS.LLM_CONTEXT_WINDOW_USED_PCT] = contextWindowUsedPct;
+		}
+
+		if (Object.keys(attributes).length > 0) {
+			span.setAttributes(formatSpanAttributes(attributes));
+		}
+	}
+
+	/**
+	 * Record standardized error information
+	 * Provides consistent error handling across all operations
+	 */
+	traceError(
+		error: Error,
+		category:
+			| "tool_error"
+			| "model_error"
+			| "transfer_error"
+			| "callback_error"
+			| "memory_error"
+			| "session_error"
+			| "plugin_error"
+			| "unknown_error",
+		recoverable = false,
+		retryRecommended = false,
+	): void {
+		const span = trace.getActiveSpan();
+		if (!span) return;
+
+		span.recordException(error);
+		span.setStatus({
+			code: SPAN_STATUS.ERROR,
+			message: error.message,
+		});
+
+		const attributes = formatSpanAttributes({
+			[ADK_ATTRS.ERROR_CATEGORY]: category,
+			[ADK_ATTRS.ERROR_RECOVERABLE]: recoverable,
+			[ADK_ATTRS.ERROR_RETRY_RECOMMENDED]: retryRecommended,
+			"error.type": error.constructor.name,
+			"error.message": error.message,
+			"error.stack": error.stack?.substring(0, 1000) || "",
+		});
+
+		span.setAttributes(attributes);
+	}
+
+	/**
+	 * Trace memory operations
+	 * Records memory search, insert, and delete operations
+	 */
+	traceMemoryOperation(
+		operation: "search" | "insert" | "delete",
+		sessionId: string,
+		query?: string,
+		resultsCount?: number,
+		invocationContext?: InvocationContext,
+	): void {
+		const span = trace.getActiveSpan();
+		if (!span) return;
+
+		const attributes = formatSpanAttributes({
+			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			[SEMCONV.GEN_AI_OPERATION_NAME]:
+				operation === "search"
+					? OPERATIONS.SEARCH_MEMORY
+					: OPERATIONS.INSERT_MEMORY,
+			[ADK_ATTRS.SESSION_ID]: sessionId,
+			...(query && { [ADK_ATTRS.MEMORY_QUERY]: query }),
+			...(resultsCount !== undefined && {
+				[ADK_ATTRS.MEMORY_RESULTS_COUNT]: resultsCount,
+			}),
+			...(invocationContext && {
+				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
+				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
+			}),
+			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+		});
+
+		span.setAttributes(attributes);
+	}
+
+	/**
+	 * Trace plugin hook execution
+	 * Records plugin lifecycle hooks
+	 */
+	tracePluginHook(
+		pluginName: string,
+		hook: string,
+		agentName?: string,
+		invocationContext?: InvocationContext,
+	): void {
+		const span = trace.getActiveSpan();
+		if (!span) return;
+
+		const attributes = formatSpanAttributes({
+			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.EXECUTE_PLUGIN,
+			[ADK_ATTRS.PLUGIN_NAME]: pluginName,
+			[ADK_ATTRS.PLUGIN_HOOK]: hook,
+			...(agentName && { [ADK_ATTRS.AGENT_NAME]: agentName }),
+			...(invocationContext && {
+				[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
+				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
+				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
+			}),
+			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+		});
+
+		span.setAttributes(attributes);
 	}
 }
 
