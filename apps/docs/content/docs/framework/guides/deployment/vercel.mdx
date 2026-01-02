@@ -195,15 +195,26 @@ Vercel will automatically:
 
 ### Step 4: Configure Environment Variables
 
-See [Environment Variables](/docs/guides/deployment#environment-variables) for a complete list of common ADK-TS variables and security best practices.
+**Common ADK-TS Environment Variables**
+
+Your agent needs these environment variables:
+
+**LLM Provider API Keys:**
+
+- `GOOGLE_API_KEY` - For Google AI models (Gemini)
+
+**Model Configuration:**
+
+- `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`, `claude-sonnet-4`)
+
+**Application Settings:**
+
+- `NODE_ENV` - Set to `production` for production deployments
 
 **In Vercel:**
 
 1. Go to your project **Settings** → **Environment Variables**
-2. Add required variables:
-   - `OPENAI_API_KEY` or `GOOGLE_API_KEY` (depending on your LLM provider)
-   - `LLM_MODEL` (e.g., `gpt-4`, `gemini-2.5-flash`)
-   - Any other API keys your agent needs
+2. Add required variables from the list above
 3. Select which environments to apply them to (Production, Preview, Development)
 
 Vercel encrypts all environment variables automatically.
@@ -339,7 +350,35 @@ If a deployment has issues:
 
 ## Troubleshooting
 
-See [Common Troubleshooting](/docs/guides/deployment#common-troubleshooting) for general deployment issues.
+### Common Deployment Issues
+
+**Missing Environment Variables**
+
+- **Problem**: Agent crashes or API keys not found
+- **Solutions**:
+  - Go to Vercel project **Settings** → **Environment Variables**
+  - Verify all variables are present and spelled correctly (case-sensitive)
+  - Check that variables are applied to the correct environment (Production/Preview)
+  - Redeploy after adding missing variables
+
+**Build Failures**
+
+- **Problem**: Vercel build fails during deployment
+- **Solutions**:
+  - Click on the failed deployment to view detailed build logs
+  - Test build locally: `pnpm build` or `npm run build`
+  - Ensure all dependencies are in `package.json` `dependencies` (not `devDependencies`)
+  - Check for TypeScript compilation errors
+  - Verify `tsconfig.json` is correctly configured
+
+**Function Not Responding**
+
+- **Problem**: Function deployed but returns errors or timeouts
+- **Solutions**:
+  - Check Vercel logs for runtime error messages
+  - Verify API route file paths match URL structure (`api/chat.ts` → `/api/chat`)
+  - Ensure function exports default handler correctly
+  - Test function locally with `vercel dev`
 
 ### Vercel-Specific Issues
 
