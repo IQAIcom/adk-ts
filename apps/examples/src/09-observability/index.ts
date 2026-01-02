@@ -102,7 +102,10 @@ async function initializeTelemetryService() {
 		// Option 2: Cloud backend (Langfuse)
 		console.log("🔍 Initializing telemetry with Langfuse...");
 
-		const langfuseHost = env.LANGFUSE_HOST || "https://cloud.langfuse.com";
+		const langfuseHost =
+			env.LANGFUSE_BASE_URL ||
+			env.LANGFUSE_HOST ||
+			"https://cloud.langfuse.com";
 		const authString = Buffer.from(
 			`${env.LANGFUSE_PUBLIC_KEY}:${env.LANGFUSE_SECRET_KEY}`,
 		).toString("base64");
