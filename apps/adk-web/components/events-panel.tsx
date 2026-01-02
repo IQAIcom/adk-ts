@@ -34,7 +34,7 @@ export function EventsPanel({ events, isLoading = false }: EventsPanelProps) {
 	}, [events]);
 
 	const filteredEvents = useMemo(() => {
-		return events.filter((event) => {
+		const filtered = events.filter((event) => {
 			if (searchTerm) {
 				const searchLower = searchTerm.toLowerCase();
 				const matchesSearch =
@@ -69,6 +69,9 @@ export function EventsPanel({ events, isLoading = false }: EventsPanelProps) {
 
 			return true;
 		});
+
+		// Sort by timestamp in reverse chronological order (newest first)
+		return filtered.sort((a, b) => b.timestamp - a.timestamp);
 	}, [events, searchTerm, authorFilter, eventTypeFilter]);
 
 	// Drill-in details inside panel

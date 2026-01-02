@@ -1,33 +1,28 @@
 <div align="center">
+   <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
+   <br/>
+   <h1>@iqai/adk-cli</h1>
+   <b>Contributing guide for the ADK CLI package</b>
+  <br/>
+   <i>Setup • Development • Contributing • Architecture</i>
 
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="80" />
-
-<br/>
-
-# @iqai/adk-cli
-
-**Contributing guide for the ADK CLI package**
-
-*Setup • Development • Contributing • Architecture*
-
-<p align="center">
-  <a href="https://www.npmjs.com/package/@iqai/adk-cli">
-    <img src="https://img.shields.io/npm/v/@iqai/adk-cli" alt="NPM Version" />
-  </a>
-  <a href="https://www.npmjs.com/package/@iqai/adk-cli">
-    <img src="https://img.shields.io/npm/dm/@iqai/adk-cli" alt="NPM Downloads" />
-  </a>
-  <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md">
-    <img src="https://img.shields.io/npm/l/@iqai/adk-cli" alt="License" />
-  </a>
-  <a href="https://github.com/IQAIcom/adk-ts">
-    <img src="https://img.shields.io/github/stars/IQAIcom/adk-ts?style=social" alt="GitHub Stars" />
-  </a>
-</p>
+   <p align="center">
+      <a href="https://www.npmjs.com/package/@iqai/adk-cli">
+         <img src="https://img.shields.io/npm/v/@iqai/adk-cli" alt="NPM Version" />
+      </a>
+      <a href="https://www.npmjs.com/package/@iqai/adk-cli">
+         <img src="https://img.shields.io/npm/dm/@iqai/adk-cli" alt="NPM Downloads" />
+      </a>
+      <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md">
+         <img src="https://img.shields.io/npm/l/@iqai/adk-cli" alt="License" />
+      </a>
+      <a href="https://github.com/IQAIcom/adk-ts">
+         <img src="https://img.shields.io/github/stars/IQAIcom/adk-ts?style=social" alt="GitHub Stars" />
+      </a>
+   </p>
+</div>
 
 ---
-
-</div>
 
 ## 📖 About
 
