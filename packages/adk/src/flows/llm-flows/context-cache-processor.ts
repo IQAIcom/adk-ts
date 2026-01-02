@@ -1,3 +1,4 @@
+import { Logger } from "@adk/logger";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { Event } from "../../events/event";
 import type { CacheMetadata } from "../../models/cache-metadata";
@@ -5,6 +6,13 @@ import type { LlmRequest } from "../../models/llm-request";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
 export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
+	protected readonly logger: Logger;
+
+	constructor() {
+		super();
+		this.logger = new Logger({ name: "ContextCacheRequestProcessor" });
+	}
+
 	private async *emptyGenerator(): AsyncGenerator<Event, void, unknown> {}
 
 	async *runAsync(
@@ -64,18 +72,13 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 				const hasActiveCache =
 					event.invocationId &&
 					event.invocationId !== currentInvocationId &&
-					event.cacheMetadata.cacheName !== undefined &&
-					event.cacheMetadata.cacheName !== null;
+					event.cacheMetadata.cacheName != null;
 
-				if (hasActiveCache) {
-					// Different invocation with active cache → increment invocations_used
-					cacheMetadata = event.cacheMetadata.copy({
-						invocationsUsed: (event.cacheMetadata.invocationsUsed || 0) + 1,
-					});
-				} else {
-					// Same invocation or no active cache
-					cacheMetadata = event.cacheMetadata.copy();
-				}
+				cacheMetadata = hasActiveCache
+					? event.cacheMetadata.copy({
+							invocationsUsed: (event.cacheMetadata.invocationsUsed || 0) + 1,
+						})
+					: event.cacheMetadata.copy();
 			}
 
 			// Look for previous prompt token count
@@ -83,13 +86,14 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 				previousTokenCount === undefined &&
 				event.usageMetadata?.promptTokenCount !== undefined
 			) {
-				console.log(
-					`Found previous token count in event ${i}:`,
-					event.usageMetadata.promptTokenCount,
+				this.logger.debug(
+					`Found previous token count in event ${i}: ${event.usageMetadata.promptTokenCount}`,
 				);
 				previousTokenCount = event.usageMetadata.promptTokenCount;
 			} else if (previousTokenCount === undefined) {
-				console.log(`No usage metadata in event ${i} (author=${event.author})`);
+				this.logger.debug(
+					`No usage metadata in event ${i} (author=${event.author})`,
+				);
 			}
 
 			// Stop early if both found
