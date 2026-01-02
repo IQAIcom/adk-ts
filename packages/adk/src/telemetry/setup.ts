@@ -8,16 +8,16 @@ import {
 	DiagLogLevel,
 	diag,
 	metrics,
-	trace,
 } from "@opentelemetry/api";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import {
-	detectResourcesSync,
-	envDetectorSync,
-	processDetectorSync,
-	Resource,
+	detectResources,
+	envDetector,
+	processDetector,
+	type Resource,
+	resourceFromAttributes,
 } from "@opentelemetry/resources";
 import {
 	MeterProvider,
@@ -73,7 +73,7 @@ export class SetupService {
 		diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
 
 		// Detect resources
-		const resource = this.createResource(config);
+		const resource = await this.createResource(config);
 
 		// Apply defaults
 		const enableTracing = config.enableTracing ?? DEFAULTS.ENABLE_TRACING;
@@ -98,7 +98,9 @@ export class SetupService {
 
 			this.isInitialized = true;
 			diag.info(
-				`Telemetry initialized successfully for ${config.appName} v${config.appVersion || "unknown"}`,
+				`Telemetry initialized successfully for ${config.appName} v${
+					config.appVersion || "unknown"
+				}`,
 			);
 		} catch (error) {
 			diag.error("Error initializing telemetry:", error);
@@ -109,10 +111,10 @@ export class SetupService {
 	/**
 	 * Create OpenTelemetry resource with auto-detection
 	 */
-	private createResource(config: TelemetryConfig): Resource {
-		// Auto-detect resource from environment (synchronously)
-		const detectedResource = detectResourcesSync({
-			detectors: [envDetectorSync, processDetectorSync],
+	private async createResource(config: TelemetryConfig): Promise<Resource> {
+		// Auto-detect resource from environment
+		const detectedResource = await detectResources({
+			detectors: [envDetector, processDetector],
 		});
 
 		// Build custom attributes
@@ -142,7 +144,7 @@ export class SetupService {
 		Object.assign(customAttributes, envAttributes);
 
 		// Merge all resources
-		const customResource = new Resource(customAttributes);
+		const customResource = resourceFromAttributes(customAttributes);
 		return detectedResource.merge(customResource);
 	}
 
