@@ -258,6 +258,8 @@ const session = await sessionService.getSession(
 
 ### List User Sessions
 
+Returns session metadata (ID, lastUpdateTime). Use `getSession()` for full session data including events.
+
 ```typescript
 const sessions = await sessionService.listSessions(
   "support-bot", // appName

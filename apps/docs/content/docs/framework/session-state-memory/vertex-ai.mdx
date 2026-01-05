@@ -6,357 +6,218 @@ description: Enterprise-scale session management with Google Cloud Vertex AI
 import { Callout } from "fumadocs-ui/components/callout";
 import { Card, Cards } from "fumadocs-ui/components/card";
 
-Vertex AI Session Service provides cloud-managed session storage that offloads all infrastructure concerns to Google Cloud. Unlike database or in-memory session services that you host and manage, this service stores sessions, events, and state in Google's managed infrastructure.
+Vertex AI Session Service provides cloud-managed session storage using Google Cloud infrastructure. Sessions, events, and state are stored in Google's managed systems without requiring you to set up databases or manage infrastructure.
 
-This is particularly useful for production applications that need enterprise-grade reliability without managing databases, or for teams already using Vertex AI services (RAG, grounding, extensions) who want tight integration.
+**Best for:** Production applications needing enterprise reliability, teams already using Vertex AI services, or applications requiring automatic scaling.
 
-**Benefits:** Zero infrastructure setup, automatic scaling to any number of sessions, built-in high availability and backups, enterprise security (encryption, IAM), seamless integration with other Vertex AI services
+**Requirements:** Google Cloud account with billing, internet connectivity for API calls.
 
-**Trade-offs:** Requires Google Cloud account and billing, network latency for API calls (vs local database), limited to Google Cloud ecosystem, cannot run offline
+## Using Vertex AI Session Service
+
+ADK-TS offers two ways to configure Vertex AI sessions:
+
+### With AgentBuilder (Recommended)
+
+```typescript
+// Initialize Vertex AI session service
+const sessionService = new VertexAiSessionService({
+  project: "my-project",
+  location: "us-central1",
+  agentEngineId: "my-reasoning-engine-id",
+});
+
+// Build agent with Vertex AI sessions
+const { runner } = await AgentBuilder.create("travel-assistant")
+  .withModel("gemini-2.0-flash-exp")
+  .withSessionService(sessionService, {
+    userId: "user123",
+    appName: "my-travel-agent",
+  })
+  .build();
+```
+
+### With LlmAgent Directly
+
+```typescript
+// Initialize Vertex AI session service
+const sessionService = new VertexAiSessionService({
+  project: "my-project",
+  location: "us-central1",
+  agentEngineId: "my-reasoning-engine-id",
+});
+
+// Create agent with Vertex AI sessions
+const agent = new LlmAgent({
+  name: "travel-assistant",
+  description: "Assists users with travel planning and recommendations",
+  model: "gemini-2.0-flash-exp",
+  sessionService,
+  userId: "user123",
+  appName: "my-travel-agent",
+});
+```
 
 ## Prerequisites
 
-### 1. Google Cloud Project
+Before using Vertex AI sessions, ensure you have:
 
-- Active project with billing enabled
-- Vertex AI API enabled
-- Project ID, region, and Agent/Reasoning Engine ID
+- **Google Cloud Project** with billing enabled and Vertex AI API activated
+- **Reasoning Engine** deployed in Vertex AI (you'll need the project ID, region, and engine ID)
+- **Authentication** configured via Application Default Credentials:
+  ```bash
+  # For local development
+  gcloud auth application-default login
+  ```
+- **IAM Permissions**: Your account needs the `roles/aiplatform.user` role
+- **Environment Variable** set to point to your credentials file:
 
-### 2. Agent Engine or Reasoning Engine
+  ```bash
+  export GOOGLE_APPLICATION_CREDENTIALS="path/to/key.json"
+  ```
 
-A deployed AI agent in Vertex AI. The session service stores sessions associated with these engines.
-
-### 3. Authentication
-
-**Recommended:** Application Default Credentials (ADC)
-
-```bash
-# For local development
-gcloud auth application-default login
-
-# For production (service account)
-gcloud iam service-accounts create my-adk-service-account
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:my-adk-service-account@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/aiplatform.user"
-gcloud iam service-accounts keys create key.json \
-  --iam-account=my-adk-service-account@YOUR_PROJECT_ID.iam.gserviceaccount.com
-
-# Set environment variable to use service account
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/key.json"
-```
-
-### 4. IAM Permissions
-
-Your authenticated identity (user or service account) needs the **Vertex AI User** role:
-
-```bash
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="user:your-email@example.com" \
-  --role="roles/aiplatform.user"
-```
-
-<Callout type="info" title="Agent Engine vs Reasoning Engine">
-  **Agent Engine** is the newer managed service for deploying agents in Vertex
-  AI. **Reasoning Engine** is the predecessor. Both work with the session
-  service — use the appropriate resource ID as your `appName` parameter when
-  creating sessions.
+<Callout type="info">
+  For production, use service accounts instead of user credentials. See [Google
+  Cloud IAM documentation](https://cloud.google.com/iam/docs/service-accounts)
+  for details.
 </Callout>
 
-## Installation
+## Configuration
 
-The ADK package includes all necessary dependencies for Vertex AI:
-
-```bash
-pnpm install @iqai/adk
-```
-
-## Initialize Service
+### Initialize Service
 
 ```typescript
 import { VertexAiSessionService } from "@iqai/adk";
 
-// Provide defaults upfront
 const sessionService = new VertexAiSessionService({
   project: "your-gcp-project-id",
   location: "us-central1",
-  agentEngineId: "your-agent-engine-id",
+  agentEngineId: "your-reasoning-engine-id",
 });
-
-// Or extract from appName (for multi-engine apps)
-const sessionService2 = new VertexAiSessionService();
 ```
 
-### Configuration Options
+**Options:**
 
-| Option          | Type   | Description                        | Required |
-| --------------- | ------ | ---------------------------------- | -------- |
-| `project`       | string | Google Cloud project ID            | No\*     |
-| `location`      | string | GCP region (e.g., 'us-central1')   | No\*     |
-| `agentEngineId` | string | Agent/Reasoning Engine instance ID | No       |
+- `project`: Google Cloud project ID (optional if using full paths)
+- `location`: GCP region like `us-central1` (optional if using full paths)
+- `agentEngineId`: Reasoning Engine ID (optional if using full paths)
 
-\*Extracted from `appName` if not provided (supports full resource paths).
+### Resource Path Formats
 
-## Create Sessions
+The `appName` parameter accepts two formats:
 
-Creating a session makes a POST request to Vertex AI's Session Service API, which returns a long-running operation (LRO). The service automatically polls the operation up to 5 times until it completes, then returns the initialized session.
-
-**Note:** User-provided session IDs are not supported—Vertex AI always generates IDs. This ensures uniqueness across the distributed system.
+**Simple ID** (requires configured project/location):
 
 ```typescript
-async function createAgentSession() {
-  const session = await sessionService.createSession(
-    "my-travel-agent",
-    "user123",
-    {
-      current_step: "welcome",
-      "user:language": "en",
-      "user:timezone": "America/New_York",
-    }
-  );
-
-  console.log("Session ID (Vertex AI generated):", session.id);
-  console.log("User ID:", session.userId);
-  console.log("App Name:", session.appName);
-  return session;
-}
+await sessionService.createSession("12345", "user123", {});
 ```
 
-### With Full Reasoning Engine Path
-
-For multi-engine applications or when you don't configure defaults, provide the full resource path as `appName`:
-
-**What happens behind the scenes:**
-
-- Service parses the path to extract project, location, and engine ID
-- Overrides any configured defaults for this specific call
-- Useful when managing sessions across multiple engines
+**Full path** (overrides configured defaults):
 
 ```typescript
-async function createReasoningEngineSession() {
-  const session = await sessionService.createSession(
-    "projects/my-project/locations/us-central1/reasoningEngines/12345",
-    "user123",
-    { current_step: "start" }
-  );
-  return session;
-}
+const fullPath =
+  "projects/my-project/locations/us-central1/reasoningEngines/12345";
+await sessionService.createSession(fullPath, "user123", {});
 ```
 
-## Session Operations
+## Working with Sessions
 
-### Get Session
+### Create Session
 
-**What happens behind the scenes:**
+Vertex AI generates session IDs automatically—you cannot provide custom IDs.
 
-- Makes a GET request to Vertex AI: `operations/{operationId}`
-- Vertex AI returns the session data including state, events, and metadata
-- Service parses the response and constructs a Session object
+```typescript
+const session = await sessionService.createSession(
+  "my-travel-agent",
+  "user123",
+  {
+    current_step: "welcome",
+    "user:language": "en",
+    "user:timezone": "America/New_York",
+  }
+);
+```
 
 ### Get Session
 
 ```typescript
-async function retrieveSession() {
-  const session = await sessionService.getSession(
-    "my-travel-agent",
-    "user123",
-    "session-abc-123"
-  );
-  return session;
-}
+const session = await sessionService.getSession(
+  "my-travel-agent",
+  "user123",
+  "session-abc-123"
+);
 ```
 
 ### List Sessions
 
-Returns metadata only (ID, lastUpdateTime). Use `getSession()` for full data.
+Returns session metadata (ID, lastUpdateTime). Use `getSession()` for full session data including events.
 
 ```typescript
-async function listUserSessions() {
-  const response = await sessionService.listSessions(
-    "my-travel-agent",
-    "user123"
-  );
+const response = await sessionService.listSessions(
+  "my-travel-agent",
+  "user123"
+);
 
-  console.log(`Found ${response.sessions.length} sessions`);
-  return response;
-}
+console.log(`Found ${response.sessions.length} sessions`);
 ```
 
 ### Append Events
 
-Add new conversation events to a session:
-
-**What happens behind the scenes:**
-
-- Extracts `event.actions.stateDelta` if present
-- Makes a POST request to Vertex AI with the event content and state changes
-- Vertex AI stores the event in the session history
-- Updates session state with the delta
-- Returns the appended event (Vertex AI may add metadata like timestamps)
-
 ```typescript
 import { Event } from "@iqai/adk";
 
-async function addEventToSession(session: Session) {
-  const event = new Event({
-    content: {
-      role: "user",
-      parts: [{ text: "I want to book a flight to Paris" }],
-    },
-  });
+const event = new Event({
+  content: {
+    role: "user",
+    parts: [{ text: "I want to book a flight to Paris" }],
+  },
+});
 
-  const updatedEvent = await sessionService.appendEvent(session, event);
-  console.log("Event appended with timestamp:", updatedEvent.timestamp);
-  return updatedEvent;
-}
+await sessionService.appendEvent(session, event);
 ```
 
 ### Delete Session
 
 ```typescript
-async function removeSession() {
-  await sessionService.deleteSession(
-    "my-travel-agent",
-    "user123",
-    "session-abc-123"
-  );
-}
+await sessionService.deleteSession(
+  "my-travel-agent",
+  "user123",
+  "session-abc-123"
+);
 ```
 
-## State Management
+## Managing State
 
-Supports all ADK-TS prefix scoping (session, `user:`, `app:`, `temp:`):
+### Initial State
+
+Create sessions with state using all ADK-TS prefixes:
 
 ```typescript
-async function createSessionWithState() {
-  const session = await sessionService.createSession("my-agent", "user123", {
-    current_page: "checkout",
-    cart_items: ["item1", "item2"],
-    "user:theme": "dark",
-    "user:notifications_enabled": true,
-
-    // App-scoped (shared across all users of the app)
-    "app:feature_flags": { newUI: true },
-    "app:version": "2.0.0",
-
-    // Temporary (never persisted)
-    "temp:intermediate_calculation": 42,
-  });
-  return session;
-}
+const session = await sessionService.createSession("my-agent", "user123", {
+  current_page: "checkout",
+  "user:theme": "dark",
+  "app:version": "2.0.0",
+  "temp:calculation": 42, // Not persisted
+});
 ```
 
-State updates are automatically synchronized with Vertex AI:
+### Updating State
 
-**What happens behind the scenes:**
-
-- When you append an event with `stateDelta`, the framework sends both the event and state changes to Vertex AI
-- Vertex AI updates its stored state atomically with the event
-- The updated state is available immediately in subsequent `getSession` calls
+Update state using `stateDelta` in events:
 
 ```typescript
 import { Event, EventActions } from "@iqai/adk";
 
-async function updateSessionState(session: Session) {
-  const event = new Event({
-    actions: new EventActions({
-      stateDelta: {
-        current_page: "confirmation",
-        "user:last_purchase": new Date().toISOString(),
-        "temp:processing": true, // Won't be persisted
-      },
-    }),
-  });
-
-  await sessionService.appendEvent(session, event);
-}
-```
-
-## Using with AgentBuilder
-
-```typescript
-import { AgentBuilder, VertexAiSessionService } from "@iqai/adk";
-
-const sessionService = new VertexAiSessionService({
-  project: "my-project",
-  location: "us-central1",
-  agentEngineId: "my-agent-engine",
+const event = new Event({
+  actions: new EventActions({
+    stateDelta: {
+      current_page: "confirmation",
+      "user:last_purchase": new Date().toISOString(),
+    },
+  }),
 });
 
-async function setupTravelAgent() {
-  const { runner } = await AgentBuilder.create("travel-assistant")
-    .withModel("gemini-2.0-flash-exp")
-    .withSessionService(sessionService)
-    .build();
-
-  const result = await runner.query({
-    userId: "user123",
-    message: "Show me flights to Paris in March",
-  });
-
-  console.log("Session ID:", result.session.id); // Vertex AI-generated ID
-
-  // Subsequent calls with same userId reuse or retrieve the session
-  const followUp = await runner.query({
-    userId: "user123",
-    sessionId: result.session.id, // Resume conversation
-    message: "What about hotels?",
-  });
-
-  return { runner, result, followUp };
-}
+await sessionService.appendEvent(session, event);
 ```
-
-## Resource Paths
-
-Vertex AI uses hierarchical resource paths to identify engines. The session service supports both simple names (for convenience) and full paths (for flexibility):
-
-### Automatic Path Construction
-
-When you provide a simple name like `"my-agent"` as the `appName`, the service combines it with your configured `project` and `location` to construct the full resource path. This is convenient when all your sessions use the same project and region.
-
-```typescript
-const sessionService = new VertexAiSessionService({
-  project: "my-project",
-  location: "us-central1",
-});
-
-// Simple name - service constructs full path
-await sessionService.createSession("my-agent", "user123", {});
-// → projects/my-project/locations/us-central1/reasoningEngines/my-agent
-```
-
-### Full Path Support
-
-Provide full resource path to override defaults:
-
-```typescript
-async function createSessionWithFullPath() {
-  const fullPath =
-    "projects/my-project/locations/us-central1/reasoningEngines/12345";
-  const session = await sessionService.createSession(fullPath, "user123", {});
-  return session;
-}
-```
-
-### Path Format Reference
-
-Valid formats for `appName` parameter:
-
-- **Simple name:** `"my-agent"` (requires configured project/location)
-- **Full Reasoning Engine path:** `projects/{project}/locations/{location}/reasoningEngines/{id}`
-- **Full Agent Engine path:** `projects/{project}/locations/{location}/agentEngines/{id}` (newer service)
-
-## Best Practices
-
-- **Regional Deployment**: Choose the region closest to your users for lower latency (e.g., `us-central1` for US users, `europe-west1` for EU users)
-- **State Organization**: Keep state values small and JSON-serializable; use artifacts for large data like transcripts
-- **Error Handling**: Wrap session operations in try/catch blocks to handle network issues and quota limits gracefully
-- **Cost Optimization**: Delete sessions when conversations end to avoid unnecessary storage costs
-- **Authentication**: Always use Application Default Credentials or service accounts, never hardcode credentials
-- **IAM Permissions**: Grant minimal required permissions (Vertex AI User role) following principle of least privilege
-- **Monitoring**: Track usage in Google Cloud Console to stay within quota limits
-- **Retry Logic**: Implement exponential backoff for transient errors like quota exhaustion
 
 ## Next Steps
 
