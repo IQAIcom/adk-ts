@@ -8,6 +8,41 @@ export interface Project {
 
 export const projects: Project[] = [
 	{
+		title: "Rogue",
+		description:
+			"Rogue ends crypto analysis paralysis by continuously scanning markets, " +
+			"combining on-chain data, social sentiment and advanced technical analysis " +
+			"to produce high-conviction signals and automate execution, monitoring, " +
+			"and risk-managed trade lifecycle.",
+		link: "https://rogue-adk.vercel.app",
+		image: "/showcase/project-screenshots/Rogue.jpeg",
+		tags: ["Hackathon", "Web3", "Agent Application"],
+	},
+	{
+		title: "Athena: The AI Freedom Shield",
+		description:
+			"Athena is a stealth AI disguised as a calculator that helps victims secretly save money, plan safe exits with AI, and securely store evidence on-chain—empowering escape and financial independence through decentralized protection.",
+		link: "https://athenea-landing.vercel.app",
+		image: "/showcase/project-screenshots/athena.jpeg",
+		tags: ["Hackathon", "Web3", "Agent Application"],
+	},
+	{
+		title: "Crypto Insight AI",
+		description:
+			"Crypto investors face fragmented data & complex analysis. CryptoInsight AI solves this via a unified platform offering real-time market intelligence, automated portfolio analysis, natural language chat, and Web3 support through specialized AI agents.",
+		link: "https://cryptoinsightai.vercel.app",
+		image: "/showcase/project-screenshots/crypto-insight-ai.jpeg",
+		tags: ["Hackathon", "Web3", "Agent Application"],
+	},
+	{
+		title: "ResearchOS",
+		description:
+			"ResearchOS is an autonomous research copilot which uses AI agents to search, analyze, and summarize papers across sources, solving research overload and eliminating the months-long manual effort of discovering and synthesizing academic work.",
+		link: "https://research-os-web-tan.vercel.app",
+		image: "/showcase/project-screenshots/ResearchOS.jpeg",
+		tags: ["Hackathon", "Agent Application"],
+	},
+	{
 		title: "CodeForge AI",
 		description: "AI-powered code generation and review assistant",
 		link: "https://codeforge-adk.vercel.app/",

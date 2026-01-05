@@ -1,33 +1,29 @@
+
 <div align="center">
-
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="80" />
-
-<br/>
-
-# ADK API Documentation
-
-**Complete documentation for ADK TypeScript, built using TypeDoc with comprehensive API references and guides.**
-
-*Auto-generated • Type-safe • Developer-friendly*
-
-<p align="center">
-  <a href="https://www.npmjs.com/package/@iqai/adk">
-    <img src="https://img.shields.io/npm/v/@iqai/adk" alt="NPM Version" />
-  </a>
-  <a href="https://adk.iqai.com/docs">
-    <img src="https://img.shields.io/badge/docs-live-blue" alt="Documentation" />
-  </a>
-  <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md">
-    <img src="https://img.shields.io/npm/l/@iqai/adk" alt="License" />
-  </a>
-  <a href="https://github.com/IQAIcom/adk-ts">
-    <img src="https://img.shields.io/github/stars/IQAIcom/adk-ts?style=social" alt="GitHub Stars" />
-  </a>
-</p>
+  <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
+  <br/>
+  <h1>ADK API Documentation</h1>
+  <b>Complete documentation for ADK TypeScript, built using TypeDoc with comprehensive API references and guides</b>
+  <br/>
+  <i>Auto-generated • Type-safe • Developer-friendly</i>
+  
+  <p align="center">
+    <a href="https://www.npmjs.com/package/@iqai/adk">
+      <img src="https://img.shields.io/npm/v/@iqai/adk" alt="NPM Version" />
+    </a>
+    <a href="https://adk.iqai.com/docs">
+      <img src="https://img.shields.io/badge/docs-live-blue" alt="Documentation" />
+    </a>
+    <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md">
+      <img src="https://img.shields.io/npm/l/@iqai/adk" alt="License" />
+    </a>
+    <a href="https://github.com/IQAIcom/adk-ts">
+      <img src="https://img.shields.io/github/stars/IQAIcom/adk-ts?style=social" alt="GitHub Stars" />
+    </a>
+  </p>  
+</div>
 
 ---
-
-</div>
 
 ## 📖 About
 
@@ -57,11 +53,13 @@ Before building the documentation, ensure you have:
 ### Setup
 
 1. **Install dependencies** from the workspace root:
+
    ```bash
    pnpm install
    ```
 
 2. **Navigate to the API docs directory**:
+
    ```bash
    cd apps/adk-api-docs
    ```
@@ -69,21 +67,25 @@ Before building the documentation, ensure you have:
 ### Building Documentation
 
 1. **Generate API documentation**:
+
    ```bash
    pnpm run docs:build
    ```
 
 2. **Clean previous builds**:
+
    ```bash
    pnpm run docs:clean
    ```
 
 3. **Build and serve documentation**:
+
    ```bash
    pnpm run dev
    ```
 
 4. **Just serve existing documentation**:
+
    ```bash
    pnpm run docs:serve
    ```
@@ -111,6 +113,7 @@ The main configuration is in `typedoc.json`:
 ```
 
 Key settings:
+
 - **`entryPoints`**: Main TypeScript files to document
 - **`out`**: Output directory (`./api`)
 - **`name`**: Documentation site title
@@ -133,6 +136,7 @@ The `package.json` contains scripts for building and serving documentation:
 Documentation is automatically built and deployed to GitHub Pages via GitHub Actions when changes are pushed to the main or develop branches.
 
 The deployment workflow (`.github/workflows/docs.yml`):
+
 1. Triggers on changes to ADK source code or documentation files
 2. Installs Node.js 20 and pnpm dependencies
 3. Builds the `@iqai/adk` package
@@ -149,6 +153,7 @@ API documentation is automatically generated from TypeScript source code comment
 
 1. **Add JSDoc comments** to TypeScript source files in `packages/adk/src/`
 2. **Use TypeDoc tags** for enhanced documentation:
+
    ```typescript
    /**
     * Creates a new agent with the specified configuration.
@@ -164,11 +169,13 @@ API documentation is automatically generated from TypeScript source code comment
      // implementation
    }
    ```
+
 3. **Rebuild documentation** to see changes
 
 ### Styling and Theme
 
 TypeDoc provides several built-in themes and supports custom styling:
+
 - Default theme with responsive design
 - Custom CSS can be added via TypeDoc configuration
 - Plugin ecosystem for enhanced features

@@ -1,18 +1,13 @@
 <div align="center">
-
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
-
-<br/>
-
-# ADK-TS Documentation Site
-
-**Contributing guide for the official ADK-TS documentation**
-
-*Setup • Development • Contributing • Best practices*
+  <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
+  <br/>
+  <h1>ADK-TS Documentation Site</h1>
+  <b>Contributing guide for the official ADK-TS documentation</b>
+  <br/>
+  <i>Setup • Development • Contributing • Best practices</i>
+</div>
 
 ---
-
-</div>
 
 ## 📖 About
 

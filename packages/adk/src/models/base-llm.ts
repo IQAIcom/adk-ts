@@ -1,5 +1,6 @@
 import { Logger } from "@adk/logger";
-import { tracer } from "../telemetry";
+import { trace } from "@opentelemetry/api";
+import { shouldCaptureContent, telemetryService } from "../telemetry";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import type { LlmRequest } from "./llm-request";
 import type { LlmResponse } from "./llm-response";
@@ -49,78 +50,153 @@ export abstract class BaseLlm {
 		// Apply the maybeAppendUserContent fix before processing
 		this.maybeAppendUserContent(llmRequest);
 
-		yield* tracer.startActiveSpan(
-			`llm_generate [${this.model}]`,
-			async function* (span) {
-				try {
-					span.setAttributes({
-						"gen_ai.system.name": "iqai-adk",
-						"gen_ai.operation.name": "generate",
-						"gen_ai.request.model": this.model,
-						"gen_ai.request.max_tokens":
-							llmRequest.config?.maxOutputTokens || 0,
-						"gen_ai.request.temperature": llmRequest.config?.temperature || 0,
-						"gen_ai.request.top_p": llmRequest.config?.topP || 0,
-						"adk.llm_request": JSON.stringify({
-							model: this.model,
-							contents: llmRequest.contents?.map((content) => ({
-								role: content.role,
-								parts: content.parts?.map((part) => ({
-									text:
-										typeof part.text === "string"
-											? part.text.substring(0, 200) +
-												(part.text.length > 200 ? "..." : "")
-											: "[non_text_content]",
-								})),
-							})),
-							config: llmRequest.config,
-						}),
-						"adk.streaming": stream || false,
-					});
+		// Use the active span created at a higher level (base-llm-flow.ts)
+		// instead of creating a new span here to avoid duplication
+		const span = trace.getActiveSpan();
 
-					let responseCount = 0;
-					let totalTokens = 0;
+		// Build proper request/response data for tracing
+		const captureContent = shouldCaptureContent();
 
-					for await (const response of this.generateContentAsyncImpl(
-						llmRequest,
-						stream,
-					)) {
-						responseCount++;
+		if (span && captureContent) {
+			span.setAttributes({
+				"gen_ai.system": "iqai-adk",
+				"gen_ai.operation.name": stream ? "stream" : "generate",
+				"gen_ai.request.model": this.model,
+				"gen_ai.request.max_tokens": llmRequest.config?.maxOutputTokens || 0,
+				"gen_ai.request.temperature": llmRequest.config?.temperature || 0,
+				"gen_ai.request.top_p": llmRequest.config?.topP || 0,
+				"adk.llm.streaming": stream || false,
+			});
 
-						// Update span attributes with response info
-						if (response.usage) {
-							totalTokens += response.usage.total_tokens || 0;
-							span.setAttributes({
-								"gen_ai.response.finish_reasons": [
-									response.finish_reason || "unknown",
-								],
-								"gen_ai.usage.input_tokens": response.usage.prompt_tokens || 0,
-								"gen_ai.usage.output_tokens":
-									response.usage.completion_tokens || 0,
-								"gen_ai.usage.total_tokens": response.usage.total_tokens || 0,
-							});
-						}
+			// Emit prompt event with full input content
+			if (llmRequest.contents) {
+				span.addEvent("gen_ai.content.prompt", {
+					"gen_ai.prompt": JSON.stringify(llmRequest.contents),
+				});
+			}
+		}
 
-						yield response;
+		let responseCount = 0;
+		let totalTokens = 0;
+		let inputTokens = 0;
+		let outputTokens = 0;
+		let firstTokenTime: number | undefined;
+		const startTime = Date.now();
+		let chunkCount = 0;
+		let accumulatedContent: any = null;
+
+		try {
+			for await (const response of this.generateContentAsyncImpl(
+				llmRequest,
+				stream,
+			)) {
+				responseCount++;
+
+				// Record time to first token for streaming
+				if (stream && !firstTokenTime) {
+					firstTokenTime = Date.now();
+					const timeToFirstToken = firstTokenTime - startTime;
+
+					// Record TTFT metric
+					telemetryService.traceEnhancedLlm(
+						true, // streaming
+						timeToFirstToken,
+					);
+
+					// Add span event for first token
+					if (span) {
+						span.addEvent("gen_ai.stream.first_token", {
+							time_to_first_token_ms: timeToFirstToken,
+						});
 					}
+				}
+
+				// Count chunks for streaming
+				if (stream) {
+					chunkCount++;
+
+					// Add span event for each chunk
+					if (span) {
+						span.addEvent("gen_ai.stream.chunk", {
+							chunk_index: chunkCount,
+							timestamp: Date.now(),
+						});
+					}
+				}
+
+				// Accumulate content for completion event
+				if (response.content) {
+					accumulatedContent = response.content;
+				} else if (response.text) {
+					if (!accumulatedContent) {
+						accumulatedContent = { role: "model", parts: [{ text: "" }] };
+					}
+					if (accumulatedContent.parts?.[0]) {
+						accumulatedContent.parts[0].text =
+							(accumulatedContent.parts[0].text || "") + response.text;
+					}
+				}
+
+				// Update span attributes with response info and token usage
+				if (response.usageMetadata && span) {
+					inputTokens = response.usageMetadata.promptTokenCount || inputTokens;
+					outputTokens =
+						response.usageMetadata.candidatesTokenCount || outputTokens;
+					totalTokens = response.usageMetadata.totalTokenCount || totalTokens;
 
 					span.setAttributes({
-						"adk.response_count": responseCount,
-						"adk.total_tokens": totalTokens,
+						"gen_ai.usage.input_tokens": inputTokens,
+						"gen_ai.usage.output_tokens": outputTokens,
+						"gen_ai.usage.total_tokens": totalTokens,
 					});
-				} catch (error) {
-					span.recordException(error as Error);
-					span.setStatus({ code: 2, message: (error as Error).message });
-					this.logger.error("❌ ADK LLM Error:", {
-						model: this.model,
-						error: (error as Error).message,
-					});
-					throw error;
-				} finally {
-					span.end();
 				}
-			}.bind(this),
-		);
+
+				// Set finish reason if available
+				if (response.finishReason && span) {
+					span.setAttribute("gen_ai.response.finish_reasons", [
+						response.finishReason,
+					]);
+				}
+
+				yield response;
+			}
+
+			if (span) {
+				span.setAttributes({
+					"adk.response_count": responseCount,
+				});
+
+				// Emit completion event with final output content
+				if (captureContent && accumulatedContent) {
+					span.addEvent("gen_ai.content.completion", {
+						"gen_ai.completion": JSON.stringify(accumulatedContent),
+					});
+				}
+			}
+
+			// Record final streaming metrics
+			if (stream && chunkCount > 0) {
+				telemetryService.traceEnhancedLlm(
+					true,
+					firstTokenTime ? firstTokenTime - startTime : undefined,
+					chunkCount,
+				);
+			}
+		} catch (error) {
+			// Use telemetry error tracing
+			telemetryService.traceError(
+				error as Error,
+				"model_error",
+				false,
+				true, // retry may be recommended for transient model errors
+			);
+
+			this.logger.error("❌ ADK LLM Error:", {
+				model: this.model,
+				error: (error as Error).message,
+			});
+			throw error;
+		}
 	}
 
 	/**
