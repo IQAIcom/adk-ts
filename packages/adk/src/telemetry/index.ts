@@ -50,15 +50,11 @@ import { tracingService } from "./tracing";
 export {
 	ADK_ATTRS,
 	ADK_SYSTEM_NAME,
-	ATTRIBUTE_TIERS,
-	CALLBACK_TYPES,
 	DEFAULTS,
 	ENV_VARS,
-	ERROR_CATEGORIES,
 	METRICS,
 	OPERATIONS,
 	SEMCONV,
-	SPAN_PATTERNS,
 } from "./constants";
 // Export types
 export type {
