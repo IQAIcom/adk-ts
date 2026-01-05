@@ -9,16 +9,11 @@ import type { Event } from "../events/event";
 import type { LlmRequest } from "../models/llm-request";
 import type { LlmResponse } from "../models/llm-response";
 import type { BaseTool } from "../tools";
-import {
-	ADK_ATTRS,
-	ADK_SYSTEM_NAME,
-	OPERATIONS,
-	SEMCONV,
-	SPAN_STATUS,
-} from "./constants";
+import { ADK_ATTRS, OPERATIONS, SEMCONV, SPAN_STATUS } from "./constants";
 import {
 	buildLlmRequestForTrace,
 	buildLlmResponseForTrace,
+	detectProvider,
 	extractFinishReason,
 	formatSpanAttributes,
 	getEnvironment,
@@ -68,10 +63,14 @@ export class TracingService {
 		const span = trace.getActiveSpan();
 		if (!span) return;
 
+		// Generate a unique agent ID based on name and session
+		const agentId = `${agent.name}-${invocationContext.session.id}`;
+
 		const attributes = formatSpanAttributes({
-			// Standard GenAI attributes
-			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			// Standard GenAI attributes (v1.38.0)
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk", // Framework provider
 			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.INVOKE_AGENT,
+			[SEMCONV.GEN_AI_AGENT_ID]: agentId,
 			[SEMCONV.GEN_AI_AGENT_NAME]: agent.name,
 			[SEMCONV.GEN_AI_AGENT_DESCRIPTION]: agent.description || "",
 			[SEMCONV.GEN_AI_CONVERSATION_ID]: invocationContext.session.id,
@@ -120,8 +119,8 @@ export class TracingService {
 		const captureContent = shouldCaptureContent();
 
 		const attributes = formatSpanAttributes({
-			// Standard GenAI attributes
-			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			// Standard GenAI attributes (v1.38.0)
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk", // Framework provider
 			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.EXECUTE_TOOL,
 			[SEMCONV.GEN_AI_TOOL_NAME]: tool.name,
 			[SEMCONV.GEN_AI_TOOL_DESCRIPTION]: tool.description || "",
@@ -144,9 +143,19 @@ export class TracingService {
 
 		span.setAttributes(attributes);
 
-		// Add input/output as events (preferred for observability platforms)
+		// Add structured tool input/output (opt-in via content capture)
 		if (captureContent) {
-			// Tool input event
+			// Standard GenAI structured attributes
+			span.setAttribute(
+				SEMCONV.GEN_AI_TOOL_CALL_ARGUMENTS,
+				safeJsonStringify(args),
+			);
+			span.setAttribute(
+				SEMCONV.GEN_AI_TOOL_CALL_RESULT,
+				safeJsonStringify(toolResponse),
+			);
+
+			// Add input/output as events (preferred for observability platforms)
 			span.addEvent("gen_ai.tool.input", {
 				"gen_ai.tool.input": safeJsonStringify(args),
 			});
@@ -156,7 +165,7 @@ export class TracingService {
 				"gen_ai.tool.output": safeJsonStringify(toolResponse),
 			});
 
-			// Also set as attributes for backward compatibility
+			// Also set as ADK attributes for backward compatibility
 			span.setAttribute(ADK_ATTRS.TOOL_ARGS, safeJsonStringify(args));
 			span.setAttribute(
 				ADK_ATTRS.TOOL_RESPONSE,
@@ -198,11 +207,31 @@ export class TracingService {
 		);
 		const finishReason = extractFinishReason(llmResponse);
 
+		// Detect provider from model string
+		const provider = detectProvider(llmRequest.model || "");
+
+		// Extract response ID (if available)
+		const responseId = llmResponse.id;
+
+		// Determine output type (default to "text")
+		let outputType = "text";
+		// Check if response schema indicates structured output
+		if (llmRequest.config?.responseSchema) {
+			outputType = "json";
+		}
+
 		const attributes = formatSpanAttributes({
-			// Standard GenAI attributes
-			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
-			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.CALL_LLM,
-			[SEMCONV.GEN_AI_REQUEST_MODEL]: llmRequest.model,
+			// Standard GenAI attributes (v1.38.0)
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: provider,
+			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.CHAT, // Most common operation
+			[SEMCONV.GEN_AI_REQUEST_MODEL]: llmRequest.model || "",
+
+			// Response metadata (Recommended)
+			...(responseId && {
+				[SEMCONV.GEN_AI_RESPONSE_ID]: String(responseId),
+			}),
+			// Response model same as request model in most cases
+			[SEMCONV.GEN_AI_RESPONSE_MODEL]: llmRequest.model || "",
 
 			// Model parameters
 			[SEMCONV.GEN_AI_REQUEST_MAX_TOKENS]:
@@ -210,31 +239,53 @@ export class TracingService {
 			[SEMCONV.GEN_AI_REQUEST_TEMPERATURE]: llmRequest.config?.temperature || 0,
 			[SEMCONV.GEN_AI_REQUEST_TOP_P]: llmRequest.config?.topP || 0,
 
+			// Additional model parameters (if present)
+			...(llmRequest.config?.topK !== undefined && {
+				[SEMCONV.GEN_AI_REQUEST_TOP_K]: llmRequest.config.topK,
+			}),
+			...(llmRequest.config?.frequencyPenalty !== undefined && {
+				[SEMCONV.GEN_AI_REQUEST_FREQUENCY_PENALTY]:
+					llmRequest.config.frequencyPenalty,
+			}),
+			...(llmRequest.config?.presencePenalty !== undefined && {
+				[SEMCONV.GEN_AI_REQUEST_PRESENCE_PENALTY]:
+					llmRequest.config.presencePenalty,
+			}),
+			...(llmRequest.config?.stopSequences !== undefined && {
+				[SEMCONV.GEN_AI_REQUEST_STOP_SEQUENCES]:
+					llmRequest.config.stopSequences,
+			}),
+			...(llmRequest.config?.candidateCount !== undefined &&
+				llmRequest.config.candidateCount !== 1 && {
+					[SEMCONV.GEN_AI_REQUEST_CHOICE_COUNT]:
+						llmRequest.config.candidateCount,
+				}),
+
+			// Output type
+			[SEMCONV.GEN_AI_OUTPUT_TYPE]: outputType,
+
 			// Response metadata
 			...(finishReason && {
 				[SEMCONV.GEN_AI_RESPONSE_FINISH_REASONS]: [finishReason],
 			}),
 
-			// Token usage
+			// Token usage (input and output only; total computed client-side)
 			...(llmResponse.usageMetadata && {
 				[SEMCONV.GEN_AI_USAGE_INPUT_TOKENS]:
 					llmResponse.usageMetadata.promptTokenCount || 0,
 				[SEMCONV.GEN_AI_USAGE_OUTPUT_TOKENS]:
 					llmResponse.usageMetadata.candidatesTokenCount || 0,
-				[SEMCONV.GEN_AI_USAGE_TOTAL_TOKENS]:
-					(llmResponse.usageMetadata.promptTokenCount || 0) +
-					(llmResponse.usageMetadata.candidatesTokenCount || 0),
 			}),
 
 			// ADK-specific attributes
-			[ADK_ATTRS.LLM_MODEL]: llmRequest.model,
+			[ADK_ATTRS.LLM_MODEL]: llmRequest.model || "",
 			[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
 			[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
 			[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
 			[ADK_ATTRS.EVENT_ID]: eventId,
 			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
 
-			// Content attributes (only if capture is enabled)
+			// Content attributes (only if capture is enabled) - ADK namespace for backward compat
 			[ADK_ATTRS.LLM_REQUEST]: captureContent
 				? safeJsonStringify(llmRequestData)
 				: "{}",
@@ -245,8 +296,37 @@ export class TracingService {
 
 		span.setAttributes(attributes);
 
-		// Add content as events (preferred for large payloads)
+		// Add structured content as spec attributes (opt-in)
 		if (captureContent) {
+			// System instructions (if present)
+			if (llmRequest.config?.systemInstruction) {
+				span.setAttribute(
+					SEMCONV.GEN_AI_SYSTEM_INSTRUCTIONS,
+					safeJsonStringify(llmRequest.config.systemInstruction),
+				);
+			}
+
+			// Input messages (structured)
+			span.setAttribute(
+				SEMCONV.GEN_AI_INPUT_MESSAGES,
+				safeJsonStringify(llmRequestData.contents || []),
+			);
+
+			// Output messages (structured)
+			span.setAttribute(
+				SEMCONV.GEN_AI_OUTPUT_MESSAGES,
+				safeJsonStringify(llmResponse.content || llmResponse.text || ""),
+			);
+
+			// Tool definitions (if present)
+			if (llmRequest.config?.tools) {
+				span.setAttribute(
+					SEMCONV.GEN_AI_TOOL_DEFINITIONS,
+					safeJsonStringify(llmRequest.config.tools),
+				);
+			}
+
+			// Legacy content events (deprecated, kept for backward compatibility)
 			span.addEvent(SEMCONV.GEN_AI_CONTENT_PROMPT, {
 				"gen_ai.prompt": safeJsonStringify(llmRequestData.contents || []),
 			});
@@ -382,14 +462,13 @@ export class TracingService {
 		callbackType: string,
 		callbackName: string | undefined,
 		callbackIndex: number,
-		targetName?: string,
 		invocationContext?: InvocationContext,
 	): void {
 		const span = trace.getActiveSpan();
 		if (!span) return;
 
 		const attributes = formatSpanAttributes({
-			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
 			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.EXECUTE_CALLBACK,
 			[ADK_ATTRS.CALLBACK_TYPE]: callbackType,
 			[ADK_ATTRS.CALLBACK_NAME]: callbackName || "<anonymous>",
@@ -421,7 +500,7 @@ export class TracingService {
 		if (!span) return;
 
 		const attributes = formatSpanAttributes({
-			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
 			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.TRANSFER_AGENT,
 			[ADK_ATTRS.TRANSFER_SOURCE_AGENT]: sourceAgent,
 			[ADK_ATTRS.TRANSFER_TARGET_AGENT]: targetAgent,
@@ -544,12 +623,15 @@ export class TracingService {
 		});
 
 		const attributes = formatSpanAttributes({
+			// Standard error attributes
+			[SEMCONV.ERROR_TYPE]: error.constructor.name, // Low-cardinality error identifier
+			"error.message": error.message,
+			"error.stack": error.stack?.substring(0, 1000) || "",
+
+			// ADK-specific error attributes
 			[ADK_ATTRS.ERROR_CATEGORY]: category,
 			[ADK_ATTRS.ERROR_RECOVERABLE]: recoverable,
 			[ADK_ATTRS.ERROR_RETRY_RECOMMENDED]: retryRecommended,
-			"error.type": error.constructor.name,
-			"error.message": error.message,
-			"error.stack": error.stack?.substring(0, 1000) || "",
 		});
 
 		span.setAttributes(attributes);
@@ -570,7 +652,7 @@ export class TracingService {
 		if (!span) return;
 
 		const attributes = formatSpanAttributes({
-			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
 			[SEMCONV.GEN_AI_OPERATION_NAME]:
 				operation === "search"
 					? OPERATIONS.SEARCH_MEMORY
@@ -604,7 +686,7 @@ export class TracingService {
 		if (!span) return;
 
 		const attributes = formatSpanAttributes({
-			[SEMCONV.GEN_AI_SYSTEM]: ADK_SYSTEM_NAME,
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
 			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.EXECUTE_PLUGIN,
 			[ADK_ATTRS.PLUGIN_NAME]: pluginName,
 			[ADK_ATTRS.PLUGIN_HOOK]: hook,

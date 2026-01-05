@@ -14,6 +14,12 @@ vi.mock("../../telemetry", () => ({
 		recordAgentInvocation: vi.fn(),
 		recordAgentDuration: vi.fn(),
 		recordError: vi.fn(),
+		withSpan: vi.fn(
+			async (_name, fn) =>
+				await fn({ setAttributes: vi.fn(), setStatus: vi.fn(), end: vi.fn() }),
+		),
+		traceCallback: vi.fn(),
+		setActiveSpanAttributes: vi.fn(),
 	},
 }));
 

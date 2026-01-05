@@ -236,14 +236,12 @@ export class TelemetryService {
 		callbackType: string,
 		callbackName: string | undefined,
 		callbackIndex: number,
-		targetName?: string,
 		invocationContext?: InvocationContext,
 	): void {
 		tracingService.traceCallback(
 			callbackType,
 			callbackName,
 			callbackIndex,
-			targetName,
 			invocationContext,
 		);
 	}

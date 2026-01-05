@@ -180,7 +180,6 @@ export interface TraceCallbackParams {
 		| "after_model";
 	callbackName?: string;
 	callbackIndex: number;
-	targetName?: string;
 	invocationContext?: InvocationContext;
 }
 

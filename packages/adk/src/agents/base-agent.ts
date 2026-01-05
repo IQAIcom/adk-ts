@@ -399,13 +399,12 @@ export abstract class BaseAgent {
 				// Wrap callback execution with tracing
 				const result = await telemetryService.withSpan(
 					`callback [before_agent] ${this.name}`,
-					async (span) => {
+					async (_span) => {
 						// Set callback attributes
 						telemetryService.traceCallback(
 							"before_agent",
 							callback.name,
 							i,
-							this.name,
 							ctx,
 						);
 
@@ -488,13 +487,12 @@ export abstract class BaseAgent {
 				// Wrap callback execution with tracing
 				const result = await telemetryService.withSpan(
 					`callback [after_agent] ${this.name}`,
-					async (span) => {
+					async (_span) => {
 						// Set callback attributes
 						telemetryService.traceCallback(
 							"after_agent",
 							callback.name,
 							i,
-							this.name,
 							invocationContext,
 						);
 

@@ -69,6 +69,125 @@ export function getEnvironment(): string | undefined {
 }
 
 /**
+ * Detect GenAI provider from model string
+ * Maps model identifiers to standard OpenTelemetry provider names
+ * Reference: https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/
+ */
+export function detectProvider(model: string): string {
+	const lowerModel = model.toLowerCase();
+
+	// OpenAI (including Azure OpenAI models)
+	if (
+		lowerModel.startsWith("gpt-") ||
+		lowerModel.startsWith("o1-") ||
+		lowerModel.startsWith("text-") ||
+		lowerModel.startsWith("davinci-") ||
+		lowerModel.startsWith("curie-") ||
+		lowerModel.startsWith("babbage-") ||
+		lowerModel.startsWith("ada-")
+	) {
+		return "openai";
+	}
+
+	// Anthropic
+	if (lowerModel.startsWith("claude-")) {
+		return "anthropic";
+	}
+
+	// Google (Gemini, PaLM)
+	if (
+		lowerModel.startsWith("gemini-") ||
+		lowerModel.startsWith("palm-") ||
+		lowerModel.startsWith("text-bison") ||
+		lowerModel.startsWith("chat-bison")
+	) {
+		return "gcp.gemini";
+	}
+
+	// AWS Bedrock (prefix patterns)
+	if (
+		lowerModel.includes("bedrock") ||
+		lowerModel.startsWith("amazon.") ||
+		lowerModel.startsWith("anthropic.claude") ||
+		lowerModel.startsWith("ai21.") ||
+		lowerModel.startsWith("cohere.") ||
+		lowerModel.startsWith("meta.llama")
+	) {
+		return "aws.bedrock";
+	}
+
+	// Azure AI Inference
+	if (lowerModel.includes("azure") && !lowerModel.includes("openai")) {
+		return "azure.ai.inference";
+	}
+
+	// Mistral AI
+	if (
+		lowerModel.startsWith("mistral-") ||
+		lowerModel.startsWith("mixtral-") ||
+		lowerModel.startsWith("codestral-")
+	) {
+		return "mistral_ai";
+	}
+
+	// Groq
+	if (lowerModel.includes("groq")) {
+		return "groq";
+	}
+
+	// Cohere
+	if (
+		lowerModel.startsWith("command-") ||
+		lowerModel.startsWith("embed-") ||
+		lowerModel.includes("cohere")
+	) {
+		return "cohere";
+	}
+
+	// DeepSeek
+	if (lowerModel.startsWith("deepseek-")) {
+		return "deepseek";
+	}
+
+	// xAI (Grok)
+	if (lowerModel.startsWith("grok-")) {
+		return "x_ai";
+	}
+
+	// Perplexity
+	if (
+		lowerModel.startsWith("pplx-") ||
+		lowerModel.startsWith("llama-3.1-sonar") ||
+		lowerModel.includes("perplexity")
+	) {
+		return "perplexity";
+	}
+
+	// IBM Watsonx
+	if (lowerModel.includes("watsonx") || lowerModel.startsWith("ibm/")) {
+		return "ibm.watsonx.ai";
+	}
+
+	// Meta Llama (when not through Bedrock)
+	if (lowerModel.startsWith("llama-") || lowerModel.startsWith("meta-llama")) {
+		return "meta";
+	}
+
+	// Ollama (local models)
+	if (lowerModel.includes("ollama")) {
+		return "ollama";
+	}
+
+	// Hugging Face
+	if (lowerModel.includes("huggingface") || lowerModel.includes("hf/")) {
+		return "huggingface";
+	}
+
+	// Default to unknown provider
+	return "unknown";
+}
+
+/**
  * Extract finish reason from LLM response
  */
 export function extractFinishReason(llmResponse: any): string | undefined {
