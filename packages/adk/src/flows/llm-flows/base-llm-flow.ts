@@ -100,21 +100,32 @@ export abstract class BaseLlmFlow {
 			branch: invocationContext.branch,
 		});
 
-		for await (const llmResponse of this._callLlmAsync(
-			invocationContext,
-			llmRequest,
-			modelResponseEvent,
-		)) {
-			for await (const event of this._postprocessAsync(
+		// Wrap LLM call and tool execution in llm_generate span to ensure proper nesting
+		const llm = this.__getLlm(invocationContext);
+		const isStreaming =
+			invocationContext.runConfig.streamingMode === StreamingMode.SSE;
+		const generator = async function* (this: BaseLlmFlow) {
+			for await (const llmResponse of this._callLlmAsync(
 				invocationContext,
 				llmRequest,
-				llmResponse,
 				modelResponseEvent,
 			)) {
-				modelResponseEvent.id = Event.newId();
-				yield event;
+				for await (const event of this._postprocessAsync(
+					invocationContext,
+					llmRequest,
+					llmResponse,
+					modelResponseEvent,
+				)) {
+					modelResponseEvent.id = Event.newId();
+					yield event;
+				}
 			}
-		}
+		}.bind(this)();
+
+		yield* telemetryService.traceAsyncGenerator(
+			isStreaming ? `llm_stream [${llm.model}]` : `llm_generate [${llm.model}]`,
+			generator,
+		);
 	}
 
 	async *_preprocessAsync(
