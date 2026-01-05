@@ -1,5 +1,35 @@
 # @iqai/adk
 
+## Unreleased
+
+### Major Changes
+
+- **BREAKING: Telemetry aligned with OpenTelemetry GenAI Semantic Conventions v1.38.0**
+  
+  The ADK telemetry system has been updated to fully comply with the latest OpenTelemetry GenAI semantic conventions. This ensures better interoperability with industry-standard observability platforms and provides richer, more standardized telemetry data.
+
+  **Breaking Changes:**
+  - `gen_ai.system` → `gen_ai.provider.name` (automatic provider detection from model names)
+  - `gen_ai.usage.total_tokens` removed (compute client-side: input + output)
+  - `call_llm` operation deprecated in favor of standard `chat`, `text_completion`, `generate_content`
+  - `traceCallback` signature changed: removed unused `targetName` parameter
+
+  **New Features:**
+  - Automatic provider detection (OpenAI, Anthropic, Google, AWS Bedrock, Mistral, Groq, Cohere, etc.)
+  - Enhanced LLM attributes: `response.id`, `response.model`, `output.type`, `top_k`, `frequency_penalty`, `presence_penalty`, `stop_sequences`, `seed`
+  - Structured content capture: `system_instructions`, `input.messages`, `output.messages`, `tool.definitions`
+  - Agent ID tracking: `gen_ai.agent.id` for unique agent identification
+  - Tool argument/result capture: `gen_ai.tool.call.arguments`, `gen_ai.tool.call.result`
+  - Standard metrics constants: `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`
+  - Error type tracking: `error.type` attribute for low-cardinality error identification
+
+  **Backward Compatibility:**
+  - Deprecated constants are still available but will be removed in v1.0.0
+  - All `adk.*` namespace attributes remain unchanged
+  - Legacy content events preserved for one release cycle
+
+  See [TELEMETRY_MIGRATION.md](./TELEMETRY_MIGRATION.md) for detailed migration guide.
+
 ## 0.5.9
 
 ### Patch Changes
