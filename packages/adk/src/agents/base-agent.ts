@@ -171,6 +171,18 @@ export abstract class BaseAgent {
 				};
 			}
 
+			// Extract input from the last user message in the events
+			const lastUserMessage = ctx.session.events
+				.slice()
+				.reverse()
+				.find((event) => event.author === "user");
+			const input = lastUserMessage?.content?.parts
+				?.map((part) =>
+					part && typeof part === "object" && "text" in part ? part.text : "",
+				)
+				.join("")
+				.trim();
+
 			// Trace agent invocation with standard attributes
 			telemetryService.traceAgentInvocation(
 				{
@@ -178,6 +190,8 @@ export abstract class BaseAgent {
 					description: this.description,
 				},
 				ctx,
+				input,
+				// Output will be set at the end of the invocation
 			);
 
 			// Add transfer tracking attributes if this is a transferred agent
@@ -219,6 +233,28 @@ export abstract class BaseAgent {
 			const afterEvent = await this.handleAfterAgentCallback(ctx);
 			if (afterEvent) {
 				yield afterEvent;
+			}
+
+			// Extract output from the last agent message in the events
+			const lastAgentMessage = ctx.session.events
+				.slice()
+				.reverse()
+				.find((event) => event.author === this.name);
+			const output = lastAgentMessage?.content?.parts
+				?.map((part) =>
+					part && typeof part === "object" && "text" in part ? part.text : "",
+				)
+				.join("")
+				.trim();
+
+			// Update trace with output
+			if (output) {
+				telemetryService.setActiveSpanAttributes({
+					["gen_ai.output.messages"]: output,
+				});
+				telemetryService.addEvent("gen_ai.agent.output", {
+					"gen_ai.output": output,
+				});
 			}
 		} catch (error) {
 			status = "error";

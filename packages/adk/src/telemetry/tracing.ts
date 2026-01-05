@@ -59,12 +59,16 @@ export class TracingService {
 	traceAgentInvocation(
 		agent: { name: string; description?: string },
 		invocationContext: InvocationContext,
+		input?: string | Record<string, any>,
+		output?: string | Record<string, any>,
 	): void {
 		const span = trace.getActiveSpan();
 		if (!span) return;
 
 		// Generate a unique agent ID based on name and session
 		const agentId = `${agent.name}-${invocationContext.session.id}`;
+
+		const captureContent = shouldCaptureContent();
 
 		const attributes = formatSpanAttributes({
 			// Standard GenAI attributes (v1.38.0)
@@ -84,6 +88,31 @@ export class TracingService {
 		});
 
 		span.setAttributes(attributes);
+
+		// Add input/output content if capture is enabled (similar to LLM calls)
+		if (captureContent) {
+			if (input !== undefined) {
+				const inputStr =
+					typeof input === "string" ? input : safeJsonStringify(input);
+				// Standard GenAI input attribute
+				span.setAttribute(SEMCONV.GEN_AI_INPUT_MESSAGES, inputStr);
+				// Add as event for better visibility in observability platforms
+				span.addEvent("gen_ai.agent.input", {
+					"gen_ai.input": inputStr,
+				});
+			}
+
+			if (output !== undefined) {
+				const outputStr =
+					typeof output === "string" ? output : safeJsonStringify(output);
+				// Standard GenAI output attribute
+				span.setAttribute(SEMCONV.GEN_AI_OUTPUT_MESSAGES, outputStr);
+				// Add as event for better visibility in observability platforms
+				span.addEvent("gen_ai.agent.output", {
+					"gen_ai.output": outputStr,
+				});
+			}
+		}
 	}
 
 	/**

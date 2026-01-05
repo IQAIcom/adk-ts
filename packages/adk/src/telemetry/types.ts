@@ -60,6 +60,8 @@ export interface AgentSpanAttributes {
 	userId?: string;
 	invocationId: string;
 	environment?: string;
+	input?: string | Record<string, any>;
+	output?: string | Record<string, any>;
 }
 
 /**

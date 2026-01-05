@@ -45,6 +45,7 @@ import { metricsService } from "./metrics";
 // Import services
 import { setupService } from "./setup";
 import { tracingService } from "./tracing";
+import { shouldCaptureContent as shouldCaptureContentUtil } from "./utils";
 
 // Export constants for users who want to add custom attributes
 export {
@@ -138,6 +139,13 @@ export class TelemetryService {
 		return tracingService.getActiveSpan();
 	}
 
+	/**
+	 * Check if content capture is enabled
+	 */
+	shouldCaptureContent(): boolean {
+		return shouldCaptureContentUtil();
+	}
+
 	// --- Tracing Methods ---
 
 	/**
@@ -146,8 +154,15 @@ export class TelemetryService {
 	traceAgentInvocation(
 		agent: { name: string; description?: string },
 		invocationContext: InvocationContext,
+		input?: string | Record<string, any>,
+		output?: string | Record<string, any>,
 	): void {
-		tracingService.traceAgentInvocation(agent, invocationContext);
+		tracingService.traceAgentInvocation(
+			agent,
+			invocationContext,
+			input,
+			output,
+		);
 	}
 
 	/**
@@ -467,7 +482,15 @@ export const shutdownTelemetry = (timeoutMs?: number) =>
 export const traceAgentInvocation = (
 	agent: { name: string; description?: string },
 	invocationContext: InvocationContext,
-) => telemetryService.traceAgentInvocation(agent, invocationContext);
+	input?: string | Record<string, any>,
+	output?: string | Record<string, any>,
+) =>
+	telemetryService.traceAgentInvocation(
+		agent,
+		invocationContext,
+		input,
+		output,
+	);
 
 export const traceToolCall = (
 	tool: BaseTool,
