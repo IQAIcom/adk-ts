@@ -105,7 +105,6 @@ async function initializeTelemetryService() {
 			enableTracing: true,
 			enableMetrics: true,
 			enableAutoInstrumentation: true,
-			captureMessageContent: false, // Privacy for production
 			samplingRatio: 1.0,
 			metricExportIntervalMs: 30000,
 			resourceAttributes: {
