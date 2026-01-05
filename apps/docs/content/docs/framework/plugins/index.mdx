@@ -407,8 +407,552 @@ chart="sequenceDiagram
     PM-->>R: cleanup metrics"
 />
 
-### Reference Implementation
+**Figure 1.** Diagram of ADK agent workflow with Plugin callback hook locations.
 
-- Reflect and Retry Tools: robust tool failure tracking and guided retries. See [reflect-retry-tool-plugin.ts](file:///Users/lope/Desktop/open-source/adk-ts/packages/adk/src/plugins/reflect-retry-tool-plugin.ts).
-- Langfuse Plugin: end-to-end tracing across user, agent, model, and tool spans. See [langfuse-plugin.ts](file:///Users/lope/Desktop/open-source/adk-ts/packages/adk/src/plugins/langfuse-plugin.ts).
-- Base Plugin API: hook signatures and defaults. See [base-plugin.ts](file:///Users/lope/Desktop/open-source/adk-ts/packages/adk/src/plugins/base-plugin.ts) and [plugin-manager.ts](file:///Users/lope/Desktop/open-source/adk-ts/packages/adk/src/plugins/plugin-manager.ts).
+The following sections describe the available callback hooks for Plugins in more detail.
+
+-  [User Message callbacks](#user-message-callbacks)
+-  [Runner start callbacks](#runner-start-callbacks)
+-  [Agent execution callbacks](#agent-execution-callbacks)
+-  [Model callbacks](#model-callbacks)
+-  [Tool callbacks](#tool-callbacks)
+-  [Runner end callbacks](#runner-end-callbacks)
+
+### User Message callbacks
+
+A User Message callback (`onUserMessageCallback`) happens when a user sends a message. The `onUserMessageCallback` is the very first hook to run, giving you a chance to inspect or modify the initial input.
+
+- **When It Runs**: This callback happens immediately after `runner.runAsync()`, before any other processing.
+- **Purpose**: The first opportunity to inspect or modify the user's raw input.
+- **Flow Control**: Returns a `Content` object to replace the user's original message, or `undefined` to continue with the original message.
+
+The following code example shows the basic syntax of this callback:
+
+```typescript
+async onUserMessageCallback(params: {
+  invocationContext: InvocationContext;
+  userMessage: Content;
+}): Promise<Content | undefined> {
+  // Example: Log incoming message
+  const text = params.userMessage?.parts?.map(p => p.text || "").join("") || "";
+  console.log(`User message: ${text}`);
+
+  // Example: Sanitize or modify input
+  // return sanitizedMessage;
+
+  return undefined; // Continue with original message
+}
+```
+
+**Common Use Cases**:
+- Input validation and sanitization
+- Content filtering for inappropriate content
+- Adding metadata or tracking information
+- Logging user interactions
+- Pre-processing messages before agent execution
+
+### Runner start callbacks
+
+A Runner start callback (`beforeRunCallback`) happens when the `Runner` object takes the potentially modified user message and prepares for execution. The `beforeRunCallback` fires here, allowing for global setup before any agent logic begins.
+
+- **When It Runs**: Immediately after user message processing, before any agent logic begins.
+- **Purpose**: Opportunity for global setup, initialization, or early termination of execution.
+- **Flow Control**: Return an `Event` object to halt execution early and return that event to the user, or `undefined` to continue normal execution.
+
+The following code example shows the basic syntax of this callback:
+
+```typescript
+async beforeRunCallback(params: {
+  invocationContext: InvocationContext;
+}): Promise<Event | undefined> {
+  // Example: Initialize tracking
+  this.startTime = Date.now();
+
+  // Example: Check rate limits and return early if exceeded
+  if (await this.isRateLimited(params.invocationContext.userId)) {
+    return new Event({
+      author: 'system',
+      content: {
+        role: 'model',
+        parts: [{ text: 'Rate limit exceeded. Please try again later.' }]
+      }
+    });
+  }
+
+  return undefined; // Continue normal execution
+}
+```
+
+**Common Use Cases**:
+- Rate limiting enforcement
+- Session initialization
+- Performance tracking setup
+- Authorization checks
+- Feature flag evaluation
+- Circuit breaker pattern implementation
+
+### Agent execution callbacks
+
+Agent execution callbacks (`beforeAgentCallback`, `afterAgentCallback`) happen when a `Runner` object invokes an agent. The `beforeAgentCallback` runs immediately before the agent's main work begins. The main work encompasses the agent's entire process for handling the request, which could involve calling models or tools. After the agent has finished all its steps and prepared a result, the `afterAgentCallback` runs.
+
+<Callout type="warning" title="Caution">
+  Plugins that implement these callbacks are executed before the Agent-level callbacks are executed. Furthermore, if a Plugin-level agent callback returns anything other than `undefined`, the Agent-level callback is not executed (skipped).
+</Callout>
+
+#### Before Agent Callback
+
+- **When It Runs**: Immediately before an agent begins its execution logic.
+- **Purpose**: Inspect agent context, enforce access controls, or skip agent execution entirely.
+- **Flow Control**: Return `Content` to bypass the agent and use that as the agent's result, or `undefined` to proceed with normal agent execution.
+
+```typescript
+async beforeAgentCallback(params: {
+  agent: BaseAgent;
+  callbackContext: CallbackContext;
+}): Promise<Content | undefined> {
+  // Example: Log agent invocation
+  console.log(`Starting agent: ${params.agent.name}`);
+
+  // Example: Check if user can access this agent
+  if (!await this.hasAccess(params.callbackContext, params.agent)) {
+    return {
+      role: 'model',
+      parts: [{ text: 'You do not have permission to use this agent.' }]
+    };
+  }
+
+  return undefined; // Continue with agent execution
+}
+```
+
+#### After Agent Callback
+
+- **When It Runs**: After an agent completes its execution.
+- **Purpose**: Inspect results, track metrics, or modify the agent's output.
+- **Flow Control**: Return modified `Content` to replace the agent's result, or `undefined` to use the original result.
+
+```typescript
+async afterAgentCallback(params: {
+  agent: BaseAgent;
+  callbackContext: CallbackContext;
+  result?: any;
+}): Promise<Content | undefined> {
+  // Example: Track agent execution time
+  const duration = Date.now() - this.agentStartTime;
+  await this.metrics.record({
+    agent: params.agent.name,
+    duration,
+    success: true
+  });
+
+  // Example: Add metadata to result
+  // return { ...params.result, metadata: { executionTime: duration } };
+
+  return undefined; // Use original result
+}
+```
+
+**Common Use Cases**:
+- Agent-level authorization and access control
+- Performance monitoring and metrics
+- Audit logging
+- Result transformation or enrichment
+- Error recovery and fallback handling
+
+### Model callbacks
+
+Model callbacks (`beforeModelCallback`, `afterModelCallback`, `onModelErrorCallback`) happen before and after a Model object executes. The Plugins feature also supports a callback in the event of an error.
+
+- If an agent needs to call an AI model, `beforeModelCallback` runs first.
+- If the model call is successful, `afterModelCallback` runs next.
+- If the model call fails with an exception, the `onModelErrorCallback` is triggered instead, allowing for graceful recovery.
+
+<Callout type="warning" title="Caution">
+  Plugins that implement the `beforeModelCallback` and `afterModelCallback` methods are executed before the Model-level callbacks are executed. Furthermore, if a Plugin-level model callback returns anything other than `undefined`, the Model-level callback is not executed (skipped).
+</Callout>
+
+#### Before Model Callback
+
+- **When It Runs**: Before an LLM API call is made.
+- **Purpose**: Cache checking, request modification, or cost optimization.
+- **Flow Control**: Return `LlmResponse` to skip the API call entirely (useful for caching), or `undefined` to proceed with the call.
+
+```typescript
+async beforeModelCallback(params: {
+  callbackContext: CallbackContext;
+  llmRequest: LlmRequest;
+}): Promise<LlmResponse | undefined> {
+  // Example: Check cache
+  const cacheKey = this.generateCacheKey(params.llmRequest);
+  const cachedResponse = await this.cache.get(cacheKey);
+
+  if (cachedResponse) {
+    console.log('Cache hit - skipping model call');
+    return cachedResponse; // Skip expensive API call
+  }
+
+  // Example: Add global system instructions
+  if (params.llmRequest.systemInstruction) {
+    params.llmRequest.systemInstruction += '\nAlways respond concisely.';
+  }
+
+  return undefined; // Proceed with model call
+}
+```
+
+#### After Model Callback
+
+- **When It Runs**: After a successful model response is received.
+- **Purpose**: Response caching, token tracking, or response modification.
+- **Flow Control**: Return modified `LlmResponse` to replace the original, or `undefined` to use the original.
+
+```typescript
+async afterModelCallback(params: {
+  callbackContext: CallbackContext;
+  llmResponse: LlmResponse;
+  llmRequest?: LlmRequest;
+}): Promise<LlmResponse | undefined> {
+  // Example: Cache the response
+  if (params.llmRequest) {
+    const cacheKey = this.generateCacheKey(params.llmRequest);
+    await this.cache.set(cacheKey, params.llmResponse);
+  }
+
+  // Example: Track token usage
+  await this.metrics.recordTokens({
+    model: params.llmRequest?.model,
+    promptTokens: params.llmResponse.usageMetadata?.promptTokenCount,
+    completionTokens: params.llmResponse.usageMetadata?.candidatesTokenCount,
+    totalTokens: params.llmResponse.usageMetadata?.totalTokenCount
+  });
+
+  return undefined; // Use original response
+}
+```
+
+#### Model Error Callback
+
+- **When It Runs**: When an exception is raised during the model call.
+- **Purpose**: Error handling, logging, retry logic, or providing fallback responses.
+- **Flow Control**: Return `LlmResponse` to suppress the exception and provide a recovery result, or `undefined` to allow the original exception to propagate.
+
+<Callout type="info">
+  If the execution of the Model callback returns an `LlmResponse`, the system resumes the execution flow, and `afterModelCallback` will be triggered normally.
+</Callout>
+
+```typescript
+async onModelErrorCallback(params: {
+  callbackContext: CallbackContext;
+  llmRequest: LlmRequest;
+  error: unknown;
+}): Promise<LlmResponse | undefined> {
+  const error = params.error as Error;
+
+  // Log the error
+  console.error(`Model call failed: ${error.message}`);
+  await this.errorTracker.log({
+    model: params.llmRequest.model,
+    error: error.message,
+    timestamp: Date.now()
+  });
+
+  // Example: Return fallback for specific errors
+  if (error.message.includes('quota') || error.message.includes('rate limit')) {
+    return {
+      candidates: [{
+        content: {
+          role: 'model',
+          parts: [{
+            text: 'The AI service is currently experiencing high demand. Please try again in a moment.'
+          }]
+        },
+        finishReason: 'ERROR'
+      }]
+    };
+  }
+
+  return undefined; // Propagate error
+}
+```
+
+**Common Use Cases**:
+- Response caching for cost optimization
+- Token usage tracking and budgeting
+- Global prompt engineering (system instructions)
+- Content filtering and moderation
+- Retry logic with exponential backoff
+- Fallback responses for service degradation
+- A/B testing different models
+
+### Tool callbacks
+
+Tool callbacks (`beforeToolCallback`, `afterToolCallback`, `onToolErrorCallback`) for Plugins happen before or after the execution of a tool, or when an error occurs.
+
+- When an agent executes a Tool, `beforeToolCallback` runs first.
+- If the tool executes successfully, `afterToolCallback` runs next.
+- If the tool raises an exception, the `onToolErrorCallback` is triggered instead, giving you a chance to handle the failure.
+
+<Callout type="warning" title="Caution">
+  Plugins that implement these callbacks are executed before the Tool-level callbacks are executed. Furthermore, if a Plugin-level tool callback returns anything other than `undefined`, the Tool-level callback is not executed (skipped).
+</Callout>
+
+#### Before Tool Callback
+
+- **When It Runs**: Immediately before a tool's execution begins.
+- **Purpose**: Authorization checks, argument validation, or bypassing tool execution.
+- **Flow Control**: Return a result object to skip tool execution and use that as the tool's result, or `undefined` to proceed with execution.
+
+```typescript
+async beforeToolCallback(params: {
+  tool: BaseTool;
+  toolArgs: Record<string, any>;
+  toolContext: ToolContext;
+}): Promise<Record<string, any> | undefined> {
+  // Example: Check tool permissions
+  const userId = params.toolContext.invocationContext.userId;
+  if (!await this.canUseTool(userId, params.tool.name)) {
+    return {
+      error: 'Permission denied',
+      message: `You do not have permission to use the ${params.tool.name} tool.`
+    };
+  }
+
+  // Example: Validate arguments
+  if (!this.validateToolArgs(params.tool.name, params.toolArgs)) {
+    return {
+      error: 'Invalid arguments',
+      message: 'The provided arguments do not match the tool requirements.'
+    };
+  }
+
+  // Example: Log tool invocation
+  console.log(`Executing tool: ${params.tool.name} with args:`, params.toolArgs);
+
+  return undefined; // Proceed with tool execution
+}
+```
+
+#### After Tool Callback
+
+- **When It Runs**: After a tool successfully completes execution.
+- **Purpose**: Result transformation, standardization, or metrics tracking.
+- **Flow Control**: Return modified result to replace the original, or `undefined` to use the original result.
+
+```typescript
+async afterToolCallback(params: {
+  tool: BaseTool;
+  toolArgs: Record<string, any>;
+  toolContext: ToolContext;
+  result: Record<string, any>;
+}): Promise<Record<string, any> | undefined> {
+  // Example: Standardize output format
+  const standardizedResult = {
+    ...params.result,
+    metadata: {
+      toolName: params.tool.name,
+      executedAt: Date.now(),
+      executionDuration: Date.now() - this.toolStartTime
+    }
+  };
+
+  // Example: Track tool usage
+  await this.metrics.recordToolCall({
+    tool: params.tool.name,
+    success: true,
+    duration: Date.now() - this.toolStartTime,
+    args: params.toolArgs
+  });
+
+  return standardizedResult;
+}
+```
+
+#### Tool Error Callback
+
+- **When It Runs**: When an exception is raised during the execution of a tool's run method.
+- **Purpose**: Error handling, logging failures, providing user-friendly error messages, or retry logic.
+- **Flow Control**: Return a result object to suppress the exception and provide a recovery result, or `undefined` to allow the original exception to propagate.
+
+<Callout type="info">
+  By returning a result object, this resumes the execution flow, and `afterToolCallback` will be triggered normally.
+</Callout>
+
+```typescript
+async onToolErrorCallback(params: {
+  tool: BaseTool;
+  toolArgs: Record<string, any>;
+  toolContext: ToolContext;
+  error: unknown;
+}): Promise<Record<string, any> | undefined> {
+  const error = params.error as Error;
+
+  // Log the failure
+  console.error(`Tool ${params.tool.name} failed:`, error.message);
+  await this.errorTracker.log({
+    tool: params.tool.name,
+    error: error.message,
+    args: params.toolArgs,
+    timestamp: Date.now()
+  });
+
+  // Example: Track failure metrics
+  await this.metrics.recordToolCall({
+    tool: params.tool.name,
+    success: false,
+    error: error.message,
+    args: params.toolArgs
+  });
+
+  // Example: Return user-friendly error with retry information
+  return {
+    error: 'Tool execution failed',
+    message: `The ${params.tool.name} tool encountered an error: ${error.message}`,
+    canRetry: this.isRetryableError(error),
+    details: {
+      errorType: error.constructor.name,
+      timestamp: Date.now()
+    }
+  };
+}
+```
+
+**Common Use Cases**:
+- Tool-level authorization and permissions
+- Argument validation and sanitization
+- Result standardization and formatting
+- Usage tracking and quotas
+- Error recovery and retry logic
+- Audit logging for sensitive operations
+- Performance monitoring
+
+### Event callbacks
+
+An Event callback (`onEventCallback`) happens when an agent produces outputs such as a text response or a tool call result. It yields them as `Event` objects. The `onEventCallback` fires for each event, allowing you to modify it before it's streamed to the client.
+
+- **When It Runs**: After an agent yields an `Event` but before it's sent to the user. An agent's run may produce multiple events.
+- **Purpose**: Modifying or enriching events (e.g., adding metadata) or triggering side effects based on specific events.
+- **Flow Control**: Return an `Event` object to replace the original event, or `undefined` to use the original.
+
+```typescript
+async onEventCallback(params: {
+  invocationContext: InvocationContext;
+  event: Event;
+}): Promise<Event | undefined> {
+  // Example: Skip partial events for certain logging
+  if (params.event.partial) {
+    return undefined;
+  }
+
+  // Example: Add metadata to all events
+  if (params.event.metadata) {
+    params.event.metadata = {
+      ...params.event.metadata,
+      timestamp: Date.now(),
+      invocationId: params.invocationContext.invocationId,
+      pluginVersion: this.version
+    };
+  }
+
+  // Example: Filter or redact sensitive content
+  const filteredEvent = this.redactSensitiveInfo(params.event);
+
+  // Example: Track event types
+  await this.metrics.recordEvent({
+    type: params.event.author,
+    isFinal: params.event.isFinalResponse(),
+    timestamp: Date.now()
+  });
+
+  return filteredEvent;
+}
+```
+
+**Common Use Cases**:
+- Content filtering and moderation
+- Adding tracking metadata
+- Event transformation for different clients
+- Real-time analytics and monitoring
+- Streaming optimizations
+- User notification triggers
+
+### Runner end callbacks
+
+The Runner end callback (`afterRunCallback`) happens when the agent has finished its entire process and all events have been handled. The `Runner` completes its run. The `afterRunCallback` is the final hook, perfect for cleanup and final reporting.
+
+- **When It Runs**: After the `Runner` fully completes the execution of a request.
+- **Purpose**: Global cleanup tasks, such as closing connections, flushing logs and metrics data, or finalizing reports.
+- **Flow Control**: This callback is for teardown only and cannot alter the final result.
+
+```typescript
+async afterRunCallback(params: {
+  invocationContext: InvocationContext;
+  result?: any;
+}): Promise<void> {
+  // Example: Calculate and log total execution time
+  const totalDuration = Date.now() - this.runStartTime;
+  console.log(`Run completed in ${totalDuration}ms`);
+
+  // Example: Flush accumulated metrics
+  await this.metricsClient.flush();
+
+  // Example: Send aggregated analytics
+  await this.analytics.recordSession({
+    invocationId: params.invocationContext.invocationId,
+    userId: params.invocationContext.userId,
+    duration: totalDuration,
+    agentCalls: this.agentCallCount,
+    toolCalls: this.toolCallCount,
+    modelCalls: this.modelCallCount,
+    success: params.result?.success ?? true
+  });
+
+  // Example: Clean up temporary resources
+  await this.cleanupTempResources(params.invocationContext);
+
+  // Reset per-run state
+  this.resetCounters();
+}
+```
+
+**Common Use Cases**:
+- Flushing buffered logs and metrics
+- Closing database connections
+- Cleaning up temporary files or resources
+- Sending analytics summaries
+- Finalizing audit trails
+- Resource cleanup and memory management
+
+## Best Practices
+
+### Plugin Design Guidelines
+
+1. **Keep Plugins Focused**: Each plugin should handle a single cross-cutting concern (logging, caching, authorization, etc.)
+
+2. **Handle Errors Gracefully**: Plugin errors should not crash the entire application. Wrap plugin logic in try-catch blocks.
+
+3. **Be Performance Conscious**: Plugins run on every callback. Avoid heavy computations or blocking operations.
+
+4. **Use Appropriate Hook Patterns**:
+   - Return `undefined` to observe without interference
+   - Return a value only when you need to short-circuit
+   - Modify context objects when you need to amend behavior
+
+5. **Document Intervention Behavior**: Clearly document when your plugin will intervene (return non-undefined) to help users understand the impact.
+
+### Performance Considerations
+
+- **Minimize Callback Overhead**: Only implement callbacks you actually need
+- **Async Operations**: Use proper async/await to avoid blocking
+- **Caching**: Cache expensive lookups (permissions, configurations)
+- **Batch Operations**: Batch metrics/logs instead of sending one at a time
+- **Timeout Protection**: Use the `pluginCloseTimeout` to prevent hanging
+
+
+## Next Steps
+
+Now that you understand how to build and use Plugins, explore these resources:
+
+- [Reflect and Retry Plugin](plugins/reflect-and-retry): Learn about intelligent error recovery
+- [Langfuse Plugin](plugins/langfuse-plugin): Set up comprehensive observability
+- [Agent Callbacks](/docs/framework/callbacks): Understand the relationship between Plugins and Agent-level callbacks
+- [Security Best Practices](/docs/framework/security): Apply Plugins for security guardrails

@@ -1,0 +1,168 @@
+---
+title: Reflect and Retry Plugin
+description: Automatically reflect on tool errors and retry with corrected calls in @iqai/adk
+---
+
+# Reflect and Retry
+
+The Reflect and Retry Plugin helps your agent recover from tool execution errors by guiding the model to reflect on failures and retry with corrected arguments or strategy. It intercepts tool failures, generates structured reflection guidance, and retries the operation up to a configurable limit.
+
+This plugin is especially useful for improving robustness when tools may fail due to invalid parameters, transient state, or incorrect function selection.
+
+### Key capabilities
+
+  - Concurrency-safe: Uses an internal lock to safely handle parallel tool executions.
+
+  - Configurable retry limits: Control how many retries are attempted per tool.
+
+  - Flexible tracking scope: Track failures per invocation (default) or globally across invocations.
+
+  - Per-tool failure tracking: Retry counters are tracked independently for each tool.
+
+  - Extensible error detection: Override error extraction to detect failures in non-exception responses.
+
+## Installation
+
+```bash
+pnpm add @iqai/adk
+```
+
+### Add Reflect and Retry Plugin
+
+The Reflect and Retry Plugin can be attached to an agent in two common ways:
+
+- Using `AgentBuilder` (recommended for most workflows)
+
+- Passing the plugin directly to an `LlmAgent`
+
+#### Using AgentBuilder (recommended)
+
+This is the most flexible and composable approach, especially when using tools, sessions, and multiple plugins.
+
+```ts
+import {
+  AgentBuilder,
+  InMemorySessionService,
+  ReflectAndRetryToolPlugin,
+} from "@iqai/adk";
+import { openrouter } from "@iqai/adk/models";
+import { randomUUID } from "crypto";
+import dedent from "dedent";
+
+const reflectAndRetryPlugin = new ReflectAndRetryToolPlugin({
+  maxRetries: 3,
+});
+
+const sessionService = new InMemorySessionService();
+
+const { runner } = await AgentBuilder.withModel(
+  openrouter("openai/gpt-4.1-mini"),
+)
+  .withDescription("Calendar scheduling assistant")
+  .withInstruction(
+    dedent`
+      You help users manage calendar events.
+
+      If a tool call fails, carefully analyze the error
+      and retry with corrected arguments or a new approach.
+    `,
+  )
+  .withTools(
+    /* calendar tools */
+  )
+  .withSessionService(sessionService)
+  .withQuickSession({
+    sessionId: randomUUID(),
+    appName: "calendar-agent",
+  })
+  .withPlugins(reflectAndRetryPlugin)
+  .build();
+
+```
+
+When a tool fails, the plugin automatically:
+
+  - Generates structured reflection guidance for the model
+
+  - Tracks retry attempts per tool
+
+  - Retries the tool call up to the configured limit
+
+#### Passing the plugin directly to LlmAgent
+
+For simpler setups, you can attach the plugin directly when constructing an agent.
+
+```ts
+import { LlmAgent, ReflectAndRetryToolPlugin } from "@iqai/adk";
+
+const agent = new LlmAgent({
+  name: "calendar_specialist",
+  description: "Specialist agent for managing calendar and scheduling tasks",
+  plugins: [
+    new ReflectAndRetryToolPlugin({
+      maxRetries: 3,
+    }),
+  ],
+});
+
+```
+
+This approach is useful when:
+
+- You don’t need AgentBuilder
+
+- You want a lightweight agent configuration
+
+- Plugins are static and minimal
+
+## Configuration settings
+
+The Reflect and Retry Plugin supports the following options:
+
+* **`name`** *(optional)*
+  Plugin name. Default: `"reflect_retry_tool_plugin"`.
+
+* **`maxRetries`** *(optional)*
+  Number of retry attempts per tool after an error is detected.
+  Default: `3`. Must be a non-negative integer.
+  Set to `0` to disable retries.
+
+* **`throwExceptionIfRetryExceeded`** *(optional)*
+  Whether to throw the original error after retries are exhausted.
+  Default: `true`.
+  If `false`, the plugin returns a final reflection message instead.
+
+* **`trackingScope`** *(optional)*
+  Controls how retry counters are scoped. Default: `TrackingScope.INVOCATION`.
+
+  * `TrackingScope.INVOCATION`: Track failures per invocation.
+  * `TrackingScope.GLOBAL`: Track failures globally across all invocations.
+
+### Advanced configuration
+
+You can extend the `ReflectAndRetryToolPlugin` class to customize how errors are detected in tool responses. For example, you can override `extractErrorFromResult` to treat certain non-exception results as errors:
+
+```ts
+import { ReflectAndRetryToolPlugin, ToolFailureResponse } from "@iqai/adk";
+
+class CustomRetryPlugin extends ReflectAndRetryToolPlugin {
+  async extractErrorFromResult({ result }: { result: any }): Promise<any | undefined> {
+    // Detect error based on a response property
+    if (result?.status === "error") {
+      return result;
+    }
+    return undefined; // No error detected
+  }
+}
+
+// Use the custom plugin when creating an agent
+const customReflectPlugin = new CustomRetryPlugin({ maxRetries: 5 });
+
+const agent = new LlmAgent({
+  name: "calendar_specialist",
+  description: "Specialist agent for managing calendar tasks",
+  plugins: [customReflectPlugin],
+});
+```
+
+This approach allows you to define **custom rules for detecting tool failures** while still benefiting from automatic retries and reflection guidance.
