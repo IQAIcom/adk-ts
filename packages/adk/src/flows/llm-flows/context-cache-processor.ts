@@ -1,7 +1,7 @@
 import { Logger } from "@adk/logger";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { Event } from "../../events/event";
-import type { CacheMetadata } from "../../models/cache-metadata";
+import { CacheMetadata } from "../../models/cache-metadata";
 import type { LlmRequest } from "../../models/llm-request";
 import { BaseLlmRequestProcessor } from "./base-llm-processor";
 
@@ -33,6 +33,13 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 
 			if (latestCacheMetadata) {
 				llmRequest.cacheMetadata = latestCacheMetadata;
+				this.logger.debug(
+					`Found previous cache metadata: ${latestCacheMetadata.cacheName || "fingerprint-only"}`,
+				);
+			} else {
+				this.logger.debug(
+					"No previous cache metadata found, will attempt fresh cache creation",
+				);
 			}
 
 			if (previousTokenCount !== undefined) {
@@ -74,11 +81,29 @@ export class ContextCacheRequestProcessor extends BaseLlmRequestProcessor {
 					event.invocationId !== currentInvocationId &&
 					event.cacheMetadata.cacheName != null;
 
-				cacheMetadata = hasActiveCache
-					? event.cacheMetadata.copy({
-							invocationsUsed: (event.cacheMetadata.invocationsUsed || 0) + 1,
-						})
-					: event.cacheMetadata.copy();
+				// Handle both CacheMetadata instances and plain objects (from deserialization)
+				const sourceMeta = event.cacheMetadata;
+				if (typeof sourceMeta.copy === "function") {
+					// It's a CacheMetadata instance
+					cacheMetadata = hasActiveCache
+						? sourceMeta.copy({
+								invocationsUsed: (sourceMeta.invocationsUsed || 0) + 1,
+							})
+						: sourceMeta.copy();
+				} else {
+					// It's a plain object, reconstruct as CacheMetadata
+					const meta = new CacheMetadata({
+						cacheName: sourceMeta.cacheName ?? undefined,
+						expireTime: sourceMeta.expireTime ?? undefined,
+						fingerprint: sourceMeta.fingerprint,
+						invocationsUsed: hasActiveCache
+							? (sourceMeta.invocationsUsed || 0) + 1
+							: (sourceMeta.invocationsUsed ?? undefined),
+						contentsCount: sourceMeta.contentsCount,
+						createdAt: sourceMeta.createdAt ?? undefined,
+					});
+					cacheMetadata = meta;
+				}
 			}
 
 			// Look for previous prompt token count

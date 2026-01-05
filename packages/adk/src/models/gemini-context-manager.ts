@@ -33,6 +33,9 @@ export class GeminiContextCacheManager {
 
 				if (cacheName) {
 					this.applyCacheToRequest(llmRequest, cacheName, cacheContentsCount);
+					console.log(
+						`✓ Cache HIT: Using cached context (${cacheContentsCount} messages)`,
+					);
 				}
 
 				return llmRequest.cacheMetadata.copy();
@@ -238,54 +241,95 @@ export class GeminiContextCacheManager {
 
 		const minTokens = llmRequest.cacheConfig.minTokens;
 
-		// Check if we have token count from previous response
-		let tokenCount = llmRequest.cacheableContentsTokenCount;
-
-		// If no previous token count, try to count tokens or check if minTokens is 0
-		if (tokenCount === undefined) {
-			if (minTokens === 0) {
-				// If minTokens is 0, we can skip counting and proceed
-				this.logger.debug(
-					"No previous token count, but minTokens is 0, proceeding with cache creation",
-				);
-			} else {
-				// Try to count tokens using the API
-				this.logger.debug(
-					"No previous token count, attempting to count tokens using API",
-				);
-				try {
-					// We need to count tokens for the content we intend to cache
-					// Note: This adds latency to the first request
-					const countResult = await this.genaiClient.models.countTokens({
-						model: llmRequest.model,
-						contents: llmRequest.contents.slice(0, cacheContentsCount),
-					});
-					tokenCount = countResult.totalTokens;
-					this.logger.debug(`Counted tokens: ${tokenCount}`);
-				} catch (e) {
-					this.logger.warn(
-						"Failed to count tokens for cache decision, skipping cache creation:",
-						e,
-					);
-					return null;
-				}
-			}
-		}
-
-		// Validate token count if we have one (or computed one)
-		if (tokenCount !== undefined && tokenCount < minTokens) {
-			this.logger.info(
-				`Request too small for caching (${tokenCount} < ${minTokens} tokens)`,
-			);
-			return null;
-		}
-
+		// Always count tokens using Google's API before creating cache
+		// This ensures we have the exact token count that Google will use
 		try {
+			const actualTokenCount = await this.countCacheTokens(
+				llmRequest,
+				cacheContentsCount,
+			);
+
+			this.logger.debug(
+				`Actual cache token count from Google API: ${actualTokenCount}`,
+			);
+
+			// Check against minimum tokens
+			if (actualTokenCount < minTokens) {
+				this.logger.info(
+					`Cache content too small (${actualTokenCount} < ${minTokens} tokens)`,
+				);
+				console.log(
+					`⊘ Cache SKIP: Context too small (${actualTokenCount} < ${minTokens} tokens)`,
+				);
+				return null;
+			}
+
+			// Check against Google's hard minimum of 1024 tokens
+			if (actualTokenCount < 1024) {
+				this.logger.info(
+					`Cache content below Google's minimum (${actualTokenCount} < 1024 tokens)`,
+				);
+				console.log(
+					`⊘ Cache SKIP: Below Google minimum (${actualTokenCount} < 1024 tokens)`,
+				);
+				return null;
+			}
+
+			// Proceed with cache creation
 			return await this.createGeminiCache(llmRequest, cacheContentsCount);
 		} catch (e) {
-			this.logger.warn("Failed to create cache:", e);
+			this.logger.warn("Failed to count tokens or create cache:", e);
 			return null;
 		}
+	}
+
+	private async countCacheTokens(
+		llmRequest: LlmRequest,
+		cacheContentsCount: number,
+	): Promise<number> {
+		// Prepare the same configuration that will be used for cache creation
+		const cacheContents = llmRequest.contents.slice(0, cacheContentsCount);
+
+		// Prepare contents for counting - include system instruction as first message if present
+		// This approximates what will actually be cached
+		const contentsToCount = [...cacheContents];
+
+		// Add system instruction as a fake user message at the beginning for token counting
+		// This gives us an accurate count of total tokens that will be in the cache
+		if (llmRequest.config?.systemInstruction) {
+			const sysInstructionText =
+				typeof llmRequest.config.systemInstruction === "string"
+					? llmRequest.config.systemInstruction
+					: JSON.stringify(llmRequest.config.systemInstruction);
+
+			contentsToCount.unshift({
+				role: "user",
+				parts: [{ text: sysInstructionText }],
+			});
+		}
+
+		const countConfig: any = {};
+
+		// Add tools if present (tools are supported in countTokens)
+		if (llmRequest.config?.tools) {
+			countConfig.tools = llmRequest.config.tools;
+		}
+
+		this.logger.debug(
+			`Counting tokens for ${cacheContentsCount} contents (+ system instruction)`,
+		);
+
+		// Use Google's countTokens API
+		const result = await this.genaiClient.models.countTokens({
+			model: llmRequest.model,
+			contents: contentsToCount,
+			config: countConfig,
+		});
+
+		const totalTokens = result.totalTokens || 0;
+		this.logger.debug(`countTokens returned: ${totalTokens} total tokens`);
+
+		return totalTokens;
 	}
 
 	private async createGeminiCache(
@@ -338,6 +382,9 @@ export class GeminiContextCacheManager {
 		// Set precise creation timestamp right after cache creation
 		const createdAt = Date.now() / 1000;
 		this.logger.info(`Cache created successfully: ${cachedContent.name}`);
+		console.log(
+			`✓ Cache CREATED: New cache established (${cacheContentsCount} messages)`,
+		);
 
 		// Return complete cache metadata with precise timing
 		return new CacheMetadata({
