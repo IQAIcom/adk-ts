@@ -1,100 +1,77 @@
 import { env } from "node:process";
-import {
-	AgentBuilder,
-	createTool,
-	initializeTelemetry,
-	shutdownTelemetry,
-} from "@iqai/adk";
-import dedent from "dedent";
+import { AgentBuilder, createTool, telemetryService } from "@iqai/adk";
 import * as z from "zod";
-import { ask } from "../utils";
 
 /**
- * 09 - Observability and Telemetry
+ * 09 - Observability with Langfuse
  *
- * Learn how to monitor your AI agents with Langfuse.
+ * Simple example showing how to track agent interactions with Langfuse.
  *
- * Concepts covered:
- * - TelemetryService setup with Langfuse
- * - Automatic tracking of agent interactions
- * - Tool usage monitoring
- * - Dashboard visualization
+ * Setup:
+ * 1. Set environment variables:
+ *    export LANGFUSE_PUBLIC_KEY="pk-..."
+ *    export LANGFUSE_SECRET_KEY="sk-..."
+ *    export LANGFUSE_BASE_URL="https://cloud.langfuse.com" (optional)
+ * 2. pnpm run dev --name 09-observability
+ * 3. View traces at https://cloud.langfuse.com
  */
 
-// Simple tool to demonstrate tool usage tracking
 const getWeatherTool = createTool({
 	name: "get_weather",
-	description: "Get current weather for a location",
-	schema: z.object({
-		location: z.string().describe("The city and state/country"),
-	}),
-	fn: async ({ location }) => {
-		// Simulate weather API call
-		const weather = ["sunny", "cloudy", "rainy", "snowy"];
-		const temp = Math.floor(Math.random() * 30) + 10;
-		const condition = weather[Math.floor(Math.random() * weather.length)];
-
-		return `The weather in ${location} is ${condition} with a temperature of ${temp}°C`;
+	description: "Get current weather for a city",
+	schema: z.object({ city: z.string() }),
+	fn: async ({ city }) => {
+		return `The weather in ${city} is sunny and 72°F`;
 	},
 });
 
-function initalizeLangfuse() {
+async function main() {
+	console.log("🔭 Simple Langfuse Observability Example\n");
+
 	if (!env.LANGFUSE_PUBLIC_KEY || !env.LANGFUSE_SECRET_KEY) {
-		console.log(
-			"Set LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY to enable telemetry",
-		);
-		return null;
+		console.error("❌ Error: Missing Langfuse credentials");
+		console.log("Set LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY");
+		return;
 	}
 
-	const langfuseHost = env.LANGFUSE_HOST || "https://cloud.langfuse.com";
+	try {
+		const langfuseHost = env.LANGFUSE_BASE_URL || "https://cloud.langfuse.com";
+		const authString = Buffer.from(
+			`${env.LANGFUSE_PUBLIC_KEY}:${env.LANGFUSE_SECRET_KEY}`,
+		).toString("base64");
 
-	const authString = Buffer.from(
-		`${env.LANGFUSE_PUBLIC_KEY}:${env.LANGFUSE_SECRET_KEY}`,
-	).toString("base64");
+		console.log("🔍 Initializing Langfuse telemetry...");
 
-	initializeTelemetry({
-		appName: "observability-example",
-		appVersion: "1.0.0",
-		otlpEndpoint: `${langfuseHost}/api/public/otel/v1/traces`,
-		otlpHeaders: {
-			Authorization: `Basic ${authString}`,
-		},
-	});
-}
+		await telemetryService.initialize({
+			appName: "simple-weather-agent",
+			otlpEndpoint: `${langfuseHost}/api/public/otel/v1/traces`,
+			otlpHeaders: {
+				Authorization: `Basic ${authString}`,
+			},
+			enableTracing: true,
+			enableMetrics: true,
+		});
 
-async function main() {
-	console.log("Observability Example - Langfuse Telemetry");
+		console.log("✅ Telemetry initialized\n");
 
-	// Initialize telemetry
-	initalizeLangfuse();
+		const { runner } = await AgentBuilder.create("weather_agent")
+			.withModel(env.LLM_MODEL || "gemini-2.0-flash-exp")
+			.withTools(getWeatherTool)
+			.withInstruction("You help users check the weather.")
+			.build();
 
-	// Create agent with telemetry tracking
-	const { runner } = await AgentBuilder.create("weather_agent")
-		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
-		.withDescription(
-			"A helpful weather assistant with automatic telemetry tracking",
-		)
-		.withTools(getWeatherTool)
-		.withInstruction(
-			dedent`
-			You are a helpful weather assistant. When users ask about weather,
-			use the get_weather tool to provide current conditions.
-			Be friendly and conversational in your responses.
-		`,
-		)
-		.build();
+		console.log("💬 Asking: What's the weather in San Francisco?\n");
 
-	console.log("\nAsking agent about weather:");
-	await ask(
-		runner,
-		"What's the weather like in San Francisco? Also, can you give me some tips for what to wear in that weather?",
-	);
+		const response = await runner.ask("What's the weather in San Francisco?");
 
-	console.log(
-		"\n 💡 Check your Langfuse dashboard to see traces, tool usage, and metrics",
-	);
-
-	shutdownTelemetry();
+		console.log("✅ Response:", response, "\n");
+		console.log(`📊 View traces at: ${langfuseHost}`);
+	} catch (error) {
+		console.error("❌ Error:", error);
+	} finally {
+		await telemetryService.shutdown(5000);
+		console.log("✅ Telemetry shutdown complete");
+	}
 }
 
 main().catch(console.error);
