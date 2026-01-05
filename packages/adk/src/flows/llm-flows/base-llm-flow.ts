@@ -14,7 +14,7 @@ import {
 	LlmRequest,
 	type LlmResponse,
 } from "@adk/models";
-import { traceLlmCall } from "@adk/telemetry";
+import { telemetryService, traceLlmCall } from "@adk/telemetry";
 import { ToolContext } from "@adk/tools";
 import * as functions from "./functions";
 
@@ -100,21 +100,32 @@ export abstract class BaseLlmFlow {
 			branch: invocationContext.branch,
 		});
 
-		for await (const llmResponse of this._callLlmAsync(
-			invocationContext,
-			llmRequest,
-			modelResponseEvent,
-		)) {
-			for await (const event of this._postprocessAsync(
+		// Wrap LLM call and tool execution in llm_generate span to ensure proper nesting
+		const llm = this.__getLlm(invocationContext);
+		const isStreaming =
+			invocationContext.runConfig.streamingMode === StreamingMode.SSE;
+		const generator = async function* (this: BaseLlmFlow) {
+			for await (const llmResponse of this._callLlmAsync(
 				invocationContext,
 				llmRequest,
-				llmResponse,
 				modelResponseEvent,
 			)) {
-				modelResponseEvent.id = Event.newId();
-				yield event;
+				for await (const event of this._postprocessAsync(
+					invocationContext,
+					llmRequest,
+					llmResponse,
+					modelResponseEvent,
+				)) {
+					modelResponseEvent.id = Event.newId();
+					yield event;
+				}
 			}
-		}
+		}.bind(this)();
+
+		yield* telemetryService.traceAsyncGenerator(
+			isStreaming ? `llm_stream [${llm.model}]` : `llm_generate [${llm.model}]`,
+			generator,
+		);
 	}
 
 	async *_preprocessAsync(
@@ -494,52 +505,91 @@ export abstract class BaseLlmFlow {
 		});
 
 		let responseCount = 0;
-		for await (const llmResponse of llm.generateContentAsync(
-			llmRequest,
-			isStreaming,
-		)) {
-			responseCount++;
+		const llmStartTime = Date.now();
+		let llmStatus: "success" | "error" = "success";
 
-			// Telemetry tracing
-			traceLlmCall(
-				invocationContext,
-				modelResponseEvent.id,
+		try {
+			for await (const llmResponse of llm.generateContentAsync(
 				llmRequest,
-				llmResponse,
-			);
+				isStreaming,
+			)) {
+				responseCount++;
 
-			// Log LLM response in a clean format
-			const tokenCount =
-				llmResponse.usageMetadata?.totalTokenCount || "unknown";
-			const functionCalls =
-				llmResponse.content?.parts?.filter((part) => part.functionCall) || [];
+				// Telemetry tracing
+				traceLlmCall(
+					invocationContext,
+					modelResponseEvent.id,
+					llmRequest,
+					llmResponse,
+				);
 
-			// Format function calls for display using LogFormatter utility
-			const functionCallsDisplay =
-				LogFormatter.formatFunctionCalls(functionCalls);
+				// Record LLM metrics
+				if (llmResponse.usageMetadata) {
+					telemetryService.recordLlmTokens(
+						llmResponse.usageMetadata.promptTokenCount || 0,
+						llmResponse.usageMetadata.candidatesTokenCount || 0,
+						{
+							model: llm.model,
+							agentName: invocationContext.agent.name,
+							environment: process.env.NODE_ENV,
+							status: llmStatus,
+						},
+					);
+				}
 
-			// Format response content preview
-			const responsePreview = LogFormatter.formatResponsePreview(llmResponse);
+				telemetryService.recordLlmCall({
+					model: llm.model,
+					agentName: invocationContext.agent.name,
+					environment: process.env.NODE_ENV,
+					status: llmStatus,
+				});
 
-			this.logger.debugStructured("📥 LLM Response", {
-				Model: llm.model,
-				"Token Count": tokenCount,
-				"Function Calls": functionCallsDisplay,
-				"Response Preview": responsePreview,
-				"Finish Reason": llmResponse.finishReason || "unknown",
-				"Response #": responseCount,
-				Partial: llmResponse.partial ? "Yes" : "No",
-				Error: llmResponse.errorCode || "none",
+				// Log LLM response in a clean format
+				const tokenCount =
+					llmResponse.usageMetadata?.totalTokenCount || "unknown";
+				const functionCalls =
+					llmResponse.content?.parts?.filter((part) => part.functionCall) || [];
+
+				// Format function calls for display using LogFormatter utility
+				const functionCallsDisplay =
+					LogFormatter.formatFunctionCalls(functionCalls);
+
+				// Format response content preview
+				const responsePreview = LogFormatter.formatResponsePreview(llmResponse);
+
+				this.logger.debugStructured("📥 LLM Response", {
+					Model: llm.model,
+					"Token Count": tokenCount,
+					"Function Calls": functionCallsDisplay,
+					"Response Preview": responsePreview,
+					"Finish Reason": llmResponse.finishReason || "unknown",
+					"Response #": responseCount,
+					Partial: llmResponse.partial ? "Yes" : "No",
+					Error: llmResponse.errorCode || "none",
+				});
+
+				// After model callback
+				const alteredLlmResponse = await this._handleAfterModelCallback(
+					invocationContext,
+					llmResponse,
+					modelResponseEvent,
+				);
+
+				yield alteredLlmResponse || llmResponse;
+			}
+		} catch (error) {
+			llmStatus = "error";
+			telemetryService.recordError("llm", llm.model);
+			throw error;
+		} finally {
+			// Record LLM duration
+			const llmDuration = Date.now() - llmStartTime;
+			telemetryService.recordLlmDuration(llmDuration, {
+				model: llm.model,
+				agentName: invocationContext.agent.name,
+				environment: process.env.NODE_ENV,
+				status: llmStatus,
 			});
-
-			// After model callback
-			const alteredLlmResponse = await this._handleAfterModelCallback(
-				invocationContext,
-				llmResponse,
-				modelResponseEvent,
-			);
-
-			yield alteredLlmResponse || llmResponse;
 		}
 	}
 
