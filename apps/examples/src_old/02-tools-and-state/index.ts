@@ -4,6 +4,20 @@ import dedent from "dedent";
 import * as z from "zod";
 import { ask } from "../utils";
 
+/**
+ * 02 - Tools and State Management
+ *
+ * Learn how to create custom tools and manage state in your agents.
+ *
+ * Concepts covered:
+ * - Creating custom tools with createTool
+ * - Tool schemas and validation
+ * - State management with context.state
+ * - Session services for persistence
+ * - State injection in instructions
+ */
+
+// Simple shopping cart tools
 const addItemTool = createTool({
 	name: "add_item",
 	description: "Add an item to the shopping cart",
@@ -23,7 +37,7 @@ const addItemTool = createTool({
 		}
 
 		context.state.set("cart", cart);
-		context.state.set("cartCount", cart.length);
+		context.state.set("cartCount", cart.length); // Store count separately for state injection
 
 		const total = cart.reduce(
 			(sum, cartItem) => sum + cartItem.quantity * cartItem.price,
@@ -63,9 +77,8 @@ const viewCartTool = createTool({
 	},
 });
 
-async function main() {
-	console.log("🛠️ Tools and State\n");
-
+async function demonstrateToolsAndState() {
+	console.log("🛠️ Tools and state:");
 	const sessionService = new InMemorySessionService();
 	const initialState = {
 		cart: [],
@@ -86,17 +99,30 @@ async function main() {
 			- Cart contents: {cart}
 
 			You can add items and view the cart. Always be helpful with pricing and quantities.
+			When asked about current cart without tools, reference the cart state above.
 		`,
 		)
 		.withTools(addItemTool, viewCartTool)
 		.withSessionService(sessionService, { state: initialState })
 		.build();
 
+	// Test adding items
 	await ask(runner, "Add 2 apples to my cart at $1.50 each");
-	await ask(runner, "Add 1 banana for $0.75");
-	await ask(runner, "Show me my complete cart with total");
 
-	console.log("\n✅ Complete! Next: 03-multi-agent-systems\n");
+	await ask(runner, "Add 1 banana for $0.75");
+
+	// Test state injection - ask about cart without using tools
+	await ask(
+		runner,
+		"How many items are in my cart and what are they? Use the state information from your instructions, don't call any tools.",
+	);
+
+	// Test viewing cart with tools
+	await ask(runner, "Show me my complete cart with total");
+}
+
+async function main() {
+	await demonstrateToolsAndState();
 }
 
 main().catch(console.error);

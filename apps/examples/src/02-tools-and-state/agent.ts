@@ -1,8 +1,6 @@
-import { env } from "node:process";
 import { AgentBuilder, createTool, InMemorySessionService } from "@iqai/adk";
 import dedent from "dedent";
 import * as z from "zod";
-import { ask } from "../utils";
 
 const addItemTool = createTool({
 	name: "add_item",
@@ -63,9 +61,7 @@ const viewCartTool = createTool({
 	},
 });
 
-async function main() {
-	console.log("🛠️ Tools and State\n");
-
+export async function agent() {
 	const sessionService = new InMemorySessionService();
 	const initialState = {
 		cart: [],
@@ -73,7 +69,7 @@ async function main() {
 	};
 
 	const { runner } = await AgentBuilder.create("shopping_cart_agent")
-		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
+		.withModel("gemini-2.5-flash")
 		.withDescription(
 			"A shopping cart assistant that manages items and calculates totals",
 		)
@@ -92,11 +88,5 @@ async function main() {
 		.withSessionService(sessionService, { state: initialState })
 		.build();
 
-	await ask(runner, "Add 2 apples to my cart at $1.50 each");
-	await ask(runner, "Add 1 banana for $0.75");
-	await ask(runner, "Show me my complete cart with total");
-
-	console.log("\n✅ Complete! Next: 03-multi-agent-systems\n");
+	return runner;
 }
-
-main().catch(console.error);
