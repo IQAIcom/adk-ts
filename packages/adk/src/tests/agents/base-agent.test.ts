@@ -21,6 +21,7 @@ vi.mock("../../telemetry", () => ({
 		traceCallback: vi.fn(),
 		setActiveSpanAttributes: vi.fn(),
 	},
+	extractTextFromContent: vi.fn(() => ""),
 }));
 
 class TestAgent extends BaseAgent {

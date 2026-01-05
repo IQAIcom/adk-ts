@@ -3,6 +3,7 @@
  * Helper functions for telemetry operations
  */
 
+import type { Content, Part } from "@google/genai";
 import { DEFAULTS, ENV_VARS } from "./constants";
 
 /**
@@ -19,6 +20,26 @@ export function shouldCaptureContent(): boolean {
 
 	// Parse boolean-like values
 	return value === "true" || value === "1" || value === "yes";
+}
+
+/**
+ * Extract text content from a Content object or array of Parts
+ * Handles the common pattern of extracting readable text from message parts
+ */
+export function extractTextFromContent(
+	content: Content | { parts?: Part[] } | undefined,
+): string {
+	if (!content) return "";
+
+	const parts = "parts" in content ? content.parts : undefined;
+	if (!parts || !Array.isArray(parts)) return "";
+
+	return parts
+		.map((part) =>
+			part && typeof part === "object" && "text" in part ? part.text : "",
+		)
+		.join("")
+		.trim();
 }
 
 /**

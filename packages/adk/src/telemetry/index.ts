@@ -84,6 +84,7 @@ export type {
 export {
 	buildLlmRequestForTrace,
 	buildLlmResponseForTrace,
+	extractTextFromContent,
 	formatSpanAttributes,
 	getEnvironment,
 	safeJsonStringify,

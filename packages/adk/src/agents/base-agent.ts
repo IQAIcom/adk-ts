@@ -1,6 +1,6 @@
 import type { Content } from "@google/genai";
 import { Event } from "../events/event";
-import { telemetryService } from "../telemetry";
+import { extractTextFromContent, telemetryService } from "../telemetry";
 import { CallbackContext } from "./callback-context";
 import type { InvocationContext } from "./invocation-context";
 
@@ -171,27 +171,18 @@ export abstract class BaseAgent {
 				};
 			}
 
-			// Extract input from the last user message in the events
-			const lastUserMessage = ctx.session.events
+			// Extract input from the last user message for tracing
+			const lastUserEvent = ctx.session.events
 				.slice()
 				.reverse()
-				.find((event) => event.author === "user");
-			const input = lastUserMessage?.content?.parts
-				?.map((part) =>
-					part && typeof part === "object" && "text" in part ? part.text : "",
-				)
-				.join("")
-				.trim();
+				.find((e) => e.author === "user");
+			const input = extractTextFromContent(lastUserEvent?.content);
 
-			// Trace agent invocation with standard attributes
+			// Trace agent invocation with input (output set after completion)
 			telemetryService.traceAgentInvocation(
-				{
-					name: this.name,
-					description: this.description,
-				},
+				{ name: this.name, description: this.description },
 				ctx,
 				input,
-				// Output will be set at the end of the invocation
 			);
 
 			// Add transfer tracking attributes if this is a transferred agent
@@ -235,19 +226,13 @@ export abstract class BaseAgent {
 				yield afterEvent;
 			}
 
-			// Extract output from the last agent message in the events
-			const lastAgentMessage = ctx.session.events
+			// Extract and set output on the active span
+			const lastAgentEvent = ctx.session.events
 				.slice()
 				.reverse()
-				.find((event) => event.author === this.name);
-			const output = lastAgentMessage?.content?.parts
-				?.map((part) =>
-					part && typeof part === "object" && "text" in part ? part.text : "",
-				)
-				.join("")
-				.trim();
+				.find((e) => e.author === this.name);
+			const output = extractTextFromContent(lastAgentEvent?.content);
 
-			// Update trace with output
 			if (output) {
 				telemetryService.setActiveSpanAttributes({
 					["gen_ai.output.messages"]: output,

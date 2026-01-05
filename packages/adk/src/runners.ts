@@ -24,7 +24,12 @@ import { PluginManager } from "./plugins/plugin-manager";
 import type { BaseSessionService } from "./sessions/base-session-service";
 import { InMemorySessionService } from "./sessions/in-memory-session-service";
 import type { Session } from "./sessions/session";
-import { SEMCONV, telemetryService, tracer } from "./telemetry";
+import {
+	extractTextFromContent,
+	SEMCONV,
+	telemetryService,
+	tracer,
+} from "./telemetry";
 
 /**
  * Find function call event if last event is function response.
@@ -217,15 +222,8 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		const span = tracer.startSpan("invocation");
 		const spanContext = trace.setSpan(context.active(), span);
 
-		// Extract input text from newMessage
-		const inputText = newMessage?.parts
-			?.map((part) =>
-				part && typeof part === "object" && "text" in part ? part.text : "",
-			)
-			.join("")
-			.trim();
-
-		// Set input on span (using GenAI semantic conventions)
+		// Extract and set input on span (using GenAI semantic conventions)
+		const inputText = extractTextFromContent(newMessage);
 		if (inputText && telemetryService.shouldCaptureContent()) {
 			span.setAttribute(SEMCONV.GEN_AI_INPUT_MESSAGES, inputText);
 			span.addEvent("gen_ai.invocation.input", {
@@ -292,16 +290,11 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			}
 
 			// Extract output from the last agent message in session events
-			const lastAgentMessage = session.events
+			const lastAgentEvent = session.events
 				.slice()
 				.reverse()
-				.find((event) => event.author !== "user" && event.author);
-			const outputText = lastAgentMessage?.content?.parts
-				?.map((part) =>
-					part && typeof part === "object" && "text" in part ? part.text : "",
-				)
-				.join("")
-				.trim();
+				.find((e) => e.author && e.author !== "user");
+			const outputText = extractTextFromContent(lastAgentEvent?.content);
 
 			// Set output on span (using GenAI semantic conventions)
 			if (outputText && telemetryService.shouldCaptureContent()) {

@@ -53,6 +53,62 @@ export class TracingService {
 	}
 
 	/**
+	 * Get the currently active span, or undefined if none
+	 * Use this for conditional span operations
+	 */
+	getActiveSpan(): Span | undefined {
+		return trace.getActiveSpan();
+	}
+
+	/**
+	 * Build common invocation context attributes
+	 * Reduces duplication across tracing methods
+	 */
+	private buildInvocationContextAttrs(
+		invocationContext?: InvocationContext,
+	): Record<string, any> {
+		if (!invocationContext) return {};
+		return {
+			[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
+			[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
+			[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
+		};
+	}
+
+	/**
+	 * Set attributes on span with content capture check
+	 * Helper to reduce boilerplate for optional content attributes
+	 */
+	private setContentAttributes(
+		span: Span,
+		inputKey: string,
+		inputValue: any,
+		outputKey: string,
+		outputValue: any,
+		eventPrefix: string,
+	): void {
+		if (!shouldCaptureContent()) return;
+
+		if (inputValue !== undefined) {
+			const inputStr =
+				typeof inputValue === "string"
+					? inputValue
+					: safeJsonStringify(inputValue);
+			span.setAttribute(inputKey, inputStr);
+			span.addEvent(`${eventPrefix}.input`, { "gen_ai.input": inputStr });
+		}
+
+		if (outputValue !== undefined) {
+			const outputStr =
+				typeof outputValue === "string"
+					? outputValue
+					: safeJsonStringify(outputValue);
+			span.setAttribute(outputKey, outputStr);
+			span.addEvent(`${eventPrefix}.output`, { "gen_ai.output": outputStr });
+		}
+	}
+
+	/**
 	 * Trace an agent invocation
 	 * Sets standard OpenTelemetry GenAI attributes for agents
 	 */
@@ -62,57 +118,36 @@ export class TracingService {
 		input?: string | Record<string, any>,
 		output?: string | Record<string, any>,
 	): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (!span) return;
 
-		// Generate a unique agent ID based on name and session
 		const agentId = `${agent.name}-${invocationContext.session.id}`;
 
-		const captureContent = shouldCaptureContent();
-
 		const attributes = formatSpanAttributes({
-			// Standard GenAI attributes (v1.38.0)
-			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk", // Framework provider
+			// Standard GenAI attributes
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
 			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.INVOKE_AGENT,
 			[SEMCONV.GEN_AI_AGENT_ID]: agentId,
 			[SEMCONV.GEN_AI_AGENT_NAME]: agent.name,
 			[SEMCONV.GEN_AI_AGENT_DESCRIPTION]: agent.description || "",
 			[SEMCONV.GEN_AI_CONVERSATION_ID]: invocationContext.session.id,
-
 			// ADK-specific attributes
 			[ADK_ATTRS.AGENT_NAME]: agent.name,
-			[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
-			[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
-			[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
 			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+			...this.buildInvocationContextAttrs(invocationContext),
 		});
 
 		span.setAttributes(attributes);
 
-		// Add input/output content if capture is enabled (similar to LLM calls)
-		if (captureContent) {
-			if (input !== undefined) {
-				const inputStr =
-					typeof input === "string" ? input : safeJsonStringify(input);
-				// Standard GenAI input attribute
-				span.setAttribute(SEMCONV.GEN_AI_INPUT_MESSAGES, inputStr);
-				// Add as event for better visibility in observability platforms
-				span.addEvent("gen_ai.agent.input", {
-					"gen_ai.input": inputStr,
-				});
-			}
-
-			if (output !== undefined) {
-				const outputStr =
-					typeof output === "string" ? output : safeJsonStringify(output);
-				// Standard GenAI output attribute
-				span.setAttribute(SEMCONV.GEN_AI_OUTPUT_MESSAGES, outputStr);
-				// Add as event for better visibility in observability platforms
-				span.addEvent("gen_ai.agent.output", {
-					"gen_ai.output": outputStr,
-				});
-			}
-		}
+		// Add input/output content if capture is enabled
+		this.setContentAttributes(
+			span,
+			SEMCONV.GEN_AI_INPUT_MESSAGES,
+			input,
+			SEMCONV.GEN_AI_OUTPUT_MESSAGES,
+			output,
+			"gen_ai.agent",
+		);
 	}
 
 	/**
@@ -126,92 +161,55 @@ export class TracingService {
 		llmRequest?: LlmRequest,
 		invocationContext?: InvocationContext,
 	): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (!span) return;
 
-		let toolCallId = "<not_specified>";
-		let toolResponse: any = "<not_specified>";
-
 		// Extract tool call details from function response event
-		if (
-			functionResponseEvent.content?.parts &&
-			functionResponseEvent.content.parts.length > 0
-		) {
-			const functionResponse =
-				functionResponseEvent.content.parts[0].functionResponse;
-			if (functionResponse) {
-				toolCallId = functionResponse.id || "<not_specified>";
-				toolResponse = functionResponse.response || "<not_specified>";
-			}
-		}
+		const functionResponse =
+			functionResponseEvent.content?.parts?.[0]?.functionResponse;
+		const toolCallId = functionResponse?.id || "<not_specified>";
+		const toolResponse = functionResponse?.response || "<not_specified>";
 
 		const captureContent = shouldCaptureContent();
+		const argsJson = safeJsonStringify(args);
+		const responseJson = safeJsonStringify(toolResponse);
 
 		const attributes = formatSpanAttributes({
-			// Standard GenAI attributes (v1.38.0)
-			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk", // Framework provider
+			// Standard GenAI attributes
+			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
 			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.EXECUTE_TOOL,
 			[SEMCONV.GEN_AI_TOOL_NAME]: tool.name,
 			[SEMCONV.GEN_AI_TOOL_DESCRIPTION]: tool.description || "",
 			[SEMCONV.GEN_AI_TOOL_TYPE]: tool.constructor.name,
 			[SEMCONV.GEN_AI_TOOL_CALL_ID]: toolCallId,
-
 			// ADK-specific attributes
 			[ADK_ATTRS.TOOL_NAME]: tool.name,
 			[ADK_ATTRS.EVENT_ID]: functionResponseEvent.invocationId,
-
-			// Session context
-			...(invocationContext && {
-				[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
-				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
-				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
-			}),
-
 			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+			...this.buildInvocationContextAttrs(invocationContext),
 		});
 
 		span.setAttributes(attributes);
 
 		// Add structured tool input/output (opt-in via content capture)
 		if (captureContent) {
-			// Standard GenAI structured attributes
-			span.setAttribute(
-				SEMCONV.GEN_AI_TOOL_CALL_ARGUMENTS,
-				safeJsonStringify(args),
-			);
-			span.setAttribute(
-				SEMCONV.GEN_AI_TOOL_CALL_RESULT,
-				safeJsonStringify(toolResponse),
-			);
+			span.setAttribute(SEMCONV.GEN_AI_TOOL_CALL_ARGUMENTS, argsJson);
+			span.setAttribute(SEMCONV.GEN_AI_TOOL_CALL_RESULT, responseJson);
+			span.setAttribute(ADK_ATTRS.TOOL_ARGS, argsJson);
+			span.setAttribute(ADK_ATTRS.TOOL_RESPONSE, responseJson);
 
-			// Add input/output as events (preferred for observability platforms)
-			span.addEvent("gen_ai.tool.input", {
-				"gen_ai.tool.input": safeJsonStringify(args),
-			});
-
-			// Tool output event
+			span.addEvent("gen_ai.tool.input", { "gen_ai.tool.input": argsJson });
 			span.addEvent("gen_ai.tool.output", {
-				"gen_ai.tool.output": safeJsonStringify(toolResponse),
+				"gen_ai.tool.output": responseJson,
 			});
 
-			// Also set as ADK attributes for backward compatibility
-			span.setAttribute(ADK_ATTRS.TOOL_ARGS, safeJsonStringify(args));
-			span.setAttribute(
-				ADK_ATTRS.TOOL_RESPONSE,
-				safeJsonStringify(toolResponse),
-			);
-		}
-
-		// Add LLM request if provided
-		if (llmRequest && captureContent) {
-			const llmRequestData = buildLlmRequestForTrace(
-				llmRequest,
-				captureContent,
-			);
-			span.setAttribute(
-				ADK_ATTRS.LLM_REQUEST,
-				safeJsonStringify(llmRequestData),
-			);
+			if (llmRequest) {
+				const llmRequestData = buildLlmRequestForTrace(llmRequest, true);
+				span.setAttribute(
+					ADK_ATTRS.LLM_REQUEST,
+					safeJsonStringify(llmRequestData),
+				);
+			}
 		}
 	}
 
@@ -444,17 +442,10 @@ export class TracingService {
 	}
 
 	/**
-	 * Get the currently active span
-	 */
-	getActiveSpan(): Span | undefined {
-		return trace.getActiveSpan();
-	}
-
-	/**
 	 * Set attributes on the currently active span
 	 */
 	setActiveSpanAttributes(attributes: Record<string, any>): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (span) {
 			span.setAttributes(formatSpanAttributes(attributes));
 		}
@@ -464,7 +455,7 @@ export class TracingService {
 	 * Record an exception on the currently active span
 	 */
 	recordException(error: Error, attributes?: Record<string, any>): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (span) {
 			span.recordException(error);
 			if (attributes) {
@@ -477,7 +468,7 @@ export class TracingService {
 	 * Add an event to the currently active span
 	 */
 	addEvent(name: string, attributes?: Record<string, any>): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (span && attributes) {
 			span.addEvent(name, formatSpanAttributes(attributes));
 		}
@@ -493,7 +484,7 @@ export class TracingService {
 		callbackIndex: number,
 		invocationContext?: InvocationContext,
 	): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (!span) return;
 
 		const attributes = formatSpanAttributes({
@@ -502,12 +493,8 @@ export class TracingService {
 			[ADK_ATTRS.CALLBACK_TYPE]: callbackType,
 			[ADK_ATTRS.CALLBACK_NAME]: callbackName || "<anonymous>",
 			[ADK_ATTRS.CALLBACK_INDEX]: callbackIndex,
-			...(invocationContext && {
-				[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
-				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
-				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
-			}),
 			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+			...this.buildInvocationContextAttrs(invocationContext),
 		});
 
 		span.setAttributes(attributes);
@@ -525,7 +512,7 @@ export class TracingService {
 		reason?: string,
 		invocationContext?: InvocationContext,
 	): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (!span) return;
 
 		const attributes = formatSpanAttributes({
@@ -536,18 +523,12 @@ export class TracingService {
 			[ADK_ATTRS.TRANSFER_CHAIN]: JSON.stringify(transferChain),
 			[ADK_ATTRS.TRANSFER_DEPTH]: transferDepth,
 			[ADK_ATTRS.TRANSFER_ROOT_AGENT]: transferChain[0] || sourceAgent,
-			...(reason && { [ADK_ATTRS.TRANSFER_REASON]: reason }),
-			...(invocationContext && {
-				[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
-				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
-				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
-			}),
 			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+			...(reason && { [ADK_ATTRS.TRANSFER_REASON]: reason }),
+			...this.buildInvocationContextAttrs(invocationContext),
 		});
 
 		span.setAttributes(attributes);
-
-		// Add transfer event
 		span.addEvent("agent_transfer_initiated", {
 			target_agent: targetAgent,
 			transfer_depth: transferDepth,
@@ -564,27 +545,20 @@ export class TracingService {
 		retryCount?: number,
 		isCallbackOverride?: boolean,
 	): void {
-		const span = trace.getActiveSpan();
-		if (!span) return;
-
-		const attributes: Record<string, any> = {};
-
-		if (executionOrder !== undefined) {
-			attributes[ADK_ATTRS.TOOL_EXECUTION_ORDER] = executionOrder;
-		}
-		if (parallelGroup !== undefined) {
-			attributes[ADK_ATTRS.TOOL_PARALLEL_GROUP] = parallelGroup;
-		}
-		if (retryCount !== undefined) {
-			attributes[ADK_ATTRS.TOOL_RETRY_COUNT] = retryCount;
-		}
-		if (isCallbackOverride !== undefined) {
-			attributes[ADK_ATTRS.TOOL_IS_CALLBACK_OVERRIDE] = isCallbackOverride;
-		}
-
-		if (Object.keys(attributes).length > 0) {
-			span.setAttributes(formatSpanAttributes(attributes));
-		}
+		this.setActiveSpanAttributes({
+			...(executionOrder !== undefined && {
+				[ADK_ATTRS.TOOL_EXECUTION_ORDER]: executionOrder,
+			}),
+			...(parallelGroup !== undefined && {
+				[ADK_ATTRS.TOOL_PARALLEL_GROUP]: parallelGroup,
+			}),
+			...(retryCount !== undefined && {
+				[ADK_ATTRS.TOOL_RETRY_COUNT]: retryCount,
+			}),
+			...(isCallbackOverride !== undefined && {
+				[ADK_ATTRS.TOOL_IS_CALLBACK_OVERRIDE]: isCallbackOverride,
+			}),
+		});
 	}
 
 	/**
@@ -598,30 +572,23 @@ export class TracingService {
 		cachedTokens?: number,
 		contextWindowUsedPct?: number,
 	): void {
-		const span = trace.getActiveSpan();
-		if (!span) return;
-
-		const attributes: Record<string, any> = {};
-
-		if (streaming !== undefined) {
-			attributes[ADK_ATTRS.LLM_STREAMING] = streaming;
-		}
-		if (timeToFirstTokenMs !== undefined) {
-			attributes[ADK_ATTRS.LLM_TIME_TO_FIRST_TOKEN] = timeToFirstTokenMs;
-		}
-		if (chunkCount !== undefined) {
-			attributes[ADK_ATTRS.LLM_CHUNK_COUNT] = chunkCount;
-		}
-		if (cachedTokens !== undefined) {
-			attributes[ADK_ATTRS.LLM_CACHED_TOKENS] = cachedTokens;
-		}
-		if (contextWindowUsedPct !== undefined) {
-			attributes[ADK_ATTRS.LLM_CONTEXT_WINDOW_USED_PCT] = contextWindowUsedPct;
-		}
-
-		if (Object.keys(attributes).length > 0) {
-			span.setAttributes(formatSpanAttributes(attributes));
-		}
+		this.setActiveSpanAttributes({
+			...(streaming !== undefined && {
+				[ADK_ATTRS.LLM_STREAMING]: streaming,
+			}),
+			...(timeToFirstTokenMs !== undefined && {
+				[ADK_ATTRS.LLM_TIME_TO_FIRST_TOKEN]: timeToFirstTokenMs,
+			}),
+			...(chunkCount !== undefined && {
+				[ADK_ATTRS.LLM_CHUNK_COUNT]: chunkCount,
+			}),
+			...(cachedTokens !== undefined && {
+				[ADK_ATTRS.LLM_CACHED_TOKENS]: cachedTokens,
+			}),
+			...(contextWindowUsedPct !== undefined && {
+				[ADK_ATTRS.LLM_CONTEXT_WINDOW_USED_PCT]: contextWindowUsedPct,
+			}),
+		});
 	}
 
 	/**
@@ -642,28 +609,21 @@ export class TracingService {
 		recoverable = false,
 		retryRecommended = false,
 	): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (!span) return;
 
 		span.recordException(error);
-		span.setStatus({
-			code: SPAN_STATUS.ERROR,
-			message: error.message,
-		});
-
-		const attributes = formatSpanAttributes({
-			// Standard error attributes
-			[SEMCONV.ERROR_TYPE]: error.constructor.name, // Low-cardinality error identifier
-			"error.message": error.message,
-			"error.stack": error.stack?.substring(0, 1000) || "",
-
-			// ADK-specific error attributes
-			[ADK_ATTRS.ERROR_CATEGORY]: category,
-			[ADK_ATTRS.ERROR_RECOVERABLE]: recoverable,
-			[ADK_ATTRS.ERROR_RETRY_RECOMMENDED]: retryRecommended,
-		});
-
-		span.setAttributes(attributes);
+		span.setStatus({ code: SPAN_STATUS.ERROR, message: error.message });
+		span.setAttributes(
+			formatSpanAttributes({
+				[SEMCONV.ERROR_TYPE]: error.constructor.name,
+				"error.message": error.message,
+				"error.stack": error.stack?.substring(0, 1000) || "",
+				[ADK_ATTRS.ERROR_CATEGORY]: category,
+				[ADK_ATTRS.ERROR_RECOVERABLE]: recoverable,
+				[ADK_ATTRS.ERROR_RETRY_RECOMMENDED]: retryRecommended,
+			}),
+		);
 	}
 
 	/**
@@ -677,28 +637,28 @@ export class TracingService {
 		resultsCount?: number,
 		invocationContext?: InvocationContext,
 	): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (!span) return;
 
-		const attributes = formatSpanAttributes({
-			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
-			[SEMCONV.GEN_AI_OPERATION_NAME]:
-				operation === "search"
-					? OPERATIONS.SEARCH_MEMORY
-					: OPERATIONS.INSERT_MEMORY,
-			[ADK_ATTRS.SESSION_ID]: sessionId,
-			...(query && { [ADK_ATTRS.MEMORY_QUERY]: query }),
-			...(resultsCount !== undefined && {
-				[ADK_ATTRS.MEMORY_RESULTS_COUNT]: resultsCount,
+		span.setAttributes(
+			formatSpanAttributes({
+				[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
+				[SEMCONV.GEN_AI_OPERATION_NAME]:
+					operation === "search"
+						? OPERATIONS.SEARCH_MEMORY
+						: OPERATIONS.INSERT_MEMORY,
+				[ADK_ATTRS.SESSION_ID]: sessionId,
+				[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+				...(query && { [ADK_ATTRS.MEMORY_QUERY]: query }),
+				...(resultsCount !== undefined && {
+					[ADK_ATTRS.MEMORY_RESULTS_COUNT]: resultsCount,
+				}),
+				...(invocationContext && {
+					[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
+					[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
+				}),
 			}),
-			...(invocationContext && {
-				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
-				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
-			}),
-			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
-		});
-
-		span.setAttributes(attributes);
+		);
 	}
 
 	/**
@@ -711,24 +671,20 @@ export class TracingService {
 		agentName?: string,
 		invocationContext?: InvocationContext,
 	): void {
-		const span = trace.getActiveSpan();
+		const span = this.getActiveSpan();
 		if (!span) return;
 
-		const attributes = formatSpanAttributes({
-			[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
-			[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.EXECUTE_PLUGIN,
-			[ADK_ATTRS.PLUGIN_NAME]: pluginName,
-			[ADK_ATTRS.PLUGIN_HOOK]: hook,
-			...(agentName && { [ADK_ATTRS.AGENT_NAME]: agentName }),
-			...(invocationContext && {
-				[ADK_ATTRS.SESSION_ID]: invocationContext.session.id,
-				[ADK_ATTRS.USER_ID]: invocationContext.userId || "",
-				[ADK_ATTRS.INVOCATION_ID]: invocationContext.invocationId,
+		span.setAttributes(
+			formatSpanAttributes({
+				[SEMCONV.GEN_AI_PROVIDER_NAME]: "iqai-adk",
+				[SEMCONV.GEN_AI_OPERATION_NAME]: OPERATIONS.EXECUTE_PLUGIN,
+				[ADK_ATTRS.PLUGIN_NAME]: pluginName,
+				[ADK_ATTRS.PLUGIN_HOOK]: hook,
+				[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
+				...(agentName && { [ADK_ATTRS.AGENT_NAME]: agentName }),
+				...this.buildInvocationContextAttrs(invocationContext),
 			}),
-			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
-		});
-
-		span.setAttributes(attributes);
+		);
 	}
 }
 
