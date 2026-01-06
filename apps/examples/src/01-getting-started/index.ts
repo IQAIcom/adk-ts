@@ -25,7 +25,7 @@ async function main() {
 		🌍 Country:    ${response.country}
 		📍 Capital:    ${response.capital}
 		👥 Population: ${response.population ? response.population.toLocaleString() : "N/A"}
-		🎉 Fun fact:   ${response.fun_fact}
+		🎉 Fun fact:   ${response.funFact}
 		`,
 	);
 }
