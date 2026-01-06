@@ -9,7 +9,7 @@ export function getRootAgent() {
 			.number()
 			.optional()
 			.describe("Population of the capital city"),
-		fun_fact: z.string().describe("An interesting fact about the city"),
+		funFact: z.string().describe("An interesting fact about the city"),
 	});
 
 	return AgentBuilder.withModel("gemini-2.5-flash")
