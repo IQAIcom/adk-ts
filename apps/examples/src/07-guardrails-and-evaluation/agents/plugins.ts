@@ -1,31 +1,45 @@
 import {
 	BasePlugin,
-	type CallbackContext,
 	type BaseTool,
-	type ToolContext,
+	type CallbackContext,
 	type LlmRequest,
 	LlmResponse,
+	type ToolContext,
 } from "@iqai/adk";
 
-export interface GuardrailsPluginOptions {
-	name?: string;
-	blockKeywords?: Array<{
-		keywords: string[];
-		message?: string;
-		stateKey?: string;
-	}>;
-	blockTools?: Array<{
-		toolName: string;
-		argName: string;
-		values: (string | number | boolean)[];
-		errorMessage?: string;
-		stateKey?: string;
-	}>;
-}
-
 export class GuardrailsPlugin extends BasePlugin {
-	constructor(private options: GuardrailsPluginOptions = {}) {
-		super(options.name ?? "guardrails_plugin");
+	private static DEFAULT_BLOCKED_KEYWORDS = [
+		{
+			keywords: ["HACK", "EXPLOIT", "BYPASS", "JAILBREAK"],
+			message:
+				"I cannot help with requests related to unauthorized access or system manipulation.",
+			stateKey: "blocked_security_violation",
+		},
+		{
+			keywords: ["DELETE ALL", "DROP DATABASE", "REMOVE EVERYTHING"],
+			message:
+				"I cannot process potentially destructive operations without explicit confirmation.",
+			stateKey: "blocked_destructive_operation",
+		},
+		{
+			keywords: ["PASSWORD", "SECRET_KEY", "API_KEY", "CREDENTIALS"],
+			message: "I cannot help with requests involving sensitive credentials.",
+			stateKey: "blocked_credentials_request",
+		},
+	];
+
+	private static DEFAULT_BLOCKED_TOOLS = [
+		{
+			toolName: "file_delete",
+			argName: "path",
+			values: ["/", "/etc", "/system", "C:\\Windows"],
+			errorMessage: "Cannot delete critical system paths.",
+			stateKey: "blocked_critical_path_deletion",
+		},
+	];
+
+	constructor() {
+		super("guardrails_plugin");
 	}
 
 	async beforeModelCallback({
@@ -43,7 +57,7 @@ export class GuardrailsPlugin extends BasePlugin {
 				.join(" ")
 				.toUpperCase() ?? "";
 
-		for (const rule of this.options.blockKeywords ?? []) {
+		for (const rule of GuardrailsPlugin.DEFAULT_BLOCKED_KEYWORDS) {
 			if (rule.keywords.some((kw) => userText.includes(kw.toUpperCase()))) {
 				if (rule.stateKey) callbackContext.state.set(rule.stateKey, true);
 				return new LlmResponse({
@@ -73,7 +87,7 @@ export class GuardrailsPlugin extends BasePlugin {
 		toolArgs: Record<string, unknown>;
 		toolContext: ToolContext;
 	}): Promise<Record<string, unknown> | undefined> {
-		for (const rule of this.options.blockTools ?? []) {
+		for (const rule of GuardrailsPlugin.DEFAULT_BLOCKED_TOOLS) {
 			if (tool.name !== rule.toolName) continue;
 
 			const argValue = toolArgs[rule.argName];
