@@ -78,9 +78,7 @@ runAgent().then((result) => {
 });
 ```
 
-### Using `{key}` Templating
-
-### Templating Rules
+### `{key}` Templating Rules
 
 - `{key}` requires value (throws error if missing): Use this for mandatory state keys. If the key doesn't exist in state, the framework will throw an error to prevent incomplete prompts.
 - `{key?}` optional (empty string if missing): Use this for optional state keys. If the key is absent, it will be replaced with an empty string, allowing the prompt to remain valid.
@@ -114,7 +112,7 @@ import { Event, EventActions, InMemorySessionService } from "@iqai/adk";
 
 async function main() {
   const sessionService = new InMemorySessionService();
-  const session = await sessionService.createSession("user123", "my-app");
+  const session = await sessionService.createSession("my-app", "user123");
 
   const event = new Event({
     author: "user123",

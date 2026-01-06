@@ -595,7 +595,7 @@ const agent = await AgentBuilder.create("monitored_agent")
 
 Adds long-term memory storage that persists information across conversations and sessions. Memory enables agents to remember user preferences, learned insights, and important context from previous interactions.
 
-Available memory services include `InMemoryMemoryService` for simple in-memory storage and `VertexAiRagMemoryService` for Vertex AI RAG-based memory with semantic search capabilities. Particularly valuable for personal assistants, customer service agents, and knowledge workers that need to build relationships over time. See [Sessions & Memory](/docs/framework/sessions) for memory configuration options.
+Available memory services include `InMemoryMemoryService` for simple in-memory storage and `VertexAiRagMemoryService` for Vertex AI RAG-based memory with semantic search capabilities. Particularly valuable for personal assistants, customer service agents, and knowledge workers that need to build relationships over time. See [Session & Memory](/docs/framework/sessions) for memory configuration options.
 
 ```typescript
 import { AgentBuilder, InMemoryMemoryService } from "@iqai/adk";
@@ -615,7 +615,7 @@ const agent = await AgentBuilder.create("my_agent")
 
 Provides custom session management for conversation state, message history, and ephemeral data during a single session. `AgentBuilder` creates in-memory sessions automatically, but you can customize this for persistence or multi-tenant applications.
 
-Available session services include `InMemorySessionService` for simple in-memory storage, `DatabaseSessionService` for database-backed persistence, and `VertexAiSessionService` for Vertex AI integration. Sessions are lighter-weight than memory and typically reset between conversations. See [Sessions & Memory](/docs/framework/sessions) for session configuration.
+Available session services include `InMemorySessionService` for simple in-memory storage, `DatabaseSessionService` for database-backed persistence, and `VertexAiSessionService` for Vertex AI integration. Sessions are lighter-weight than memory and typically reset between conversations. See [Session & Memory](/docs/framework/sessions) for session configuration.
 
 ```typescript
 import { AgentBuilder, createDatabaseSessionService } from "@iqai/adk";
@@ -1058,8 +1058,8 @@ const result = await runner.ask("Research quantum computing trends");
     href="/docs/framework/agents/workflow-agents/loop-agents"
   />
   <Card
-    title="🧠 Sessions & Memory"
+    title="💾 Session & Memory"
     description="Manage conversation state and long-term memory"
-    href="/docs/framework/session-state-memory/session"
+    href="/docs/framework/session-state-memory"
   />
 </Cards>

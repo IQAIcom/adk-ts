@@ -240,9 +240,10 @@ While ADK-TS manages sessions automatically, you can also work with them directl
 
 ```typescript
 const session = await sessionService.createSession(
-  "alice", // userId
   "support-bot", // appName
-  { sessionId: "ticket-12345" } // optional metadata
+  "alice", // userId
+  {}, // optional initial state
+  "ticket-12345" // optional sessionId
 );
 ```
 
