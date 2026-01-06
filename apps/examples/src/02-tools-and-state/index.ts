@@ -1,5 +1,5 @@
 import { ask } from "../utils";
-import { getRootAgent } from "./agents/root_agent";
+import { getRootAgent } from "./agents/agent";
 
 async function main() {
 	console.log("🛠️ Tools and State\n");

@@ -1,5 +1,5 @@
 import dedent from "dedent";
-import { getRootAgent } from "./agents/root_agent";
+import { getRootAgent } from "./agents/agent";
 
 async function main() {
 	const { runner } = await getRootAgent();
