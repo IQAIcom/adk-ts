@@ -1,12 +1,12 @@
 ---
 title: Plugins
-description: Introduction to `@iq/adk` plugins
+description: Introduction to ADK-TS plugins
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-A Plugin in Agent Development Kit (ADK) is a custom code module that can be executed at various stages of an agent workflow lifecycle using callback hooks. You use Plugins for functionality that is applicable across your agent workflow. Some typical applications of Plugins are as follows:
+A Plugin in Agent Development Kit (ADK-TS) is a custom code module that can be executed at various stages of an agent workflow lifecycle using callback hooks. You use Plugins for functionality that is applicable across your agent workflow. Some typical applications of Plugins are as follows:
 
 - Logging and tracing: Create detailed logs of agent, tool, and generative AI model activity for debugging and performance analysis.
 
@@ -51,7 +51,7 @@ import {
   Events,
   Models,
   Tools,
-} from "adk";
+} from "@iqai/adk";
 import type { Content } from "@google/genai";
 
 // A simple plugin that logs user messages, agent/model/tool activity, and cleans up on close.
@@ -202,7 +202,7 @@ export class BasicLoggingPlugin extends BasePlugin {
 Register Plugins on the `Runner`. Runner-level Plugins apply globally to all Agents, Tools, and LLM calls managed by that runner. You can set a `pluginCloseTimeout` to bound shutdown time.
 
 ```typescript
-import { InMemoryRunner, Agents } from "adk";
+import { InMemoryRunner, Agents } from "@iqai/adk";
 import { BasicLoggingPlugin } from "./basic-logging-plugin";
 
 // Build a root agent (can be any BaseAgent; LlmAgent shown later)
@@ -235,7 +235,7 @@ import {
   Tools,
   Events,
   Models,
-} from "adk";
+} from "@iqai/adk";
 import { BasicLoggingPlugin } from "./basic-logging-plugin";
 
 // A toy tool to demonstrate tool callbacks
@@ -407,7 +407,7 @@ chart="sequenceDiagram
     PM-->>R: cleanup metrics"
 />
 
-**Figure 1.** Diagram of ADK agent workflow with Plugin callback hook locations.
+**Figure 1.** Diagram of ADK-TS agent workflow with Plugin callback hook locations.
 
 The following sections describe the available callback hooks for Plugins in more detail.
 
