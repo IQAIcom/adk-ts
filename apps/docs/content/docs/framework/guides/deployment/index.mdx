@@ -8,36 +8,34 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Deploy your ADK-TS agents to production using various platforms and deployment strategies. Choose the approach that best fits your infrastructure and requirements.
 
-## Quick Start Decision Tree
-
-### Platform Guides
+## Platform Guides
 
 Deploy to popular cloud platforms with step-by-step instructions:
 
 <Cards>
   <Card
-    title="🚀 Quick & Managed"
-    description="Railway - easiest deployment, auto-detect or use Docker (5-15 min)"
-    href="/docs/framework/guides/deployment/railway"
+    title="🐳 Docker"
+    description="Deploy using Docker containers to any platform"
+    href="/docs/framework/guides/deployment/docker"
   />
   <Card
-    title="⚡ Serverless API"
-    description="Vercel - serverless functions for API agents and webhooks (5-10 min)"
-    href="/docs/framework/guides/deployment/vercel"
-  />
-  <Card
-    title="☁️ Enterprise Cloud"
-    description="AWS - Lambda, ECS Fargate, or EC2 for scalable cloud deployment (15-60 min)"
+    title="☁️ AWS"
+    description="Deploy to AWS Lambda, ECS Fargate, or EC2 for scalable cloud deployment"
     href="/docs/framework/guides/deployment/aws"
   />
   <Card
-    title="🔧 Self-Hosted & Flexible"
-    description="Docker - full control, deploy anywhere you want (30+ min)"
-    href="/docs/framework/guides/deployment/docker"
+    title="🚂 Railway"
+    description="Deploy using Railway's container hosting platform"
+    href="/docs/framework/guides/deployment/railway"
+  />
+  <Card
+    title="⚡ Vercel"
+    description="Deploy serverless functions for API agents and webhooks"
+    href="/docs/framework/guides/deployment/vercel"
   />
 </Cards>
 
-### Agent-Specific Guides
+## Agent-Specific Guides
 
 Deployment guides for specific agent types with unique requirements:
 
@@ -54,6 +52,7 @@ Deployment guides for specific agent types with unique requirements:
 We're working on guides for additional platforms:
 
 - **☁️ Google Cloud** - Cloud Run and GKE deployment
+- **🌐 Netlify** - Serverless functions and static site deployment
 - **⚓ Kubernetes** - Container orchestration for scalable deployments
 
 <Callout type="info" title="Contributions Welcome">
