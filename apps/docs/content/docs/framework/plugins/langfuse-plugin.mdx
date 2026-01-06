@@ -40,8 +40,8 @@ You can attach the plugin to your agent using `AgentBuilder` or directly with `L
 
 ```ts
 import { AgentBuilder, InMemorySessionService } from "@iqai/adk";
+import { openrouter } from "@openrouter/ai-sdk-provider";
 import { LangfusePlugin } from "./langfuse-plugin";
-import { openrouter } from "@iqai/adk/models";
 import { randomUUID } from "crypto";
 
 const langfusePlugin = new LangfusePlugin({
