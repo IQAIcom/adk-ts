@@ -142,10 +142,51 @@ class CustomLangfusePlugin extends LangfusePlugin {
 
 ### Manual flush and shutdown
 
+By default, the Langfuse client batches events and flushes them automatically based on the `flushAt` and `flushInterval` configuration options. In some scenarios, however, you may want explicit control over when data is sent or when the client is shut down.
+
+#### `flush()`
+
+```ts
+await langfusePlugin.flush();
+```
+
+Forces all buffered traces, spans, and events to be sent to Langfuse immediately.
+
+Use this when:
+
+* You are running in short-lived environments (e.g. serverless functions, scripts, or cron jobs)
+* You want to ensure all telemetry is delivered before continuing execution
+* You need deterministic delivery for testing or debugging
+
+Internally, this calls `flushAsync()` on the Langfuse client and does **not** shut it down, so the plugin can continue recording events afterward.
+
+#### `close()`
+
+```ts
+await langfusePlugin.close();
+```
+
+Gracefully shuts down the Langfuse client after flushing any remaining buffered data.
+
+Use this when:
+
+* Your application or worker is terminating
+* You no longer plan to record any additional traces or events
+* You want to release resources and prevent further writes
+
+Once `close()` is called, the plugin should be considered inactive.
+
+#### Recommended usage
+
+In long-running applications (e.g. servers), you typically do **not** need to call either method manually.
+In short-lived processes, a common pattern is:
+
 ```ts
 await langfusePlugin.flush();
 await langfusePlugin.close();
 ```
+
+This ensures all telemetry is delivered before the process exits.
 
 
 ## Benefits
