@@ -1,5 +1,5 @@
 import { AgentBuilder } from "@iqai/adk";
-import z from "zod";
+import z from "zod/v4";
 
 export function getRootAgent() {
 	const outputSchema = z.object({
