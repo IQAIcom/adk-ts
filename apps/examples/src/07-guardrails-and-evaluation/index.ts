@@ -8,17 +8,29 @@ async function demonstrateGuardrails() {
 
 	const { runner } = await getRootAgent();
 
-	console.log("✅ Normal request (allowed):");
-	await ask(runner, "What is the weather in London?");
+	const questions = [
+		{
+			label: "✅ Normal request (allowed)",
+			question: "What is the weather in London?",
+		},
+		{
+			label: "🚫 Contains BLOCK keyword (blocked by beforeModel)",
+			question: "BLOCK this request - what's the weather in Tokyo?",
+		},
+		{
+			label: "🚫 Tool call blocked for Paris",
+			question: "What's the weather in Paris?",
+		},
+		{
+			label: "✅ Another normal request (allowed)",
+			question: "How's the weather in New York?",
+		},
+	];
 
-	console.log("\n🚫 Contains BLOCK keyword (blocked by beforeModel):");
-	await ask(runner, "BLOCK this request - what's the weather in Tokyo?");
-
-	console.log("\n🚫 Tool call blocked for Paris:");
-	await ask(runner, "What's the weather in Paris?");
-
-	console.log("\n✅ Another normal request (allowed):");
-	await ask(runner, "How's the weather in New York?");
+	for (const { label, question } of questions) {
+		console.log(`\n${label}:`);
+		await ask(runner, question);
+	}
 }
 
 async function demonstrateEvaluation() {
