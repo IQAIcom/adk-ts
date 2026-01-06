@@ -12,8 +12,8 @@ export const counterTool = createTool({
 		const counters = context.state.get("counters", {});
 		const oldValue = counters[counterName] || 0;
 		const newValue = oldValue + amount;
-		counters[counterName] = newValue;
-		context.state.set("counters", counters);
+		const newCounters = { ...counters, [counterName]: newValue };
+		context.state.set("counters", newCounters);
 		return {
 			counterName,
 			oldValue,
