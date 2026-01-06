@@ -1,8 +1,8 @@
 import dedent from "dedent";
-import { getCityAgent } from "./agents/city_agent";
+import { getRootAgent } from "./agents/root_agent";
 
 async function main() {
-	const { runner } = await getCityAgent();
+	const { runner } = await getRootAgent();
 
 	const response = await runner.ask("Give me stats about France");
 

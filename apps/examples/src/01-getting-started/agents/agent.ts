@@ -1,7 +1,7 @@
 import { AgentBuilder } from "@iqai/adk";
 import z from "zod";
 
-export function getCityAgent() {
+export function getRootAgent() {
 	const outputSchema = z.object({
 		capital: z.string().describe("The capital city name"),
 		country: z.string().describe("The country name"),

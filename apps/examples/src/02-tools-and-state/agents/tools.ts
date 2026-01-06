@@ -1,8 +1,7 @@
-import { AgentBuilder, createTool, InMemorySessionService } from "@iqai/adk";
-import dedent from "dedent";
+import { createTool } from "@iqai/adk";
 import * as z from "zod";
 
-const addItemTool = createTool({
+export const addItemTool = createTool({
 	name: "add_item",
 	description: "Add an item to the shopping cart",
 	schema: z.object({
@@ -38,7 +37,7 @@ const addItemTool = createTool({
 	},
 });
 
-const viewCartTool = createTool({
+export const viewCartTool = createTool({
 	name: "view_cart",
 	description: "View current shopping cart contents",
 	schema: z.object({}),
@@ -60,33 +59,3 @@ const viewCartTool = createTool({
 		};
 	},
 });
-
-export async function agent() {
-	const sessionService = new InMemorySessionService();
-	const initialState = {
-		cart: [],
-		cartCount: 0,
-	};
-
-	const { runner } = await AgentBuilder.create("shopping_cart_agent")
-		.withModel("gemini-2.5-flash")
-		.withDescription(
-			"A shopping cart assistant that manages items and calculates totals",
-		)
-		.withInstruction(
-			dedent`
-			You are a shopping cart assistant. Help users manage their cart.
-
-			Current cart state:
-			- Items in cart: {cartCount}
-			- Cart contents: {cart}
-
-			You can add items and view the cart. Always be helpful with pricing and quantities.
-		`,
-		)
-		.withTools(addItemTool, viewCartTool)
-		.withSessionService(sessionService, { state: initialState })
-		.build();
-
-	return runner;
-}
