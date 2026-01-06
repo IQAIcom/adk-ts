@@ -10,9 +10,6 @@ export function getRootAgent() {
 
 	return AgentBuilder.create("shopping_cart_agent")
 		.withModel("gemini-2.5-flash")
-		.withDescription(
-			"A shopping cart assistant that manages items and calculates totals",
-		)
 		.withInstruction(
 			dedent`
 			You are a shopping cart assistant. Help users manage their cart.
