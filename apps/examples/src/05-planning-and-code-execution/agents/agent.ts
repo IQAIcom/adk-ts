@@ -1,8 +1,8 @@
 import { AgentBuilder, BuiltInCodeExecutor, PlanReActPlanner } from "@iqai/adk";
 import dedent from "dedent";
 
-export async function agent() {
-	const { runner } = await AgentBuilder.create("code_planner_agent")
+export async function getRootAgent() {
+	return await AgentBuilder.create("code_planner_agent")
 		.withModel("gemini-2.5-flash")
 		.withDescription("Agent with planning and code execution capabilities")
 		.withInstruction(
@@ -14,6 +14,4 @@ export async function agent() {
 		.withPlanner(new PlanReActPlanner())
 		.withCodeExecutor(new BuiltInCodeExecutor())
 		.build();
-
-	return runner;
 }
