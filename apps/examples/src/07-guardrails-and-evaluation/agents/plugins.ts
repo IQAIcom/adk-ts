@@ -50,8 +50,8 @@ export class GuardrailsPlugin extends BasePlugin {
 		llmRequest: LlmRequest;
 	}): Promise<LlmResponse | undefined> {
 		const userText =
-			llmRequest.contents
-				?.reverse()
+			[...(llmRequest.contents || [])]
+				.reverse()
 				.find((c) => c.role === "user")
 				?.parts?.map((p) => p.text ?? "")
 				.join(" ")
