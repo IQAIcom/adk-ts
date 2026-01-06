@@ -1,5 +1,6 @@
 import { Logger } from "@adk/logger";
 import type { Content, Part } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import {
 	type AssistantContent,
 	generateText,
@@ -11,28 +12,24 @@ import {
 } from "ai";
 import { BaseLlm } from "./base-llm";
 import { CacheMetadata } from "./cache-metadata";
+import { ContextCacheManager } from "./context-cache-manager";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
-/**
- * AI SDK integration that accepts a pre-configured LanguageModel.
- * Enables ADK to work with any provider supported by Vercel's AI SDK.
- */
 export class AiSdkLlm extends BaseLlm {
 	private modelInstance: LanguageModel;
 	protected logger = new Logger({ name: "AiSdkLlm" });
+	private _genaiClient?: GoogleGenAI;
+	private _cacheManager?: ContextCacheManager;
 
-	/**
-	 * Constructor accepts a pre-configured LanguageModel instance
-	 * @param model - Pre-configured LanguageModel from provider(modelName)
-	 */
-	constructor(modelInstance: LanguageModel) {
+	constructor(modelInstance: LanguageModel, genaiClient?: GoogleGenAI) {
 		let modelId = "ai-sdk-model";
 		if (typeof modelInstance !== "string") {
 			modelId = modelInstance.modelId;
 		}
 		super(modelId);
 		this.modelInstance = modelInstance;
+		this._genaiClient = genaiClient;
 	}
 
 	/**
@@ -42,16 +39,51 @@ export class AiSdkLlm extends BaseLlm {
 		return [];
 	}
 
+	/**
+	 * Lazy initialization of cache manager
+	 */
+	private get cacheManager(): ContextCacheManager | null {
+		if (!this._cacheManager && this._genaiClient) {
+			this._cacheManager = new ContextCacheManager(
+				this._genaiClient,
+				this.logger,
+			);
+		}
+		return this._cacheManager || null;
+	}
+
 	protected async *generateContentAsyncImpl(
 		request: LlmRequest,
 		stream = false,
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		try {
+			// Ensure model is set on the request for downstream components (like cache manager)
+			if (!request.model) {
+				request.model = this.model;
+			}
+
+			let cacheMetadata: CacheMetadata | null = null;
+
+			// Handle context caching if cache config is provided
+			if (request.cacheConfig && this.cacheManager) {
+				this.logger.debug("Handling context caching");
+				cacheMetadata = await this.cacheManager.handleContextCaching(request);
+
+				if (cacheMetadata) {
+					if (cacheMetadata.cacheName) {
+						this.logger.debug(`Using cache: ${cacheMetadata.cacheName}`);
+					} else {
+						this.logger.debug("Cache fingerprint only, no active cache");
+					}
+				}
+			}
+
 			const messages = this.convertToAiSdkMessages(request);
 			const systemMessage = request.getSystemInstructionText();
 			const tools = this.convertToAiSdkTools(request);
 
-			const requestParams = {
+			// Build request parameters with cache support
+			const requestParams: any = {
 				model: this.modelInstance,
 				messages,
 				system: systemMessage,
@@ -60,6 +92,15 @@ export class AiSdkLlm extends BaseLlm {
 				temperature: request.config?.temperature,
 				topP: request.config?.topP,
 			};
+
+			// Add explicit cache reference if available in config
+			// This is set by the cache manager via applyCacheToRequest
+			if (request.config?.cachedContent) {
+				requestParams.cachedContent = request.config.cachedContent;
+				this.logger.debug(
+					`Using explicit cache: ${request.config.cachedContent}`,
+				);
+			}
 
 			if (stream) {
 				const result = streamText(requestParams);
@@ -99,7 +140,15 @@ export class AiSdkLlm extends BaseLlm {
 
 				const finalUsage = await result.usage;
 				const finishReason = await result.finishReason;
-				yield new LlmResponse({
+				const providerMetadata = await result.providerMetadata;
+
+				// Extract cache metadata from streaming response
+				const responseCacheMetadata = this.extractCacheMetadata({
+					usage: finalUsage,
+					providerMetadata,
+				});
+
+				const llmResponse = new LlmResponse({
 					content: {
 						role: "model",
 						parts: parts.length > 0 ? parts : [{ text: "" }],
@@ -113,7 +162,18 @@ export class AiSdkLlm extends BaseLlm {
 						: undefined,
 					finishReason: this.mapFinishReason(finishReason),
 					turnComplete: true,
+					cacheMetadata: responseCacheMetadata,
 				});
+
+				// Populate cache metadata from manager if available
+				if (cacheMetadata && this.cacheManager) {
+					this.cacheManager.populateCacheMetadataInResponse(
+						llmResponse,
+						cacheMetadata,
+					);
+				}
+
+				yield llmResponse;
 			} else {
 				const result = await generateText(requestParams);
 
@@ -133,9 +193,10 @@ export class AiSdkLlm extends BaseLlm {
 					}
 				}
 
-				const cacheMetadata = this.extractCacheMetadata(result);
+				// Extract cache metadata from response
+				const responseCacheMetadata = this.extractCacheMetadata(result);
 
-				yield new LlmResponse({
+				const llmResponse = new LlmResponse({
 					content: {
 						role: "model",
 						parts: parts.length > 0 ? parts : [{ text: "" }],
@@ -149,8 +210,18 @@ export class AiSdkLlm extends BaseLlm {
 						: undefined,
 					finishReason: this.mapFinishReason(result.finishReason),
 					turnComplete: true,
-					cacheMetadata,
+					cacheMetadata: responseCacheMetadata,
 				});
+
+				// Populate cache metadata from manager if available
+				if (cacheMetadata && this.cacheManager) {
+					this.cacheManager.populateCacheMetadataInResponse(
+						llmResponse,
+						cacheMetadata,
+					);
+				}
+
+				yield llmResponse;
 			}
 		} catch (error) {
 			this.logger.error(`AI SDK Error: ${String(error)}`, { error, request });
@@ -407,16 +478,13 @@ export class AiSdkLlm extends BaseLlm {
 		}
 	}
 
-	/**
-	 * Extract cache metadata from AI SDK response.
-	 * For Google models, this includes cachedContentTokenCount from usageMetadata.
-	 *
-	 * Note: Gemini 2.5 models automatically provide implicit caching - you'll see
-	 * cachedContentTokenCount in usageMetadata when requests share common prefixes.
-	 */
-
 	private extractCacheMetadata(
-		result: Awaited<ReturnType<typeof generateText>>,
+		result:
+			| Awaited<ReturnType<typeof generateText>>
+			| {
+					usage?: any;
+					providerMetadata?: any;
+			  },
 	): CacheMetadata | undefined {
 		try {
 			const googleMetadata = result.providerMetadata?.google as
@@ -427,7 +495,9 @@ export class AiSdkLlm extends BaseLlm {
 				googleMetadata?.usageMetadata?.cachedContentTokenCount;
 
 			if (typeof cachedTokens === "number" && cachedTokens > 0) {
-				this.logger.debug(`Cache hit: ${cachedTokens} tokens from cache`);
+				this.logger.debug(
+					`Cache hit: ${cachedTokens} tokens from cache (implicit or explicit)`,
+				);
 
 				return new CacheMetadata({
 					fingerprint: `google-cache-${crypto.randomUUID()}`,
@@ -435,6 +505,9 @@ export class AiSdkLlm extends BaseLlm {
 					invocationsUsed: 1,
 				});
 			}
+
+			// No cache hit detected
+			return undefined;
 		} catch (error) {
 			this.logger.warn(`Failed to extract cache metadata: ${String(error)}`, {
 				error,
@@ -448,5 +521,11 @@ export class AiSdkLlm extends BaseLlm {
 interface GoogleMetadata {
 	usageMetadata?: {
 		cachedContentTokenCount?: number;
+		thoughtsTokenCount?: number;
+		promptTokenCount?: number;
+		candidatesTokenCount?: number;
+		totalTokenCount?: number;
 	};
+	groundingMetadata?: any;
+	safetyRatings?: any;
 }

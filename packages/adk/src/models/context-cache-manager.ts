@@ -5,7 +5,7 @@ import { CacheMetadata } from "./cache-metadata";
 import type { LlmRequest } from "./llm-request";
 import type { LlmResponse } from "./llm-response";
 
-export class GeminiContextCacheManager {
+export class ContextCacheManager {
 	private readonly genaiClient: GoogleGenAI;
 	private readonly logger: Logger;
 
@@ -276,7 +276,7 @@ export class GeminiContextCacheManager {
 			}
 
 			// Proceed with cache creation
-			return await this.createGeminiCache(llmRequest, cacheContentsCount);
+			return await this.createCache(llmRequest, cacheContentsCount);
 		} catch (e) {
 			this.logger.warn("Failed to count tokens or create cache:", e);
 			return null;
@@ -332,7 +332,7 @@ export class GeminiContextCacheManager {
 		return totalTokens;
 	}
 
-	private async createGeminiCache(
+	private async createCache(
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
 	): Promise<CacheMetadata> {

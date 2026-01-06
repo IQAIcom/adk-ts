@@ -20,8 +20,8 @@ export * from "./base-llm";
 export * from "./base-llm-connection";
 // LLM Request and Response models
 export * from "./function-declaration";
-// Gemini context cache manager
-export * from "./gemini-context-manager";
+// Context cache manager
+export * from "./context-cache-manager";
 export * from "./google-llm";
 // LLM registry
 export * from "./llm-registry";
