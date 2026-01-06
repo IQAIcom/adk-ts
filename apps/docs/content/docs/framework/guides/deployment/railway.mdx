@@ -25,17 +25,17 @@ Railway is a cloud platform that simplifies deploying containerized applications
 
 Railway offers three deployment methods:
 
-1. **GitHub Auto-Deploy (Railpack)**: Railway automatically detects and builds your project (Recommended - No Docker needed)
+1. **GitHub Auto-Deploy**: Railway automatically detects and builds your project (Recommended - No Docker needed)
 2. **GitHub with Dockerfile**: Use a custom Dockerfile for advanced build requirements
 3. **DockerHub Image**: Build locally, push to DockerHub, deploy from Railway
 
-## Option 1: GitHub Auto-Deploy with Railpack (Recommended)
+## Option 1: GitHub Auto-Deploy (Recommended)
 
-This is the easiest way to deploy to Railway. It automatically detects your Node.js/TypeScript project and handles everything for you using **Railpack**, Railway's modern build system. **No Docker knowledge required.**
+This is the easiest way to deploy to Railway. It automatically detects your Node.js/TypeScript project and handles everything for you with Railway's auto-detection and build system. **No Docker knowledge required.**
 
 ### When to Use This Option
 
-Use Railpack auto-deploy when your agent:
+Use auto-deploy when your agent:
 
 - Uses standard ADK-TS features (LLM APIs, tools, memory)
 - Has a typical TypeScript build process
