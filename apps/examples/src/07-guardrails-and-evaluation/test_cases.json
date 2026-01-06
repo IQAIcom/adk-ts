@@ -1,6 +1,6 @@
 {
-	"evalSetId": "basic-set",
-	"name": "Basic Agent Evaluation",
+	"evalSetId": "weather-guardrails-set",
+	"name": "Weather Agent with Guardrails Evaluation",
 	"creationTimestamp": 0,
 	"evalCases": [
 		{
@@ -10,9 +10,21 @@
 					"creationTimestamp": 0,
 					"userContent": {
 						"role": "user",
-						"parts": [{ "text": "What is 2 + 2?" }]
+						"parts": [{ "text": "What is the weather in London?" }]
 					},
-					"finalResponse": { "role": "model", "parts": [{ "text": "4" }] }
+					"finalResponse": {
+						"role": "model",
+						"parts": [{ "text": "The weather in London" }]
+					},
+					"intermediateData": {
+						"toolUses": [
+							{
+								"name": "get_weather",
+								"args": { "city": "London" }
+							}
+						],
+						"intermediateResponses": []
+					}
 				}
 			]
 		},
@@ -23,9 +35,46 @@
 					"creationTimestamp": 0,
 					"userContent": {
 						"role": "user",
-						"parts": [{ "text": "Capital of France?" }]
+						"parts": [{ "text": "How's the weather in New York?" }]
 					},
-					"finalResponse": { "role": "model", "parts": [{ "text": "Paris" }] }
+					"finalResponse": {
+						"role": "model",
+						"parts": [{ "text": "The weather in New York" }]
+					},
+					"intermediateData": {
+						"toolUses": [
+							{
+								"name": "get_weather",
+								"args": { "city": "New York" }
+							}
+						],
+						"intermediateResponses": []
+					}
+				}
+			]
+		},
+		{
+			"evalId": "case-3",
+			"conversation": [
+				{
+					"creationTimestamp": 0,
+					"userContent": {
+						"role": "user",
+						"parts": [{ "text": "What's the weather in Tokyo?" }]
+					},
+					"finalResponse": {
+						"role": "model",
+						"parts": [{ "text": "The weather in Tokyo" }]
+					},
+					"intermediateData": {
+						"toolUses": [
+							{
+								"name": "get_weather",
+								"args": { "city": "Tokyo" }
+							}
+						],
+						"intermediateResponses": []
+					}
 				}
 			]
 		}
