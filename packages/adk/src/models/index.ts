@@ -2,8 +2,8 @@
  * Models module exports - consolidated to match Python structure
  */
 
-// Auth re-exports for backward compatibility
 export * from "../auth/auth-config";
+// Auth re-exports for backward compatibilityexport * from "../auth/auth-config";
 export * from "../auth/auth-credential";
 export * from "../auth/auth-handler";
 export * from "../auth/auth-schemes";
@@ -18,10 +18,10 @@ export * from "./anthropic-llm";
 // LLM base classes
 export * from "./base-llm";
 export * from "./base-llm-connection";
-// LLM Request and Response models
-export * from "./function-declaration";
 // Context cache manager
 export * from "./context-cache-manager";
+// LLM Request and Response models
+export * from "./function-declaration";
 export * from "./google-llm";
 // LLM registry
 export * from "./llm-registry";
