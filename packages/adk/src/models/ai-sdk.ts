@@ -83,7 +83,7 @@ export class AiSdkLlm extends BaseLlm {
 			const tools = this.convertToAiSdkTools(request);
 
 			// Build request parameters with cache support
-			const requestParams: any = {
+const requestParams: Parameters<typeof streamText>[0] & { cachedContent?: string } = {
 				model: this.modelInstance,
 				messages,
 				system: systemMessage,
