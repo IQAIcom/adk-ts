@@ -202,12 +202,12 @@ export class BasicLoggingPlugin extends BasePlugin {
 Register Plugins on the `Runner`. Runner-level Plugins apply globally to all Agents, Tools, and LLM calls managed by that runner. You can set a `pluginCloseTimeout` to bound shutdown time.
 
 ```typescript
-import { InMemoryRunner, Agents } from "@iqai/adk";
+import { InMemoryRunner, Agents, LlmAgent } from "@iqai/adk";
 import { BasicLoggingPlugin } from "./basic-logging-plugin";
 
 // Build a root agent (can be any BaseAgent; LlmAgent shown later)
-const rootAgent = new Agents.BaseAgent({
-  name: "root",
+const rootAgent = new LlmAgent({
+  name: "root_agent",
   description: "Root agent",
 });
 
@@ -239,10 +239,10 @@ import {
 import { BasicLoggingPlugin } from "./basic-logging-plugin";
 
 // A toy tool to demonstrate tool callbacks
-class EchoTool extends Tools.BaseTool {
+class EchoTool extends BaseTool {
   constructor() {
     super({
-      name: "echo",
+      name: "echo_box",
       description: "Echo back a provided message",
     });
   }
@@ -256,7 +256,7 @@ class EchoTool extends Tools.BaseTool {
 
 // Build a simple agent
 const agent = new LlmAgent({
-  name: "assistant",
+  name: "my_assistant",
   description: "Answers questions and can echo messages",
   model: "gemini-1.5-flash",
   instruction: "Be concise and helpful.",
