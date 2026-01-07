@@ -6,7 +6,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "fumadocs-ui/components/ui/popover";
-import { cn } from "fumadocs-ui/utils/cn";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import {
 	Check,
@@ -16,6 +15,7 @@ import {
 	MessageCircleIcon,
 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 const cache = new Map<string, string>();
 

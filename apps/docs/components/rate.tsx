@@ -5,7 +5,7 @@ import {
 	Collapsible,
 	CollapsibleContent,
 } from "fumadocs-ui/components/ui/collapsible";
-import { cn } from "fumadocs-ui/utils/cn";
+import { cn } from "@/lib/utils";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { usePathname } from "next/navigation";
 import posthog from "posthog-js";

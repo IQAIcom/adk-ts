@@ -1,13 +1,13 @@
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import {
-	DocsPage,
 	DocsBody,
 	DocsDescription,
+	DocsPage,
 	DocsTitle,
 } from "fumadocs-ui/page";
 import { notFound } from "next/navigation";
 import { Rate } from "@/components/rate";
-import { source } from "@/lib/source";
+import { source, type Page as PageType } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
 import { LLMCopyButton, ViewOptions } from "./page.client";
 
@@ -15,7 +15,7 @@ export default async function Page(props: {
 	params: Promise<{ slug?: string[] }>;
 }) {
 	const params = await props.params;
-	const page = source.getPage(params.slug);
+	const page = source.getPage(params.slug) as PageType | undefined;
 	if (!page) notFound();
 
 	const MDXContent = page.data.body;

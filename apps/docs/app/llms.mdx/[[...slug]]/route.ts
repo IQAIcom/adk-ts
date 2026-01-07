@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { source } from "@/lib/source";
+import { source, type Page } from "@/lib/source";
 import { notFound } from "next/navigation";
 import { getLlmText } from "@/lib/getLlmText";
 
@@ -10,7 +10,7 @@ export async function GET(
 	{ params }: { params: Promise<{ slug?: string[] }> },
 ) {
 	const { slug } = await params;
-	const page = source.getPage(slug);
+	const page = source.getPage(slug) as Page | undefined;
 	if (!page) notFound();
 
 	return new NextResponse(await getLlmText(page));
