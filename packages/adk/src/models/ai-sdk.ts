@@ -1,6 +1,5 @@
 import { Logger } from "@adk/logger";
 import type { Content, Part } from "@google/genai";
-import { GoogleGenAI } from "@google/genai";
 import {
 	AssistantContent,
 	generateText,
@@ -35,32 +34,8 @@ export class AiSdkLlm extends BaseLlm {
 		this.modelInstance = modelInstance;
 		this.providerName = this.detectProvider(modelInstance);
 
-		// Initialize cache manager for Google models
 		if (this.providerName === "google") {
-			try {
-				const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
-				const apiKey = process.env.GOOGLE_API_KEY;
-				const project = process.env.GOOGLE_CLOUD_PROJECT;
-				const location = process.env.GOOGLE_CLOUD_LOCATION;
-
-				let genaiClient: GoogleGenAI | undefined;
-
-				if (useVertexAI && project && location) {
-					genaiClient = new GoogleGenAI({
-						vertexai: true,
-						project,
-						location,
-					});
-				} else if (apiKey) {
-					genaiClient = new GoogleGenAI({ apiKey });
-				}
-
-				if (genaiClient) {
-					this.cacheManager = new ContextCacheManager(this.logger);
-				}
-			} catch (error) {
-				this.logger.warn("Failed to initialize Google cache manager:", error);
-			}
+			this.cacheManager = new ContextCacheManager(this.logger);
 		}
 	}
 

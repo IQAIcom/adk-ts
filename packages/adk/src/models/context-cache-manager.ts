@@ -36,9 +36,28 @@ export class ContextCacheManager {
 	}
 
 	public getGenaiClient() {
-		const apiKey = process.env.GOOGLE_API_KEY;
 		if (!this.genaiClient) {
-			this.genaiClient = new GoogleGenAI({ apiKey });
+			const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
+			const apiKey = process.env.GOOGLE_API_KEY;
+			const project = process.env.GOOGLE_CLOUD_PROJECT;
+			const location = process.env.GOOGLE_CLOUD_LOCATION;
+
+			if (useVertexAI && project && location) {
+				this.genaiClient = new GoogleGenAI({
+					vertexai: true,
+					project,
+					location,
+				});
+			} else if (apiKey) {
+				this.genaiClient = new GoogleGenAI({
+					apiKey,
+				});
+			} else {
+				throw new Error(
+					"Google API Key or Vertex AI configuration is required. " +
+						"Set GOOGLE_API_KEY or GOOGLE_GENAI_USE_VERTEXAI=true with GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION.",
+				);
+			}
 		}
 		return this.genaiClient;
 	}
