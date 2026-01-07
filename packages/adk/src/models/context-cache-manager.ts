@@ -5,6 +5,27 @@ import { CacheMetadata } from "./cache-metadata";
 import type { LlmRequest } from "./llm-request";
 import type { LlmResponse } from "./llm-response";
 
+const CacheLimits = {
+	GOOGLE_MIN_TOKENS: 1024,
+};
+
+const Fingerprint = {
+	ALGORITHM: "sha256" as const,
+	LENGTH: 16,
+};
+
+const Time = {
+	MS_TO_SECONDS: 1 / 1000,
+};
+
+const CacheDefaults = {
+	EXPIRE_TIME: 0,
+	INVOCATIONS_USED: 0,
+	INITIAL_INVOCATIONS_USED: 1,
+};
+
+const nowInSeconds = (): number => Date.now() * Time.MS_TO_SECONDS;
+
 export class ContextCacheManager {
 	private readonly genaiClient: GoogleGenAI;
 	private readonly logger: Logger;
@@ -24,10 +45,10 @@ export class ContextCacheManager {
 			);
 
 			if (await this.isCacheValid(llmRequest)) {
-				// Valid cache found - use it
 				this.logger.debug(
 					`Cache is valid, reusing cache: ${llmRequest.cacheMetadata.cacheName}`,
 				);
+
 				const cacheName = llmRequest.cacheMetadata.cacheName;
 				const cacheContentsCount = llmRequest.cacheMetadata.contentsCount;
 
@@ -41,10 +62,9 @@ export class ContextCacheManager {
 				return llmRequest.cacheMetadata.copy();
 			}
 
-			// Invalid cache - clean it up and check if we should create new one
+			// Invalid cache — cleanup
 			const oldCacheMetadata = llmRequest.cacheMetadata;
 
-			// Only cleanup if there's an active cache
 			if (oldCacheMetadata.cacheName) {
 				this.logger.debug(
 					`Cache is invalid, cleaning up: ${oldCacheMetadata.cacheName}`,
@@ -52,18 +72,18 @@ export class ContextCacheManager {
 				await this.cleanupCache(oldCacheMetadata.cacheName);
 			}
 
-			// Calculate current fingerprint using contents count from old metadata
+			// Recalculate fingerprint using old cached content count
 			const cacheContentsCount = oldCacheMetadata.contentsCount;
 			const currentFingerprint = this.generateCacheFingerprint(
 				llmRequest,
 				cacheContentsCount,
 			);
 
-			// If fingerprints match, create new cache (expired but same content)
 			if (currentFingerprint === oldCacheMetadata.fingerprint) {
 				this.logger.debug(
 					"Fingerprints match after invalidation, creating new cache",
 				);
+
 				const cacheMetadata = await this.createNewCacheWithContents(
 					llmRequest,
 					cacheContentsCount,
@@ -79,10 +99,11 @@ export class ContextCacheManager {
 				}
 			}
 
-			// Fingerprints don't match - recalculate with total contents
+			// Fingerprints differ — fallback to fingerprint-only metadata
 			this.logger.debug(
 				"Fingerprints don't match, returning fingerprint-only metadata",
 			);
+
 			const totalContentsCount = llmRequest.contents.length;
 			const fingerprintForAll = this.generateCacheFingerprint(
 				llmRequest,
@@ -92,15 +113,16 @@ export class ContextCacheManager {
 			return new CacheMetadata({
 				fingerprint: fingerprintForAll,
 				contentsCount: totalContentsCount,
-				expireTime: 0,
-				invocationsUsed: 0,
+				expireTime: CacheDefaults.EXPIRE_TIME,
+				invocationsUsed: CacheDefaults.INVOCATIONS_USED,
 			});
 		}
 
-		// No existing cache metadata - attempt to create one immediately
+		// No existing cache metadata
 		this.logger.debug(
 			"No existing cache metadata, attempting to create new cache",
 		);
+
 		const totalContentsCount = llmRequest.contents.length;
 		const fingerprint = this.generateCacheFingerprint(
 			llmRequest,
@@ -121,12 +143,11 @@ export class ContextCacheManager {
 			return cacheMetadata;
 		}
 
-		// Fallback to fingerprint-only metadata
 		return new CacheMetadata({
 			fingerprint,
 			contentsCount: totalContentsCount,
-			expireTime: 0,
-			invocationsUsed: 0,
+			expireTime: CacheDefaults.EXPIRE_TIME,
+			invocationsUsed: CacheDefaults.INVOCATIONS_USED,
 		});
 	}
 
@@ -134,23 +155,17 @@ export class ContextCacheManager {
 		const cacheMetadata = llmRequest.cacheMetadata;
 		this.logger.debug("Validating cache metadata", cacheMetadata);
 
-		if (!cacheMetadata) {
-			return false;
-		}
+		if (!cacheMetadata) return false;
 
-		// Fingerprint-only metadata is not a valid active cache
-		if (!cacheMetadata.cacheName) {
-			return false;
-		}
+		// Fingerprint-only metadata is not an active cache
+		if (!cacheMetadata.cacheName) return false;
 
-		// Check if cache has expired
-		const now = Date.now() / 1000;
-		if (now >= (cacheMetadata.expireTime ?? 0)) {
+		const now = nowInSeconds();
+		if (now >= (cacheMetadata.expireTime ?? CacheDefaults.EXPIRE_TIME)) {
 			this.logger.info(`Cache expired: ${cacheMetadata.cacheName}`);
 			return false;
 		}
 
-		// Check if cache has been used for too many invocations
 		if (!llmRequest.cacheConfig) {
 			this.logger.warn("Missing cache config during validation");
 			return false;
@@ -161,12 +176,11 @@ export class ContextCacheManager {
 			llmRequest.cacheConfig.cacheIntervals
 		) {
 			this.logger.info(
-				`Cache exceeded cache intervals: ${cacheMetadata.cacheName} (${cacheMetadata.invocationsUsed} > ${llmRequest.cacheConfig.cacheIntervals} intervals)`,
+				`Cache exceeded cache intervals: ${cacheMetadata.cacheName} (${cacheMetadata.invocationsUsed} > ${llmRequest.cacheConfig.cacheIntervals})`,
 			);
 			return false;
 		}
 
-		// Check if fingerprint matches using cached contents count
 		const currentFingerprint = this.generateCacheFingerprint(
 			llmRequest,
 			cacheMetadata.contentsCount,
@@ -207,7 +221,6 @@ export class ContextCacheManager {
 			fingerprintData.tool_config = llmRequest.config.toolConfig;
 		}
 
-		// Include first N contents in fingerprint
 		if (cacheContentsCount > 0 && llmRequest.contents) {
 			const contentsData = [];
 			for (
@@ -215,19 +228,18 @@ export class ContextCacheManager {
 				i < Math.min(cacheContentsCount, llmRequest.contents.length);
 				i++
 			) {
-				const content = llmRequest.contents[i];
-				contentsData.push(content);
+				contentsData.push(llmRequest.contents[i]);
 			}
 			fingerprintData.cached_contents = contentsData;
 		}
 
-		// Generate hash using string representation
 		const fingerprintStr = JSON.stringify(fingerprintData);
+
 		return crypto
-			.createHash("sha256")
+			.createHash(Fingerprint.ALGORITHM)
 			.update(fingerprintStr)
 			.digest("hex")
-			.substring(0, 16);
+			.substring(0, Fingerprint.LENGTH);
 	}
 
 	private async createNewCacheWithContents(
@@ -241,8 +253,6 @@ export class ContextCacheManager {
 
 		const minTokens = llmRequest.cacheConfig.minTokens;
 
-		// Always count tokens using Google's API before creating cache
-		// This ensures we have the exact token count that Google will use
 		try {
 			const actualTokenCount = await this.countCacheTokens(
 				llmRequest,
@@ -253,29 +263,20 @@ export class ContextCacheManager {
 				`Actual cache token count from Google API: ${actualTokenCount}`,
 			);
 
-			// Check against minimum tokens
 			if (actualTokenCount < minTokens) {
-				this.logger.info(
-					`Cache content too small (${actualTokenCount} < ${minTokens} tokens)`,
-				);
 				console.log(
 					`⊘ Cache SKIP: Context too small (${actualTokenCount} < ${minTokens} tokens)`,
 				);
 				return null;
 			}
 
-			// Check against Google's hard minimum of 1024 tokens
-			if (actualTokenCount < 1024) {
-				this.logger.info(
-					`Cache content below Google's minimum (${actualTokenCount} < 1024 tokens)`,
-				);
+			if (actualTokenCount < CacheLimits.GOOGLE_MIN_TOKENS) {
 				console.log(
-					`⊘ Cache SKIP: Below Google minimum (${actualTokenCount} < 1024 tokens)`,
+					`⊘ Cache SKIP: Below Google minimum (${actualTokenCount} < ${CacheLimits.GOOGLE_MIN_TOKENS} tokens)`,
 				);
 				return null;
 			}
 
-			// Proceed with cache creation
 			return await this.createCache(llmRequest, cacheContentsCount);
 		} catch (e) {
 			this.logger.warn("Failed to count tokens or create cache:", e);
@@ -287,15 +288,10 @@ export class ContextCacheManager {
 		llmRequest: LlmRequest,
 		cacheContentsCount: number,
 	): Promise<number> {
-		// Prepare the same configuration that will be used for cache creation
 		const cacheContents = llmRequest.contents.slice(0, cacheContentsCount);
 
-		// Prepare contents for counting - include system instruction as first message if present
-		// This approximates what will actually be cached
 		const contentsToCount = [...cacheContents];
 
-		// Add system instruction as a fake user message at the beginning for token counting
-		// This gives us an accurate count of total tokens that will be in the cache
 		if (llmRequest.config?.systemInstruction) {
 			const sysInstructionText =
 				typeof llmRequest.config.systemInstruction === "string"
@@ -310,7 +306,6 @@ export class ContextCacheManager {
 
 		const countConfig: any = {};
 
-		// Add tools if present (tools are supported in countTokens)
 		if (llmRequest.config?.tools) {
 			countConfig.tools = llmRequest.config.tools;
 		}
@@ -319,7 +314,6 @@ export class ContextCacheManager {
 			`Counting tokens for ${cacheContentsCount} contents (+ system instruction)`,
 		);
 
-		// Use Google's countTokens API
 		const result = await this.genaiClient.models.countTokens({
 			model: llmRequest.model,
 			contents: contentsToCount,
@@ -340,53 +334,39 @@ export class ContextCacheManager {
 			throw new Error("Cache config is required to create cache");
 		}
 
-		// Prepare cache contents (first N contents + system instruction + tools)
 		const cacheContents = llmRequest.contents.slice(0, cacheContentsCount);
 
 		const cacheConfig: any = {
 			contents: cacheContents,
 			ttl: llmRequest.cacheConfig.ttlString,
-			displayName: `adk-cache-${Math.floor(Date.now() / 1000)}-${cacheContentsCount}contents`,
+			displayName: `adk-cache-${Math.floor(
+				nowInSeconds(),
+			)}-${cacheContentsCount}contents`,
 		};
 
-		// Add system instruction if present
 		if (llmRequest.config?.systemInstruction) {
 			cacheConfig.systemInstruction = llmRequest.config.systemInstruction;
-			this.logger.debug(
-				`Added system instruction to cache config (length=${llmRequest.config.systemInstruction.toString().length})`,
-			);
 		}
 
-		// Add tools if present
 		if (llmRequest.config?.tools) {
 			cacheConfig.tools = llmRequest.config.tools;
 		}
 
-		// Add tool config if present
 		if (llmRequest.config?.toolConfig) {
 			cacheConfig.toolConfig = llmRequest.config.toolConfig;
 		}
-
-		this.logger.debug(
-			`Creating cache with model ${llmRequest.model} and config:`,
-			cacheConfig,
-		);
 
 		const cachedContent = await this.genaiClient.caches.create({
 			model: llmRequest.model,
 			config: cacheConfig,
 		});
 
-		this.logger.debug("Cache created successfully:", cachedContent);
+		const createdAt = nowInSeconds();
 
-		// Set precise creation timestamp right after cache creation
-		const createdAt = Date.now() / 1000;
-		this.logger.info(`Cache created successfully: ${cachedContent.name}`);
 		console.log(
 			`✓ Cache CREATED: New cache established (${cacheContentsCount} messages)`,
 		);
 
-		// Return complete cache metadata with precise timing
 		return new CacheMetadata({
 			cacheName: cachedContent.name,
 			expireTime: createdAt + llmRequest.cacheConfig.ttlSeconds,
@@ -394,7 +374,7 @@ export class ContextCacheManager {
 				llmRequest,
 				cacheContentsCount,
 			),
-			invocationsUsed: 1,
+			invocationsUsed: CacheDefaults.INITIAL_INVOCATIONS_USED,
 			contentsCount: cacheContentsCount,
 			createdAt,
 		});
@@ -415,23 +395,15 @@ export class ContextCacheManager {
 		cacheName: string,
 		cacheContentsCount: number,
 	): void {
-		// Clear system instruction, tools, and toolConfig as they're in the cache
 		if (llmRequest.config) {
 			llmRequest.config.systemInstruction = undefined;
 			llmRequest.config.tools = undefined;
 			llmRequest.config.toolConfig = undefined;
 		}
 
-		// Set cached content reference
-		if (!llmRequest.config) {
-			llmRequest.config = {};
-		}
-
-		this.logger.debug("Setting cached content reference:", cacheName);
-
+		llmRequest.config ??= {};
 		llmRequest.config.cachedContent = cacheName;
 
-		// Remove cached contents from the request
 		llmRequest.contents = llmRequest.contents.slice(cacheContentsCount);
 	}
 
