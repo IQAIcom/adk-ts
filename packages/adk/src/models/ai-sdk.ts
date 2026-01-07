@@ -117,15 +117,19 @@ export class AiSdkLlm extends BaseLlm {
 			const systemMessage = this.prepareSystemMessage(request);
 			const tools = this.convertToAiSdkTools(request);
 
-			const requestParams: any = {
+			const requestParams: Parameters<typeof streamText>[0] = {
 				model: this.modelInstance,
 				messages,
 				system: systemMessage,
 				tools: Object.keys(tools).length > 0 ? tools : undefined,
-				maxTokens: request.config?.maxOutputTokens,
 				temperature: request.config?.temperature,
 				topP: request.config?.topP,
 			};
+
+			// Add maxTokens if specified (supported by most providers)
+			if (request.config?.maxOutputTokens) {
+				(requestParams as any).maxTokens = request.config.maxOutputTokens;
+			}
 
 			// Add Google Context Caching support
 			if (this.providerName === "google" && request.config?.cachedContent) {
