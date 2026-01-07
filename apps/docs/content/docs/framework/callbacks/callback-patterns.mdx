@@ -237,17 +237,3 @@ builder
     return result;
   });
 ```
-
-## Best Practices
-
-- Keep callbacks focused: one responsibility per callback.
-- Prefer state keys with clear, stable naming (e.g., `cache:*`, `flags:*`).
-- Use arrays of callbacks when you need strictly ordered operations.
-- Log invocation IDs to correlate events across callbacks.
-- Return from `before_` callbacks sparingly and with clear UX messaging.
-
-## Troubleshooting
-
-- If a callback isn't firing, confirm you built an agent with callbacks configured (`await builder.build()`).
-- Check that your callbacks use the TypeScript ADK signatures and return types.
-- Validate that state mutations use plain serializable values; avoid non-serializable objects.

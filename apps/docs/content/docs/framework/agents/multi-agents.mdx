@@ -1114,61 +1114,18 @@ const approvalWorkflowAgent = new SequentialAgent({
 // 4. actionExecutorAgent → proceeds based on approval decision
 ```
 
-## Best Practices
-
-### Design Principles
-
-**Single Responsibility:** Design each agent with a focused, specific purpose. A billing agent should handle payment issues, while a technical agent resolves system problems. This focused approach makes agents easier to test, debug, and reuse across different workflows.
-
-**Clear State Contracts:** Use descriptive, unique state keys (`user_preferences`, `analysis_results`, `validation_status`) and document what data flows between agents. This prevents conflicts and makes debugging much easier.
-
-**Descriptive Agent Names:** Use clear, searchable names for agents (`billing_specialist_agent`, `technical_support_agent`) that make hierarchy navigation and transfer routing more reliable.
-
-**Shallow Hierarchies:** Keep agent hierarchies relatively flat (2-3 levels) to reduce complexity and improve maintainability.
-
-### Communication Patterns
-
-**State Key Management:** In parallel workflows, use distinct `outputKey` values to prevent conflicts. Document state dependencies between agents to make data flow clear.
-
-**Transfer Instructions:** For agent transfer patterns, write specific routing rules with clear examples. Use non-overlapping agent descriptions to help the LLM make accurate routing decisions.
-
-**Tool vs Transfer:** Use `AgentTool` when you need explicit control and predictable results. Use agent transfer when you want dynamic, context-aware routing.
-
-### Development Tips
-
-**Start Simple:** Begin with sequential workflows before moving to parallel or loop patterns. Add complexity gradually as you understand the interactions.
-
-**Test Isolation:** Test individual agents independently before testing the complete workflow. Mock external dependencies and sub-agents during unit testing.
-
-**State Debugging:** Use clear state key names and log state transitions to make debugging easier when agents don't receive expected data.
-
-**Agent Builder Usage:** Leverage `AgentBuilder` for rapid prototyping and testing. It provides a clean API for creating and experimenting with multi-agent patterns.
-
-### Production Considerations
-
-**Error Handling:** Design fallback strategies for failed agents. In sequential workflows, decide whether errors should halt execution or trigger alternative paths.
-
-**Performance Optimization:** Use `ParallelAgent` to reduce latency when tasks are independent. Monitor resource usage and set reasonable concurrency limits.
-
-**Monitoring:** Implement logging for state transitions, routing decisions, and performance metrics. This is crucial for debugging complex multi-agent interactions.
-
 ## Related Topics
 
 <Cards>
   <Card
+    title="✨ Best Practices"
+    description="Proven strategies for building robust, maintainable multi-agent systems"
+    href="/docs/framework/agents/best-practices"
+  />
+  <Card
     title="🔄 Workflow Agents"
     description="Standard patterns for orchestrating multiple agents"
     href="/docs/framework/agents/workflow-agents"
-  />
-  <Card
-    title="🤖 LLM Agents"
-    description="The building blocks of multi-agent systems"
-    href="/docs/framework/agents/llm-agents"
-  />
-  <Card
-    title="🏗️ Agent Builder"
-    description="Fluent API for creating multi-agent workflows"
-    href="/docs/framework/agents/agent-builder"
   />
   <Card
     title="🛠️ Tools"
@@ -1179,10 +1136,5 @@ const approvalWorkflowAgent = new SequentialAgent({
     title="💾 Sessions & State"
     description="Manage data flow and persistence across agent interactions"
     href="/docs/framework/sessions/session"
-  />
-  <Card
-    title="📊 Callbacks"
-    description="Monitor and control agent execution"
-    href="/docs/framework/callbacks"
   />
 </Cards>
