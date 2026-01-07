@@ -143,14 +143,10 @@ export class AnthropicLlm extends BaseLlm {
 		const cacheCreation = usage.cache_creation_input_tokens || 0;
 
 		if (cacheRead > 0) {
-			console.log(
-				`✓ Cache HIT: ${cacheRead} tokens read from cache (90% cost savings)`,
-			);
 			this.logger.info(`Cache HIT: ${cacheRead} tokens read from cache`);
 		}
 
 		if (cacheCreation > 0) {
-			console.log(`✓ Cache CREATED: ${cacheCreation} tokens written to cache`);
 			this.logger.info(
 				`Cache CREATED: ${cacheCreation} tokens written to cache`,
 			);
