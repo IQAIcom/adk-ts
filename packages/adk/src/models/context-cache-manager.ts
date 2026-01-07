@@ -274,10 +274,9 @@ export class ContextCacheManager {
 			);
 
 			if (actualTokenCount < minTokens) {
-				console.log(
-					`⊘ Cache SKIP: Context too small (${actualTokenCount} < ${minTokens} tokens)`,
-				);
-				return null;
+this.logger.info(
+	`⊘ Cache SKIP: Context too small (${actualTokenCount} < ${minTokens} tokens)`,
+);
 			}
 
 			if (actualTokenCount < CacheLimits.GOOGLE_MIN_TOKENS) {
