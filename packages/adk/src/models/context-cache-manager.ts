@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { Logger } from "@adk/logger";
-import type { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { CacheMetadata } from "./cache-metadata";
 import type { LlmRequest } from "./llm-request";
 import type { LlmResponse } from "./llm-response";
@@ -30,8 +30,18 @@ export class ContextCacheManager {
 	private readonly genaiClient: GoogleGenAI;
 	private readonly logger: Logger;
 
-	constructor(genaiClient: GoogleGenAI, logger: Logger) {
-		this.genaiClient = genaiClient;
+	constructor(logger: Logger, genaiClient?: GoogleGenAI) {
+		if (genaiClient) {
+			this.genaiClient = genaiClient;
+		} else {
+			const apiKey = process.env.GOOGLE_API_KEY;
+			if (!apiKey) {
+				throw new Error(
+					"GOOGLE_API_KEY environment variable is required for caching",
+				);
+			}
+			this.genaiClient = new GoogleGenAI({ apiKey });
+		}
 		this.logger = logger;
 	}
 
