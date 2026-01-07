@@ -1,0 +1,992 @@
+---
+title: Best Practices
+description: Proven strategies for building robust, maintainable multi-agent systems
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+Building effective multi-agent systems requires careful attention to design, communication patterns, and operational considerations. This guide consolidates best practices from across ADK-TS agent development to help you build robust, maintainable, and performant agent architectures.
+
+## Design Principles
+
+### Single Responsibility
+
+Design each agent with a focused, specific purpose. An agent should do one thing well rather than attempting to handle multiple unrelated concerns.
+
+**For Custom Agents:** A content workflow agent should handle content generation and validation, while a routing agent should focus on request analysis and delegation. This focused approach makes agents easier to test, debug, and reuse across different workflows.
+
+**For Multi-Agent Systems:** A billing agent should handle payment issues, while a technical agent resolves system problems. Specialized agents are more reliable than generalist agents.
+
+**Benefits:**
+
+- Easier to test and debug
+- Better reusability across workflows
+- Clearer error boundaries
+- Simplified maintenance
+
+**Example:**
+
+```typescript
+// ❌ Bad: Agent with too many responsibilities
+const multiPurposeAgent = new LlmAgent({
+  name: "multi_purpose_agent",
+  description: "Handles multiple responsibilities - too broad",
+});
+
+// ✅ Good: Focused specialist agents
+const billingAgent = new LlmAgent({
+  name: "billing_agent",
+  description: "Handles billing and payment issues only",
+});
+
+const technicalAgent = new LlmAgent({
+  name: "technical_agent",
+  description: "Handles technical support and troubleshooting only",
+});
+```
+
+### Clear State Contracts
+
+Use descriptive, unique state keys and document what data flows between agents. Clear state contracts prevent conflicts and make debugging significantly easier.
+
+**Key Naming Conventions:**
+
+- Use descriptive names: `user_preferences`, `analysis_results`, `validation_status`
+- Avoid generic names like `data`, `result`, `output`
+- Use consistent naming patterns (e.g., `snake_case`)
+- Prefix related keys: `user_email`, `user_name`, `user_preferences`
+
+**Documentation Requirements:**
+
+- Document which agents produce which state keys
+- Document which agents consume which state keys
+- Document expected data types and formats
+- Document optional vs required state keys
+
+**Example:**
+
+```typescript
+// ❌ Bad: Unclear state management
+const agent1 = new LlmAgent({
+  name: "agent1",
+  outputKey: "data", // Too generic
+});
+
+const agent2 = new LlmAgent({
+  name: "agent2",
+  instruction: "Process {data}", // Unclear what data contains
+});
+
+// ✅ Good: Clear state contracts
+const dataCollectorAgent = new LlmAgent({
+  name: "data_collector_agent",
+  description: "Collects user preferences and profile information",
+  instruction: "Gather user preferences from the input: {user_input}",
+  outputKey: "user_profile", // Clear, specific key
+  // Produces: { name, email, preferences: {...} }
+});
+
+const recommendationEngineAgent = new LlmAgent({
+  name: "recommendation_engine_agent",
+  description: "Generates personalized recommendations based on user profile",
+  instruction: "Create recommendations for user: {user_profile}",
+  // Consumes: user_profile (expects { name, email, preferences })
+  outputKey: "recommendations",
+});
+```
+
+### Descriptive Agent Names
+
+Use clear, searchable agent names that accurately describe their purpose and make hierarchy navigation reliable.
+
+**Naming Conventions:**
+
+- Use descriptive prefixes: `billing_specialist_agent`, `technical_support_agent`
+- Include role indicators: `coordinator_agent`, `validator_agent`, `processor_agent`
+- Be consistent with suffixes: Always use `_agent` suffix
+- Avoid ambiguous names: `helper`, `manager`, `handler`
+
+**Benefits:**
+
+- Easier to locate agents in large hierarchies
+- More reliable agent transfer routing
+- Self-documenting code
+- Better error messages and logs
+
+**Example:**
+
+```typescript
+// ❌ Bad: Vague agent names
+const helper = new LlmAgent({
+  name: "helper",
+  description: "Generic helper with unclear purpose",
+});
+const processor = new LlmAgent({
+  name: "processor",
+  description: "Generic processor with unclear purpose",
+});
+
+// ✅ Good: Descriptive agent names
+const billing_specialist_agent = new LlmAgent({
+  name: "billing_specialist_agent",
+  description: "Handles billing inquiries and payment issues",
+});
+
+const content_validator_agent = new LlmAgent({
+  name: "content_validator_agent",
+  description: "Validates content quality and completeness",
+});
+```
+
+### Shallow Hierarchies
+
+Keep agent hierarchies relatively flat (2-3 levels) to reduce complexity and improve maintainability.
+
+**Why Shallow Hierarchies:**
+
+- Easier to understand and debug
+- Faster agent lookup and transfer
+- Clearer execution paths
+- Reduced coordination overhead
+
+**When to Add Depth:**
+
+- Clear logical grouping exists
+- Reusable sub-workflows need encapsulation
+- Different security or access boundaries
+
+**Example:**
+
+```typescript
+// ❌ Bad: Deep, complex hierarchy (4+ levels)
+const deepHierarchy = new SequentialAgent({
+  subAgents: [
+    new ParallelAgent({
+      subAgents: [
+        new SequentialAgent({
+          subAgents: [
+            new LoopAgent({
+              subAgents: [
+                /* deeply nested agents */
+              ],
+            }),
+          ],
+        }),
+      ],
+    }),
+  ],
+});
+
+// ✅ Good: Flat, clear hierarchy (2-3 levels)
+const shallowHierarchy = new SequentialAgent({
+  name: "main_workflow",
+  subAgents: [
+    analysisPhase, // ParallelAgent with specialist agents
+    processingPhase, // SequentialAgent with processing steps
+    validationPhase, // Simple validation agent
+  ],
+});
+```
+
+### Predictable Logic
+
+Make your control flow easy to understand and test. Use clear variable names, document decision points, and structure your code so that execution paths are obvious.
+
+**Control Flow Guidelines:**
+
+- Avoid deeply nested conditions (max 2-3 levels)
+- Use early returns to reduce nesting
+- Extract complex conditions into named functions
+- Document non-obvious decision logic
+
+**Example:**
+
+```typescript
+// ❌ Bad: Complex nested logic
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  if (condition1) {
+    if (condition2) {
+      if (condition3) {
+        // deeply nested logic
+      } else {
+        // hard to follow
+      }
+    }
+  }
+}
+
+// ✅ Good: Clear, predictable logic
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  // Early validation with clear error messages
+  if (!this.hasRequiredInput(ctx)) {
+    yield this.createErrorEvent("Missing required input");
+    return;
+  }
+
+  // Clear decision points with descriptive names
+  const complexity = this.analyzeComplexity(ctx);
+  const selectedAgent = this.selectAgentByComplexity(complexity);
+
+  // Simple, linear execution
+  for await (const event of selectedAgent.runAsync(ctx)) {
+    yield event;
+  }
+}
+
+private hasRequiredInput(ctx: InvocationContext): boolean {
+  return !!ctx.session.state.get("user_input");
+}
+
+private selectAgentByComplexity(complexity: number) {
+  if (complexity > 0.8) return this.expertAgent;
+  if (complexity > 0.5) return this.advancedAgent;
+  return this.basicAgent;
+}
+```
+
+### Efficient Execution
+
+Skip unnecessary work and provide meaningful progress feedback. Check preconditions early, exit fast when possible, and yield progress events during long operations.
+
+**Efficiency Strategies:**
+
+- Validate inputs before expensive operations
+- Use parallel execution for independent tasks
+- Cache expensive computations when appropriate
+- Provide progress updates for long-running tasks
+
+**Example:**
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  // ✅ Early validation - fail fast
+  const userInput = ctx.session.state.get("user_input");
+  if (!userInput) {
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "❌ No input provided" }] },
+    });
+    return; // Exit early
+  }
+
+  // ✅ Progress feedback for long operations
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: "⚙️ Starting analysis..." }] },
+  });
+
+  // ✅ Parallel execution for independent tasks
+  for await (const event of this.parallelAnalysisAgent.runAsync(ctx)) {
+    yield event;
+  }
+
+  // ✅ Conditional execution - skip if not needed
+  const requiresDeepAnalysis = ctx.session.state.get("complexity") === "high";
+  if (requiresDeepAnalysis) {
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "🔍 Running deep analysis..." }] },
+    });
+    for await (const event of this.deepAnalysisAgent.runAsync(ctx)) {
+      yield event;
+    }
+  }
+}
+```
+
+## Communication Patterns
+
+### State Key Management
+
+In multi-agent workflows, especially parallel ones, use distinct `outputKey` values to prevent conflicts. Document state dependencies to make data flow clear.
+
+**Parallel Workflows:**
+
+- Each parallel agent must use a unique `outputKey`
+- Document which keys are produced by which agents
+- Avoid overwriting keys from other agents
+
+**Sequential Workflows:**
+
+- Later agents can safely reuse keys to update values
+- Document when keys are created vs updated
+- Use versioned keys if you need history: `draft_v1`, `draft_v2`
+
+**Example:**
+
+```typescript
+// ❌ Bad: Conflicting state keys in parallel execution
+const parallelAgent = new ParallelAgent({
+  subAgents: [
+    new LlmAgent({
+      name: "agent1",
+      outputKey: "result", // ⚠️ Conflict!
+    }),
+    new LlmAgent({
+      name: "agent2",
+      outputKey: "result", // ⚠️ Conflict!
+    }),
+  ],
+});
+
+// ✅ Good: Unique state keys
+const parallelAnalysisAgent = new ParallelAgent({
+  name: "parallel_analysis",
+  subAgents: [
+    new LlmAgent({
+      name: "sentiment_analyzer",
+      outputKey: "sentiment_analysis", // Unique
+    }),
+    new LlmAgent({
+      name: "topic_extractor",
+      outputKey: "topic_analysis", // Unique
+    }),
+    new LlmAgent({
+      name: "style_analyzer",
+      outputKey: "style_analysis", // Unique
+    }),
+  ],
+});
+
+// ✅ Good: Sequential refinement with intentional overwrites
+const refinementPipeline = new SequentialAgent({
+  subAgents: [
+    new LlmAgent({
+      name: "initial_draft",
+      instruction:
+        "Create an initial draft based on the requirements: {user_input}",
+      outputKey: "current_draft", // Creates initial version
+    }),
+    new LlmAgent({
+      name: "first_revision",
+      instruction: "Improve: {current_draft}",
+      outputKey: "current_draft", // Intentionally updates
+    }),
+    new LlmAgent({
+      name: "final_polish",
+      instruction: "Polish: {current_draft}",
+      outputKey: "final_content", // Different key for final version
+    }),
+  ],
+});
+```
+
+### Progress Events
+
+Provide regular feedback during long-running operations. Users need to understand what's happening, especially for complex workflows that may take time to complete.
+
+**When to Yield Progress Events:**
+
+- At the start of major operations
+- Before and after long-running sub-agents
+- When making important decisions
+- At completion with summary information
+
+**Event Content Guidelines:**
+
+- Use clear, descriptive text
+- Include relevant context (iteration numbers, agent names)
+- Use emojis sparingly but consistently (⚙️ processing, ✅ complete, ❌ error)
+- Keep messages concise but informative
+
+**Example:**
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  // ✅ Start of operation
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: "🚀 Starting content quality workflow" }] },
+  });
+
+  // ✅ Before expensive operation
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: "⚙️ Processing content..." }] },
+  });
+
+  for await (const event of this.processorAgent.runAsync(ctx)) {
+    yield event;
+  }
+
+  // ✅ Decision point feedback
+  const validationResult = ctx.session.state.get("validation_result");
+  if (validationResult === "invalid") {
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "⚠️ Validation failed, retrying..." }] },
+    });
+  }
+
+  // ✅ Completion summary
+  yield new Event({
+    author: this.name,
+    content: {
+      parts: [{ text: "✅ Content quality workflow completed successfully" }],
+    },
+  });
+}
+```
+
+### State Updates with EventActions
+
+Use `EventActions` to update session state for better auditability and transparency. This creates a clear audit trail of state changes throughout the workflow.
+
+**Benefits:**
+
+- Explicit state changes visible in event stream
+- Better debugging and monitoring
+- Audit trail for compliance
+- Rollback capabilities
+
+**When to Use:**
+
+- Critical state changes
+- Workflow stage transitions
+- Quality gates or checkpoints
+- Error conditions
+
+**Example:**
+
+```typescript
+// ❌ Bad: Direct state updates without visibility
+ctx.session.state.set("processing_stage", "validation");
+ctx.session.state.set("validation_passed", true);
+
+// ✅ Good: State updates with EventActions
+yield new Event({
+  author: this.name,
+  content: { parts: [{ text: "✅ Validation completed successfully" }] },
+  actions: new EventActions({
+    stateDelta: {
+      processing_stage: "validation",
+      validation_passed: true,
+      validation_timestamp: new Date().toISOString(),
+    },
+  }),
+});
+```
+
+### Transfer vs Tool Selection
+
+Choose between agent transfer and tool-based invocation based on your control and routing needs.
+
+**Use Agent Transfer (`AutoFlow`) When:**
+
+- You need dynamic, LLM-driven routing
+- The routing logic is complex or context-dependent
+- You want the LLM to decide which specialist to use
+- The workflow path isn't predetermined
+
+**Use AgentTool When:**
+
+- You need explicit, predictable control
+- The invocation pattern is deterministic
+- You want to compose agents as reusable capabilities
+- You need clear input/output contracts
+
+**Example:**
+
+```typescript
+// ✅ Good: Agent transfer for dynamic routing
+const coordinatorAgent = new LlmAgent({
+  name: "support_coordinator",
+  instruction: `Route requests to the appropriate specialist:
+    - Billing issues → transfer to billing_agent
+    - Technical issues → transfer to technical_agent`,
+  subAgents: [billingAgent, technicalAgent],
+  // LLM decides which agent to transfer to based on context
+});
+
+// ✅ Good: AgentTool for explicit invocation
+const dataAnalystAgent = new LlmAgent({
+  name: "data_analyst",
+  instruction: `Analyze the data:
+    1. First, use validate_data_tool to check data quality
+    2. Then, use extract_insights_tool to find patterns`,
+  tools: [
+    new AgentTool({ agent: validatorAgent, name: "validate_data_tool" }),
+    new AgentTool({ agent: insightAgent, name: "extract_insights_tool" }),
+  ],
+  // Deterministic, sequential tool usage
+});
+```
+
+### Transfer Instructions
+
+For agent transfer patterns, write specific routing rules with clear examples. Use non-overlapping agent descriptions to help the LLM make accurate routing decisions.
+
+**Clear Routing Rules:**
+
+- Provide explicit conditions for each transfer
+- Include example requests for each route
+- Use consistent language patterns
+- Document fallback behavior
+
+**Non-Overlapping Descriptions:**
+
+- Make agent responsibilities distinct
+- Avoid ambiguous overlap between agents
+- Provide clear decision criteria
+- Test edge cases during development
+
+**Example:**
+
+```typescript
+// ❌ Bad: Vague transfer instructions
+const vagueCoodinator = new LlmAgent({
+  instruction: "Help the user with their request",
+  subAgents: [agentA, agentB],
+});
+
+// ✅ Good: Specific transfer instructions
+const clearCoordinator = new LlmAgent({
+  name: "customer_service_coordinator",
+  instruction: `Route customer requests to the appropriate specialist:
+
+  **Billing Agent** - transfer_to_agent('billing_agent') for:
+  - Payment issues, refunds, subscription changes
+  - Invoice questions, billing history
+  - Examples: "I was charged twice", "Cancel my subscription"
+
+  **Technical Agent** - transfer_to_agent('technical_agent') for:
+  - System errors, bugs, crashes
+  - Integration issues, API problems
+  - Examples: "The app won't load", "API returns 500 error"
+
+  **General Agent** - transfer_to_agent('general_agent') for:
+  - Account information, password resets
+  - Product features, how-to questions
+  - Examples: "How do I change my password?", "What features are included?"
+
+  If the request is unclear, ask for clarification before transferring.`,
+  subAgents: [billingAgent, technicalAgent, generalAgent],
+});
+```
+
+## Development Tips
+
+### Start Simple
+
+Begin with sequential workflows before moving to complex patterns. Add complexity gradually as you understand the agent interactions and state flow requirements.
+
+**Development Progression:**
+
+1. **Single Agent:** Start with one agent handling the core task
+2. **Sequential Chain:** Add pre/post-processing agents
+3. **Conditional Logic:** Introduce branching based on results
+4. **Parallel Execution:** Add concurrent operations for performance
+5. **Advanced Patterns:** Implement loops, dynamic routing, etc.
+
+**Example:**
+
+```typescript
+// Step 1: Start simple
+const simpleAgent = new LlmAgent({
+  name: "content_processor",
+  instruction: "Process the content: {user_input}",
+});
+
+// Step 2: Add sequential processing
+const sequentialWorkflow = new SequentialAgent({
+  subAgents: [
+    new LlmAgent({
+      name: "preprocessor",
+      instruction: "Clean and preprocess the input: {user_input}",
+      outputKey: "cleaned_content",
+    }),
+    new LlmAgent({
+      name: "processor",
+      instruction: "Process: {cleaned_content}",
+      outputKey: "processed_content",
+    }),
+    new LlmAgent({
+      name: "postprocessor",
+      instruction: "Finalize and format: {processed_content}",
+      outputKey: "final_content",
+    }),
+  ],
+});
+
+// Step 3: Add parallel analysis (after sequential works)
+const enhancedWorkflow = new SequentialAgent({
+  subAgents: [
+    preprocessorAgent,
+    new ParallelAgent({
+      subAgents: [processorAgent, analyzerAgent, validatorAgent],
+    }),
+    postprocessorAgent,
+  ],
+});
+```
+
+### Test Isolation
+
+Test individual agents independently before testing the complete workflow. Mock external dependencies and sub-agents during unit testing to isolate orchestration logic.
+
+**Testing Strategy:**
+
+1. **Unit Tests:** Test each agent in isolation
+2. **Integration Tests:** Test agent pairs and small workflows
+3. **End-to-End Tests:** Test complete multi-agent systems
+4. **Mock Dependencies:** Use mock tools and state for predictable testing
+
+**Example:**
+
+```typescript
+// ✅ Good: Test agents individually first
+describe("ContentProcessorAgent", () => {
+  it("should process content correctly", async () => {
+    const agent = new LlmAgent({
+      name: "content_processor",
+      instruction: "Process: {content}",
+      outputKey: "processed_content",
+    });
+
+    const mockSession = createMockSession({
+      content: "test input",
+    });
+
+    const result = await runAgentToCompletion(agent, mockSession);
+
+    expect(result.state.get("processed_content")).toBeDefined();
+  });
+});
+
+// ✅ Good: Test workflow integration
+describe("ContentWorkflow", () => {
+  it("should orchestrate processor and validator", async () => {
+    const workflow = new SequentialAgent({
+      subAgents: [processorAgent, validatorAgent],
+    });
+
+    const result = await runAgentToCompletion(workflow, mockSession);
+
+    expect(result.state.get("processed_content")).toBeDefined();
+    expect(result.state.get("validation_result")).toBe("valid");
+  });
+});
+```
+
+### State Debugging
+
+Use clear state key names and log state transitions to make debugging easier when agents don't receive expected data or make wrong decisions.
+
+**Debugging Strategies:**
+
+- Log state before and after each agent
+- Use descriptive state keys that indicate their source
+- Track state changes through EventActions
+- Create state snapshots at critical points
+
+**Example:**
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  // ✅ Log initial state
+  console.log("Initial state:", {
+    user_input: ctx.session.state.get("user_input"),
+    complexity: ctx.session.state.get("complexity"),
+  });
+
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: "📊 Processing started" }] },
+    actions: new EventActions({
+      stateDelta: { workflow_stage: "processing" },
+    }),
+  });
+
+  // Execute sub-agent
+  for await (const event of this.processorAgent.runAsync(ctx)) {
+    yield event;
+  }
+
+  // ✅ Log state after processing
+  const processedContent = ctx.session.state.get("processed_content");
+  console.log("After processing:", {
+    processed_content: processedContent?.substring(0, 100),
+    state_keys: Array.from(ctx.session.state.keys()),
+  });
+
+  // ✅ Validate expected state
+  if (!processedContent) {
+    console.error("❌ Expected processed_content in state but not found");
+    yield new Event({
+      author: this.name,
+      content: { parts: [{ text: "❌ Processing failed - no output" }] },
+    });
+    return;
+  }
+}
+```
+
+### Agent Builder Usage
+
+Leverage `AgentBuilder` for rapid prototyping and testing. It provides a clean API for creating and experimenting with multi-agent patterns.
+
+**Benefits:**
+
+- Simplified agent creation syntax
+- Built-in runner for quick testing
+- Easy configuration changes
+- Good for prototyping before production
+
+**Example:**
+
+```typescript
+// ✅ Good: Use AgentBuilder for rapid prototyping
+const { runner } = await AgentBuilder.create("content_workflow")
+  .withAgent(
+    new SequentialAgent({
+      subAgents: [processorAgent, validatorAgent, formatterAgent],
+    })
+  )
+  .withCallback(new ConsoleCallback())
+  .build();
+
+// Quick testing
+const result = await runner.ask("Process this content");
+console.log("Result:", result);
+
+// Easy to modify and retest
+const { runner: v2Runner } = await AgentBuilder.create("content_workflow_v2")
+  .withAgent(
+    new SequentialAgent({
+      subAgents: [
+        processorAgent,
+        new ParallelAgent({ subAgents: [validatorAgent, analyzerAgent] }),
+        formatterAgent,
+      ],
+    })
+  )
+  .build();
+```
+
+## Production Considerations
+
+### Error Handling
+
+Design fallback strategies for failed agents. In sequential workflows, decide whether errors should halt execution or trigger alternative paths.
+
+**Error Handling Strategies:**
+
+- Implement retry logic with exponential backoff
+- Provide fallback agents for critical operations
+- Log errors with sufficient context
+- Gracefully degrade functionality when possible
+
+**Example:**
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  const maxRetries = 3;
+  let attempt = 0;
+
+  while (attempt < maxRetries) {
+    try {
+      // ✅ Try primary agent
+      for await (const event of this.primaryAgent.runAsync(ctx)) {
+        yield event;
+      }
+      return; // Success
+    } catch (error) {
+      attempt++;
+
+      yield new Event({
+        author: this.name,
+        content: {
+          parts: [{
+            text: `⚠️ Attempt ${attempt}/${maxRetries} failed: ${error.message}`,
+          }],
+        },
+      });
+
+      if (attempt < maxRetries) {
+        const backoffMs = Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+      }
+    }
+  }
+
+  // ✅ Fallback strategy after all retries
+  yield new Event({
+    author: this.name,
+    content: { parts: [{ text: "🔄 Using fallback agent" }] },
+  });
+
+  for await (const event of this.fallbackAgent.runAsync(ctx)) {
+    yield event;
+  }
+}
+```
+
+### Performance Optimization
+
+Use `ParallelAgent` to reduce latency when tasks are independent. Monitor resource usage and set reasonable concurrency limits.
+
+**Optimization Strategies:**
+
+- Identify independent operations that can run in parallel
+- Use streaming responses for long-running tasks
+- Cache expensive LLM calls when appropriate
+- Monitor and limit concurrent API requests
+
+**Example:**
+
+```typescript
+// ❌ Bad: Sequential execution of independent tasks
+const slowWorkflow = new SequentialAgent({
+  subAgents: [
+    sentimentAgent, // 2 seconds
+    topicAgent, // 2 seconds
+    styleAgent, // 2 seconds
+  ],
+  // Total: 6 seconds
+});
+
+// ✅ Good: Parallel execution
+const fastWorkflow = new SequentialAgent({
+  subAgents: [
+    new ParallelAgent({
+      subAgents: [
+        sentimentAgent, // \
+        topicAgent, //  } All run concurrently
+        styleAgent, // /
+      ],
+    }),
+    synthesisAgent, // Runs after all complete
+  ],
+  // Total: ~2 seconds + synthesis time
+});
+```
+
+### Monitoring and Observability
+
+Implement logging for state transitions, routing decisions, and performance metrics. This is crucial for debugging complex multi-agent interactions.
+
+**What to Monitor:**
+
+- Agent invocation counts and timing
+- State transitions and data flow
+- Transfer/routing decisions
+- Error rates and types
+- Token usage and costs
+
+**Implementation:**
+
+```typescript
+// ✅ Good: Comprehensive monitoring
+class MonitoringCallback extends BaseCallback {
+  async onAgentStart(agent: BaseAgent, ctx: InvocationContext) {
+    console.log(`[${new Date().toISOString()}] Agent started: ${agent.name}`);
+    console.log(`  State keys: ${Array.from(ctx.session.state.keys())}`);
+  }
+
+  async onAgentEnd(agent: BaseAgent, ctx: InvocationContext) {
+    console.log(`[${new Date().toISOString()}] Agent completed: ${agent.name}`);
+  }
+
+  async onAgentTransfer(
+    from: BaseAgent,
+    to: BaseAgent,
+    ctx: InvocationContext
+  ) {
+    console.log(
+      `[${new Date().toISOString()}] Transfer: ${from.name} → ${to.name}`
+    );
+    console.log(`  Reason: ${ctx.session.state.get("transfer_reason")}`);
+  }
+
+  async onError(agent: BaseAgent, error: Error, ctx: InvocationContext) {
+    console.error(`[${new Date().toISOString()}] Error in ${agent.name}:`, {
+      message: error.message,
+      stack: error.stack,
+      state: Object.fromEntries(ctx.session.state),
+    });
+  }
+}
+
+// Use with AgentBuilder
+const { runner } = await AgentBuilder.create("monitored_workflow")
+  .withAgent(workflowAgent)
+  .withCallback(new MonitoringCallback())
+  .build();
+```
+
+### Resource Management
+
+Set appropriate limits and timeouts to prevent runaway executions and manage costs effectively.
+
+**Resource Controls:**
+
+- Set `maxIterations` on `LoopAgent` to prevent infinite loops
+- Implement timeouts for long-running operations
+- Monitor and limit concurrent agent executions
+- Track token usage and set budgets
+
+**Example:**
+
+```typescript
+// ✅ Good: Resource limits
+const resourceControlledWorkflow = new LoopAgent({
+  name: "controlled_loop",
+  maxIterations: 10, // Prevent infinite loops
+  subAgents: [improverAgent, evaluatorAgent],
+});
+
+// ✅ Good: Timeout wrapper
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Operation timed out")), timeoutMs)
+    ),
+  ]);
+}
+
+// Usage
+const result = await withTimeout(
+  runner.ask("Process this"),
+  30000 // 30 second timeout
+);
+```
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🤖 LLM Agents"
+    description="The building blocks of multi-agent systems"
+    href="/docs/framework/agents/llm-agents"
+  />
+  <Card
+    title="🔄 Workflow Agents"
+    description="Standard patterns for orchestrating multiple agents"
+    href="/docs/framework/agents/workflow-agents"
+  />
+  <Card
+    title="🎯 Custom Agents"
+    description="Build agents with completely custom orchestration logic"
+    href="/docs/framework/agents/custom-agents"
+  />
+  <Card
+    title="🌐 Multi-Agent Systems"
+    description="Compose specialized agents for complex distributed tasks"
+    href="/docs/framework/agents/multi-agents"
+  />
+  <Card
+    title="📡 Events & Actions"
+    description="Communication system for agent coordination"
+    href="/docs/framework/events"
+  />
+  <Card
+    title="💾 Sessions & State"
+    description="Manage data flow and persistence across agent interactions"
+    href="/docs/framework/sessions/session"
+  />
+</Cards>

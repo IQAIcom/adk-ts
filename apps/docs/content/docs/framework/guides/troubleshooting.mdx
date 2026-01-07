@@ -1,0 +1,1915 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for ADK-TS development and deployment
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+This comprehensive troubleshooting guide helps you quickly resolve common issues when developing and deploying ADK-TS agents. Issues are organized from most common to least common, with each following a consistent format for easy reference.
+
+## Environment Variables Not Loading
+
+<Callout type="error">
+  **Most Common Issue**: This is the #1 error developers encounter when working
+  with ADK-TS.
+</Callout>
+
+### Problem
+
+Environment variables aren't being loaded, causing undefined values and "Cannot read property of undefined" errors throughout your application.
+
+### Symptoms
+
+- `process.env.OPENAI_API_KEY` returns `undefined`
+- Error: "API key is required" or "Cannot read property of undefined"
+- Agent initializes but fails when making API calls
+- Different behavior between local development and deployment
+
+### Solution
+
+**1. Install and import dotenv at the very start of your entry file:**
+
+```typescript
+// ✅ Correct: Load dotenv FIRST, before anything else
+import * as dotenv from "dotenv";
+dotenv.config();
+
+// Then import other modules
+import { AgentBuilder, LlmAgent } from "@iqai/adk";
+
+const agent = new LlmAgent({
+  model: "gemini-2.0-flash",
+  apiKey: process.env.OPENAI_API_KEY, // Now this works!
+});
+```
+
+**2. Verify environment variables are loaded:**
+
+```typescript
+console.log("Environment check:");
+console.log("✅ API Key loaded:", !!process.env.OPENAI_API_KEY);
+console.log("✅ Database URL:", !!process.env.DATABASE_URL);
+```
+
+**3. Create `.env` file in your project root:**
+
+```bash
+# .env
+OPENAI_API_KEY=sk-your-key-here
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+```
+
+**4. Add `.env` to `.gitignore`:**
+
+```bash
+echo ".env" >> .gitignore
+```
+
+### Common Mistakes to Avoid
+
+```typescript
+// ❌ Wrong: Importing modules before loading dotenv
+import { AgentBuilder } from "@iqai/adk";
+import * as dotenv from "dotenv";
+dotenv.config(); // Too late! Modules already loaded
+
+// ❌ Wrong: Not calling dotenv.config() at all
+import { AgentBuilder } from "@iqai/adk";
+const apiKey = process.env.OPENAI_API_KEY; // undefined!
+
+// ❌ Wrong: Loading dotenv in wrong file
+// File: agent.ts (imported first)
+export const agent = new LlmAgent({
+  model: process.env.MODEL, // undefined!
+});
+
+// File: index.ts (loads too late)
+import * as dotenv from "dotenv";
+import { agent } from "./agent"; // Already executed!
+dotenv.config();
+```
+
+---
+
+## Service Initialization Errors
+
+### "Artifact service is not initialized"
+
+**Problem**: Agent or tool tries to use artifacts but no artifact service is configured in the runner.
+
+**Symptoms**:
+
+- Error message: "Artifact service is not initialized"
+- `loadArtifact()` or `saveArtifact()` calls fail
+- Artifacts features don't work
+
+**Solution**:
+
+**1. Configure the artifact service when creating your runner:**
+
+```typescript
+import {
+  Runner,
+  InMemoryArtifactService,
+  InMemorySessionService,
+} from "@iqai/adk";
+
+const runner = new Runner({
+  appName: "my_app",
+  agent,
+  sessionService: new InMemorySessionService(),
+  artifactService: new InMemoryArtifactService(), // ✅ Add this
+});
+```
+
+**2. For production, use persistent storage:**
+
+```typescript
+import { GcsArtifactService } from "@iqai/adk-gcp";
+
+const artifactService = new GcsArtifactService({
+  bucketName: "my-artifacts-bucket",
+});
+
+const runner = new Runner({
+  appName: "my_app",
+  agent,
+  sessionService,
+  artifactService, // ✅ Production-ready
+});
+```
+
+---
+
+### "Session service is not available"
+
+**Problem**: Attempting to access session state without configuring a session service.
+
+**Symptoms**:
+
+- Error: "Session service is not available"
+- State operations fail
+- Cannot persist session data
+
+**Solution**:
+
+**1. For development/testing (in-memory):**
+
+```typescript
+import { InMemorySessionService } from "@iqai/adk";
+
+const runner = new Runner({
+  appName: "my_app",
+  agent,
+  sessionService: new InMemorySessionService(), // ✅ Add this
+});
+```
+
+**2. For production (persistent storage):**
+
+```typescript
+import { RedisSessionService } from "@iqai/adk-redis";
+
+const sessionService = new RedisSessionService(redisClient);
+const runner = new Runner({
+  appName: "my_app",
+  agent,
+  sessionService, // ✅ Production-ready
+});
+```
+
+---
+
+## MCP Connection Issues
+
+### Connection Timeout
+
+**Problem**: MCP server connection times out and fails to establish.
+
+**Symptoms**:
+
+- Error: "Connection timeout" or "MCP server not responding"
+- Tools list is empty
+- Long delays before failure
+
+**Solution**:
+
+**1. Verify the MCP server is running:**
+
+```bash
+# Check if server process is running
+ps aux | grep mcp-server-name
+
+# Or try starting it manually
+npx -y @iqai/mcp-server-name
+```
+
+**2. Increase connection timeout:**
+
+```typescript
+const toolset = await McpToolset.create({
+  serverName: "my-mcp-server",
+  config: {
+    command: "npx",
+    args: ["-y", "@iqai/my-server"],
+    timeout: 30000, // ✅ Increase to 30 seconds (default is 10s)
+  },
+});
+```
+
+**3. Check network and firewall:**
+
+```bash
+# Test network connectivity
+ping your-server-host
+
+# Check firewall rules
+sudo ufw status  # Linux
+# Or check your OS firewall settings
+```
+
+---
+
+### "Tool not available" Error
+
+**Problem**: Agent can't find the expected tool from an MCP server.
+
+**Symptoms**:
+
+- Error: "Tool 'tool_name' not available"
+- Tools work locally but not in deployment
+- Some tools work, others don't
+
+**Solution**:
+
+**1. List all available tools:**
+
+```typescript
+const toolset = await McpToolset.create({
+  serverName: "my-server",
+  config: mcpConfig,
+});
+
+const tools = toolset.getTools();
+console.log(
+  "Available tools:",
+  tools.map((t) => t.name)
+);
+// Look for your tool in this list
+```
+
+**2. Check if tool is being filtered out:**
+
+```typescript
+// ✅ Make sure your tool is included in filter
+const toolset = await McpToolset.create({
+  serverName: "my-server",
+  config: mcpConfig,
+  tool_filter: [
+    "needed_tool_1",
+    "needed_tool_2",
+    "your_missing_tool", // Add here
+  ],
+});
+
+// Or remove filter to load all tools
+const toolset = await McpToolset.create({
+  serverName: "my-server",
+  config: mcpConfig,
+  // No tool_filter = all tools loaded
+});
+```
+
+**3. Verify tool name matches exactly (case-sensitive):**
+
+```typescript
+// ❌ Wrong case
+await agent.call("Send_Message"); // Won't work
+
+// ✅ Correct case
+await agent.call("send_message"); // Works
+```
+
+---
+
+### "npx: command not found"
+
+**Problem**: Node.js/npm not installed or not in system PATH.
+
+**Symptoms**:
+
+- Error: "npx: command not found"
+- MCP server fails to start
+- Works on your machine but not in Docker/deployment
+
+**Solution**:
+
+**1. Install Node.js:**
+
+```bash
+# macOS (using Homebrew)
+brew install node
+
+# Ubuntu/Debian
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify installation
+node --version
+npm --version
+npx --version
+```
+
+**2. If npx is installed but not found, add to PATH:**
+
+```typescript
+const config: McpConfig = {
+  command: "npx",
+  args: ["-y", "@iqai/server"],
+  env: {
+    ...process.env,
+    PATH: "/usr/local/bin:/usr/bin:/bin:" + process.env.PATH,
+  },
+};
+```
+
+**3. For Docker, ensure Node.js is in your image:**
+
+```dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy application code
+COPY . .
+
+CMD ["node", "dist/index.js"]
+```
+
+---
+
+### Memory Leaks from Unclosed Connections
+
+**Problem**: MCP connections aren't being closed, causing memory leaks and zombie processes.
+
+**Symptoms**:
+
+- Memory usage keeps increasing
+- Multiple MCP server processes running
+- Application slows down over time
+- "Too many open files" error
+
+**Solution**:
+
+**1. Always close MCP connections using try/finally:**
+
+```typescript
+// ✅ Correct: Always close connections
+const toolset = await McpToolset.create(config);
+
+try {
+  const tools = toolset.getTools();
+  // Use tools for agent operations
+  await runner.runAsync({
+    userId: "user-1",
+    sessionId: "session-1",
+    newMessage: { role: "user", parts: [{ text: "Hello" }] },
+  });
+} finally {
+  await toolset.close(); // ✅ Always executes, even on error
+}
+
+// ❌ Wrong: Connection never closed
+const toolset = await McpToolset.create(config);
+const tools = toolset.getTools();
+// Missing: toolset.close()
+```
+
+**2. For long-running applications, close on shutdown:**
+
+```typescript
+process.on("SIGTERM", async () => {
+  console.log("Shutting down gracefully...");
+  if (toolset) {
+    await toolset.close();
+  }
+  process.exit(0);
+});
+```
+
+---
+
+### Parameter/Schema Mismatch
+
+**Problem**: Tool arguments don't match the expected schema from the MCP server.
+
+**Symptoms**:
+
+- Tool execution fails with validation errors
+- Error: "Invalid parameters" or "Schema mismatch"
+- Works with some arguments but not others
+
+**Solution**:
+
+**1. Inspect the tool's schema:**
+
+```typescript
+const tool = toolset.getTools().find((t) => t.name === "my_tool");
+console.log("Tool schema:", JSON.stringify(tool?.schema, null, 2));
+// Review required fields and types
+```
+
+**2. Ensure transport config matches server requirements:**
+
+```typescript
+// ✅ For stdio transport (most common)
+const config: McpConfig = {
+  command: "node",
+  args: ["server.js"],
+  transport: { type: "stdio" },
+};
+
+// ✅ For SSE transport (HTTP-based)
+const config: McpConfig = {
+  url: "http://localhost:3000/sse",
+  transport: { type: "sse" },
+};
+```
+
+**3. Match argument types exactly:**
+
+```typescript
+// ❌ Wrong: Passing string when number expected
+await tool.call({ count: "5" }); // Schema expects number
+
+// ✅ Correct: Match schema types
+await tool.call({ count: 5 }); // Number type
+```
+
+---
+
+## Artifact Issues
+
+### Auto-save Not Working
+
+**Problem**: Uploaded files or images aren't being automatically saved as artifacts.
+
+**Symptoms**:
+
+- File uploads don't persist
+- Artifacts list is empty
+- Images don't appear in subsequent invocations
+
+**Solution**:
+
+**1. Enable auto-save in your agent configuration:**
+
+```typescript
+const { agent, runner } = await AgentBuilder.create("my_agent")
+  .withAgent(myBaseAgent)
+  .withRunConfig({ saveInputBlobsAsArtifacts: true }) // ✅ Enable auto-save
+  .build();
+```
+
+**2. Ensure message parts use correct format:**
+
+```typescript
+const message = {
+  role: "user",
+  parts: [
+    {
+      inlineData: {
+        data: Buffer.from("file content").toString("base64"), // Base64 encoded
+        mimeType: "text/plain", // Correct MIME type
+      },
+    },
+  ],
+};
+
+await runner.runAsync({
+  userId: "user-1",
+  sessionId: "session-1",
+  newMessage: message,
+});
+```
+
+**3. Verify artifact service is configured** (see Service Initialization section above).
+
+---
+
+### "Artifact not found" (Returns Null)
+
+**Problem**: Attempting to load an artifact that doesn't exist or was never saved.
+
+**Symptoms**:
+
+- `loadArtifact()` returns `null` or `undefined`
+- Cannot access file uploaded in previous session
+- Artifact worked before but now missing
+
+**Solution**:
+
+**1. Always handle the null case:**
+
+```typescript
+const artifact = await ctx.loadArtifact("user:document.pdf");
+
+if (!artifact) {
+  return {
+    error: "Artifact not found",
+    message: "The requested file doesn't exist. Please upload it first.",
+  };
+}
+
+// Safe to use artifact
+const content = Buffer.from(artifact.inlineData.data, "base64").toString(
+  "utf-8"
+);
+```
+
+**2. Check if artifact exists before loading:**
+
+```typescript
+// List all artifacts for this session
+const artifacts = await ctx.listArtifacts();
+console.log(
+  "Available artifacts:",
+  artifacts.map((a) => a.filename)
+);
+
+if (artifacts.some((a) => a.filename === "user:document.pdf")) {
+  const artifact = await ctx.loadArtifact("user:document.pdf");
+  // Process artifact
+}
+```
+
+---
+
+### GCS Permission Errors
+
+**Problem**: Cannot read or write artifacts to Google Cloud Storage.
+
+**Symptoms**:
+
+- Error: "403 Forbidden" or "Access Denied"
+- Error: "Could not load default credentials"
+- Artifacts work locally but fail in production
+
+**Solution**:
+
+**1. Authenticate with Google Cloud:**
+
+```bash
+# For local development
+gcloud auth application-default login
+
+# For production (set service account key)
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
+```
+
+**2. Verify IAM permissions on the bucket:**
+
+Required roles:
+
+- **For reading**: `roles/storage.objectViewer`
+- **For writing**: `roles/storage.objectCreator` or `roles/storage.admin`
+
+```bash
+# Grant permissions to service account
+gcloud storage buckets add-iam-policy-binding gs://your-bucket \
+  --member="serviceAccount:your-sa@project.iam.gserviceaccount.com" \
+  --role="roles/storage.objectAdmin"
+```
+
+**3. Verify bucket name is correct:**
+
+```typescript
+const service = new GcsArtifactService({
+  bucketName: "my-artifacts-bucket", // ✅ Must match exactly
+});
+
+// Test connection
+try {
+  await service.saveArtifact({
+    appName: "test",
+    userId: "test",
+    sessionId: "test",
+    filename: "test.txt",
+    artifact: {
+      inlineData: {
+        data: Buffer.from("test").toString("base64"),
+        mimeType: "text/plain",
+      },
+    },
+  });
+  console.log("✅ GCS connection successful");
+} catch (error) {
+  console.error("❌ GCS connection failed:", error);
+}
+```
+
+---
+
+### MIME Type and Base64 Encoding Issues
+
+**Problem**: Errors when saving or loading artifacts due to incorrect encoding or MIME types.
+
+**Symptoms**:
+
+- Error: "Invalid base64 string"
+- Loaded artifact is corrupted or unreadable
+- Image doesn't display correctly
+
+**Solution**:
+
+**1. Always use base64 encoding:**
+
+```typescript
+// ✅ Correct: Base64 encoded data
+const part: Part = {
+  inlineData: {
+    data: Buffer.from("content").toString("base64"),
+    mimeType: "text/plain",
+  },
+};
+
+// ❌ Wrong: Raw string (not base64)
+const part: Part = {
+  inlineData: {
+    data: "raw content", // Will fail!
+    mimeType: "text/plain",
+  },
+};
+```
+
+**2. Use accurate MIME types:**
+
+```typescript
+const mimeTypes = {
+  ".txt": "text/plain",
+  ".json": "application/json",
+  ".csv": "text/csv",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".pdf": "application/pdf",
+  ".html": "text/html",
+  ".xml": "application/xml",
+};
+
+// Get MIME type from file extension
+const ext = filename.toLowerCase().match(/\.[^.]+$/)?.[0];
+const mimeType = mimeTypes[ext] || "application/octet-stream";
+```
+
+**3. For file uploads, read correctly:**
+
+```typescript
+import * as fs from "fs";
+
+// Read file and convert to base64
+const fileBuffer = fs.readFileSync("/path/to/file.pdf");
+const base64Data = fileBuffer.toString("base64");
+
+const artifact: Part = {
+  inlineData: {
+    data: base64Data,
+    mimeType: "application/pdf",
+  },
+};
+```
+
+---
+
+## Event and State Issues
+
+### Events Not Compacting
+
+**Problem**: Event history keeps growing without compaction, affecting performance.
+
+**Symptoms**:
+
+- Session has hundreds/thousands of events
+- Slow response times
+- High token usage
+- Memory issues in long sessions
+
+**Solution**:
+
+**1. Configure event compaction on your runner:**
+
+```typescript
+runner.eventsCompactionConfig = {
+  compactionInterval: 5, // Compact every 5 invocations
+  overlapSize: 2, // Keep 2 recent invocations for context
+};
+```
+
+**2. Verify compaction is occurring:**
+
+```typescript
+const session = await runner.sessionService.getSession(
+  "app",
+  "user",
+  "session"
+);
+
+// Check for compaction events
+const hasCompaction = session?.events.some((e) => e.actions?.compaction);
+console.log("Compaction active:", hasCompaction);
+
+// Count invocations
+const invocationCount = new Set(session.events.map((e) => e.invocationId)).size;
+console.log("Total invocations:", invocationCount);
+```
+
+**3. Adjust settings for your use case:**
+
+```typescript
+// For customer support (retain more context)
+runner.eventsCompactionConfig = {
+  compactionInterval: 20, // Less frequent compaction
+  overlapSize: 5, // More overlap
+};
+
+// For general chat (aggressive compaction)
+runner.eventsCompactionConfig = {
+  compactionInterval: 3, // More frequent
+  overlapSize: 1, // Minimal overlap
+};
+```
+
+---
+
+### State Not Persisting Between Invocations
+
+**Problem**: State values are lost when starting a new invocation.
+
+**Symptoms**:
+
+- User preferences reset each time
+- Context lost between messages
+- Agent doesn't remember previous interactions
+
+**Solution**:
+
+**1. Use consistent session IDs:**
+
+```typescript
+// ✅ Correct: Same session ID for continuation
+const sessionId = `user-${userId}-main`;
+
+// First message
+await runner.runAsync({
+  userId: "user-1",
+  sessionId: sessionId, // ✅ Same ID
+  newMessage: { role: "user", parts: [{ text: "Hello" }] },
+});
+
+// Follow-up message
+await runner.runAsync({
+  userId: "user-1",
+  sessionId: sessionId, // ✅ Same ID maintains state
+  newMessage: { role: "user", parts: [{ text: "Continue" }] },
+});
+
+// ❌ Wrong: Different session IDs lose state
+await runner.runAsync({
+  sessionId: "session-1", // Different ID = new session
+  newMessage: { role: "user", parts: [{ text: "Hello" }] },
+});
+
+await runner.runAsync({
+  sessionId: "session-2", // Different ID = can't access previous state
+  newMessage: { role: "user", parts: [{ text: "Continue" }] },
+});
+```
+
+**2. Use EventActions for state updates:**
+
+```typescript
+// In your agent, update state properly
+yield new Event({
+  author: this.name,
+  content: { parts: [{ text: "Updated preferences" }] },
+  actions: new EventActions({
+    stateUpdate: {
+      "user_preferences:theme": "dark",
+      "user_preferences:language": "en",
+    },
+  }),
+});
+```
+
+**3. Verify session service is persistent (not in-memory for production):**
+
+```typescript
+// ❌ Wrong for production: loses state on restart
+const sessionService = new InMemorySessionService();
+
+// ✅ Correct for production: persists state
+import { RedisSessionService } from "@iqai/adk-redis";
+const sessionService = new RedisSessionService(redisClient);
+```
+
+---
+
+### Callback Not Firing
+
+**Problem**: Registered callbacks aren't being invoked during agent execution.
+
+**Symptoms**:
+
+- Callback code never runs
+- No logs from callback functions
+- State updates in callbacks don't apply
+
+**Solution**:
+
+**1. Ensure callbacks are registered when building agent:**
+
+```typescript
+// ✅ Correct: Register callbacks during build
+const { agent, runner } = await AgentBuilder.create("my_agent")
+  .withAgent(myBaseAgent)
+  .withCallbacks([myCallback]) // ✅ Must add callbacks here
+  .build();
+
+// ❌ Wrong: Creating agent without callbacks
+const agent = new LlmAgent({
+  name: "my_agent",
+  // No callbacks here!
+});
+```
+
+**2. Verify callback signature matches expected type:**
+
+```typescript
+import { BeforeInvocationCallback } from "@iqai/adk";
+
+// ✅ Correct signature
+const myCallback: BeforeInvocationCallback = async (ctx) => {
+  console.log("Callback fired!");
+  // Your logic here
+};
+
+// ❌ Wrong signature
+const myCallback = (wrong, params) => {
+  // Won't be recognized
+};
+```
+
+**3. Ensure callbacks don't throw errors:**
+
+```typescript
+// ✅ Safe callback with error handling
+const safeCallback: BeforeInvocationCallback = async (ctx) => {
+  try {
+    // Your callback logic
+    await performOperation(ctx);
+  } catch (error) {
+    console.error("Callback error:", error);
+    // Don't throw - just log and continue
+  }
+};
+```
+
+---
+
+## Build and Deployment Issues
+
+### Docker Build Fails - Dependencies
+
+**Problem**: npm/pnpm install fails during Docker build.
+
+**Symptoms**:
+
+- Error: "npm ERR! code ENOTFOUND"
+- Dependency installation hangs
+- Build times out
+
+**Solution**:
+
+**1. Clear Docker cache and rebuild:**
+
+```bash
+docker build --no-cache -t my-agent:latest .
+```
+
+**2. Verify network connectivity in build:**
+
+```dockerfile
+# Add network test to Dockerfile
+RUN npm config set registry https://registry.npmjs.org/
+RUN npm ping
+```
+
+**3. Use multi-stage build for reliability:**
+
+```dockerfile
+# Stage 1: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Stage 2: Runtime
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY . .
+CMD ["node", "dist/index.js"]
+```
+
+---
+
+### Docker Build Fails - TypeScript Compilation
+
+**Problem**: TypeScript compilation errors during build.
+
+**Symptoms**:
+
+- Error: "TS2307: Cannot find module"
+- Type checking fails
+- Build succeeds locally but fails in Docker
+
+**Solution**:
+
+**1. Ensure `tsconfig.json` is included in Docker context:**
+
+```dockerfile
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build
+```
+
+**2. Check TypeScript is in dependencies:**
+
+```json
+{
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
+```
+
+**3. Review build logs for specific errors and fix types.**
+
+---
+
+### Docker Build Fails - Out of Disk Space
+
+**Problem**: Docker build fails due to insufficient disk space.
+
+**Symptoms**:
+
+- Error: "no space left on device"
+- Build hangs at random steps
+- System becomes slow
+
+**Solution**:
+
+```bash
+# Clean up Docker resources
+docker system prune -a --volumes
+
+# Check disk space
+df -h
+
+# Remove unused images
+docker image prune -a
+
+# Remove unused containers
+docker container prune
+```
+
+---
+
+### Container Exits Immediately After Starting
+
+**Problem**: Docker container starts but exits right away.
+
+**Symptoms**:
+
+- Container status shows "Exited (0)" or "Exited (1)"
+- No logs or very brief logs
+- Application doesn't stay running
+
+**Solution**:
+
+**1. Check container logs:**
+
+```bash
+docker logs my-agent
+
+# For more detail
+docker logs --tail 100 my-agent
+```
+
+**2. Run container interactively to debug:**
+
+```bash
+docker run -it my-agent:latest sh
+
+# Then manually run your start command
+node dist/index.js
+```
+
+**3. Verify CMD/ENTRYPOINT in Dockerfile:**
+
+```dockerfile
+# ✅ Correct: Points to actual entry file
+CMD ["node", "dist/index.js"]
+
+# ❌ Wrong: File doesn't exist or path incorrect
+CMD ["node", "build/index.js"]  # Wrong directory
+```
+
+---
+
+### Environment Variables Not Loading in Docker
+
+**Problem**: Environment variables set on host aren't available in container.
+
+**Symptoms**:
+
+- `process.env.VAR_NAME` is undefined in container
+- Works locally but not in Docker
+- API calls fail with missing credentials
+
+**Solution**:
+
+**1. Pass environment variables with `-e` flag:**
+
+```bash
+docker run \
+  -e OPENAI_API_KEY=sk-... \
+  -e DATABASE_URL=postgresql://... \
+  my-agent:latest
+```
+
+**2. Use environment file:**
+
+```bash
+# Create .env file
+cat > .env << EOF
+OPENAI_API_KEY=sk-...
+DATABASE_URL=postgresql://...
+EOF
+
+# Run with env file
+docker run --env-file .env my-agent:latest
+```
+
+**3. For docker-compose:**
+
+```yaml
+services:
+  agent:
+    image: my-agent:latest
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+    # Or use env_file
+    env_file:
+      - .env
+```
+
+---
+
+### Railway Deployment - Build Fails
+
+**Problem**: Railway build succeeds locally but fails on Railway.
+
+**Symptoms**:
+
+- Build logs show dependency errors
+- TypeScript compilation fails
+- Missing files or modules
+
+**Solution**:
+
+**1. Check Railway build logs in dashboard:**
+
+- Click on failed deployment
+- Review detailed build logs
+- Look for specific error messages
+
+**2. Ensure all dependencies are in `package.json`:**
+
+```json
+{
+  "dependencies": {
+    "@iqai/adk": "latest",
+    "dotenv": "^16.0.0"
+    // All runtime dependencies
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+    // Build-time dependencies
+  }
+}
+```
+
+**3. Verify build command in Railway or `package.json`:**
+
+```json
+{
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  }
+}
+```
+
+---
+
+### Railway Deployment - Agent Not Starting
+
+**Problem**: Railway deployment succeeds but agent doesn't run.
+
+**Symptoms**:
+
+- Deployment shows "Active" but nothing happens
+- No logs appearing
+- Health checks failing
+
+**Solution**:
+
+**1. Check Railway logs:**
+
+- Open Railway dashboard
+- Navigate to your service
+- Click "Logs" tab
+- Look for runtime errors
+
+**2. Verify start command:**
+
+```json
+{
+  "scripts": {
+    "start": "node dist/index.js" // ✅ Must match your compiled output
+  }
+}
+```
+
+**3. Ensure all environment variables are set in Railway:**
+
+- Go to **Variables** tab in Railway
+- Add all required variables
+- Redeploy after adding variables
+
+---
+
+### Missing Environment Variables in Deployment
+
+**Problem**: Environment variables work locally but not in deployed environment.
+
+**Symptoms**:
+
+- Error: "Missing required environment variable"
+- API authentication fails
+- Database connection errors
+
+**Solution**:
+
+**For Railway:**
+
+1. Go to your service in Railway dashboard
+2. Click **"Variables"** tab
+3. Add each variable: `KEY=value`
+4. Click **"Redeploy"**
+
+**For Docker:**
+
+```bash
+docker run \
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  -e DATABASE_URL=$DATABASE_URL \
+  my-agent:latest
+```
+
+**Validate in code:**
+
+```typescript
+const requiredEnvVars = ["OPENAI_API_KEY", "DATABASE_URL", "REDIS_URL"];
+
+for (const varName of requiredEnvVars) {
+  if (!process.env[varName]) {
+    throw new Error(
+      `Missing required environment variable: ${varName}. ` +
+        `Please set it in your deployment platform.`
+    );
+  }
+}
+```
+
+---
+
+## Runtime Errors
+
+### Agent Stops Responding or Crashes
+
+**Problem**: Agent becomes unresponsive or exits unexpectedly during operation.
+
+**Symptoms**:
+
+- Agent stops mid-conversation
+- Process exits without error
+- Container restarts repeatedly
+
+**Solution**:
+
+**1. Check logs for errors:**
+
+```bash
+# Docker
+docker logs my-agent --tail 100 --follow
+
+# Railway
+# View in Railway dashboard Logs tab
+
+# Local
+# Check terminal output
+```
+
+**2. Verify resource limits:**
+
+```bash
+# Check Docker container resources
+docker stats my-agent
+
+# Increase limits if needed
+docker run -m 2g --cpus 2 my-agent:latest
+```
+
+**3. Add health checks to detect issues:**
+
+```typescript
+async function healthCheck() {
+  try {
+    // Test LLM connection
+    const testResponse = await llm.generateContent({
+      contents: [{ role: "user", parts: [{ text: "ping" }] }],
+    });
+
+    // Test database
+    await db.query("SELECT 1");
+
+    console.log("✅ Health check passed");
+    return true;
+  } catch (error) {
+    console.error("❌ Health check failed:", error);
+    return false;
+  }
+}
+
+// Run health check periodically
+setInterval(healthCheck, 60000); // Every minute
+```
+
+---
+
+### Tool Execution Timeout
+
+**Problem**: Tool takes too long to execute and times out.
+
+**Symptoms**:
+
+- Error: "Tool execution timeout"
+- Long delays before error
+- Some tools work, others timeout
+
+**Solution**:
+
+**1. Increase tool timeout:**
+
+```typescript
+const longRunningTool = createTool(
+  {
+    name: "slow_tool",
+    description: "Tool that takes time to process",
+    schema: z.object({
+      data: z.string(),
+    }),
+    fn: async ({ data }) => {
+      // Long operation
+      const result = await processLargeDataset(data);
+      return result;
+    },
+  },
+  {
+    timeout: 60000, // ✅ 60 seconds (default is 30s)
+  }
+);
+```
+
+**2. Implement progress reporting for long operations:**
+
+```typescript
+const toolWithProgress = createTool({
+  name: "processing_tool",
+  description: "Long-running processing with progress updates",
+  schema: z.object({
+    items: z.array(z.string()),
+  }),
+  fn: async ({ items }, ctx) => {
+    // Report start
+    await ctx.emit?.({
+      content: { parts: [{ text: `Processing ${items.length} items...` }] },
+    });
+
+    // Process in batches
+    const results = [];
+    for (let i = 0; i < items.length; i += 10) {
+      const batch = items.slice(i, i + 10);
+      results.push(...(await processBatch(batch)));
+
+      // Report progress
+      await ctx.emit?.({
+        content: {
+          parts: [{ text: `Processed ${i + batch.length}/${items.length}` }],
+        },
+      });
+    }
+
+    return { success: true, results };
+  },
+});
+```
+
+**3. Break long operations into smaller tools:**
+
+```typescript
+// ❌ One long tool (2+ minutes)
+const largeTool = createTool({
+  name: "do_everything",
+  fn: async () => {
+    await step1(); // 40s
+    await step2(); // 40s
+    await step3(); // 40s
+  },
+});
+
+// ✅ Multiple smaller tools (better)
+const initTool = createTool({
+  name: "initialize",
+  fn: async () => await step1(), // 40s
+});
+
+const processTool = createTool({
+  name: "process",
+  fn: async () => await step2(), // 40s
+});
+
+const finalizeTool = createTool({
+  name: "finalize",
+  fn: async () => await step3(), // 40s
+});
+```
+
+---
+
+### Out of Memory Errors
+
+**Problem**: Node.js runs out of memory and crashes.
+
+**Symptoms**:
+
+- Error: "JavaScript heap out of memory"
+- Error: "FATAL ERROR: Reached heap limit"
+- Process crashes during processing
+
+**Solution**:
+
+**1. Increase Node.js memory limit:**
+
+```json
+{
+  "scripts": {
+    "start": "node --max-old-space-size=4096 dist/index.js"
+  }
+}
+```
+
+**2. For Docker, set in CMD:**
+
+```dockerfile
+CMD ["node", "--max-old-space-size=4096", "dist/index.js"]
+```
+
+**3. Implement memory management:**
+
+```typescript
+// Clear caches periodically
+setInterval(() => {
+  cache.clear();
+  console.log("Cache cleared");
+}, 60000); // Every minute
+
+// Limit collection sizes
+class BoundedCache<K, V> extends Map<K, V> {
+  constructor(private maxSize: number) {
+    super();
+  }
+
+  set(key: K, value: V) {
+    // Remove oldest entry if at max size
+    if (this.size >= this.maxSize) {
+      const firstKey = this.keys().next().value;
+      this.delete(firstKey);
+    }
+    return super.set(key, value);
+  }
+}
+
+const cache = new BoundedCache(1000); // Max 1000 items
+```
+
+---
+
+## Authentication Issues
+
+### Invalid API Key Errors
+
+**Problem**: API key is rejected by the LLM provider.
+
+**Symptoms**:
+
+- Error: "Invalid API key"
+- Error: "Unauthorized" or "401"
+- Authentication works in testing but fails in production
+
+**Solution**:
+
+**1. Verify API key format:**
+
+```typescript
+const apiKey = process.env.OPENAI_API_KEY;
+
+if (!apiKey) {
+  throw new Error("OPENAI_API_KEY environment variable not set");
+}
+
+// Verify format (OpenAI keys start with sk-)
+if (!apiKey.startsWith("sk-")) {
+  console.warn("⚠️ API key format looks incorrect");
+}
+
+console.log("✅ API key loaded:", apiKey.substring(0, 7) + "...");
+```
+
+**2. Check for whitespace or special characters:**
+
+```typescript
+const cleanApiKey = process.env.OPENAI_API_KEY?.trim();
+
+// Remove any accidental quotes
+const apiKey = cleanApiKey?.replace(/['"]/g, "");
+```
+
+**3. Test key directly:**
+
+```bash
+# Test OpenAI key
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer $OPENAI_API_KEY"
+
+# Should return list of models, not 401 error
+```
+
+**4. Verify key permissions and quotas in provider dashboard.**
+
+---
+
+### Token Expiration in Long Sessions
+
+**Problem**: OAuth tokens expire during long-running agent sessions.
+
+**Symptoms**:
+
+- Works initially, then fails after some time
+- Error: "Token expired" or "Invalid token"
+- Need to restart application
+
+**Solution**:
+
+**Implement automatic token refresh:**
+
+```typescript
+class TokenManager {
+  private token: string = "";
+  private expiresAt: number = 0;
+
+  async getValidToken(): Promise<string> {
+    const now = Date.now();
+    const bufferTime = 5 * 60 * 1000; // 5 minute buffer
+
+    // Refresh if expired or expiring soon
+    if (now + bufferTime > this.expiresAt) {
+      await this.refreshToken();
+    }
+
+    return this.token;
+  }
+
+  private async refreshToken() {
+    try {
+      const response = await fetch("https://auth.example.com/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refresh_token: process.env.REFRESH_TOKEN,
+        }),
+      });
+
+      const data = await response.json();
+      this.token = data.access_token;
+      this.expiresAt = Date.now() + data.expires_in * 1000;
+
+      console.log("✅ Token refreshed");
+    } catch (error) {
+      console.error("❌ Token refresh failed:", error);
+      throw new Error("Failed to refresh authentication token");
+    }
+  }
+}
+
+// Use in your code
+const tokenManager = new TokenManager();
+
+async function makeAuthenticatedRequest() {
+  const token = await tokenManager.getValidToken();
+  // Use token...
+}
+```
+
+---
+
+## Performance Issues
+
+### Slow Response Times
+
+**Problem**: Agent takes too long to respond to user messages.
+
+**Symptoms**:
+
+- Responses take 10+ seconds
+- Users experience delays
+- Performance degrades over time
+
+**Solution**:
+
+**1. Enable event compaction:**
+
+```typescript
+runner.eventsCompactionConfig = {
+  compactionInterval: 5, // Compact every 5 invocations
+  overlapSize: 1, // Minimal overlap for speed
+};
+```
+
+**2. Use faster models for simple tasks:**
+
+```typescript
+// ✅ Use lite model for simple operations
+const fastAgent = new LlmAgent({
+  model: "gemini-2.0-flash-lite", // Faster, cheaper
+  instruction: "Answer brief questions quickly",
+});
+
+// ✅ Use advanced model only when needed
+const advancedAgent = new LlmAgent({
+  model: "gemini-2.5-flash", // More capable but slower
+  instruction: "Perform complex analysis",
+});
+```
+
+**3. Filter tools to reduce context size:**
+
+```typescript
+// ✅ Only load essential tools
+const toolset = await McpToolset.create({
+  serverName: "server",
+  config: mcpConfig,
+  tool_filter: ["essential_tool_1", "essential_tool_2"],
+});
+
+// ❌ Loading all tools slows things down
+const toolset = await McpToolset.create({
+  serverName: "server",
+  config: mcpConfig,
+  // No filter = all 50+ tools loaded
+});
+```
+
+**4. Implement caching for repeated queries:**
+
+```typescript
+const cache = new Map<string, any>();
+
+async function getCachedResponse(
+  key: string,
+  fetchFn: () => Promise<any>
+): Promise<any> {
+  if (cache.has(key)) {
+    console.log("✅ Cache hit");
+    return cache.get(key);
+  }
+
+  console.log("⏳ Cache miss, fetching...");
+  const result = await fetchFn();
+  cache.set(key, result);
+  return result;
+}
+```
+
+---
+
+### High Token Usage and Costs
+
+**Problem**: Token consumption is very high, resulting in expensive API bills.
+
+**Symptoms**:
+
+- Monthly costs higher than expected
+- Token usage warnings from provider
+- Rate limits being hit
+
+**Solution**:
+
+**1. Enable aggressive event compaction:**
+
+```typescript
+runner.eventsCompactionConfig = {
+  compactionInterval: 3, // More frequent compaction
+  overlapSize: 1, // Minimal overlap
+};
+```
+
+**2. Use cheaper model for summarization:**
+
+```typescript
+import { LlmEventSummarizer, LLMRegistry } from "@iqai/adk";
+
+// ✅ Use lite model for compaction (much cheaper)
+const cheapSummarizer = new LlmEventSummarizer(
+  LLMRegistry.newLLM("gemini-2.0-flash-lite")
+);
+
+runner.eventsCompactionConfig = {
+  summarizer: cheapSummarizer,
+  compactionInterval: 5,
+  overlapSize: 1,
+};
+```
+
+**3. Limit event history:**
+
+```typescript
+// Only keep recent events for context
+const recentEvents = session.events.slice(-20);
+
+// Or set max events in session configuration
+const sessionConfig = {
+  maxEvents: 100, // Trim old events
+};
+```
+
+**4. Monitor token usage:**
+
+```typescript
+let totalTokens = 0;
+
+for await (const event of runner.runAsync(input)) {
+  if (event.metadata?.usage) {
+    const tokens = event.metadata.usage.totalTokens || 0;
+    totalTokens += tokens;
+    console.log(`Tokens this event: ${tokens}, Total: ${totalTokens}`);
+
+    if (totalTokens > 10000) {
+      console.warn("⚠️ High token usage detected!");
+    }
+  }
+}
+```
+
+---
+
+## Debugging Tips
+
+### Enable Comprehensive Logging
+
+**Add detailed logging to track execution flow:**
+
+```typescript
+// Set debug log level
+process.env.LOG_LEVEL = "debug";
+
+// Log all events during execution
+for await (const event of runner.runAsync(input)) {
+  console.log("📝 Event:", {
+    author: event.author,
+    type: event.content.parts[0].text ? "text" : "other",
+    timestamp: new Date().toISOString(),
+  });
+
+  // Full event details for debugging
+  console.debug("Full event:", JSON.stringify(event, null, 2));
+}
+```
+
+---
+
+### Use Invocation IDs for Request Tracing
+
+**Track requests through your system:**
+
+```typescript
+// In your agent implementation
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  const invId = ctx.invocationId;
+
+  console.log(`[${invId}] 🚀 Starting operation`);
+
+  try {
+    const result = await this.performOperation(ctx);
+    console.log(`[${invId}] ✅ Operation successful`);
+
+    yield this.createSuccessEvent(result);
+  } catch (error) {
+    console.error(`[${invId}] ❌ Operation failed:`, error);
+    throw error;
+  }
+}
+```
+
+---
+
+### Inspect Session State
+
+**Debug state issues by examining session data:**
+
+```typescript
+// After agent execution
+const session = await runner.sessionService.getSession(
+  "myApp",
+  "user-123",
+  "session-456"
+);
+
+console.log("📊 Session Debug Info:");
+console.log("- State keys:", Object.keys(session?.state || {}));
+console.log("- Event count:", session?.events.length);
+console.log(
+  "- Latest events:",
+  session?.events.slice(-5).map((e) => e.author)
+);
+
+// Inspect specific state values
+console.log("- User preferences:", session?.state.get("user_preferences"));
+console.log("- Last query:", session?.state.get("last_query"));
+```
+
+---
+
+### Test with Minimal Configuration
+
+**When debugging, start simple and add complexity:**
+
+```typescript
+// ✅ Minimal agent for testing
+const testAgent = new LlmAgent({
+  name: "test_agent",
+  model: "gemini-2.0-flash",
+  instruction: "Echo the user's message",
+  // No tools, no callbacks, no complexity
+});
+
+// Minimal runner
+const runner = new InMemoryRunner(testAgent, {
+  appName: "test",
+});
+
+// Simple test
+console.log("🧪 Running minimal test...");
+
+for await (const event of runner.runAsync({
+  userId: "test",
+  sessionId: "test",
+  newMessage: { role: "user", parts: [{ text: "hello" }] },
+})) {
+  console.log("Event:", event.content.parts[0]);
+}
+
+console.log("✅ Test complete");
+```
+
+---
+
+## Getting Help
+
+If you're still experiencing issues after trying these solutions:
+
+### 1. Check Documentation
+
+Review the relevant documentation sections:
+
+- [Best Practices](/docs/framework/guides/best-practices) - Prevent common issues
+- [API Reference](https://iqaicom.github.io/adk-ts/) - Detailed API documentation
+- Framework guides for your specific feature
+
+### 2. Search Existing Issues
+
+Check if your issue has been reported:
+
+- [GitHub Issues](https://github.com/IQAIcom/adk-ts/issues)
+- Search for error messages or symptoms
+- Check closed issues for solutions
+
+### 3. Ask the Community
+
+Get help from other developers:
+
+- [Discord Server](#) - Real-time chat support
+- [GitHub Discussions](https://github.com/IQAIcom/adk-ts/discussions) - Q&A forum
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/adk-ts) - Tagged questions
+
+### 4. Open an Issue
+
+If you've found a bug or need help:
+
+**Include in your issue:**
+
+- **Clear description** of the problem
+- **Minimal reproduction code** that demonstrates the issue
+- **Environment details**:
+  - Operating system
+  - Node.js version (`node --version`)
+  - ADK version (`npm list @iqai/adk`)
+  - Package manager (npm/pnpm/yarn)
+- **Error messages and logs** (full stack traces)
+- **What you've tried** from this guide
+
+**Example issue:**
+
+```markdown
+## Problem
+
+Agent crashes with "Out of memory" error after processing 50 messages.
+
+## Environment
+
+- OS: macOS 14.0
+- Node: v20.10.0
+- ADK: 1.0.0
+- Memory: 8GB
+
+## Code
+
+[Minimal reproduction code here]
+
+## Error
+
+[Full error stack trace]
+
+## What I Tried
+
+- Increased Node memory to 4GB
+- Enabled event compaction
+- Still crashes after ~50 messages
+```
+
+---
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="✨ Best Practices"
+    description="Learn patterns to prevent common issues"
+    href="/docs/framework/guides/best-practices"
+  />
+  <Card
+    title="🚀 Deployment"
+    description="Deploy your agents successfully"
+    href="/docs/framework/guides/deployment"
+  />
+  <Card
+    title="🔧 Tools"
+    description="Working with tools and MCP servers"
+    href="/docs/framework/tools"
+  />
+  <Card
+    title="📊 Events"
+    description="Understanding the event system"
+    href="/docs/framework/events"
+  />
+</Cards>

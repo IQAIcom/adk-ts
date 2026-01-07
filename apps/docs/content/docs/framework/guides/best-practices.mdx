@@ -1,0 +1,850 @@
+---
+title: Best Practices
+description: Essential best practices for developing production-ready agents with ADK-TS
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+This comprehensive guide consolidates best practices across all aspects of ADK-TS development. Whether you're building your first agent or optimizing for production, these patterns and techniques will help you create robust, scalable, and maintainable agent applications. From agent design principles to deployment strategies, we cover everything you need to build production-ready systems.
+
+## Agent Design
+
+Building effective agents starts with thoughtful design decisions. Well-designed agents are easier to understand, maintain, debug, and compose into larger workflows. This section covers fundamental principles that will help you create agents that are both powerful and maintainable, from choosing clear names to defining focused responsibilities.
+
+### Clear Naming and Purpose
+
+**Use Descriptive Names**: Agent, tool, and state key names should clearly indicate their purpose. This improves code maintainability, makes debugging easier, and helps LLMs understand and use your agents effectively.
+
+```typescript
+// ✅ Good: Clear, descriptive names for agents
+const contentAnalyzerAgent = new LlmAgent({
+  name: "content_analyzer_agent",
+  description: "Analyzes content for sentiment, topics, and key insights",
+  // ...
+});
+
+// ✅ Good: Clear, descriptive names for tools
+const analyzeDocumentTool = createTool({
+  name: "analyze_document_tool",
+  description: "Analyzes document content and extracts key information",
+  schema: z.object({
+    documentUrl: z.string().url(),
+  }),
+  fn: async ({ documentUrl }) => {
+    // Tool implementation
+  },
+});
+
+// ❌ Avoid: Vague names that don't convey purpose
+const agent1 = new LlmAgent({
+  name: "agent",
+  description: "Does stuff",
+  // ...
+});
+
+const tool1 = createTool({
+  name: "tool",
+  description: "Handles things",
+  // ...
+```
+
+### Single Responsibility Principle
+
+Each agent should have one focused purpose. This makes agents:
+
+- Easier to test and debug
+- More reusable across different workflows
+- Simpler to maintain and update
+
+```typescript
+// ✅ Good: Focused agents with single responsibilities
+const dataValidatorAgent = new LlmAgent({
+  name: "data_validator_agent",
+  description: "Validates input data against schema requirements",
+  // ...
+});
+
+const dataProcessorAgent = new LlmAgent({
+  name: "data_processor_agent",
+  description: "Processes validated data and generates insights",
+  // ...
+});
+
+// ❌ Avoid: Agent that does too much
+const dataEverythingAgent = new LlmAgent({
+  name: "data_everything_agent",
+  description: "Validates, processes, analyzes, and exports data",
+  // ... too many responsibilities - hard to test and maintain
+});
+```
+
+### Provide Clear Instructions
+
+Give your agents detailed, specific instructions that guide their behavior:
+
+```typescript
+const customerSupportAgent = new LlmAgent({
+  name: "customer_support_agent",
+  model: "gemini-2.0-flash",
+  instruction: `You are a helpful customer support agent. Follow these guidelines:
+
+1. Always greet the customer warmly
+2. Listen carefully to their issue
+3. Ask clarifying questions if needed
+4. Provide step-by-step solutions
+5. Confirm the issue is resolved before ending
+6. Maintain a professional, empathetic tone
+
+Use the available tools to:
+- Check order status
+- Process refunds
+- Update customer information`,
+  tools: [checkOrderTool, processRefundTool, updateCustomerTool],
+});
+```
+
+## State Management
+
+State is how agents remember information between invocations and share data with each other. Proper state management is crucial for building agents that can maintain context across conversations, coordinate complex workflows, and provide personalized experiences. Following these practices will help you avoid common pitfalls like state conflicts, data loss, and debugging nightmares.
+
+### Use Clear State Keys
+
+Choose descriptive, unique state keys that prevent conflicts and make debugging easier:
+
+```typescript
+// ✅ Good: Clear, namespaced keys that prevent conflicts
+ctx.session.state.set("user_preferences:theme", "dark");
+ctx.session.state.set("analysis_results:sentiment_score", 0.85);
+ctx.session.state.set("cache:last_api_call", timestamp);
+
+// ❌ Avoid: Generic keys that might conflict and are hard to debug
+ctx.session.state.set("data", someValue);
+ctx.session.state.set("result", anotherValue);
+```
+
+### State Documentation
+
+Document what data flows between agents using state keys:
+
+```typescript
+// Document state contracts
+const workflowAgent = new SequentialAgent({
+  name: "content_workflow_agent",
+  description: `Content processing workflow.
+  
+  State contract:
+  - Reads: user_input (string) - Initial user request
+  - Writes: analysis_report (object) - Content analysis results
+  - Writes: final_output (string) - Generated content`,
+  subAgents: [analyzerAgent, generatorAgent],
+});
+```
+
+### Use EventActions for State Updates
+
+Prefer `EventActions` for state updates to create an audit trail:
+
+```typescript
+yield new Event({
+  author: this.name,
+  content: { parts: [{ text: "Analysis complete" }] },
+  actions: new EventActions({
+    stateUpdate: {
+      analysis_results: analysisData,
+      processed_at: new Date().toISOString(),
+    },
+  }),
+});
+```
+
+## Error Handling
+
+Errors are inevitable in any application, especially when dealing with external APIs, user input, and LLMs. The difference between a brittle system and a robust one lies in how gracefully it handles failures. Good error handling makes your agents resilient, provides useful feedback to users, and makes debugging significantly easier when things go wrong.
+
+### Graceful Degradation
+
+Always handle errors gracefully and provide informative feedback:
+
+```typescript
+// In tools
+const myTool = createTool({
+  name: "api_call_tool",
+  description: "Calls external API",
+  schema: z.object({
+    endpoint: z.string(),
+  }),
+  fn: async ({ endpoint }, ctx) => {
+    try {
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `API returned ${response.status}: ${response.statusText}`,
+        };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to call API: ${error.message}`,
+      };
+    }
+  },
+});
+
+// In custom agents
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  try {
+    const result = await this.performOperation(ctx);
+    yield this.createSuccessEvent(result);
+  } catch (error) {
+    // Don't let errors crash the agent
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{
+          text: `An error occurred: ${error.message}. Attempting fallback...`
+        }],
+      },
+    });
+
+    // Try fallback approach
+    const fallbackResult = await this.fallbackOperation(ctx);
+    yield this.createSuccessEvent(fallbackResult);
+  }
+}
+```
+
+### Validate Inputs Early
+
+Check preconditions and validate inputs at the start of operations:
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  // Validate required state exists
+  const userInput = ctx.session.state.get("user_input");
+  if (!userInput) {
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{ text: "Error: No user input provided. Please provide input first." }],
+      },
+      actions: new EventActions({ escalate: true }),
+    });
+    return; // Exit early
+  }
+
+  // Validate required services
+  if (!ctx.artifactService) {
+    yield new Event({
+      author: this.name,
+      content: {
+        parts: [{ text: "Artifact service is not available. Cannot proceed." }],
+      },
+    });
+    return;
+  }
+
+  // Proceed with operation
+  // ...
+}
+```
+
+### Idempotent Operations
+
+Design operations that can be safely retried:
+
+```typescript
+// ❌ Bad: Non-idempotent - can charge customer twice!
+async function processOrder(orderId: string) {
+  await chargeCustomer(orderId);
+  await shipOrder(orderId);
+}
+
+// ✅ Good: Idempotent with state checks - safe to retry
+async function processOrder(orderId: string) {
+  const order = await getOrder(orderId);
+
+  if (order.status === "completed") {
+    return { success: true, message: "Order already processed" };
+  }
+
+  if (order.status !== "charged") {
+    await chargeCustomer(orderId);
+  }
+
+  if (order.status !== "shipped") {
+    await shipOrder(orderId);
+  }
+
+  return { success: true, message: "Order processed" };
+}
+```
+
+## Performance Optimization
+
+Performance directly impacts user experience and operational costs. Slow agents frustrate users and can make your application feel unresponsive, while inefficient resource usage drives up your infrastructure and API costs. These optimization techniques will help you build fast, cost-effective agents without sacrificing functionality or reliability.
+
+### Filter Tools Appropriately
+
+Only load tools that your agent actually needs:
+
+```typescript
+// ✅ Good: Load only needed tools - faster and less confusing for LLM
+const toolset = await McpToolset.create({
+  serverName: "iqai-discord",
+  config: mcpConfig,
+  tool_filter: ["send_message", "get_channel_messages"], // Only essential tools
+});
+
+// ❌ Avoid: Loading all tools when you only need a few
+const toolset = await McpToolset.create({
+  serverName: "iqai-discord",
+  config: mcpConfig,
+  // No filter - loads all 20+ tools, slower and confusing
+});
+```
+
+### Batch Operations
+
+Combine multiple operations when possible:
+
+```typescript
+// ✅ Good: Batch parallel operations - much faster!
+await Promise.all([
+  ctx.artifactService.saveArtifact({
+    /* args1 */
+  }),
+  ctx.artifactService.saveArtifact({
+    /* args2 */
+  }),
+  ctx.artifactService.saveArtifact({
+    /* args3 */
+  }),
+]);
+
+// ❌ Avoid: Sequential operations that could be parallel - 3x slower
+await ctx.artifactService.saveArtifact({
+  /* args1 */
+});
+await ctx.artifactService.saveArtifact({
+  /* args2 */
+});
+await ctx.artifactService.saveArtifact({
+  /* args3 */
+});
+```
+
+### Caching Strategies
+
+Implement caching for frequently accessed data:
+
+```typescript
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedData(key: string, fetchFn: () => Promise<any>) {
+  const cached = cache.get(key);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
+  const data = await fetchFn();
+  cache.set(key, { data, timestamp: now });
+  return data;
+}
+```
+
+### Event Compaction
+
+Configure event compaction for long-running sessions:
+
+```typescript
+// Balance between context retention and performance
+runner.eventsCompactionConfig = {
+  compactionInterval: 10, // Compact every 10 invocations
+  overlapSize: 2, // Keep 2 recent invocations
+};
+
+// For customer support (retain more history)
+const supportConfig: EventsCompactionConfig = {
+  compactionInterval: 20,
+  overlapSize: 5,
+};
+
+// For general chat (more aggressive)
+const chatConfig: EventsCompactionConfig = {
+  compactionInterval: 5,
+  overlapSize: 1,
+};
+```
+
+## Security
+
+Security must be built into your agents from the start, not added as an afterthought. Agent applications often handle sensitive data, make API calls with credentials, and interact with external systems. A single security oversight can lead to data breaches, unauthorized access, or compromised systems. These practices will help you build secure agents that protect user data and prevent common vulnerabilities.
+
+### Never Hardcode Secrets
+
+Always use environment variables for sensitive data:
+
+```typescript
+// ✅ Good: Use environment variables
+const apiKey = process.env.OPENAI_API_KEY;
+if (!apiKey) {
+  throw new Error("OPENAI_API_KEY environment variable is required");
+}
+
+// ❌ Bad: Hardcoded secrets (NEVER DO THIS!)
+const apiKey = "sk-abc123..."; // Security vulnerability!
+```
+
+### Validate and Sanitize Data
+
+Always validate external data to prevent security issues and unexpected errors:
+
+```typescript
+// ✅ Good: Define strict validation rules
+const ALLOWED_MIME_TYPES = new Set([
+  "text/plain",
+  "text/csv",
+  "application/json",
+  "image/png",
+  "image/jpeg",
+  "application/pdf",
+]);
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+function validateArtifact(filename: string, part: Part) {
+  const errors: string[] = [];
+
+  // Validate MIME type
+  if (!ALLOWED_MIME_TYPES.has(part.inlineData.mimeType)) {
+    errors.push(`Unsupported file type: ${part.inlineData.mimeType}`);
+  }
+
+  // Validate file size
+  const size = Buffer.from(part.inlineData.data, "base64").length;
+  if (size > MAX_FILE_SIZE) {
+    errors.push(`File too large: ${size} bytes (max: ${MAX_FILE_SIZE})`);
+  }
+
+  // Validate filename
+  if (!/^[a-zA-Z0-9._-]+$/.test(filename.replace("user:", ""))) {
+    errors.push(`Invalid filename: ${filename}`);
+  }
+
+  return { isValid: errors.length === 0, errors };
+}
+```
+
+### Implement Access Control
+
+Add proper authorization checks:
+
+```typescript
+class SecureArtifactService {
+  constructor(
+    private baseService: BaseArtifactService,
+    private authService: AuthService
+  ) {}
+
+  async saveArtifact(
+    args: SaveArtifactArgs,
+    requestingUserId: string,
+    permissions: string[]
+  ): Promise<number> {
+    // Verify permissions
+    if (!permissions.includes("artifact:write")) {
+      throw new Error("Insufficient permissions");
+    }
+
+    // Verify user can access this session
+    if (args.userId !== requestingUserId && !permissions.includes("admin")) {
+      throw new Error("Cannot access other users artifacts");
+    }
+
+    return this.baseService.saveArtifact(args);
+  }
+}
+```
+
+### Rate Limiting
+
+Implement rate limiting for external API calls:
+
+```typescript
+class RateLimiter {
+  private requests: number[] = [];
+
+  constructor(private maxRequests: number, private windowMs: number) {}
+
+  async checkLimit(): Promise<boolean> {
+    const now = Date.now();
+    this.requests = this.requests.filter((time) => now - time < this.windowMs);
+
+    if (this.requests.length >= this.maxRequests) {
+      return false; // Rate limit exceeded
+    }
+
+    this.requests.push(now);
+    return true;
+  }
+}
+
+const limiter = new RateLimiter(100, 60000); // 100 requests per minute
+
+const apiTool = createTool({
+  // ...
+  fn: async (args) => {
+    if (!(await limiter.checkLimit())) {
+      return { error: "Rate limit exceeded. Please try again later." };
+    }
+    // Proceed with API call
+  },
+});
+```
+
+## Testing and Debugging
+
+Thorough testing and effective debugging practices are essential for building reliable agents. Unlike traditional software, agents involve LLMs which can be non-deterministic, making testing more challenging but also more important. Good testing strategies catch bugs early, while proper debugging techniques help you quickly identify and fix issues when they occur in development or production.
+
+### Test Agents in Isolation
+
+Test individual agents before integrating them:
+
+```typescript
+import { describe, it, expect } from "vitest";
+
+describe("ContentAnalyzerAgent", () => {
+  it("should analyze sentiment correctly", async () => {
+    const runner = new InMemoryRunner(contentAnalyzerAgent, {
+      appName: "TestApp",
+    });
+
+    const events: Event[] = [];
+    for await (const event of runner.runAsync({
+      userId: "test",
+      sessionId: "test",
+      newMessage: {
+        role: "user",
+        parts: [{ text: "This is amazing!" }],
+      },
+    })) {
+      events.push(event);
+    }
+
+    const session = await runner.sessionService.getSession(
+      "TestApp",
+      "test",
+      "test"
+    );
+    const sentiment = session?.state.get("sentiment_score");
+
+    expect(sentiment).toBeGreaterThan(0.5); // Positive sentiment
+  });
+});
+```
+
+### Use Meaningful Logging
+
+Log important events with context:
+
+```typescript
+protected async *runAsyncImpl(ctx: InvocationContext) {
+  console.log(`[${this.name}] Starting execution`, {
+    invocationId: ctx.invocationId,
+    sessionId: ctx.session.id,
+    userId: ctx.session.userId,
+  });
+
+  const result = await this.performOperation(ctx);
+
+  console.log(`[${this.name}] Operation complete`, {
+    invocationId: ctx.invocationId,
+    resultSize: JSON.stringify(result).length,
+  });
+
+  yield this.createSuccessEvent(result);
+}
+```
+
+### Track Invocation IDs
+
+Use invocation IDs for request correlation:
+
+```typescript
+// Log events with invocation context
+ctx.logger?.info("Processing request", {
+  invocationId: ctx.invocationId,
+  agentName: this.name,
+  timestamp: new Date().toISOString(),
+});
+
+// Track related operations
+const operationId = `${ctx.invocationId}-${Date.now()}`;
+```
+
+## Development Workflow
+
+A solid development workflow accelerates iteration, reduces bugs, and makes collaboration easier. Building complex agent systems requires a methodical approach: start simple, test thoroughly, document your decisions, and evolve incrementally. These practices help you maintain velocity while keeping your codebase clean and understandable for your team (and future you).
+
+### Start Simple, Then Evolve
+
+Begin with basic functionality and add complexity gradually. This approach reduces bugs and makes debugging easier:
+
+```typescript
+// ✅ Start: Simple agent
+const v1Agent = new LlmAgent({
+  name: "simple_agent",
+  model: "gemini-2.0-flash",
+  instruction: "Answer user questions helpfully",
+});
+
+// Evolve: Add tools
+const v2Agent = new LlmAgent({
+  name: "enhanced_agent",
+  model: "gemini-2.0-flash",
+  instruction: "Answer questions and use tools when needed",
+  tools: [searchTool, calculatorTool],
+});
+
+// Mature: Add workflows
+const v3Agent = new SequentialAgent({
+  name: "workflow_agent",
+  description: "Multi-step processing workflow",
+  subAgents: [analyzerAgent, processorAgent, generatorAgent],
+});
+```
+
+### Version Your Configurations
+
+Track configuration changes over time:
+
+```typescript
+// config/v1.ts
+export const agentConfigV1 = {
+  model: "gemini-2.0-flash",
+  temperature: 0.7,
+  compactionInterval: 10,
+};
+
+// config/v2.ts
+export const agentConfigV2 = {
+  ...agentConfigV1,
+  model: "gemini-2.5-flash", // Upgraded model
+  compactionInterval: 5, // More aggressive compaction
+};
+```
+
+### Document Your Decisions
+
+Add comments explaining why, not just what. Future you (and your team) will thank you:
+
+```typescript
+// ✅ Good: Explains reasoning behind the choice
+// Using gemini-2.0-flash-lite for summarization to reduce costs
+// while maintaining adequate quality for event compaction
+const summarizer = new LlmEventSummarizer(
+  LLMRegistry.newLLM("gemini-2.0-flash-lite")
+);
+
+// ❌ Avoid: States the obvious - doesn't add value
+// Create summarizer
+const summarizer = new LlmEventSummarizer(
+  LLMRegistry.newLLM("gemini-2.0-flash-lite")
+);
+```
+
+## Production Deployment
+
+Moving from development to production requires careful planning and configuration. Production environments demand higher reliability, better monitoring, graceful error handling, and efficient resource usage. These practices ensure your agents run smoothly in production, can be monitored effectively, and degrade gracefully when issues occur.
+
+### Environment-Specific Configuration
+
+Use different settings for development and production to optimize for each environment:
+
+```typescript
+// ✅ Good: Different configs for different environments
+const isDev = process.env.NODE_ENV === "development";
+
+const config = {
+  // Shorter timeouts in dev for faster feedback
+  timeout: isDev ? 5000 : 30000,
+
+  // More retries in production
+  maxRetries: isDev ? 1 : 3,
+
+  // Verbose logging in dev
+  logLevel: isDev ? "debug" : "info",
+
+  // Different models
+  model: isDev ? "gemini-2.0-flash" : "gemini-2.5-flash",
+};
+```
+
+### Health Checks
+
+Implement health check endpoints:
+
+```typescript
+app.get("/health", async (req, res) => {
+  const checks = {
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    services: {
+      database: await checkDatabase(),
+      llm: await checkLLMConnection(),
+      mcp: await checkMCPServers(),
+    },
+  };
+
+  const allHealthy = Object.values(checks.services).every((s) => s === "ok");
+  res.status(allHealthy ? 200 : 503).json(checks);
+});
+```
+
+### Graceful Shutdown
+
+Clean up resources properly on shutdown:
+
+```typescript
+let mcpToolset: McpToolset | null = null;
+
+async function shutdown() {
+  console.log("Shutting down gracefully...");
+
+  if (mcpToolset) {
+    await mcpToolset.close();
+    console.log("MCP connections closed");
+  }
+
+  // Close other resources
+  await database.disconnect();
+  await redis.quit();
+
+  console.log("Shutdown complete");
+  process.exit(0);
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+```
+
+### Monitor and Alert
+
+Set up monitoring for production systems:
+
+```typescript
+// Track key metrics
+const metrics = {
+  requestCount: 0,
+  errorCount: 0,
+  avgResponseTime: 0,
+};
+
+// Log for monitoring systems
+function recordMetric(metric: string, value: number) {
+  console.log(
+    JSON.stringify({
+      metric,
+      value,
+      timestamp: new Date().toISOString(),
+    })
+  );
+}
+
+// In your request handler
+const startTime = Date.now();
+try {
+  await handleRequest();
+  metrics.requestCount++;
+  recordMetric("request.success", 1);
+} catch (error) {
+  metrics.errorCount++;
+  recordMetric("request.error", 1);
+} finally {
+  const duration = Date.now() - startTime;
+  recordMetric("request.duration", duration);
+}
+```
+
+## Resource Management
+
+Proper resource management is critical for long-running agent applications. Memory leaks, unclosed connections, and unbounded caches can cause your application to slow down, crash, or consume excessive resources over time. These practices help you build agents that run reliably for days, weeks, or months without degradation, restarts, or resource exhaustion.
+
+### Close Connections Properly
+
+Always clean up resources to prevent memory leaks and connection exhaustion:
+
+```typescript
+// ✅ Always use try/finally to ensure cleanup
+const toolset = await McpToolset.create(config);
+
+try {
+  const tools = toolset.getTools();
+  // Use tools
+} finally {
+  await toolset.close(); // Always close, even on error
+}
+```
+
+### Manage Memory
+
+Be mindful of memory usage in long-running processes:
+
+```typescript
+// Clear caches periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of cache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      cache.delete(key);
+    }
+  }
+}, 60000); // Clean every minute
+
+// Limit collection sizes
+class BoundedCache<K, V> extends Map<K, V> {
+  constructor(private maxSize: number) {
+    super();
+  }
+
+  set(key: K, value: V) {
+    if (this.size >= this.maxSize) {
+      const firstKey = this.keys().next().value;
+      this.delete(firstKey);
+    }
+    return super.set(key, value);
+  }
+}
+```
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🔧 Troubleshooting"
+    description="Common issues and how to resolve them"
+    href="/docs/framework/guides/troubleshooting"
+  />
+  <Card
+    title="🚀 Deployment Guides"
+    description="Deploy your agents to production"
+    href="/docs/framework/guides/deployment"
+  />
+  <Card
+    title="✅ Testing Agents"
+    description="Comprehensive testing strategies"
+    href="/docs/framework/evaluation/testing-agents"
+  />
+  <Card
+    title="📊 Events & Actions"
+    description="Event-driven architecture patterns"
+    href="/docs/framework/events"
+  />
+</Cards>
