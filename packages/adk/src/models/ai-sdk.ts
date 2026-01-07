@@ -48,7 +48,7 @@ export class AiSdkLlm extends BaseLlm {
 	 */
 	private detectProvider(model: LanguageModel): string {
 		if (typeof model === "string") {
-			const m = model as string;
+			const m = model;
 			if (m.includes("anthropic")) return "anthropic";
 			if (m.includes("google")) return "google";
 			if (m.includes("openai")) return "openai";
