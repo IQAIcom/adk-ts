@@ -56,7 +56,7 @@ export class AiSdkLlm extends BaseLlm {
 				}
 
 				if (genaiClient) {
-					this.cacheManager = new ContextCacheManager(this.logger, genaiClient);
+					this.cacheManager = new ContextCacheManager(this.logger);
 				}
 			} catch (error) {
 				this.logger.warn("Failed to initialize Google cache manager:", error);

@@ -166,7 +166,7 @@ export class GoogleLlm extends BaseLlm {
 
 		if (llmRequest.cacheConfig) {
 			this.logger.debug("Handling context caching");
-			cacheManager = new ContextCacheManager(this.apiClient, this.logger);
+			cacheManager = new ContextCacheManager(this.logger, this.apiClient);
 			cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
 
 			if (cacheMetadata) {

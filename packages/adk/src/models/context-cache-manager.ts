@@ -27,22 +27,20 @@ const CacheDefaults = {
 const nowInSeconds = (): number => Date.now() * Time.MS_TO_SECONDS;
 
 export class ContextCacheManager {
-	private readonly genaiClient: GoogleGenAI;
+	private genaiClient: GoogleGenAI;
 	private readonly logger: Logger;
 
 	constructor(logger: Logger, genaiClient?: GoogleGenAI) {
-		if (genaiClient) {
-			this.genaiClient = genaiClient;
-		} else {
-			const apiKey = process.env.GOOGLE_API_KEY;
-			if (!apiKey) {
-				throw new Error(
-					"GOOGLE_API_KEY environment variable is required for caching",
-				);
-			}
+		this.genaiClient = genaiClient;
+		this.logger = logger;
+	}
+
+	public getGenaiClient() {
+		const apiKey = process.env.GOOGLE_API_KEY;
+		if (!this.genaiClient) {
 			this.genaiClient = new GoogleGenAI({ apiKey });
 		}
-		this.logger = logger;
+		return this.genaiClient;
 	}
 
 	async handleContextCaching(
