@@ -10,6 +10,7 @@
 		"sessions",
 		"evaluation",
 		"artifacts",
+		"plugins",
 		"callbacks",
 		"context",
 		"deploy",
