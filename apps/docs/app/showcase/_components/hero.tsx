@@ -1,66 +1,38 @@
+import { Plus } from "lucide-react";
+
 export function Hero() {
 	return (
-		<section className="relative flex flex-col justify-center items-center px-2 sm:px-4 py-16 sm:py-24 overflow-hidden">
-			{/* Enhanced Background */}
-			<div className="absolute inset-0 bg-gradient-to-br from-background via-card to-muted/20">
-				<div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-chart-2/5" />
-
-				{/* Enhanced floating orbs */}
-				<div className="absolute top-8 left-8 w-24 sm:w-32 h-24 sm:h-32 bg-primary/20 rounded-full blur-2xl animate-pulse opacity-30" />
-				<div className="absolute bottom-8 right-8 w-32 sm:w-40 h-32 sm:h-40 bg-chart-1/20 rounded-full blur-2xl animate-pulse opacity-30 [animation-delay:2s]" />
-				<div className="absolute top-1/2 left-1/4 w-16 h-16 bg-chart-2/15 rounded-full blur-xl animate-ping opacity-20 [animation-delay:4s]" />
-
-				{/* Subtle grid pattern */}
-				<div
-					className="absolute inset-0 opacity-5"
-					style={{
-						backgroundImage:
-							"radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0)",
-						backgroundSize: "24px 24px",
-					}}
-				/>
-
-				{/* Moving gradient overlay */}
-				<div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
+		<section className="relative flex flex-col justify-center items-center px-4 sm:px-6 py-20 overflow-hidden">
+			{/* Background Effects */}
+			<div className="absolute inset-0 bg-background">
+				{/* Perspective Grid */}
+				<div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+				{/* Pink Glow - centered but lower opacity for clean look */}
+				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/20 blur-[120px] rounded-full opacity-40 pointer-events-none" />
 			</div>
 
-			{/* Main content - centered */}
-			<div className="relative z-10 w-full max-w-4xl mx-auto text-center">
-				{/* Header section with animations */}
-				<div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-600">
-					<div
-						className="inline-flex items-center bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-full text-sm font-medium mb-6 hover:bg-primary/15 transition-all duration-300 hover:scale-105"
-						role="presentation"
-					>
-						<svg
-							className="w-3.5 h-3.5 mr-2 animate-pulse"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<title>Star Icon</title>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-							/>
-						</svg>
+			{/* Main Content */}
+			<div className="relative z-10 w-full max-w-4xl mx-auto text-center space-y-8">
+				<div className="space-y-4">
+					<h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground">
 						Community Showcase
-					</div>
-
-					<h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 animate-in fade-in slide-in-from-bottom-4 duration-600 delay-200">
-						<span className="text-foreground">Built with</span>
-						<br />
-						<span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium bg-gradient-to-r from-primary to-chart-1 bg-clip-text text-transparent">
-							ADK-TS Framework
-						</span>
 					</h1>
-
-					<p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-8 animate-in fade-in slide-in-from-bottom-4 duration-600 delay-500">
-						Discover the innovative AI agents and applications created by our
-						amazing community.
+					<p className="text-lg sm:text-xl text-muted-foreground/80 max-w-2xl mx-auto">
+						Discover the innovative AI agents and applications built with{" "}
+						<span className="text-foreground font-semibold">ADK-TS</span>
 					</p>
+				</div>
+
+				<div className="flex justify-center">
+					<a
+						href="https://github.com/IQAIcom/adk-ts/discussions/404"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105 shadow-[0_0_20px_-5px_rgba(236,72,153,0.4)]"
+					>
+						<Plus className="h-4 w-4" />
+						Submit Project
+					</a>
 				</div>
 			</div>
 		</section>
