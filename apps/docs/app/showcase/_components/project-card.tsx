@@ -1,6 +1,5 @@
-import Link from "next/link";
-import Image from "next/image";
 import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 interface ProjectCardProps {
 	title: string;
@@ -30,16 +29,10 @@ export function ProjectCard({
 			<div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-chart-1/5 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
 
 			{image ? (
-				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50 pointer-events-none">
-					<Image
-						src={image}
-						alt={title}
-						fill
-						className="object-cover transition-transform duration-300 group-hover:scale-105"
-						loading="lazy"
-						placeholder="blur"
-						blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwABmX/9k="
-					/>
+				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50 pointer-events-none bg-gradient-to-br from-primary/20 to-chart-1/20 flex items-center justify-center p-6">
+					<h3 className="font-bold text-2xl text-center text-foreground/80 tracking-tight">
+						{title}
+					</h3>
 				</div>
 			) : (
 				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50 pointer-events-none bg-gradient-to-br from-primary/20 to-chart-1/20 flex items-center justify-center p-6">

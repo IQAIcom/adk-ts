@@ -7,20 +7,27 @@ export function Hero() {
 
 				{/* Enhanced floating orbs */}
 				<div className="absolute top-8 left-8 w-24 sm:w-32 h-24 sm:h-32 bg-primary/20 rounded-full blur-2xl animate-pulse opacity-30" />
-				<div className="absolute bottom-8 right-8 w-32 sm:w-40 h-32 sm:h-40 bg-chart-1/20 rounded-full blur-2xl animate-pulse opacity-30 animation-delay-2000" />
-				<div className="absolute top-1/2 left-1/4 w-16 h-16 bg-chart-2/15 rounded-full blur-xl animate-ping opacity-20 animation-delay-4000" />
+				<div className="absolute bottom-8 right-8 w-32 sm:w-40 h-32 sm:h-40 bg-chart-1/20 rounded-full blur-2xl animate-pulse opacity-30 [animation-delay:2s]" />
+				<div className="absolute top-1/2 left-1/4 w-16 h-16 bg-chart-2/15 rounded-full blur-xl animate-ping opacity-20 [animation-delay:4s]" />
 
 				{/* Subtle grid pattern */}
-				<div className="absolute inset-0 bg-grid-pattern opacity-5" />
+				<div
+					className="absolute inset-0 opacity-5"
+					style={{
+						backgroundImage:
+							"radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0)",
+						backgroundSize: "24px 24px",
+					}}
+				/>
 
 				{/* Moving gradient overlay */}
-				<div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent animate-shimmer" />
+				<div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
 			</div>
 
 			{/* Main content - centered */}
 			<div className="relative z-10 w-full max-w-4xl mx-auto text-center">
 				{/* Header section with animations */}
-				<div className="mb-8 animate-fade-in-up">
+				<div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-600">
 					<div
 						className="inline-flex items-center bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-full text-sm font-medium mb-6 hover:bg-primary/15 transition-all duration-300 hover:scale-105"
 						role="presentation"
@@ -42,7 +49,7 @@ export function Hero() {
 						Community Showcase
 					</div>
 
-					<h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 animate-fade-in-up animation-delay-200">
+					<h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 animate-in fade-in slide-in-from-bottom-4 duration-600 delay-200">
 						<span className="text-foreground">Built with</span>
 						<br />
 						<span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium bg-gradient-to-r from-primary to-chart-1 bg-clip-text text-transparent">
@@ -50,54 +57,12 @@ export function Hero() {
 						</span>
 					</h1>
 
-					<p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in-up animation-delay-400">
+					<p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-8 animate-in fade-in slide-in-from-bottom-4 duration-600 delay-500">
 						Discover the innovative AI agents and applications created by our
 						amazing community.
 					</p>
 				</div>
 			</div>
-
-			{/* Enhanced CSS animations */}
-			<style jsx>{`
-        .bg-grid-pattern {
-          background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0);
-          background-size: 24px 24px;
-        }
-
-        .animation-delay-200 { animation-delay: 0.2s; }
-        .animation-delay-300 { animation-delay: 0.3s; }
-        .animation-delay-400 { animation-delay: 0.4s; }
-        .animation-delay-600 { animation-delay: 0.6s; }
-        .animation-delay-800 { animation-delay: 0.8s; }
-        .animation-delay-1000 { animation-delay: 1s; }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
-
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-
-        .animate-fade-in-up {
-          animation: fade-in-up 0.6s ease-out forwards;
-          opacity: 0;
-        }
-
-        .animate-shimmer {
-          animation: shimmer 3s ease-in-out infinite;
-        }
-      `}</style>
 		</section>
 	);
 }
