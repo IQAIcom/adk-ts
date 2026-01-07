@@ -3,7 +3,7 @@
  */
 
 export * from "../auth/auth-config";
-// Auth re-exports for backward compatibilityexport * from "../auth/auth-config";
+// Auth re-exports for backward compatibility
 export * from "../auth/auth-credential";
 export * from "../auth/auth-handler";
 export * from "../auth/auth-schemes";

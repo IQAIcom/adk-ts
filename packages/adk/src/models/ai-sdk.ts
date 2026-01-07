@@ -240,7 +240,7 @@ export class AiSdkLlm extends BaseLlm {
 			}
 		}
 
-		console.log(`✓ Cache CONFIG: Anthropic caching enabled (TTL: ${ttl})`);
+		this.logger.info(`✓ Cache CONFIG: Anthropic caching enabled (TTL: ${ttl})`);
 	}
 
 	/**
