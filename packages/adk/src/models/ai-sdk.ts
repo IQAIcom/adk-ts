@@ -28,7 +28,7 @@ export class AiSdkLlm extends BaseLlm {
 	constructor(modelInstance: LanguageModel) {
 		let modelId = "ai-sdk-model";
 		if (typeof modelInstance !== "string" && "modelId" in modelInstance) {
-			modelId = (modelInstance as any).modelId;
+			modelId = modelInstance.modelId;
 		}
 		super(modelId);
 		this.modelInstance = modelInstance;
@@ -53,17 +53,15 @@ export class AiSdkLlm extends BaseLlm {
 			if (m.includes("google")) return "google";
 			if (m.includes("openai")) return "openai";
 		} else if (model && typeof model === "object") {
-			// Check provider field
 			if ("provider" in model) {
-				const provider = (model as any).provider;
+				const provider = model.provider;
 				if (provider.includes("anthropic")) return "anthropic";
 				if (provider.includes("google")) return "google";
 				if (provider.includes("openai")) return "openai";
 			}
 
-			// Fallback: check model ID
 			if ("modelId" in model) {
-				const modelId = (model as any).modelId.toLowerCase();
+				const modelId = model.modelId.toLowerCase();
 				if (modelId.includes("claude")) return "anthropic";
 				if (modelId.includes("gemini")) return "google";
 				if (modelId.includes("gpt")) return "openai";
