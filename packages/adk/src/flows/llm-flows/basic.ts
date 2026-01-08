@@ -1,3 +1,4 @@
+import * as z from "zod";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
 import type { Event } from "../../events/event";
@@ -53,7 +54,16 @@ class BasicLlmRequestProcessor extends BaseLlmRequestProcessor {
 			);
 
 			if (!hasTools && !hasTransfers) {
-				llmRequest.setOutputSchema(agent.outputSchema);
+				try {
+					// Convert Zod schema to JSON Schema for LLM compatibility
+					const jsonSchema = z.toJSONSchema(agent.outputSchema);
+					// Remove $schema field which is not needed for LLM response schemas
+					const { $schema, ...cleanSchema } = jsonSchema as any;
+					llmRequest.setOutputSchema(cleanSchema);
+				} catch {
+					// If conversion fails (e.g., not a Zod schema), pass as-is
+					llmRequest.setOutputSchema(agent.outputSchema);
+				}
 			} else {
 				(() => {
 					try {
