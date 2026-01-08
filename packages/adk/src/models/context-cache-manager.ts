@@ -318,7 +318,7 @@ export class ContextCacheManager {
 			}
 
 			if (actualTokenCount < CacheLimits.GOOGLE_MIN_TOKENS) {
-				console.log(
+				this.logger.info(
 					`⊘ Cache SKIP: Below Google minimum (${actualTokenCount} < ${CacheLimits.GOOGLE_MIN_TOKENS} tokens)`,
 				);
 				return null;
