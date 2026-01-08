@@ -215,7 +215,20 @@ export async function handleFunctionCallsAsync(
 					return null;
 				}
 
-				// AFTER TOOL CALLBACKS: allow result modification/override
+				// PLUGIN AFTER TOOL CALLBACKS: allow plugins to modify result
+				const pluginAfterResult =
+					await invocationContext.pluginManager.runAfterToolCallback({
+						tool,
+						toolArgs: argsForTool,
+						toolContext,
+						result,
+					});
+
+				if (pluginAfterResult !== null && pluginAfterResult !== undefined) {
+					result = pluginAfterResult;
+				}
+
+				// AGENT AFTER TOOL CALLBACKS: allow result modification/override
 				if (isLlmAgent(agent)) {
 					for (const cb of agent.canonicalAfterToolCallbacks) {
 						const maybeModified = await cb(
@@ -299,6 +312,27 @@ export async function handleFunctionCallsAsync(
 				status: toolStatus,
 			});
 			telemetryService.recordError("tool", tool.name);
+
+			// PLUGIN ON TOOL ERROR CALLBACK: allow plugins to handle/recover from errors
+			const errorRecoveryResult =
+				await invocationContext.pluginManager.runOnToolErrorCallback({
+					tool,
+					toolArgs: functionArgs,
+					toolContext,
+					error: error as Error,
+				});
+
+			if (errorRecoveryResult !== null && errorRecoveryResult !== undefined) {
+				// Plugin provided a recovery result, use it instead of throwing
+				const recoveryEvent = buildResponseEvent(
+					tool,
+					errorRecoveryResult,
+					toolContext,
+					invocationContext,
+				);
+				functionResponseEvents.push(recoveryEvent);
+				continue;
+			}
 
 			throw error;
 		} finally {

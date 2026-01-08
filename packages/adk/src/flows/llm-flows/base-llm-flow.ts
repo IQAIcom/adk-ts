@@ -580,6 +580,23 @@ export abstract class BaseLlmFlow {
 		} catch (error) {
 			llmStatus = "error";
 			telemetryService.recordError("llm", llm.model);
+
+			// Call plugin onModelErrorCallback
+			const callbackContext = new CallbackContext(invocationContext, {
+				eventActions: modelResponseEvent.actions,
+			});
+			const errorRecoveryResponse =
+				await invocationContext.pluginManager.runOnModelErrorCallback({
+					callbackContext,
+					llmRequest,
+					error: error as Error,
+				});
+
+			if (errorRecoveryResponse) {
+				yield errorRecoveryResponse;
+				return;
+			}
+
 			throw error;
 		} finally {
 			// Record LLM duration
@@ -647,6 +664,22 @@ export abstract class BaseLlmFlow {
 		llmResponse: LlmResponse,
 		modelResponseEvent: Event,
 	): Promise<LlmResponse | undefined> {
+		const callbackContext = new CallbackContext(invocationContext, {
+			eventActions: modelResponseEvent.actions,
+		});
+
+		// First, check plugin manager callbacks
+		const pluginResult =
+			await invocationContext.pluginManager.runAfterModelCallback({
+				callbackContext,
+				llmResponse,
+			});
+
+		if (pluginResult) {
+			return pluginResult;
+		}
+
+		// Then check agent-level callbacks
 		const agent = invocationContext.agent;
 
 		// Check if agent has LlmAgent-like structure
@@ -658,10 +691,6 @@ export abstract class BaseLlmFlow {
 		if (!afterCallbacks) {
 			return;
 		}
-
-		const callbackContext = new CallbackContext(invocationContext, {
-			eventActions: modelResponseEvent.actions,
-		});
 
 		for (const callback of afterCallbacks) {
 			let afterModelCallbackContent = callback({
