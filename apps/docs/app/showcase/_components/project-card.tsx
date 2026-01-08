@@ -1,6 +1,6 @@
-import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
-import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 interface ProjectCardProps {
 	title: string;
@@ -18,66 +18,58 @@ export function ProjectCard({
 	image,
 }: ProjectCardProps) {
 	return (
-		<div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card/50 transition-all hover:bg-card/80 hover:shadow-lg hover:-translate-y-1">
-			<Link
-				href={link}
-				target="_blank"
-				rel="noopener noreferrer"
-				className="absolute inset-0 z-0"
-			>
-				<span className="sr-only">View {title}</span>
-			</Link>
-			<div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-chart-1/5 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
-
-			{image ? (
-				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50 pointer-events-none">
+		<Link
+			href={link}
+			target="_blank"
+			rel="noopener noreferrer"
+			className="group flex flex-col h-full rounded-lg overflow-hidden bg-card/30 hover:bg-card/50 transition-all duration-300 border border-border/40 hover:border-border hover:shadow-lg hover:shadow-primary/5"
+		>
+			<div className="relative aspect-video w-full overflow-hidden bg-muted/20">
+				{image ? (
 					<Image
 						src={image}
 						alt={title}
 						fill
-						className="object-cover transition-transform duration-300 group-hover:scale-105"
-						loading="lazy"
-						placeholder="blur"
-						blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwABmX/9k="
+						className="object-cover transition-transform duration-500 group-hover:scale-105"
+						sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
 					/>
-				</div>
-			) : (
-				<div className="relative w-full aspect-video overflow-hidden border-b border-border/50 pointer-events-none bg-gradient-to-br from-primary/20 to-chart-1/20 flex items-center justify-center p-6">
-					<h3 className="font-bold text-2xl text-center text-foreground/80 tracking-tight">
-						{title}
-					</h3>
-				</div>
-			)}
+				) : (
+					<div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted/20 to-muted/5 group-hover:from-primary/5 group-hover:to-primary/10 transition-colors">
+						<div className="text-4xl font-bold text-muted-foreground/20 group-hover:text-primary/30 transition-colors">
+							{title.substring(0, 2).toUpperCase()}
+						</div>
+					</div>
+				)}
+			</div>
 
-			<div className="relative z-10 p-6 pointer-events-none">
-				<div className="mb-4 flex items-start justify-between">
-					<div className="space-y-1">
-						<div className="flex flex-wrap gap-2 mb-2">
+			<div className="flex flex-col flex-grow p-5 gap-3">
+				<div>
+					<div className="flex items-start justify-between gap-2 mb-2">
+						<h3 className="text-lg font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors">
+							{title}
+						</h3>
+						<ArrowUpRight className="h-4 w-4 text-muted-foreground/50 opacity-0 -translate-y-1 translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:text-primary flex-shrink-0" />
+					</div>
+					{tags.length > 0 && (
+						<div className="flex flex-wrap gap-1.5">
 							{tags.map((tag) => (
 								<span
 									key={tag}
-									className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+									className="text-xs text-muted-foreground/80 bg-muted/40 px-2 py-1 rounded-md"
 								>
 									{tag}
 								</span>
 							))}
 						</div>
-						<h3 className="font-semibold text-xl tracking-tight text-foreground">
-							{title}
-						</h3>
-					</div>
-					<ExternalLink
-						className="h-5 w-5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-						aria-label={`View ${title}`}
-					/>
+					)}
 				</div>
 
 				{description && (
-					<p className="mb-4 text-sm text-muted-foreground line-clamp-2">
+					<p className="line-clamp-2 text-sm text-muted-foreground/70 leading-relaxed">
 						{description}
 					</p>
 				)}
 			</div>
-		</div>
+		</Link>
 	);
 }
