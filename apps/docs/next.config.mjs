@@ -75,7 +75,19 @@ const config = {
 			{ from: "/docs/framework", to: "/docs" },
 			{
 				from: "/docs/framework/sessions",
-				to: "/docs/framework/sessions/session",
+				to: "/docs/framework/session-state-memory",
+			},
+			{
+				from: "/docs/framework/sessions/session",
+				to: "/docs/framework/session-state-memory/session",
+			},
+			{
+				from: "/docs/framework/sessions/state",
+				to: "/docs/framework/session-state-memory/state",
+			},
+			{
+				from: "/docs/framework/sessions/memory",
+				to: "/docs/framework/session-state-memory/memory",
 			},
 			{
 				from: "/docs/framework/callbacks/design-patterns",

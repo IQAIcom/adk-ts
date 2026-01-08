@@ -7,7 +7,7 @@
 		"agents",
 		"tools",
 		"runtime",
-		"sessions",
+		"session-state-memory",
 		"evaluation",
 		"artifacts",
 		"plugins",
