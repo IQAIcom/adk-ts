@@ -1,15 +1,10 @@
-import { createRelativeLink } from "fumadocs-ui/mdx";
-import {
-	DocsBody,
-	DocsDescription,
-	DocsPage,
-	DocsTitle,
-} from "fumadocs-ui/page";
 import { notFound } from "next/navigation";
-import { Rate } from "@/components/rate";
 import { source } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
 import { LLMCopyButton, ViewOptions } from "./page.client";
+import { DocsPageClient } from "./page-client";
+
+export const dynamic = "force-dynamic";
 
 export default async function Page(props: {
 	params: Promise<{ slug?: string[] }>;
@@ -21,11 +16,12 @@ export default async function Page(props: {
 	const MDXContent = page.data.body;
 
 	return (
-		<DocsPage toc={page.data.toc} full={page.data.full}>
-			<DocsTitle>{page.data.title}</DocsTitle>
-			<DocsDescription className="mb-0!">
-				{page.data.description}
-			</DocsDescription>
+		<DocsPageClient
+			title={page.data.title}
+			description={page.data.description}
+			toc={page.data.toc}
+			full={page.data.full}
+		>
 			<div className="flex flex-row gap-2 items-center border-b pb-6">
 				<LLMCopyButton slug={params.slug || []} />
 				<ViewOptions
@@ -33,16 +29,8 @@ export default async function Page(props: {
 					githubUrl={`https://github.com/IQAIcom/adk-ts/blob/main/apps/docs/content/docs/${page.path}`}
 				/>
 			</div>
-			<DocsBody>
-				<MDXContent
-					components={getMDXComponents({
-						// this allows you to link to other pages with relative file paths
-						a: createRelativeLink(source, page),
-					})}
-				/>
-			</DocsBody>
-			<Rate />
-		</DocsPage>
+			<MDXContent components={getMDXComponents()} />
+		</DocsPageClient>
 	);
 }
 
