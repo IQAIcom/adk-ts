@@ -169,7 +169,44 @@ export async function handleFunctionCallsAsync(
 			const functionResponse = await context.with(spanContext, async () => {
 				const argsForTool = { ...functionArgs };
 
-				// BEFORE TOOL CALLBACKS: allow guardrails/arg mutation or override result
+				// PLUGIN BEFORE TOOL CALLBACKS: allow plugins to intercept/block tool execution
+				const pluginOverride =
+					await invocationContext.pluginManager.runBeforeToolCallback({
+						tool,
+						toolArgs: argsForTool,
+						toolContext,
+					});
+
+				if (pluginOverride !== null && pluginOverride !== undefined) {
+					wasOverridden = true;
+					// Build event directly from plugin override and skip actual tool
+					const overriddenEvent = buildResponseEvent(
+						tool,
+						pluginOverride,
+						toolContext,
+						invocationContext,
+					);
+
+					telemetryService.traceToolCall(
+						tool,
+						argsForTool,
+						overriddenEvent,
+						undefined, // llmRequest
+						invocationContext,
+					);
+
+					// Record enhanced tool attributes
+					telemetryService.traceEnhancedTool(
+						executionOrder,
+						undefined, // parallelGroup not used in sequential execution
+						0, // no retry
+						true, // callback override
+					);
+
+					return { result: pluginOverride, event: overriddenEvent };
+				}
+
+				// AGENT BEFORE TOOL CALLBACKS: allow guardrails/arg mutation or override result
 				if (isLlmAgent(agent)) {
 					for (const cb of agent.canonicalBeforeToolCallbacks) {
 						const maybeOverride = await cb(tool, argsForTool, toolContext);

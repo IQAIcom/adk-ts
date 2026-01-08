@@ -598,6 +598,22 @@ export abstract class BaseLlmFlow {
 		llmRequest: LlmRequest,
 		modelResponseEvent: Event,
 	): Promise<LlmResponse | undefined> {
+		const callbackContext = new CallbackContext(invocationContext, {
+			eventActions: modelResponseEvent.actions,
+		});
+
+		// First, check plugin manager callbacks
+		const pluginResult =
+			await invocationContext.pluginManager.runBeforeModelCallback({
+				callbackContext,
+				llmRequest,
+			});
+
+		if (pluginResult) {
+			return pluginResult;
+		}
+
+		// Then check agent-level callbacks
 		const agent = invocationContext.agent;
 
 		// Check if agent has LlmAgent-like structure
@@ -609,10 +625,6 @@ export abstract class BaseLlmFlow {
 		if (!beforeCallbacks) {
 			return;
 		}
-
-		const callbackContext = new CallbackContext(invocationContext, {
-			eventActions: modelResponseEvent.actions,
-		});
 
 		for (const callback of beforeCallbacks) {
 			let beforeModelCallbackContent = callback({
