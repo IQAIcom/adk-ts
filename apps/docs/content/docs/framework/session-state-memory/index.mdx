@@ -1,0 +1,110 @@
+---
+title: Session, State, and Memory
+description: Conversation management and persistence in ADK-TS
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+ADK-TS provides a three-tier architecture for managing conversation data: **Sessions** for active conversation threads, **State** for dynamic conversation data, and **Memory** for long-term knowledge retrieval. Each layer serves a distinct purpose and can be customized to match your deployment requirements.
+
+## Core Components
+
+<Cards>
+  <Card
+    title="💬 Session"
+    description="Conversation thread management with event history and lifecycle control"
+    href="/docs/framework/session-state-memory/session"
+  />
+  <Card
+    title="🗂️ State"
+    description="Scoped key-value storage with automatic persistence and templating"
+    href="/docs/framework/session-state-memory/state"
+  />
+  <Card
+    title="🧠 Memory"
+    description="Searchable knowledge base with keyword and semantic search"
+    href="/docs/framework/session-state-memory/memory"
+  />
+  <Card
+    title="☁️ Vertex AI"
+    description="Enterprise cloud sessions with Google Cloud integration"
+    href="/docs/framework/session-state-memory/vertex-ai"
+  />
+</Cards>
+
+## What is Session?
+
+A Session represents an individual conversation thread, similar to a chat thread in messaging apps. Each session contains:
+
+- **Message History**: Chronological record of all interactions (events)
+- **State**: Dynamic data specific to the conversation
+- **Metadata**: Identification, timestamps, and tracking information
+
+Sessions ensure your agents maintain context across multiple turns, enabling natural, coherent conversations.
+
+## What is State?
+
+State is the agent's scratchpad for storing and updating information during a conversation. It supports:
+
+- **Scoped Storage**: Session-level, user-level, and app-level data
+- **Dynamic Updates**: Change state throughout the conversation
+- **Persistence**: Automatic saving based on your session service
+- **Templating**: Inject state values directly into agent instructions
+
+State enables agents to remember user preferences, track multi-step workflows, and provide personalized experiences.
+
+## What is Memory?
+
+Memory provides long-term knowledge storage that persists across conversations. It enables:
+
+- **Cross-Conversation Recall**: Remember information from past interactions
+- **Semantic Search**: Find relevant knowledge using natural language queries
+- **Knowledge Integration**: Access external knowledge bases and documentation
+
+While sessions handle short-term conversation context, memory provides the long-term knowledge your agents need to learn and improve over time.
+
+## Session Services
+
+ADK-TS provides multiple session service implementations for different use cases:
+
+- **In-Memory**: Fast and simple for development and testing. Data is lost on restart.
+- **Database** (PostgreSQL, MySQL, SQLite): Production-ready persistence with full SQL support.
+- **Vertex AI**: Enterprise Google Cloud-managed sessions with automatic scaling and backups.
+
+Each implementation provides the same API, making them interchangeable. Choose based on your deployment needs.
+
+### Choosing Your Stack
+
+With sessions and memory, you can mix and match implementations based on your needs:
+
+| Use Case                 | Session Service        | Memory Service           |
+| ------------------------ | ---------------------- | ------------------------ |
+| Local Development        | InMemorySessionService | InMemoryMemoryService    |
+| Production (Self-hosted) | DatabaseSessionService | Custom or Vertex AI RAG  |
+| Production (Cloud)       | VertexAiSessionService | VertexAiRagMemoryService |
+| Testing                  | InMemorySessionService | InMemoryMemoryService    |
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="💬 Sessions"
+    description="Deep dive into session lifecycle and event management"
+    href="/docs/framework/session-state-memory/session"
+  />
+  <Card
+    title="🗂️ State Management"
+    description="Master scoped storage and template injection"
+    href="/docs/framework/session-state-memory/state"
+  />
+  <Card
+    title="🧠 Memory Systems"
+    description="Implement long-term knowledge retrieval"
+    href="/docs/framework/session-state-memory/memory"
+  />
+  <Card
+    title="☁️ Cloud Deployment"
+    description="Scale with Vertex AI enterprise features"
+    href="/docs/framework/session-state-memory/vertex-ai"
+  />
+</Cards>

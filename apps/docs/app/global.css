@@ -83,13 +83,13 @@
 	--chart-3: oklch(0.7227 0.1502 60.5799);
 	--chart-4: oklch(0.6193 0.2029 312.7422);
 	--chart-5: oklch(0.6118 0.2093 6.1387);
-	--sidebar: oklch(0.2103 0.0059 285.8852);
-	--sidebar-foreground: oklch(0.9674 0.0013 286.3752);
+	--sidebar: oklch(0.2574 0.0262 255.7576);
+	--sidebar-foreground: oklch(0.9884 0.0057 128.5242);
 	--sidebar-primary: oklch(0.4882 0.2172 264.3763);
 	--sidebar-primary-foreground: oklch(1 0 0);
-	--sidebar-accent: oklch(0.2739 0.0055 286.0326);
-	--sidebar-accent-foreground: oklch(0.9674 0.0013 286.3752);
-	--sidebar-border: oklch(0.2739 0.0055 286.0326);
+	--sidebar-accent: oklch(0.3719 0.0202 254.085);
+	--sidebar-accent-foreground: oklch(0.9884 0.0057 128.5242);
+	--sidebar-border: oklch(0.3719 0.0202 254.085);
 	--sidebar-ring: oklch(0.8711 0.0055 286.286);
 	--font-sans:
 		ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";

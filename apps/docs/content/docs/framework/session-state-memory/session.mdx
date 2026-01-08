@@ -1,0 +1,318 @@
+---
+title: Session
+description: Manage conversation threads with persistence and context
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+Sessions track conversation threads, storing message history and context across multiple turns. ADK-TS provides automatic session management - you just choose your storage backend.
+
+## Session Object
+
+ADK-TS represents each conversation as a strongly-typed `Session` object:
+
+```typescript
+interface Session {
+  id: string; // Unique conversation identifier
+  appName: string; // Your application name
+  userId: string; // User identifier
+  events: Event[]; // Complete message history
+  state: Record<string, any>; // Conversation-specific data
+  lastUpdateTime: number; // Last activity timestamp
+}
+```
+
+When a user starts interacting with your agent, the `SessionService` creates a `session` object. This object acts as the container holding everything related to that _one specific chat thread_.
+
+**Key components:**
+
+- **`id`**: Uniquely identifies this conversation. Generated automatically or provided explicitly
+- **`appName`**: Groups sessions by application (e.g., `"support-bot"`, `"travel-planner"`)
+- **`userId`**: Links sessions to users for multi-conversation tracking
+- **`events`**: Chronological array of user messages, agent responses, and tool executions
+- **`state`**: Mutable key-value storage for workflow tracking and preferences
+- **`lastUpdateTime`**: Automatic timestamp for session sorting and cleanup
+
+## Using Sessions
+
+There are two ways to add sessions to your agents:
+
+### With AgentBuilder (Recommended)
+
+The simplest approach - attach a session service and ADK-TS handles everything automatically:
+
+```typescript
+import { AgentBuilder, InMemorySessionService } from "@iqai/adk";
+
+// Create your session service
+const sessionService = new InMemorySessionService();
+
+// Build your agent with sessions
+const { runner } = await AgentBuilder.create("support_agent")
+  .withModel("gemini-2.0-flash")
+  .withSessionService(sessionService, {
+    userId: "alice",
+    appName: "customer-support",
+  })
+  .build();
+```
+
+**What happens automatically:**
+
+- Creates or loads the session on first message
+- Stores all messages in the session
+- Maintains context across multiple turns
+- Saves state changes automatically
+
+### With LLMAgent Directly
+
+For more control, configure sessions directly on your agent:
+
+```typescript
+import { LlmAgent, InMemorySessionService } from "@iqai/adk";
+
+// Create your session service
+const sessionService = new InMemorySessionService();
+
+// Create your agent with sessions
+const agent = new LlmAgent({
+  name: "support_agent",
+  description: "Customer support assistant",
+  model: "gemini-2.0-flash",
+  sessionService,
+  userId: "alice",
+  appName: "customer-support",
+});
+```
+
+## Custom Session IDs
+
+By default, ADK-TS generates a unique session ID for each conversation. With `AgentBuilder`, you can specify your own:
+
+```typescript
+const sessionService = new InMemorySessionService();
+
+const { runner } = await AgentBuilder.create("my_agent")
+  .withModel("gemini-2.0-flash")
+  .withSessionService(sessionService, {
+    userId: "bob",
+    appName: "travel-app",
+    sessionId: "booking-paris-2024", // Custom session ID
+  })
+  .build();
+```
+
+<Callout type="info">
+  Custom session IDs are only available when using
+  `AgentBuilder.withSessionService()`. When using `LLMAgent` directly, session
+  IDs are auto-generated.
+</Callout>
+
+## Managing Sessions with a `SessionService`
+
+As seen above, you don't typically create or manage `session` objects directly. Instead, you use a **`SessionService`**. This service acts as the central manager responsible for the entire lifecycle of your conversation sessions.
+
+Its core responsibilities include:
+
+- **Starting New Conversations:** Creating fresh `session` objects when a user begins an interaction.
+- **Resuming Existing Conversations:** Retrieving a specific `session` (using its ID) so the agent can continue where it left off.
+- **Saving Progress:** Appending new interactions (`Event` objects) to a session's history. This is also the mechanism through which session `state` gets updated (more in the `State` section).
+- **Listing Conversations:** Finding the active session threads for a particular user and application.
+- **Cleaning Up:** Deleting `session` objects and their associated data when conversations are finished or no longer needed.
+
+## Session Service Options
+
+ADK-TS provides multiple session storage backends. All implement the same interface, so you can switch between them without changing your code.
+
+### InMemorySessionService
+
+The `InMemorySessionService` stores all session data in your application's memory (RAM). This means sessions and their conversation history exist only while your application is running. When you restart the application, all sessions are lost.
+
+This implementation is **ideal for development and testing** because it's fast, requires no external dependencies or setup, and lets you iterate quickly without worrying about database configuration.
+
+```typescript
+import { InMemorySessionService } from "@iqai/adk";
+
+const sessionService = new InMemorySessionService();
+```
+
+**When to use:** Local development, testing, demos, or simple applications where losing conversation history on restart is acceptable.
+
+### Database Session Services
+
+Database-backed session services store all session data in a **persistent database**. Unlike in-memory storage, sessions and conversation history survive application restarts, making them suitable for production applications where users expect their conversations to be preserved.
+
+The ADK provides built-in support for three popular databases:
+
+- **PostgreSQL** - Robust, feature-rich, ideal for production web applications
+- **MySQL** - Widely supported, good for shared hosting environments
+- **SQLite** - Lightweight, file-based, perfect for desktop apps or small deployments
+
+Behind the scenes, the database session service:
+
+1. **Creates tables automatically** on first use (sessions, events, state data)
+2. **Handles prefixes** for you (`user:`, `app:`, unprefixed) by organizing data into appropriate tables
+3. **Persists everything**: session metadata, conversation events, state snapshots
+4. **Survives restarts**: users can continue conversations even after your app redeploys
+
+Choose a specific factory function for your database, or use the generic `createDatabaseSessionService` helper that auto-detects the database type from the connection string.
+
+**PostgreSQL:**
+
+```typescript
+import { createPostgresSessionService } from "@iqai/adk";
+
+const sessionService = createPostgresSessionService(
+  "postgresql://user:pass@localhost:5432/db"
+);
+```
+
+**MySQL:**
+
+```typescript
+import { createMysqlSessionService } from "@iqai/adk";
+
+const sessionService = createMysqlSessionService(
+  "mysql://user:pass@localhost:3306/db"
+);
+```
+
+**SQLite:**
+
+```typescript
+import { createSqliteSessionService } from "@iqai/adk";
+
+const sessionService = createSqliteSessionService("./sessions.db");
+```
+
+**Auto-detect database type:**
+
+```typescript
+import { createDatabaseSessionService } from "@iqai/adk";
+
+// Automatically chooses the right driver
+const sessionService = createDatabaseSessionService(process.env.DATABASE_URL);
+```
+
+<Callout type="info" title="Database packages required">
+  To use database session storage, you'll need to install the appropriate database driver package:
+
+- **SQLite**: `npm install better-sqlite3` (file-based, no server needed)
+- **PostgreSQL**: `npm install pg` (requires PostgreSQL server)
+- **MySQL**: `npm install mysql2` (requires MySQL server)
+
+These packages provide the low-level database connections that ADK-TS uses.
+
+</Callout>
+
+### Vertex AI Session Service
+
+`VertexAiSessionService` stores session data in **Google Cloud's Vertex AI Agent Engine**, a fully managed service that handles storage, scaling, monitoring, and infrastructure for you. This is ideal for enterprise applications that need cloud-native, production-grade session management without operating databases.
+
+With Vertex AI session service:
+
+- **No infrastructure management**: Google handles databases, backups, scaling, and high availability
+- **Integrated with Vertex AI**: Sessions work seamlessly with other Vertex AI services and tooling
+- **Enterprise features**: Built-in monitoring, logging, compliance, and security
+- **Global scale**: Automatic scaling to handle any number of concurrent sessions worldwide
+- **Pay-as-you-go**: No upfront costs or server maintenance
+
+This implementation is particularly useful when you're already using Google Cloud Platform or need enterprise-grade session management with minimal operational overhead.
+
+```typescript
+import { VertexAiSessionService } from "@iqai/adk";
+
+const sessionService = new VertexAiSessionService({
+  project: "my-gcp-project",
+  location: "us-central1",
+  agentEngineId: "my-agent-engine",
+});
+```
+
+See [Vertex AI Sessions](/docs/framework/session-state-memory/vertex-ai) for setup details.
+
+## Working with Sessions Directly
+
+While ADK-TS manages sessions automatically, you can also work with them directly:
+
+### Create a Session
+
+```typescript
+const session = await sessionService.createSession(
+  "support-bot", // appName
+  "alice", // userId
+  {}, // optional initial state
+  "ticket-12345" // optional sessionId
+);
+```
+
+### Get a Session
+
+```typescript
+const session = await sessionService.getSession(
+  "support-bot", // appName
+  "alice", // userId
+  "ticket-12345" // sessionId
+);
+```
+
+### List User Sessions
+
+Returns session metadata (ID, lastUpdateTime). Use `getSession()` for full session data including events.
+
+```typescript
+const sessions = await sessionService.listSessions(
+  "support-bot", // appName
+  "alice" // userId
+);
+```
+
+### Delete a Session
+
+```typescript
+await sessionService.deleteSession(
+  "support-bot", // appName
+  "alice", // userId
+  "ticket-12345" // sessionId
+);
+```
+
+## Session Lifecycle
+
+Here's a simplified flow of how `session` and `SessionService` work together during a conversation turn:
+
+1.  **Start or Resume:** Your application needs to use the `SessionService` to either `createSession` (for a new chat) or use an existing session id.
+2.  **Context Provided:** The `runner` gets the appropriate `session` object from the appropriate service method, providing the agent with access to the corresponding Session's `state` and `events`.
+3.  **Agent Processing:** The user prompts the agent with a query. The agent analyzes the query and potentially the session `state` and `events` history to determine the response.
+4.  **Response & State Update:** The agent generates a response (and potentially flags data to be updated in the `state`). The `runner` packages this as an `Event`.
+5.  **Save Interaction:** The `runner` calls `sessionService.appendEvent(session, event)` with the `session` and the new `event` as the arguments. The service adds the `Event` to the history and updates the session's `state` in storage based on information within the event. The session's `lastUpdateTime` also get updated.
+6.  **Ready for Next:** The agent's response goes to the user. The updated `session` is now stored by the `SessionService`, ready for the next turn (which restarts the cycle at step 1, usually with the continuation of the conversation in the current session).
+7.  **End Conversation:** When the conversation is over, your application calls `sessionService.deleteSession(...)` to clean up the stored session data if it is no longer required.
+
+This cycle highlights how the `SessionService` ensures conversational continuity by managing the history and state associated with each `session` object.
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="🗂️ State Management"
+    description="Learn how to use scoped state storage"
+    href="/docs/framework/session-state-memory/state"
+  />
+  <Card
+    title="🧠 Memory Services"
+    description="Add long-term knowledge retrieval"
+    href="/docs/framework/session-state-memory/memory"
+  />
+  <Card
+    title="📦 Artifacts"
+    description="Store files and binary data"
+    href="/docs/framework/artifacts"
+  />
+  <Card
+    title="🔧 Events"
+    description="Understand the event system"
+    href="/docs/framework/events"
+  />
+</Cards>
