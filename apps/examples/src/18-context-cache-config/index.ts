@@ -4,6 +4,7 @@ import {
 	ContextCacheConfig,
 	InMemorySessionService,
 } from "@iqai/adk";
+import { openrouter } from "@openrouter/ai-sdk-provider";
 import { ask } from "../utils";
 
 /**
@@ -101,7 +102,9 @@ You have deep expertise in:
 
 Remember to maintain accuracy while being engaging and educational in your responses.`;
 
-	const { runner } = await AgentBuilder.withModel("gemini-2.5-flash")
+	const { runner } = await AgentBuilder.withModel(
+		openrouter("google/gemini-2.5-flash"),
+	)
 		.withInstruction(longInstruction)
 		.withSessionService(sessionService)
 		.withQuickSession({
