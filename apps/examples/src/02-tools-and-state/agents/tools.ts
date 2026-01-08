@@ -10,10 +10,13 @@ export const addItemTool = createTool({
 		price: z.number().describe("Price per item"),
 	}),
 	fn: ({ item, quantity, price }, context) => {
-		const cart: { item: string; quantity: number; price: number }[] = context.state.get("cart", []);
-		const existingItemIndex = cart.findIndex((cartItem) => cartItem.item === item);
+		const cart: { item: string; quantity: number; price: number }[] =
+			context.state.get("cart", []);
+		const existingItemIndex = cart.findIndex(
+			(cartItem) => cartItem.item === item,
+		);
 
-		let updatedCart;
+		let updatedCart: { item: string; quantity: number; price: number }[];
 		if (existingItemIndex > -1) {
 			updatedCart = cart.map((cartItem, index) => {
 				if (index === existingItemIndex) {
