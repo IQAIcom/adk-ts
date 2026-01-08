@@ -128,12 +128,12 @@ const processor = new LlmAgent({
 });
 
 // ✅ Good: Descriptive agent names
-const billing_specialist_agent = new LlmAgent({
+const billingSpecialistAgent = new LlmAgent({
   name: "billing_specialist_agent",
   description: "Handles billing inquiries and payment issues",
 });
 
-const content_validator_agent = new LlmAgent({
+const contentValidatorAgent = new LlmAgent({
   name: "content_validator_agent",
   description: "Validates content quality and completeness",
 });
@@ -535,7 +535,7 @@ For agent transfer patterns, write specific routing rules with clear examples. U
 
 ```typescript
 // ❌ Bad: Vague transfer instructions
-const vagueCoodinator = new LlmAgent({
+const vagueCoordinator = new LlmAgent({
   instruction: "Help the user with their request",
   subAgents: [agentA, agentB],
 });
@@ -798,7 +798,7 @@ protected async *runAsyncImpl(ctx: InvocationContext) {
         author: this.name,
         content: {
           parts: [{
-            text: `⚠️ Attempt ${attempt}/${maxRetries} failed: ${error.message}`,
+            text: `⚠️ Attempt ${attempt}/${maxRetries} failed: ${(error as Error).message}`,
           }],
         },
       });

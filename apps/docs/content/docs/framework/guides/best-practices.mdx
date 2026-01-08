@@ -60,7 +60,7 @@ const agent1 = new LlmAgent({ name: "agent", description: "Does stuff" });
 
 ## Provide Clear, Detailed Instructions
 
-Give your agents detailed, specific instructions that guide their behaviour. Well-written instructions help LLMs understand the agent's role, expected behaviour, and how to use available tools effectively.
+Give your agents detailed, specific instructions that guide their behavior. Well-written instructions help LLMs understand the agent's role, expected behavior, and how to use available tools effectively.
 
 ```typescript
 const supportAgent = new LlmAgent({
@@ -139,7 +139,7 @@ ctx.logger?.info("Processing request", {
 
 ## Use Namespaced State Keys to Prevent Conflicts
 
-Choose descriptive, unique state keys that prevent conflicts and make debugging easier. Use namespaces (like `user_preferences:theme`) to organise related state and avoid generic keys that might collide.
+Choose descriptive, unique state keys that prevent conflicts and make debugging easier. Use namespaces (like `user_preferences:theme`) to organize related state and avoid generic keys that might collide.
 
 ```typescript
 // ✅ Good: Clear, namespaced keys
@@ -362,7 +362,7 @@ const apiKey = "sk-abc123..."; // Security vulnerability!
 
 ## Implement Access Control for Sensitive Operations
 
-Add proper authorization checks to prevent unauthorised access. Verify user permissions and session ownership before allowing operations on sensitive data.
+Add proper authorization checks to prevent unauthorized access. Verify user permissions and session ownership before allowing operations on sensitive data.
 
 ```typescript
 async saveArtifact(args: SaveArtifactArgs, userId: string, permissions: string[]) {
@@ -415,7 +415,7 @@ export const agentConfigV2 = {
 
 ## Use Environment-Specific Configuration
 
-Use different settings for development and production to optimise for each environment. Development should prioritise fast feedback, while production should prioritise reliability and performance.
+Use different settings for development and production to optimize for each environment. Development should prioritize fast feedback, while production should prioritize reliability and performance.
 
 ```typescript
 const isDev = process.env.NODE_ENV === "development";
