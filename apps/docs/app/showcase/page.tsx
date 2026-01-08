@@ -43,17 +43,45 @@ export default function ShowcasePage() {
 									href="https://github.com/IQAIcom/adk-ts/discussions/404"
 									target="_blank"
 									rel="noopener noreferrer"
-									className="inline-flex items-center justify-center rounded-md bg-primary px-8 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105 shadow-[0_0_15px_-5px_rgba(236,72,153,0.5)]"
+									className="group inline-flex items-center justify-center rounded-lg bg-primary px-4 sm:px-6 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 shadow-lg hover:shadow-primary/25"
 								>
 									Share Project
+									<svg
+										className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<title>Arrow Right Icon</title>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M13 7l5 5m0 0l-5 5m5-5H6"
+										/>
+									</svg>
 								</a>
 								<a
 									href="https://github.com/IQAIcom/adk-ts/discussions"
 									target="_blank"
 									rel="noopener noreferrer"
-									className="inline-flex items-center justify-center rounded-md border border-border bg-background px-8 py-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+									className="group inline-flex items-center justify-center rounded-lg border border-border bg-background/80 backdrop-blur-sm px-4 sm:px-6 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-accent hover:text-accent-foreground hover:scale-105 hover:shadow-lg"
 								>
 									View Discussions
+									<svg
+										className="ml-2 h-4 w-4 opacity-50 transition-all group-hover:opacity-100 group-hover:translate-x-1"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<title>ChevronRight Icon</title>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M9 5l7 7-7 7"
+										/>
+									</svg>
 								</a>
 							</div>
 						</div>
