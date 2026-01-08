@@ -14,7 +14,7 @@ import { getRootAgent } from "./agents/agent";
  * 2. Langfuse Integration: This specific example shows how to connect to Langfuse, but ADK works with any OTLP-compatible observability platform (Jaeger, Honeycomb, etc.).
  * 3. Tracing & Metrics: By enabling `enableTracing` and `enableMetrics`, you automatically capture agent thoughts, tool calls, and performance data.
  *
- * Note: You need `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` in your environment to run this full example, but the pattern applies to any OTLP backend.
+ * Note: For this example we will be using https://langfuse.com, So you need `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` in your environment to run this full example, but the pattern applies to any OTLP backend.
  *
  */
 async function main() {
