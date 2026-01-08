@@ -22,3 +22,27 @@ export const counterTool = createTool({
 		};
 	},
 });
+
+export const saveCounterReportTool = createTool({
+	name: "save_counter_report",
+	description: "Save a report of all counter values to an artifact file",
+	schema: z.object({
+		filename: z.string().describe("Name of the file to save the report to"),
+	}),
+	fn: async ({ filename }, context) => {
+		const counters = context.state.get("counters", {});
+		const report = Object.entries(counters)
+			.map(([name, value]) => `${name}: ${value}`)
+			.join("\n");
+
+		await context.saveArtifact(filename, {
+			text: report || "No counters found",
+		});
+
+		return {
+			success: true,
+			filename,
+			countersCount: Object.keys(counters).length,
+		};
+	},
+});

@@ -1,22 +1,28 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import {
 	AgentBuilder,
 	createDatabaseSessionService,
 	InMemoryArtifactService,
 } from "@iqai/adk";
-import { counterTool } from "./tools";
+import { counterTool, saveCounterReportTool } from "./tools";
 
-export function getRootAgent() {
+export async function getRootAgent() {
+	const dbDir = path.join(os.tmpdir(), "adk-examples");
+	if (!fs.existsSync(dbDir)) {
+		fs.mkdirSync(dbDir, { recursive: true });
+	}
+
 	const sessionService = createDatabaseSessionService(
 		getSqliteConnectionString("sessions"),
 	);
 	const artifactService = new InMemoryArtifactService();
 
-	return AgentBuilder.withModel(
+	return await AgentBuilder.withModel(
 		process.env.LLM_MODEL || "gemini-3-flash-preview",
 	)
-		.withTools(counterTool)
+		.withTools(counterTool, saveCounterReportTool)
 		.withSessionService(sessionService)
 		.withArtifactService(artifactService)
 		.withEventsCompaction({
@@ -27,9 +33,6 @@ export function getRootAgent() {
 }
 
 function getSqliteConnectionString(dbName: string): string {
-	const dbPath = path.join(__dirname, "data", `${dbName}.db`);
-	if (!fs.existsSync(path.dirname(dbPath))) {
-		fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-	}
-	return `sqlite:${dbPath}`;
+	const dbPath = path.join(os.tmpdir(), "adk-examples", `${dbName}.db`);
+	return `sqlite://${dbPath}`;
 }
