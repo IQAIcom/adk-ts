@@ -9,8 +9,14 @@ export function getRootAgent() {
 	const menuValidator = getMenuValidatorAgent();
 	const orderFinalizer = getOrderFinalizerAgent();
 
+	const initialState = {
+		customer_preferences: "",
+		menu_validation: "",
+	};
+
 	return AgentBuilder.create("restaurant_order_system")
 		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
 		.withSubAgents([customerAnalyzer, menuValidator, orderFinalizer])
+		.withQuickSession({ state: initialState })
 		.build();
 }
