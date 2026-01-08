@@ -10,8 +10,19 @@ import {
 	type Tool,
 } from "ai";
 import { BaseLlm } from "./base-llm";
+import { CacheMetadata } from "./cache-metadata";
+import { ContextCacheManager } from "./context-cache-manager";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
+
+/**
+ * Supported model providers
+ */
+enum ModelProvider {
+	GOOGLE = "google",
+	ANTHROPIC = "anthropic",
+	UNKNOWN = "unknown",
+}
 
 /**
  * AI SDK integration that accepts a pre-configured LanguageModel.
@@ -20,6 +31,15 @@ import { LlmResponse } from "./llm-response";
 export class AiSdkLlm extends BaseLlm {
 	private modelInstance: LanguageModel;
 	protected logger = new Logger({ name: "AiSdkLlm" });
+
+	/**
+	 * Model provider patterns for detection
+	 */
+	private static readonly PROVIDER_PATTERNS: Record<ModelProvider, RegExp[]> = {
+		[ModelProvider.GOOGLE]: [/^google\//i, /^gemini/i, /^models\/gemini/i],
+		[ModelProvider.ANTHROPIC]: [/^anthropic\//i, /^claude/i],
+		[ModelProvider.UNKNOWN]: [],
+	};
 
 	/**
 	 * Constructor accepts a pre-configured LanguageModel instance
@@ -41,49 +61,126 @@ export class AiSdkLlm extends BaseLlm {
 		return [];
 	}
 
+	/**
+	 * Safely extracts modelId from a LanguageModel instance
+	 */
+	private getModelId(model: LanguageModel): string | null {
+		if (!model || typeof model !== "object") {
+			return null;
+		}
+
+		if ("modelId" in model && typeof model.modelId === "string") {
+			return model.modelId;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Detects the provider of a given model
+	 */
+	private detectModelProvider(model: LanguageModel): ModelProvider {
+		const modelId = this.getModelId(model);
+
+		if (!modelId) {
+			return ModelProvider.UNKNOWN;
+		}
+
+		for (const [provider, patterns] of Object.entries(
+			AiSdkLlm.PROVIDER_PATTERNS,
+		)) {
+			if (patterns.some((pattern) => pattern.test(modelId))) {
+				return provider as ModelProvider;
+			}
+		}
+
+		return ModelProvider.UNKNOWN;
+	}
+
 	protected async *generateContentAsyncImpl(
-		request: LlmRequest,
+		llmRequest: LlmRequest,
 		stream = false,
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		try {
-			const messages = this.convertToAiSdkMessages(request);
-			const systemMessage = request.getSystemInstructionText();
-			const tools = this.convertToAiSdkTools(request);
+			const messages = this.convertToAiSdkMessages(llmRequest);
+			const systemMessage = llmRequest.getSystemInstructionText();
+			const tools = this.convertToAiSdkTools(llmRequest);
+
+			let cacheMetadata: CacheMetadata | null = null;
+			let cacheManager: ContextCacheManager | null = null;
+			if (llmRequest.cacheConfig) {
+				this.logger.debug("Handling context caching");
+				cacheManager = new ContextCacheManager(this.logger);
+				cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
+
+				if (cacheMetadata) {
+					if (cacheMetadata.cacheName) {
+						this.logger.debug(`Using cache: ${cacheMetadata.cacheName}`);
+					} else {
+						this.logger.debug("Cache fingerprint only, no active cache");
+					}
+				}
+			}
+
+			const provider = this.detectModelProvider(this.modelInstance);
 
 			const requestParams = {
 				model: this.modelInstance,
 				messages,
 				system: systemMessage,
 				tools: Object.keys(tools).length > 0 ? tools : undefined,
-				maxTokens: request.config?.maxOutputTokens,
-				temperature: request.config?.temperature,
-				topP: request.config?.topP,
+				maxTokens: llmRequest.config?.maxOutputTokens,
+				temperature: llmRequest.config?.temperature,
+				topP: llmRequest.config?.topP,
+				...(provider === ModelProvider.GOOGLE && cacheMetadata?.cacheName
+					? {
+							providerOptions: {
+								google: {
+									cachedContent: cacheMetadata.cacheName,
+								},
+							},
+						}
+					: {}),
+				// Anthropic ephemeral cache
+				...(provider === ModelProvider.ANTHROPIC && cacheMetadata
+					? {
+							providerOptions: {
+								anthropic: {
+									cacheControl: {
+										type: "ephemeral",
+										ttl:
+											llmRequest.cacheConfig.ttlSeconds &&
+											llmRequest.cacheConfig.ttlSeconds > 1800
+												? "1h"
+												: "5m",
+									},
+								},
+							},
+						}
+					: {}),
 			};
 
+			// Handle streaming
 			if (stream) {
 				const result = streamText(requestParams);
-
 				let accumulatedText = "";
+				let cacheMetadataEmitted = false;
 
 				for await (const delta of result.textStream) {
 					accumulatedText += delta;
 
 					yield new LlmResponse({
-						content: {
-							role: "model",
-							parts: [{ text: accumulatedText }],
-						},
+						content: { role: "model", parts: [{ text: accumulatedText }] },
 						partial: true,
+						cacheMetadata: !cacheMetadataEmitted ? cacheMetadata : undefined,
 					});
+
+					cacheMetadataEmitted = true;
 				}
 
 				const toolCalls = await result.toolCalls;
 				const parts: Part[] = [];
-
-				if (accumulatedText) {
-					parts.push({ text: accumulatedText });
-				}
-
+				if (accumulatedText) parts.push({ text: accumulatedText });
 				if (toolCalls && toolCalls.length > 0) {
 					for (const toolCall of toolCalls) {
 						parts.push({
@@ -98,6 +195,18 @@ export class AiSdkLlm extends BaseLlm {
 
 				const finalUsage = await result.usage;
 				const finishReason = await result.finishReason;
+
+				// Anthropic provider metadata logging
+				if (provider === ModelProvider.ANTHROPIC) {
+					const providerMetadata = await result.providerMetadata;
+					const anthropicMetadata = providerMetadata?.anthropic;
+					if (anthropicMetadata?.cacheCreationInputTokens) {
+						this.logger.info(
+							`Anthropic cache created: ${anthropicMetadata.cacheCreationInputTokens} tokens`,
+						);
+					}
+				}
+
 				yield new LlmResponse({
 					content: {
 						role: "model",
@@ -117,9 +226,7 @@ export class AiSdkLlm extends BaseLlm {
 				const result = await generateText(requestParams);
 
 				const parts: Part[] = [];
-				if (result.text) {
-					parts.push({ text: result.text });
-				}
+				if (result.text) parts.push({ text: result.text });
 				if (result.toolCalls && result.toolCalls.length > 0) {
 					for (const toolCall of result.toolCalls) {
 						parts.push({
@@ -129,6 +236,16 @@ export class AiSdkLlm extends BaseLlm {
 								args: toolCall.input,
 							},
 						});
+					}
+				}
+
+				// Anthropic provider metadata logging
+				if (provider === ModelProvider.ANTHROPIC) {
+					const anthropicMetadata = result.providerMetadata?.anthropic;
+					if (anthropicMetadata?.cacheCreationInputTokens) {
+						this.logger.info(
+							`Anthropic cache created: ${anthropicMetadata.cacheCreationInputTokens} tokens`,
+						);
 					}
 				}
 
@@ -149,7 +266,10 @@ export class AiSdkLlm extends BaseLlm {
 				});
 			}
 		} catch (error) {
-			this.logger.error(`AI SDK Error: ${String(error)}`, { error, request });
+			this.logger.error(`AI SDK Error: ${String(error)}`, {
+				error,
+				llmRequest,
+			});
 			yield LlmResponse.fromError(error, {
 				errorCode: "AI_SDK_ERROR",
 				model: this.model,
