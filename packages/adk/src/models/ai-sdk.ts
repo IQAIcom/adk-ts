@@ -21,6 +21,7 @@ import { LlmResponse } from "./llm-response";
 enum ModelProvider {
 	GOOGLE = "google",
 	ANTHROPIC = "anthropic",
+	OPENAI = "openai",
 	UNKNOWN = "unknown",
 }
 
@@ -38,6 +39,7 @@ export class AiSdkLlm extends BaseLlm {
 	private static readonly PROVIDER_PATTERNS: Record<ModelProvider, RegExp[]> = {
 		[ModelProvider.GOOGLE]: [/^google\//i, /^gemini/i, /^models\/gemini/i],
 		[ModelProvider.ANTHROPIC]: [/^anthropic\//i, /^claude/i],
+		[ModelProvider.OPENAI]: [/^openai\//i, /^gpt-/i, /^o1-/i],
 		[ModelProvider.UNKNOWN]: [],
 	};
 
@@ -105,11 +107,11 @@ export class AiSdkLlm extends BaseLlm {
 			const messages = this.convertToAiSdkMessages(llmRequest);
 			const systemMessage = llmRequest.getSystemInstructionText();
 			const tools = this.convertToAiSdkTools(llmRequest);
-
+			const provider = this.detectModelProvider(this.modelInstance);
 			let cacheMetadata: CacheMetadata | null = null;
 			let cacheManager: ContextCacheManager | null = null;
-			if (llmRequest.cacheConfig) {
-				this.logger.debug("Handling context caching");
+			if (llmRequest.cacheConfig && provider === ModelProvider.GOOGLE) {
+				this.logger.debug("Handling Google context caching");
 				cacheManager = new ContextCacheManager(this.logger);
 				cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
 
@@ -120,9 +122,11 @@ export class AiSdkLlm extends BaseLlm {
 						this.logger.debug("Cache fingerprint only, no active cache");
 					}
 				}
+			} else if (llmRequest.cacheConfig && provider !== ModelProvider.GOOGLE) {
+				this.logger.debug(
+					`Context caching requested but not supported for provider: ${provider}`,
+				);
 			}
-
-			const provider = this.detectModelProvider(this.modelInstance);
 
 			const requestParams = {
 				model: this.modelInstance,
@@ -141,7 +145,6 @@ export class AiSdkLlm extends BaseLlm {
 							},
 						}
 					: {}),
-				// Anthropic ephemeral cache
 				...(provider === ModelProvider.ANTHROPIC && cacheMetadata
 					? {
 							providerOptions: {
