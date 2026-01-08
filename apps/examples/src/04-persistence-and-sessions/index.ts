@@ -14,18 +14,55 @@ async function main() {
 	await ask(runner, 'Save current counter values to "counter-report.txt"');
 
 	// 3. Rewind: Undo the last counter increment
-	console.log("\n🔄 Rewind: Undoing last increment...");
-	await ask(runner, "Increment 'visits' counter by 5");
-	const invocationId = await getLatestInvocationId(sessionService, session);
-	await ask(runner, "What is the current value of 'visits'?");
+	console.log("\n🔄 Rewind: Demonstrating time-travel...");
 
-	await runner.rewind({
-		userId: session.userId,
-		sessionId: session.id,
-		rewindBeforeInvocationId: invocationId,
-	});
-	console.log("⏪ Rewound to before +5 increment");
-	await ask(runner, "What is the current value of 'visits'?");
+	// Show current state
+	let currentSession = await sessionService.getSession(
+		session.appName,
+		session.userId,
+		session.id,
+	);
+	console.log("📍 State before big increment:", currentSession.state);
+
+	// Make a big increment that we'll want to undo
+	await ask(runner, "Increment 'visits' counter by 100");
+
+	// Get the invocationId of the increment operation
+	// We use getInvocationIdWithStateDelta() to find the last state-changing event
+	// because events from different invocations can be interleaved
+	const invocationId = await getInvocationIdWithStateDelta(
+		sessionService,
+		session,
+	);
+
+	// Show the state after the big increment
+	currentSession = await sessionService.getSession(
+		session.appName,
+		session.userId,
+		session.id,
+	);
+	console.log("📍 State after +100 increment:", currentSession.state);
+
+	// Rewind to before the +100 increment - undoing that change!
+	if (invocationId) {
+		await runner.rewind({
+			userId: session.userId,
+			sessionId: session.id,
+			rewindBeforeInvocationId: invocationId,
+		});
+
+		// Show the state after rewind - it should be back to what it was before
+		currentSession = await sessionService.getSession(
+			session.appName,
+			session.userId,
+			session.id,
+		);
+		console.log("⏪ State after rewind:", currentSession.state);
+		console.log("✨ Successfully rewound - the +100 never happened!");
+
+		// Verify with the agent (it will use the restored state)
+		await ask(runner, "Increment 'visits' by 1 and show the new value");
+	}
 
 	// 4. Compaction: Multiple counter ops trigger auto-summarization
 	console.log("\n📦 Compaction: Multiple counter operations...");
@@ -45,16 +82,36 @@ async function main() {
  * ================================
  */
 
-async function getLatestInvocationId(
+/**
+ * Gets the invocationId of the last event that has a state delta.
+ *
+ * This is more reliable than simply getting the last event's invocationId
+ * because events from different invocations can be interleaved in the session.
+ * By finding the last event with a state change, we ensure we get the
+ * invocationId of the operation that actually modified state (e.g., a tool call).
+ */
+async function getInvocationIdWithStateDelta(
 	sessionService: BaseSessionService,
 	session: Session,
-) {
+): Promise<string | undefined> {
 	const currentSession = await sessionService.getSession(
 		session.appName,
 		session.userId,
 		session.id,
 	);
-	return currentSession.events[currentSession.events.length - 1]?.invocationId;
+
+	// Search backwards through events to find the last state-changing event
+	for (let i = currentSession.events.length - 1; i >= 0; i--) {
+		const event = currentSession.events[i];
+		if (
+			event.actions?.stateDelta &&
+			Object.keys(event.actions.stateDelta).length > 0
+		) {
+			return event.invocationId;
+		}
+	}
+
+	return undefined;
 }
 
 async function logCompactions(
