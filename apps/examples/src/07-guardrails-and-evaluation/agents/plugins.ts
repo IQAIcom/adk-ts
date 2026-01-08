@@ -10,6 +10,11 @@ import {
 export class GuardrailsPlugin extends BasePlugin {
 	private static DEFAULT_BLOCKED_KEYWORDS = [
 		{
+			keywords: ["BLOCK"],
+			message: "🛡️ Request blocked: Input contained forbidden keyword 'BLOCK'.",
+			stateKey: "blocked_keyword",
+		},
+		{
 			keywords: ["HACK", "EXPLOIT", "BYPASS", "JAILBREAK"],
 			message:
 				"I cannot help with requests related to unauthorized access or system manipulation.",
@@ -29,6 +34,14 @@ export class GuardrailsPlugin extends BasePlugin {
 	];
 
 	private static DEFAULT_BLOCKED_TOOLS = [
+		{
+			toolName: "get_weather",
+			argName: "city",
+			values: ["Paris"],
+			errorMessage:
+				"🛡️ Tool blocked: Weather queries for Paris are not allowed.",
+			stateKey: "blocked_paris_weather",
+		},
 		{
 			toolName: "file_delete",
 			argName: "path",
