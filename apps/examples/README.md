@@ -73,8 +73,8 @@ To explore the examples, you can either browse all available examples or run a s
    pnpm start
    
    # Or run a specific example directly
-   pnpm start --name 01-simple-agent
-   pnpm start --name 11-mcp-integrations
+   pnpm start --name 01-getting-started
+   pnpm start --name 06-mcp-and-integrations
  ```
 
 ## 📚 Explore Example Applications
@@ -110,4 +110,4 @@ If you would like to add examples or improve existing ones, please check out our
 
 ---
 
-💡 **Pro Tip**: Follow the examples in order (01-16) for a structured learning path, or jump to specific examples based on your needs. Start with `01-simple-agent` to understand the basics, then explore advanced features like MCP integrations, event compaction, callbacks, and specialized agents!
+💡 **Pro Tip**: Follow the examples in order (01-08) for a structured learning path, or jump to specific examples based on your needs. Start with `01-getting-started` to understand the basics, then explore advanced features like multi-agent systems, MCP integrations, guardrails, and observability!
