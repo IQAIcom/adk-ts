@@ -609,7 +609,7 @@ export abstract class BaseLlmFlow {
 				llmRequest,
 			});
 
-		if (pluginResult) {
+		if (pluginResult !== null && pluginResult !== undefined) {
 			return pluginResult;
 		}
 
