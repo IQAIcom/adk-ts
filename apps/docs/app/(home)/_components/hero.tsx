@@ -6,8 +6,8 @@ export function Hero() {
 	return (
 		<section className="relative flex flex-1 flex-col justify-center items-center px-2 sm:px-4 py-8 sm:py-12 overflow-hidden">
 			{/* Enhanced Background */}
-			<div className="absolute inset-0 bg-gradient-to-br from-background via-card to-muted/20">
-				<div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-chart-2/5" />
+			<div className="absolute inset-0 bg-linear-to-br from-background via-card to-muted/20">
+				<div className="absolute inset-0 bg-linear-to-r from-primary/5 via-transparent to-chart-2/5" />
 
 				{/* Enhanced floating orbs */}
 				<div className="absolute top-8 left-8 w-24 sm:w-32 h-24 sm:h-32 bg-primary/20 rounded-full blur-2xl animate-pulse opacity-30" />
@@ -18,7 +18,7 @@ export function Hero() {
 				<div className="absolute inset-0 bg-grid-pattern opacity-5" />
 
 				{/* Moving gradient overlay */}
-				<div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent animate-shimmer" />
+				<div className="absolute inset-0 bg-linear-to-r from-transparent via-primary/5 to-transparent animate-shimmer" />
 			</div>
 
 			{/* Main content - centered */}
@@ -46,7 +46,7 @@ export function Hero() {
 					<h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 animate-fade-in-up animation-delay-200">
 						<span className="text-foreground">Build Sophisticated</span>
 						<br />
-						<span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium bg-gradient-to-r from-primary to-chart-1 bg-clip-text text-transparent">
+						<span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium bg-linear-to-r from-primary to-chart-1 bg-clip-text text-transparent">
 							Multi-Agent AI Systems
 						</span>
 					</h1>
@@ -104,7 +104,7 @@ export function Hero() {
 
 				{/* Code preview - centered container with left-aligned code */}
 				<div className="relative w-full max-w-2xl mx-auto mb-12 animate-fade-in-up animation-delay-800">
-					<div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-chart-1/20 rounded-lg blur opacity-25 animate-pulse" />
+					<div className="absolute -inset-1 bg-linear-to-r from-primary/20 to-chart-1/20 rounded-lg blur opacity-25 animate-pulse" />
 					<div className="relative bg-card border border-border rounded-lg overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02]">
 						<div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-muted/30 border-b border-border">
 							<div className="flex items-center space-x-2">
@@ -139,19 +139,19 @@ export function Hero() {
 				{/* Enhanced feature highlights at the end */}
 				<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-3xl mx-auto animate-fade-in-up animation-delay-1000">
 					<div className="flex items-center justify-center space-x-2 text-sm hover:scale-105 transition-transform duration-300">
-						<div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 animate-pulse" />
+						<div className="w-2 h-2 bg-primary rounded-full shrink-0 animate-pulse" />
 						<span className="text-muted-foreground">Multi-Agent</span>
 					</div>
 					<div className="flex items-center justify-center space-x-2 text-sm hover:scale-105 transition-transform duration-300">
-						<div className="w-2 h-2 bg-chart-1 rounded-full flex-shrink-0 animate-pulse animation-delay-200" />
+						<div className="w-2 h-2 bg-chart-1 rounded-full shrink-0 animate-pulse animation-delay-200" />
 						<span className="text-muted-foreground">Tool Integration</span>
 					</div>
 					<div className="flex items-center justify-center space-x-2 text-sm hover:scale-105 transition-transform duration-300">
-						<div className="w-2 h-2 bg-chart-2 rounded-full flex-shrink-0 animate-pulse animation-delay-400" />
+						<div className="w-2 h-2 bg-chart-2 rounded-full shrink-0 animate-pulse animation-delay-400" />
 						<span className="text-muted-foreground">Memory Services</span>
 					</div>
 					<div className="flex items-center justify-center space-x-2 text-sm hover:scale-105 transition-transform duration-300">
-						<div className="w-2 h-2 bg-chart-3 rounded-full flex-shrink-0 animate-pulse animation-delay-600" />
+						<div className="w-2 h-2 bg-chart-3 rounded-full shrink-0 animate-pulse animation-delay-600" />
 						<span className="text-muted-foreground">Real-time Streaming</span>
 					</div>
 				</div>
