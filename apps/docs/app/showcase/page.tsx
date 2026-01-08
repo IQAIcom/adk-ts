@@ -27,11 +27,11 @@ export default function ShowcasePage() {
 			<section className="w-full bg-card/20 border-t border-border mt-16">
 				<div className="relative overflow-hidden">
 					{/* Glow Effect */}
-					<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
+					<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-75 h-75 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
 
 					<div className="relative z-10 container mx-auto px-4 py-16 text-center">
 						<div className="space-y-6 max-w-3xl mx-auto">
-							<h2 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70">
+							<h2 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-linear-to-br from-foreground to-foreground/70">
 								Ready to Share Your Agent?
 							</h2>
 							<p className="text-muted-foreground text-lg">

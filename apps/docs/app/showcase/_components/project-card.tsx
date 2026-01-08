@@ -34,7 +34,7 @@ export function ProjectCard({
 						sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
 					/>
 				) : (
-					<div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted/20 to-muted/5 group-hover:from-primary/5 group-hover:to-primary/10 transition-colors">
+					<div className="flex h-full w-full items-center justify-center bg-linear-to-br from-muted/20 to-muted/5 group-hover:from-primary/5 group-hover:to-primary/10 transition-colors">
 						<div className="text-4xl font-bold text-muted-foreground/20 group-hover:text-primary/30 transition-colors">
 							{title.substring(0, 2).toUpperCase()}
 						</div>
@@ -42,13 +42,13 @@ export function ProjectCard({
 				)}
 			</div>
 
-			<div className="flex flex-col flex-grow p-5 gap-3">
+			<div className="flex flex-col grow p-5 gap-3">
 				<div>
 					<div className="flex items-start justify-between gap-2 mb-2">
 						<h3 className="text-lg font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors">
 							{title}
 						</h3>
-						<ArrowUpRight className="h-4 w-4 text-muted-foreground/50 opacity-0 -translate-y-1 translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:text-primary flex-shrink-0" />
+						<ArrowUpRight className="h-4 w-4 text-muted-foreground/50 opacity-0 -translate-y-1 translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:text-primary shrink-0" />
 					</div>
 					{tags.length > 0 && (
 						<div className="flex flex-wrap gap-1.5">
