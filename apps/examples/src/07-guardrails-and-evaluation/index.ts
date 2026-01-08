@@ -21,6 +21,15 @@ import { getRootAgent } from "./agents/agent";
  * This structure demonstrates how to enforce business rules and quality assurance in your agent's workflow.
  *
  */
+async function main() {
+	console.log("🛡️ Guardrails and Evaluation\n");
+
+	await demonstrateGuardrails();
+	await demonstrateEvaluation();
+
+	console.log("\n✅ Complete! Next: 08-observability-and-plugins\n");
+}
+
 async function demonstrateGuardrails() {
 	console.log("🛡️ Part 1: Guardrails Demo\n");
 
@@ -66,15 +75,6 @@ async function demonstrateEvaluation() {
 			err instanceof Error ? err.message : err,
 		);
 	}
-}
-
-async function main() {
-	console.log("🛡️ Guardrails and Evaluation\n");
-
-	await demonstrateGuardrails();
-	await demonstrateEvaluation();
-
-	console.log("\n✅ Complete! Next: 08-observability-and-plugins\n");
 }
 
 main().catch(console.error);
