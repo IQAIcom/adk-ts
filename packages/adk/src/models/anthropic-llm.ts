@@ -17,6 +17,9 @@ export class AnthropicLlm extends BaseLlm {
 	private _client?: Anthropic;
 	protected logger = new Logger({ name: "AnthropicLlm" });
 
+	/**
+	 * Constructor for Anthropic LLM
+	 */
 	constructor(model = "claude-3-5-sonnet-20241022") {
 		super(model);
 	}
@@ -25,6 +28,9 @@ export class AnthropicLlm extends BaseLlm {
 		return ["claude-3-.*", "claude-.*-4.*"];
 	}
 
+	/**
+	 * Main content generation method - handles both streaming and non-streaming
+	 */
 	protected async *generateContentAsyncImpl(
 		llmRequest: LlmRequest,
 		stream = false,
@@ -44,7 +50,10 @@ export class AnthropicLlm extends BaseLlm {
 			tools = declarations.map((decl: any, index: number) => {
 				const tool = this.functionDeclarationToAnthropicTool(decl);
 				if (shouldCache && index === declarations.length - 1) {
-					return { ...tool, cache_control: this.createCacheControl(cacheTTL) };
+					return {
+						...tool,
+						cache_control: this.createCacheControl(cacheTTL),
+					};
 				}
 				return tool;
 			});
@@ -161,6 +170,9 @@ export class AnthropicLlm extends BaseLlm {
 		throw new Error(`Live connection is not supported for ${this.model}.`);
 	}
 
+	/**
+	 * Convert Anthropic Message to ADK LlmResponse
+	 */
 	private anthropicMessageToLlmResponse(
 		message: Anthropic.Message,
 	): LlmResponse {
@@ -193,6 +205,9 @@ export class AnthropicLlm extends BaseLlm {
 		});
 	}
 
+	/**
+	 * Convert ADK Content to Anthropic MessageParam
+	 */
 	private contentToAnthropicMessage(content: any): Anthropic.MessageParam {
 		return {
 			role: this.toAnthropicRole(content.role),
@@ -202,6 +217,9 @@ export class AnthropicLlm extends BaseLlm {
 		};
 	}
 
+	/**
+	 * Convert ADK Part to Anthropic content block
+	 */
 	private partToAnthropicBlock(
 		part: any,
 	): Anthropic.MessageParam["content"][0] {
@@ -223,6 +241,9 @@ export class AnthropicLlm extends BaseLlm {
 		throw new Error("Unsupported part type for Anthropic conversion");
 	}
 
+	/**
+	 * Convert Anthropic content block to ADK Part
+	 */
 	private anthropicBlockToPart(block: any): any {
 		if (block.type === "text") return { text: block.text };
 		if (block.type === "tool_use")
@@ -232,6 +253,9 @@ export class AnthropicLlm extends BaseLlm {
 		throw new Error("Unsupported Anthropic content block type");
 	}
 
+	/**
+	 * Convert ADK function declaration to Anthropic tool param
+	 */
 	private functionDeclarationToAnthropicTool(
 		functionDeclaration: any,
 	): Anthropic.Tool {
@@ -253,11 +277,17 @@ export class AnthropicLlm extends BaseLlm {
 		};
 	}
 
+	/**
+	 * Convert ADK role to Anthropic role format
+	 */
 	private toAnthropicRole(role?: string): AnthropicRole {
 		if (role === "model" || role === "assistant") return "assistant";
 		return "user";
 	}
 
+	/**
+	 * Convert Anthropic stop reason to ADK finish reason
+	 */
 	private toAdkFinishReason(
 		anthropicStopReason?: string,
 	): "STOP" | "MAX_TOKENS" | "FINISH_REASON_UNSPECIFIED" {
@@ -271,6 +301,9 @@ export class AnthropicLlm extends BaseLlm {
 		return "FINISH_REASON_UNSPECIFIED";
 	}
 
+	/**
+	 * Update type strings in schema to lowercase for Anthropic compatibility
+	 */
 	private updateTypeString(valueDict: Record<string, any>): void {
 		if ("type" in valueDict) valueDict.type = valueDict.type.toLowerCase();
 		if ("items" in valueDict) {
@@ -283,6 +316,9 @@ export class AnthropicLlm extends BaseLlm {
 		}
 	}
 
+	/**
+	 * Gets the Anthropic client
+	 */
 	private get client(): Anthropic {
 		if (!this._client) {
 			const apiKey = process.env.ANTHROPIC_API_KEY;
