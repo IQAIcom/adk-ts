@@ -3,6 +3,24 @@ import { AgentEvaluator } from "@iqai/adk";
 import { ask } from "../utils";
 import { getRootAgent } from "./agents/agent";
 
+/**
+ * 07. Guardrails and Evaluation
+ *
+ * This example introduces two critical concepts for production-grade agents: Safety and Testing.
+ *
+ * 1. Guardrails (via Plugins):
+ *    In `agents/plugins.ts`, we implement a `GuardrailsPlugin` extending `BasePlugin`.
+ *    This allows us to intercept the agent's lifecycle hooks:
+ *    - `beforeModelCallback`: Inspects user input before it reaches the LLM to block harmful keywords (e.g., "BLOCK").
+ *    - `beforeToolCallback`: Intercepts tool execution to validate arguments (e.g., blocking "Paris").
+ *
+ * 2. Evaluation:
+ *    We use `AgentEvaluator` to run the agent against a set of predefined test cases (stored in `test_cases.json`).
+ *    This ensures the agent behaves as expected and doesn't regress as we modify it.
+ *
+ * This structure demonstrates how to enforce business rules and quality assurance in your agent's workflow.
+ *
+ */
 async function demonstrateGuardrails() {
 	console.log("🛡️ Part 1: Guardrails Demo\n");
 

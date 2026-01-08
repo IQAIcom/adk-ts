@@ -2,6 +2,21 @@ import { BaseSessionService, Session } from "@iqai/adk";
 import { ask } from "../utils";
 import { getRootAgent } from "./agents/agent";
 
+/**
+ * 04. Persistence and Sessions
+ *
+ * This example builds upon previous concepts but introduces robust state management and persistence.
+ * Instead of ephemeral in-memory sessions, we now use a database to store agent state and history.
+ *
+ * In agent.ts, notice these key changes:
+ * 1. withSessionService: Replaces withQuickSession. We use createDatabaseSessionService (SQLite here) to persist state across runs.
+ * 2. withArtifactService: Handles file generation and storage (artifacts), separate from the conversation history.
+ * 3. withEventsCompaction: Configures how the agent manages long conversation histories by summarizing past events to save context window.
+ * 4. Rewind Capability: The example demonstrates how to undo actions or state changes by rewinding to a previous invocation point in the persistent session.
+ *
+ * This setup mimics a production environment where user sessions needs to be saved and restored, and where long-running interactions need memory management.
+ *
+ */
 async function main() {
 	const { runner, sessionService, session } = await getRootAgent();
 
