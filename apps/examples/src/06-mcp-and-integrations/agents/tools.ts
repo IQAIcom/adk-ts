@@ -25,8 +25,8 @@ export function getCoingeckoTools() {
 	 * configuration. for more such wrapped MCPs check out https://adk.iqai.com/docs/mcp-servers
 	 */
 	const toolset = new McpToolset({
-		name: "Near Intents Swaps MCP Client",
-		description: "Client for Near Intents Swaps",
+		name: "Coingecko MCP",
+		description: "Client for Coingecko",
 		retryOptions: { maxRetries: 2, initialDelay: 200 },
 		transport: {
 			mode: "stdio",

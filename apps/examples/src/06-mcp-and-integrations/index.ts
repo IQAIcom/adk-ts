@@ -8,8 +8,11 @@ async function main() {
 	const samplingHandler = createSamplingHandler(nameRunner.ask);
 	const { runner: rootRunner } = await getRootAgent(samplingHandler);
 
-	ask(rootRunner, "Great user");
-	ask(rootRunner, "What is the price of bitcoin?");
+	// Test question related to sampling
+	await ask(rootRunner, "Great the user");
+
+	// Test question related to coingecko MCP server
+	await ask(rootRunner, "What is the price of bitcoin?");
 }
 
 main().catch(console.error);
