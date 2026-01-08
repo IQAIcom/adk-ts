@@ -36,6 +36,7 @@
  */
 
 import type { Span, Tracer } from "@opentelemetry/api";
+import type { ReadableSpan as ReadableSpanInternal } from "@opentelemetry/sdk-trace-base";
 import type { InvocationContext } from "../agents/invocation-context";
 import type { Event } from "../events/event";
 import type { LlmRequest } from "../models/llm-request";
@@ -465,6 +466,12 @@ export class TelemetryService {
 	async shutdown(timeoutMs?: number): Promise<void> {
 		await setupService.shutdown(timeoutMs);
 	}
+	/**
+	 * Get traces for a specific session (Debug/Visualization)
+	 */
+	getTraces(sessionId: string): ReadableSpanInternal[] {
+		return setupService.getInMemoryExporter().getTracesForSession(sessionId);
+	}
 }
 
 // Global singleton instance
@@ -479,6 +486,11 @@ export const initializeTelemetry = (
 
 export const shutdownTelemetry = (timeoutMs?: number) =>
 	telemetryService.shutdown(timeoutMs);
+
+export type { ReadableSpanInternal as ReadableSpan };
+
+export const getTraces = (sessionId: string) =>
+	telemetryService.getTraces(sessionId);
 
 export const traceAgentInvocation = (
 	agent: { name: string; description?: string },

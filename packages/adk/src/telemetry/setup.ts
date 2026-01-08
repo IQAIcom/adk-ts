@@ -27,6 +27,7 @@ import { NodeSDK } from "@opentelemetry/sdk-node";
 import {
 	BatchSpanProcessor,
 	NodeTracerProvider,
+	SimpleSpanProcessor,
 	TraceIdRatioBasedSampler,
 } from "@opentelemetry/sdk-trace-node";
 import {
@@ -34,6 +35,7 @@ import {
 	ATTR_SERVICE_VERSION,
 } from "@opentelemetry/semantic-conventions";
 import { ADK_ATTRS, ADK_SYSTEM_NAME, DEFAULTS, ENV_VARS } from "./constants";
+import { InMemorySpanExporter } from "./exporters/in-memory-exporter";
 import type { TelemetryConfig } from "./types";
 import {
 	getEnvironment,
@@ -51,6 +53,7 @@ export class SetupService {
 	private tracerProvider: NodeTracerProvider | null = null;
 	private isInitialized = false;
 	private config: TelemetryConfig | null = null;
+	private inMemoryExporter = new InMemorySpanExporter();
 
 	/**
 	 * Initialize OpenTelemetry with comprehensive configuration
@@ -158,6 +161,7 @@ export class SetupService {
 		});
 
 		const spanProcessor = new BatchSpanProcessor(traceExporter);
+		const inMemoryProcessor = new SimpleSpanProcessor(this.inMemoryExporter);
 
 		// Create sampler if sampling ratio is specified
 		const sampler =
@@ -168,7 +172,7 @@ export class SetupService {
 		this.tracerProvider = new NodeTracerProvider({
 			resource,
 			sampler,
-			spanProcessors: [spanProcessor],
+			spanProcessors: [spanProcessor, inMemoryProcessor],
 		});
 
 		// Only register if not using auto-instrumentation (NodeSDK will register it)
@@ -276,6 +280,13 @@ export class SetupService {
 
 		await this.sdk.start();
 		diag.debug("Auto-instrumentation initialized with NodeSDK");
+	}
+
+	/**
+	 * Get the in-memory exporter instance
+	 */
+	getInMemoryExporter(): InMemorySpanExporter {
+		return this.inMemoryExporter;
 	}
 
 	/**
