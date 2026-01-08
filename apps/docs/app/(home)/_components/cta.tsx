@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function CTA() {
 	return (
-		<section className="py-16 px-4 bg-gradient-to-r from-primary/5 via-chart-1/5 to-chart-2/5">
+		<section className="py-16 px-4 bg-linear-to-r from-primary/5 via-chart-1/5 to-chart-2/5">
 			<div className="max-w-4xl mx-auto text-center space-y-8">
 				<div className="space-y-4">
 					<h2 className="text-3xl md:text-4xl font-bold text-foreground">
