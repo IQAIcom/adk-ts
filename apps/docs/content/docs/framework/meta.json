@@ -10,6 +10,7 @@
 		"session-state-memory",
 		"evaluation",
 		"artifacts",
+		"plugins",
 		"callbacks",
 		"context",
 		"deploy",
