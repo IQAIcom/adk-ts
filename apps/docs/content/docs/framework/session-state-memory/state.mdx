@@ -1,0 +1,207 @@
+---
+title: State
+description: A compact guide to session.state and scoped persistence
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
+
+`session.state` is a key-value dictionary (`Record<string, any>`) that stores dynamic information the agent needs across conversation turns. Unlike static configuration or conversation history, state holds mutable data that changes as the conversation progresses—preferences, workflow status, accumulated context, and decision flags.
+
+The framework automatically tracks state changes and persists them according to your SessionService. ADK-TS provides prefix-based scoping that lets you control whether state values are session-specific, user-wide, or shared across all users.
+
+**Common use cases:**
+
+- **User preferences:** `'user:theme': 'dark'` — persists across sessions
+- **Workflow tracking:** `'booking_step': 'confirm_payment'` — tracks multi-turn processes
+- **Data accumulation:** `'shopping_cart': ['book', 'pen']` — builds lists during conversation
+- **Decision flags:** `'authenticated': true` — controls agent behavior
+
+## Key Characteristics of State
+
+- Structure: string keys → JSON-serializable values (no functions, sockets, class instances)
+- Mutability: changes throughout the turn
+- Persistence: depends on the SessionService (in-memory vs database vs cloud)
+
+<Callout type="warn" title="Serialization Only">
+  Store only JSON-serializable data. Save large blobs/files as artifacts and
+  reference by name in state.
+</Callout>
+
+## Prefix-Based Scoping
+
+ADK-TS uses prefixes to determine how long state values persist and who can access them. This scoping mechanism enables user personalization, global configuration, and temporary computation—all within the same state object.
+
+- **No prefix** (e.g., `current_step`): Session-scoped — exists only for this specific conversation. Perfect for workflow state that shouldn't carry over to new sessions.
+
+- **`user:`** (e.g., `user:theme`): User-scoped — persists across all sessions for this user. When you create a new session for the same user, their preferences and history are automatically available. Use for personalization, settings, and user-specific data.
+
+- **`app:`** (e.g., `app:feature_flags`): App-scoped — shared across all users. Every session sees the same values. Use for global configuration, feature flags, or app-wide settings that should be consistent.
+
+- **`temp:`** (e.g., `temp:calculation`): Temporary — never persisted to storage. The framework filters these out when saving. Use for intermediate calculations or data you don't want cluttering permanent storage.
+
+**Storage implementation:**
+
+The framework routes prefixed state to appropriate storage locations:
+
+- **Database services:** Separate tables (`user_states`, `app_states`, `sessions`) for efficient querying and updates
+- **In-memory services:** Separate maps (`userState`, `appState`, per-session maps) maintained in memory
+- **Vertex AI:** Prefix preserved in session state payload; Vertex AI handles merging on retrieval
+
+## State in Agent Instructions
+
+You can reference state values directly in your agent's system prompt using `{key}` placeholders. The framework automatically injects the current values before each model call, making state visible to the AI without manual string interpolation.
+
+This is particularly useful for personalizing agent behavior based on user preferences, adapting prompts based on workflow state, or providing dynamic context that changes throughout the conversation. All prefix scopes are supported (`{user:theme}`, `{app:version}`, `{current_step}`).
+
+```typescript
+import { AgentBuilder, InMemorySessionService } from "@iqai/adk";
+
+const sessionService = new InMemorySessionService();
+
+async function runAgent() {
+  const { runner } = await AgentBuilder.create("guide_agent")
+    .withModel("gemini-2.0-flash")
+    .withInstruction("Welcome! Theme: {user:theme?}. Step: {current_step}.")
+    .withSessionService(sessionService, {
+      userId: "user123",
+      appName: "my-app",
+    })
+    .build();
+
+  const result = await runner.ask("Start");
+  return result;
+}
+
+runAgent().then((result) => {
+  console.log("Agent Response:", result);
+});
+```
+
+### `{key}` Templating Rules
+
+- `{key}` requires value (throws error if missing): Use this for mandatory state keys. If the key doesn't exist in state, the framework will throw an error to prevent incomplete prompts.
+- `{key?}` optional (empty string if missing): Use this for optional state keys. If the key is absent, it will be replaced with an empty string, allowing the prompt to remain valid.
+- Supports `artifact.filename` with `injectSessionState` helper: You can reference [artifacts](/docs/framework/artifacts) stored in the session by their filename, and the framework will handle injection using the `injectSessionState` utility.
+- Templating happens at render time: Placeholders are resolved just before the model call, ensuring the prompt reflects the most up-to-date state values.
+- Non-string values converted to string: Numbers, booleans, and other JSON-serializable values are automatically converted to strings for insertion into the prompt.
+
+## Updating State
+
+ADK-TS provides three methods to update state, each with different use cases:
+
+### 1. Via Agent `outputKey`
+
+The simplest method—automatically saves the agent's final response to a state key. The framework creates an event with the response and persists it via your SessionService. Use when you want to capture agent outputs for later reference.
+
+```typescript
+const agent = new LlmAgent({
+  name: "greeter_agent",
+  description: "Greets the user based on their preferences.",
+  model: "gemini-2.0-flash",
+  outputKey: "last_greeting",
+});
+```
+
+### 2. Via `EventActions.stateDelta`
+
+Provides explicit control over state changes. You construct an Event with a stateDelta and append it to the session. The SessionService extracts the delta, routes it to the appropriate storage (session/user/app), and automatically filters out `temp:` keys. Use when you need to update multiple state values atomically or when state changes happen outside the normal agent flow.
+
+```typescript
+import { Event, EventActions, InMemorySessionService } from "@iqai/adk";
+
+async function main() {
+  const sessionService = new InMemorySessionService();
+  const session = await sessionService.createSession("my-app", "user123");
+
+  const event = new Event({
+    author: "user123",
+    actions: new EventActions({
+      stateDelta: {
+        "user:login_count": 1,
+        current_page: "dashboard",
+        "temp:calculation": 42, // Won't be persisted
+      },
+    }),
+  });
+
+  await sessionService.appendEvent(session, event);
+}
+
+main().catch(console.error);
+```
+
+### 3. Via Callback/Tool Contexts
+
+The most common method for dynamic state updates. When you modify state within a callback or tool (using `context.state.set()` or bracket notation), the framework tracks changes in an internal delta. After your callback/tool completes, it automatically creates an Event with the accumulated changes and persists them. The `State` class handles prefix extraction and scope routing. Use this for state updates that happen during tool execution or callback logic.
+
+```typescript
+// In a callback
+export const agent = new LlmAgent({
+  name: "stateful_agent",
+  description: "An agent that maintains state across interactions",
+  beforeModelCallback: ({
+    callbackContext,
+  }: {
+    callbackContext: CallbackContext;
+  }) => {
+    const count = callbackContext.state.get("user:count", 0);
+    callbackContext.state.set("user:count", count + 1);
+    callbackContext.state["temp:flag"] = true; // Bracket notation works too
+    return null;
+  },
+});
+
+// In a tool
+const addItemTool = createTool({
+  name: "add_item",
+  description: "Add an item to the shopping list",
+  schema: z.object({ item: z.string(), qty: z.number().default(1) }),
+  fn: ({ item, qty }, context) => {
+    const list = context.state.get("items", []);
+    list.push({ item, qty });
+    context.state.set("items", list);
+    return { ok: true };
+  },
+});
+```
+
+<Callout type="warn" title="Do Not Mutate session.state Directly">
+  Avoid mutating `session.state` on a retrieved Session outside of
+  events/callbacks/tools. It bypasses event history, may not persist, and is not
+  thread-safe. Always use one of the three methods above to ensure proper
+  tracking and persistence.
+</Callout>
+
+## Best Practices
+
+- **Use Clear Prefixes**: Use `user:`, `app:`, or `temp:` prefixes with descriptive key names for better organization
+- **Keep Values Small**: Store only JSON-serializable data; use artifacts for large blobs or binary data
+- **Batch Updates**: Use `stateDelta` to update multiple state keys in a single event for efficiency
+- **Read Freely, Write Carefully**: Read state directly from session, but write via events, callbacks, or tools for proper persistence
+- **Avoid Direct Mutation**: Never mutate `session.state` directly outside events/callbacks/tools to ensure persistence and thread safety
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="💬 Session"
+    description="Learn about session lifecycle and management"
+    href="/docs/framework/session-state-memory/session"
+  />
+  <Card
+    title="🧠 Memory"
+    description="Add long-term memory with semantic search"
+    href="/docs/framework/session-state-memory/memory"
+  />
+  <Card
+    title="☁️ Vertex AI Sessions"
+    description="Cloud-managed session storage"
+    href="/docs/framework/session-state-memory/vertex-ai"
+  />
+  <Card
+    title="🗄️ Artifacts"
+    description="Store files and blobs in session artifacts"
+    href="/docs/framework/artifacts"
+  />
+</Cards>
