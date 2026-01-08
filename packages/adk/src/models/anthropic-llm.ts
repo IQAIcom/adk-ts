@@ -41,9 +41,9 @@ export class AnthropicLlm extends BaseLlm {
 		if ((llmRequest.config?.tools?.[0] as any)?.functionDeclarations) {
 			const declarations = (llmRequest.config.tools[0] as any)
 				.functionDeclarations;
-			tools = declarations.map((decl: any, index: number) => {
+tools = declarations.map((decl: any) => {
 				const tool = this.functionDeclarationToAnthropicTool(decl);
-				if (shouldCache && index === declarations.length - 1) {
+				if (shouldCache) {
 					return { ...tool, cache_control: this.createCacheControl(cacheTTL) };
 				}
 				return tool;
