@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Create ADK-TS agent
     const agent = new AgentBuilder()
-      .withModel(process.env.LLM_MODEL || "gpt-4")
+      .withModel(process.env.LLM_MODEL || "gemini-3-flash-preview" || "gpt-4")
       .withInstruction("You are a helpful assistant")
       .buildLlm();
 

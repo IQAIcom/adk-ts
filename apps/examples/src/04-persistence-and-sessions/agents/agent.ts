@@ -1,10 +1,10 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
 	AgentBuilder,
 	createDatabaseSessionService,
 	InMemoryArtifactService,
 } from "@iqai/adk";
-import * as path from "node:path";
-import * as fs from "node:fs";
 import { counterTool } from "./tools";
 
 export function getRootAgent() {
@@ -13,7 +13,9 @@ export function getRootAgent() {
 	);
 	const artifactService = new InMemoryArtifactService();
 
-	return AgentBuilder.withModel("gemini-2.5-flash")
+	return AgentBuilder.withModel(
+		process.env.LLM_MODEL || "gemini-3-flash-preview",
+	)
 		.withTools(counterTool)
 		.withSessionService(sessionService)
 		.withArtifactService(artifactService)

@@ -3,7 +3,7 @@ import dedent from "dedent";
 
 export async function getRootAgent() {
 	return await AgentBuilder.create("code_planner_agent")
-		.withModel("gemini-2.5-flash")
+		.withModel(process.env.LLM_MODEL || "gemini-3-flash-preview")
 		.withDescription("Agent with planning and code execution capabilities")
 		.withInstruction(
 			dedent`

@@ -9,7 +9,7 @@ export function getRootAgent() {
 	};
 
 	return AgentBuilder.create("shopping_cart_agent")
-		.withModel("gemini-2.5-flash")
+		.withModel(process.env.LLM_MODEL || "gemini-3-flash-preview")
 		.withInstruction(
 			dedent`
 			You are a shopping cart assistant. Help users manage their cart.

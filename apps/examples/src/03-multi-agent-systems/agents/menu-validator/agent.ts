@@ -1,4 +1,3 @@
-import { env } from "node:process";
 import { LlmAgent } from "@iqai/adk";
 import dedent from "dedent";
 
@@ -14,6 +13,6 @@ export function getMenuValidatorAgent() {
 			Check availability and suggest alternatives if needed.
 		`,
 		outputKey: "menu_validation",
-		model: env.LLM_MODEL || "gemini-2.5-flash",
+		model: process.env.LLM_MODEL || "gemini-3-flash-preview",
 	});
 }

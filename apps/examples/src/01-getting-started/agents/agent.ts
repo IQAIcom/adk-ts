@@ -12,7 +12,9 @@ export function getRootAgent() {
 		funFact: z.string().describe("An interesting fact about the city"),
 	});
 
-	return AgentBuilder.withModel("gemini-2.5-flash")
+	return AgentBuilder.withModel(
+		process.env.LLM_MODEL || "gemini-3-flash-preview",
+	)
 		.withOutputSchema(outputSchema)
 		.build();
 }
