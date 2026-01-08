@@ -21,7 +21,6 @@ import { LlmResponse } from "./llm-response";
 enum ModelProvider {
 	GOOGLE = "google",
 	ANTHROPIC = "anthropic",
-	OPENAI = "openai",
 	UNKNOWN = "unknown",
 }
 
@@ -39,7 +38,6 @@ export class AiSdkLlm extends BaseLlm {
 	private static readonly PROVIDER_PATTERNS: Record<ModelProvider, RegExp[]> = {
 		[ModelProvider.GOOGLE]: [/^google\//i, /^gemini/i, /^models\/gemini/i],
 		[ModelProvider.ANTHROPIC]: [/^anthropic\//i, /^claude/i],
-		[ModelProvider.OPENAI]: [/^openai\//i, /^gpt-/i, /^o1-/i],
 		[ModelProvider.UNKNOWN]: [],
 	};
 
