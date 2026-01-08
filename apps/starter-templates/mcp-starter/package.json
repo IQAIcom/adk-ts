@@ -1,6 +1,6 @@
 {
 	"name": "mcp-server-template",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "A starter template for building MCP servers with FastMCP and TypeScript.",
 	"main": "dist/index.js",
 	"type": "module",
