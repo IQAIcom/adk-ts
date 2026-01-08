@@ -22,7 +22,7 @@ async function main() {
 	];
 
 	for (const question of questions) {
-		ask(runner, question);
+		await ask(runner, question);
 	}
 }
 

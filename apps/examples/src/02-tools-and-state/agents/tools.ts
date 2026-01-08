@@ -31,7 +31,7 @@ export const addItemTool = createTool({
 		context.state.set("cart", updatedCart);
 		context.state.set("cartCount", updatedCart.length);
 
-		const total = cart.reduce(
+		const total = updatedCart.reduce(
 			(sum, cartItem) => sum + cartItem.quantity * cartItem.price,
 			0,
 		);
@@ -49,7 +49,6 @@ export const addItemTool = createTool({
 export const viewCartTool = createTool({
 	name: "view_cart",
 	description: "View current shopping cart contents",
-	schema: z.object({}),
 	fn: (_, context) => {
 		const cart = context.state.get("cart", []);
 		const total = cart.reduce(
