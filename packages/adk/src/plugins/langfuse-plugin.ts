@@ -40,7 +40,7 @@ export class LangfusePlugin extends BasePlugin {
 	/**
 	 * Converts any data to plain text, handling various formats
 	 */
-	private toPlainText(data: any): string {
+	toPlainText(data: any): string {
 		if (data === null || data === undefined) return "";
 		if (typeof data === "string") return data;
 		if (typeof data === "number" || typeof data === "boolean")
@@ -387,7 +387,7 @@ export class LangfusePlugin extends BasePlugin {
 			});
 		}
 
-        const usage = this.tokenUsage.get(params.invocationContext.invocationId);
+		const usage = this.tokenUsage.get(params.invocationContext.invocationId);
 
 		if (usage) {
 			trace.update({

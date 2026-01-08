@@ -1,18 +1,13 @@
 <div align="center">
-
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK-TypeScript Logo" width="100" />
-
-<br/>
-
-# ADK-TS Examples
-
-**A collection of comprehensive examples that demonstrate how to utilize the Agent Development Kit (ADK) for TypeScript in real-world scenarios**
-
-*Agent Building • Tool Integration • Memory Systems • Advanced Features*
+  <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
+  <br/>
+  <h1>ADK-TS Examples</h1>
+  <b>A collection of comprehensive examples that demonstrate how to utilize the Agent Development Kit (ADK) for TypeScript in real-world scenarios</b>
+  <br/>
+  <i>Agent Building • Tool Integration • Memory Systems • Advanced Feature</i>
+</div>
 
 ---
-
-</div>
 
 ## 🌟 Overview
 

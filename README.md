@@ -1,33 +1,28 @@
 <div align="center">
+  <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
+  <br/>
+  <h1>ADK-TS: Agent Development Kit (ADK) for TypeScript</h1>
+  <b>A comprehensive TypeScript framework for building sophisticated AI agents with multi-LLM support, advanced tools, and flexible conversation flows.</b>
+  <br/>
+  <i>Production-ready • Multi-Agent Systems • Extensible Architecture</i>
 
-<img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
-
-<br/>
-
-# ADK-TS: Agent Development Kit (ADK) for TypeScript
-
-**A comprehensive TypeScript framework for building sophisticated AI agents with multi-LLM support, advanced tools, and flexible conversation flows.**
-
-_Production-ready • Multi-Agent Systems • Extensible Architecture_
-
-<p align="center">
-  <a href="https://www.npmjs.com/package/@iqai/adk">
-    <img src="https://img.shields.io/npm/v/@iqai/adk" alt="NPM Version" />
-  </a>
-  <a href="https://www.npmjs.com/package/@iqai/adk">
-    <img src="https://img.shields.io/npm/dm/@iqai/adk" alt="NPM Downloads" />
-  </a>
-  <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md">
-    <img src="https://img.shields.io/npm/l/@iqai/adk" alt="License" />
-  </a>
-  <a href="https://github.com/IQAIcom/adk-ts">
-    <img src="https://img.shields.io/github/stars/IQAIcom/adk-ts?style=social" alt="GitHub Stars" />
-  </a>
-</p>
+  <p align="center">
+    <a href="https://www.npmjs.com/package/@iqai/adk">
+      <img src="https://img.shields.io/npm/v/@iqai/adk" alt="NPM Version" />
+    </a>
+    <a href="https://www.npmjs.com/package/@iqai/adk">
+      <img src="https://img.shields.io/npm/dm/@iqai/adk" alt="NPM Downloads" />
+    </a>
+    <a href="https://github.com/IQAIcom/adk-ts/blob/main/LICENSE.md">
+      <img src="https://img.shields.io/npm/l/@iqai/adk" alt="License" />
+    </a>
+    <a href="https://github.com/IQAIcom/adk-ts">
+      <img src="https://img.shields.io/github/stars/IQAIcom/adk-ts?style=social" alt="GitHub Stars" />
+    </a>
+  </p>
+</div>
 
 ---
-
-</div>
 
 ## 🌟 Overview
 

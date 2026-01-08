@@ -24,7 +24,12 @@ import { PluginManager } from "./plugins/plugin-manager";
 import type { BaseSessionService } from "./sessions/base-session-service";
 import { InMemorySessionService } from "./sessions/in-memory-session-service";
 import type { Session } from "./sessions/session";
-import { tracer } from "./telemetry";
+import {
+	extractTextFromContent,
+	SEMCONV,
+	telemetryService,
+	tracer,
+} from "./telemetry";
 
 /**
  * Find function call event if last event is function response.
@@ -217,6 +222,15 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		const span = tracer.startSpan("invocation");
 		const spanContext = trace.setSpan(context.active(), span);
 
+		// Extract and set input on span (using GenAI semantic conventions)
+		const inputText = extractTextFromContent(newMessage);
+		if (inputText && telemetryService.shouldCaptureContent()) {
+			span.setAttribute(SEMCONV.GEN_AI_INPUT_MESSAGES, inputText);
+			span.addEvent("gen_ai.invocation.input", {
+				"gen_ai.input": inputText,
+			});
+		}
+
 		try {
 			// Execute all invocation logic within the span context
 			const session = await context.with(spanContext, () =>
@@ -273,6 +287,21 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 				}
 
 				yield event;
+			}
+
+			// Extract output from the last agent message in session events
+			const lastAgentEvent = session.events
+				.slice()
+				.reverse()
+				.find((e) => e.author && e.author !== "user");
+			const outputText = extractTextFromContent(lastAgentEvent?.content);
+
+			// Set output on span (using GenAI semantic conventions)
+			if (outputText && telemetryService.shouldCaptureContent()) {
+				span.setAttribute(SEMCONV.GEN_AI_OUTPUT_MESSAGES, outputText);
+				span.addEvent("gen_ai.invocation.output", {
+					"gen_ai.output": outputText,
+				});
 			}
 
 			await context.with(spanContext, () =>

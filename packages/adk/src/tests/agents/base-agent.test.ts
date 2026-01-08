@@ -1,13 +1,27 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BaseAgent, type SingleAgentCallback } from "../../agents/base-agent";
 import type { InvocationContext } from "../../agents/invocation-context";
 import { Event } from "../../events/event";
 import { telemetryService } from "../../telemetry";
 
+// Mock telemetry to verify calls and prevent actual telemetry in tests
+// Note: All telemetry methods have built-in safety guards, so mocking is
+// optional but useful for verifying telemetry behavior in tests
 vi.mock("../../telemetry", () => ({
 	telemetryService: {
 		traceAsyncGenerator: vi.fn((_name, gen) => gen),
+		traceAgentInvocation: vi.fn(),
+		recordAgentInvocation: vi.fn(),
+		recordAgentDuration: vi.fn(),
+		recordError: vi.fn(),
+		withSpan: vi.fn(
+			async (_name, fn) =>
+				await fn({ setAttributes: vi.fn(), setStatus: vi.fn(), end: vi.fn() }),
+		),
+		traceCallback: vi.fn(),
+		setActiveSpanAttributes: vi.fn(),
 	},
+	extractTextFromContent: vi.fn(() => ""),
 }));
 
 class TestAgent extends BaseAgent {
@@ -152,36 +166,36 @@ describe("BaseAgent", () => {
 				implMock: "runLiveImplMock" as const,
 				traceName: "agent_run_live [test_agent]",
 			},
-		])(
-			"$method should trace and call the internal implementation",
-			async ({ method, implMock, traceName }) => {
-				const events = [];
-				for await (const event of agent[method](mockContext)) {
-					events.push(event);
-				}
-				expect(telemetryService.traceAsyncGenerator).toHaveBeenCalledWith(
-					traceName,
-					expect.anything(),
-				);
-				expect(agent[implMock]).toHaveBeenCalledOnce();
-				expect(events).toHaveLength(1);
-			},
-		);
+		])("$method should trace and call the internal implementation", async ({
+			method,
+			implMock,
+			traceName,
+		}) => {
+			const events = [];
+			for await (const event of agent[method](mockContext)) {
+				events.push(event);
+			}
+			expect(telemetryService.traceAsyncGenerator).toHaveBeenCalledWith(
+				traceName,
+				expect.anything(),
+			);
+			expect(agent[implMock]).toHaveBeenCalledOnce();
+			expect(events).toHaveLength(1);
+		});
 
 		it.each([
 			{ method: "runAsyncImpl" as const, name: "runAsyncImpl" },
 			{ method: "runLiveImpl" as const, name: "runLiveImpl" },
-		])(
-			"should throw if $name is not implemented in a subclass",
-			async ({ method }) => {
-				class BadAgent extends BaseAgent {}
-				const badAgent = new BadAgent({ name: "bad" });
-				const generator = badAgent[method](mockContext);
-				await expect(generator.next()).rejects.toThrow(
-					`${method} for BadAgent is not implemented.`,
-				);
-			},
-		);
+		])("should throw if $name is not implemented in a subclass", async ({
+			method,
+		}) => {
+			class BadAgent extends BaseAgent {}
+			const badAgent = new BadAgent({ name: "bad" });
+			const generator = badAgent[method](mockContext);
+			await expect(generator.next()).rejects.toThrow(
+				`${method} for BadAgent is not implemented.`,
+			);
+		});
 	});
 
 	describe("Callback Handling", () => {

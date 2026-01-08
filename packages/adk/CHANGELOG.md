@@ -1,5 +1,135 @@
 # @iqai/adk
 
+## 0.6.0
+
+### Minor Changes
+
+- c2f9b02: ## Comprehensive Telemetry System Overhaul
+
+  This release introduces a complete redesign of the telemetry system with extensive features for observability and monitoring.
+
+  ### ✨ New Features
+
+  **Modular Architecture**
+
+  - Refactored from monolithic to service-based design
+  - Separate modules for tracing, metrics, setup, and utilities
+  - Clean `telemetryService` API replacing low-level functions
+
+  **Metrics Support**
+
+  - Full metrics collection with OpenTelemetry SDK
+  - Counters: agent invocations, tool executions, LLM calls
+  - Histograms: duration tracking, token usage (input/output/total)
+  - OTLP HTTP exporter for metrics
+
+  **Privacy Controls**
+
+  - `ADK_CAPTURE_MESSAGE_CONTENT` environment variable
+  - Fine-grained control over sensitive data capture
+  - Disable prompt/completion logging for production
+
+  **Semantic Conventions**
+
+  - OpenTelemetry GenAI conventions (v1.37+)
+  - ADK-specific namespace (`adk.*`) for custom attributes
+  - Standardized attribute names across all spans
+
+  **Enhanced Tracing**
+
+  - Automatic agent invocation tracing with status tracking
+  - Tool execution spans with arguments and results
+  - LLM call tracing with token usage metrics
+  - Async generator support for streaming responses
+
+  **Resource Auto-Detection**
+
+  - Automatic detection of host, OS, and process information
+  - Custom resource attributes support
+  - Service instance identification
+
+  **Configuration**
+
+  - Comprehensive initialization options
+  - Sampling ratio control for production
+  - Configurable metric export intervals
+  - Custom OTLP headers for authentication
+
+  ### 🔧 Breaking Changes
+
+  - `initializeTelemetry()` → `telemetryService.initialize()`
+  - `shutdownTelemetry()` → `telemetryService.shutdown()`
+  - Legacy `telemetry.ts` now wraps new service for backward compatibility
+
+  ### 📊 Integration
+
+  All core components now automatically report metrics:
+
+  - `BaseAgent.runAsyncInternal()`: Agent metrics
+  - `functions.ts`: Tool execution metrics
+  - `base-llm-flow.ts`: LLM token and duration metrics
+
+  ### 📚 Documentation
+
+  - Comprehensive README in `src/telemetry/`
+  - Updated observability example with Jaeger + Langfuse
+  - Practical examples demonstrating all features
+
+  ### 🛠️ Technical Details
+
+  **Dependencies Added**:
+
+  - `@opentelemetry/sdk-metrics@^2.1.0`
+  - `@opentelemetry/exporter-metrics-otlp-http@^0.205.0`
+
+  **Supported Backends**:
+
+  - Jaeger (local development)
+  - Langfuse
+  - Datadog
+  - New Relic
+  - Any OTLP-compatible backend
+
+  This release provides a production-ready observability foundation for AI applications built with ADK.
+
+### Patch Changes
+
+- 7186de5: Fix: Convert Zod schemas to JSON Schema in BasicLlmRequestProcessor
+- 1387333: Improvements to telementry
+
+## Unreleased
+
+### Major Changes
+
+- **BREAKING: Telemetry aligned with OpenTelemetry GenAI Semantic Conventions v1.38.0**
+
+  The ADK telemetry system has been updated to fully comply with the latest OpenTelemetry GenAI semantic conventions. This ensures better interoperability with industry-standard observability platforms and provides richer, more standardized telemetry data.
+
+  **Breaking Changes:**
+
+  - `gen_ai.system` → `gen_ai.provider.name` (automatic provider detection from model names)
+  - `gen_ai.usage.total_tokens` removed (compute client-side: input + output)
+  - `call_llm` operation deprecated in favor of standard `chat`, `text_completion`, `generate_content`
+  - `traceCallback` signature changed: removed unused `targetName` parameter
+
+  **New Features:**
+
+  - Automatic provider detection (OpenAI, Anthropic, Google, AWS Bedrock, Mistral, Groq, Cohere, etc.)
+  - Enhanced LLM attributes: `response.id`, `response.model`, `output.type`, `top_k`, `frequency_penalty`, `presence_penalty`, `stop_sequences`, `seed`
+  - Structured content capture: `system_instructions`, `input.messages`, `output.messages`, `tool.definitions`
+  - Agent ID tracking: `gen_ai.agent.id` for unique agent identification
+  - Tool argument/result capture: `gen_ai.tool.call.arguments`, `gen_ai.tool.call.result`
+  - Standard metrics constants: `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`
+  - Error type tracking: `error.type` attribute for low-cardinality error identification
+
+  **Backward Compatibility:**
+
+  - Deprecated constants are still available but will be removed in v1.0.0
+  - All `adk.*` namespace attributes remain unchanged
+  - Legacy content events preserved for one release cycle
+
+  See [TELEMETRY_MIGRATION.md](./TELEMETRY_MIGRATION.md) for detailed migration guide.
+
 ## 0.5.9
 
 ### Patch Changes

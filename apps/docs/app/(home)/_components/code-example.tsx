@@ -1,5 +1,5 @@
-import { DynamicCodeBlock } from "fumadocs-ui/components/dynamic-codeblock";
 import dedent from "dedent";
+import { DynamicCodeBlock } from "fumadocs-ui/components/dynamic-codeblock";
 
 export function CodeExample() {
 	return (
