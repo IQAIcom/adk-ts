@@ -18,10 +18,15 @@ import { getRootAgent } from "./agents/agent";
 async function main() {
 	const { runner } = await getRootAgent();
 
-	const response = await runner.ask("Give me stats about France");
+	const question = "Give me stats about France";
+	const response = await runner.ask(question);
+
+	console.log(`👤 User: ${question}`);
 
 	console.log(
 		dedent`
+		🤖 Agent:
+
 		🌍 Country:    ${response.country}
 		📍 Capital:    ${response.capital}
 		👥 Population: ${response.population ? response.population.toLocaleString() : "N/A"}
