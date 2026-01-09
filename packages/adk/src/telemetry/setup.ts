@@ -12,8 +12,6 @@ import {
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { NestInstrumentation } from "@opentelemetry/instrumentation-nestjs-core";
-import { OpenAIInstrumentation } from "@opentelemetry/instrumentation-openai";
 import {
 	detectResources,
 	envDetector,
@@ -29,7 +27,6 @@ import { NodeSDK } from "@opentelemetry/sdk-node";
 import {
 	BatchSpanProcessor,
 	NodeTracerProvider,
-	SimpleSpanProcessor,
 	TraceIdRatioBasedSampler,
 } from "@opentelemetry/sdk-trace-node";
 import {
@@ -37,7 +34,6 @@ import {
 	ATTR_SERVICE_VERSION,
 } from "@opentelemetry/semantic-conventions";
 import { ADK_ATTRS, ADK_SYSTEM_NAME, DEFAULTS, ENV_VARS } from "./constants";
-import { InMemorySpanExporter } from "./exporters/in-memory-exporter";
 import type { TelemetryConfig } from "./types";
 import {
 	getEnvironment,
@@ -55,7 +51,6 @@ export class SetupService {
 	private tracerProvider: NodeTracerProvider | null = null;
 	private isInitialized = false;
 	private config: TelemetryConfig | null = null;
-	private inMemoryExporter = new InMemorySpanExporter();
 
 	/**
 	 * Initialize OpenTelemetry with comprehensive configuration
@@ -157,17 +152,12 @@ export class SetupService {
 	 * Initialize tracing provider
 	 */
 	private initializeTracing(config: TelemetryConfig, resource: any): void {
-		const spanProcessors: any[] = [
-			new SimpleSpanProcessor(this.inMemoryExporter),
-		];
+		const traceExporter = new OTLPTraceExporter({
+			url: config.otlpEndpoint,
+			headers: config.otlpHeaders,
+		});
 
-		if (config.otlpEndpoint) {
-			const traceExporter = new OTLPTraceExporter({
-				url: config.otlpEndpoint,
-				headers: config.otlpHeaders,
-			});
-			spanProcessors.push(new BatchSpanProcessor(traceExporter));
-		}
+		const spanProcessor = new BatchSpanProcessor(traceExporter);
 
 		// Create sampler if sampling ratio is specified
 		const sampler =
@@ -178,7 +168,7 @@ export class SetupService {
 		this.tracerProvider = new NodeTracerProvider({
 			resource,
 			sampler,
-			spanProcessors,
+			spanProcessors: [spanProcessor],
 		});
 
 		// Only register if not using auto-instrumentation (NodeSDK will register it)
@@ -191,11 +181,6 @@ export class SetupService {
 	 * Initialize metrics provider
 	 */
 	private initializeMetrics(config: TelemetryConfig, resource: any): void {
-		if (!config.otlpEndpoint) {
-			diag.warn("No OTLP endpoint provided. Metrics will not be exported.");
-			return;
-		}
-
 		// Convert trace endpoint to metrics endpoint
 		const metricsEndpoint = config.otlpEndpoint.replace(
 			"/v1/traces",
@@ -244,22 +229,41 @@ export class SetupService {
 		const enableTracing = config.enableTracing ?? DEFAULTS.ENABLE_TRACING;
 		const enableMetrics = config.enableMetrics ?? DEFAULTS.ENABLE_METRICS;
 
-		if (enableTracing) {
-			this.initializeTracing(config, resource);
-		}
+		// Create exporters
+		const traceExporter = enableTracing
+			? new OTLPTraceExporter({
+					url: config.otlpEndpoint,
+					headers: config.otlpHeaders,
+				})
+			: undefined;
 
-		if (enableMetrics) {
-			this.initializeMetrics(config, resource);
-		}
-
-		// Register instrumentations
-		const { registerInstrumentations } = await import(
-			"@opentelemetry/instrumentation"
+		const metricsEndpoint = config.otlpEndpoint.replace(
+			"/v1/traces",
+			"/v1/metrics",
 		);
+		const metricReader = enableMetrics
+			? new PeriodicExportingMetricReader({
+					exporter: new OTLPMetricExporter({
+						url: metricsEndpoint,
+						headers: config.otlpHeaders,
+					}),
+					exportIntervalMillis:
+						config.metricExportIntervalMs ?? DEFAULTS.METRIC_EXPORT_INTERVAL_MS,
+				})
+			: undefined;
 
-		registerInstrumentations({
-			tracerProvider: this.tracerProvider || undefined,
-			meterProvider: this.meterProvider || undefined,
+		// Create sampler if sampling ratio is specified
+		const sampler =
+			config.samplingRatio !== undefined
+				? new TraceIdRatioBasedSampler(config.samplingRatio)
+				: undefined;
+
+		// NodeSDK will configure and register all providers
+		this.sdk = new NodeSDK({
+			resource,
+			traceExporter,
+			metricReader,
+			sampler,
 			instrumentations: [
 				getNodeAutoInstrumentations({
 					// Ignore incoming HTTP requests (we're usually making outgoing calls)
@@ -267,19 +271,11 @@ export class SetupService {
 						ignoreIncomingRequestHook: () => true,
 					},
 				}),
-				new NestInstrumentation(),
-				new OpenAIInstrumentation(),
 			],
 		});
 
-		diag.debug("Auto-instrumentation initialized (manual setup)");
-	}
-
-	/**
-	 * Get the in-memory exporter instance
-	 */
-	getInMemoryExporter(): InMemorySpanExporter {
-		return this.inMemoryExporter;
+		await this.sdk.start();
+		diag.debug("Auto-instrumentation initialized with NodeSDK");
 	}
 
 	/**
