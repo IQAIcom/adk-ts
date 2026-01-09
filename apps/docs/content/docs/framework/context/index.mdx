@@ -145,31 +145,6 @@ class CustomAgent extends LlmAgent {
 - Avoid accessing unnecessary context properties
 - Implement efficient resource management patterns
 
-## Best Practices
-
-<Cards>
-  <Card
-    title="Context Patterns"
-    description="Learn common patterns and best practices for context usage"
-    href="/docs/framework/context/context-patterns"
-  />
-</Cards>
-
-### Security
-- Use ReadonlyContext for safe operations that don't need state modification
-- Validate context access patterns in production environments
-- Handle sensitive information appropriately through context layers
-
-### Error Handling
-- Check service availability before using context services
-- Implement graceful degradation when services are unavailable
-- Use proper error boundaries for context operations
-
-### Debugging
-- Use invocation IDs for request tracing and correlation
-- Log context state at key execution points for development
-- Monitor context usage patterns in production
-
 ## Related Topics
 
 <Cards>
