@@ -12,6 +12,8 @@ import {
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { NestInstrumentation } from "@opentelemetry/instrumentation-nestjs-core";
+import { OpenAIInstrumentation } from "@opentelemetry/instrumentation-openai";
 import {
 	detectResources,
 	envDetector,
@@ -155,13 +157,17 @@ export class SetupService {
 	 * Initialize tracing provider
 	 */
 	private initializeTracing(config: TelemetryConfig, resource: any): void {
-		const traceExporter = new OTLPTraceExporter({
-			url: config.otlpEndpoint,
-			headers: config.otlpHeaders,
-		});
+		const spanProcessors: any[] = [
+			new SimpleSpanProcessor(this.inMemoryExporter),
+		];
 
-		const spanProcessor = new BatchSpanProcessor(traceExporter);
-		const inMemoryProcessor = new SimpleSpanProcessor(this.inMemoryExporter);
+		if (config.otlpEndpoint) {
+			const traceExporter = new OTLPTraceExporter({
+				url: config.otlpEndpoint,
+				headers: config.otlpHeaders,
+			});
+			spanProcessors.push(new BatchSpanProcessor(traceExporter));
+		}
 
 		// Create sampler if sampling ratio is specified
 		const sampler =
@@ -172,7 +178,7 @@ export class SetupService {
 		this.tracerProvider = new NodeTracerProvider({
 			resource,
 			sampler,
-			spanProcessors: [spanProcessor, inMemoryProcessor],
+			spanProcessors,
 		});
 
 		// Only register if not using auto-instrumentation (NodeSDK will register it)
@@ -185,6 +191,11 @@ export class SetupService {
 	 * Initialize metrics provider
 	 */
 	private initializeMetrics(config: TelemetryConfig, resource: any): void {
+		if (!config.otlpEndpoint) {
+			diag.warn("No OTLP endpoint provided. Metrics will not be exported.");
+			return;
+		}
+
 		// Convert trace endpoint to metrics endpoint
 		const metricsEndpoint = config.otlpEndpoint.replace(
 			"/v1/traces",
@@ -233,41 +244,22 @@ export class SetupService {
 		const enableTracing = config.enableTracing ?? DEFAULTS.ENABLE_TRACING;
 		const enableMetrics = config.enableMetrics ?? DEFAULTS.ENABLE_METRICS;
 
-		// Create exporters
-		const traceExporter = enableTracing
-			? new OTLPTraceExporter({
-					url: config.otlpEndpoint,
-					headers: config.otlpHeaders,
-				})
-			: undefined;
+		if (enableTracing) {
+			this.initializeTracing(config, resource);
+		}
 
-		const metricsEndpoint = config.otlpEndpoint.replace(
-			"/v1/traces",
-			"/v1/metrics",
+		if (enableMetrics) {
+			this.initializeMetrics(config, resource);
+		}
+
+		// Register instrumentations
+		const { registerInstrumentations } = await import(
+			"@opentelemetry/instrumentation"
 		);
-		const metricReader = enableMetrics
-			? new PeriodicExportingMetricReader({
-					exporter: new OTLPMetricExporter({
-						url: metricsEndpoint,
-						headers: config.otlpHeaders,
-					}),
-					exportIntervalMillis:
-						config.metricExportIntervalMs ?? DEFAULTS.METRIC_EXPORT_INTERVAL_MS,
-				})
-			: undefined;
 
-		// Create sampler if sampling ratio is specified
-		const sampler =
-			config.samplingRatio !== undefined
-				? new TraceIdRatioBasedSampler(config.samplingRatio)
-				: undefined;
-
-		// NodeSDK will configure and register all providers
-		this.sdk = new NodeSDK({
-			resource,
-			traceExporter,
-			metricReader,
-			sampler,
+		registerInstrumentations({
+			tracerProvider: this.tracerProvider || undefined,
+			meterProvider: this.meterProvider || undefined,
 			instrumentations: [
 				getNodeAutoInstrumentations({
 					// Ignore incoming HTTP requests (we're usually making outgoing calls)
@@ -275,11 +267,12 @@ export class SetupService {
 						ignoreIncomingRequestHook: () => true,
 					},
 				}),
+				new NestInstrumentation(),
+				new OpenAIInstrumentation(),
 			],
 		});
 
-		await this.sdk.start();
-		diag.debug("Auto-instrumentation initialized with NodeSDK");
+		diag.debug("Auto-instrumentation initialized (manual setup)");
 	}
 
 	/**

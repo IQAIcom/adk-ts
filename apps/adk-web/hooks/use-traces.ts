@@ -5,6 +5,11 @@ import { useMemo } from "react";
 import type { AgentListItemDto } from "../Api";
 import { useApiUrl } from "./use-api-url";
 
+const NANOSECONDS_PER_SECOND = 1_000_000_000;
+const TRACE_STALE_TIME_MS = 30_000;
+const TRACE_REFETCH_INTERVAL_MS = 30_000;
+const TRACE_QUERY_RETRY_COUNT = 2;
+
 export interface TraceSpan {
 	trace_id: string;
 	span_id: string;
@@ -53,28 +58,30 @@ export function useTraces(
 
 			return response.json();
 		},
-		enabled: !!apiUrl && !!selectedAgent && !!sessionId,
-		staleTime: 30000,
-		retry: 2,
-		refetchInterval: 30000,
+		enabled: Boolean(apiUrl && selectedAgent && sessionId),
+		staleTime: TRACE_STALE_TIME_MS,
+		retry: TRACE_QUERY_RETRY_COUNT,
+		refetchInterval: TRACE_REFETCH_INTERVAL_MS,
 	});
 
 	const tracesByTraceId = useMemo(() => {
 		const map = new Map<string, TraceSpan[]>();
-		traces.forEach((span) => {
-			const key = span.trace_id;
-			const group = map.get(key) || [];
-			group.push(span);
-			map.set(key, group);
-		});
 
-		map.forEach((spans) => {
+		for (const span of traces) {
+			const group = map.get(span.trace_id) ?? [];
+			group.push(span);
+			map.set(span.trace_id, group);
+		}
+
+		for (const spans of map.values()) {
 			spans.sort((a, b) => {
-				const aTime = a.start_time[0] * 1e9 + a.start_time[1];
-				const bTime = b.start_time[0] * 1e9 + b.start_time[1];
+				const aTime =
+					a.start_time[0] * NANOSECONDS_PER_SECOND + a.start_time[1];
+				const bTime =
+					b.start_time[0] * NANOSECONDS_PER_SECOND + b.start_time[1];
 				return aTime - bTime;
 			});
-		});
+		}
 
 		return map;
 	}, [traces]);
