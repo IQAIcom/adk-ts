@@ -20,6 +20,11 @@ const frameworkSections = [
 /** @type {import('next').NextConfig} */
 const config = {
 	reactStrictMode: true,
+	experimental: {
+		outputFileTracingIncludes: {
+			"/llms.mdx/[[...slug]]": ["./content/docs/**/*"],
+		},
+	},
 	async rewrites() {
 		return [
 			{
