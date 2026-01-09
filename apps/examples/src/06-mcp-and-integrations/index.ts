@@ -7,7 +7,7 @@ import { getNameAgent } from "./agents/name-agent/agent";
  * 06. MCP and Integrations
  *
  * This example shows how to extend your agent's capabilities using the Model Context Protocol (MCP).
- * ADK treats MCP servers as first-class citizens, converting them effortlessly into tools your agent can use.
+ * ADK-TS treats MCP servers as first-class citizens, converting them effortlessly into tools your agent can use.
  *
  * In tools.ts, we use McpToolset to connect to two types of servers:
  * 1. A local custom server ("greeting-server.ts"): We spin up a local server.
