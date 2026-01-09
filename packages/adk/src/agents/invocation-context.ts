@@ -1,5 +1,5 @@
-import type { SpanContext } from "@opentelemetry/api";
 import type { Content } from "@google/genai";
+import type { SpanContext } from "@opentelemetry/api";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
 import type { BaseMemoryService } from "../memory/base-memory-service";
 import type { PluginManager } from "../plugins/plugin-manager";
@@ -7,6 +7,7 @@ import type { BaseSessionService } from "../sessions/base-session-service";
 import type { Session } from "../sessions/session";
 import type { ActiveStreamingTool } from "./active-streaming-tool";
 import type { BaseAgent } from "./base-agent";
+import { ContextCacheConfig } from "./context-cache-config";
 import type { LiveRequestQueue } from "./live-request-queue";
 import type { RunConfig } from "./run-config";
 import type { TranscriptionEntry } from "./transcription-entry";
@@ -129,6 +130,18 @@ export class InvocationContext {
 	readonly pluginManager: PluginManager;
 
 	/**
+	 * Optional configuration controlling context caching behavior for this invocation.
+	 *
+	 * When present, enables reuse of cached LLM context across agent calls and
+	 * sub-agents within the same invocation (and potentially across invocations,
+	 * depending on cache policy). When undefined, context caching is disabled.
+	 *
+	 * This config is typically inherited from the app-level configuration and
+	 * propagated to all child invocation contexts.
+	 */
+	readonly contextCacheConfig?: ContextCacheConfig;
+
+	/**
 	 * The id of this invocation context. Readonly.
 	 */
 	readonly invocationId: string;
@@ -217,6 +230,7 @@ export class InvocationContext {
 		activeStreamingTools?: Record<string, ActiveStreamingTool>;
 		transcriptionCache?: TranscriptionEntry[];
 		runConfig?: RunConfig;
+		contextCacheConfig?: ContextCacheConfig;
 		transferContext?: TransferContext;
 	}) {
 		this.artifactService = options.artifactService;
@@ -233,6 +247,7 @@ export class InvocationContext {
 		this.activeStreamingTools = options.activeStreamingTools;
 		this.transcriptionCache = options.transcriptionCache;
 		this.runConfig = options.runConfig;
+		this.contextCacheConfig = options.contextCacheConfig;
 		this.transferContext = options.transferContext;
 	}
 
@@ -280,6 +295,7 @@ export class InvocationContext {
 			activeStreamingTools: this.activeStreamingTools,
 			transcriptionCache: this.transcriptionCache,
 			runConfig: this.runConfig,
+			contextCacheConfig: this.contextCacheConfig,
 			transferContext: this.transferContext, // Propagate transfer context
 		});
 	}

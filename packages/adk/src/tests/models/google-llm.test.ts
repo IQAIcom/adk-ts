@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { GoogleLlm } from "../../models/google-llm";
 import { GoogleGenAI } from "@google/genai";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GoogleLlm } from "../../models/google-llm";
 
 vi.mock("@adk/helpers/logger", () => ({
 	Logger: vi.fn(() => ({
@@ -33,6 +33,7 @@ describe("GoogleLlm", () => {
 	it("supportedModels returns expected patterns", () => {
 		expect(GoogleLlm.supportedModels()).toEqual([
 			"gemini-.*",
+			"google/.*",
 			"projects/.+/locations/.+/endpoints/.+",
 			"projects/.+/locations/.+/publishers/google/models/gemini.+",
 		]);

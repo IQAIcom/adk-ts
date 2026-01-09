@@ -5,7 +5,8 @@
 		"callback-context",
 		"tool-context",
 		"invocation-context",
-		"context-patterns"
+		"context-patterns",
+		"context-caching"
 	],
 	"icon": "Brain"
 }

@@ -1,6 +1,7 @@
 import type { Content, Part } from "@google/genai";
 import { context, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { BaseAgent } from "./agents/base-agent";
+import type { ContextCacheConfig } from "./agents/context-cache-config";
 import {
 	InvocationContext,
 	newInvocationContextId,
@@ -108,6 +109,11 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 	 */
 	eventsCompactionConfig?: EventsCompactionConfig;
 
+	/**
+	 * The context cache config for the runner.
+	 */
+	contextCacheConfig?: ContextCacheConfig;
+
 	protected logger = new Logger({ name: "Runner" });
 
 	/**
@@ -120,6 +126,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		sessionService,
 		memoryService,
 		eventsCompactionConfig,
+		contextCacheConfig,
 		plugins,
 		pluginCloseTimeout = 5000,
 	}: {
@@ -129,6 +136,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		sessionService: BaseSessionService;
 		memoryService?: BaseMemoryService;
 		eventsCompactionConfig?: EventsCompactionConfig;
+		contextCacheConfig?: ContextCacheConfig;
 		plugins?: BasePlugin[];
 		pluginCloseTimeout?: number;
 	}) {
@@ -138,6 +146,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		this.sessionService = sessionService;
 		this.memoryService = memoryService;
 		this.eventsCompactionConfig = eventsCompactionConfig;
+		this.contextCacheConfig = contextCacheConfig;
 		this.pluginManager = new PluginManager({
 			plugins: plugins || [],
 			closeTimeout: pluginCloseTimeout,
@@ -513,6 +522,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 			sessionService: this.sessionService,
 			memoryService: this.memoryService,
 			pluginManager: this.pluginManager,
+			contextCacheConfig: this.contextCacheConfig,
 			invocationId,
 			agent: this.agent,
 			session,

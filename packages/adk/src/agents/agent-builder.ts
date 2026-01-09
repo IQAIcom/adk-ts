@@ -21,6 +21,7 @@ import type {
 	BaseAgent,
 	BeforeAgentCallback,
 } from "./base-agent.js";
+import { ContextCacheConfig } from "./context-cache-config.js";
 import { LangGraphAgent, type LangGraphNode } from "./lang-graph-agent.js";
 import type {
 	AfterModelCallback,
@@ -158,6 +159,7 @@ interface RunnerConfig {
 	artifactService?: BaseArtifactService;
 	eventsCompactionConfig?: EventsCompactionConfig;
 	plugins?: BasePlugin[];
+	contextCacheConfig?: ContextCacheConfig;
 }
 
 /**
@@ -195,6 +197,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	private memoryService?: BaseMemoryService;
 	private artifactService?: BaseArtifactService;
 	private eventsCompactionConfig?: EventsCompactionConfig;
+	private contextCacheConfig?: ContextCacheConfig;
 	private agentType: AgentType = "llm";
 	private existingSession?: Session;
 	private existingAgent?: BaseAgent;
@@ -700,6 +703,11 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 		return this.withSessionService(new InMemorySessionService(), options);
 	}
 
+	withContextCacheConfig(config: ContextCacheConfig): this {
+		this.contextCacheConfig = config;
+		return this;
+	}
+
 	/**
 	 * Build the agent and optionally create runner and session
 	 * @returns Built agent with optional runner and session
@@ -735,6 +743,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 				artifactService: this.artifactService,
 				eventsCompactionConfig: this.eventsCompactionConfig,
 				plugins: this.config.plugins,
+				contextCacheConfig: this.contextCacheConfig,
 			};
 
 			const baseRunner = new Runner(runnerConfig);

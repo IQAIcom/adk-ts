@@ -7,10 +7,11 @@ import { LlmResponse } from "./llm-response";
 
 type AnthropicRole = "user" | "assistant";
 
-const MAX_TOKENS = 1024;
+const DEFAULT_MAX_OUTPUT_TOKENS = 1024;
+const ANTHROPIC_CACHE_LONG_TTL_THRESHOLD = 1800; // 30 minutes
 
 /**
- * Anthropic LLM implementation using Claude models
+ * Anthropic LLM implementation using Claude models with prompt caching support
  */
 export class AnthropicLlm extends BaseLlm {
 	private _client?: Anthropic;
@@ -23,9 +24,6 @@ export class AnthropicLlm extends BaseLlm {
 		super(model);
 	}
 
-	/**
-	 * Provides the list of supported models
-	 */
 	static override supportedModels(): string[] {
 		return ["claude-3-.*", "claude-.*-4.*"];
 	}
@@ -42,48 +40,129 @@ export class AnthropicLlm extends BaseLlm {
 			this.contentToAnthropicMessage(content),
 		);
 
+		const shouldCache = this.shouldEnableCache(llmRequest);
+		const cacheTTL = this.getCacheTTL(llmRequest);
+
 		let tools: Anthropic.Tool[] | undefined;
 		if ((llmRequest.config?.tools?.[0] as any)?.functionDeclarations) {
-			tools = (llmRequest.config.tools[0] as any).functionDeclarations.map(
-				(decl: any) => this.functionDeclarationToAnthropicTool(decl),
-			);
+			const declarations = (llmRequest.config.tools[0] as any)
+				.functionDeclarations;
+			tools = declarations.map((decl: any) => {
+				const tool = this.functionDeclarationToAnthropicTool(decl);
+				if (shouldCache) {
+					return { ...tool, cache_control: this.createCacheControl(cacheTTL) };
+				}
+				return tool;
+			});
 		}
 
-		const systemInstruction = llmRequest.getSystemInstructionText();
+		// System instruction
+		const systemInstructionText = llmRequest.getSystemInstructionText();
+		let system: Anthropic.Messages.MessageCreateParams["system"];
+		if (systemInstructionText) {
+			system = shouldCache
+				? [
+						{
+							type: "text",
+							text: systemInstructionText,
+							cache_control: this.createCacheControl(cacheTTL),
+						},
+					]
+				: systemInstructionText;
+		}
 
 		if (stream) {
-			// TODO: Implement streaming support for Anthropic
 			throw new Error("Streaming is not yet supported for Anthropic models");
 		}
 
+		// Messages with cache_control at the message level
 		const anthropicMessages: Anthropic.MessageParam[] = messages.map((msg) => {
 			const content = Array.isArray(msg.content)
 				? msg.content.map((block) => this.partToAnthropicBlock(block))
 				: msg.content;
 
-			return {
+			const messageParam: Anthropic.MessageParam = {
 				role: msg.role as "user" | "assistant",
 				content: content as Anthropic.MessageParam["content"],
+				...(shouldCache && msg.role === "user"
+					? { cache_control: this.createCacheControl(cacheTTL) }
+					: {}),
 			};
+
+			return messageParam;
 		});
+
+		this.logger.info(
+			`Sending request to Anthropic model: ${model}${
+				shouldCache ? " (with caching)" : ""
+			}`,
+		);
 
 		const message = await this.client.messages.create({
 			model,
-			system: systemInstruction,
+			system,
 			messages: anthropicMessages,
 			tools,
 			tool_choice: tools ? { type: "auto" } : undefined,
-			max_tokens: llmRequest.config?.maxOutputTokens || MAX_TOKENS,
+			max_tokens:
+				llmRequest.config?.maxOutputTokens || DEFAULT_MAX_OUTPUT_TOKENS,
 			temperature: llmRequest.config?.temperature,
 			top_p: llmRequest.config?.topP,
 		});
 
-		yield this.anthropicMessageToLlmResponse(message);
+		const response = this.anthropicMessageToLlmResponse(message);
+
+		if (shouldCache) {
+			this.logCachePerformance(message.usage);
+		}
+
+		yield response;
 	}
 
-	/**
-	 * Live connection is not supported for Anthropic models
-	 */
+	private shouldEnableCache(llmRequest: LlmRequest): boolean {
+		return (
+			llmRequest.cacheConfig !== undefined && llmRequest.cacheConfig !== null
+		);
+	}
+
+	private getCacheTTL(llmRequest: LlmRequest): "5m" | "1h" {
+		if (!llmRequest.cacheConfig) return "5m";
+		return llmRequest.cacheConfig.ttlSeconds >
+			ANTHROPIC_CACHE_LONG_TTL_THRESHOLD
+			? "1h"
+			: "5m";
+	}
+
+	private createCacheControl(ttl: "5m" | "1h"): {
+		type: "ephemeral";
+		ttl?: "5m" | "1h";
+	} {
+		const control: { type: "ephemeral"; ttl?: "5m" | "1h" } = {
+			type: "ephemeral",
+		};
+		if (ttl !== "5m") control.ttl = ttl;
+		return control;
+	}
+
+	private logCachePerformance(usage: Anthropic.Messages.Usage): void {
+		const cacheRead = usage.cache_read_input_tokens || 0;
+		const cacheCreation = usage.cache_creation_input_tokens || 0;
+
+		if (cacheRead > 0) {
+			this.logger.info(`Cache HIT: ${cacheRead} tokens read from cache`);
+		}
+
+		if (cacheCreation > 0) {
+			this.logger.info(
+				`Cache CREATED: ${cacheCreation} tokens written to cache`,
+			);
+		}
+
+		if (cacheRead === 0 && cacheCreation === 0) {
+			this.logger.debug("No cache hits or creation");
+		}
+	}
+
 	override connect(_llmRequest: LlmRequest): BaseLLMConnection {
 		throw new Error(`Live connection is not supported for ${this.model}.`);
 	}
@@ -98,17 +177,27 @@ export class AnthropicLlm extends BaseLlm {
 			`Anthropic response: ${message.usage.output_tokens} tokens, ${message.stop_reason}`,
 		);
 
+		const usageMetadata: any = {
+			promptTokenCount: message.usage.input_tokens,
+			candidatesTokenCount: message.usage.output_tokens,
+			totalTokenCount: message.usage.input_tokens + message.usage.output_tokens,
+		};
+
+		const usage = message.usage as any;
+		if (usage.cache_read_input_tokens !== undefined) {
+			usageMetadata.cacheReadInputTokens = usage.cache_read_input_tokens;
+		}
+		if (usage.cache_creation_input_tokens !== undefined) {
+			usageMetadata.cacheCreationInputTokens =
+				usage.cache_creation_input_tokens;
+		}
+
 		return new LlmResponse({
 			content: {
 				role: "model",
 				parts: message.content.map((block) => this.anthropicBlockToPart(block)),
 			},
-			usageMetadata: {
-				promptTokenCount: message.usage.input_tokens,
-				candidatesTokenCount: message.usage.output_tokens,
-				totalTokenCount:
-					message.usage.input_tokens + message.usage.output_tokens,
-			},
+			usageMetadata,
 			finishReason: this.toAdkFinishReason(message.stop_reason),
 		});
 	}
@@ -131,35 +220,21 @@ export class AnthropicLlm extends BaseLlm {
 	private partToAnthropicBlock(
 		part: any,
 	): Anthropic.MessageParam["content"][0] {
-		if (part.text) {
-			return {
-				type: "text",
-				text: part.text,
-			};
-		}
-
-		if (part.function_call) {
+		if (part.text) return { type: "text", text: part.text };
+		if (part.function_call)
 			return {
 				type: "tool_use",
 				id: part.function_call.id || "",
 				name: part.function_call.name,
 				input: part.function_call.args || {},
 			};
-		}
-
-		if (part.function_response) {
-			let content = "";
-			if (part.function_response.response?.result) {
-				content = String(part.function_response.response.result);
-			}
+		if (part.function_response)
 			return {
 				type: "tool_result",
 				tool_use_id: part.function_response.id || "",
-				content,
+				content: String(part.function_response.response?.result || ""),
 				is_error: false,
 			};
-		}
-
 		throw new Error("Unsupported part type for Anthropic conversion");
 	}
 
@@ -167,20 +242,11 @@ export class AnthropicLlm extends BaseLlm {
 	 * Convert Anthropic content block to ADK Part
 	 */
 	private anthropicBlockToPart(block: any): any {
-		if (block.type === "text") {
-			return { text: block.text };
-		}
-
-		if (block.type === "tool_use") {
+		if (block.type === "text") return { text: block.text };
+		if (block.type === "tool_use")
 			return {
-				function_call: {
-					id: block.id,
-					name: block.name,
-					args: block.input,
-				},
+				function_call: { id: block.id, name: block.name, args: block.input },
 			};
-		}
-
 		throw new Error("Unsupported Anthropic content block type");
 	}
 
@@ -191,7 +257,6 @@ export class AnthropicLlm extends BaseLlm {
 		functionDeclaration: any,
 	): Anthropic.Tool {
 		const properties: Record<string, any> = {};
-
 		if (functionDeclaration.parameters?.properties) {
 			for (const [key, value] of Object.entries(
 				functionDeclaration.parameters.properties,
@@ -205,10 +270,7 @@ export class AnthropicLlm extends BaseLlm {
 		return {
 			name: functionDeclaration.name,
 			description: functionDeclaration.description || "",
-			input_schema: {
-				type: "object",
-				properties,
-			},
+			input_schema: { type: "object", properties },
 		};
 	}
 
@@ -216,9 +278,7 @@ export class AnthropicLlm extends BaseLlm {
 	 * Convert ADK role to Anthropic role format
 	 */
 	private toAnthropicRole(role?: string): AnthropicRole {
-		if (role === "model" || role === "assistant") {
-			return "assistant";
-		}
+		if (role === "model" || role === "assistant") return "assistant";
 		return "user";
 	}
 
@@ -232,12 +292,9 @@ export class AnthropicLlm extends BaseLlm {
 			["end_turn", "stop_sequence", "tool_use"].includes(
 				anthropicStopReason || "",
 			)
-		) {
+		)
 			return "STOP";
-		}
-		if (anthropicStopReason === "max_tokens") {
-			return "MAX_TOKENS";
-		}
+		if (anthropicStopReason === "max_tokens") return "MAX_TOKENS";
 		return "FINISH_REASON_UNSPECIFIED";
 	}
 
@@ -245,10 +302,7 @@ export class AnthropicLlm extends BaseLlm {
 	 * Update type strings in schema to lowercase for Anthropic compatibility
 	 */
 	private updateTypeString(valueDict: Record<string, any>): void {
-		if ("type" in valueDict) {
-			valueDict.type = valueDict.type.toLowerCase();
-		}
-
+		if ("type" in valueDict) valueDict.type = valueDict.type.toLowerCase();
 		if ("items" in valueDict) {
 			this.updateTypeString(valueDict.items);
 			if ("properties" in valueDict.items) {
@@ -265,16 +319,11 @@ export class AnthropicLlm extends BaseLlm {
 	private get client(): Anthropic {
 		if (!this._client) {
 			const apiKey = process.env.ANTHROPIC_API_KEY;
-
-			if (!apiKey) {
+			if (!apiKey)
 				throw new Error(
 					"ANTHROPIC_API_KEY environment variable is required for Anthropic models",
 				);
-			}
-
-			this._client = new Anthropic({
-				apiKey,
-			});
+			this._client = new Anthropic({ apiKey });
 		}
 		return this._client;
 	}
