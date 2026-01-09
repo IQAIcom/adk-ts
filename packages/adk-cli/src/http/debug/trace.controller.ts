@@ -1,4 +1,4 @@
-import { telemetryService, type ReadableSpan } from "@iqai/adk";
+import { type ReadableSpan, telemetryService } from "@iqai/adk";
 import { Controller, Get, Param } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 
