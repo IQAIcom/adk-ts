@@ -75,9 +75,10 @@ docker buildx build --platform linux/amd64 -t my-adk-agent:latest .
 ```
 
 <Callout type="info" title="Why AMD64?">
-  If you're on an Apple Silicon Mac (M1/M2/M3), your computer uses ARM64. But
-  most cloud providers use AMD64 processors. Building with `--platform
-  linux/amd64` ensures your image works on cloud servers.
+
+If you're on an Apple Silicon Mac (M1/M2/M3), your computer uses ARM64. But
+most cloud providers use AMD64 processors. Building with `--platform linux/amd64` ensures your image works on cloud servers.
+
 </Callout>
 
 ### Step 3: Push to Container Registry
@@ -230,8 +231,10 @@ DISCORD_TOKEN=your_token_here
 ```
 
 <Callout type="warn" title="Never Commit Secrets">
-  Add `.env` to your `.gitignore` to prevent committing sensitive data. Never
-  share this file publicly.
+
+Add `.env` to your `.gitignore` to prevent committing sensitive data. Never
+share this file publicly.
+
 </Callout>
 
 ## Verifying Deployment

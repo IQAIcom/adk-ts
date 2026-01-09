@@ -11,15 +11,15 @@ This plugin is especially useful for improving robustness when tools may fail du
 
 ### Key capabilities
 
-  - Concurrency-safe: Uses an internal lock to safely handle parallel tool executions.
+- Concurrency-safe: Uses an internal lock to safely handle parallel tool executions.
 
-  - Configurable retry limits: Control how many retries are attempted per tool.
+- Configurable retry limits: Control how many retries are attempted per tool.
 
-  - Flexible tracking scope: Track failures per invocation (default) or globally across invocations.
+- Flexible tracking scope: Track failures per invocation (default) or globally across invocations.
 
-  - Per-tool failure tracking: Retry counters are tracked independently for each tool.
+- Per-tool failure tracking: Retry counters are tracked independently for each tool.
 
-  - Extensible error detection: Override error extraction to detect failures in non-exception responses.
+- Extensible error detection: Override error extraction to detect failures in non-exception responses.
 
 ## Installation
 
@@ -67,9 +67,9 @@ const { runner } = await AgentBuilder.withModel(
       and retry with corrected arguments or a new approach.
     `,
   )
-  .withTools(
-    /* calendar tools */
-  )
+  .withTools
+  /* calendar tools */
+  ()
   .withSessionService(sessionService)
   .withQuickSession({
     sessionId: randomUUID(),
@@ -77,16 +77,15 @@ const { runner } = await AgentBuilder.withModel(
   })
   .withPlugins(reflectAndRetryPlugin)
   .build();
-
 ```
 
 When a tool fails, the plugin automatically:
 
-  - Generates structured reflection guidance for the model
+- Generates structured reflection guidance for the model
 
-  - Tracks retry attempts per tool
+- Tracks retry attempts per tool
 
-  - Retries the tool call up to the configured limit
+- Retries the tool call up to the configured limit
 
 #### Passing the plugin directly to LlmAgent
 
@@ -104,7 +103,6 @@ const agent = new LlmAgent({
     }),
   ],
 });
-
 ```
 
 This approach is useful when:
@@ -119,24 +117,23 @@ This approach is useful when:
 
 The Reflect and Retry Plugin supports the following options:
 
-* **`name`** *(optional)*
+- **`name`** _(optional)_
   Plugin name. Default: `"reflect_retry_tool_plugin"`.
 
-* **`maxRetries`** *(optional)*
+- **`maxRetries`** _(optional)_
   Number of retry attempts per tool after an error is detected.
   Default: `3`. Must be a non-negative integer.
   Set to `0` to disable retries.
 
-* **`throwExceptionIfRetryExceeded`** *(optional)*
+- **`throwExceptionIfRetryExceeded`** _(optional)_
   Whether to throw the original error after retries are exhausted.
   Default: `true`.
   If `false`, the plugin returns a final reflection message instead.
 
-* **`trackingScope`** *(optional)*
+- **`trackingScope`** _(optional)_
   Controls how retry counters are scoped. Default: `TrackingScope.INVOCATION`.
-
-  * `TrackingScope.INVOCATION`: Track failures per invocation.
-  * `TrackingScope.GLOBAL`: Track failures globally across all invocations.
+  - `TrackingScope.INVOCATION`: Track failures per invocation.
+  - `TrackingScope.GLOBAL`: Track failures globally across all invocations.
 
 ### Advanced configuration
 
@@ -146,7 +143,11 @@ You can extend the `ReflectAndRetryToolPlugin` class to customize how errors are
 import { LlmAgent, ReflectAndRetryToolPlugin } from "@iqai/adk";
 
 class CustomRetryPlugin extends ReflectAndRetryToolPlugin {
-  async extractErrorFromResult({ result }: { result: any }): Promise<any | undefined> {
+  async extractErrorFromResult({
+    result,
+  }: {
+    result: any;
+  }): Promise<any | undefined> {
     // Detect error based on a response property
     if (result?.status === "error") {
       return result;

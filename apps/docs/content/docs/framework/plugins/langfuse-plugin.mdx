@@ -14,7 +14,6 @@ This plugin is especially useful for:
 - Tracking model usage and token consumption
 - Correlating events across complex agent hierarchies
 
-
 ## Key Features
 
 - **Automatic tracing**: Tracks every invocation, agent, tool, and model generation.
@@ -24,13 +23,11 @@ This plugin is especially useful for:
 - **Flexible serialization**: Converts complex `Content` and `Event` objects into structured logs for Langfuse.
 - **Flush and shutdown control**: Manually flush or shutdown Langfuse client if needed.
 
-
 ## Installation
 
 ```bash
 pnpm add @iqai/adk langfuse
 ```
-
 
 ## Setup and Usage
 
@@ -39,7 +36,11 @@ You can attach the plugin to your agent using `AgentBuilder` or directly with `L
 ### Using AgentBuilder (recommended)
 
 ```ts
-import { AgentBuilder, InMemorySessionService, LangfusePlugin } from "@iqai/adk";
+import {
+  AgentBuilder,
+  InMemorySessionService,
+  LangfusePlugin,
+} from "@iqai/adk";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import { randomUUID } from "crypto";
 
@@ -83,7 +84,6 @@ const agent = new LlmAgent({
 });
 ```
 
-
 ## Configuration Options
 
 | Option          | Type   | Default                           | Description                     |
@@ -96,34 +96,32 @@ const agent = new LlmAgent({
 | `flushAt`       | number | `1`                               | Flush after this many events    |
 | `flushInterval` | number | `1000`                            | Flush interval in milliseconds  |
 
-
 ## Callback Hooks
 
 The plugin intercepts key agent events to send structured logs to Langfuse:
 
 ### User messages
 
-* **`onUserMessageCallback`**: Records user input and triggers a `user_message` event.
+- **`onUserMessageCallback`**: Records user input and triggers a `user_message` event.
 
 ### Agent execution
 
-* **`beforeAgentCallback` / `afterAgentCallback`**: Starts and ends agent spans. Tracks input, output, models used, and sub-agent hierarchy.
+- **`beforeAgentCallback` / `afterAgentCallback`**: Starts and ends agent spans. Tracks input, output, models used, and sub-agent hierarchy.
 
 ### Model calls
 
-* **`beforeModelCallback` / `afterModelCallback`**: Captures model request and response, including token usage and generation metadata.
-* **`onModelErrorCallback`**: Logs errors for LLM calls with full context.
+- **`beforeModelCallback` / `afterModelCallback`**: Captures model request and response, including token usage and generation metadata.
+- **`onModelErrorCallback`**: Logs errors for LLM calls with full context.
 
 ### Tool calls
 
-* **`beforeToolCallback` / `afterToolCallback`**: Captures tool invocation and results.
-* **`onToolErrorCallback`**: Records tool failures and metadata.
+- **`beforeToolCallback` / `afterToolCallback`**: Captures tool invocation and results.
+- **`onToolErrorCallback`**: Records tool failures and metadata.
 
 ### Run lifecycle
 
-* **`beforeRunCallback` / `afterRunCallback`**: Tracks overall invocation start and completion.
-* **`onEventCallback`**: Captures all events in the invocation, including function calls and final outputs.
-
+- **`beforeRunCallback` / `afterRunCallback`**: Tracks overall invocation start and completion.
+- **`onEventCallback`**: Captures all events in the invocation, including function calls and final outputs.
 
 ## Advanced Usage
 
@@ -154,9 +152,9 @@ Forces all buffered traces, spans, and events to be sent to Langfuse immediately
 
 Use this when:
 
-* You are running in short-lived environments (e.g. serverless functions, scripts, or cron jobs)
-* You want to ensure all telemetry is delivered before continuing execution
-* You need deterministic delivery for testing or debugging
+- You are running in short-lived environments (e.g. serverless functions, scripts, or cron jobs)
+- You want to ensure all telemetry is delivered before continuing execution
+- You need deterministic delivery for testing or debugging
 
 Internally, this calls `flushAsync()` on the Langfuse client and does **not** shut it down, so the plugin can continue recording events afterward.
 
@@ -170,9 +168,9 @@ Gracefully shuts down the Langfuse client after flushing any remaining buffered 
 
 Use this when:
 
-* Your application or worker is terminating
-* You no longer plan to record any additional traces or events
-* You want to release resources and prevent further writes
+- Your application or worker is terminating
+- You no longer plan to record any additional traces or events
+- You want to release resources and prevent further writes
 
 Once `close()` is called, the plugin should be considered inactive.
 
@@ -188,11 +186,10 @@ await langfusePlugin.close();
 
 This ensures all telemetry is delivered before the process exits.
 
-
 ## Benefits
 
-* Centralized observability for multi-agent workflows
-* Debugging complex tool and LLM interactions
-* Token and model usage analytics
-* Error tracking with detailed context
-* Supports nested agents and tool spans
+- Centralized observability for multi-agent workflows
+- Debugging complex tool and LLM interactions
+- Token and model usage analytics
+- Error tracking with detailed context
+- Supports nested agents and tool spans

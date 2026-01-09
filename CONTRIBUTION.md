@@ -1,4 +1,3 @@
-
 # 🤝 Contributing Guide for Agent Development Kit (ADK) for TypeScript
 
 First of all, thank you for taking the time to contribute! 🎉

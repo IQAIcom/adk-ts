@@ -66,7 +66,7 @@ async function main() {
   const { runner } = await rootAgent();
 
   const response = await runner.ask(
-    "What's the weather in New York in fahrenheit?"
+    "What's the weather in New York in fahrenheit?",
   );
   console.log(`🤖 Response: ${response}`);
 }
@@ -121,7 +121,7 @@ function searchFlights(
   destination: string, // Required - no default value
   departureDate: string, // Required - no default value
   flexibleDays: number = 0, // Optional - has default value
-  notes?: string // Optional - uses ? syntax
+  notes?: string, // Optional - uses ? syntax
 ) {
   return {
     status: "success",
@@ -139,9 +139,11 @@ In this example:
 - `notes` is **optional** with `?` syntax - can be undefined if not provided
 
 <Callout type="info" title="Parameter Detection">
-  ADK-TS determines parameter requirements by analyzing your TypeScript function
-  signature. It only looks at the parameter definitions—it doesn't execute your
-  code or check runtime behavior.
+
+ADK-TS determines parameter requirements by analyzing your TypeScript function
+signature. It only looks at the parameter definitions—it doesn't execute your
+code or check runtime behavior.
+
 </Callout>
 
 #### Return Type
@@ -202,7 +204,7 @@ Write clear JSDoc comments that explain your tool's purpose, when to use it, par
 function calculateOrderTotal(
   subtotal: number,
   taxRate: number,
-  shippingCost: number = 0
+  shippingCost: number = 0,
 ): {
   subtotal: number;
   tax: number;
@@ -230,7 +232,7 @@ import { ToolContext, LlmAgent } from "@iqai/adk";
 function savePreferences(
   theme: string,
   language: string,
-  toolContext: ToolContext
+  toolContext: ToolContext,
 ) {
   // Store preferences in session state
   toolContext.state.set("userPreferences", { theme, language });
@@ -286,10 +288,10 @@ function calcDistanceTool(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number
+  lon2: number,
 ): number {
   const distance = Math.sqrt(
-    Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2)
+    Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2),
   );
   return distance;
 }
@@ -304,10 +306,12 @@ const mapAgent = new LlmAgent({
 ```
 
 <Callout type="warn" title="JSDoc Required for Direct Functions">
-  When passing functions directly, you **must** include a JSDoc comment with at
-  least 3 characters. The first paragraph (before any `@param` tags) becomes the
-  tool description. You can optionally use `@description` to explicitly mark the
-  description section.
+
+When passing functions directly, you **must** include a JSDoc comment with at
+least 3 characters. The first paragraph (before any `@param` tags) becomes the
+tool description. You can optionally use `@description` to explicitly mark the
+description section.
+
 </Callout>
 
 #### Option 2: Using createFunctionTool (Recommended)
@@ -322,10 +326,10 @@ function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number
+  lon2: number,
 ): number {
   const distance = Math.sqrt(
-    Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2)
+    Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2),
   );
   return distance;
 }
@@ -356,10 +360,12 @@ const mapAgent = new LlmAgent({
 | `maxRetryAttempts`     | `number`  | No       | Maximum retry attempts                                           |
 
 <Callout type="info" title="Description Sources">
-  `createFunctionTool` tries to get the description in this order:
-  1. The `description` parameter you provide
-  2. JSDoc comment on the function (if no description parameter)
-  3. Empty string (will fail validation)
+
+`createFunctionTool` tries to get the description in this order:
+
+1. The `description` parameter you provide
+2. JSDoc comment on the function (if no description parameter)
+3. Empty string (will fail validation)
 
 So you **must** provide either an explicit description OR a JSDoc comment.
 
@@ -377,10 +383,10 @@ function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number
+  lon2: number,
 ): number {
   const distance = Math.sqrt(
-    Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2)
+    Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2),
   );
   return distance;
 }
@@ -517,7 +523,7 @@ async function main() {
   const { runner } = await rootAgent();
 
   const response = await runner.ask(
-    "Request approval for a business lunch with a client for $45."
+    "Request approval for a business lunch with a client for $45.",
   );
   console.log(`🤖 Response: ${response}`);
 }
@@ -544,11 +550,13 @@ For effective long-running tools:
 - **Give Progress Updates**: When possible, report progress percentage or step completion
 
 <Callout type="info" title="ADK-TS Implementation Note">
-  The long-running tool itself should return quickly - it only initiates the
-  long-running process. The actual time-consuming work should happen in a
-  separate system (database job, external API, etc.). Your application is
-  responsible for updating the operation status and resuming the agent when
-  complete.
+
+The long-running tool itself should return quickly - it only initiates the
+long-running process. The actual time-consuming work should happen in a
+separate system (database job, external API, etc.). Your application is
+responsible for updating the operation status and resuming the agent when
+complete.
+
 </Callout>
 
 ## Agents-as-a-Tool
@@ -621,6 +629,7 @@ When the main agent uses an agent-as-tool:
 6. **Integration**: The response is incorporated into the main agent's output to the user
 
 <Callout type="info" title="Agent-as-Tool vs Sub-Agents">
+
 **Agent-as-Tool**: When Agent A calls Agent B as a tool, Agent B's response is passed back to Agent A, which retains control and continues processing. Agent A remains the primary agent.
 
 **Sub-Agent**: When Agent A delegates to Agent B as a sub-agent, control is completely transferred to Agent B. Agent A is effectively out of the loop.

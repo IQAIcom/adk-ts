@@ -11,12 +11,14 @@ Workflow agents orchestrate multiple agents to solve complex problems that requi
 Unlike [LLM Agents](/docs/framework/agents/llm-agents) that use language models for reasoning, workflow agents operate with deterministic logic to ensure predictable, reliable execution patterns. This makes them perfect for building robust multi-step processes where you need guaranteed execution order and consistent results.
 
 <Callout type="info" title="Workflow vs LLM Agents">
-  - **Workflow Agents** manage execution flow with predictable patterns
+
+- **Workflow Agents** manage execution flow with predictable patterns
   (sequential → parallel → loop → LangGraph).
-  - **LLM Agents** use language
+- **LLM Agents** use language
   models for dynamic reasoning and content generation.
-  - **Best together:** Use
+- **Best together:** Use
   workflow agents to orchestrate LLM agents for complex, multi-step processes.
+
 </Callout>
 
 ## Workflow Types
@@ -91,9 +93,11 @@ Each workflow type solves different coordination challenges:
 **Example:** Customer support routing → Escalation logic → Specialized handlers based on issue type
 
 <Callout type="info" title="Pro Tip: Combine Workflow Types">
-  You can nest workflow agents! Create a sequential pipeline where one step is a
-  parallel workflow, or use loops within larger sequential processes. This gives
-  you powerful composition capabilities.
+
+You can nest workflow agents! Create a sequential pipeline where one step is a
+parallel workflow, or use loops within larger sequential processes. This gives
+you powerful composition capabilities.
+
 </Callout>
 
 ## Common Patterns

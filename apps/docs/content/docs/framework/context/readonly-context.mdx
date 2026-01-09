@@ -3,7 +3,7 @@ title: ReadonlyContext
 description: Safe read-only access to basic invocation information for instruction providers and monitoring
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 ReadonlyContext provides safe, read-only access to invocation information without modification capabilities. It's designed for security-first scenarios where you need to observe execution state but shouldn't alter it.
 
@@ -18,6 +18,7 @@ import { ReadonlyContext } from "@iqai/adk";
 ## Properties
 
 ### userContent
+
 The original user message that started the current invocation.
 
 ```typescript
@@ -25,10 +26,14 @@ get userContent(): Content | undefined
 ```
 
 <Callout type="info">
-Returns `undefined` if the invocation wasn't triggered by user content (e.g., system-initiated operations).
+
+Returns `undefined` if the invocation wasn't triggered by user content (e.g.,
+system-initiated operations).
+
 </Callout>
 
 ### invocationId
+
 Unique identifier for the current invocation, useful for tracking and logging.
 
 ```typescript
@@ -36,6 +41,7 @@ get invocationId(): string
 ```
 
 ### agentName
+
 Name of the agent currently executing within this context.
 
 ```typescript
@@ -43,6 +49,7 @@ get agentName(): string
 ```
 
 ### state
+
 Read-only view of the current session state.
 
 ```typescript
@@ -105,7 +112,7 @@ function logInvocationInfo(ctx: ReadonlyContext): void {
     const textParts = ctx.userContent.parts
       ?.filter(part => part.text)
       .map(part => part.text);
-    console.log(`[${ctx.invocationId}] User message:`, textParts?.join(' '));
+    console.log(`[${ctx.invocationId}] User message:`, textParts?.join(" "));
   }
 }
 ```
@@ -137,7 +144,7 @@ const analyzeState = (ctx: ReadonlyContext) => {
     agentName: ctx.agentName,
     stateSize: Object.keys(ctx.state).length,
     hasUserContent: !!ctx.userContent,
-    invocationId: ctx.invocationId
+    invocationId: ctx.invocationId,
   };
 };
 ```

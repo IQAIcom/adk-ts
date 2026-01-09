@@ -165,7 +165,7 @@ export const agent1 = new LlmAgent({
 export const agent2 = new LlmAgent({
   name: "personalized_assistant",
   description: "Personalized assistant that adapts to user communication style",
-  instruction: (ctx) =>
+  instruction: ctx =>
     `You are assisting user ${ctx.sessionId}. Adapt to their communication preferences.`,
 });
 
@@ -489,7 +489,7 @@ import { LlmAgent } from "@iqai/adk";
 export const agent = new LlmAgent({
   name: "monitored_agent",
   description: "Agent with pre-execution monitoring",
-  beforeAgentCallback: (ctx) => {
+  beforeAgentCallback: ctx => {
     console.log(`Starting agent: ${ctx.agentName}`);
     // Return content to skip agent execution, or undefined to continue
     return undefined;
@@ -509,7 +509,7 @@ import { LlmAgent } from "@iqai/adk";
 export const agent = new LlmAgent({
   name: "monitored_agent",
   description: "Agent with post-execution monitoring",
-  afterAgentCallback: (ctx) => {
+  afterAgentCallback: ctx => {
     console.log(`Completed agent: ${ctx.agentName}`);
     // Return content to skip agent execution, or undefined to continue
     return undefined;
@@ -771,7 +771,7 @@ const researchAnalyst = new LlmAgent({
   model: "gemini-2.0-flash-exp",
 
   // Dynamic instructions with context awareness
-  instruction: (ctx) => `
+  instruction: ctx => `
     You are an expert research analyst. Your expertise includes:
     - Web research and information gathering
     - Data analysis and statistical processing
@@ -820,14 +820,14 @@ const researchAnalyst = new LlmAgent({
   appName: "research_suite",
 
   // Monitoring and logging
-  beforeAgentCallback: (ctx) => {
+  beforeAgentCallback: ctx => {
     console.log(`🔍 Starting analysis for: ${ctx.agentName}`);
     return undefined;
   },
 
-  afterAgentCallback: (ctx) => {
+  afterAgentCallback: ctx => {
     console.log(
-      `✅ Analysis completed for ${ctx.agentName} - stored in session state`
+      `✅ Analysis completed for ${ctx.agentName} - stored in session state`,
     );
     return undefined;
   },
@@ -842,7 +842,7 @@ async function initializeAgent() {
 
   // Example usage with structured input
   const result = await runner.ask(
-    "Analyze the impact of renewable energy adoption on global carbon emissions"
+    "Analyze the impact of renewable energy adoption on global carbon emissions",
   );
 
   // Parse the structured JSON response
@@ -866,11 +866,13 @@ This example demonstrates a **focused, production-ready research analyst** with:
 - **Best Practices**: Proper error handling, logging, and state management
 
 <Callout type="info" title="Key Benefits of This Approach">
-  - **Focused**: Each configuration option serves the research analysis purpose
-  - **Comprehensive**: Shows advanced features without overwhelming complexity -
-  **Production-Ready**: Includes monitoring, persistence, and error handling -
-  **Extensible**: Easy to add new analysis tools or modify behavior -
-  **Type-Safe**: Full TypeScript support with schema validation
+
+- **Focused**: Each configuration option serves the research analysis purpose
+- **Comprehensive**: Shows advanced features without overwhelming complexity
+- **Production-Ready**: Includes monitoring, persistence, and error handling
+- **Extensible**: Easy to add new analysis tools or modify behavior
+- **Type-Safe**: Full TypeScript support with schema validation
+
 </Callout>
 
 ## Related Topics

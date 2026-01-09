@@ -23,6 +23,9 @@ importers:
       lint-staged:
         specifier: ^15.4.3
         version: 15.5.2
+      prettier:
+        specifier: ^3.2.5
+        version: 3.7.4
       tsx:
         specifier: ^4.19.4
         version: 4.21.0

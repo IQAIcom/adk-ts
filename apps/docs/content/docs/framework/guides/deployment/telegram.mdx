@@ -8,9 +8,11 @@ import { Callout } from "fumadocs-ui/components/callout";
 ADK-TS Telegram bots use the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to connect your agent to Telegram. The [`@iqai/mcp-telegram`](/docs/mcp-servers/telegram) server handles communication with Telegram's Bot API using the [Telegraf library](https://github.com/telegraf/telegraf). **Best for**: Chat-based agents, customer support bots, and interactive assistants. This guide covers deploying polling-based Telegram bots to various platforms.
 
 <Callout type="warn" title="Important: Background Worker Required">
-  Telegram bots using polling mode **do not expose HTTP endpoints**. They must
-  be deployed as **background workers**, not web services. Deploying as a web
-  service causes health check failures and service restarts.
+
+Telegram bots using polling mode **do not expose HTTP endpoints**. They must
+be deployed as **background workers**, not web services. Deploying as a web
+service causes health check failures and service restarts.
+
 </Callout>
 
 ## Prerequisites
@@ -64,8 +66,10 @@ Configure these environment variables on your deployment platform:
 | `ADK_DEBUG`          | Enable debug logging (`true`/`false`)          | Optional |
 
 <Callout type="info" title="Using Other LLM Providers">
-  Replace `GOOGLE_API_KEY` with your provider's environment variable (e.g.,
-  `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) and update `LLM_MODEL` accordingly.
+
+Replace `GOOGLE_API_KEY` with your provider's environment variable (e.g.,
+`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) and update `LLM_MODEL` accordingly.
+
 </Callout>
 
 ## Deploy to Railway
@@ -113,10 +117,12 @@ Confirm your bot is running correctly:
 Render requires explicit configuration for background workers.
 
 <Callout type="warn" title="Use Background Worker">
-  You **must** select "Background Worker" as the service type. Web Services
-  require port binding and will fail. For more context on this configuration,
-  see [GitHub Issue
-  #345](https://github.com/IQAIcom/adk-ts/issues/345#issuecomment-3463370437).
+
+You **must** select "Background Worker" as the service type. Web Services
+require port binding and will fail. For more context on this configuration,
+see [GitHub Issue
+#345](https://github.com/IQAIcom/adk-ts/issues/345#issuecomment-3463370437).
+
 </Callout>
 
 ### Step 1: Create a Background Worker

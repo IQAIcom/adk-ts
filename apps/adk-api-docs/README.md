@@ -1,4 +1,3 @@
-
 <div align="center">
   <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
   <br/>
@@ -154,10 +153,10 @@ API documentation is automatically generated from TypeScript source code comment
 1. **Add JSDoc comments** to TypeScript source files in `packages/adk/src/`
 2. **Use TypeDoc tags** for enhanced documentation:
 
-   ```typescript
+   ````typescript
    /**
     * Creates a new agent with the specified configuration.
-    * 
+    *
     * @param config - The agent configuration
     * @returns A configured agent instance
     * @example
@@ -168,7 +167,7 @@ API documentation is automatically generated from TypeScript source code comment
    export function createAgent(config: AgentConfig): Agent {
      // implementation
    }
-   ```
+   ````
 
 3. **Rebuild documentation** to see changes
 

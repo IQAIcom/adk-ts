@@ -611,7 +611,10 @@ export class YourProviderLlm extends BaseLlm {
     return ["your-model-.*"];
   }
 
-  protected async *generateContentAsyncImpl(llmRequest: LlmRequest, stream?: boolean): AsyncGenerator<LlmResponse, void, unknown> {
+  protected async *generateContentAsyncImpl(
+    llmRequest: LlmRequest,
+    stream?: boolean,
+  ): AsyncGenerator<LlmResponse, void, unknown> {
     // Transform LlmRequest to provider format
     const providerRequest = this.transformRequest(llmRequest);
 
@@ -668,7 +671,10 @@ export class YourTool extends BaseTool {
     };
   }
 
-  async runAsync(args: Record<string, any>, context: ToolContext): Promise<any> {
+  async runAsync(
+    args: Record<string, any>,
+    context: ToolContext,
+  ): Promise<any> {
     // Implement your tool logic
     const { input } = args;
     return { result: `Processed: ${input}` };
@@ -687,7 +693,10 @@ import type { LlmRequest } from "../../models/llm-request";
 import { Event } from "../../events/event";
 
 class YourRequestProcessor extends BaseLlmRequestProcessor {
-  async *runAsync(invocationContext: InvocationContext, llmRequest: LlmRequest): AsyncGenerator<Event, void, unknown> {
+  async *runAsync(
+    invocationContext: InvocationContext,
+    llmRequest: LlmRequest,
+  ): AsyncGenerator<Event, void, unknown> {
     // Modify llmRequest as needed
     llmRequest.appendInstructions(["Your custom instruction"]);
 
@@ -708,7 +717,12 @@ import { BaseSessionService } from "./base-session-service";
 import type { Session } from "./session";
 
 export class YourSessionService extends BaseSessionService {
-  async createSession(appName: string, userId: string, state?: Record<string, any>, sessionId?: string): Promise<Session> {
+  async createSession(
+    appName: string,
+    userId: string,
+    state?: Record<string, any>,
+    sessionId?: string,
+  ): Promise<Session> {
     // Implement session creation with your storage backend
     const session: Session = {
       id: sessionId || generateUniqueId(),
@@ -723,7 +737,12 @@ export class YourSessionService extends BaseSessionService {
     return session;
   }
 
-  async getSession(appName: string, userId: string, sessionId: string, config?: GetSessionConfig): Promise<Session | undefined> {
+  async getSession(
+    appName: string,
+    userId: string,
+    sessionId: string,
+    config?: GetSessionConfig,
+  ): Promise<Session | undefined> {
     // Implement session retrieval from your storage
     const session = await this.loadFromStorage(appName, userId, sessionId);
 
@@ -738,11 +757,18 @@ export class YourSessionService extends BaseSessionService {
   }
 
   // Implement other required methods...
-  async listSessions(appName: string, userId: string): Promise<ListSessionsResponse> {
+  async listSessions(
+    appName: string,
+    userId: string,
+  ): Promise<ListSessionsResponse> {
     // Implementation
   }
 
-  async deleteSession(appName: string, userId: string, sessionId: string): Promise<void> {
+  async deleteSession(
+    appName: string,
+    userId: string,
+    sessionId: string,
+  ): Promise<void> {
     // Implementation
   }
 }
@@ -759,7 +785,10 @@ import type { LlmRequest } from "../../models/llm-request";
 import { Event } from "../../events/event";
 
 class CustomRequestProcessor extends BaseLlmRequestProcessor {
-  async *runAsync(invocationContext: InvocationContext, llmRequest: LlmRequest): AsyncGenerator<Event, void, unknown> {
+  async *runAsync(
+    invocationContext: InvocationContext,
+    llmRequest: LlmRequest,
+  ): AsyncGenerator<Event, void, unknown> {
     // Add custom preprocessing logic
     const customInstruction = this.generateCustomInstruction(invocationContext);
     llmRequest.appendInstructions([customInstruction]);
@@ -786,7 +815,10 @@ export const requestProcessor = new CustomRequestProcessor();
 Create `packages/adk/src/memory/your-memory-service.ts`:
 
 ```typescript
-import { BaseMemoryService, type SearchMemoryResponse } from "./base-memory-service";
+import {
+  BaseMemoryService,
+  type SearchMemoryResponse,
+} from "./base-memory-service";
 import type { Session } from "../sessions/session";
 
 export class YourMemoryService extends BaseMemoryService {
@@ -800,7 +832,11 @@ export class YourMemoryService extends BaseMemoryService {
     }
   }
 
-  async searchMemory(params: { query: string; appName: string; userId: string }): Promise<SearchMemoryResponse> {
+  async searchMemory(params: {
+    query: string;
+    appName: string;
+    userId: string;
+  }): Promise<SearchMemoryResponse> {
     // Perform semantic search in your memory backend
     const results = await this.performSemanticSearch(params.query, {
       appName: params.appName,
@@ -808,7 +844,7 @@ export class YourMemoryService extends BaseMemoryService {
     });
 
     return {
-      memories: results.map((result) => ({
+      memories: results.map(result => ({
         content: result.content,
         relevanceScore: result.score,
         metadata: result.metadata,
@@ -832,7 +868,13 @@ import { BaseArtifactService } from "./base-artifact-service";
 import type { Part } from "@google/genai";
 
 export class YourArtifactService extends BaseArtifactService {
-  async saveArtifact(params: { appName: string; userId: string; sessionId: string; filename: string; artifact: Part }): Promise<number> {
+  async saveArtifact(params: {
+    appName: string;
+    userId: string;
+    sessionId: string;
+    filename: string;
+    artifact: Part;
+  }): Promise<number> {
     // Store artifact in your backend (S3, filesystem, etc.)
     const version = await this.getNextVersion(params);
 
@@ -845,7 +887,13 @@ export class YourArtifactService extends BaseArtifactService {
     return version;
   }
 
-  async loadArtifact(params: { appName: string; userId: string; sessionId: string; filename: string; version?: number }): Promise<Part | undefined> {
+  async loadArtifact(params: {
+    appName: string;
+    userId: string;
+    sessionId: string;
+    filename: string;
+    version?: number;
+  }): Promise<Part | undefined> {
     const version = params.version || (await this.getLatestVersion(params));
 
     const artifactData = await this.retrieveArtifact({
@@ -856,7 +904,11 @@ export class YourArtifactService extends BaseArtifactService {
     return artifactData ? this.deserializeArtifact(artifactData) : undefined;
   }
 
-  async listArtifactKeys(params: { appName: string; userId: string; sessionId: string }): Promise<string[]> {
+  async listArtifactKeys(params: {
+    appName: string;
+    userId: string;
+    sessionId: string;
+  }): Promise<string[]> {
     // Return list of artifact filenames
     return await this.getArtifactKeys(params);
   }
@@ -961,7 +1013,9 @@ export class MyClass implements MyInterface {
 
 ```typescript
 // Use descriptive error messages
-throw new Error(`Invalid agent name: "${name}". Agent names must be valid identifiers.`);
+throw new Error(
+  `Invalid agent name: "${name}". Agent names must be valid identifiers.`,
+);
 
 // Handle async errors appropriately
 try {

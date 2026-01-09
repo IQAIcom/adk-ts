@@ -24,8 +24,10 @@ The framework automatically tracks state changes and persists them according to 
 - Persistence: depends on the SessionService (in-memory vs database vs cloud)
 
 <Callout type="warn" title="Serialization Only">
-  Store only JSON-serializable data. Save large blobs/files as artifacts and
-  reference by name in state.
+
+Store only JSON-serializable data. Save large blobs/files as artifacts and
+reference by name in state.
+
 </Callout>
 
 ## Prefix-Based Scoping
@@ -73,7 +75,7 @@ async function runAgent() {
   return result;
 }
 
-runAgent().then((result) => {
+runAgent().then(result => {
   console.log("Agent Response:", result);
 });
 ```
@@ -167,10 +169,12 @@ const addItemTool = createTool({
 ```
 
 <Callout type="warn" title="Do Not Mutate session.state Directly">
-  Avoid mutating `session.state` on a retrieved Session outside of
-  events/callbacks/tools. It bypasses event history, may not persist, and is not
-  thread-safe. Always use one of the three methods above to ensure proper
-  tracking and persistence.
+
+Avoid mutating `session.state` on a retrieved Session outside of
+events/callbacks/tools. It bypasses event history, may not persist, and is not
+thread-safe. Always use one of the three methods above to ensure proper
+tracking and persistence.
+
 </Callout>
 
 ## Best Practices

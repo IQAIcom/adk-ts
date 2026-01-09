@@ -3,7 +3,7 @@ title: ToolContext
 description: Enhanced context for tool execution with memory search and artifact management
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 ToolContext extends CallbackContext with additional capabilities specifically designed for tool implementations. It provides memory search, artifact listing, and enhanced event action management.
 
@@ -26,6 +26,7 @@ import { ToolContext } from "@iqai/adk";
 ## Properties
 
 ### functionCallId
+
 Unique identifier linking this tool execution to the LLM function call:
 
 ```typescript
@@ -35,6 +36,7 @@ functionCallId?: string
 This ID helps correlate tool responses with their originating function calls for debugging and event tracking.
 
 ### actions
+
 Direct access to event actions for flow control:
 
 ```typescript
@@ -46,6 +48,7 @@ Provides convenient access to `eventActions` with a shorter property name.
 ## Enhanced Methods
 
 ### listArtifacts()
+
 Lists all artifact filenames attached to the current session:
 
 ```typescript
@@ -65,7 +68,7 @@ async function examineSessionArtifacts(toolContext: ToolContext) {
   toolContext.state.artifactInventory = {
     count: artifacts.length,
     files: artifacts,
-    lastChecked: new Date().toISOString()
+    lastChecked: new Date().toISOString(),
   };
 
   return artifacts;
@@ -73,6 +76,7 @@ async function examineSessionArtifacts(toolContext: ToolContext) {
 ```
 
 ### searchMemory()
+
 Search the memory service for relevant information:
 
 ```typescript
@@ -80,7 +84,10 @@ async searchMemory(query: string): Promise<SearchMemoryResponse>
 ```
 
 ```typescript
-async function findRelevantContext(toolContext: ToolContext, userQuery: string) {
+async function findRelevantContext(
+  toolContext: ToolContext,
+  userQuery: string,
+) {
   try {
     const memoryResults = await toolContext.searchMemory(userQuery);
 
@@ -91,7 +98,7 @@ async function findRelevantContext(toolContext: ToolContext, userQuery: string) 
     toolContext.state.lastMemorySearch = {
       query: userQuery,
       resultCount: relevantMemories.length,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     return relevantMemories;
@@ -100,7 +107,7 @@ async function findRelevantContext(toolContext: ToolContext, userQuery: string) 
     toolContext.state.memorySearchError = {
       query: userQuery,
       error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
     return [];
   }
@@ -108,7 +115,10 @@ async function findRelevantContext(toolContext: ToolContext, userQuery: string) 
 ```
 
 <Callout type="info">
-Memory search requires a memory service to be configured in the runner or agent setup.
+
+Memory search requires a memory service to be configured in the runner or
+agent setup.
+
 </Callout>
 
 ## Tool Implementation Patterns
@@ -124,7 +134,7 @@ export class MyTool extends BaseTool {
   constructor() {
     super({
       name: "my_tool",
-      description: "Example tool using ToolContext"
+      description: "Example tool using ToolContext",
     });
   }
 
@@ -142,7 +152,7 @@ export class MyTool extends BaseTool {
     context.state.toolExecution = {
       toolName: this.name,
       functionCallId: context.functionCallId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     return { success: true };
@@ -159,7 +169,7 @@ import { FunctionTool, ToolContext } from "@iqai/adk";
 
 async function researchTopic(
   params: { topic: string; depth: "basic" | "detailed" },
-  toolContext: ToolContext
+  toolContext: ToolContext,
 ) {
   // Search memory for existing knowledge
   const existingKnowledge = await toolContext.searchMemory(params.topic);
@@ -170,7 +180,7 @@ async function researchTopic(
 
   if (cachedResearch) {
     toolContext.state.cacheHit = true;
-    return JSON.parse(cachedResearch.text || '{}');
+    return JSON.parse(cachedResearch.text || "{}");
   }
 
   // Perform new research combining memory and external sources
@@ -179,19 +189,19 @@ async function researchTopic(
     depth: params.depth,
     existingKnowledge: existingKnowledge.memories || [],
     newFindings: [], // Your research logic here
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   // Cache the results
   await toolContext.saveArtifact(`${cacheKey}.json`, {
-    text: JSON.stringify(research, null, 2)
+    text: JSON.stringify(research, null, 2),
   });
 
   // Update search context in state
   toolContext.state.lastResearch = {
     topic: params.topic,
     knowledgeFound: existingKnowledge.memories?.length || 0,
-    cached: false
+    cached: false,
   };
 
   return research;
@@ -199,7 +209,7 @@ async function researchTopic(
 
 const researchTool = new FunctionTool(researchTopic, {
   name: "research_topic",
-  description: "Research a topic using memory and external sources"
+  description: "Research a topic using memory and external sources",
 });
 ```
 
@@ -210,12 +220,13 @@ Tools that work with multiple artifacts:
 ```typescript
 async function processDocuments(
   params: { operation: "summarize" | "analyze" | "compare" },
-  toolContext: ToolContext
+  toolContext: ToolContext,
 ) {
   // Get all available documents
   const allArtifacts = await toolContext.listArtifacts();
-  const documents = allArtifacts.filter(name =>
-    name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.json')
+  const documents = allArtifacts.filter(
+    name =>
+      name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".json"),
   );
 
   if (documents.length === 0) {
@@ -235,45 +246,51 @@ async function processDocuments(
         break;
       case "analyze":
         result = {
-          wordCount: document.text.split(' ').length,
-          paragraphs: document.text.split('\n\n').length
+          wordCount: document.text.split(" ").length,
+          paragraphs: document.text.split("\n\n").length,
         };
         break;
       case "compare":
         // Compare with memory knowledge
-        const related = await toolContext.searchMemory(document.text.substring(0, 100));
+        const related = await toolContext.searchMemory(
+          document.text.substring(0, 100),
+        );
         result = { relatedMemories: related.memories?.length || 0 };
         break;
     }
 
     results.push({
       document: docName,
-      result: result
+      result: result,
     });
   }
 
   // Save processing results
   const reportName = `processing_report_${Date.now()}.json`;
   await toolContext.saveArtifact(reportName, {
-    text: JSON.stringify({
-      operation: params.operation,
-      processedDocuments: results,
-      timestamp: new Date().toISOString()
-    }, null, 2)
+    text: JSON.stringify(
+      {
+        operation: params.operation,
+        processedDocuments: results,
+        timestamp: new Date().toISOString(),
+      },
+      null,
+      2,
+    ),
   });
 
   // Update state
   toolContext.state.lastProcessing = {
     operation: params.operation,
     documentsProcessed: results.length,
-    reportFile: reportName
+    reportFile: reportName,
   };
 
   return {
     operation: params.operation,
     processedCount: results.length,
     results: results,
-    reportFile: reportName
+    reportFile: reportName,
   };
 }
 ```
@@ -287,7 +304,7 @@ ToolContext provides direct access to flow control through the `actions` propert
 ```typescript
 async function smartExitTool(
   params: { condition: string },
-  toolContext: ToolContext
+  toolContext: ToolContext,
 ) {
   // Check condition against memory and state
   const memoryCheck = await toolContext.searchMemory(params.condition);
@@ -300,14 +317,14 @@ async function smartExitTool(
     return {
       action: "exit",
       reason: "Condition met",
-      condition: params.condition
+      condition: params.condition,
     };
   }
 
   return {
     action: "continue",
     condition: params.condition,
-    status: "not_met"
+    status: "not_met",
   };
 }
 ```
@@ -319,10 +336,12 @@ Tools can transfer control to other agents:
 ```typescript
 async function intelligentTransfer(
   params: { userQuery: string },
-  toolContext: ToolContext
+  toolContext: ToolContext,
 ) {
   // Search memory for best agent for this query
-  const agentSuggestions = await toolContext.searchMemory(`agent for ${params.userQuery}`);
+  const agentSuggestions = await toolContext.searchMemory(
+    `agent for ${params.userQuery}`,
+  );
 
   // Analyze current state
   const currentAgent = toolContext.agentName;
@@ -345,14 +364,14 @@ async function intelligentTransfer(
     from: currentAgent,
     to: targetAgent,
     reason: params.userQuery,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   return {
     action: "transfer",
     fromAgent: currentAgent,
     toAgent: targetAgent,
-    reason: "Specialized agent better suited for this query"
+    reason: "Specialized agent better suited for this query",
   };
 }
 ```
@@ -366,25 +385,25 @@ Combine memory, artifacts, and state for comprehensive responses:
 ```typescript
 async function synthesizeInformation(
   params: { topic: string },
-  toolContext: ToolContext
+  toolContext: ToolContext,
 ) {
   // Gather information from all sources
   const [memories, artifacts, state] = await Promise.all([
     toolContext.searchMemory(params.topic),
     toolContext.listArtifacts(),
-    Promise.resolve(toolContext.state)
+    Promise.resolve(toolContext.state),
   ]);
 
   // Load relevant artifacts
   const relevantArtifacts = artifacts.filter(name =>
-    name.toLowerCase().includes(params.topic.toLowerCase())
+    name.toLowerCase().includes(params.topic.toLowerCase()),
   );
 
   const artifactContents = await Promise.all(
     relevantArtifacts.map(async name => ({
       name,
-      content: await toolContext.loadArtifact(name)
-    }))
+      content: await toolContext.loadArtifact(name),
+    })),
   );
 
   // Synthesize information
@@ -394,21 +413,24 @@ async function synthesizeInformation(
       memories: memories.memories?.length || 0,
       artifacts: artifactContents.length,
       stateReferences: Object.keys(state).filter(key =>
-        key.toLowerCase().includes(params.topic.toLowerCase())
-      ).length
+        key.toLowerCase().includes(params.topic.toLowerCase()),
+      ).length,
     },
     summary: `Found information about ${params.topic} from multiple sources`,
     details: {
       memoryInsights: memories.memories?.slice(0, 3) || [],
       relevantFiles: relevantArtifacts,
-      stateData: state[params.topic] || null
-    }
+      stateData: state[params.topic] || null,
+    },
   };
 
   // Save comprehensive report
-  await toolContext.saveArtifact(`synthesis_${params.topic}_${Date.now()}.json`, {
-    text: JSON.stringify(synthesis, null, 2)
-  });
+  await toolContext.saveArtifact(
+    `synthesis_${params.topic}_${Date.now()}.json`,
+    {
+      text: JSON.stringify(synthesis, null, 2),
+    },
+  );
 
   return synthesis;
 }
@@ -421,20 +443,20 @@ Use all available context for intelligent decisions:
 ```typescript
 async function makeContextualDecision(
   params: { decision: string; options: string[] },
-  toolContext: ToolContext
+  toolContext: ToolContext,
 ) {
   // Gather contextual information
   const userHistory = toolContext.state.userHistory || [];
   const recentChoices = toolContext.state.recentChoices || [];
   const memoryGuidance = await toolContext.searchMemory(
-    `decision ${params.decision} options ${params.options.join(' ')}`
+    `decision ${params.decision} options ${params.options.join(" ")}`,
   );
 
   // Analyze patterns
   const patterns = {
     userPreference: analyzeUserPreferences(userHistory, params.options),
     pastChoices: recentChoices.slice(-5),
-    memoryInsights: memoryGuidance.memories || []
+    memoryInsights: memoryGuidance.memories || [],
   };
 
   // Make intelligent choice
@@ -447,19 +469,22 @@ async function makeContextualDecision(
       decision: params.decision,
       recommended: recommendedOption,
       timestamp: new Date().toISOString(),
-      functionCallId: toolContext.functionCallId
-    }
+      functionCallId: toolContext.functionCallId,
+    },
   ];
 
   return {
     decision: params.decision,
     recommended: recommendedOption,
     reasoning: patterns,
-    confidence: calculateConfidence(patterns)
+    confidence: calculateConfidence(patterns),
   };
 }
 
-function analyzeUserPreferences(history: any[], options: string[]): string | null {
+function analyzeUserPreferences(
+  history: any[],
+  options: string[],
+): string | null {
   // Analyze user history to determine preferences
   // Implementation depends on your specific needs
   return null;
@@ -476,10 +501,7 @@ function calculateConfidence(patterns: any): number {
 ### Error Handling
 
 ```typescript
-async function robustToolExecution(
-  params: any,
-  toolContext: ToolContext
-) {
+async function robustToolExecution(params: any, toolContext: ToolContext) {
   try {
     // Attempt operations with fallbacks
     let result;
@@ -488,24 +510,26 @@ async function robustToolExecution(
       const memories = await toolContext.searchMemory(params.query);
       result = processWithMemory(memories);
     } catch (memoryError) {
-      console.warn("Memory search failed, using local processing:", memoryError);
+      console.warn(
+        "Memory search failed, using local processing:",
+        memoryError,
+      );
       result = processLocally(params);
     }
 
     // Save successful result
     await toolContext.saveArtifact("operation_result.json", {
-      text: JSON.stringify(result, null, 2)
+      text: JSON.stringify(result, null, 2),
     });
 
     return result;
-
   } catch (error) {
     // Log error and update state
     toolContext.state.lastError = {
       tool: "robustToolExecution",
       error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
-      functionCallId: toolContext.functionCallId
+      functionCallId: toolContext.functionCallId,
     };
 
     return { error: "Operation failed", details: String(error) };
@@ -526,35 +550,32 @@ function processLocally(params: any) {
 ### Resource Optimization
 
 ```typescript
-async function optimizedToolExecution(
-  params: any,
-  toolContext: ToolContext
-) {
+async function optimizedToolExecution(params: any, toolContext: ToolContext) {
   // Check cache first
   const cacheKey = `tool_cache_${JSON.stringify(params)}`;
   const cached = await toolContext.loadArtifact(cacheKey);
 
   if (cached) {
     toolContext.state.cacheHits = (toolContext.state.cacheHits || 0) + 1;
-    return JSON.parse(cached.text || '{}');
+    return JSON.parse(cached.text || "{}");
   }
 
   // Batch operations when possible
   const [artifacts, memories] = await Promise.all([
     toolContext.listArtifacts(),
-    toolContext.searchMemory(params.query || "")
+    toolContext.searchMemory(params.query || ""),
   ]);
 
   // Process efficiently
   const result = {
     artifacts: artifacts.length,
     memories: memories.memories?.length || 0,
-    processed: true
+    processed: true,
   };
 
   // Cache result
   await toolContext.saveArtifact(cacheKey, {
-    text: JSON.stringify(result, null, 2)
+    text: JSON.stringify(result, null, 2),
   });
 
   return result;

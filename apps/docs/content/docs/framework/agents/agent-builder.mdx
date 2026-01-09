@@ -11,11 +11,13 @@ import { Cards, Card } from "fumadocs-ui/components/card";
 Unlike direct agent instantiation, `AgentBuilder` handles session creation, memory management, and configuration defaults automatically, letting you focus on building great agent experiences rather than infrastructure setup.
 
 <Callout type="info" title="When to Use AgentBuilder">
-  Use `AgentBuilder` for rapid prototyping, automatic session management,
-  multi-agent workflows, or when you want smart defaults. Use [LLM
-  Agents](/docs/framework/agents/llm-agents) directly when you need maximum
-  control over configuration, memory, sessions, or production systems with
-  specific requirements.
+
+Use `AgentBuilder` for rapid prototyping, automatic session management,
+multi-agent workflows, or when you want smart defaults. Use [LLM
+Agents](/docs/framework/agents/llm-agents) directly when you need maximum
+control over configuration, memory, sessions, or production systems with
+specific requirements.
+
 </Callout>
 
 ## Quick Start
@@ -30,7 +32,7 @@ dotenv.config();
 
 async function main() {
   const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
-    "Hello, what can you help me with?"
+    "Hello, what can you help me with?",
   );
   console.log("response: ", response);
 }
@@ -195,12 +197,10 @@ Creates a named builder instance that will generate an LLM agent with the specif
 The name must follow JavaScript identifier rules (start with letter/underscore, contain only letters, numbers, underscores). Choose descriptive names that clearly indicate the agent's purpose.
 
 ```typescript
-const builder = await AgentBuilder.create("research_assistant").withModel(
-  "gemini-2.5-flash"
-);
-const builder2 = await AgentBuilder.create("_data_processor2").withModel(
-  "gemini-2.5-flash"
-);
+const builder =
+  await AgentBuilder.create("research_assistant").withModel("gemini-2.5-flash");
+const builder2 =
+  await AgentBuilder.create("_data_processor2").withModel("gemini-2.5-flash");
 
 // Invalid names (will throw errors)
 ```
@@ -239,7 +239,7 @@ Adds a brief description that explains the agent's capabilities and purpose. Thi
 const agent = await AgentBuilder.create("financial_analyst")
   .withModel("gemini-2.5-flash")
   .withDescription(
-    "Specializes in financial data analysis and investment recommendations"
+    "Specializes in financial data analysis and investment recommendations",
   )
   .build();
 ```
@@ -257,7 +257,7 @@ Instructions can be static strings for consistent behavior or dynamic functions 
 const financeAgent = await AgentBuilder.create("financial_analyst")
   .withModel("gemini-2.5-flash")
   .withInstruction(
-    "You are a financial advisor. Provide clear, actionable investment advice."
+    "You are a financial advisor. Provide clear, actionable investment advice.",
   )
   .build();
 
@@ -267,7 +267,7 @@ const travelAgent = await AgentBuilder.create("travel_agent")
   .withInstruction(
     `You are a travel guide. 
     User Preferences: {user_preferences}
-    Suggest personalized travel itineraries based on user preferences.`
+    Suggest personalized travel itineraries based on user preferences.`,
   )
   .build();
 ```
@@ -294,9 +294,11 @@ const agent = await AgentBuilder.create("my_agent")
 ```
 
 <Callout type="warn" title="Configuration After Wrapping">
-  When using `withAgent()`, subsequent configuration methods like `withModel()`
-  or `withTools()` are ignored. The existing agent's configuration is used
-  as-is.
+
+When using `withAgent()`, subsequent configuration methods like `withModel()`
+or `withTools()` are ignored. The existing agent's configuration is used
+as-is.
+
 </Callout>
 
 ### withInputSchema(schema)
@@ -357,7 +359,7 @@ Sets the key in session state where the agent's output will be stored. This make
 const agent = await AgentBuilder.create("analyzer_agent")
   .withModel("gemini-2.5-flash")
   .withDescription(
-    "An agent that analyzes documents and provides structured output"
+    "An agent that analyzes documents and provides structured output",
   )
   .withOutputKey("analysis")
   .build();
@@ -395,7 +397,7 @@ const weatherTool = createTool({
   schema: z.object({
     city: z.string().describe("The city to get weather for"),
   }),
-  fn: async (params) => getWeather(params.city),
+  fn: async params => getWeather(params.city),
 });
 
 async function main() {
@@ -404,7 +406,7 @@ async function main() {
     .withTools(
       new GoogleSearch(), // Built-in tool
       new FileOperationsTool(), // Another built-in tool
-      weatherTool
+      weatherTool,
     )
     .build();
 
@@ -462,7 +464,7 @@ import {
 const agent = await AgentBuilder.create("strategic_agent")
   .withModel("gemini-2.5-flash")
   .withDescription(
-    "A strategic agent that uses planning and tools to accomplish complex tasks"
+    "A strategic agent that uses planning and tools to accomplish complex tasks",
   )
   .withPlanner(new PlanReActPlanner())
   .withTools(new GoogleSearch(), new FileOperationsTool())
@@ -481,7 +483,7 @@ import { AgentBuilder, BuiltInCodeExecutor } from "@iqai/adk";
 const agent = await AgentBuilder.create("strategic_agent")
   .withModel("gemini-2.5-flash")
   .withDescription(
-    "A strategic agent that uses planning and tools to accomplish complex tasks"
+    "A strategic agent that uses planning and tools to accomplish complex tasks",
   )
   .withCodeExecutor(new BuiltInCodeExecutor())
   .build();
@@ -497,7 +499,7 @@ Executes before the agent processes any request. Perfect for logging, authentica
 const agent = await AgentBuilder.create("monitored_agent")
   .withModel("gemini-2.5-flash")
   .withDescription("An agent with monitoring capabilities")
-  .withBeforeAgentCallback(async (context) => {
+  .withBeforeAgentCallback(async context => {
     console.log("Before agent execution:", context);
     return undefined;
   })
@@ -514,7 +516,7 @@ Executes after the agent completes processing. Ideal for logging results, cleanu
 const agent = await AgentBuilder.create("monitored_agent")
   .withModel("gemini-2.5-flash")
   .withDescription("An agent with monitoring capabilities")
-  .withAfterAgentCallback(async (context) => {
+  .withAfterAgentCallback(async context => {
     console.log("After agent execution:", context);
     return undefined;
   })
@@ -603,7 +605,7 @@ import { AgentBuilder, InMemoryMemoryService } from "@iqai/adk";
 const agent = await AgentBuilder.create("my_agent")
   .withModel("gemini-2.5-flash")
   .withDescription(
-    "An agent that utilizes memory for enhanced context retention"
+    "An agent that utilizes memory for enhanced context retention",
   )
   .withMemory(new InMemoryMemoryService())
   .build();
@@ -665,7 +667,7 @@ async function main() {
     "my_app",
     "user-123",
     { conversationCount: 1 },
-    "session-456"
+    "session-456",
   );
 
   const agent = await AgentBuilder.create("continuing_agent")
@@ -677,7 +679,7 @@ async function main() {
 
   // User asks the agent to pick up the previous conversation
   const response = await agent.runner.ask(
-    "Can you summarize where we left off?"
+    "Can you summarize where we left off?",
   );
   console.log("response: ", response);
 }
@@ -804,7 +806,7 @@ const summaryGenerator = getReportingAgent();
 const agent = await AgentBuilder.create("my_agent")
   .withModel("gemini-2.5-flash")
   .withDescription(
-    "An agent that performs sentiment analysis, topic extraction, and summarization"
+    "An agent that performs sentiment analysis, topic extraction, and summarization",
   )
   .asParallel([sentimentAnalyzer, topicExtractor, summaryGenerator])
   .build();
@@ -828,7 +830,7 @@ const validator = getValidatorAgent();
 const agent = await AgentBuilder.create("my_agent")
   .withModel("gemini-2.5-flash")
   .withDescription(
-    "An agent that performs sentiment analysis, topic extraction, and summarization"
+    "An agent that performs sentiment analysis, topic extraction, and summarization",
   )
   .asLoop([problemSolver, validator], 5) // Max 5 iterations
   .build();
@@ -882,16 +884,18 @@ const workflowNodes = [
 const agent = await AgentBuilder.create("my_agent")
   .withModel("gemini-2.5-flash")
   .withDescription(
-    "An agent that performs sentiment analysis, topic extraction, and summarization"
+    "An agent that performs sentiment analysis, topic extraction, and summarization",
   )
   .asLangGraph(workflowNodes, "start-node")
   .build();
 ```
 
 <Callout type="info" title="Choosing Agent Types">
-  **You can only use ONE agent type method per builder.** If you don't use any
-  agent type method, `AgentBuilder` creates a single LLM agent with your
-  configuration.
+
+**You can only use ONE agent type method per builder.** If you don't use any
+agent type method, `AgentBuilder` creates a single LLM agent with your
+configuration.
+
 </Callout>
 
 ### build()
@@ -978,9 +982,11 @@ console.log("response: ", response); // Direct string response
 - **Advanced features** - Need access to all configuration options and callbacks
 
 <Callout type="info" title="Migration Path">
-  Start with `AgentBuilder` for rapid development, then migrate to direct LLM
-  Agents when you need more control. `AgentBuilder` essentially creates LLM
-  agents under the hood with smart defaults.
+
+Start with `AgentBuilder` for rapid development, then migrate to direct LLM
+Agents when you need more control. `AgentBuilder` essentially creates LLM
+agents under the hood with smart defaults.
+
 </Callout>
 
 ## Complete Configuration Example
@@ -1016,11 +1022,11 @@ const { runner } = await AgentBuilder.create("advanced_agent")
     maxLlmCalls: 50,
     saveInputBlobsAsArtifacts: true,
   })
-  .withBeforeAgentCallback(async (context) => {
+  .withBeforeAgentCallback(async context => {
     console.log(`Starting research task: ${context.sessionId}`);
     return undefined;
   })
-  .withAfterToolCallback(async (context) => {
+  .withAfterToolCallback(async context => {
     console.log(`Tool ${context.name} completed`);
   })
   .build();

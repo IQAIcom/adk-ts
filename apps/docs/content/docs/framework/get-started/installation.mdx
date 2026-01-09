@@ -31,46 +31,19 @@ npx @iqai/adk-cli new
 You can also install the CLI globally and use it from anywhere:
 
 <Tabs items={["npm", "yarn", "pnpm"]}>
-  <Tab value="npm">
-    ```bash
-    npm install -g @iqai/adk-cli
-    adk new
-    ```
-  </Tab>
-  <Tab value="yarn">
-    ```bash
-    yarn global add @iqai/adk-cli
-    adk new
-    ```
-  </Tab>
-  <Tab value="pnpm">
-    ```bash
-    pnpm add -g @iqai/adk-cli
-    adk new
-    ```
-  </Tab>
+  <Tab value="npm">```bash npm install -g @iqai/adk-cli adk new ```</Tab>
+  <Tab value="yarn">```bash yarn global add @iqai/adk-cli adk new ```</Tab>
+  <Tab value="pnpm">```bash pnpm add -g @iqai/adk-cli adk new ```</Tab>
 </Tabs>
 
 ### Method 2: Manual Installation
 
 To add ADK-TS to an existing project, use your preferred package manager:
 
-<Tabs items={['npm', 'yarn', 'pnpm']}>
-  <Tab value="npm">
-    ```bash
-    npm install @iqai/adk
-    ```
-  </Tab>
-  <Tab value="yarn">
-    ```bash
-    yarn add @iqai/adk
-    ```
-  </Tab>
-  <Tab value="pnpm">
-    ```bash
-    pnpm add @iqai/adk
-    ```
-  </Tab>
+<Tabs items={["npm", "yarn", "pnpm"]}>
+  <Tab value="npm">```bash npm install @iqai/adk ```</Tab>
+  <Tab value="yarn">```bash yarn add @iqai/adk ```</Tab>
+  <Tab value="pnpm">```bash pnpm add @iqai/adk ```</Tab>
 </Tabs>
 
 ## Common Errors
@@ -78,25 +51,33 @@ To add ADK-TS to an existing project, use your preferred package manager:
 If you run into trouble, here are a few common issues and their solutions:
 
 <Callout type="warn" title="Node.js Version Mismatch">
-  Errors during installation are often caused by an incompatible Node.js
-  version. Verify you are using `v22.0` or higher: `node --version`
+
+Errors during installation are often caused by an incompatible Node.js
+version. Verify you are using `v22.0` or higher: `node --version`
+
 </Callout>
 
 <Callout type="warn" title="TypeScript Compatibility">
-  For TypeScript projects, using a version lower than `v5.3` may cause
-  type-related errors. Check your version with: `npx tsc --version`
+
+For TypeScript projects, using a version lower than `v5.3` may cause
+type-related errors. Check your version with: `npx tsc --version`
+
 </Callout>
 
 <Callout type="warn" title="API Key Configuration Issues">
-  If you get authentication errors, ensure:
-  - You have imported and configured dotenv in your agent file:
-    ```typescript
-    import * as dotenv from "dotenv";
-    dotenv.config();
-    ```
-  - Your API key is correctly set in the `.env` file
-  - You have access to the model you're trying to use
-  - The `.env` file is in the project root directory
+
+If you get authentication errors, ensure: - You have imported and configured
+dotenv in your agent file:
+
+```typescript
+import * as dotenv from "dotenv";
+dotenv.config();
+```
+
+- Your API key is correctly set in the `.env` file
+- You have access to the model you're trying to use
+- The `.env` file is in the project root directory
+
 </Callout>
 
 ## Next Steps

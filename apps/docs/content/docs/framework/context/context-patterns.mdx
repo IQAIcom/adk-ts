@@ -3,7 +3,7 @@ title: Context Patterns
 description: Best practices and common patterns for using context objects effectively
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 Learn common patterns and best practices for effective context usage across different scenarios in ADK applications.
 
@@ -49,8 +49,8 @@ Use the minimal context type that provides the required functionality:
 // Good - ReadonlyContext for safe read operations
 function analyzeState(ctx: ReadonlyContext) {
   return {
-    userCount: Object.keys(ctx.state).filter(k => k.startsWith('user.')).length,
-    sessionAge: Date.now() - (ctx.state.sessionStart || Date.now())
+    userCount: Object.keys(ctx.state).filter(k => k.startsWith("user.")).length,
+    sessionAge: Date.now() - (ctx.state.sessionStart || Date.now()),
   };
 }
 
@@ -97,7 +97,7 @@ function validateAndUpdateState(ctx: CallbackContext, updates: any) {
   const schema = {
     userPreferences: { theme: "string", language: "string" },
     currentTask: "string",
-    progress: "number"
+    progress: "number",
   };
 
   // Backup current state
@@ -109,7 +109,9 @@ function validateAndUpdateState(ctx: CallbackContext, updates: any) {
       if (schema[key]) {
         const expectedType = schema[key];
         if (typeof value !== expectedType) {
-          throw new Error(`Invalid type for ${key}: expected ${expectedType}, got ${typeof value}`);
+          throw new Error(
+            `Invalid type for ${key}: expected ${expectedType}, got ${typeof value}`,
+          );
         }
       }
     }
@@ -117,11 +119,10 @@ function validateAndUpdateState(ctx: CallbackContext, updates: any) {
     // Apply validated updates
     Object.assign(ctx.state, updates, {
       lastUpdate: new Date().toISOString(),
-      version: (ctx.state.version || 0) + 1
+      version: (ctx.state.version || 0) + 1,
     });
 
     return { success: true, version: ctx.state.version };
-
   } catch (error) {
     // Restore on validation failure
     Object.assign(ctx.state, JSON.parse(backup));
@@ -135,7 +136,10 @@ function validateAndUpdateState(ctx: CallbackContext, updates: any) {
 Ensure state consistency with atomic operations:
 
 ```typescript
-async function atomicStateUpdate(ctx: CallbackContext, operation: () => Promise<void>) {
+async function atomicStateUpdate(
+  ctx: CallbackContext,
+  operation: () => Promise<void>,
+) {
   const stateSnapshot = JSON.stringify(ctx.state);
   const transactionId = `tx_${Date.now()}`;
 
@@ -143,7 +147,7 @@ async function atomicStateUpdate(ctx: CallbackContext, operation: () => Promise<
     // Mark transaction start
     ctx.state._transaction = {
       id: transactionId,
-      started: new Date().toISOString()
+      started: new Date().toISOString(),
     };
 
     // Execute operation
@@ -152,7 +156,6 @@ async function atomicStateUpdate(ctx: CallbackContext, operation: () => Promise<
     // Mark transaction complete
     ctx.state._transaction.completed = new Date().toISOString();
     delete ctx.state._transaction;
-
   } catch (error) {
     // Rollback on failure
     Object.assign(ctx.state, JSON.parse(stateSnapshot));
@@ -161,7 +164,7 @@ async function atomicStateUpdate(ctx: CallbackContext, operation: () => Promise<
     ctx.state.lastFailedTransaction = {
       id: transactionId,
       error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     throw error;
@@ -183,9 +186,9 @@ async function resilientServiceOperation(ctx: ToolContext, query: string) {
     sources: {
       memory: null as any,
       artifacts: null as any,
-      state: ctx.state
+      state: ctx.state,
     },
-    fallbacksUsed: [] as string[]
+    fallbacksUsed: [] as string[],
   };
 
   // Try memory service first
@@ -202,10 +205,12 @@ async function resilientServiceOperation(ctx: ToolContext, query: string) {
     // Fallback to state-based search
     const stateKeys = Object.keys(ctx.state);
     const relevantKeys = stateKeys.filter(key =>
-      key.toLowerCase().includes(query.toLowerCase())
+      key.toLowerCase().includes(query.toLowerCase()),
     );
     results.sources.memory = {
-      memories: relevantKeys.map(key => ({ content: `${key}: ${ctx.state[key]}` }))
+      memories: relevantKeys.map(key => ({
+        content: `${key}: ${ctx.state[key]}`,
+      })),
     };
   }
 
@@ -214,7 +219,7 @@ async function resilientServiceOperation(ctx: ToolContext, query: string) {
     if (ctx.listArtifacts) {
       const artifacts = await ctx.listArtifacts();
       results.sources.artifacts = artifacts.filter(name =>
-        name.toLowerCase().includes(query.toLowerCase())
+        name.toLowerCase().includes(query.toLowerCase()),
       );
     } else {
       results.fallbacksUsed.push("artifacts-unavailable");
@@ -244,7 +249,7 @@ async function coordinatedOperation(ctx: InvocationContext, operation: string) {
   ctx.session.state.activeCoordinations[coordinationId] = {
     operation,
     started: new Date().toISOString(),
-    services: []
+    services: [],
   };
 
   try {
@@ -253,11 +258,13 @@ async function coordinatedOperation(ctx: InvocationContext, operation: string) {
       const memoryResult = await ctx.memoryService.searchMemory({
         query: operation,
         appName: ctx.appName,
-        userId: ctx.userId
+        userId: ctx.userId,
       });
 
       results.push({ service: "memory", success: true, data: memoryResult });
-      ctx.session.state.activeCoordinations[coordinationId].services.push("memory");
+      ctx.session.state.activeCoordinations[coordinationId].services.push(
+        "memory",
+      );
     }
 
     // Artifact service operation
@@ -265,28 +272,32 @@ async function coordinatedOperation(ctx: InvocationContext, operation: string) {
       const artifacts = await ctx.artifactService.listArtifactKeys({
         appName: ctx.appName,
         userId: ctx.userId,
-        sessionId: ctx.session.id
+        sessionId: ctx.session.id,
       });
 
       results.push({ service: "artifact", success: true, data: artifacts });
-      ctx.session.state.activeCoordinations[coordinationId].services.push("artifact");
+      ctx.session.state.activeCoordinations[coordinationId].services.push(
+        "artifact",
+      );
     }
 
     // Session service operation
     await ctx.sessionService.updateSession(ctx.session);
     results.push({ service: "session", success: true, data: "updated" });
-    ctx.session.state.activeCoordinations[coordinationId].services.push("session");
+    ctx.session.state.activeCoordinations[coordinationId].services.push(
+      "session",
+    );
 
     // Mark as completed
-    ctx.session.state.activeCoordinations[coordinationId].completed = new Date().toISOString();
+    ctx.session.state.activeCoordinations[coordinationId].completed =
+      new Date().toISOString();
 
     return results;
-
   } catch (error) {
     // Handle coordination failure
     ctx.session.state.activeCoordinations[coordinationId].error = {
       message: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
     throw error;
   }
@@ -309,16 +320,15 @@ async function recoverableOperation(ctx: CallbackContext | ToolContext) {
 
     // Save successful result
     await ctx.saveArtifact(`result_${operationId}.json`, {
-      text: JSON.stringify(result, null, 2)
+      text: JSON.stringify(result, null, 2),
     });
 
     return result;
-
   } catch (primaryError) {
     console.warn("Primary operation failed:", primaryError);
 
     // Try recovery based on context capabilities
-    if ('searchMemory' in ctx && ctx.searchMemory) {
+    if ("searchMemory" in ctx && ctx.searchMemory) {
       // ToolContext - try memory-based recovery
       try {
         const memoryResults = await ctx.searchMemory("similar operations");
@@ -328,7 +338,7 @@ async function recoverableOperation(ctx: CallbackContext | ToolContext) {
           ctx.state.recoveryUsed = {
             method: "memory",
             operationId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           };
 
           return { recovered: true, data: recoveryData };
@@ -344,7 +354,7 @@ async function recoverableOperation(ctx: CallbackContext | ToolContext) {
       ctx.state.recoveryUsed = {
         method: "state-fallback",
         operationId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       return { recovered: true, data: fallbackData };
@@ -353,8 +363,11 @@ async function recoverableOperation(ctx: CallbackContext | ToolContext) {
     // No recovery possible - save error and rethrow
     ctx.state.lastOperationError = {
       operationId,
-      error: primaryError instanceof Error ? primaryError.message : String(primaryError),
-      timestamp: new Date().toISOString()
+      error:
+        primaryError instanceof Error
+          ? primaryError.message
+          : String(primaryError),
+      timestamp: new Date().toISOString(),
     };
 
     throw primaryError;
@@ -374,17 +387,16 @@ Handle errors that affect multiple context layers:
 ```typescript
 class ErrorHandlingAgent extends BaseAgent {
   protected async *runAsyncImpl(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     const errorContext = {
       invocationId: context.invocationId,
       agentName: this.name,
-      errors: [] as any[]
+      errors: [] as any[],
     };
 
     try {
       yield* this.processWithErrorHandling(context, errorContext);
-
     } catch (criticalError) {
       // Handle critical errors that affect the entire invocation
       yield this.createCriticalErrorEvent(context, criticalError, errorContext);
@@ -396,7 +408,7 @@ class ErrorHandlingAgent extends BaseAgent {
 
   private async *processWithErrorHandling(
     context: InvocationContext,
-    errorContext: any
+    errorContext: any,
   ): AsyncGenerator<Event, void, unknown> {
     // Try normal processing with error tracking
     try {
@@ -409,16 +421,19 @@ class ErrorHandlingAgent extends BaseAgent {
           const memories = await context.memoryService.searchMemory({
             query: "user context",
             appName: context.appName,
-            userId: context.userId
+            userId: context.userId,
           });
 
-          context.session.state.contextMemories = memories.memories?.length || 0;
-
+          context.session.state.contextMemories =
+            memories.memories?.length || 0;
         } catch (memoryError) {
           errorContext.errors.push({
             service: "memory",
-            error: memoryError instanceof Error ? memoryError.message : String(memoryError),
-            timestamp: new Date().toISOString()
+            error:
+              memoryError instanceof Error
+                ? memoryError.message
+                : String(memoryError),
+            timestamp: new Date().toISOString(),
           });
 
           // Continue without memory - non-critical error
@@ -430,15 +445,14 @@ class ErrorHandlingAgent extends BaseAgent {
         invocationId: context.invocationId,
         author: this.name,
         content: {
-          parts: [{ text: "Processing completed with error handling" }]
-        }
+          parts: [{ text: "Processing completed with error handling" }],
+        },
       });
-
     } catch (error) {
       errorContext.errors.push({
         stage: "processing",
         error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       throw error;
     }
@@ -447,18 +461,20 @@ class ErrorHandlingAgent extends BaseAgent {
   private createCriticalErrorEvent(
     context: InvocationContext,
     error: unknown,
-    errorContext: any
+    errorContext: any,
   ): Event {
     return new Event({
       invocationId: context.invocationId,
       author: this.name,
       content: {
-        parts: [{
-          text: `Critical error occurred. Error details saved to session state.`
-        }]
+        parts: [
+          {
+            text: `Critical error occurred. Error details saved to session state.`,
+          },
+        ],
       },
       errorCode: "CRITICAL_ERROR",
-      errorMessage: error instanceof Error ? error.message : String(error)
+      errorMessage: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -472,7 +488,10 @@ Cache expensive context operations:
 
 ```typescript
 class CachingToolContext {
-  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+  private cache = new Map<
+    string,
+    { data: any; timestamp: number; ttl: number }
+  >();
 
   constructor(private baseContext: ToolContext) {}
 
@@ -482,7 +501,8 @@ class CachingToolContext {
 
     if (cached && Date.now() - cached.timestamp < cached.ttl) {
       // Update base context state to reflect cache hit
-      this.baseContext.state.cacheHits = (this.baseContext.state.cacheHits || 0) + 1;
+      this.baseContext.state.cacheHits =
+        (this.baseContext.state.cacheHits || 0) + 1;
       return cached.data;
     }
 
@@ -493,11 +513,12 @@ class CachingToolContext {
     this.cache.set(cacheKey, {
       data: result,
       timestamp: Date.now(),
-      ttl: ttlMs
+      ttl: ttlMs,
     });
 
     // Update context state
-    this.baseContext.state.cacheMisses = (this.baseContext.state.cacheMisses || 0) + 1;
+    this.baseContext.state.cacheMisses =
+      (this.baseContext.state.cacheMisses || 0) + 1;
 
     return result;
   }
@@ -515,7 +536,7 @@ class CachingToolContext {
     this.cache.set(cacheKey, {
       data: result,
       timestamp: Date.now(),
-      ttl: ttlMs
+      ttl: ttlMs,
     });
 
     return result;
@@ -547,13 +568,13 @@ async function batchContextOperations(ctx: ToolContext, operations: any[]) {
   ctx.state.activeBatches[batchId] = {
     started: new Date().toISOString(),
     totalOps: operations.length,
-    completed: 0
+    completed: 0,
   };
 
   try {
     // Batch memory queries
     if (memoryQueries.length > 0) {
-      const memoryPromises = memoryQueries.map(async (op) => {
+      const memoryPromises = memoryQueries.map(async op => {
         try {
           const result = await ctx.searchMemory(op.query);
           ctx.state.activeBatches[batchId].completed++;
@@ -570,7 +591,7 @@ async function batchContextOperations(ctx: ToolContext, operations: any[]) {
     // Batch artifact operations
     if (artifactOps.length > 0) {
       // Batch artifact loading
-      const artifactPromises = artifactOps.map(async (op) => {
+      const artifactPromises = artifactOps.map(async op => {
         try {
           let result;
           if (op.action === "list") {
@@ -599,7 +620,7 @@ async function batchContextOperations(ctx: ToolContext, operations: any[]) {
           results.push({
             operation: op,
             result: ctx.state[op.key],
-            success: true
+            success: true,
           });
         }
         ctx.state.activeBatches[batchId].completed++;
@@ -607,7 +628,7 @@ async function batchContextOperations(ctx: ToolContext, operations: any[]) {
         results.push({
           operation: op,
           error: String(error),
-          success: false
+          success: false,
         });
       }
     });
@@ -620,13 +641,12 @@ async function batchContextOperations(ctx: ToolContext, operations: any[]) {
       total: operations.length,
       successful: results.filter(r => r.success).length,
       failed: results.filter(r => !r.success).length,
-      results
+      results,
     };
-
   } catch (error) {
     ctx.state.activeBatches[batchId].error = {
       message: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
     throw error;
   }
@@ -697,7 +717,7 @@ function createMockReadonlyContext(state: any = {}): ReadonlyContext {
     userContent: { parts: [{ text: "test input" }] },
     invocationId: "test-invocation-123",
     agentName: "test-agent",
-    state: Object.freeze(state)
+    state: Object.freeze(state),
   } as ReadonlyContext;
 }
 
@@ -711,12 +731,12 @@ function createMockToolContext(state: any = {}): ToolContext {
       transferToAgent: null,
       skipSummarization: false,
       stateDelta: {},
-      artifactDelta: {}
+      artifactDelta: {},
     },
     loadArtifact: jest.fn(),
     saveArtifact: jest.fn(),
     listArtifacts: jest.fn().mockResolvedValue([]),
-    searchMemory: jest.fn().mockResolvedValue({ memories: [] })
+    searchMemory: jest.fn().mockResolvedValue({ memories: [] }),
   } as any;
 }
 

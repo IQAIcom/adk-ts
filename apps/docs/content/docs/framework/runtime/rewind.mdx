@@ -3,7 +3,7 @@ title: Session Rewind
 description: Travel back in time by restoring sessions to a previous state before a specific invocation
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 Session rewind allows you to "undo" a conversation by restoring the session to its state before a specific invocation. This is useful for debugging, A/B testing different agent responses, recovering from errors, or implementing user-facing "undo" functionality.
 
@@ -16,7 +16,11 @@ When you rewind a session, the framework restores:
 - **Event History**: Events from the target invocation onwards are marked with a rewind marker, so they're excluded from future LLM context
 
 <Callout type="info" title="History is preserved">
-Events are never actually deleted—they're kept in the history but filtered out when building LLM context. This maintains audit trails while effectively "undoing" the conversation.
+
+Events are never actually deleted—they're kept in the history but filtered out
+when building LLM context. This maintains audit trails while effectively
+"undoing" the conversation.
+
 </Callout>
 
 ## Basic Usage
@@ -24,18 +28,18 @@ Events are never actually deleted—they're kept in the history but filtered out
 The `Runner` class provides the `rewind` method:
 
 ```typescript
-import { Runner } from '@iqai/adk';
+import { Runner } from "@iqai/adk";
 
 const runner = new Runner({
   agent,
   sessionService,
-  artifactService
+  artifactService,
 });
 
 await runner.rewind({
-  userId: 'user-123',
-  sessionId: 'session-456',
-  rewindBeforeInvocationId: 'invocation-789'
+  userId: "user-123",
+  sessionId: "session-456",
+  rewindBeforeInvocationId: "invocation-789",
 });
 ```
 
@@ -52,11 +56,12 @@ The runner scans the event history to compute what state changes happened during
 ```typescript
 const stateDelta = await runner._computeStateDeltaForRewind(
   session,
-  rewindBeforeInvocationId
+  rewindBeforeInvocationId,
 );
 ```
 
 This produces a delta containing:
+
 - Keys that were modified (with their "before" values)
 - Keys that were created (marked as `null` to delete them)
 
@@ -67,7 +72,7 @@ Similarly, the runner determines which artifact versions to restore:
 ```typescript
 const artifactDelta = await runner._computeArtifactDeltaForRewind(
   session,
-  rewindBeforeInvocationId
+  rewindBeforeInvocationId,
 );
 ```
 
@@ -76,6 +81,7 @@ This finds the most recent version of each modified artifact that existed before
 ### 3. Persistence
 
 Finally, the runner:
+
 1. Creates a rewind event marking the cutoff point
 2. Applies the state delta (reverting or deleting keys)
 3. Applies the artifact delta (restoring previous versions)
@@ -83,13 +89,13 @@ Finally, the runner:
 ```typescript
 const rewindEvent = new Event({
   invocationId: newInvocationId,
-  author: 'system',
-  content: { parts: [{ text: 'Session rewound' }] },
+  author: "system",
+  content: { parts: [{ text: "Session rewound" }] },
   actions: new EventActions({
     rewindBeforeInvocationId,
     stateDelta,
-    artifactDelta
-  })
+    artifactDelta,
+  }),
 });
 
 await sessionService.appendEvent(session, rewindEvent);
@@ -100,7 +106,11 @@ await sessionService.appendEvent(session, rewindEvent);
 Here's how you might add an "undo" feature to a chat interface:
 
 ```typescript
-import { Runner, InMemorySessionService, InMemoryArtifactService } from '@iqai/adk';
+import {
+  Runner,
+  InMemorySessionService,
+  InMemoryArtifactService,
+} from "@iqai/adk";
 
 class ChatApp {
   private runner: Runner;
@@ -110,7 +120,7 @@ class ChatApp {
     this.runner = new Runner({
       agent,
       sessionService: new InMemorySessionService(),
-      artifactService: new InMemoryArtifactService()
+      artifactService: new InMemoryArtifactService(),
     });
   }
 
@@ -118,8 +128,8 @@ class ChatApp {
     const config = {
       userId,
       sessionId,
-      appName: 'chat-app',
-      userMessage: message
+      appName: "chat-app",
+      userMessage: message,
     };
 
     const events = [];
@@ -135,27 +145,31 @@ class ChatApp {
 
   async undo(userId: string, sessionId: string) {
     if (!this.lastInvocationId) {
-      throw new Error('No invocation to undo');
+      throw new Error("No invocation to undo");
     }
 
     await this.runner.rewind({
       userId,
       sessionId,
-      rewindBeforeInvocationId: this.lastInvocationId
+      rewindBeforeInvocationId: this.lastInvocationId,
     });
 
     this.lastInvocationId = undefined;
-    console.log('Last message undone');
+    console.log("Last message undone");
   }
 }
 
 const app = new ChatApp(myAgent);
 
-await app.sendMessage('user-1', 'session-1', 'What is 2+2?');
+await app.sendMessage("user-1", "session-1", "What is 2+2?");
 
-await app.sendMessage('user-1', 'session-1', 'Actually, tell me about quantum physics');
+await app.sendMessage(
+  "user-1",
+  "session-1",
+  "Actually, tell me about quantum physics",
+);
 
-await app.undo('user-1', 'session-1');
+await app.undo("user-1", "session-1");
 ```
 
 ## Example: Error Recovery
@@ -175,14 +189,14 @@ async function runWithErrorRecovery(runner, config) {
       }
     }
   } catch (error) {
-    console.error('Agent failed:', error);
+    console.error("Agent failed:", error);
 
     if (lastSuccessfulInvocation) {
-      console.log('Rewinding to last successful state...');
+      console.log("Rewinding to last successful state...");
       await runner.rewind({
         userId: config.userId,
         sessionId: config.sessionId,
-        rewindBeforeInvocationId: lastSuccessfulInvocation
+        rewindBeforeInvocationId: lastSuccessfulInvocation,
       });
     }
 
@@ -224,9 +238,9 @@ if (value === null || value === undefined) {
 Artifacts support references to other artifacts using special URIs:
 
 ```typescript
-import { getArtifactUri, parseArtifactUri } from '@iqai/adk';
+import { getArtifactUri, parseArtifactUri } from "@iqai/adk";
 
-const uri = getArtifactUri('session', 'session-id', 'report.pdf', 2);
+const uri = getArtifactUri("session", "session-id", "report.pdf", 2);
 
 const { scope, scopeId, filename, version } = parseArtifactUri(uri);
 ```
@@ -243,6 +257,7 @@ pnpm test runners-rewind
 ```
 
 Tests cover:
+
 - State restoration across scopes (`user:`, `app:`, unprefixed)
 - Artifact version rollback
 - Event history filtering
@@ -251,7 +266,11 @@ Tests cover:
 ## Limitations and Considerations
 
 <Callout type="warn" title="External side effects">
-Rewind only affects session state and artifacts managed by ADK. External side effects (API calls, database writes, sent emails) cannot be automatically undone.
+
+Rewind only affects session state and artifacts managed by ADK. External side
+effects (API calls, database writes, sent emails) cannot be automatically
+undone.
+
 </Callout>
 
 - **No external rollback**: If your tool made external API calls or wrote to external databases, those changes persist
@@ -262,12 +281,14 @@ Rewind only affects session state and artifacts managed by ADK. External side ef
 ## When to Use Rewind
 
 Good use cases:
+
 - **Debugging**: Try different responses without starting over
 - **User control**: Let users undo mistakes or unwanted agent actions
 - **A/B testing**: Compare agent behavior by rewinding and trying alternatives
 - **Error recovery**: Automatically revert to a known good state after failures
 
 Not recommended for:
+
 - **Real-time streaming undo**: Rewind is designed for completed invocations
 - **Fine-grained version control**: Use git or dedicated versioning systems for code artifacts
 - **Audit compliance**: While events are preserved, rewind complicates audit trails
@@ -281,17 +302,17 @@ Not recommended for:
     href="/docs/framework/session-state-memory/session"
   />
 
-  <Card
-    title="🗂️ State Management"
-    description="Working with session state and scopes"
-    href="/docs/framework/session-state-memory/state"
-  />
+<Card
+  title="🗂️ State Management"
+  description="Working with session state and scopes"
+  href="/docs/framework/session-state-memory/state"
+/>
 
-  <Card
-    title="📦 Artifacts"
-    description="Managing files and binary data"
-    href="/docs/framework/artifacts"
-  />
+<Card
+  title="📦 Artifacts"
+  description="Managing files and binary data"
+  href="/docs/framework/artifacts"
+/>
 
   <Card
     title="🔄 Invocation Lifecycle"

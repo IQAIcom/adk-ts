@@ -72,7 +72,7 @@ Before contributing to the ADK CLI, ensure you have:
    ```bash
    # Link the CLI globally for testing
    npm link
-   
+
    # Or run directly with pnpm
    pnpm start --help
    ```
@@ -184,7 +184,7 @@ We welcome various types of contributions to improve the CLI:
    # Build and link for testing
    pnpm build
    npm link
-   
+
    # Test commands
    adk --help
    adk new test-project
@@ -236,11 +236,11 @@ To add a new CLI command:
 
    ```typescript
    // src/cli/my-command.ts
-   import { Command, CommandRunner } from 'nest-commander';
-   
+   import { Command, CommandRunner } from "nest-commander";
+
    @Command({
-     name: 'my-command',
-     description: 'Description of what the command does',
+     name: "my-command",
+     description: "Description of what the command does",
    })
    export class MyCommand extends CommandRunner {
      async run(passedParams: string[]): Promise<void> {
@@ -253,8 +253,8 @@ To add a new CLI command:
 
    ```typescript
    // src/cli/cli.module.ts
-   import { MyCommand } from './my-command';
-   
+   import { MyCommand } from "./my-command";
+
    @Module({
      providers: [
        // ... other commands
@@ -268,7 +268,7 @@ To add a new CLI command:
 
    ```typescript
    // src/cli/my-command.spec.ts
-   describe('MyCommand', () => {
+   describe("MyCommand", () => {
      // Test implementation
    });
    ```

@@ -741,7 +741,7 @@ const { runner } = await AgentBuilder.create("content_workflow")
   .withAgent(
     new SequentialAgent({
       subAgents: [processorAgent, validatorAgent, formatterAgent],
-    })
+    }),
   )
   .withCallback(new ConsoleCallback())
   .build();
@@ -759,7 +759,7 @@ const { runner: v2Runner } = await AgentBuilder.create("content_workflow_v2")
         new ParallelAgent({ subAgents: [validatorAgent, analyzerAgent] }),
         formatterAgent,
       ],
-    })
+    }),
   )
   .build();
 ```
@@ -891,10 +891,10 @@ class MonitoringCallback extends BaseCallback {
   async onAgentTransfer(
     from: BaseAgent,
     to: BaseAgent,
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ) {
     console.log(
-      `[${new Date().toISOString()}] Transfer: ${from.name} → ${to.name}`
+      `[${new Date().toISOString()}] Transfer: ${from.name} → ${to.name}`,
     );
     console.log(`  Reason: ${ctx.session.state.get("transfer_reason")}`);
   }
@@ -939,12 +939,12 @@ const resourceControlledWorkflow = new LoopAgent({
 // ✅ Good: Timeout wrapper
 async function withTimeout<T>(
   promise: Promise<T>,
-  timeoutMs: number
+  timeoutMs: number,
 ): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Operation timed out")), timeoutMs)
+      setTimeout(() => reject(new Error("Operation timed out")), timeoutMs),
     ),
   ]);
 }
@@ -952,7 +952,7 @@ async function withTimeout<T>(
 // Usage
 const result = await withTimeout(
   runner.ask("Process this"),
-  30000 // 30 second timeout
+  30000, // 30 second timeout
 );
 ```
 

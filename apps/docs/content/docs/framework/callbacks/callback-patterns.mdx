@@ -3,7 +3,7 @@ title: Callback Patterns
 description: Design patterns and best practices for agent, model, and tool callbacks in the TypeScript ADK
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 Callbacks give you precise control over the agent lifecycle, LLM requests/responses, and tool execution. This guide presents callback-centric patterns using the TypeScript ADK, with examples built around `AgentBuilder` and references to `CallbackContext` and `ToolContext`.
 
@@ -17,7 +17,11 @@ Callbacks give you precise control over the agent lifecycle, LLM requests/respon
 State writes inside callbacks are tracked and persisted by the `SessionService`. This makes it simple to pass information across the agent run.
 
 <Callout>
-These examples use the TypeScript ADK API. Configure callbacks via `AgentBuilder` chain methods and rely on canonicalization to support single callbacks or arrays.
+
+These examples use the TypeScript ADK API. Configure callbacks via
+`AgentBuilder` chain methods and rely on canonicalization to support single
+callbacks or arrays.
+
 </Callout>
 
 ## Builder Setup
@@ -96,19 +100,21 @@ export { agent, runner };
 ```ts
 builder
   .withBeforeModelCallback(async (ctx, req) => {
-    const forbidden = ['forbidden-topic', 'profanity'];
+    const forbidden = ["forbidden-topic", "profanity"];
     const text = (req.contents ?? [])
-      .filter((c) => c.type === 'text')
+      .filter(c => c.type === "text")
       .map((c: { text: string }) => c.text)
-      .join('\n');
-    if (forbidden.some((k) => text.includes(k))) {
-      return { contents: [{ type: 'text', text: 'Sorry, I can’t help with that.' }] };
+      .join("\n");
+    if (forbidden.some(k => text.includes(k))) {
+      return {
+        contents: [{ type: "text", text: "Sorry, I can’t help with that." }],
+      };
     }
     return req;
   })
   .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    if (tool.name === 'transferFunds' && toolCtx.state['user_tier'] !== 'pro') {
-      return { error: 'This operation requires a pro account.' };
+    if (tool.name === "transferFunds" && toolCtx.state["user_tier"] !== "pro") {
+      return { error: "This operation requires a pro account." };
     }
   });
 ```
@@ -122,14 +128,16 @@ builder
 builder
   .withAfterToolCallback(async (tool, args, toolCtx, result) => {
     // Save transaction id for later use
-    if (result && typeof result === 'object' && 'transaction_id' in result) {
-      toolCtx.state['last_transaction_id'] = (result as { transaction_id: any }).transaction_id;
+    if (result && typeof result === "object" && "transaction_id" in result) {
+      toolCtx.state["last_transaction_id"] = (
+        result as { transaction_id: any }
+      ).transaction_id;
     }
     return result;
   })
-  .withBeforeAgentCallback(async (ctx) => {
+  .withBeforeAgentCallback(async ctx => {
     // Personalize behavior based on prior state
-    const tier = ctx.state['user_tier'] ?? 'free';
+    const tier = ctx.state["user_tier"] ?? "free";
     ctx.logger?.info?.(`Running agent for tier: ${tier}`);
   });
 ```
@@ -142,11 +150,13 @@ builder
 builder
   .withBeforeToolCallback(async (tool, args, toolCtx) => {
     toolCtx.logger?.info?.(
-      `Before Tool: ${tool.name} (invocation: ${toolCtx.invocationId}) args=${JSON.stringify(args)}`
+      `Before Tool: ${tool.name} (invocation: ${toolCtx.invocationId}) args=${JSON.stringify(args)}`,
     );
   })
   .withAfterModelCallback(async (ctx, res) => {
-    ctx.logger?.info?.(`After Model: ${ctx.agent.name} (invocation: ${ctx.invocationId})`);
+    ctx.logger?.info?.(
+      `After Model: ${ctx.agent.name} (invocation: ${ctx.invocationId})`,
+    );
     return res;
   });
 ```
@@ -179,13 +189,15 @@ builder
   .withBeforeModelCallback(async (ctx, req) => {
     req.config = {
       ...req.config,
-      systemInstruction: `${req.config?.systemInstruction ?? ''}\nSession: ${ctx.invocationId}`,
+      systemInstruction: `${req.config?.systemInstruction ?? ""}\nSession: ${ctx.invocationId}`,
     };
     return req;
   })
   .withAfterModelCallback(async (ctx, res) => {
     const contents = res.contents ?? [];
-    res.contents = contents.map((c: { type: string; text?: string }) => (c.type === 'text' ? { ...c, text: c.text?.replaceAll('\n\n', '\n') } : c));
+    res.contents = contents.map((c: { type: string; text?: string }) =>
+      c.type === "text" ? { ...c, text: c.text?.replaceAll("\n\n", "\n") } : c,
+    );
     return res;
   });
 ```
@@ -196,21 +208,21 @@ builder
 
 ```ts
 builder
-  .withBeforeAgentCallback(async (ctx) => {
-    if (ctx.state['maintenance_mode'] === true) {
+  .withBeforeAgentCallback(async ctx => {
+    if (ctx.state["maintenance_mode"] === true) {
       // Returning Content here completes the run immediately
-      return [{ type: 'text', text: 'Agent is under maintenance.' }];
+      return [{ type: "text", text: "Agent is under maintenance." }];
     }
   })
   .withBeforeModelCallback(async (ctx, req) => {
-    if (ctx.state['use_cached_response']) {
-      return { contents: [{ type: 'text', text: 'Cached response' }] };
+    if (ctx.state["use_cached_response"]) {
+      return { contents: [{ type: "text", text: "Cached response" }] };
     }
     return req;
   })
   .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    if (toolCtx.state['api_quota_exceeded']) {
-      return { error: 'API quota exceeded' };
+    if (toolCtx.state["api_quota_exceeded"]) {
+      return { error: "API quota exceeded" };
     }
   });
 ```
@@ -222,17 +234,17 @@ builder
 ```ts
 builder
   .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    if (tool.name === 'searchApi') {
+    if (tool.name === "searchApi") {
       args.headers = {
         ...(args.headers ?? {}),
-        Authorization: `Bearer ${toolCtx.state['api_token'] ?? ''}`,
+        Authorization: `Bearer ${toolCtx.state["api_token"] ?? ""}`,
       };
     }
   })
   .withAfterToolCallback(async (tool, args, toolCtx, result) => {
-    if (tool.name === 'searchApi' && toolCtx.state['summarize'] === true) {
+    if (tool.name === "searchApi" && toolCtx.state["summarize"] === true) {
       // Example: mark for summarization in subsequent steps
-      toolCtx.state['needs_summary'] = true;
+      toolCtx.state["needs_summary"] = true;
     }
     return result;
   });

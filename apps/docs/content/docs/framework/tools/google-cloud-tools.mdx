@@ -22,9 +22,11 @@ ADK-TS uses specific environment variables for Google Cloud integrations:
 | `GOOGLE_CLOUD_AGENT_ENGINE_ID`   | Agent Engine ID for telemetry tracking                        | No                            |
 
 <Callout type="info">
-  For Google LLM integration, you must configure either **Gemini API** (using
-  `GOOGLE_API_KEY`) or **Vertex AI** (using `GOOGLE_GENAI_USE_VERTEXAI=true`
-  with `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION`).
+
+For Google LLM integration, you must configure either **Gemini API** (using
+`GOOGLE_API_KEY`) or **Vertex AI** (using `GOOGLE_GENAI_USE_VERTEXAI=true`
+with `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION`).
+
 </Callout>
 
 ## What's Available
@@ -36,10 +38,12 @@ ADK-TS provides:
 - **Tool templates** - Examples for building custom tools for Cloud Storage, Vertex AI, and other services
 
 <Callout type="info">
-  ADK-TS does not include pre-built tools for specific Google Cloud services.
-  Instead, it provides authentication patterns and the `GcsArtifactService`,
-  giving you flexibility to create tools for the specific Google Cloud APIs your
-  agents need.
+
+ADK-TS does not include pre-built tools for specific Google Cloud services.
+Instead, it provides authentication patterns and the `GcsArtifactService`,
+giving you flexibility to create tools for the specific Google Cloud APIs your
+agents need.
+
 </Callout>
 
 ## Quick Start
@@ -70,7 +74,7 @@ class CloudStorageTool extends BaseTool {
 
       return {
         success: true,
-        buckets: buckets.map((b) => ({
+        buckets: buckets.map(b => ({
           name: b.name,
           location: b.metadata.location,
         })),
@@ -164,7 +168,7 @@ class StorageTool extends BaseTool {
     switch (args.operation) {
       case "list":
         const [files] = await bucket.getFiles();
-        return { files: files.map((f) => f.name) };
+        return { files: files.map(f => f.name) };
 
       case "delete":
         if (!args.fileName) return { error: "fileName required" };
@@ -183,8 +187,10 @@ class StorageTool extends BaseTool {
 Service accounts provide server-to-server authentication for production workloads and automated processes.
 
 <Callout type="warn">
-  Store service account keys securely. Grant only the minimum permissions needed
-  and rotate keys regularly in production.
+
+Store service account keys securely. Grant only the minimum permissions needed
+and rotate keys regularly in production.
+
 </Callout>
 
 #### Setup
@@ -253,8 +259,10 @@ class PubSubTool extends BaseTool {
 OAuth 2.0 enables agents to access user-specific resources with user consent. Use this when your agent needs to access personal user data like Google Drive files or Calendar events.
 
 <Callout type="info">
-  OAuth 2.0 requires web server implementation for the authorization flow.
-  Consider using service accounts for server-to-server scenarios instead.
+
+OAuth 2.0 requires web server implementation for the authorization flow.
+Consider using service accounts for server-to-server scenarios instead.
+
 </Callout>
 
 #### Basic OAuth 2.0 Pattern
@@ -265,7 +273,7 @@ import { OAuth2Client } from "google-auth-library";
 const oauth2Client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
+  process.env.GOOGLE_REDIRECT_URI,
 );
 
 const authorizationCode = process.env.AUTHORIZATION_CODE ?? "";
@@ -343,7 +351,7 @@ class CloudStorageTool extends BaseTool {
           const [files] = await bucket.getFiles({ prefix: args.prefix });
           return {
             success: true,
-            files: files.map((f) => ({ name: f.name, size: f.metadata.size })),
+            files: files.map(f => ({ name: f.name, size: f.metadata.size })),
           };
 
         case "delete":
@@ -511,8 +519,10 @@ All methods require `appName`, `userId`, `sessionId`, and `filename` parameters.
 ## Security Best Practices
 
 <Callout type="warn">
-  Always follow Google Cloud security best practices for credential management
-  and access control.
+
+Always follow Google Cloud security best practices for credential management
+and access control.
+
 </Callout>
 
 - **Credential Protection** - Never commit credentials to source code or expose them in client-side code

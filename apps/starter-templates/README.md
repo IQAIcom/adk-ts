@@ -16,7 +16,7 @@ This directory contains starter templates for ADK projects. These templates are 
 - `simple-agent` - Simple agent starter template
 - `discord-bot` - Discord bot starter template
 - `telegram-bot` - Telegram bot starter template
-- `hono-server` - Hono server starter template  
+- `hono-server` - Hono server starter template
 - `mcp-starter` - MCP (Model Context Protocol) starter template
 - `shade-agent` - Near Shade Agent starter template
 - `next-js-starter` - Next.js starter template

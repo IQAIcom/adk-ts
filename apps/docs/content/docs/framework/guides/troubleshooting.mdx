@@ -57,7 +57,7 @@ const runner = new Runner({
 const tools = await toolset.getTools();
 console.log(
   "Available tools:",
-  tools.map((t) => t.name)
+  tools.map(t => t.name),
 );
 
 // Ensure tool isn't filtered out
@@ -88,7 +88,7 @@ await runner.runAsync({ userId: "user-1", sessionId, newMessage });
 **Solution**: Inspect the tool's schema, ensure transport config matches server requirements, and match argument types exactly:
 
 ```typescript
-const tool = toolset.getTools().find((t) => t.name === "my_tool");
+const tool = toolset.getTools().find(t => t.name === "my_tool");
 console.log("Tool schema:", JSON.stringify(tool?.schema, null, 2));
 
 // Match types exactly

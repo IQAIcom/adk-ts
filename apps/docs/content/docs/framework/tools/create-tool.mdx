@@ -91,9 +91,11 @@ The `createTool` function accepts a configuration object with these properties:
 | `maxRetryAttempts`     | `number`    | No       | Maximum retry attempts (default: `3`)                                 |
 
 <Callout type="info" title="Schema is Optional">
-  If you don't provide a schema, `createTool` uses an empty object schema
-  (`z.object({})`), meaning your tool accepts no parameters. This is useful for
-  tools that don't need input, like getting the current timestamp.
+
+If you don't provide a schema, `createTool` uses an empty object schema
+(`z.object({})`), meaning your tool accepts no parameters. This is useful for
+tools that don't need input, like getting the current timestamp.
+
 </Callout>
 
 ## Defining Tool Schemas
@@ -176,7 +178,7 @@ const operationTool = createTool({
       strings: z.array(z.string()).describe("Strings to concatenate"),
     }),
   ]),
-  fn: (params) => {
+  fn: params => {
     if (params.type === "sum") {
       return { result: params.numbers.reduce((a, b) => a + b, 0) };
     }
@@ -428,11 +430,13 @@ Both `createTool` and [Function Tools](/docs/framework/tools/function-tools) let
 | Schema Source        | Explicit (Zod)                    | Inferred (TypeScript + JSDoc)   |
 
 <Callout type="info" title="Choosing Between Approaches">
-  **Use createTool when:**
-  - You need strict validation (email formats, number ranges, string patterns)
-  - You want helpful error messages for the LLM
-  - You have complex parameter types (unions, discriminated unions, nested objects)
-  - You need custom transformations on inputs
+
+**Use createTool when:**
+
+- You need strict validation (email formats, number ranges, string patterns)
+- You want helpful error messages for the LLM
+- You have complex parameter types (unions, discriminated unions, nested objects)
+- You need custom transformations on inputs
 
 **Use Function Tools when:**
 

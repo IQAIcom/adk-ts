@@ -76,9 +76,11 @@ Before using Vertex AI sessions, ensure you have:
   ```
 
 <Callout type="info">
-  For production, use service accounts instead of user credentials. See [Google
-  Cloud IAM documentation](https://cloud.google.com/iam/docs/service-accounts)
-  for details.
+
+For production, use service accounts instead of user credentials. See [Google
+Cloud IAM documentation](https://cloud.google.com/iam/docs/service-accounts)
+for details.
+
 </Callout>
 
 ## Configuration
@@ -133,7 +135,7 @@ const session = await sessionService.createSession(
     current_step: "welcome",
     "user:language": "en",
     "user:timezone": "America/New_York",
-  }
+  },
 );
 ```
 
@@ -143,7 +145,7 @@ const session = await sessionService.createSession(
 const session = await sessionService.getSession(
   "my-travel-agent",
   "user123",
-  "session-abc-123"
+  "session-abc-123",
 );
 ```
 
@@ -154,7 +156,7 @@ Returns session metadata (ID, lastUpdateTime). Use `getSession()` for full sessi
 ```typescript
 const response = await sessionService.listSessions(
   "my-travel-agent",
-  "user123"
+  "user123",
 );
 
 console.log(`Found ${response.sessions.length} sessions`);
@@ -181,7 +183,7 @@ await sessionService.appendEvent(session, event);
 await sessionService.deleteSession(
   "my-travel-agent",
   "user123",
-  "session-abc-123"
+  "session-abc-123",
 );
 ```
 

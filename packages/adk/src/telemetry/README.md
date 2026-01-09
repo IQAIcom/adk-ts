@@ -5,6 +5,7 @@ Comprehensive OpenTelemetry integration for the Agent Development Kit (ADK), pro
 ## Features
 
 ✨ **Distributed Tracing**
+
 - Agent invocation tracing with lifecycle tracking
 - Tool execution tracing with arguments and results
 - LLM call tracing with token usage and model parameters
@@ -12,6 +13,7 @@ Comprehensive OpenTelemetry integration for the Agent Development Kit (ADK), pro
 - Standard OpenTelemetry GenAI semantic conventions
 
 📊 **Metrics Collection**
+
 - Agent invocation counters and duration histograms
 - Tool execution counters and duration histograms
 - LLM call counters and duration histograms
@@ -19,17 +21,20 @@ Comprehensive OpenTelemetry integration for the Agent Development Kit (ADK), pro
 - Error counters with detailed context
 
 🔒 **Privacy Controls**
+
 - Environment variable to disable content capture
 - Configurable via initialization options
 - Sensitive data filtering
 
 🌐 **Resource Auto-Detection**
+
 - Service name and version from environment
 - Deployment environment detection
 - Process and host metadata
 - Custom resource attributes
 
 🎯 **Auto-Instrumentation**
+
 - HTTP/HTTPS calls
 - Database queries
 - File system operations
@@ -53,12 +58,12 @@ The telemetry dependencies are already included in `@iqai/adk`:
 ### Basic Initialization
 
 ```typescript
-import { telemetryService } from '@iqai/adk';
+import { telemetryService } from "@iqai/adk";
 
 await telemetryService.initialize({
-  appName: 'my-agent-app',
-  appVersion: '1.0.0',
-  otlpEndpoint: 'http://localhost:4318/v1/traces',
+  appName: "my-agent-app",
+  appVersion: "1.0.0",
+  otlpEndpoint: "http://localhost:4318/v1/traces",
   enableMetrics: true,
   enableTracing: true,
   enableAutoInstrumentation: true,
@@ -121,38 +126,38 @@ docker run -d \
 ### Full Configuration Options
 
 ```typescript
-import { telemetryService, TelemetryConfig } from '@iqai/adk';
+import { telemetryService, TelemetryConfig } from "@iqai/adk";
 
 const config: TelemetryConfig = {
   // Required
-  appName: 'my-agent-app',
-  otlpEndpoint: 'http://localhost:4318/v1/traces',
-  
+  appName: "my-agent-app",
+  otlpEndpoint: "http://localhost:4318/v1/traces",
+
   // Optional
-  appVersion: '1.0.0',
-  environment: 'production', // or process.env.NODE_ENV
-  
+  appVersion: "1.0.0",
+  environment: "production", // or process.env.NODE_ENV
+
   // OTLP configuration
   otlpHeaders: {
-    'api-key': 'your-api-key',
+    "api-key": "your-api-key",
   },
-  
+
   // Feature flags
   enableTracing: true,
   enableMetrics: true,
   enableAutoInstrumentation: true,
-  
+
   // Privacy controls
   captureMessageContent: true, // Set false for production
-  
+
   // Performance tuning
   samplingRatio: 1.0, // 1.0 = 100% sampling
   metricExportIntervalMs: 60000, // 1 minute
-  
+
   // Custom resource attributes
   resourceAttributes: {
-    'deployment.name': 'us-east-1',
-    'team': 'platform',
+    "deployment.name": "us-east-1",
+    team: "platform",
   },
 };
 
@@ -184,20 +189,23 @@ export NODE_ENV=production
 By default, the telemetry system captures LLM request/response content for debugging. For production environments with sensitive data:
 
 **Option 1: Environment Variable**
+
 ```bash
 export ADK_CAPTURE_MESSAGE_CONTENT=false
 ```
 
 **Option 2: Configuration**
+
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-app',
-  otlpEndpoint: 'http://localhost:4318/v1/traces',
+  appName: "my-app",
+  otlpEndpoint: "http://localhost:4318/v1/traces",
   captureMessageContent: false, // Disable content capture
 });
 ```
 
 When disabled:
+
 - Tool arguments and responses show as `{}`
 - LLM prompts and completions show as `{}`
 - Metadata (model, tokens, duration) still captured
@@ -207,6 +215,7 @@ When disabled:
 ### What Gets Traced
 
 #### Agent Invocations
+
 ```
 agent_run [my-agent]
 ├─ Attributes:
@@ -221,6 +230,7 @@ agent_run [my-agent]
 ```
 
 #### Tool Executions
+
 ```
 execute_tool search_web
 ├─ Attributes:
@@ -234,6 +244,7 @@ execute_tool search_web
 ```
 
 #### LLM Calls
+
 ```
 call_llm
 ├─ Attributes:
@@ -254,12 +265,14 @@ call_llm
 ### Viewing Traces
 
 #### Jaeger UI
+
 1. Open http://localhost:16686
 2. Select service: `my-agent-app`
 3. Click "Find Traces"
 4. Explore agent hierarchies, tool calls, and LLM interactions
 
 #### Trace Hierarchy Example
+
 ```
 agent_run [research-agent] (5.2s)
 ├─ call_llm (1.8s)
@@ -277,57 +290,57 @@ agent_run [research-agent] (5.2s)
 
 #### Counters
 
-| Metric | Description | Labels |
-|--------|-------------|--------|
-| `adk.agent.invocations` | Total agent invocations | `agent.name`, `environment`, `status` |
-| `adk.tool.executions` | Total tool executions | `tool.name`, `agent.name`, `environment`, `status` |
-| `adk.llm.calls` | Total LLM calls | `model`, `agent.name`, `environment`, `status` |
-| `adk.errors` | Total errors | `error_type`, `context` |
+| Metric                  | Description             | Labels                                             |
+| ----------------------- | ----------------------- | -------------------------------------------------- |
+| `adk.agent.invocations` | Total agent invocations | `agent.name`, `environment`, `status`              |
+| `adk.tool.executions`   | Total tool executions   | `tool.name`, `agent.name`, `environment`, `status` |
+| `adk.llm.calls`         | Total LLM calls         | `model`, `agent.name`, `environment`, `status`     |
+| `adk.errors`            | Total errors            | `error_type`, `context`                            |
 
 #### Histograms
 
-| Metric | Description | Labels | Unit |
-|--------|-------------|--------|------|
-| `adk.agent.duration` | Agent execution duration | `agent.name`, `environment`, `status` | ms |
-| `adk.tool.duration` | Tool execution duration | `tool.name`, `agent.name`, `environment`, `status` | ms |
-| `adk.llm.duration` | LLM call duration | `model`, `agent.name`, `environment`, `status` | ms |
-| `adk.llm.tokens` | Total tokens per LLM call | `model`, `agent.name`, `environment`, `status` | count |
-| `adk.llm.tokens.input` | Input tokens per LLM call | `model`, `agent.name`, `environment`, `status` | count |
-| `adk.llm.tokens.output` | Output tokens per LLM call | `model`, `agent.name`, `environment`, `status` | count |
+| Metric                  | Description                | Labels                                             | Unit  |
+| ----------------------- | -------------------------- | -------------------------------------------------- | ----- |
+| `adk.agent.duration`    | Agent execution duration   | `agent.name`, `environment`, `status`              | ms    |
+| `adk.tool.duration`     | Tool execution duration    | `tool.name`, `agent.name`, `environment`, `status` | ms    |
+| `adk.llm.duration`      | LLM call duration          | `model`, `agent.name`, `environment`, `status`     | ms    |
+| `adk.llm.tokens`        | Total tokens per LLM call  | `model`, `agent.name`, `environment`, `status`     | count |
+| `adk.llm.tokens.input`  | Input tokens per LLM call  | `model`, `agent.name`, `environment`, `status`     | count |
+| `adk.llm.tokens.output` | Output tokens per LLM call | `model`, `agent.name`, `environment`, `status`     | count |
 
 ### Recording Custom Metrics
 
 ```typescript
-import { telemetryService } from '@iqai/adk';
+import { telemetryService } from "@iqai/adk";
 
 // Record agent invocation
 telemetryService.recordAgentInvocation({
-  agentName: 'my-agent',
-  environment: 'production',
-  status: 'success',
+  agentName: "my-agent",
+  environment: "production",
+  status: "success",
 });
 
 // Record agent duration
 telemetryService.recordAgentDuration(1500, {
-  agentName: 'my-agent',
-  environment: 'production',
-  status: 'success',
+  agentName: "my-agent",
+  environment: "production",
+  status: "success",
 });
 
 // Record tool execution
 telemetryService.recordToolExecution({
-  toolName: 'search_web',
-  agentName: 'my-agent',
-  environment: 'production',
-  status: 'success',
+  toolName: "search_web",
+  agentName: "my-agent",
+  environment: "production",
+  status: "success",
 });
 
 // Record LLM tokens
 telemetryService.recordLlmTokens(150, 75, {
-  model: 'gpt-4',
-  agentName: 'my-agent',
-  environment: 'production',
-  status: 'success',
+  model: "gpt-4",
+  agentName: "my-agent",
+  environment: "production",
+  status: "success",
 });
 ```
 
@@ -336,23 +349,23 @@ telemetryService.recordLlmTokens(150, 75, {
 ### Custom Spans
 
 ```typescript
-import { telemetryService } from '@iqai/adk';
+import { telemetryService } from "@iqai/adk";
 
 // Execute function within a traced span
 const result = await telemetryService.withSpan(
-  'custom_operation',
-  async (span) => {
-    span.setAttribute('custom.attribute', 'value');
-    
+  "custom_operation",
+  async span => {
+    span.setAttribute("custom.attribute", "value");
+
     // Your work here
     const result = await doSomething();
-    
+
     return result;
   },
   {
-    'operation.type': 'data_processing',
-    'operation.version': '2.0',
-  }
+    "operation.type": "data_processing",
+    "operation.version": "2.0",
+  },
 );
 ```
 
@@ -367,11 +380,11 @@ async function* myGenerator() {
 
 // Wrap with tracing
 const tracedGenerator = telemetryService.traceAsyncGenerator(
-  'my_operation',
+  "my_operation",
   myGenerator(),
   {
-    'generator.type': 'number_stream',
-  }
+    "generator.type": "number_stream",
+  },
 );
 
 for await (const value of tracedGenerator) {
@@ -382,9 +395,9 @@ for await (const value of tracedGenerator) {
 ### Adding Events to Active Span
 
 ```typescript
-telemetryService.addEvent('user_action', {
-  'action.type': 'button_click',
-  'action.target': 'submit',
+telemetryService.addEvent("user_action", {
+  "action.type": "button_click",
+  "action.target": "submit",
 });
 ```
 
@@ -395,8 +408,8 @@ try {
   await riskyOperation();
 } catch (error) {
   telemetryService.recordException(error as Error, {
-    'error.context': 'data_validation',
-    'error.severity': 'high',
+    "error.context": "data_validation",
+    "error.severity": "high",
   });
   throw error;
 }
@@ -406,64 +419,66 @@ try {
 
 The telemetry system follows OpenTelemetry GenAI semantic conventions:
 
-### Standard Attributes (gen_ai.*)
+### Standard Attributes (gen_ai.\*)
 
 ```typescript
-import { SEMCONV } from '@iqai/adk';
+import { SEMCONV } from "@iqai/adk";
 
 // System identification
-SEMCONV.GEN_AI_SYSTEM // "gen_ai.system"
+SEMCONV.GEN_AI_SYSTEM; // "gen_ai.system"
 
 // Operations
-SEMCONV.GEN_AI_OPERATION_NAME // "gen_ai.operation.name"
+SEMCONV.GEN_AI_OPERATION_NAME; // "gen_ai.operation.name"
 
 // Agents
-SEMCONV.GEN_AI_AGENT_NAME // "gen_ai.agent.name"
-SEMCONV.GEN_AI_CONVERSATION_ID // "gen_ai.conversation.id"
+SEMCONV.GEN_AI_AGENT_NAME; // "gen_ai.agent.name"
+SEMCONV.GEN_AI_CONVERSATION_ID; // "gen_ai.conversation.id"
 
 // Tools
-SEMCONV.GEN_AI_TOOL_NAME // "gen_ai.tool.name"
-SEMCONV.GEN_AI_TOOL_TYPE // "gen_ai.tool.type"
+SEMCONV.GEN_AI_TOOL_NAME; // "gen_ai.tool.name"
+SEMCONV.GEN_AI_TOOL_TYPE; // "gen_ai.tool.type"
 
 // LLM Requests
-SEMCONV.GEN_AI_REQUEST_MODEL // "gen_ai.request.model"
-SEMCONV.GEN_AI_REQUEST_MAX_TOKENS // "gen_ai.request.max_tokens"
+SEMCONV.GEN_AI_REQUEST_MODEL; // "gen_ai.request.model"
+SEMCONV.GEN_AI_REQUEST_MAX_TOKENS; // "gen_ai.request.max_tokens"
 
 // Token Usage
-SEMCONV.GEN_AI_USAGE_INPUT_TOKENS // "gen_ai.usage.input_tokens"
-SEMCONV.GEN_AI_USAGE_OUTPUT_TOKENS // "gen_ai.usage.output_tokens"
+SEMCONV.GEN_AI_USAGE_INPUT_TOKENS; // "gen_ai.usage.input_tokens"
+SEMCONV.GEN_AI_USAGE_OUTPUT_TOKENS; // "gen_ai.usage.output_tokens"
 ```
 
-### ADK-Specific Attributes (adk.*)
+### ADK-Specific Attributes (adk.\*)
 
 ```typescript
-import { ADK_ATTRS } from '@iqai/adk';
+import { ADK_ATTRS } from "@iqai/adk";
 
 // Session and context
-ADK_ATTRS.SESSION_ID // "adk.session.id"
-ADK_ATTRS.USER_ID // "adk.user.id"
-ADK_ATTRS.INVOCATION_ID // "adk.invocation.id"
+ADK_ATTRS.SESSION_ID; // "adk.session.id"
+ADK_ATTRS.USER_ID; // "adk.user.id"
+ADK_ATTRS.INVOCATION_ID; // "adk.invocation.id"
 
 // Content
-ADK_ATTRS.TOOL_ARGS // "adk.tool.args"
-ADK_ATTRS.TOOL_RESPONSE // "adk.tool.response"
-ADK_ATTRS.LLM_REQUEST // "adk.llm.request"
-ADK_ATTRS.LLM_RESPONSE // "adk.llm.response"
+ADK_ATTRS.TOOL_ARGS; // "adk.tool.args"
+ADK_ATTRS.TOOL_RESPONSE; // "adk.tool.response"
+ADK_ATTRS.LLM_REQUEST; // "adk.llm.request"
+ADK_ATTRS.LLM_RESPONSE; // "adk.llm.response"
 ```
 
 ## Integration with Observability Platforms
 
 ### Jaeger
+
 Already covered above - works out of the box!
 
 ### Grafana + Tempo
+
 ```yaml
 # docker-compose.yml
 services:
   tempo:
     image: grafana/tempo:latest
     ports:
-      - "4318:4318"  # OTLP HTTP
+      - "4318:4318" # OTLP HTTP
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
     command: ["-config.file=/etc/tempo.yaml"]
@@ -477,35 +492,38 @@ services:
 ```
 
 ### Datadog
+
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-app',
-  otlpEndpoint: 'https://api.datadoghq.com/v1/traces',
+  appName: "my-app",
+  otlpEndpoint: "https://api.datadoghq.com/v1/traces",
   otlpHeaders: {
-    'DD-API-KEY': process.env.DD_API_KEY,
+    "DD-API-KEY": process.env.DD_API_KEY,
   },
 });
 ```
 
 ### New Relic
+
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-app',
-  otlpEndpoint: 'https://otlp.nr-data.net:4318/v1/traces',
+  appName: "my-app",
+  otlpEndpoint: "https://otlp.nr-data.net:4318/v1/traces",
   otlpHeaders: {
-    'api-key': process.env.NEW_RELIC_LICENSE_KEY,
+    "api-key": process.env.NEW_RELIC_LICENSE_KEY,
   },
 });
 ```
 
 ### Honeycomb
+
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-app',
-  otlpEndpoint: 'https://api.honeycomb.io/v1/traces',
+  appName: "my-app",
+  otlpEndpoint: "https://api.honeycomb.io/v1/traces",
   otlpHeaders: {
-    'x-honeycomb-team': process.env.HONEYCOMB_API_KEY,
-    'x-honeycomb-dataset': 'my-dataset',
+    "x-honeycomb-team": process.env.HONEYCOMB_API_KEY,
+    "x-honeycomb-dataset": "my-dataset",
   },
 });
 ```
@@ -516,7 +534,7 @@ Always shutdown gracefully to ensure all telemetry is flushed:
 
 ```typescript
 // At application exit
-process.on('SIGTERM', async () => {
+process.on("SIGTERM", async () => {
   await telemetryService.shutdown(5000); // 5 second timeout
   process.exit(0);
 });
@@ -535,7 +553,7 @@ await telemetryService.shutdown();
 4. Enable debug logging:
 
 ```typescript
-import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
+import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 ```
@@ -543,23 +561,27 @@ diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 ### High overhead?
 
 1. Reduce sampling ratio:
+
 ```typescript
-samplingRatio: 0.1 // Sample 10% of traces
+samplingRatio: 0.1; // Sample 10% of traces
 ```
 
 2. Disable auto-instrumentation:
+
 ```typescript
-enableAutoInstrumentation: false
+enableAutoInstrumentation: false;
 ```
 
 3. Increase metric export interval:
+
 ```typescript
-metricExportIntervalMs: 300000 // 5 minutes
+metricExportIntervalMs: 300000; // 5 minutes
 ```
 
 ### Content not captured?
 
 Check privacy settings:
+
 ```bash
 echo $ADK_CAPTURE_MESSAGE_CONTENT
 # Should be 'true' or unset
@@ -611,6 +633,7 @@ echo $ADK_CAPTURE_MESSAGE_CONTENT
 ## Examples
 
 See the `/examples` directory for complete examples:
+
 - Basic agent with telemetry
 - Multi-agent system tracing
 - Custom metrics and spans

@@ -3,8 +3,8 @@ title: Artifacts
 description: Manage named, versioned binary data for rich agent interactions with files and media
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
 Artifacts provide a mechanism for managing named, versioned binary data associated with user sessions. They enable agents to handle data beyond simple text strings, supporting rich interactions with files, images, audio, and other binary formats.
 
@@ -21,7 +21,11 @@ Artifacts are pieces of binary data identified by unique filenames within specif
 - **Standard Representation**: Consistent `Part` object format from `@google/genai`
 
 <Callout type="info" title="Beyond Text Storage">
-While session state is perfect for configuration and conversational context, artifacts are designed for binary data, large files, and content that needs versioning.
+
+While session state is perfect for configuration and conversational context,
+artifacts are designed for binary data, large files, and content that needs
+versioning.
+
 </Callout>
 
 ## Quick Start
@@ -31,8 +35,8 @@ While session state is perfect for configuration and conversational context, art
 Here's how to work with artifacts in your agent callbacks:
 
 ```typescript
-import { LlmAgent, CallbackContext, Runner } from '@iqai/adk';
-import { InMemoryArtifactService } from '@iqai/adk';
+import { LlmAgent, CallbackContext, Runner } from "@iqai/adk";
+import { InMemoryArtifactService } from "@iqai/adk";
 
 // Set up artifact service
 const artifactService = new InMemoryArtifactService();
@@ -43,22 +47,28 @@ const beforeAgentCallback = async (callbackContext: CallbackContext) => {
     // Save a simple text artifact
     const textArtifact = {
       inlineData: {
-        data: Buffer.from('Hello, World!').toString('base64'),
-        mimeType: 'text/plain'
-      }
+        data: Buffer.from("Hello, World!").toString("base64"),
+        mimeType: "text/plain",
+      },
     };
 
-    const version = await callbackContext.saveArtifact('greeting.txt', textArtifact);
+    const version = await callbackContext.saveArtifact(
+      "greeting.txt",
+      textArtifact,
+    );
     console.log(`Saved greeting.txt version ${version}`);
 
     // Load an existing artifact
-    const loadedArtifact = await callbackContext.loadArtifact('greeting.txt');
+    const loadedArtifact = await callbackContext.loadArtifact("greeting.txt");
     if (loadedArtifact) {
-      const text = Buffer.from(loadedArtifact.inlineData.data, 'base64').toString();
+      const text = Buffer.from(
+        loadedArtifact.inlineData.data,
+        "base64",
+      ).toString();
       console.log(`Loaded text: ${text}`);
     }
   } catch (error) {
-    console.warn('Artifact operation failed:', error);
+    console.warn("Artifact operation failed:", error);
   }
 
   return undefined;
@@ -70,7 +80,7 @@ const agent = new LlmAgent({
   model: "gemini-2.5-flash",
   description: "Agent that works with artifacts",
   instruction: "You are helpful",
-  beforeAgentCallback
+  beforeAgentCallback,
 });
 
 // Create runner with artifact service
@@ -78,7 +88,7 @@ const runner = new Runner({
   appName: "my_app",
   agent,
   sessionService: new InMemorySessionService(),
-  artifactService // Configure artifact service
+  artifactService, // Configure artifact service
 });
 ```
 
@@ -90,23 +100,23 @@ const mediaArtifactCallback = async (callbackContext: CallbackContext) => {
   const imageData = Buffer.from(/* your image data */);
   const imageArtifact = {
     inlineData: {
-      data: imageData.toString('base64'),
-      mimeType: 'image/png'
-    }
+      data: imageData.toString("base64"),
+      mimeType: "image/png",
+    },
   };
 
-  await callbackContext.saveArtifact('generated_chart.png', imageArtifact);
+  await callbackContext.saveArtifact("generated_chart.png", imageArtifact);
 
   // Save a JSON data artifact
   const jsonData = { results: [1, 2, 3], timestamp: new Date().toISOString() };
   const jsonArtifact = {
     inlineData: {
-      data: Buffer.from(JSON.stringify(jsonData)).toString('base64'),
-      mimeType: 'application/json'
-    }
+      data: Buffer.from(JSON.stringify(jsonData)).toString("base64"),
+      mimeType: "application/json",
+    },
   };
 
-  await callbackContext.saveArtifact('analysis_results.json', jsonArtifact);
+  await callbackContext.saveArtifact("analysis_results.json", jsonArtifact);
 
   return undefined;
 };
@@ -121,17 +131,22 @@ When enabled, the runner will automatically save any incoming `inlineData` parts
 - Can be set at agent build time using `withRunConfig` or per run
 
 ```typescript
-import { agentBuilder, Runner, InMemorySessionService, InMemoryArtifactService } from '@iqai/adk';
+import {
+  agentBuilder,
+  Runner,
+  InMemorySessionService,
+  InMemoryArtifactService,
+} from "@iqai/adk";
 
 // Configure at agent build time
 const agent = agentBuilder()
-  .name('artifact_agent')
-  .model('gemini-2.5-flash')
+  .name("artifact_agent")
+  .model("gemini-2.5-flash")
   .withRunConfig({ saveInputBlobsAsArtifacts: true })
   .build();
 
 const runner = new Runner({
-  appName: 'my_app',
+  appName: "my_app",
   agent,
   sessionService: new InMemorySessionService(),
   artifactService: new InMemoryArtifactService(),
@@ -151,10 +166,11 @@ Artifacts tied to individual conversation sessions:
 
 ```typescript
 // Regular filename - session scoped
-await callbackContext.saveArtifact('temp_processing.csv', csvArtifact);
+await callbackContext.saveArtifact("temp_processing.csv", csvArtifact);
 ```
 
 **Characteristics:**
+
 - Limited to current session context
 - Automatically cleaned up when sessions end
 - Ideal for temporary processing and conversation-specific files
@@ -165,16 +181,20 @@ Artifacts persisting across all user sessions:
 
 ```typescript
 // "user:" prefix - user scoped
-await callbackContext.saveArtifact('user:profile_picture.png', imageArtifact);
+await callbackContext.saveArtifact("user:profile_picture.png", imageArtifact);
 ```
 
 **Characteristics:**
+
 - Available across all user sessions within the application
 - Persist beyond individual conversations
 - Enable long-term user data management
 
 <Callout type="warning" title="Namespace Selection">
-Choose appropriate artifact scoping based on data lifecycle requirements - session for temporary content, user for persistent data.
+
+Choose appropriate artifact scoping based on data lifecycle requirements -
+session for temporary content, user for persistent data.
+
 </Callout>
 
 ## Versioning System
@@ -184,24 +204,25 @@ Artifacts automatically maintain version history:
 ```typescript
 const versioningExample = async (callbackContext: CallbackContext) => {
   // First save - creates version 0
-  const v0 = await callbackContext.saveArtifact('document.txt', textArtifact1);
+  const v0 = await callbackContext.saveArtifact("document.txt", textArtifact1);
   console.log(`Version: ${v0}`); // 0
 
   // Second save - creates version 1
-  const v1 = await callbackContext.saveArtifact('document.txt', textArtifact2);
+  const v1 = await callbackContext.saveArtifact("document.txt", textArtifact2);
   console.log(`Version: ${v1}`); // 1
 
   // Load specific version
-  const oldVersion = await callbackContext.loadArtifact('document.txt', 0);
+  const oldVersion = await callbackContext.loadArtifact("document.txt", 0);
 
   // Load latest version (default)
-  const latestVersion = await callbackContext.loadArtifact('document.txt');
+  const latestVersion = await callbackContext.loadArtifact("document.txt");
 
   return undefined;
 };
 ```
 
 **Version Characteristics:**
+
 - Version numbers start at 0 and increment automatically
 - Each save operation creates a new version
 - Access latest version by default or specify version explicitly
@@ -256,27 +277,30 @@ Save an uploaded file as an artifact, then persist derived results (e.g., analys
 ```typescript
 const fileProcessingCallback = async (callbackContext: CallbackContext) => {
   // Simulate receiving an uploaded file
-  const uploadedFileData = Buffer.from('CSV data here');
+  const uploadedFileData = Buffer.from("CSV data here");
   const csvArtifact = {
     inlineData: {
-      data: uploadedFileData.toString('base64'),
-      mimeType: 'text/csv'
-    }
+      data: uploadedFileData.toString("base64"),
+      mimeType: "text/csv",
+    },
   };
 
   // Save uploaded file
-  await callbackContext.saveArtifact('uploaded_data.csv', csvArtifact);
+  await callbackContext.saveArtifact("uploaded_data.csv", csvArtifact);
 
   // Process and save results
-  const processedData = { summary: 'Analysis complete', rows: 100 };
+  const processedData = { summary: "Analysis complete", rows: 100 };
   const resultsArtifact = {
     inlineData: {
-      data: Buffer.from(JSON.stringify(processedData)).toString('base64'),
-      mimeType: 'application/json'
-    }
+      data: Buffer.from(JSON.stringify(processedData)).toString("base64"),
+      mimeType: "application/json",
+    },
   };
 
-  await callbackContext.saveArtifact('processing_results.json', resultsArtifact);
+  await callbackContext.saveArtifact(
+    "processing_results.json",
+    resultsArtifact,
+  );
 
   return undefined;
 };
@@ -288,19 +312,19 @@ Avoid recomputing expensive results by saving a JSON artifact as a cache entry a
 
 ```typescript
 const cachingCallback = async (callbackContext: CallbackContext) => {
-  const cacheKey = 'expensive_computation_result.json';
+  const cacheKey = "expensive_computation_result.json";
 
   // Check for cached result
   const cachedResult = await callbackContext.loadArtifact(cacheKey);
 
   if (cachedResult) {
-    console.log('Using cached result');
+    console.log("Using cached result");
     const data = JSON.parse(
-      Buffer.from(cachedResult.inlineData.data, 'base64').toString()
+      Buffer.from(cachedResult.inlineData.data, "base64").toString(),
     );
-    callbackContext.state.set('computation_result', data);
+    callbackContext.state.set("computation_result", data);
   } else {
-    console.log('Computing new result');
+    console.log("Computing new result");
 
     // Perform expensive computation
     const result = { value: Math.random(), timestamp: Date.now() };
@@ -308,13 +332,13 @@ const cachingCallback = async (callbackContext: CallbackContext) => {
     // Cache the result
     const artifact = {
       inlineData: {
-        data: Buffer.from(JSON.stringify(result)).toString('base64'),
-        mimeType: 'application/json'
-      }
+        data: Buffer.from(JSON.stringify(result)).toString("base64"),
+        mimeType: "application/json",
+      },
     };
 
     await callbackContext.saveArtifact(cacheKey, artifact);
-    callbackContext.state.set('computation_result', result);
+    callbackContext.state.set("computation_result", result);
   }
 
   return undefined;
@@ -337,11 +361,11 @@ See interfaces and backends in:
     href="/docs/framework/artifacts/service-implementations"
   />
 
-  <Card
-    title="🔧 Context Integration"
-    description="Using artifacts through CallbackContext and ToolContext"
-    href="/docs/framework/artifacts/context-integration"
-  />
+<Card
+  title="🔧 Context Integration"
+  description="Using artifacts through CallbackContext and ToolContext"
+  href="/docs/framework/artifacts/context-integration"
+/>
 
   <Card
     title="📋 Best Practices"
@@ -357,27 +381,29 @@ Always implement proper error handling for artifact operations:
 ```typescript
 const robustArtifactCallback = async (callbackContext: CallbackContext) => {
   try {
-    const artifact = await callbackContext.loadArtifact('user_config.json');
+    const artifact = await callbackContext.loadArtifact("user_config.json");
 
     if (artifact) {
       const config = JSON.parse(
-        Buffer.from(artifact.inlineData.data, 'base64').toString()
+        Buffer.from(artifact.inlineData.data, "base64").toString(),
       );
-      callbackContext.state.set('user_config', config);
+      callbackContext.state.set("user_config", config);
     } else {
-      console.log('No existing config found, using defaults');
-      callbackContext.state.set('user_config', getDefaultConfig());
+      console.log("No existing config found, using defaults");
+      callbackContext.state.set("user_config", getDefaultConfig());
     }
   } catch (error) {
-    console.error('Failed to load user config:', error);
+    console.error("Failed to load user config:", error);
 
     // Fallback to defaults
-    callbackContext.state.set('user_config', getDefaultConfig());
+    callbackContext.state.set("user_config", getDefaultConfig());
 
     // Optionally notify the user
     return {
-      role: 'model',
-      parts: [{ text: 'Configuration could not be loaded. Using default settings.' }]
+      role: "model",
+      parts: [
+        { text: "Configuration could not be loaded. Using default settings." },
+      ],
     };
   }
 
@@ -386,9 +412,9 @@ const robustArtifactCallback = async (callbackContext: CallbackContext) => {
 
 function getDefaultConfig() {
   return {
-    theme: 'light',
-    language: 'en',
-    notifications: true
+    theme: "light",
+    language: "en",
+    notifications: true,
   };
 }
 ```
@@ -398,7 +424,7 @@ function getDefaultConfig() {
 ### With Tools
 
 ```typescript
-import { BaseTool, ToolContext } from '@iqai/adk';
+import { BaseTool, ToolContext } from "@iqai/adk";
 
 class FileAnalysisTool extends BaseTool {
   async runAsync(args: { filename: string }, context: ToolContext) {
@@ -422,16 +448,19 @@ class FileAnalysisTool extends BaseTool {
       // Save analysis results
       const resultArtifact = {
         inlineData: {
-          data: Buffer.from(JSON.stringify(analysis)).toString('base64'),
-          mimeType: 'application/json'
-        }
+          data: Buffer.from(JSON.stringify(analysis)).toString("base64"),
+          mimeType: "application/json",
+        },
       };
 
-      await context.saveArtifact(`analysis_${args.filename}.json`, resultArtifact);
+      await context.saveArtifact(
+        `analysis_${args.filename}.json`,
+        resultArtifact,
+      );
 
       return {
         analysis,
-        result_saved: `analysis_${args.filename}.json`
+        result_saved: `analysis_${args.filename}.json`,
       };
     } catch (error) {
       return { error: `Analysis failed: ${error.message}` };
@@ -443,7 +472,7 @@ class FileAnalysisTool extends BaseTool {
     return {
       size: artifact.inlineData.data.length,
       type: artifact.inlineData.mimeType,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }
@@ -458,17 +487,17 @@ class FileAnalysisTool extends BaseTool {
     href="/docs/framework/tools"
   />
 
-  <Card
-    title="💬 Sessions"
-    description="Understanding artifact scoping within session management"
-    href="/docs/framework/session-state-memory/session"
-  />
+<Card
+  title="💬 Sessions"
+  description="Understanding artifact scoping within session management"
+  href="/docs/framework/session-state-memory/session"
+/>
 
-  <Card
-    title="📋 Callbacks"
-    description="Artifact access and management through callbacks"
-    href="/docs/framework/callbacks"
-  />
+<Card
+  title="📋 Callbacks"
+  description="Artifact access and management through callbacks"
+  href="/docs/framework/callbacks"
+/>
 
   <Card
     title="🏗️ Context"

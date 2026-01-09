@@ -3,20 +3,19 @@ title: Callbacks
 description: Observe, customize, and control agent behavior with powerful callback mechanisms
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
-
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
 Callbacks are a cornerstone feature of ADK, providing a powerful mechanism to hook into an agent's execution process. They allow you to observe, customize, and even control the agent's behavior at specific, predefined points without modifying the core ADK framework code.
 
 **What are they?** In essence, callbacks are standard functions that you define. You then associate these functions with an agent when you create it. The ADK framework automatically calls your functions at key stages, letting you observe or intervene. Think of it like checkpoints during the agent's process:
 
--   **Before the agent starts its main work on a request, and after it finishes:** When you ask an agent to do something (e.g., answer a question), it runs its internal logic to figure out the response.
--   The `Before Agent` callback executes _right before_ this main work begins for that specific request.
--   The `After Agent` callback executes _right after_ the agent has finished all its steps for that request and has prepared the final result, but just before the result is returned.
--   This "main work" encompasses the agent's _entire_ process for handling that single request. This might involve deciding to call an LLM, actually calling the LLM, deciding to use a tool, using the tool, processing the results, and finally putting together the answer. These callbacks essentially wrap the whole sequence from receiving the input to producing the final output for that one interaction.
--   **Before sending a request to, or after receiving a response from, the Large Language Model (LLM):** These callbacks (`Before Model`, `After Model`) allow you to inspect or modify the data going to and coming from the LLM specifically.
--   **Before executing a tool (a function or another agent) or after it finishes:** Similarly, `Before Tool` and `After Tool` callbacks give you control points specifically around the execution of tools invoked by the agent.
+- **Before the agent starts its main work on a request, and after it finishes:** When you ask an agent to do something (e.g., answer a question), it runs its internal logic to figure out the response.
+- The `Before Agent` callback executes _right before_ this main work begins for that specific request.
+- The `After Agent` callback executes _right after_ the agent has finished all its steps for that request and has prepared the final result, but just before the result is returned.
+- This "main work" encompasses the agent's _entire_ process for handling that single request. This might involve deciding to call an LLM, actually calling the LLM, deciding to use a tool, using the tool, processing the results, and finally putting together the answer. These callbacks essentially wrap the whole sequence from receiving the input to producing the final output for that one interaction.
+- **Before sending a request to, or after receiving a response from, the Large Language Model (LLM):** These callbacks (`Before Model`, `After Model`) allow you to inspect or modify the data going to and coming from the LLM specifically.
+- **Before executing a tool (a function or another agent) or after it finishes:** Similarly, `Before Tool` and `After Tool` callbacks give you control points specifically around the execution of tools invoked by the agent.
 
 <Mermaid
   chart="
@@ -27,27 +26,27 @@ flowchart TB
     BT[before_tool_callback] --> TL[Tools] --> AT[after_tool_callback]
   end
 
-  %% Middle lane: Agent
-  A[before_agent_callback] --> AG[Agent] --> AA[after_agent_callback]
+%% Middle lane: Agent
+A[before_agent_callback] --> AG[Agent] --> AA[after_agent_callback]
 
-  %% Bottom lane: Model
-  subgraph M[Model]
-    direction LR
-    BM[before_model_callback] --> ML[Model] --> AM[after_model_callback]
-  end
+%% Bottom lane: Model
+subgraph M[Model]
+direction LR
+BM[before_model_callback] --> ML[Model] --> AM[after_model_callback]
+end
 
-  %% Cross-links from Agent to Tools/Model
-  AG -.-> TL
-  AG -.-> ML
+%% Cross-links from Agent to Tools/Model
+AG -.-> TL
+AG -.-> ML
 "/>
 
 **Why use them?** Callbacks unlock significant flexibility and enable advanced agent capabilities:
 
--   **Observe & Debug:** Log detailed information at critical steps for monitoring and troubleshooting.
--   **Customize & Control:** Modify data flowing through the agent (like LLM requests or tool results) or even bypass certain steps entirely based on your logic.
--   **Implement Guardrails:** Enforce safety rules, validate inputs/outputs, or prevent disallowed operations.
--   **Manage State:** Read or dynamically update the agent's session state during execution.
--   **Integrate & Enhance:** Trigger external actions (API calls, notifications) or add features like caching.
+- **Observe & Debug:** Log detailed information at critical steps for monitoring and troubleshooting.
+- **Customize & Control:** Modify data flowing through the agent (like LLM requests or tool results) or even bypass certain steps entirely based on your logic.
+- **Implement Guardrails:** Enforce safety rules, validate inputs/outputs, or prevent disallowed operations.
+- **Manage State:** Read or dynamically update the agent's session state during execution.
+- **Integrate & Enhance:** Trigger external actions (API calls, notifications) or add features like caching.
 
 ## How Callbacks Work
 
@@ -56,10 +55,13 @@ flowchart TB
 Callbacks are registered during agent creation:
 
 ```typescript
-import { LlmAgent, CallbackContext, LlmRequest, LlmResponse } from '@iqai/adk';
+import { LlmAgent, CallbackContext, LlmRequest, LlmResponse } from "@iqai/adk";
 
 // Define callback function
-const beforeModelCallback = ({ callbackContext, llmRequest }: {
+const beforeModelCallback = ({
+  callbackContext,
+  llmRequest,
+}: {
   callbackContext: CallbackContext;
   llmRequest: LlmRequest;
 }): LlmResponse | null => {
@@ -81,6 +83,7 @@ const agent = new LlmAgent({
 ```
 
 ## The Callback Mechanism: Interception and Control
+
 When the ADK framework reaches a callback point (for example, just before calling the LLM), it checks whether the agent was configured with a corresponding callback and, if so, executes it.
 
 **Context is key:** Your callback receives a context object to understand and affect the current run:
@@ -92,7 +95,7 @@ These include invocation/session info, a delta-aware `state`, and helper methods
 
 **Controlling the flow:** In TypeScript, the value you return determines whether ADK proceeds or overrides behavior. The exact “continue vs override” sentinel differs by callback kind:
 
-1) Continue with default behavior
+1. Continue with default behavior
 
 - before_agent / after_agent: return `undefined`
 - before_model / after_model: return `null`
@@ -100,7 +103,7 @@ These include invocation/session info, a delta-aware `state`, and helper methods
 
 You can still mutate mutable inputs in-place (for example, tweak `llmRequest` in a before_model callback or adjust `args` in a before_tool callback) and then return the sentinel to proceed.
 
-2) Override default behavior by returning a specific object
+2. Override default behavior by returning a specific object
 
 - before_agent → return `Content` (from `@google/genai`) to skip the agent’s run and immediately reply.
 - after_agent → return `Content` to replace the agent’s produced reply.

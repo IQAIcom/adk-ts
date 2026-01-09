@@ -18,8 +18,10 @@ Authenticate your ADK tools to access protected APIs and services. ADK-TS provid
 | **OAuth 2.0** | User authorization flows, long-lived access | Yes           |
 
 <Callout type="info">
-  All credentials should be stored in environment variables, never hardcoded in
-  your source code.
+
+All credentials should be stored in environment variables, never hardcoded in
+your source code.
+
 </Callout>
 
 ## Quick Start
@@ -114,7 +116,7 @@ const oauth2Credential = new OAuth2Credential({
   accessToken: process.env.ACCESS_TOKEN!,
   refreshToken: process.env.REFRESH_TOKEN!,
   expiresIn: 3600,
-  refreshFunction: async (refreshToken) => {
+  refreshFunction: async refreshToken => {
     const response = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -183,7 +185,7 @@ class WeatherTool extends BaseTool {
     });
 
     const apiKeyCredential = new ApiKeyCredential(
-      process.env.WEATHER_API_KEY || ""
+      process.env.WEATHER_API_KEY || "",
     );
 
     this.authHandler = new AuthHandler({
@@ -194,14 +196,14 @@ class WeatherTool extends BaseTool {
 
   async runAsync(
     args: Record<string, any>,
-    context: ToolContext
+    context: ToolContext,
   ): Promise<any> {
     const location = args.location as string;
 
     try {
       const response = await fetch(
         `https://api.weather.com/forecast?location=${location}`,
-        { headers: this.authHandler.getHeaders() }
+        { headers: this.authHandler.getHeaders() },
       );
 
       if (!response.ok) {
@@ -270,7 +272,7 @@ const weatherTool = createTool({
   fn: async ({ location }) => {
     const response = await fetch(
       `https://api.weather.com/forecast?location=${location}`,
-      { headers: authHandler.getHeaders() }
+      { headers: authHandler.getHeaders() },
     );
     return response.json();
   },
@@ -286,7 +288,7 @@ import { AuthHandler } from "@iqai/adk";
 
 async function callAuthenticatedApi(
   endpoint: string,
-  authHandler: AuthHandler
+  authHandler: AuthHandler,
 ) {
   try {
     // Refresh token if expired
@@ -336,7 +338,7 @@ dotenv.config();
 
 // Validate required variables
 const required = ["API_KEY", "CLIENT_ID", "CLIENT_SECRET"];
-const missing = required.filter((key) => !process.env[key]);
+const missing = required.filter(key => !process.env[key]);
 if (missing.length > 0) {
   throw new Error(`Missing required env vars: ${missing.join(", ")}`);
 }
@@ -360,7 +362,7 @@ import {
 async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
-  initialDelay = 1000
+  initialDelay = 1000,
 ): Promise<T> {
   let lastError: Error | undefined;
 
@@ -380,7 +382,7 @@ async function withRetry<T>(
 
       // Exponential backoff
       const delay = initialDelay * Math.pow(2, attempt);
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 

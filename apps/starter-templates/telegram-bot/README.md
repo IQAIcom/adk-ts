@@ -1,4 +1,3 @@
-
 <div align="center">
 
 <img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
@@ -9,16 +8,11 @@ _Persistent Memory • Telegram Integration • TypeScript_
 
 </div>
 
-
 A Telegram bot starter template powered by ADK (AI Development Kit) that enables you to create intelligent, conversational bots for Telegram. This template provides a solid foundation for building AI-powered Telegram bots with persistent conversation memory.
 
 ---
 
-
-
-
 ## Prerequisites
-
 
 > [!note]
 > **You'll need the following before you begin.** For details on how to obtain these, see [Configure Your Bot](#3-configure-your-bot).
@@ -27,7 +21,6 @@ A Telegram bot starter template powered by ADK (AI Development Kit) that enables
 - **AI API Key**: Get an API key for your chosen AI model (e.g., Google AI Studio for Gemini)
 
 ## Quick Start
-
 
 The easiest way to create a new Telegram bot project using this template is with the ADK CLI:
 
@@ -45,6 +38,7 @@ You can also use this template directly by copying the files, but using the CLI 
 **Default (Production/Development) Route**
 
 To run your Telegram bot in production or for standard development, use:
+
 ```bash
 pnpm dev
 ```
@@ -52,17 +46,18 @@ pnpm dev
 **Fast Iteration & Agent Setup (ADK CLI)**
 
 For rapid prototyping, interactive testing, or initial agent setup, use the ADK CLI:
+
 ```bash
 adk run   # Interactive CLI chat with your agents
 adk web   # Web interface for easy testing and demonstration
 ```
 
 2. **Environment setup**
+
    ```bash
    cp example.env .env
    # Edit .env with your tokens and API keys
    ```
-
 
 3. **Configure Your Bot**
 
@@ -75,35 +70,37 @@ To set up your Telegram bot:
 5. Add the token to your `.env` file as `TELEGRAM_BOT_TOKEN`.
 6. (Optional) Adjust other environment variables as needed.
 
-4. **Development**
-   
+7. **Development**
+
    **Option 1: Traditional Development**
+
    ```bash
    pnpm dev
    ```
-   
+
    **Option 2: ADK CLI (Recommended for Testing)**
-   
+
    First, install the ADK CLI globally:
+
    ```bash
    npm install -g @iqai/adk-cli
    ```
-   
+
    Then use either:
+
    ```bash
    # Interactive CLI chat with your agents
    adk run
-   
+
    # Web interface for easy testing
    adk web
    ```
 
-5. **Production**
+8. **Production**
    ```bash
    pnpm build
    pnpm start
    ```
-
 
 ## Environment Variables
 
@@ -127,16 +124,11 @@ This template uses the Model Context Protocol (MCP) to connect your agent to Tel
 
 For more details, see the [MCP Telegram documentation](https://adk.iqai.com/docs/mcp-servers/telegram).
 
-
-
-
 ## Database
 
 - **Location**: `src/data/telegram_bot.db`
 - **Purpose**: Stores conversation history and context
 - **Auto-created**: Database and tables are created automatically
-
-
 
 ## File Structure
 
@@ -153,31 +145,31 @@ src/
    └── telegram_bot.db
 ```
 
-
 ## Deployment
 
 ### Local Development
+
 ```bash
 pnpm dev
 ```
 
 ### Production Server
+
 ```bash
 pnpm build
 pnpm start
 ```
 
 ### Docker
+
 ```bash
 docker build -t telegram-bot .
 docker run --env-file .env telegram-bot
 ```
 
-
 ## Testing Your Bot
 
 You can test your bot by sending messages to it on Telegram, or by using the ADK CLI for local/interactive testing.
-
 
 ## Learn More
 

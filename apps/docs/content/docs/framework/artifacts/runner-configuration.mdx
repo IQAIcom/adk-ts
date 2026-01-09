@@ -3,7 +3,7 @@ title: Runner Configuration
 description: Configure artifact behavior at run-time, including auto-saving user input blobs
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 ## Enable auto-save for user input blobs
 
@@ -20,18 +20,18 @@ import {
   Runner,
   InMemorySessionService,
   InMemoryArtifactService,
-  RunConfig
-} from '@iqai/adk';
+  RunConfig,
+} from "@iqai/adk";
 
 // Configure at agent build time
 const agent = agentBuilder()
-  .name('artifact_agent')
-  .model('gemini-2.5-flash')
+  .name("artifact_agent")
+  .model("gemini-2.5-flash")
   .withRunConfig({ saveInputBlobsAsArtifacts: true })
   .build();
 
 const runner = new Runner({
-  appName: 'my_app',
+  appName: "my_app",
   agent,
   sessionService: new InMemorySessionService(),
   artifactService: new InMemoryArtifactService(),
@@ -47,32 +47,38 @@ const runner = new Runner({
 ```
 
 <Callout type="info">
-Artifacts saved by this mechanism use the incoming part's `inlineData` (base64 string + MIME type) as-is. Ensure your front-end encodes uploads as base64 and sets a correct `mimeType`.
+
+Artifacts saved by this mechanism use the incoming part's `inlineData` (base64
+string + MIME type) as-is. Ensure your front-end encodes uploads as base64 and
+sets a correct `mimeType`.
+
 </Callout>
 
 ## Minimal example: sending an image upload
 
 ```typescript
-import type { Content } from '@google/genai';
+import type { Content } from "@google/genai";
 
 const imageBytes = Buffer.from(/* raw PNG bytes */);
 const message: Content = {
-  role: 'user',
+  role: "user",
   parts: [
     {
       inlineData: {
-        data: imageBytes.toString('base64'),
-        mimeType: 'image/png'
-      }
-    }
-  ]
+        data: imageBytes.toString("base64"),
+        mimeType: "image/png",
+      },
+    },
+  ],
 };
 
-for await (const event of runner.runAsync({ userId: 'u1', sessionId: 's1', newMessage: message })) {
+for await (const event of runner.runAsync({
+  userId: "u1",
+  sessionId: "s1",
+  newMessage: message,
+})) {
   // Events stream
 }
 
 // The image will be saved as an artifact, e.g. "artifact_<invocationId>_0"
 ```
-
-
