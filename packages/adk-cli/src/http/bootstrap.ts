@@ -2,13 +2,14 @@ import "reflect-metadata";
 import type { FSWatcher } from "node:fs";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { resolve, sep } from "node:path";
+import { telemetryService } from "@iqai/adk";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import z from "zod";
 import { environmentEnum, envSchema } from "../common/schema";
-import { HttpModule } from "./http.module";
 import { PrettyErrorFilter } from "./filters/pretty-error.filter";
+import { HttpModule } from "./http.module";
 import { AgentManager } from "./providers/agent-manager.service";
 import { DIRECTORIES_TO_SKIP } from "./providers/agent-scanner.service";
 import { HotReloadService } from "./reload/hot-reload.service";
@@ -210,6 +211,17 @@ export async function startHttpServer(
 ): Promise<StartedHttpServer> {
 	const env = envSchema.parse(process.env);
 	const debug = env.ADK_DEBUG;
+
+	// Initialize telemetry if not already initialized
+	if (!telemetryService.initialized) {
+		await telemetryService.initialize({
+			appName: "adk-cli",
+			appVersion: "1.0.0",
+			otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "",
+			enableTracing: true,
+			enableMetrics: false,
+		});
+	}
 
 	const app = await NestFactory.create<NestExpressApplication>(
 		HttpModule.register(config),

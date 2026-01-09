@@ -1,3 +1,4 @@
+// app/(dashboard)/_components/session-manager.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -8,6 +9,7 @@ import { Navbar } from "@/components/navbar";
 import { useAgentGraph } from "@/hooks/use-agent-graph";
 import { useEvents } from "@/hooks/use-events";
 import { useSessions } from "@/hooks/use-sessions";
+import { useTraces } from "@/hooks/use-traces";
 import type { Message, PanelId } from "../_schema";
 
 interface SessionManagerProps {
@@ -55,6 +57,11 @@ export function SessionManager({
 		isLoading: graphLoading,
 		error: graphError,
 	} = useAgentGraph(selectedAgent);
+
+	const { tracesByTraceId, isLoading: tracesLoading } = useTraces(
+		selectedAgent,
+		sessionId,
+	);
 
 	const prevAgentRef = useRef<string | null>(null);
 
@@ -128,7 +135,7 @@ export function SessionManager({
 
 	return (
 		<div className="h-screen flex bg-background">
-			<div className="flex-shrink-0 h-full">
+			<div className="shrink-0 h-full">
 				<Sidebar
 					key={selectedAgent?.relativePath || "__no_agent__"}
 					selectedPanel={selectedPanel}
@@ -142,6 +149,8 @@ export function SessionManager({
 					graph={graph}
 					graphLoading={graphLoading}
 					graphError={graphError}
+					tracesByTraceId={tracesByTraceId}
+					tracesLoading={tracesLoading}
 					onCreateSession={handleCreateSession}
 					onDeleteSession={handleDeleteSession}
 					onSwitchSession={handleSwitchSession}
@@ -152,7 +161,7 @@ export function SessionManager({
 			<div className="flex-1 flex min-h-0">
 				<div className="flex-1 flex flex-col min-h-0">
 					{/* Navbar */}
-					<div className="flex-shrink-0">
+					<div className="shrink-0">
 						<Navbar
 							apiUrl={apiUrl}
 							agents={agents}
