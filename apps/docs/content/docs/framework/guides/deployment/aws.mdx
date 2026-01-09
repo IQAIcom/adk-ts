@@ -150,9 +150,11 @@ AWS provides three primary deployment paths for ADK-TS agents:
         ```
 
         <Callout type="info" title="Execution Role Required">
-          Create an IAM role with Lambda execution permissions and any additional
-          permissions your agent needs (S3, DynamoDB, etc.). See [AWS Lambda execution role documentation](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html).
-        </Callout>
+
+Create an IAM role with Lambda execution permissions and any additional
+permissions your agent needs (S3, DynamoDB, etc.). See [AWS Lambda execution role documentation](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html).
+
+</Callout>
       </Accordion>
 
       <Accordion title="Step 5: Set Environment Variables">
@@ -250,8 +252,10 @@ AWS provides three primary deployment paths for ADK-TS agents:
     4. Click **Save**
 
     <Callout type="info" title="Encryption">
-      Lambda encrypts environment variables at rest automatically. For sensitive data, use AWS Secrets Manager.
-    </Callout>
+
+Lambda encrypts environment variables at rest automatically. For sensitive data, use AWS Secrets Manager.
+
+</Callout>
 
   </Tab>
 
@@ -555,8 +559,10 @@ AWS provides three primary deployment paths for ADK-TS agents:
     ```
 
     <Callout type="warn" title="Never Use Plain Environment Variables">
-      For ECS, always use Parameter Store or Secrets Manager for sensitive data. Never put secrets in plain `environment` field in task definitions.
-    </Callout>
+
+For ECS, always use Parameter Store or Secrets Manager for sensitive data. Never put secrets in plain `environment` field in task definitions.
+
+</Callout>
 
   </Tab>
 
@@ -834,8 +840,10 @@ AWS provides three primary deployment paths for ADK-TS agents:
     ```
 
     <Callout type="warn" title="Never Commit .env Files">
-      Add `.env` to your `.gitignore`. Never commit environment files to version control.
-    </Callout>
+
+Add `.env` to your `.gitignore`. Never commit environment files to version control.
+
+</Callout>
 
   </Tab>
 </Tabs>

@@ -3,9 +3,9 @@ title: Event Compaction
 description: Manage long session histories with automatic event summarization and compaction
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { Step, Steps } from "fumadocs-ui/components/steps";
 
 Event Compaction automatically manages long conversation histories by periodically replacing ranges of events with LLM-generated summaries. This keeps context windows manageable while preserving important information.
 
@@ -19,7 +19,11 @@ As conversations grow longer, sending the full history to the LLM becomes ineffi
 - **Operating transparently** without code changes
 
 <Callout type="info">
-Event Compaction uses a sliding window algorithm that triggers after a configured number of new invocations, ensuring consistent behavior and predictable costs.
+
+Event Compaction uses a sliding window algorithm that triggers after a
+configured number of new invocations, ensuring consistent behavior and
+predictable costs.
+
 </Callout>
 
 ## How It Works
@@ -29,28 +33,28 @@ Event Compaction uses a sliding window algorithm that triggers after a configure
 <Steps>
 
 <Step>
-### Trigger Condition
-After each agent turn completes, ADK checks if enough new invocations have occurred since the last compaction.
+  ### Trigger Condition After each agent turn completes, ADK checks if enough
+  new invocations have occurred since the last compaction.
 </Step>
 
 <Step>
-### Window Selection
-When triggered, ADK selects a window of invocations to compact, including some overlap from the previous compaction for continuity.
+  ### Window Selection When triggered, ADK selects a window of invocations to
+  compact, including some overlap from the previous compaction for continuity.
 </Step>
 
 <Step>
-### Summarization
-The selected events are sent to an LLM (by default, the agent's own model) to generate a concise summary.
+  ### Summarization The selected events are sent to an LLM (by default, the
+  agent's own model) to generate a concise summary.
 </Step>
 
 <Step>
-### Storage
-The summary is stored as a special compaction event with `actions.compaction` containing the timestamp range and summarized content.
+  ### Storage The summary is stored as a special compaction event with
+  `actions.compaction` containing the timestamp range and summarized content.
 </Step>
 
 <Step>
-### Consumption
-When building LLM requests, compaction events are converted to normal model events and original covered events are filtered out.
+  ### Consumption When building LLM requests, compaction events are converted to
+  normal model events and original covered events are filtered out.
 </Step>
 
 </Steps>
@@ -78,38 +82,37 @@ The algorithm maintains continuity by including overlap from the previous range,
 <Tab value="AgentBuilder">
 
 ```typescript
-import { AgentBuilder } from '@iqai/adk';
+import { AgentBuilder } from "@iqai/adk";
 
 // Simple usage with AgentBuilder
-const { runner } = await AgentBuilder
-  .create('assistant')
-  .withModel('gemini-2.5-flash')
+const { runner } = await AgentBuilder.create("assistant")
+  .withModel("gemini-2.5-flash")
   .withEventsCompaction({
-    compactionInterval: 10,  // Compact every 10 invocations
-    overlapSize: 2,          // Include 2 prior invocations
+    compactionInterval: 10, // Compact every 10 invocations
+    overlapSize: 2, // Include 2 prior invocations
   })
   .build();
 
 // Now compaction happens automatically
-const response = await runner.ask('Hello!');
+const response = await runner.ask("Hello!");
 ```
 
 </Tab>
 <Tab value="Runner Config">
 
 ```typescript
-import { Runner, EventsCompactionConfig } from '@iqai/adk';
+import { Runner, EventsCompactionConfig } from "@iqai/adk";
 
 const compactionConfig: EventsCompactionConfig = {
   // Trigger compaction every 10 new invocations
   compactionInterval: 10,
-  
+
   // Include 2 prior invocations for continuity
   overlapSize: 2,
 };
 
 const runner = new Runner({
-  appName: 'MyApp',
+  appName: "MyApp",
   agent: myAgent,
   sessionService: mySessionService,
   eventsCompactionConfig: compactionConfig,
@@ -120,15 +123,15 @@ const runner = new Runner({
 <Tab value="Custom Summarizer">
 
 ```typescript
-import { 
-  EventsSummarizer, 
-  Event, 
+import {
+  EventsSummarizer,
+  Event,
   EventActions,
-  LlmEventSummarizer 
-} from '@iqai/adk';
+  LlmEventSummarizer,
+} from "@iqai/adk";
 
 // Option 1: Use default with custom model
-const customModel = LLMRegistry.newLLM('gpt-4o-mini');
+const customModel = LLMRegistry.newLLM("gpt-4o-mini");
 const summarizer = new LlmEventSummarizer(customModel);
 
 // Option 2: Implement custom logic
@@ -136,18 +139,18 @@ class CustomSummarizer implements EventsSummarizer {
   async maybeSummarizeEvents(events: Event[]): Promise<Event | undefined> {
     // Your custom summarization logic
     const summary = await this.generateSummary(events);
-    
+
     if (!summary) return undefined;
-    
+
     return new Event({
       invocationId: Event.newId(),
-      author: 'user',
+      author: "user",
       actions: new EventActions({
         compaction: {
           startTimestamp: events[0].timestamp,
           endTimestamp: events[events.length - 1].timestamp,
           compactedContent: {
-            role: 'model',
+            role: "model",
             parts: [{ text: summary }],
           },
         },
@@ -168,16 +171,18 @@ const compactionConfig: EventsCompactionConfig = {
 
 ### Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `compactionInterval` | `number` | Required | Number of new invocations needed to trigger compaction |
-| `overlapSize` | `number` | Required | Number of prior invocations to include for continuity |
-| `summarizer` | `EventsSummarizer` | Auto-created | Custom summarizer (defaults to LLM-based) |
+| Option               | Type               | Default      | Description                                            |
+| -------------------- | ------------------ | ------------ | ------------------------------------------------------ |
+| `compactionInterval` | `number`           | Required     | Number of new invocations needed to trigger compaction |
+| `overlapSize`        | `number`           | Required     | Number of prior invocations to include for continuity  |
+| `summarizer`         | `EventsSummarizer` | Auto-created | Custom summarizer (defaults to LLM-based)              |
 
 <Callout type="warn">
-Choose your `compactionInterval` based on your use case:
-- **Higher values (20+)**: Less frequent compaction, more detailed history retained
-- **Lower values (5-10)**: More aggressive compaction, better for very long sessions
+
+Choose your `compactionInterval` based on your use case: - **Higher values
+(20+)**: Less frequent compaction, more detailed history retained - **Lower
+values (5-10)**: More aggressive compaction, better for very long sessions
+
 </Callout>
 
 ## Understanding the Components
@@ -188,9 +193,9 @@ The compaction data structure that's stored in event actions:
 
 ```typescript
 interface EventCompaction {
-  startTimestamp: number;     // Start of compacted range
-  endTimestamp: number;       // End of compacted range
-  compactedContent: Content;  // The summarized content
+  startTimestamp: number; // Start of compacted range
+  endTimestamp: number; // End of compacted range
+  compactedContent: Content; // The summarized content
 }
 ```
 
@@ -209,7 +214,7 @@ interface EventsSummarizer {
 The default implementation that uses an LLM to generate summaries:
 
 ```typescript
-import { LlmEventSummarizer } from '@iqai/adk';
+import { LlmEventSummarizer } from "@iqai/adk";
 
 // Use with custom prompt
 const summarizer = new LlmEventSummarizer(
@@ -219,7 +224,7 @@ const summarizer = new LlmEventSummarizer(
   - Important information exchanged
   - Action items identified
   
-  Events: {events}`
+  Events: {events}`,
 );
 ```
 
@@ -228,13 +233,12 @@ const summarizer = new LlmEventSummarizer(
 ### Basic Usage with AgentBuilder
 
 ```typescript
-import { AgentBuilder } from '@iqai/adk';
+import { AgentBuilder } from "@iqai/adk";
 
 // Create agent with compaction using AgentBuilder
-const { runner } = await AgentBuilder
-  .create('assistant')
-  .withModel('gemini-2.5-flash')
-  .withInstruction('You are a helpful assistant.')
+const { runner } = await AgentBuilder.create("assistant")
+  .withModel("gemini-2.5-flash")
+  .withInstruction("You are a helpful assistant.")
   .withEventsCompaction({
     compactionInterval: 5,
     overlapSize: 1,
@@ -242,23 +246,23 @@ const { runner } = await AgentBuilder
   .build();
 
 // Use normally - compaction happens automatically
-const response = await runner.ask('Hello!');
+const response = await runner.ask("Hello!");
 console.log(response);
 ```
 
 ### Basic Usage with Runner
 
 ```typescript
-import { InMemoryRunner, LlmAgent } from '@iqai/adk';
+import { InMemoryRunner, LlmAgent } from "@iqai/adk";
 
 const agent = new LlmAgent({
-  name: 'Assistant',
-  model: 'gemini-2.5-flash',
-  instruction: 'You are a helpful assistant.',
+  name: "Assistant",
+  model: "gemini-2.5-flash",
+  instruction: "You are a helpful assistant.",
 });
 
 const runner = new InMemoryRunner(agent, {
-  appName: 'ChatApp',
+  appName: "ChatApp",
 });
 
 // Enable compaction
@@ -269,9 +273,9 @@ runner.eventsCompactionConfig = {
 
 // Use normally - compaction happens automatically
 for await (const event of runner.runAsync({
-  userId: 'user123',
-  sessionId: 'session456',
-  newMessage: { role: 'user', parts: [{ text: 'Hello!' }] },
+  userId: "user123",
+  sessionId: "session456",
+  newMessage: { role: "user", parts: [{ text: "Hello!" }] },
 })) {
   console.log(event);
 }
@@ -288,14 +292,15 @@ function hasCompactions(session: Session): boolean {
 // Get compaction statistics
 function getCompactionStats(session: Session) {
   const compactions = session.events.filter(e => e.actions?.compaction);
-  
+
   return {
     totalCompactions: compactions.length,
     totalEventsCompacted: compactions.reduce((sum, e) => {
       const compact = e.actions.compaction!;
       const covered = session.events.filter(
-        ev => ev.timestamp >= compact.startTimestamp 
-           && ev.timestamp <= compact.endTimestamp
+        ev =>
+          ev.timestamp >= compact.startTimestamp &&
+          ev.timestamp <= compact.endTimestamp,
       );
       return sum + covered.length;
     }, 0),
@@ -308,41 +313,39 @@ function getCompactionStats(session: Session) {
 ```typescript
 class BulletPointSummarizer implements EventsSummarizer {
   constructor(private model: BaseLlm) {}
-  
+
   async maybeSummarizeEvents(events: Event[]): Promise<Event | undefined> {
     if (events.length < 3) return undefined; // Skip small batches
-    
+
     const eventTexts = events
       .filter(e => e.content?.parts?.[0]?.text)
       .map(e => `${e.author}: ${e.content.parts[0].text}`);
-    
+
     const prompt = `Create a bullet-point summary of this conversation:
 
-${eventTexts.join('\n')}
+${eventTexts.join("\n")}
 
 Format as:
 • Key point 1
 • Key point 2
 • Key point 3`;
 
-    let summary = '';
+    let summary = "";
     for await (const response of this.model.generateContentAsync({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     } as any)) {
-      summary += response.content?.parts
-        ?.map(p => p.text || '')
-        .join('');
+      summary += response.content?.parts?.map(p => p.text || "").join("");
     }
-    
+
     return new Event({
       invocationId: Event.newId(),
-      author: 'user',
+      author: "user",
       actions: new EventActions({
         compaction: {
           startTimestamp: events[0].timestamp,
           endTimestamp: events[events.length - 1].timestamp,
           compactedContent: {
-            role: 'model',
+            role: "model",
             parts: [{ text: summary.trim() }],
           },
         },
@@ -359,20 +362,20 @@ Format as:
 ```typescript
 // For customer support (high detail retention)
 const supportConfig: EventsCompactionConfig = {
-  compactionInterval: 20,  // Compact less frequently
-  overlapSize: 5,          // More overlap
+  compactionInterval: 20, // Compact less frequently
+  overlapSize: 5, // More overlap
 };
 
 // For general chat (aggressive compaction)
 const chatConfig: EventsCompactionConfig = {
-  compactionInterval: 5,   // Compact frequently
-  overlapSize: 1,          // Minimal overlap
+  compactionInterval: 5, // Compact frequently
+  overlapSize: 1, // Minimal overlap
 };
 
 // For long research sessions (balanced)
 const researchConfig: EventsCompactionConfig = {
-  compactionInterval: 10,  // Moderate compaction
-  overlapSize: 2,          // Standard overlap
+  compactionInterval: 10, // Moderate compaction
+  overlapSize: 2, // Standard overlap
 };
 ```
 
@@ -382,10 +385,10 @@ const researchConfig: EventsCompactionConfig = {
 class CompactionMonitor {
   private compactionCount = 0;
   private eventsCompacted = 0;
-  
+
   async runWithMonitoring(runner: Runner, query: string) {
     const sessionBefore = await runner.sessionService.getSession(...);
-    
+
     // Run agent
     for await (const event of runner.runAsync(...)) {
       if (event.actions?.compaction) {
@@ -399,7 +402,7 @@ class CompactionMonitor {
         });
       }
     }
-    
+
     const sessionAfter = await runner.sessionService.getSession(...);
     console.log('Session stats:', {
       totalEvents: sessionAfter.events.length,
@@ -412,33 +415,37 @@ class CompactionMonitor {
 ### Testing with Compaction
 
 ```typescript
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
-describe('Agent with Compaction', () => {
-  it('should compact after threshold', async () => {
+describe("Agent with Compaction", () => {
+  it("should compact after threshold", async () => {
     const runner = new InMemoryRunner(agent, {
-      appName: 'TestApp',
+      appName: "TestApp",
     });
-    
+
     runner.eventsCompactionConfig = {
       compactionInterval: 3,
       overlapSize: 1,
     };
-    
+
     // Generate 3 invocations
     for (let i = 0; i < 3; i++) {
       for await (const event of runner.runAsync({
-        userId: 'test',
-        sessionId: 'test',
-        newMessage: { role: 'user', parts: [{ text: `Message ${i}` }] },
+        userId: "test",
+        sessionId: "test",
+        newMessage: { role: "user", parts: [{ text: `Message ${i}` }] },
       })) {
         // Process events
       }
     }
-    
-    const session = await runner.sessionService.getSession('TestApp', 'test', 'test');
+
+    const session = await runner.sessionService.getSession(
+      "TestApp",
+      "test",
+      "test",
+    );
     const hasCompaction = session?.events.some(e => e.actions?.compaction);
-    
+
     expect(hasCompaction).toBe(true);
   });
 });
@@ -466,9 +473,9 @@ Event compaction can significantly reduce token usage:
 
 ```typescript
 // Use cheaper model for summarization
-import { LlmEventSummarizer, LLMRegistry } from '@iqai/adk';
+import { LlmEventSummarizer, LLMRegistry } from "@iqai/adk";
 
-const cheapModel = LLMRegistry.newLLM('gemini-2.0-flash-lite');
+const cheapModel = LLMRegistry.newLLM("gemini-2.0-flash-lite");
 const costEffectiveSummarizer = new LlmEventSummarizer(cheapModel);
 
 const config: EventsCompactionConfig = {
@@ -483,11 +490,11 @@ const config: EventsCompactionConfig = {
 ### Compaction Not Triggering
 
 <Callout type="error">
-If compaction isn't occurring, check:
-1. `eventsCompactionConfig` is set on the Runner
-2. `compactionInterval` threshold has been reached
-3. Summarizer is properly configured
-4. Session has enough invocations
+
+If compaction isn't occurring, check: 1. `eventsCompactionConfig` is set on
+the Runner 2. `compactionInterval` threshold has been reached 3. Summarizer is
+properly configured 4. Session has enough invocations
+
 </Callout>
 
 ```typescript
@@ -529,7 +536,7 @@ Exclude:
 Events to summarize:
 {events}
 
-Provide a detailed yet concise summary:`
+Provide a detailed yet concise summary:`,
 );
 ```
 
@@ -540,8 +547,8 @@ Provide a detailed yet concise summary:`
 ```typescript
 // Compaction works with agent hierarchies
 const rootAgent = new LlmAgent({
-  name: 'Coordinator',
-  model: 'gemini-2.5-pro',
+  name: "Coordinator",
+  model: "gemini-2.5-pro",
   subAgents: [assistantAgent, researchAgent],
 });
 
@@ -564,13 +571,12 @@ const runner = new Runner({
 class SelectiveSummarizer implements EventsSummarizer {
   async maybeSummarizeEvents(events: Event[]): Promise<Event | undefined> {
     // Filter events to compact
-    const textEvents = events.filter(e => 
-      e.content?.parts?.some(p => p.text) &&
-      !e.actions?.stateDelta // Preserve state changes
+    const textEvents = events.filter(
+      e => e.content?.parts?.some(p => p.text) && !e.actions?.stateDelta, // Preserve state changes
     );
-    
+
     if (textEvents.length < 5) return undefined;
-    
+
     // Summarize only text events
     // ... implementation
   }

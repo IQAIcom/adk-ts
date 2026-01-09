@@ -104,9 +104,11 @@ const { runner } = await AgentBuilder.create("my_agent")
 ```
 
 <Callout type="info">
-  Custom session IDs are only available when using
-  `AgentBuilder.withSessionService()`. When using `LLMAgent` directly, session
-  IDs are auto-generated.
+
+Custom session IDs are only available when using
+`AgentBuilder.withSessionService()`. When using `LLMAgent` directly, session
+IDs are auto-generated.
+
 </Callout>
 
 ## Managing Sessions with a `SessionService`
@@ -164,7 +166,7 @@ Choose a specific factory function for your database, or use the generic `create
 import { createPostgresSessionService } from "@iqai/adk";
 
 const sessionService = createPostgresSessionService(
-  "postgresql://user:pass@localhost:5432/db"
+  "postgresql://user:pass@localhost:5432/db",
 );
 ```
 
@@ -174,7 +176,7 @@ const sessionService = createPostgresSessionService(
 import { createMysqlSessionService } from "@iqai/adk";
 
 const sessionService = createMysqlSessionService(
-  "mysql://user:pass@localhost:3306/db"
+  "mysql://user:pass@localhost:3306/db",
 );
 ```
 
@@ -196,7 +198,8 @@ const sessionService = createDatabaseSessionService(process.env.DATABASE_URL);
 ```
 
 <Callout type="info" title="Database packages required">
-  To use database session storage, you'll need to install the appropriate database driver package:
+
+To use database session storage, you'll need to install the appropriate database driver package:
 
 - **SQLite**: `npm install better-sqlite3` (file-based, no server needed)
 - **PostgreSQL**: `npm install pg` (requires PostgreSQL server)
@@ -243,7 +246,7 @@ const session = await sessionService.createSession(
   "support-bot", // appName
   "alice", // userId
   {}, // optional initial state
-  "ticket-12345" // optional sessionId
+  "ticket-12345", // optional sessionId
 );
 ```
 
@@ -253,7 +256,7 @@ const session = await sessionService.createSession(
 const session = await sessionService.getSession(
   "support-bot", // appName
   "alice", // userId
-  "ticket-12345" // sessionId
+  "ticket-12345", // sessionId
 );
 ```
 
@@ -264,7 +267,7 @@ Returns session metadata (ID, lastUpdateTime). Use `getSession()` for full sessi
 ```typescript
 const sessions = await sessionService.listSessions(
   "support-bot", // appName
-  "alice" // userId
+  "alice", // userId
 );
 ```
 
@@ -274,7 +277,7 @@ const sessions = await sessionService.listSessions(
 await sessionService.deleteSession(
   "support-bot", // appName
   "alice", // userId
-  "ticket-12345" // sessionId
+  "ticket-12345", // sessionId
 );
 ```
 

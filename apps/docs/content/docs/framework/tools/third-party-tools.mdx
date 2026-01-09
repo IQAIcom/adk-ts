@@ -9,8 +9,10 @@ import { Callout } from "fumadocs-ui/components/callout";
 Integrate any external API, library, or service as an ADK-TS tool. Use `createTool` for simple integrations or `BaseTool` for complex tools with multiple operations.
 
 <Callout type="info">
-  You can wrap any JavaScript/TypeScript library, REST API, or external service
-  as an ADK-TS tool.
+
+You can wrap any JavaScript/TypeScript library, REST API, or external service
+as an ADK-TS tool.
+
 </Callout>
 
 ## Using createTool
@@ -129,7 +131,7 @@ class DatabaseTool extends BaseTool {
 
   async runAsync(
     args: Record<string, any>,
-    context: ToolContext
+    context: ToolContext,
   ): Promise<any> {
     try {
       const result = await this.client.query(args.sql, {
@@ -187,7 +189,7 @@ class StorageTool extends BaseTool {
 
   async runAsync(
     args: Record<string, any>,
-    context: ToolContext
+    context: ToolContext,
   ): Promise<any> {
     const { operation, bucket, path, content } = args;
 

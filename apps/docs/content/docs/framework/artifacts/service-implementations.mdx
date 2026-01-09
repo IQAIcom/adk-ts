@@ -3,7 +3,7 @@ title: Service Implementations
 description: Different artifact service backends and their configurations for various deployment scenarios
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 The artifact system is built around the `BaseArtifactService` interface, which allows you to choose different storage backends based on your requirements. Each implementation offers different trade-offs between performance, persistence, and scalability.
 
@@ -12,7 +12,7 @@ The artifact system is built around the `BaseArtifactService` interface, which a
 All artifact services implement the same core interface:
 
 ```typescript
-import type { Part } from '@google/genai';
+import type { Part } from "@google/genai";
 
 interface BaseArtifactService {
   saveArtifact(args: {
@@ -56,7 +56,14 @@ interface BaseArtifactService {
 This consistent interface allows you to switch between implementations without changing your agent code.
 
 <Callout type="warning" title="Artifact Deletion">
-The `deleteArtifact` method is available on all artifact service implementations but is intentionally not exposed through context objects (`CallbackContext` or `ToolContext`) for safety reasons. Access it directly through the artifact service instance. See [Best Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion) for cleanup strategies.
+
+The `deleteArtifact` method is available on all artifact service
+implementations but is intentionally not exposed through context objects
+(`CallbackContext` or `ToolContext`) for safety reasons. Access it directly
+through the artifact service instance. See [Best
+Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion)
+for cleanup strategies.
+
 </Callout>
 
 ## InMemoryArtifactService
@@ -74,7 +81,7 @@ Fast, temporary storage for development and testing scenarios.
 ### Setup and Configuration
 
 ```typescript
-import { InMemoryArtifactService, Runner } from '@iqai/adk';
+import { InMemoryArtifactService, Runner } from "@iqai/adk";
 
 // Create the service (no configuration needed)
 const artifactService = new InMemoryArtifactService();
@@ -84,63 +91,68 @@ const runner = new Runner({
   appName: "my_app",
   agent: myAgent,
   sessionService: mySessionService,
-  artifactService
+  artifactService,
 });
 ```
 
 ### Example Usage
 
 ```typescript
-import { InMemoryArtifactService } from '@iqai/adk';
+import { InMemoryArtifactService } from "@iqai/adk";
 
 const artifactService = new InMemoryArtifactService();
 
 // Save an artifact
 const textArtifact = {
   inlineData: {
-    data: Buffer.from('Hello, World!').toString('base64'),
-    mimeType: 'text/plain'
-  }
+    data: Buffer.from("Hello, World!").toString("base64"),
+    mimeType: "text/plain",
+  },
 };
 
 const version = await artifactService.saveArtifact({
-  appName: 'test_app',
-  userId: 'user123',
-  sessionId: 'session456',
-  filename: 'greeting.txt',
-  artifact: textArtifact
+  appName: "test_app",
+  userId: "user123",
+  sessionId: "session456",
+  filename: "greeting.txt",
+  artifact: textArtifact,
 });
 
 console.log(`Saved version: ${version}`); // 0
 
 // Load the artifact
 const loaded = await artifactService.loadArtifact({
-  appName: 'test_app',
-  userId: 'user123',
-  sessionId: 'session456',
-  filename: 'greeting.txt'
+  appName: "test_app",
+  userId: "user123",
+  sessionId: "session456",
+  filename: "greeting.txt",
 });
 
 if (loaded) {
-  const text = Buffer.from(loaded.inlineData.data, 'base64').toString();
+  const text = Buffer.from(loaded.inlineData.data, "base64").toString();
   console.log(`Loaded: ${text}`); // "Hello, World!"
 }
 
 // Delete an artifact when no longer needed
 await artifactService.deleteArtifact({
-  appName: 'test_app',
-  userId: 'user123',
-  sessionId: 'session456',
-  filename: 'greeting.txt'
+  appName: "test_app",
+  userId: "user123",
+  sessionId: "session456",
+  filename: "greeting.txt",
 });
 ```
 
 <Callout type="info">
+
 In-memory storage is great for development and tests. Data is lost on restart.
+
 </Callout>
 
 <Callout type="warning">
-Data stored in `InMemoryArtifactService` is lost when the process restarts. Use only for development and testing.
+
+Data stored in `InMemoryArtifactService` is lost when the process restarts.
+Use only for development and testing.
+
 </Callout>
 
 ## GcsArtifactService
@@ -158,17 +170,17 @@ Production-ready artifact storage using Google Cloud Storage.
 ### Setup and Configuration
 
 ```typescript
-import { GcsArtifactService, Runner } from '@iqai/adk';
+import { GcsArtifactService, Runner } from "@iqai/adk";
 
 // Basic configuration
-const artifactService = new GcsArtifactService('my-artifacts-bucket');
+const artifactService = new GcsArtifactService("my-artifacts-bucket");
 
 // Use with Runner
 const runner = new Runner({
   appName: "production_app",
   agent: myAgent,
   sessionService: mySessionService,
-  artifactService
+  artifactService,
 });
 ```
 
@@ -213,50 +225,49 @@ my-artifacts-bucket/
 ### Example Usage
 
 ```typescript
-import { GcsArtifactService } from '@iqai/adk';
+import { GcsArtifactService } from "@iqai/adk";
 
-const artifactService = new GcsArtifactService('my-artifacts-bucket');
+const artifactService = new GcsArtifactService("my-artifacts-bucket");
 
 // Save a large binary file
 const imageData = Buffer.from(/* your image data */);
 const imageArtifact = {
   inlineData: {
-    data: imageData.toString('base64'),
-    mimeType: 'image/png'
-  }
+    data: imageData.toString("base64"),
+    mimeType: "image/png",
+  },
 };
 
 try {
   const version = await artifactService.saveArtifact({
-    appName: 'photo_app',
-    userId: 'user789',
-    sessionId: 'session123',
-    filename: 'user:profile_picture.png',
-    artifact: imageArtifact
+    appName: "photo_app",
+    userId: "user789",
+    sessionId: "session123",
+    filename: "user:profile_picture.png",
+    artifact: imageArtifact,
   });
 
   console.log(`Image saved as version ${version}`);
 
   // List all artifact filenames for this user/session
   const artifactKeys = await artifactService.listArtifactKeys({
-    appName: 'photo_app',
-    userId: 'user789',
-    sessionId: 'session123'
+    appName: "photo_app",
+    userId: "user789",
+    sessionId: "session123",
   });
 
-  console.log('Available artifacts:', artifactKeys);
+  console.log("Available artifacts:", artifactKeys);
   // ['user:profile_picture.png', ...]
 
   // Delete an artifact when no longer needed
   await artifactService.deleteArtifact({
-    appName: 'photo_app',
-    userId: 'user789',
-    sessionId: 'session123',
-    filename: 'temp_thumbnail.png'
+    appName: "photo_app",
+    userId: "user789",
+    sessionId: "session123",
+    filename: "temp_thumbnail.png",
   });
-
 } catch (error) {
-  console.error('GCS operation failed:', error);
+  console.error("GCS operation failed:", error);
 }
 ```
 
@@ -271,16 +282,19 @@ See Troubleshooting for common GCS and service wiring issues.
 ### Using StorageOptions
 
 ```typescript
-import { GcsArtifactService } from '@iqai/adk';
+import { GcsArtifactService } from "@iqai/adk";
 
-const artifactService = new GcsArtifactService('my-artifacts-bucket', {
-  projectId: 'my-project',
-  keyFilename: '/path/to/key.json' // optional; or rely on ADC
+const artifactService = new GcsArtifactService("my-artifacts-bucket", {
+  projectId: "my-project",
+  keyFilename: "/path/to/key.json", // optional; or rely on ADC
 });
 ```
 
 <Callout type="info">
-The GCS service automatically handles retries for transient errors and provides built-in redundancy and durability.
+
+The GCS service automatically handles retries for transient errors and
+provides built-in redundancy and durability.
+
 </Callout>
 
 ## Custom Service Implementation
@@ -292,16 +306,19 @@ You can implement your own artifact service by extending the `BaseArtifactServic
 Choose the appropriate artifact service based on your requirements:
 
 ### Development and Testing
+
 - **Use**: `InMemoryArtifactService`
 - **Reasons**: Fast, simple setup, no external dependencies
 - **Limitations**: Data lost on restart
 
 ### Production Applications
+
 - **Use**: `GcsArtifactService` or custom database service
 - **Reasons**: Durable storage, scalability, backup/recovery
 - **Considerations**: Network latency, cost, compliance requirements
 
 ### Hybrid Scenarios
+
 - **Use**: Combination approach with caching
 - **Implementation**: Database/GCS for persistence + Redis for caching
 - **Benefits**: Fast access with durability
@@ -309,7 +326,7 @@ Choose the appropriate artifact service based on your requirements:
 ### Performance Comparison
 
 | Service Type | Read Speed | Write Speed | Durability | Scalability | Setup Complexity |
-|--------------|------------|-------------|------------|-------------|------------------|
+| ------------ | ---------- | ----------- | ---------- | ----------- | ---------------- |
 | InMemory     | Fastest    | Fastest     | None       | RAM-limited | Minimal          |
 | GCS          | Fast       | Fast        | High       | Unlimited   | Moderate         |
 | Database     | Moderate   | Moderate    | High       | High        | High             |

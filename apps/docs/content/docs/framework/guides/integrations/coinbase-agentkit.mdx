@@ -10,9 +10,11 @@ By using AgentKit's MCP extension, you can unlock blockchain capabilities for yo
 **How it works:** AgentKit exposes its action providers as MCP tools, which are then converted into ADK `BaseTool` instances that your agents can use directly.
 
 <Callout type="success" title="Demo Project Available">
-  Check out the [complete working
-  implementation](https://github.com/IQAIcom/coinbase-agent) to see how all the
-  pieces fit together in a real project.
+
+Check out the [complete working
+implementation](https://github.com/IQAIcom/coinbase-agent) to see how all the
+pieces fit together in a real project.
+
 </Callout>
 
 ## Installation
@@ -53,7 +55,7 @@ export async function getAgentKit(): Promise<AgentKit> {
   try {
     // Create wallet account from private key
     const account = privateKeyToAccount(
-      process.env.WALLET_PRIVATE_KEY as Address
+      process.env.WALLET_PRIVATE_KEY as Address,
     );
 
     // Create wallet client for Base network
@@ -82,11 +84,13 @@ export async function getAgentKit(): Promise<AgentKit> {
 ```
 
 <Callout type="info" title="Action Providers">
-  You can add various action providers to enable different capabilities: -
-  `walletActionProvider()` - Basic wallet operations (balance, transfer) -
-  `pythActionProvider()` - Price feed data See the [full list of action
-  providers](https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md#action-providers)
-  for more options.
+
+You can add various action providers to enable different capabilities: -
+`walletActionProvider()` - Basic wallet operations (balance, transfer) -
+`pythActionProvider()` - Price feed data See the [full list of action
+providers](https://github.com/coinbase/agentkit/blob/main/typescript/agentkit/README.md#action-providers)
+for more options.
+
 </Callout>
 
 ## Convert AgentKit MCP Tools to ADK-TS Tools
@@ -113,12 +117,12 @@ export async function getAgentKitTools(): Promise<BaseTool[]> {
 
   // Convert each MCP tool to an ADK BaseTool
   const baseTools = await Promise.all(
-    tools.map(async (mcpTool) =>
+    tools.map(async mcpTool =>
       convertMcpToolToBaseTool({
         mcpTool,
         toolHandler,
-      })
-    )
+      }),
+    ),
   );
 
   return baseTools;
@@ -142,12 +146,12 @@ export async function getCoinbaseAgent() {
   const { agent, runner } = await AgentBuilder.create("coinbase_agent")
     .withModel("gemini-2.5-flash")
     .withDescription(
-      "AI agent with blockchain capabilities via Coinbase AgentKit"
+      "AI agent with blockchain capabilities via Coinbase AgentKit",
     )
     .withInstruction(
       `You are a cryptocurrency assistant with blockchain capabilities.
       You can check token prices, manage wallets, and perform on-chain transactions.
-      `
+      `,
     )
     .withTools(...coinbaseTools)
     .build();
@@ -162,7 +166,7 @@ async function main() {
   console.log(response);
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error(err);
 });
 ```

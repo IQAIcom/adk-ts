@@ -11,10 +11,12 @@ Custom agents provide ultimate flexibility in ADK-TS for orchestrating sophistic
 Unlike simple workflow patterns (`SequentialAgent`, `ParallelAgent`, `LoopAgent`), custom agents handle complex decision trees, conditional flows, and dynamic routing based on content analysis, user preferences, or business rules. They allow you to define arbitrary orchestration logic by inheriting directly from `BaseAgent` and implementing your own control flow.
 
 <Callout type="warn" title="Advanced Feature">
-  Custom agents require deep understanding of `ADK-TS` fundamentals. Master [LLM
-  agents](/docs/framework/agents/llm-agents) and [workflow
-  agents](/docs/framework/agents/workflow-agents) before implementing custom
-  orchestration logic.
+
+Custom agents require deep understanding of `ADK-TS` fundamentals. Master [LLM
+agents](/docs/framework/agents/llm-agents) and [workflow
+agents](/docs/framework/agents/workflow-agents) before implementing custom
+orchestration logic.
+
 </Callout>
 
 ## Implementing Custom Logic
@@ -229,7 +231,7 @@ export class ContentQualityAgent extends BaseAgent {
   }
 
   protected async *runAsyncImpl(
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     const maxRetries = 2;
     let retryCount = 0;
@@ -294,7 +296,7 @@ export class ContentQualityAgent extends BaseAgent {
 
       const qualityScore = parseInt(
         ctx.session.state.get("quality_score", "0"),
-        10
+        10,
       );
 
       // Step 6: Decision based on quality
@@ -431,11 +433,11 @@ export class IntelligentRouterAgent extends BaseAgent {
   }
 
   protected async *runAsyncImpl(
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     // Analyze input to determine routing
     const complexity = this.analyzeComplexity(
-      ctx.session.state.get("user_input", "")
+      ctx.session.state.get("user_input", ""),
     );
     const userTier = ctx.session.state.get("user_tier", "standard");
 
@@ -445,7 +447,7 @@ export class IntelligentRouterAgent extends BaseAgent {
         parts: [
           {
             text: `📊 Analyzing: Complexity ${complexity.toFixed(
-              2
+              2,
             )}, Tier ${userTier}`,
           },
         ],
@@ -492,7 +494,7 @@ export class IntelligentRouterAgent extends BaseAgent {
     return Math.min(
       (factors.length + factors.technicalTerms + factors.questionComplexity) /
         3,
-      1
+      1,
     );
   }
 }
@@ -539,7 +541,7 @@ export class ResilientProcessorAgent extends BaseAgent {
   }
 
   protected async *runAsyncImpl(
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     const maxRetries = 3;
     let attempt = 0;
@@ -584,7 +586,7 @@ export class ResilientProcessorAgent extends BaseAgent {
             },
           });
 
-          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
           backoffMs *= 2; // Exponential backoff
         }
       }
@@ -644,11 +646,11 @@ export class WorkflowStateMachineAgent extends BaseAgent {
   }
 
   protected async *runAsyncImpl(
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     let currentState: WorkflowState = ctx.session.state.get(
       "workflow_state",
-      "initialized"
+      "initialized",
     );
 
     while (currentState !== "completed" && currentState !== "failed") {
@@ -696,7 +698,7 @@ export class WorkflowStateMachineAgent extends BaseAgent {
 
   private async executeStateLogic(
     state: WorkflowState,
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ): Promise<WorkflowState> {
     switch (state) {
       case "initialized":
@@ -721,14 +723,14 @@ export class WorkflowStateMachineAgent extends BaseAgent {
   }
 
   private async performAnalysis(
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ): Promise<WorkflowState> {
     // Analysis logic here
     return "processing";
   }
 
   private async performProcessing(
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ): Promise<WorkflowState> {
     // Processing logic here
     const processingSuccess = Math.random() > 0.3; // 70% success rate
@@ -736,7 +738,7 @@ export class WorkflowStateMachineAgent extends BaseAgent {
   }
 
   private async performValidation(
-    ctx: InvocationContext
+    ctx: InvocationContext,
   ): Promise<WorkflowState> {
     // Validation logic here
     const validationSuccess = Math.random() > 0.2; // 80% success rate
