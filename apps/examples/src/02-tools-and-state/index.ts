@@ -1,128 +1,37 @@
-import { env } from "node:process";
-import { AgentBuilder, createTool, InMemorySessionService } from "@iqai/adk";
-import dedent from "dedent";
-import * as z from "zod";
 import { ask } from "../utils";
+import { getRootAgent } from "./agents/agent";
 
 /**
- * 02 - Tools and State Management
+ * 01. Tools and State
  *
- * Learn how to create custom tools and manage state in your agents.
+ * You can notice we have tools.ts file along with agent.ts file in agents folder.
+ * This is where we export all our tools required for the agent.
  *
- * Concepts covered:
- * - Creating custom tools with createTool
- * - Tool schemas and validation
- * - State management with context.state
- * - Session services for persistence
- * - State injection in instructions
+ * In agent.ts you can see we are adding more fields
+ * 1. withInstruction: this is where we have system instructions. Further, we are having state variables inside the prompt itself which will be decoded to real values during runtime
+ * 2. withTools: where we pass the tools we have
+ * 3. withQuickSession: this creates in memory session and uses the initial state we passed to create it
+ *
+ * In tools.ts you can notice
+ * 1. input schema:  where the agent is required to pass the data in that format to tool for proper execution
+ * 2. name and description: to let agent know the tools we are passing and how to access them.
+ * 3. fn: which is a callback for agent to call when the ai decides to call.
+ *
+ * Also note how we are getting and updating the state inside the tools which would update the internal state inside inMemorySessionService and then the system prompt for subsequent runs
+ *
  */
-
-// Simple shopping cart tools
-const addItemTool = createTool({
-	name: "add_item",
-	description: "Add an item to the shopping cart",
-	schema: z.object({
-		item: z.string().describe("Item name"),
-		quantity: z.number().default(1).describe("Quantity to add"),
-		price: z.number().describe("Price per item"),
-	}),
-	fn: ({ item, quantity, price }, context) => {
-		const cart = context.state.get("cart", []);
-		const existingItem = cart.find((cartItem) => cartItem.item === item);
-
-		if (existingItem) {
-			existingItem.quantity += quantity;
-		} else {
-			cart.push({ item, quantity, price });
-		}
-
-		context.state.set("cart", cart);
-		context.state.set("cartCount", cart.length); // Store count separately for state injection
-
-		const total = cart.reduce(
-			(sum, cartItem) => sum + cartItem.quantity * cartItem.price,
-			0,
-		);
-
-		return {
-			success: true,
-			item,
-			quantity,
-			cartTotal: total,
-			message: `Added ${quantity}x ${item} to cart`,
-		};
-	},
-});
-
-const viewCartTool = createTool({
-	name: "view_cart",
-	description: "View current shopping cart contents",
-	schema: z.object({}),
-	fn: (_, context) => {
-		const cart = context.state.get("cart", []);
-		const total = cart.reduce(
-			(sum, item) => sum + item.quantity * item.price,
-			0,
-		);
-
-		return {
-			cart,
-			total,
-			itemCount: cart.reduce((sum, item) => sum + item.quantity, 0),
-			message:
-				cart.length > 0
-					? `Cart has ${cart.length} different items`
-					: "Cart is empty",
-		};
-	},
-});
-
-async function demonstrateToolsAndState() {
-	console.log("🛠️ Tools and state:");
-	const sessionService = new InMemorySessionService();
-	const initialState = {
-		cart: [],
-		cartCount: 0,
-	};
-
-	const { runner } = await AgentBuilder.create("shopping_cart_agent")
-		.withModel(env.LLM_MODEL || "gemini-2.5-flash")
-		.withDescription(
-			"A shopping cart assistant that manages items and calculates totals",
-		)
-		.withInstruction(
-			dedent`
-			You are a shopping cart assistant. Help users manage their cart.
-
-			Current cart state:
-			- Items in cart: {cartCount}
-			- Cart contents: {cart}
-
-			You can add items and view the cart. Always be helpful with pricing and quantities.
-			When asked about current cart without tools, reference the cart state above.
-		`,
-		)
-		.withTools(addItemTool, viewCartTool)
-		.withSessionService(sessionService, { state: initialState })
-		.build();
-
-	// Test adding items
-	await ask(runner, "Add 2 apples to my cart at $1.50 each");
-
-	await ask(runner, "Add 1 banana for $0.75");
-
-	// Test state injection - ask about cart without using tools
-	await ask(
-		runner,
-		"How many items are in my cart and what are they? Use the state information from your instructions, don't call any tools.",
-	);
-
-	// Test viewing cart with tools
-	await ask(runner, "Show me my complete cart with total");
-}
-
 async function main() {
-	await demonstrateToolsAndState();
+	const { runner } = await getRootAgent();
+
+	const questions = [
+		"Add 2 apples to my cart at $1.50 each",
+		"Add 1 banana for $0.75",
+		"Show me my complete cart with total",
+	];
+
+	for (const question of questions) {
+		await ask(runner, question);
+	}
 }
 
 main().catch(console.error);

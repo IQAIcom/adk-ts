@@ -412,6 +412,10 @@ export class Logger {
 }
 
 export function isDebugEnabled(): boolean {
+	// Explicit false takes precedence
+	if (process.env.ADK_DEBUG === "false") {
+		return false;
+	}
 	return (
 		process.env.NODE_ENV === "development" || process.env.ADK_DEBUG === "true"
 	);
