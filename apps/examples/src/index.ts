@@ -110,7 +110,9 @@ async function main() {
 		}
 		console.error(`Example "${name}" not found.`);
 		console.log("\nAvailable examples:");
-		examples.forEach((example) => console.log(`  - ${example.name}`));
+		examples.forEach((example) => {
+			console.log(`  - ${example.name}`);
+		});
 		process.exit(1);
 	}
 
