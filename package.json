@@ -13,6 +13,7 @@
 		"format": "biome format . --write && prettier --write \"**/*.{md,mdx}\" --ignore-path .prettierignore",
 		"check": "biome check . --no-errors-on-unmatched && prettier --check \"**/*.{md,mdx}\" --ignore-path .prettierignore",
 		"lint": "lint-staged --allow-empty",
+		"lint:fix": "biome lint --write --no-errors-on-unmatched .",
 		"changeset": "changeset",
 		"version-packages": "changeset version && tsx ./scripts/sync-versions.ts",
 		"publish-packages": "turbo run build lint --filter=!@iqai/adk-docs --filter=!@iqai/adk-web --filter=!@iqai/adk-examples && changeset version && changeset publish",
