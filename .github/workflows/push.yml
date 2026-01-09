@@ -25,8 +25,10 @@ jobs:
         run: |
           cd packages/adk
           pnpm add @rollup/rollup-linux-x64-gnu --save-optional || true
-      - name: Biome Lint Check
-        run: pnpm lint-staged
+      - name: Format check
+        run: pnpm exec biome format . && pnpm exec prettier --check "**/*.{md,mdx}" --ignore-path .prettierignore
+      - name: Lint check
+        run: pnpm exec biome check . --no-errors-on-unmatched
       - name: ADK tests
         run: pnpm test
         working-directory: ./packages/adk
