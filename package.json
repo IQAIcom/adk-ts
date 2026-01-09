@@ -10,7 +10,7 @@
 		"clean-modules": "echo '🧹 Cleaning all node_modules directories...' && find . -name 'node_modules' -type d -exec rm -rf {} + && echo '✨ All node_modules directories have been removed!'",
 		"clean-dist": "echo '🧹 Cleaning all dist directories...' && find . -name 'dist' -type d -exec rm -rf {} + && echo '✨ All dist directories have been removed!'",
 		"clean-locks": "echo '🧹 Cleaning all lock files...' && find . -type f \\( -name 'pnpm-lock.yaml' -o -name 'package-lock.json' -o -name 'yarn.lock' \\) -exec rm -f {} + && echo '✨ All lock files have been removed!'",
-		"format": "biome format . --write",
+		"format": "biome format . --write && prettier --write \"**/*.{md,mdx}\" --ignore-path .gitignore",
 		"lint": "lint-staged --allow-empty",
 		"changeset": "changeset",
 		"version-packages": "changeset version && tsx ./scripts/sync-versions.ts",
@@ -25,6 +25,7 @@
 		"@types/node": "^24.10.1",
 		"husky": "9.1.7",
 		"lint-staged": "^15.4.3",
+		"prettier": "^3.2.5",
 		"tsx": "^4.19.4",
 		"turbo": "^2.3.3"
 	},
@@ -36,6 +37,9 @@
 		"*.{js,ts,jsx,tsx,cjs,mjs,cts,mts,json,jsonc}": [
 			"biome lint --write --no-errors-on-unmatched",
 			"biome format --write"
+		],
+		"*.{md,mdx}": [
+			"prettier --write"
 		]
 	}
 }
