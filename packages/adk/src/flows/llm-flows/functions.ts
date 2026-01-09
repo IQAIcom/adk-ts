@@ -169,37 +169,40 @@ export async function handleFunctionCallsAsync(
 			const functionResponse = await context.with(spanContext, async () => {
 				const argsForTool = { ...functionArgs };
 
-				// BEFORE TOOL CALLBACKS: allow guardrails/arg mutation or override result
+				// PLUGIN BEFORE TOOL CALLBACKS: allow plugins to intercept/block tool execution
+				const pluginOverride =
+					await invocationContext.pluginManager.runBeforeToolCallback({
+						tool,
+						toolArgs: argsForTool,
+						toolContext,
+					});
+
+				if (pluginOverride !== null && pluginOverride !== undefined) {
+					wasOverridden = true;
+					return handleToolOverride(
+						pluginOverride,
+						tool,
+						argsForTool,
+						toolContext,
+						invocationContext,
+						executionOrder,
+					);
+				}
+
+				// AGENT BEFORE TOOL CALLBACKS: allow guardrails/arg mutation or override result
 				if (isLlmAgent(agent)) {
 					for (const cb of agent.canonicalBeforeToolCallbacks) {
 						const maybeOverride = await cb(tool, argsForTool, toolContext);
 						if (maybeOverride !== null && maybeOverride !== undefined) {
 							wasOverridden = true;
-							// Build event directly from override and skip actual tool
-							const overriddenEvent = buildResponseEvent(
-								tool,
+							return handleToolOverride(
 								maybeOverride,
-								toolContext,
-								invocationContext,
-							);
-
-							telemetryService.traceToolCall(
 								tool,
 								argsForTool,
-								overriddenEvent,
-								undefined, // llmRequest
+								toolContext,
 								invocationContext,
-							);
-
-							// Record enhanced tool attributes
-							telemetryService.traceEnhancedTool(
 								executionOrder,
-								undefined, // parallelGroup not used in sequential execution
-								0, // no retry
-								true, // callback override
 							);
-
-							return { result: maybeOverride, event: overriddenEvent };
 						}
 					}
 				}
@@ -212,7 +215,20 @@ export async function handleFunctionCallsAsync(
 					return null;
 				}
 
-				// AFTER TOOL CALLBACKS: allow result modification/override
+				// PLUGIN AFTER TOOL CALLBACKS: allow plugins to modify result
+				const pluginAfterResult =
+					await invocationContext.pluginManager.runAfterToolCallback({
+						tool,
+						toolArgs: argsForTool,
+						toolContext,
+						result,
+					});
+
+				if (pluginAfterResult !== null && pluginAfterResult !== undefined) {
+					result = pluginAfterResult;
+				}
+
+				// AGENT AFTER TOOL CALLBACKS: allow result modification/override
 				if (isLlmAgent(agent)) {
 					for (const cb of agent.canonicalAfterToolCallbacks) {
 						const maybeModified = await cb(
@@ -296,6 +312,27 @@ export async function handleFunctionCallsAsync(
 				status: toolStatus,
 			});
 			telemetryService.recordError("tool", tool.name);
+
+			// PLUGIN ON TOOL ERROR CALLBACK: allow plugins to handle/recover from errors
+			const errorRecoveryResult =
+				await invocationContext.pluginManager.runOnToolErrorCallback({
+					tool,
+					toolArgs: functionArgs,
+					toolContext,
+					error: error as Error,
+				});
+
+			if (errorRecoveryResult !== null && errorRecoveryResult !== undefined) {
+				// Plugin provided a recovery result, use it instead of throwing
+				const recoveryEvent = buildResponseEvent(
+					tool,
+					errorRecoveryResult,
+					toolContext,
+					invocationContext,
+				);
+				functionResponseEvents.push(recoveryEvent);
+				continue;
+			}
 
 			throw error;
 		} finally {
@@ -465,4 +502,42 @@ export function mergeParallelFunctionResponseEvents(
  */
 function isLlmAgent(agent: any): agent is LlmAgent {
 	return agent && typeof agent === "object" && "canonicalModel" in agent;
+}
+
+/**
+ * Handles tool override result by building event, tracing telemetry, and returning the override
+ */
+function handleToolOverride(
+	override: Record<string, any>,
+	tool: BaseTool,
+	argsForTool: Record<string, any>,
+	toolContext: ToolContext,
+	invocationContext: InvocationContext,
+	executionOrder: number,
+): { result: Record<string, any>; event: Event } {
+	// Build event directly from override and skip actual tool
+	const overriddenEvent = buildResponseEvent(
+		tool,
+		override,
+		toolContext,
+		invocationContext,
+	);
+
+	telemetryService.traceToolCall(
+		tool,
+		argsForTool,
+		overriddenEvent,
+		undefined, // llmRequest
+		invocationContext,
+	);
+
+	// Record enhanced tool attributes
+	telemetryService.traceEnhancedTool(
+		executionOrder,
+		undefined, // parallelGroup not used in sequential execution
+		0, // no retry
+		true, // callback override
+	);
+
+	return { result: override, event: overriddenEvent };
 }
