@@ -82,7 +82,7 @@ export class GoogleLlm extends BaseLlm {
 
 				if (llmResponse.content?.parts?.[0]?.text) {
 					const part0 = llmResponse.content.parts[0];
-					if ((part0 as any).thought) {
+					if (part0.thought) {
 						thoughtText += part0.text;
 					} else {
 						text += part0.text;
@@ -167,7 +167,7 @@ export class GoogleLlm extends BaseLlm {
 	 */
 	private hasInlineData(response: GenerateContentResponse): boolean {
 		const parts = response.candidates?.[0]?.content?.parts;
-		return parts?.some((part) => (part as any)?.inlineData) || false;
+		return parts?.some((part) => part?.inlineData) || false;
 	}
 
 	/**
@@ -188,14 +188,14 @@ export class GoogleLlm extends BaseLlm {
 		if (this.apiBackend === GoogleLLMVariant.GEMINI_API) {
 			// Using API key from Google AI Studio doesn't support labels
 			if (llmRequest.config) {
-				(llmRequest.config as any).labels = undefined;
+				llmRequest.config.labels = undefined;
 			}
 			if (llmRequest.contents) {
 				for (const content of llmRequest.contents) {
 					if (!content.parts) continue;
 					for (const part of content.parts) {
-						this.removeDisplayNameIfPresent((part as any).inlineData);
-						this.removeDisplayNameIfPresent((part as any).fileData);
+						this.removeDisplayNameIfPresent(part.inlineData);
+						this.removeDisplayNameIfPresent(part.fileData);
 					}
 				}
 			}
