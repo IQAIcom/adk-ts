@@ -20,7 +20,7 @@ export async function getGreetingTools(samplingHandler: SamplingHandler) {
 
 export function getCoingeckoTools() {
 	/**
-	 * Here we are using McpToolset for demonstration purposes to use any mcp server with adk,
+	 * Here we are using McpToolset for demonstration purposes to use any mcp server with adk-ts,
 	 * but we can also directly use McpCoingecko() to get toolset without this verbose
 	 * configuration. for more such wrapped MCPs check out https://adk.iqai.com/docs/mcp-servers
 	 */
