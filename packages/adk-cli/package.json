@@ -1,6 +1,6 @@
 {
 	"name": "@iqai/adk-cli",
-	"version": "0.3.33",
+	"version": "0.3.34",
 	"description": "CLI tool for creating, running, and testing ADK agents",
 	"main": "dist/main.js",
 	"types": "dist/main.d.ts",
