@@ -7,6 +7,7 @@ import matter from "gray-matter";
 export async function getLlmText(page: InferPageType<typeof source>) {
 	try {
 		// Read the actual MDX file content from the filesystem
+		// The path construction now includes content files in production via outputFileTracingIncludes
 		const filePath = join(process.cwd(), "content/docs", page.path);
 		const fileContent = await readFile(filePath, "utf-8");
 		const { content } = matter(fileContent);
