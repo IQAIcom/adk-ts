@@ -7,7 +7,10 @@ import {
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import type { CacheMetadata } from "./cache-metadata";
-import { ContextCacheManager } from "./context-cache-manager";
+import {
+	type ContextCacheManager,
+	GeminiContextCacheManager,
+} from "./context-cache-manager";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -166,7 +169,7 @@ export class GoogleLlm extends BaseLlm {
 
 		if (llmRequest.cacheConfig) {
 			this.logger.debug("Handling context caching");
-			cacheManager = new ContextCacheManager(this.logger, this.apiClient);
+			cacheManager = new GeminiContextCacheManager(this.logger, this.apiClient);
 			cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
 
 			if (cacheMetadata) {

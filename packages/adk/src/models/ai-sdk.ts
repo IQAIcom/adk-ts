@@ -11,7 +11,10 @@ import {
 } from "ai";
 import { BaseLlm } from "./base-llm";
 import { CacheMetadata } from "./cache-metadata";
-import { ContextCacheManager } from "./context-cache-manager";
+import {
+	type ContextCacheManager,
+	GeminiContextCacheManager,
+} from "./context-cache-manager";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -110,7 +113,7 @@ export class AiSdkLlm extends BaseLlm {
 			let cacheManager: ContextCacheManager | null = null;
 			if (llmRequest.cacheConfig && provider === ModelProvider.GOOGLE) {
 				this.logger.debug("Handling Google context caching");
-				cacheManager = new ContextCacheManager(this.logger);
+				cacheManager = new GeminiContextCacheManager(this.logger);
 				cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
 
 				if (cacheMetadata) {
@@ -143,7 +146,7 @@ export class AiSdkLlm extends BaseLlm {
 							},
 						}
 					: {}),
-				...(provider === ModelProvider.ANTHROPIC && cacheMetadata
+				...(provider === ModelProvider.ANTHROPIC && llmRequest.cacheConfig
 					? {
 							providerOptions: {
 								anthropic: {

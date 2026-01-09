@@ -26,7 +26,15 @@ const CacheDefaults = {
 
 const nowInSeconds = (): number => Date.now() * Time.MS_TO_SECONDS;
 
-export class ContextCacheManager {
+export interface ContextCacheManager {
+	handleContextCaching(llmRequest: LlmRequest): Promise<CacheMetadata | null>;
+	populateCacheMetadataInResponse(
+		llmResponse: LlmResponse,
+		cacheMetadata: CacheMetadata,
+	): void;
+}
+
+export class GeminiContextCacheManager implements ContextCacheManager {
 	private genaiClient: GoogleGenAI;
 	private readonly logger: Logger;
 
