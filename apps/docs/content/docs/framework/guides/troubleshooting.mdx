@@ -1,0 +1,221 @@
+---
+title: Troubleshooting Guide for ADK-TS Development
+description: Common issues and solutions when developing with ADK-TS
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+## Environment Variables Not Loading
+
+**Problem**: Environment variables aren't being loaded, causing undefined values and errors throughout your application.
+
+**Solution**: Install and import dotenv at the very start of your entry file, before any other imports:
+
+```typescript
+// ✅ Correct: Load dotenv FIRST
+import * as dotenv from "dotenv";
+dotenv.config();
+
+// Then import other modules
+import { AgentBuilder, LlmAgent } from "@iqai/adk";
+```
+
+Create a `.env` file in your project root and add it to `.gitignore`. Verify variables are loaded with `console.log(!!process.env.OPENAI_API_KEY)`.
+
+## Invalid API Key Errors
+
+**Problem**: API key is rejected by the LLM provider, or no API key is provided, or the API key doesn't match the specified LLM model.
+
+**Solution**:
+
+- Verify API key format, check for whitespace or special characters, test key directly with curl, and verify key permissions and quotas in provider dashboard.
+- Ensure the API key matches the LLM model you're using (e.g., OpenAI key for OpenAI models, Anthropic key for Claude models). ADK-TS automatically looks for environment variables that match the LLM provider based on the model name.
+
+## "Session service is not available" Error
+
+**Problem**: Missing session service configuration.
+
+**Solution**: Add session service to your runner:
+
+```typescript
+const runner = new Runner({
+  appName: "my-first-agent",
+  agent: getRootAgent(),
+  sessionService: new InMemorySessionService(),
+});
+```
+
+## "Tool not available" Error
+
+**Problem**: Agent can't find the expected tool from an MCP server.
+
+**Solution**: List available tools to verify the tool exists, check if it's being filtered out, and ensure the tool name matches exactly (case-sensitive):
+
+```typescript
+// List available tools
+const tools = await toolset.getTools();
+console.log(
+  "Available tools:",
+  tools.map((t) => t.name)
+);
+
+// Ensure tool isn't filtered out
+const toolset = new McpToolset({
+  name: "my-server",
+  config: mcpConfig,
+  tool_filter: ["your_missing_tool"], // Add here
+});
+```
+
+## State Not Persisting Between Invocations
+
+**Problem**: State values are lost when starting a new invocation.
+
+**Solution**: Use consistent session IDs, use EventActions for state updates, and verify session service is persistent (not in-memory for production):
+
+```typescript
+// ✅ Same session ID maintains state
+const sessionId = `user-${userId}-main`;
+await runner.runAsync({ userId: "user-1", sessionId, newMessage });
+await runner.runAsync({ userId: "user-1", sessionId, newMessage });
+```
+
+## Tool Parameter/Schema Mismatch
+
+**Problem**: Tool arguments don't match the expected schema from the MCP server.
+
+**Solution**: Inspect the tool's schema, ensure transport config matches server requirements, and match argument types exactly:
+
+```typescript
+const tool = toolset.getTools().find((t) => t.name === "my_tool");
+console.log("Tool schema:", JSON.stringify(tool?.schema, null, 2));
+
+// Match types exactly
+await tool.call({ count: 5 }); // Number, not string
+```
+
+## MCP Connection Timeout
+
+**Problem**: MCP server doesn't respond in time.
+
+**Solution**: Increase timeout in connection options:
+
+```typescript
+const toolset = await McpToolset.create({
+  serverName: "my-server",
+  config: mcpConfig,
+  connectionOptions: { timeout: 60000 },
+});
+```
+
+## Callback Not Firing
+
+**Problem**: Registered callbacks aren't being invoked during agent execution.
+
+**Solution**: Ensure callbacks are registered when building agent, verify callback signature matches expected type, and ensure callbacks don't throw errors:
+
+```typescript
+const { agent, runner } = await AgentBuilder.create("my_agent")
+  .withAgent(myBaseAgent)
+  .withBeforeAgentCallback([myBeforeAgentCallback]) // Must add here
+  .withAfterAgentCallback([myAfterAgentCallback]) // Must add here
+  .build();
+```
+
+## Events Not Compacting
+
+**Problem**: Event history keeps growing without compaction, affecting performance.
+
+**Solution**: Configure event compaction on your runner:
+
+```typescript
+runner.eventsCompactionConfig = {
+  compactionInterval: 5, // Compact every 5 invocations
+  overlapSize: 2, // Keep 2 recent invocations
+};
+```
+
+## Missing Environment Variables in Deployment
+
+**Problem**: Environment variables work locally but not in deployed environment.
+
+**Solution**: Add variables in your deployment platform's environment configuration and redeploy. Validate variables are set at runtime:
+
+```typescript
+const requiredEnvVars = ["OPENAI_API_KEY", "DATABASE_URL"];
+for (const varName of requiredEnvVars) {
+  if (!process.env[varName]) {
+    throw new Error(`Missing required environment variable: ${varName}`);
+  }
+}
+```
+
+## "npx: command not found" Error
+
+**Problem**: Node.js/npm not installed or not in system PATH.
+
+**Solution**: Install Node.js for your platform. For Docker, ensure Node.js is in your image. If npx is installed but not found, add to PATH in your MCP config:
+
+```typescript
+const config = {
+  command: "npx",
+  args: ["-y", "@iqai/server"],
+  env: {
+    ...process.env,
+    PATH: "/usr/local/bin:/usr/bin:/bin:" + process.env.PATH,
+  },
+};
+```
+
+## Slow Response Times
+
+**Problem**: Agent takes too long to respond to user messages.
+
+**Solution**: Enable event compaction, use faster models for simple tasks, filter tools to reduce context size, and implement caching for repeated queries.
+
+## High Token Usage and Costs
+
+**Problem**: Token consumption is very high, resulting in expensive API bills.
+
+**Solution**: Enable aggressive event compaction, use cheaper model for summarization, limit event history, and monitor token usage.
+
+## Agent Stops Responding or Crashes
+
+**Problem**: Agent becomes unresponsive or exits unexpectedly during operation.
+
+**Solution**: Check logs for errors, verify resource limits, and add health checks to detect issues early.
+
+## Tool Execution Timeout
+
+**Problem**: Tool takes too long to execute and times out.
+
+**Solution**: Increase tool timeout, implement progress reporting for long operations, or break long operations into smaller tools.
+
+## Out of Memory Errors
+
+**Problem**: Node.js runs out of memory and crashes.
+
+**Solution**: Increase Node.js memory limit (`node --max-old-space-size=4096`), implement memory management with bounded caches, and clear caches periodically.
+
+## Token Expiration in Long Sessions
+
+**Problem**: OAuth tokens expire during long-running agent sessions.
+
+**Solution**: Implement token refresh logic or use long-lived tokens where available.
+
+## Memory Leaks from Unclosed MCP Connections
+
+**Problem**: MCP connections aren't being closed, causing memory leaks.
+
+**Solution**: Always close MCP connections using try/finally:
+
+```typescript
+const toolset = await McpToolset.create(config);
+try {
+  const tools = toolset.getTools();
+  // Use tools
+} finally {
+  await toolset.close(); // Always executes, even on error
+}
+```
