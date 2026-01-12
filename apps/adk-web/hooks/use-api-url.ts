@@ -28,7 +28,7 @@ export function useApiUrl(): string {
 		const port = searchParams.get("port");
 
 		// If apiUrl is explicitly provided, use it
-        if (apiUrl) return apiUrl;
+		if (apiUrl) return apiUrl;
 
 		// If port is explicitly provided, build localhost URL
 		if (port) return `http://localhost:${port}`;
