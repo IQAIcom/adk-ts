@@ -7,12 +7,14 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Railway is a cloud platform that simplifies deploying containerized applications with built-in CI/CD and automatic scaling. **Best for**: Quick deployments, containerized applications, and managed infrastructure. Railway offers simple setup and automatic scaling, though pricing may be higher for large-scale deployments. This guide shows you how to deploy your ADK-TS agent to Railway using a Docker image.
 
-## Prerequisites
+## What You'll Need
 
-- **[Railway Account](https://railway.app)**: Sign up for free
-- **ADK-TS Project**: Your agent code ready for deployment
-- **[Docker](https://docs.docker.com/get-docker/)**: Installed and configured (Optional for GitHub integration)
-- **[Docker Hub Account](https://hub.docker.com/)**: For hosting your Docker images (Optional for GitHub integration)
+Before deploying to Railway, ensure you have:
+
+- A **[Railway Account](https://railway.app)** to manage your deployments
+- Your **ADK-TS project** ready for deployment
+- **[Docker](https://docs.docker.com/get-docker/)** installed and configured on your local machine (Optional)
+- A **Container Registry Account** (e.g., Docker Hub) for storing your Docker images (Optional)
 
 ## Deployment Options
 
@@ -149,11 +151,6 @@ All three deployment options require environment variables to be configured in R
 
 1. In your Railway project dashboard, click the **"Variables"** tab
 2. Click **"New Variable"** to add each required environment variable
-3. Add your configuration based on your agent's needs:
-   - `OPENAI_API_KEY` or `GOOGLE_API_KEY` (depending on your LLM provider)
-   - `LLM_MODEL` (e.g., `gpt-4`, `gemini-2.5-flash`)
-   - Bot tokens (`DISCORD_TOKEN`, `TELEGRAM_BOT_TOKEN`, etc.)
-   - Any other custom variables your agent requires
 
 <Callout type="info" title="Environment Variables Are Encrypted">
   Railway automatically encrypts all environment variables. Never commit these

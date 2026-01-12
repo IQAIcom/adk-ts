@@ -7,12 +7,14 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Docker allows you to package your ADK-TS agent with all its dependencies into a portable container that can run anywhere. **Best for**: Flexible deployment, any hosting provider, and local development. Docker offers platform-agnostic, reproducible builds with wide hosting options, though it requires container management and orchestration setup. This guide covers creating optimized Docker images and deploying them to various platforms.
 
-## Prerequisites
+## What You'll Need
 
-- **Docker**: Installed and configured - [Get Docker](https://docs.docker.com/get-docker/)
-- **ADK-TS Project**: Your agent code ready to containerize
-- **Container Registry Account**: DockerHub, GitHub Container Registry, or AWS ECR (for publishing)
-- **Hosting Platform**: Choose from Railway, AWS, Google Cloud, or any Docker-compatible host
+Before deploying to Docker, ensure you have:
+
+- **[Docker](https://docs.docker.com/get-docker/)** installed and configured on your local machine
+- A **Container Registry Account** (e.g., Docker Hub, GitHub Container Registry, AWS ECR) for storing your Docker images
+- A **Cloud Platform Account**: (e.g., Railway, AWS, Google Cloud) for deploying your Docker containers
+- Your **ADK-TS project** ready for deployment.
 
 ## Deployment Options
 
