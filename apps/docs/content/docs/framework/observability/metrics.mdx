@@ -1,0 +1,190 @@
+---
+title: Metrics
+description: Available metrics, recording custom metrics, and monitoring agent performance
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+ADK-TS collects comprehensive metrics for monitoring agent performance, tool usage, LLM interactions, and error rates. All metrics follow OpenTelemetry standards and are exported via OTLP.
+
+## Available Metrics
+
+The telemetry system automatically collects metrics for all agent operations. Metrics are exported at regular intervals (configurable via `metricExportIntervalMs`).
+
+### Counters
+
+Counters track the total number of operations:
+
+| Metric | Description | Labels |
+|--------|-------------|--------|
+| `adk.agent.invocations` | Total agent invocations | `agent.name`, `environment`, `status` |
+| `adk.tool.executions` | Total tool executions | `tool.name`, `agent.name`, `environment`, `status` |
+| `adk.llm.calls` | Total LLM calls | `model`, `agent.name`, `environment`, `status` |
+| `adk.errors` | Total errors | `error_type`, `context` |
+
+### Histograms
+
+Histograms track distributions of values:
+
+| Metric | Description | Labels | Unit |
+|--------|-------------|--------|------|
+| `adk.agent.duration` | Agent execution duration | `agent.name`, `environment`, `status` | ms |
+| `adk.tool.duration` | Tool execution duration | `tool.name`, `agent.name`, `environment`, `status` | ms |
+| `adk.llm.duration` | LLM call duration | `model`, `agent.name`, `environment`, `status` | ms |
+| `adk.llm.tokens` | Total tokens per LLM call | `model`, `agent.name`, `environment`, `status` | count |
+| `adk.llm.tokens.input` | Input tokens per LLM call | `model`, `agent.name`, `environment`, `status` | count |
+| `adk.llm.tokens.output` | Output tokens per LLM call | `model`, `agent.name`, `environment`, `status` | count |
+
+## Metric Labels
+
+All metrics include labels for filtering and aggregation:
+
+- **`agent.name`** - Name of the agent
+- **`tool.name`** - Name of the tool (for tool metrics)
+- **`model`** - LLM model name (for LLM metrics)
+- **`environment`** - Deployment environment
+- **`status`** - Operation status (`success`, `error`)
+- **`error_type`** - Type of error (for error metrics)
+- **`context`** - Error context (for error metrics)
+
+## Recording Custom Metrics
+
+You can manually record metrics for custom operations:
+
+```typescript
+import { telemetryService } from '@iqai/adk';
+
+// Record agent invocation
+telemetryService.recordAgentInvocation({
+  agentName: 'my-agent',
+  environment: 'production',
+  status: 'success',
+});
+
+// Record agent duration
+telemetryService.recordAgentDuration(1500, {
+  agentName: 'my-agent',
+  environment: 'production',
+  status: 'success',
+});
+
+// Record tool execution
+telemetryService.recordToolExecution({
+  toolName: 'search_web',
+  agentName: 'my-agent',
+  environment: 'production',
+  status: 'success',
+});
+
+// Record LLM tokens
+telemetryService.recordLlmTokens(150, 75, {
+  model: 'gpt-4',
+  agentName: 'my-agent',
+  environment: 'production',
+  status: 'success',
+});
+```
+
+## Metric Export
+
+Metrics are automatically exported to your configured OTLP endpoint at regular intervals. The default export interval is 60 seconds (60000ms), but you can configure it:
+
+```typescript
+await telemetryService.initialize({
+  appName: 'my-app',
+  otlpEndpoint: 'http://localhost:4318/v1/traces',
+  metricExportIntervalMs: 30000, // Export every 30 seconds
+});
+```
+
+<Callout type="info" title="Export Interval">
+  Adjust the export interval based on your needs. More frequent exports provide real-time metrics but may increase overhead.
+</Callout>
+
+## Viewing Metrics
+
+### Grafana
+
+Grafana can visualize metrics from various backends:
+
+1. **Configure OTLP receiver** in your observability backend
+2. **Create dashboards** with queries for ADK metrics
+3. **Set up alerts** based on metric thresholds
+
+Example Grafana queries:
+- `rate(adk_agent_invocations_total[5m])` - Agent invocation rate
+- `histogram_quantile(0.95, adk_llm_duration_bucket)` - 95th percentile LLM latency
+- `sum(rate(adk_errors_total[5m]))` - Error rate
+
+### Prometheus
+
+If using Prometheus, configure the OpenTelemetry Collector to export metrics in Prometheus format:
+
+```yaml
+# otel-collector-config.yaml
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [prometheus]
+```
+
+## Metric Use Cases
+
+### Performance Monitoring
+
+Track agent performance over time:
+
+- **Agent duration** - Monitor execution time trends
+- **Tool duration** - Identify slow tools
+- **LLM duration** - Track LLM response times
+- **Token usage** - Monitor LLM costs
+
+### Error Tracking
+
+Monitor error rates and types:
+
+- **Error counters** - Track total errors
+- **Error types** - Categorize errors
+- **Error context** - Understand error sources
+
+### Resource Usage
+
+Monitor resource consumption:
+
+- **Token usage** - Track LLM token consumption
+- **Invocation rates** - Monitor agent usage
+- **Tool usage** - Track tool popularity
+
+## Best Practices
+
+1. **Use appropriate labels** - Add labels that help you filter and aggregate metrics
+2. **Monitor key metrics** - Focus on metrics that matter for your use case
+3. **Set up alerts** - Create alerts for critical metrics (error rates, latency)
+4. **Regular review** - Review metrics regularly to identify trends
+5. **Correlate with traces** - Use trace IDs to correlate metrics with specific operations
+
+## Metric Dimensions
+
+When recording metrics, you can include additional dimensions:
+
+```typescript
+telemetryService.recordAgentInvocation({
+  agentName: 'my-agent',
+  environment: 'production',
+  status: 'success',
+  // Additional dimensions can be added via resource attributes
+});
+```
+
+Resource attributes are automatically included as metric labels, allowing you to filter and aggregate by deployment, team, or any custom attribute.
+
+## Next Steps
+
+- Configure [Production Settings](/docs/framework/observability/production) for optimal metric collection
+- Integrate with [Observability Platforms](/docs/framework/observability/integrations) to visualize metrics
+- Learn about [Distributed Tracing](/docs/framework/observability/tracing) to correlate metrics with traces

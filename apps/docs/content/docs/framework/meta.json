@@ -14,6 +14,7 @@
 		"context",
 		"deploy",
 		"events",
+		"observability",
 		"guides"
 	]
 }

@@ -1,0 +1,243 @@
+---
+title: Getting Started with Observability
+description: Initialize telemetry, configure basic setup, and run with local development tools
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+This guide will help you get started with observability in ADK-TS. You'll learn how to initialize the telemetry service, configure it for local development, and start collecting traces and metrics.
+
+## Installation
+
+Telemetry dependencies are already included in `@iqai/adk`. No additional installation is required.
+
+The following OpenTelemetry packages are included:
+
+```json
+{
+  "@opentelemetry/api": "^1.9.0",
+  "@opentelemetry/sdk-metrics": "^2.1.0",
+  "@opentelemetry/exporter-metrics-otlp-http": "^0.205.0",
+  "@opentelemetry/exporter-trace-otlp-http": "^0.205.0"
+}
+```
+
+## Basic Initialization
+
+Initialize the telemetry service before any agent operations:
+
+<Tabs items={['Basic', 'With Options', 'Environment Variables']}>
+  <Tab value="Basic">
+    ```typescript
+    import { telemetryService } from '@iqai/adk';
+
+    await telemetryService.initialize({
+      appName: 'my-agent-app',
+      appVersion: '1.0.0',
+      otlpEndpoint: 'http://localhost:4318/v1/traces',
+      enableMetrics: true,
+      enableTracing: true,
+      enableAutoInstrumentation: true,
+    });
+    ```
+  </Tab>
+
+  <Tab value="With Options">
+    ```typescript
+    import { telemetryService, TelemetryConfig } from '@iqai/adk';
+
+    const config: TelemetryConfig = {
+      // Required
+      appName: 'my-agent-app',
+      otlpEndpoint: 'http://localhost:4318/v1/traces',
+      
+      // Optional
+      appVersion: '1.0.0',
+      environment: 'development',
+      
+      // Feature flags
+      enableTracing: true,
+      enableMetrics: true,
+      enableAutoInstrumentation: true,
+      
+      // Privacy controls
+      captureMessageContent: true, // Set false for production
+      
+      // Performance tuning
+      samplingRatio: 1.0, // 1.0 = 100% sampling
+      metricExportIntervalMs: 60000, // 1 minute
+      
+      // Custom resource attributes
+      resourceAttributes: {
+        'deployment.name': 'local',
+        'team': 'platform',
+      },
+    };
+
+    await telemetryService.initialize(config);
+    ```
+  </Tab>
+
+  <Tab value="Environment Variables">
+    ```typescript
+    import { telemetryService } from '@iqai/adk';
+
+    // The telemetry system respects standard OpenTelemetry environment variables
+    // OTEL_SERVICE_NAME, OTEL_RESOURCE_ATTRIBUTES, NODE_ENV, etc.
+
+    await telemetryService.initialize({
+      appName: process.env.OTEL_SERVICE_NAME || 'my-agent-app',
+      otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+      environment: process.env.NODE_ENV || 'development',
+    });
+    ```
+
+    ```bash
+    # Set environment variables
+    export OTEL_SERVICE_NAME=my-agent-app
+    export OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development,team=platform
+    export NODE_ENV=development
+    export ADK_CAPTURE_MESSAGE_CONTENT=true
+    ```
+  </Tab>
+</Tabs>
+
+<Callout type="warn" title="Initialize Early">
+  Always initialize telemetry before any agent operations to ensure all traces and metrics are captured.
+</Callout>
+
+## Local Development Setup
+
+### Running with Jaeger
+
+Jaeger is a popular open-source distributed tracing system. Use it for local development:
+
+```bash
+# Start Jaeger all-in-one (includes OTLP receiver)
+docker run -d \
+  --name jaeger \
+  -p 4318:4318 \
+  -p 16686:16686 \
+  jaegertracing/all-in-one:latest
+```
+
+Your ADK app will send traces to `http://localhost:4318/v1/traces`, and you can view them at `http://localhost:16686`.
+
+### Running with OpenTelemetry Collector
+
+For more advanced setups, use the OpenTelemetry Collector:
+
+**1. Create collector configuration** (`otel-collector-config.yaml`):
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  logging:
+    loglevel: debug
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [logging, jaeger]
+    metrics:
+      receivers: [otlp]
+      exporters: [logging]
+```
+
+**2. Run the collector:**
+
+```bash
+docker run -d \
+  -v $(pwd)/otel-collector-config.yaml:/etc/otel-collector-config.yaml \
+  -p 4318:4318 \
+  otel/opentelemetry-collector:latest \
+  --config=/etc/otel-collector-config.yaml
+```
+
+## Complete Example
+
+Here's a complete example that initializes telemetry and runs an agent:
+
+```typescript
+import { telemetryService, AgentBuilder } from '@iqai/adk';
+
+async function main() {
+  // Initialize telemetry first
+  await telemetryService.initialize({
+    appName: 'example-agent',
+    appVersion: '1.0.0',
+    otlpEndpoint: 'http://localhost:4318/v1/traces',
+    enableMetrics: true,
+    enableTracing: true,
+  });
+
+  // Build and run agent
+  const agent = AgentBuilder
+    .withModel('gemini-2.5-flash')
+    .build();
+
+  const response = await agent.ask('What is the capital of France?');
+  console.log(response);
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    await telemetryService.shutdown(5000);
+    process.exit(0);
+  });
+}
+
+main().catch(console.error);
+```
+
+## Viewing Traces
+
+Once your application is running and sending traces:
+
+1. **Open Jaeger UI**: Navigate to `http://localhost:16686`
+2. **Select Service**: Choose your service name (e.g., `example-agent`)
+3. **Find Traces**: Click "Find Traces" to see all traces
+4. **Explore**: Click on any trace to see the detailed execution flow
+
+You'll see:
+- Agent invocation spans
+- Tool execution spans
+- LLM call spans with token usage
+- Auto-instrumented HTTP calls
+
+## Configuration Options
+
+### Required Options
+
+- `appName` - Service name for identification in traces
+- `otlpEndpoint` - OTLP HTTP endpoint URL for sending traces
+
+### Optional Options
+
+- `appVersion` - Application version
+- `environment` - Deployment environment (development, staging, production)
+- `enableTracing` - Enable distributed tracing (default: `true`)
+- `enableMetrics` - Enable metrics collection (default: `true`)
+- `enableAutoInstrumentation` - Enable automatic instrumentation (default: `true`)
+- `captureMessageContent` - Capture LLM prompts/completions (default: `true`)
+- `samplingRatio` - Trace sampling ratio 0.0-1.0 (default: `1.0`)
+- `metricExportIntervalMs` - Metrics export interval in milliseconds (default: `60000`)
+- `otlpHeaders` - Custom headers for OTLP requests
+- `resourceAttributes` - Custom resource attributes
+
+## Next Steps
+
+- Learn about [Distributed Tracing](/docs/framework/observability/tracing) to understand what gets traced
+- Explore [Metrics](/docs/framework/observability/metrics) for performance monitoring
+- Configure for [Production](/docs/framework/observability/production) with privacy controls
+- Integrate with [Observability Platforms](/docs/framework/observability/integrations)
