@@ -9,7 +9,9 @@
 				"dist/**",
 				".next/**",
 				"!.next/cache/**",
-				".vercel/output/**"
+				".vercel/output/**",
+				"out/**",
+				"web/**"
 			],
 			"dependsOn": ["^build"]
 		},
