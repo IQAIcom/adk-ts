@@ -19,10 +19,11 @@ Docker allows you to package your ADK-TS agent with all its dependencies into a 
 You can deploy Docker containers using:
 
 1. **Container Registry + Cloud Platform**: Build locally, push to registry, deploy to cloud
-2. **Direct Docker Host**: Deploy to a server running Docker
-3. **Docker Compose**: Manage multi-container deployments locally or on a server
+2. **Direct Docker Host**: Deploy directly to your own server or VPS running Docker
 
 ## Option 1: Deploy via Container Registry
+
+Build your Docker image locally, push it to a container registry, and deploy to cloud platforms.
 
 ### Step 1: Create Dockerfile
 
@@ -141,7 +142,7 @@ Now that your image is in a registry, deploy it to a cloud platform.
 2. Create a new project/service
 3. Select **"Deploy from Docker Image"** or similar option
 4. Enter your image name (e.g., `username/my-adk-agent:latest`)
-5. Add your environment variables from your project's `.env` file
+5. **Add environment variables**: Each platform has a Variables/Environment section where you can add required variables
 6. Click Deploy
 
 The platform will pull your image from the registry and run it.
@@ -151,14 +152,15 @@ The platform will pull your image from the registry and run it.
 1. Navigate to the container service in the cloud console
 2. Create a new container instance/service
 3. Specify your container registry image URL
-4. Configure environment variables, memory, and CPU limits
-5. Deploy the service
+4. **Configure environment variables**: Add all required variables (API keys, tokens, model names, etc.) in the environment configuration section
+5. Set memory and CPU limits based on your agent's needs
+6. Deploy the service
 
-Each platform has slightly different interfaces, but the core concept is the same: point to your Docker image and configure settings.
+Each platform has slightly different interfaces, but the core concept is the same: point to your Docker image, configure environment variables, and set resource limits.
 
 ## Option 2: Deploy to Docker Host
 
-This option is for deploying directly to your own server (VPS, dedicated server, etc.) instead of using a managed cloud platform.
+Deploy directly to your own server or VPS running Docker instead of using a managed cloud platform.
 
 ### Step 1: Prepare Your Server
 
