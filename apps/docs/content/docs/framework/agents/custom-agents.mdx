@@ -745,39 +745,13 @@ export class WorkflowStateMachineAgent extends BaseAgent {
 }
 ```
 
-## Best Practices
-
-### Design Principles
-
-**Single Responsibility:** Design each custom agent with a focused, specific orchestration purpose. A content workflow agent should handle content generation and validation, while a routing agent should focus on request analysis and delegation. This focused approach makes agents easier to test, debug, and reuse across different workflows.
-
-**Clear State Contracts:** Use descriptive, unique state keys (`user_preferences`, `analysis_results`, `validation_status`) and document what data flows between agents. This prevents conflicts and makes debugging much easier when agents don't receive expected data.
-
-**Predictable Logic:** Make your conditional logic easy to understand and test. Use clear variable names, document decision points, and structure your code so that execution paths are obvious. Avoid deeply nested conditions that obscure the flow.
-
-**Efficient Execution:** Skip unnecessary work and provide meaningful progress feedback. Check preconditions early, exit fast when possible, and yield progress events during long operations to keep users informed.
-
-### Communication Patterns
-
-**Progress Events:** Provide regular feedback during long-running operations. Users need to understand what's happening, especially for complex workflows that may take time to complete.
-
-**State Updates:** Use `EventActions` to update session state for better auditability and transparency. This creates a clear audit trail of state changes throughout the workflow.
-
-### Development Tips
-
-**Start Simple:** Begin with sequential workflows before moving to complex conditional logic. Add decision points gradually as you understand the agent interactions and state flow requirements.
-
-**Test Isolation:** Test individual agents independently before testing the complete custom workflow. Mock external dependencies and sub-agents during unit testing to isolate orchestration logic.
-
-**State Debugging:** Use clear state key names and log state transitions to make debugging easier when agents don't receive expected data or make wrong decisions.
-
 ## Related Topics
 
 <Cards>
   <Card
-    title="🤖 LLM Agents"
-    description="The building blocks of multi-agent systems"
-    href="/docs/framework/agents/llm-agents"
+    title="✨ Best Practices"
+    description="Proven strategies for building robust, maintainable multi-agent systems"
+    href="/docs/framework/agents/best-practices"
   />
   <Card
     title="🔄 Workflow Agents"

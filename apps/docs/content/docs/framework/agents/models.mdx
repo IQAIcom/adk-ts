@@ -1,17 +1,16 @@
 ---
 title: Models & Providers
-description: Configure LLM models from Gemini, OpenAI, Anthropic, and other providers with ADK-TS agents
+description: Configure LLM models from Gemini, OpenAI, Anthropic, OpenRouter, and other providers with ADK-TS agents
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-ADK-TS provides flexible model integration, allowing you to use various Large Language Models (LLMs) with your agents. The framework defaults to Google Gemini models but supports extensive customization through two main approaches.
+ADK-TS provides flexible model integration, allowing you to use various Large Language Models (LLMs) with your agents. The framework defaults to Google Gemini models but supports extensive customization through multiple approaches.
 
 ## Model Integration Options
 
-ADK-TS supports two primary ways to configure models:
+ADK-TS supports multiple ways to configure models:
 
 <Cards>
   <Card
@@ -21,6 +20,10 @@ ADK-TS supports two primary ways to configure models:
   <Card
     title="🔌 Option 2: Vercel AI SDK"
     description="Use model instances from Vercel AI SDK for extensive provider support"
+  />
+  <Card
+    title="🌐 Option 3: OpenRouter"
+    description="Access 200+ models from multiple providers through a single unified API"
   />
 </Cards>
 
@@ -156,6 +159,7 @@ const gpt4Agent = new LlmAgent({
   model: openai("gpt-4o"),
   instruction: "You are a helpful assistant",
 });
+
 // Anthropic models
 const claudeAgent = new LlmAgent({
   name: "claude_agent",
@@ -163,6 +167,7 @@ const claudeAgent = new LlmAgent({
   model: anthropic("claude-3-5-sonnet-20241022"),
   instruction: "You are a helpful assistant",
 });
+
 // Mistral models
 const mistralAgent = new LlmAgent({
   name: "mistral_agent",
@@ -206,15 +211,116 @@ The Vercel AI SDK supports many more providers beyond what's shown here. Check t
   local models support function calling reliably.
 </Callout>
 
+## Option 3: OpenRouter Integration
+
+[OpenRouter](https://openrouter.ai) provides unified access to **200+ models** from multiple providers through a single API. This is ideal when you want to switch between different models without managing multiple API keys or want access to models with special capabilities like web search.
+
+### Why Use OpenRouter?
+
+- **Single API Key**: Access models from OpenAI, Anthropic, Google, Meta, and more with one key
+- **Cost Optimization**: Compare pricing and switch between models easily
+- **Specialized Models**: Access models with unique capabilities (e.g., Perplexity's web-search enabled models)
+- **Simplified Billing**: One invoice for all your model usage across providers
+
+### Setup Requirements
+
+**1. Install OpenRouter Provider:**
+
+```bash
+npm install @openrouter/ai-sdk-provider
+```
+
+**2. Configure Environment Variables:**
+
+```bash
+# .env file
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1  # Optional, this is the default
+LLM_MODEL=google/gemini-2.5-flash                  # Model to use (with provider prefix)
+```
+
+<Callout type="info" title="Get Your OpenRouter API Key">
+  Sign up at [openrouter.ai](https://openrouter.ai) to get your API key. You'll
+  get free credits to start, and pay-as-you-go pricing afterwards.
+</Callout>
+
+**3. Create OpenRouter Helper:**
+
+```typescript
+// lib/helpers/open-router.ts
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+
+export const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: process.env.OPENROUTER_BASE_URL,
+});
+```
+
+**4. Use with Agents:**
+
+```typescript
+import { LlmAgent } from "@iqai/adk";
+import { openrouter } from "./lib/helpers/open-router";
+
+// Using environment-configured model
+const agent = new LlmAgent({
+  name: "my_agent",
+  description: "An agent using OpenRouter",
+  model: openrouter(process.env.LLM_MODEL), // e.g., "google/gemini-2.5-flash"
+  instruction: "You are a helpful assistant",
+});
+
+// Using a specific model directly
+const claudeAgent = new LlmAgent({
+  name: "claude_agent",
+  description: "Claude via OpenRouter",
+  model: openrouter("anthropic/claude-sonnet-4-5-20250929"),
+  instruction: "You are an expert analyst",
+});
+
+// Using Perplexity's online model with web search
+const researchAgent = new LlmAgent({
+  name: "research_agent",
+  description: "Research agent with web search capabilities",
+  model: openrouter("perplexity/sonar-pro"),
+  instruction: "You are a research assistant with access to current web information",
+});
+```
+
+### Popular OpenRouter Models
+
+| Provider   | Model Name                          | Capabilities                      |
+| ---------- | ----------------------------------- | --------------------------------- |
+| Google     | `google/gemini-2.5-flash`           | Fast, versatile, cost-effective   |
+| Google     | `google/gemini-2.5-pro`             | Advanced reasoning, multimodal    |
+| OpenAI     | `openai/gpt-4o`                     | Powerful general-purpose model    |
+| Anthropic  | `anthropic/claude-sonnet-4-5-20250929` | Excellent for analysis and coding |
+| Meta       | `meta-llama/llama-3.3-70b-instruct` | Open source, strong performance   |
+| Perplexity | `perplexity/sonar-pro`              | Web search enabled, current info  |
+
+<Callout type="info" title="Model Naming Convention">
+  OpenRouter models use the format `provider/model-name`. Check the [OpenRouter
+  models page](https://openrouter.ai/models) for the complete list and current
+  pricing.
+</Callout>
+
 ## Which Option Should You Choose?
 
-| Use Case                 | Recommended Option        | Why                                        |
-| ------------------------ | ------------------------- | ------------------------------------------ |
-| **Getting Started**      | Option 1 (Gemini default) | Simple setup, just need GOOGLE_API_KEY     |
-| **Production Apps**      | Option 1 with env config  | Simple, reliable, fewer dependencies       |
-| **Multi-Provider**       | Option 2 (Vercel AI SDK)  | Unified interface, consistent APIs         |
-| **Advanced Features**    | Option 2 (Vercel AI SDK)  | Streaming, advanced config, type safety    |
-| **Local/Private Models** | Option 2 (Vercel AI SDK)  | Only option that supports local deployment |
+| Use Case                    | Recommended Option        | Why                                           |
+| --------------------------- | ------------------------- | --------------------------------------------- |
+| **Getting Started**         | Option 1 (Gemini default) | Simple setup, just need GOOGLE_API_KEY        |
+| **Production Apps**         | Option 1 with env config  | Simple, reliable, fewer dependencies          |
+| **Multi-Provider**          | Option 3 (OpenRouter)     | Single API key, unified access to 200+ models |
+| **Cost Optimization**       | Option 3 (OpenRouter)     | Easy model comparison and switching           |
+| **Web Search / Online LLMs**| Option 3 (OpenRouter)     | Access to Perplexity and other online models  |
+| **Advanced Features**       | Option 2 (Vercel AI SDK)  | Streaming, advanced config, type safety       |
+| **Local/Private Models**    | Option 2 (Vercel AI SDK)  | Only option that supports local deployment    |
+
+<Callout type="info" title="Combining Approaches">
+  You can mix and match these options in the same application! Use OpenRouter
+  for most agents, Vercel AI SDK for local models, and direct model names for
+  simple Gemini usage.
+</Callout>
 
 ## Next Steps
 

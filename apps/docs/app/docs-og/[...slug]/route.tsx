@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 import { source } from "@/lib/source";
@@ -50,7 +49,7 @@ export async function GET(
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
-					padding: "10px 80px",
+					padding: "10px 60px",
 					marginBottom: "90px",
 					position: "relative",
 					zIndex: 1,
@@ -72,21 +71,16 @@ export async function GET(
 							gap: "24px",
 						}}
 					>
-						<div
+						{/* biome-ignore lint/performance/noImgElement: ImageResponse requires plain img tags */}
+						<img
+							src={`${baseUrl}/adk.png`}
+							alt="ADK Logo"
+							width={210}
+							height={180}
 							style={{
-								position: "relative",
 								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
 							}}
-						>
-							<Image
-								src={`${baseUrl}/adk.png`}
-								alt="ADK Logo"
-								width="210"
-								height="180"
-							/>
-						</div>
+						/>
 					</div>
 
 					{/* Text Branding */}
@@ -109,7 +103,7 @@ export async function GET(
 								background: "#3b82f6",
 								padding: "6px 12px",
 								width: "256px",
-								transform: "rotate(-6deg) translateY(-25px) translateX(-80px)",
+								transform: "rotate(-6deg) translateY(-65px) translateX(80px)",
 							}}
 						>
 							TypeScript
@@ -177,11 +171,13 @@ export async function GET(
 				}}
 			>
 				<span>Powered by</span>
-				<Image
+				{/** biome-ignore lint/performance/noImgElement: ImageResponse requires plain img tags */}
+				<img
 					src={`${baseUrl}/iqai.png`}
 					alt="IQ Logo"
-					width="40"
-					height="36"
+					width={40}
+					height={36}
+					style={{ display: "flex" }}
 				/>
 				<span>IQ</span>
 			</div>
