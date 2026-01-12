@@ -4,6 +4,7 @@ description: Deploy ADK-TS agents to Vercel as serverless functions
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
 
 Vercel is a serverless platform optimized for frontend frameworks and API routes. **Best for**: API-based agents, webhook handlers, and request-response workflows with automatic scaling. Vercel offers zero-configuration deployment and automatic scaling, though it is limited by serverless function execution times. This guide shows you how to deploy your ADK-TS agent to Vercel.
 
@@ -216,6 +217,17 @@ Vercel provides real-time logs in the **"Logs"** tab of your deployment. Use the
 
 ## Next Steps
 
-- Explore the [Railway deployment guide](/docs/framework/guides/deployment/railway) for long-running agents
-- Review [Docker deployment](/docs/guides/deployment/docker) for containerized options
-- Set up monitoring and alerting for your deployed agents
+<Cards>
+  <Card title="🚂 Railway Deployment" href="/docs/framework/guides/deployment/railway">
+    Explore Railway for long-running agents
+  </Card>
+  <Card title="🐳 Docker Deployment" href="/docs/framework/guides/deployment/docker">
+    Review Docker for containerized options
+  </Card>
+  <Card title="☁️ AWS Deployment" href="/docs/framework/guides/deployment/aws">
+    Deploy to AWS using Lambda, ECS, or EC2
+  </Card>
+  <Card title="📋 Production Best Practices" href="/docs/framework/guides/best-practices">
+    Learn production best practices for your agents
+  </Card>
+</Cards>

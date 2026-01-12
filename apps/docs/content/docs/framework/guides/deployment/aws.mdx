@@ -1,11 +1,12 @@
 ---
-title: AWS (Amazon Web Services)
+title: AWS
 description: Deploy your ADK-TS agents to Amazon Web Services using Lambda, ECS Fargate, or EC2.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+import { Card, Cards } from "fumadocs-ui/components/card";
 
 AWS (Amazon Web Services) offers several robust options for deploying your agents, ranging from serverless functions to managed container services and full virtual machines.
 
@@ -359,8 +360,19 @@ chmod 600 .env
 
 ## Next Steps
 
-- Explore [Railway Deployment](./railway) for a simpler container hosting experience.
-- Learn about [Docker](./docker) for generic containerized deployments.
-- Configure [Vercel](./vercel) for serverless API agents.
+<Cards>
+  <Card title="🚂 Railway Deployment" href="./railway">
+    Explore Railway for simpler managed deployment
+  </Card>
+  <Card title="🐳 Docker Deployment" href="./docker">
+    Learn about Docker for self-hosted options
+  </Card>
+  <Card title="⚡ Vercel Deployment" href="./vercel">
+    Configure Vercel for serverless API agents
+  </Card>
+  <Card title="📋 Production Best Practices" href="/docs/framework/guides/best-practices">
+    Learn production best practices for your agents
+  </Card>
+</Cards>
 
 

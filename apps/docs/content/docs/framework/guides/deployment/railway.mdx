@@ -4,6 +4,7 @@ description: Deploy ADK-TS agents to Railway using Docker containers
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
 
 Railway is a cloud platform that simplifies deploying containerized applications with built-in CI/CD and automatic scaling. **Best for**: Quick deployments, containerized applications, and managed infrastructure. Railway offers simple setup and automatic scaling, though pricing may be higher for large-scale deployments. This guide shows you how to deploy your ADK-TS agent to Railway using a Docker image.
 
@@ -277,6 +278,17 @@ Railway provides real-time logs in the **"Logs"** tab of your deployment. Use th
 
 ## Next Steps
 
-- Explore the [Docker deployment guide](/docs/framework/guides/deployment/docker) for more Docker options
-- Learn about production best practices (guide coming soon)
-- Set up monitoring and alerting for your agent
+<Cards>
+  <Card title="🐳 Docker Deployment" href="/docs/framework/guides/deployment/docker">
+    Explore Docker for more containerized options
+  </Card>
+  <Card title="⚡ Vercel Deployment" href="/docs/framework/guides/deployment/vercel">
+    Configure Vercel for serverless API agents
+  </Card>
+  <Card title="☁️ AWS Deployment" href="/docs/framework/guides/deployment/aws">
+    Deploy to AWS using Lambda, ECS, or EC2
+  </Card>
+  <Card title="📋 Production Best Practices" href="/docs/framework/guides/best-practices">
+    Learn production best practices for your agents
+  </Card>
+</Cards>
