@@ -29,6 +29,7 @@ import {
 	InMemorySpanExporter,
 	NodeTracerProvider,
 	SimpleSpanProcessor,
+	SpanProcessor,
 	TraceIdRatioBasedSampler,
 } from "@opentelemetry/sdk-trace-node";
 import {
@@ -262,13 +263,21 @@ export class SetupService {
 				? new TraceIdRatioBasedSampler(config.samplingRatio)
 				: undefined;
 
+		// Create span processors array
+		const spanProcessors: SpanProcessor[] = [];
+
+		// Add OTLP exporter processor if tracing is enabled
+		if (enableTracing && traceExporter) {
+			spanProcessors.push(new BatchSpanProcessor(traceExporter));
+		}
+
+		// Always add in-memory processor for local access
+		spanProcessors.push(new SimpleSpanProcessor(this.inMemoryExporter));
+
 		// NodeSDK will configure and register all providers
 		this.sdk = new NodeSDK({
 			resource,
-			traceExporter,
-			spanProcessor: enableTracing
-				? new SimpleSpanProcessor(this.inMemoryExporter)
-				: undefined,
+			spanProcessors: spanProcessors.length > 0 ? spanProcessors : undefined,
 			metricReader,
 			sampler,
 			instrumentations: [
@@ -281,10 +290,9 @@ export class SetupService {
 			],
 		});
 
-		await this.sdk.start();
+		this.sdk.start();
 		diag.debug("Auto-instrumentation initialized with NodeSDK");
 	}
-
 	/**
 	 * Check if telemetry is initialized
 	 */
