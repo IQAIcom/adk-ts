@@ -13,6 +13,7 @@ import { AgentManager } from "./providers/agent-manager.service";
 import { DIRECTORIES_TO_SKIP } from "./providers/agent-scanner.service";
 import { HotReloadService } from "./reload/hot-reload.service";
 import type { RuntimeConfig } from "./runtime-config";
+import type { Request, Response, NextFunction } from "express";
 
 /**
  * Resolves the path to the bundled web assets directory.
@@ -295,7 +296,7 @@ export async function startHttpServer(
 			const indexPath = join(webDir, "index.html");
 
 			// Use type assertion since we know NestExpressApplication uses Express
-			app.use((req: any, res: any, next: any) => {
+			app.use((req: Request, res: Response, next: NextFunction) => {
 				// Skip API routes, health checks, docs, and reload endpoints
 				if (
 					req.path.startsWith("/api") ||

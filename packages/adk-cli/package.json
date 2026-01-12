@@ -53,6 +53,7 @@
 	"devDependencies": {
 		"@iqai/adk-web": "workspace:*",
 		"@iqai/tsconfig": "workspace:*",
+		"@types/express": "^5.0.6",
 		"@types/marked-terminal": "^6.1.1",
 		"@types/node": "^24.3.1",
 		"typescript": "^5.9.2",
