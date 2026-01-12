@@ -17,7 +17,7 @@ Every agent execution creates a trace span with:
 
 - **Operation**: `invoke_agent`
 - **Attributes**:
-  - `gen_ai.system`: `iqai-adk`
+  - `gen_ai.provider.name`: `iqai-adk`
   - `gen_ai.operation.name`: `invoke_agent`
   - `gen_ai.agent.name`: Agent name
   - `gen_ai.conversation.id`: Session ID
@@ -31,7 +31,7 @@ Every agent execution creates a trace span with:
 ```
 agent_run [my-agent]
 ├─ Attributes:
-│  ├─ gen_ai.system: iqai-adk
+│  ├─ gen_ai.provider.name: iqai-adk
 │  ├─ gen_ai.operation.name: invoke_agent
 │  ├─ gen_ai.agent.name: my-agent
 │  ├─ gen_ai.conversation.id: session-123
@@ -47,7 +47,7 @@ Every tool call is traced with:
 
 - **Operation**: `execute_tool`
 - **Attributes**:
-  - `gen_ai.system`: `iqai-adk`
+  - `gen_ai.provider.name`: `iqai-adk`
   - `gen_ai.operation.name`: `execute_tool`
   - `gen_ai.tool.name`: Tool name
   - `gen_ai.tool.type`: Tool type/class
@@ -60,7 +60,7 @@ Every tool call is traced with:
 ```
 execute_tool search_web
 ├─ Attributes:
-│  ├─ gen_ai.system: iqai-adk
+│  ├─ gen_ai.provider.name: iqai-adk
 │  ├─ gen_ai.operation.name: execute_tool
 │  ├─ gen_ai.tool.name: search_web
 │  ├─ gen_ai.tool.type: SearchTool
@@ -75,7 +75,7 @@ Every LLM request is traced with:
 
 - **Operation**: `call_llm`
 - **Attributes**:
-  - `gen_ai.system`: `iqai-adk`
+  - `gen_ai.provider.name`: `iqai-adk`
   - `gen_ai.operation.name`: `call_llm`
   - `gen_ai.request.model`: Model name
   - `gen_ai.request.max_tokens`: Maximum tokens
@@ -93,7 +93,7 @@ Every LLM request is traced with:
 ```
 call_llm
 ├─ Attributes:
-│  ├─ gen_ai.system: iqai-adk
+│  ├─ gen_ai.provider.name: iqai-adk
 │  ├─ gen_ai.operation.name: call_llm
 │  ├─ gen_ai.request.model: gpt-4
 │  ├─ gen_ai.request.max_tokens: 1024
@@ -240,8 +240,8 @@ ADK-TS follows OpenTelemetry GenAI semantic conventions for consistent tracing a
 ```typescript
 import { SEMCONV } from '@iqai/adk';
 
-// System identification
-SEMCONV.GEN_AI_SYSTEM // "gen_ai.system"
+// Provider identification
+SEMCONV.GEN_AI_PROVIDER_NAME // "gen_ai.provider.name"
 
 // Operations
 SEMCONV.GEN_AI_OPERATION_NAME // "gen_ai.operation.name"

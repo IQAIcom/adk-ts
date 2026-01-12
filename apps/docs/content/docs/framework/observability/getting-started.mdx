@@ -195,6 +195,11 @@ async function main() {
     await telemetryService.shutdown(5000);
     process.exit(0);
   });
+
+  process.on('SIGINT', async () => {
+    await telemetryService.shutdown(5000);
+    process.exit(0);
+  });
 }
 
 main().catch(console.error);

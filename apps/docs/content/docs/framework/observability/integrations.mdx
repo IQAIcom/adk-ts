@@ -71,6 +71,34 @@ services:
       - tempo
 ```
 
+### Tempo Configuration
+
+Create a `tempo.yaml` file in the same directory as your `docker-compose.yml`:
+
+```yaml
+# tempo.yaml
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/traces
+```
+
+This minimal configuration:
+- Sets up the Tempo HTTP server on port 3200
+- Configures OTLP receiver on port 4318 (matching the docker-compose port mapping)
+- Uses local storage for traces (suitable for development)
+
 ### Configuration
 
 ```typescript
@@ -97,7 +125,7 @@ Datadog provides comprehensive APM and monitoring capabilities.
 ```typescript
 await telemetryService.initialize({
   appName: 'my-agent-app',
-  otlpEndpoint: 'https://api.datadoghq.com/v1/traces',
+  otlpEndpoint: 'https://otlp.datadoghq.com:4318',
   otlpHeaders: {
     'DD-API-KEY': process.env.DD_API_KEY,
   },
@@ -106,12 +134,28 @@ await telemetryService.initialize({
 });
 ```
 
+<Callout type="info">
+The ADK telemetry service automatically appends `/v1/traces` and `/v1/metrics` to the OTLP endpoint, so you should only specify the base URL without the path suffix.
+</Callout>
+
 ### Environment Variables
 
 ```bash
 export DD_API_KEY=your-datadog-api-key
 export DD_SITE=datadoghq.com  # or datadoghq.eu for EU
 ```
+
+### Datadog Site Configuration
+
+The OTLP endpoint domain varies based on your Datadog site:
+
+- **US**: `https://otlp.datadoghq.com:4318` (default)
+- **EU**: `https://otlp.datadoghq.eu:4318`
+- **US3**: `https://otlp.us3.datadoghq.com:4318`
+- **US5**: `https://otlp.us5.datadoghq.com:4318`
+- **AP1**: `https://otlp.ap1.datadoghq.com:4318`
+
+Configure the endpoint based on your Datadog site setting.
 
 ### Features
 
@@ -206,7 +250,7 @@ exporters:
     tls:
       insecure: true
   otlp/datadog:
-    endpoint: https://api.datadoghq.com
+    endpoint: https://otlp.datadoghq.com:4318
     headers:
       DD-API-KEY: ${DD_API_KEY}
 
@@ -269,11 +313,15 @@ await telemetryService.initialize({
 
 | Platform | OTLP Support | Metrics | Traces | Logs | Cost |
 |----------|--------------|---------|--------|------|------|
-| Jaeger | ✅ | ✅ | ✅ | ❌ | Free (self-hosted) |
+| Jaeger | ✅ | ❌ | ✅ | ❌ | Free (self-hosted) |
 | Grafana + Tempo | ✅ | ✅ | ✅ | ✅ | Free (self-hosted) |
 | Datadog | ✅ | ✅ | ✅ | ✅ | Paid |
 | New Relic | ✅ | ✅ | ✅ | ✅ | Paid |
-| Honeycomb | ✅ | ✅ | ✅ | ❌ | Paid |
+| Honeycomb | ✅ | ✅ | ✅ | ✅ | Paid |
+
+<Callout type="info">
+**Note on Jaeger**: While Jaeger doesn't natively support metrics in its UI, the Jaeger collector can export metrics to other systems like Prometheus for visualization and monitoring.
+</Callout>
 
 ## Best Practices
 
