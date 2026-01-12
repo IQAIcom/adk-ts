@@ -1,1037 +1,366 @@
 ---
-title: AWS
-description: Deploy ADK-TS agents to AWS using Lambda, ECS Fargate, or EC2
+title: AWS (Amazon Web Services)
+description: Deploy your ADK-TS agents to Amazon Web Services using Lambda, ECS Fargate, or EC2.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-AWS offers multiple deployment options for ADK-TS agents, from serverless functions to fully managed containers and virtual machines. Choose based on your execution requirements and operational preferences.
+AWS (Amazon Web Services) offers several robust options for deploying your agents, ranging from serverless functions to managed container services and full virtual machines.
 
-## Deployment Options Overview
+## What You'll Need
 
-AWS provides three primary deployment paths for ADK-TS agents:
+Before deploying to AWS, ensure you have:
 
-| Option          | Best For                                             | Execution Time | Complexity | Cost Model                        |
-| --------------- | ---------------------------------------------------- | -------------- | ---------- | --------------------------------- |
-| **Lambda**      | API endpoints, webhooks, short tasks                 | 15 minutes max | Low        | Pay-per-invocation                |
-| **ECS Fargate** | Long-running agents, Discord bots, background tasks  | Unlimited      | Medium     | Pay-per-hour (running containers) |
-| **EC2**         | High-scale, custom infrastructure, cost optimization | Unlimited      | High       | Pay-per-hour (instance uptime)    |
+- An [**AWS Account**](https://aws.amazon.com/) with appropriate permissions.
+- **AWS CLI** installed and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) with your credentials.
+- **[Docker](https://docs.docker.com/get-docker/)** installed for container-based deployments.
+- Your **ADK-TS project** ready for deployment.
 
-## Choose Your Deployment Method
+## Deployment Options
 
-<Tabs items={['Lambda', 'ECS Fargate', 'EC2']}>
-  <Tab value="Lambda">
-    **AWS Lambda (Serverless API Agents)**
+Choose the AWS service that best fits your agent's requirements:
 
-    AWS Lambda is a serverless compute service for running code in response to events. **Best for**: API-based agents, webhook handlers, and request-response workflows with execution under 15 minutes.
+1. [**AWS Lambda (Serverless)**](#option-1-aws-lambda-serverless) — Best for request-driven APIs and intermittent workloads.
+2. [**AWS ECS Fargate (Containers)**](#option-2-aws-ecs-fargate-containers) — Best for long-running agents, Discord/Telegram bots, and managed containers.
+3. [**AWS EC2 (Virtual Machines)**](#option-3-aws-ec2-virtual-machines) — Best for custom infrastructure, high scale, and full control.
 
-    **Prerequisites**
+## Option 1: AWS Lambda (Serverless)
 
-    - **AWS Account** with appropriate permissions
-    - **AWS CLI** installed and configured ([guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html))
-    - **Docker** installed for container image builds
-    - **Built and tested** API-based ADK-TS agent locally
+AWS Lambda allows you to run your agents as serverless functions. This is the most cost-effective option for agents that are only active when receiving a request.
 
-    **Deployment Steps**
+<Callout type="info">
+  Lambda supports container images up to 10GB, making it ideal for ADK-TS agents
+  which often require significant dependencies.
+</Callout>
 
-    <Accordions>
-      <Accordion title="Step 1: Create Dockerfile for Lambda">
-        Lambda supports container images up to 10GB. Create a Lambda-compatible Dockerfile:
+### Step 1: Create a Lambda-compatible Dockerfile
 
-        ```dockerfile
-        # Use AWS Lambda Node.js 24 base image
-        FROM public.ecr.aws/lambda/nodejs:24
+Create a `Dockerfile.lambda` in your project root:
 
-        # Enable pnpm
-        RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+```dockerfile
+# Use AWS Lambda Node.js 24 base image
+FROM public.ecr.aws/lambda/nodejs:24
 
-        # Copy package files
-        COPY package.json pnpm-lock.yaml ./
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
-        # Install production dependencies
-        RUN pnpm install --frozen-lockfile --prod
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
 
-        # Copy TypeScript config and source
-        COPY tsconfig.json ./
-        COPY src ./src
+# Install production dependencies
+RUN pnpm install --frozen-lockfile --prod
 
-        # Build TypeScript
-        RUN pnpm install --frozen-lockfile && pnpm build
+# Copy TypeScript config and source
+COPY tsconfig.json ./
+COPY src ./src
 
-        # Copy compiled code to Lambda task root
-        COPY --from=builder ${LAMBDA_TASK_ROOT}/dist ${LAMBDA_TASK_ROOT}/
+# Build TypeScript
+RUN pnpm install --frozen-lockfile && pnpm build
 
-        # Set the Lambda handler
-        CMD [ "index.handler" ]
-        ```
-      </Accordion>
+# Copy compiled code to Lambda task root
+# Note: Ensure your build output is in the 'dist' folder
+COPY --from=builder ${LAMBDA_TASK_ROOT}/dist ${LAMBDA_TASK_ROOT}/
 
-      <Accordion title="Step 2: Create Lambda Handler">
-        Create `src/index.ts` with Lambda handler:
+# Set the Lambda handler
+CMD [ "index.handler" ]
+```
 
-        ```typescript
-        import { AgentBuilder } from "@iqai/adk";
-        import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+### Step 2: Create the Lambda Handler
 
-        export const handler = async (
-          event: APIGatewayProxyEvent
-        ): Promise<APIGatewayProxyResult> => {
-          // Parse request body
-          const body = JSON.parse(event.body || "{}");
-          const { message } = body;
+Ensure your entry point (`src/index.ts`) exports a compatible handler. Here is a basic example using `APIGatewayProxyEvent`:
 
-          if (!message) {
-            return {
-              statusCode: 400,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ error: "Message is required" }),
-            };
-          }
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
-          try {
-            // Create ADK-TS agent
-            const agent = new AgentBuilder()
-              .withModel(process.env.LLM_MODEL || "gemini-3-flash-preview" || "gpt-4")
-              .withInstruction("You are a helpful assistant")
-              .buildLlm();
+export const handler = async (
+  event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> => {
+  const body = JSON.parse(event.body || "{}");
+  const { message } = body;
 
-            // Process request
-            const response = await agent.ask(message);
+  if (!message) {
+    return {
+      statusCode: 400,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: "Message is required" }),
+    };
+  }
 
-            return {
-              statusCode: 200,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ response }),
-            };
-          } catch (error) {
-            console.error("Agent error:", error);
-            return {
-              statusCode: 500,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ error: "Internal server error" }),
-            };
-          }
-        };
-        ```
-      </Accordion>
+  try {
+    const agent = new AgentBuilder()
+      .withModel(process.env.LLM_MODEL || "gemini-3-flash-preview")
+      .withInstruction("You are a helpful assistant")
+      .buildLlm();
 
-      <Accordion title="Step 3: Build and Push Docker Image">
-        ```bash
-        # Build for Lambda (AMD64 architecture)
-        docker buildx build --platform linux/amd64 -t adk-agent-lambda:latest .
+    const response = await agent.ask(message);
 
-        # Authenticate to ECR (replace REGION and ACCOUNT_ID)
-        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ response }),
+    };
+  } catch (error) {
+    console.error("Agent error:", error);
+    return {
+      statusCode: 500,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: "Internal server error" }),
+    };
+  }
+};
+```
 
-        # Create ECR repository (if it doesn't exist)
-        aws ecr create-repository --repository-name adk-agent-lambda --region us-east-1
+### Step 3: Build and Push to ECR
 
-        # Tag image for ECR
-        docker tag adk-agent-lambda:latest ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest
+Build your image and push it to Amazon Elastic Container Registry (ECR):
 
-        # Push to ECR
-        docker push ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest
-        ```
-      </Accordion>
+```bash
+# Build for Lambda architecture (typically AMD64)
+docker buildx build --platform linux/amd64 -t adk-agent-lambda:latest -f Dockerfile.lambda .
 
-      <Accordion title="Step 4: Create Lambda Function">
-        ```bash
-        # Create Lambda function from container image
-        aws lambda create-function \
-          --function-name adk-agent \
-          --package-type Image \
-          --code ImageUri=ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest \
-          --role arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role \
-          --timeout 900 \
-          --memory-size 2048 \
-          --region us-east-1
-        ```
+# Authenticate to ECR (replace REGION and ACCOUNT_ID)
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
 
-        <Callout type="info" title="Execution Role Required">
-          Create an IAM role with Lambda execution permissions and any additional
-          permissions your agent needs (S3, DynamoDB, etc.). See [AWS Lambda execution role documentation](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html).
-        </Callout>
-      </Accordion>
+# Create repository if needed
+aws ecr create-repository --repository-name adk-agent-lambda --region us-east-1
 
-      <Accordion title="Step 5: Set Environment Variables">
-        ```bash
-        aws lambda update-function-configuration \
-          --function-name adk-agent \
-          --environment "Variables={
-            OPENAI_API_KEY=sk-...,
-            LLM_MODEL=gpt-4,
-            NODE_ENV=production
-          }" \
-          --region us-east-1
-        ```
-      </Accordion>
+# Tag and push
+docker tag adk-agent-lambda:latest ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest
+docker push ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest
+```
 
-      <Accordion title="Step 6: Create API Gateway (Optional)">
-        Expose Lambda via HTTP endpoint:
+### Step 4: Create the Lambda Function
 
-        ```bash
-        # Create REST API
-        aws apigateway create-rest-api \
-          --name "ADK Agent API" \
-          --region us-east-1
+Deploy the function using the pushed image:
 
-        # Configure API Gateway integration (see AWS documentation for detailed steps)
-        ```
+```bash
+aws lambda create-function \
+  --function-name adk-agent \
+  --package-type Image \
+  --code ImageUri=ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest \
+  --role arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role \
+  --timeout 900 \
+  --memory-size 2048 \
+  --region us-east-1
+```
 
-        Or use AWS Console to create an HTTP API with Lambda integration.
-      </Accordion>
-    </Accordions>
+<Callout type="warn">
+  Ensure the assigned IAM role has the `AWSLambdaBasicExecutionRole` policy and
+  any permissions required for your agent to access other services.
+</Callout>
 
-    **Testing Lambda Deployment**
+### Step 5: (Optional) Expose via API Gateway
 
-    Invoke Lambda directly:
+To access your agent via HTTP, create an **HTTP API** in the API Gateway console and add a **Lambda Integration** pointing to your new function.
 
+## Option 2: AWS ECS Fargate (Containers)
+
+AWS ECS (Elastic Container Service) with Fargate is a fully managed container orchestration service. It is ideal for long-running agents, Discord/Telegram bots, and stateful applications.
+
+### Recommended: Using AWS Copilot
+
+AWS Copilot CLI is the fastest way to build, release, and manage production-ready containerized applications on ECS.
+
+### Step 1: Initialize the Application
+
+Navigate to your project directory and initialize your Copilot application:
+
+```bash
+# Initialize Copilot application
+copilot app init adk-agent-app
+```
+
+### Step 2: Create the Service
+
+Create a "Backend Service" for your agent. This is suitable for agents that don't need a public Load Balancer (like bots) or those behind a private gateway.
+
+```bash
+copilot svc init \
+  --name agent-service \
+  --svc-type "Backend Service" \
+  --dockerfile ./Dockerfile
+```
+
+### Step 3: Configure the Manifest
+
+Edit `copilot/agent-service/manifest.yml` to define your environment and resources:
+
+```yaml
+name: agent-service
+type: Backend Service
+
+image:
+  build: Dockerfile
+
+cpu: 512
+memory: 1024
+count: 1
+
+# Environment variables
+variables:
+  NODE_ENV: production
+  LLM_MODEL: gemini-3-flash-preview
+
+# Secrets from AWS Systems Manager Parameter Store
+secrets:
+  GOOGLE_API_KEY: /copilot/adk-agent-app/production/secrets/GOOGLE_API_KEY
+```
+
+### Step 4: Deploy to Production
+
+Deploy your agent to a production environment:
+
+```bash
+# This will build your image, push to ECR, and create the ECS infrastructure
+copilot deploy --name agent-service --env production
+```
+
+### Step 5: Verify and Monitor
+
+```bash
+# Check service status
+copilot svc status --name agent-service
+
+# View live logs
+copilot svc logs --name agent-service --follow
+```
+
+## Option 3: AWS EC2 (Virtual Machines)
+
+AWS EC2 provides full control over the virtual server. This is best for high-scale custom deployments and cost optimization with reserved instances.
+
+### Step 1: Launch your Instance
+
+Launch an Ubuntu 24.04 LTS instance (t3.medium recommended) via the AWS Console or CLI. Ensure your Security Group allows SSH (port 22) and your application port (e.g., 3000).
+
+### Step 2: Install Dependencies
+
+Connect to your instance via SSH and install the required runtime:
+
+```bash
+# Install Node.js 22
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install pnpm
+sudo corepack enable && sudo corepack prepare pnpm@latest --activate
+
+# Install PM2 for process management
+sudo npm install -g pm2
+```
+
+### Step 3: Deploy your Agent
+
+You can deploy directly using Node.js or via Docker:
+
+<Tabs items={['Direct Node.js', 'Docker']}>
+  <Tab value="Direct Node.js">
     ```bash
-    aws lambda invoke \
-      --function-name adk-agent \
-      --payload '{"body": "{\"message\": \"Hello, what can you do?\"}"}' \
-      --region us-east-1 \
-      response.json
-
-    cat response.json
-    ```
-
-    Or test via API Gateway endpoint:
-
-    ```bash
-    curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/chat \
-      -H "Content-Type: application/json" \
-      -d '{"message": "Hello, what can you do?"}'
-    ```
-
-    **Updating Lambda Deployment**
-
-    ```bash
-    # Rebuild and push new image
-    docker buildx build --platform linux/amd64 -t adk-agent-lambda:latest .
-    docker tag adk-agent-lambda:latest ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest
-    docker push ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest
-
-    # Update Lambda function
-    aws lambda update-function-code \
-      --function-name adk-agent \
-      --image-uri ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent-lambda:latest \
-      --region us-east-1
-    ```
-
-    **Environment Variables for Lambda**
-
-    Your Lambda function needs these environment variables:
-
-    **Common Variables:**
-    - `GOOGLE_API_KEY` - For Google AI models
-    - `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`)
-    - `NODE_ENV` - Set to `production`
-
-    **Set via AWS CLI:**
-
-    ```bash
-    aws lambda update-function-configuration \
-      --function-name adk-agent \
-      --environment "Variables={
-        GOOGLE_API_KEY=your_api_key,
-        LLM_MODEL=gemini-2.5-flash,
-        NODE_ENV=production
-      }" \
-      --region us-east-1
-    ```
-
-    **Or via AWS Console:**
-    1. Go to Lambda → Functions → your-function
-    2. Click **Configuration** → **Environment variables**
-    3. Add each variable with its value
-    4. Click **Save**
-
-    <Callout type="info" title="Encryption">
-      Lambda encrypts environment variables at rest automatically. For sensitive data, use AWS Secrets Manager.
-    </Callout>
-
-  </Tab>
-
-  <Tab value="ECS Fargate">
-    **AWS ECS Fargate (Managed Containers)**
-
-    AWS ECS (Elastic Container Service) with Fargate is a fully managed container orchestration service. **Best for**: Long-running agents, Discord bots, background tasks, and stateful applications.
-
-    **Prerequisites**
-
-    - **AWS Account** with appropriate permissions
-    - **AWS CLI** installed and configured
-    - **Docker** installed
-    - **AWS Copilot CLI** installed (recommended) - [installation guide](https://aws.github.io/copilot-cli/docs/getting-started/install/)
-
-    **Deployment Methods**
-
-    <Tabs items={['AWS Copilot (Recommended)', 'AWS CDK (Advanced)']}>
-      <Tab value="AWS Copilot (Recommended)">
-        AWS Copilot CLI simplifies ECS deployment with infrastructure as code.
-
-        <Accordions>
-          <Accordion title="Step 1: Initialize Copilot Application">
-            ```bash
-            # Navigate to your project directory
-            cd your-adk-agent
-
-            # Initialize Copilot application
-            copilot app init adk-agent-app
-            ```
-          </Accordion>
-
-          <Accordion title="Step 2: Create Service">
-            ```bash
-            # Create a backend service (long-running)
-            copilot svc init \
-              --name agent-service \
-              --svc-type "Backend Service" \
-              --dockerfile ./Dockerfile
-            ```
-
-            This creates:
-            - `copilot/agent-service/manifest.yml` - Service configuration
-            - Infrastructure definitions for ECS, VPC, load balancer
-          </Accordion>
-
-          <Accordion title="Step 3: Configure Service Manifest">
-            Edit `copilot/agent-service/manifest.yml`:
-
-            ```yaml
-            name: agent-service
-            type: Backend Service
-
-            # Docker image configuration
-            image:
-              build: Dockerfile
-
-            # CPU and memory (256 CPU = 0.25 vCPU)
-            cpu: 512
-            memory: 1024
-
-            # Number of tasks
-            count: 1
-
-            # Environment variables
-            variables:
-              NODE_ENV: production
-              LLM_MODEL: gpt-4
-
-            # Secrets from AWS Systems Manager Parameter Store
-            secrets:
-              OPENAI_API_KEY: /copilot/adk-agent-app/production/secrets/OPENAI_API_KEY
-              DISCORD_TOKEN: /copilot/adk-agent-app/production/secrets/DISCORD_TOKEN
-
-            # Auto-scaling configuration (optional)
-            # count:
-            #   range: 1-5
-            #   cpu_percentage: 70
-            #   memory_percentage: 80
-            ```
-          </Accordion>
-
-          <Accordion title="Step 4: Store Secrets">
-            ```bash
-            # Store secrets in AWS Systems Manager Parameter Store
-            aws ssm put-parameter \
-              --name /copilot/adk-agent-app/production/secrets/OPENAI_API_KEY \
-              --value "sk-..." \
-              --type SecureString \
-              --region us-east-1
-
-            aws ssm put-parameter \
-              --name /copilot/adk-agent-app/production/secrets/DISCORD_TOKEN \
-              --value "your-discord-token" \
-              --type SecureString \
-              --region us-east-1
-            ```
-          </Accordion>
-
-          <Accordion title="Step 5: Deploy to ECS Fargate">
-            ```bash
-            # Deploy to production environment
-            copilot deploy --name agent-service --env production
-            ```
-
-            Copilot will:
-            - Build your Docker image
-            - Push to Amazon ECR
-            - Create ECS cluster, task definition, and service
-            - Deploy your agent to Fargate
-          </Accordion>
-
-          <Accordion title="Step 6: Verify Deployment">
-            ```bash
-            # Check service status
-            copilot svc status --name agent-service
-
-            # View logs
-            copilot svc logs --name agent-service --follow
-
-            # Show service details
-            copilot svc show --name agent-service
-            ```
-          </Accordion>
-        </Accordions>
-
-        **Updating ECS Deployment**
-
-        ```bash
-        # Make code changes, then redeploy
-        copilot deploy --name agent-service --env production
-        ```
-
-        **Monitoring**
-
-        View logs in CloudWatch:
-
-        ```bash
-        # With Copilot
-        copilot svc logs --name agent-service --follow
-
-        # With AWS CLI
-        aws logs tail /ecs/adk-agent --follow --region us-east-1
-        ```
-      </Tab>
-
-      <Tab value="AWS CDK (Advanced)">
-        For more control, use AWS CDK (Cloud Development Kit) with TypeScript.
-
-        <Accordions>
-          <Accordion title="Step 1: Install CDK">
-            ```bash
-            npm install -g aws-cdk
-            ```
-          </Accordion>
-
-          <Accordion title="Step 2: Initialize CDK Project">
-            ```bash
-            mkdir adk-agent-infrastructure
-            cd adk-agent-infrastructure
-            cdk init app --language typescript
-            ```
-          </Accordion>
-
-          <Accordion title="Step 3: Define Infrastructure">
-            Edit `lib/adk-agent-infrastructure-stack.ts`:
-
-            ```typescript
-            import * as cdk from "aws-cdk-lib";
-            import * as ecs from "aws-cdk-lib/aws-ecs";
-            import * as ec2 from "aws-cdk-lib/aws-ec2";
-            import * as logs from "aws-cdk-lib/aws-logs";
-            import { Construct } from "constructs";
-
-            export class AdkAgentInfrastructureStack extends cdk.Stack {
-              constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-                super(scope, id, props);
-
-                // Create VPC
-                const vpc = new ec2.Vpc(this, "AdkAgentVpc", {
-                  maxAzs: 2,
-                });
-
-                // Create ECS Cluster
-                const cluster = new ecs.Cluster(this, "AdkAgentCluster", {
-                  vpc,
-                  clusterName: "adk-agent-cluster",
-                });
-
-                // Create Fargate Task Definition
-                const taskDefinition = new ecs.FargateTaskDefinition(this, "AgentTaskDef", {
-                  memoryLimitMiB: 1024,
-                  cpu: 512,
-                });
-
-                // Add container to task
-                const container = taskDefinition.addContainer("AgentContainer", {
-                  image: ecs.ContainerImage.fromRegistry(
-                    "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/adk-agent:latest"
-                  ),
-                  logging: ecs.LogDrivers.awsLogs({
-                    streamPrefix: "adk-agent",
-                    logRetention: logs.RetentionDays.ONE_WEEK,
-                  }),
-                  environment: {
-                    NODE_ENV: "production",
-                    LLM_MODEL: "gpt-4",
-                  },
-                  secrets: {
-                    OPENAI_API_KEY: ecs.Secret.fromSecretsManager(
-                      // Reference to Secrets Manager secret
-                    ),
-                  },
-                });
-
-                // Create Fargate Service
-                new ecs.FargateService(this, "AgentService", {
-                  cluster,
-                  taskDefinition,
-                  desiredCount: 1,
-                  serviceName: "adk-agent-service",
-                });
-              }
-            }
-            ```
-          </Accordion>
-
-          <Accordion title="Step 4: Deploy CDK Stack">
-            ```bash
-            # Bootstrap CDK (first time only)
-            cdk bootstrap
-
-            # Deploy stack
-            cdk deploy
-            ```
-          </Accordion>
-        </Accordions>
-
-        **Updating ECS Deployment**
-
-        ```bash
-        # Update infrastructure code, then redeploy
-        cdk deploy
-        ```
-      </Tab>
-    </Tabs>
-
-    **Environment Variables for ECS Fargate**
-
-    Your ECS tasks need these environment variables:
-
-    **Common Variables:**
-    - `GOOGLE_API_KEY` - For Google AI models
-    - `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`)
-    - `DISCORD_TOKEN` - For Discord bots
-    - `TELEGRAM_BOT_TOKEN` - For Telegram bots
-    - `NODE_ENV` - Set to `production`
-
-    **Using AWS Systems Manager Parameter Store:**
-
-    ```bash
-    # Store secrets in Parameter Store
-    aws ssm put-parameter \
-      --name "/adk-agent/production/GOOGLE_API_KEY" \
-      --value "your_api_key" \
-      --type "SecureString" \
-      --region us-east-1
-
-    # Reference in Copilot manifest.yml
-    secrets:
-      GOOGLE_API_KEY: /adk-agent/production/GOOGLE_API_KEY
-    ```
-
-    **Or use AWS Secrets Manager:**
-
-    ```bash
-    # Create secret
-    aws secretsmanager create-secret \
-      --name adk-agent/google-api-key \
-      --secret-string "your_api_key" \
-      --region us-east-1
-    ```
-
-    **Fetch at runtime (TypeScript):**
-
-    ```typescript
-    import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
-
-    const client = new SSMClient({ region: "us-east-1" });
-
-    async function getSecret(name: string): Promise<string> {
-      const command = new GetParameterCommand({
-        Name: name,
-        WithDecryption: true,
-      });
-      const response = await client.send(command);
-      return response.Parameter?.Value || "";
-    }
-
-    const apiKey = await getSecret("/adk-agent/production/GOOGLE_API_KEY");
-    ```
-
-    <Callout type="warn" title="Never Use Plain Environment Variables">
-      For ECS, always use Parameter Store or Secrets Manager for sensitive data. Never put secrets in plain `environment` field in task definitions.
-    </Callout>
-
-  </Tab>
-
-  <Tab value="EC2">
-    **AWS EC2 (Virtual Machines)**
-
-    AWS EC2 provides virtual servers with full control over the operating system and configuration. **Best for**: High-scale deployments, cost optimization with reserved instances, and custom infrastructure requirements.
-
-    **Prerequisites**
-
-    - **AWS Account** with EC2 permissions
-    - **SSH key pair** for instance access
-    - **Security group** configured for your agent's requirements
-
-    **Deployment Steps**
-
-    <Accordions>
-      <Accordion title="Step 1: Launch EC2 Instance">
-        **Using AWS CLI:**
-
-        ```bash
-        # Launch Ubuntu 24.04 LTS instance
-        aws ec2 run-instances \
-          --image-id ami-0c55b159cbfafe1f0 \
-          --instance-type t3.medium \
-          --key-name your-key-pair \
-          --security-group-ids sg-your-security-group \
-          --subnet-id subnet-your-subnet \
-          --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=adk-agent}]' \
-          --region us-east-1
-        ```
-
-        **Or use AWS Console:**
-        - **AMI**: Ubuntu 24.04 LTS
-        - **Instance Type**: t3.medium (2 vCPU, 4GB RAM) or larger
-        - **Storage**: 20GB+ gp3 SSD
-      </Accordion>
-
-      <Accordion title="Step 2: Connect to Instance">
-        ```bash
-        # SSH into instance
-        ssh -i your-key-pair.pem ubuntu@your-instance-public-ip
-        ```
-      </Accordion>
-
-      <Accordion title="Step 3: Install Dependencies">
-        ```bash
-        # Update system
-        sudo apt update && sudo apt upgrade -y
-
-        # Install Node.js 22
-        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-        sudo apt install -y nodejs
-
-        # Install pnpm
-        sudo corepack enable
-        sudo corepack prepare pnpm@9.12.0 --activate
-
-        # Install build tools
-        sudo apt install -y build-essential git
-
-        # Install Docker (optional, if using Docker deployment)
-        curl -fsSL https://get.docker.com | sudo sh
-        sudo usermod -aG docker ubuntu
-        ```
-      </Accordion>
-
-      <Accordion title="Step 4: Deploy Your Agent">
-        <Tabs items={['Direct Node.js', 'Docker']}>
-          <Tab value="Direct Node.js">
-            ```bash
-            # Clone your repository
-            git clone https://github.com/your-username/your-adk-agent.git
-            cd your-adk-agent
-
-            # Install dependencies
-            pnpm install --frozen-lockfile
-
-            # Build TypeScript
-            pnpm build
-
-            # Create .env file
-            nano .env
-            # Add your environment variables (see Environment Variables section)
-
-            # Start agent with PM2 (process manager)
-            sudo npm install -g pm2
-            pm2 start dist/index.js --name adk-agent
-            pm2 save
-            pm2 startup
-            ```
-          </Tab>
-
-          <Tab value="Docker">
-            ```bash
-            # Clone your repository
-            git clone https://github.com/your-username/your-adk-agent.git
-            cd your-adk-agent
-
-            # Build Docker image
-            docker buildx build --platform linux/amd64 -t adk-agent:latest .
-
-            # Run container
-            docker run -d \
-              --name adk-agent \
-              --restart unless-stopped \
-              --env-file .env \
-              -p 3000:3000 \
-              adk-agent:latest
-
-            # View logs
-            docker logs -f adk-agent
-            ```
-          </Tab>
-        </Tabs>
-      </Accordion>
-
-      <Accordion title="Step 5: Configure Auto-Start">
-        <Tabs items={['PM2', 'Docker', 'systemd']}>
-          <Tab value="PM2">
-            ```bash
-            # PM2 automatically configures startup script
-            pm2 startup
-            pm2 save
-            ```
-          </Tab>
-
-          <Tab value="Docker">
-            ```bash
-            # Docker restart policy handles auto-start
-            docker update --restart unless-stopped adk-agent
-            ```
-          </Tab>
-
-          <Tab value="systemd">
-            Create `/etc/systemd/system/adk-agent.service`:
-
-            ```ini
-            [Unit]
-            Description=ADK-TS Agent
-            After=network.target
-
-            [Service]
-            Type=simple
-            User=ubuntu
-            WorkingDirectory=/home/ubuntu/your-adk-agent
-            ExecStart=/usr/bin/node dist/index.js
-            Restart=always
-            RestartSec=10
-            Environment=NODE_ENV=production
-            EnvironmentFile=/home/ubuntu/your-adk-agent/.env
-
-            [Install]
-            WantedBy=multi-user.target
-            ```
-
-            Enable and start:
-
-            ```bash
-            sudo systemctl enable adk-agent
-            sudo systemctl start adk-agent
-            sudo systemctl status adk-agent
-            ```
-          </Tab>
-        </Tabs>
-      </Accordion>
-    </Accordions>
-
-    **Monitoring EC2 Deployment**
-
-    <Tabs items={['PM2', 'Docker', 'systemd', 'CloudWatch']}>
-      <Tab value="PM2">
-        ```bash
-        pm2 logs adk-agent
-        pm2 monit  # Real-time monitoring
-        ```
-      </Tab>
-
-      <Tab value="Docker">
-        ```bash
-        docker logs -f adk-agent
-        ```
-      </Tab>
-
-      <Tab value="systemd">
-        ```bash
-        journalctl -u adk-agent -f
-        ```
-      </Tab>
-
-      <Tab value="CloudWatch">
-        Install CloudWatch agent to send logs and metrics to AWS CloudWatch:
-
-        ```bash
-        wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
-        sudo dpkg -i amazon-cloudwatch-agent.deb
-
-        # Configure and start CloudWatch agent
-        # See: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html
-        ```
-      </Tab>
-    </Tabs>
-
-    **Updating EC2 Deployment**
-
-    ```bash
-    # SSH into instance
-    ssh -i your-key-pair.pem ubuntu@your-instance-public-ip
-
-    # Pull latest code
+    # Clone and install
+    git clone https://github.com/your-username/your-adk-agent.git
     cd your-adk-agent
-    git pull origin main
-
-    # Rebuild and restart
     pnpm install --frozen-lockfile
+
+    # Build and start
     pnpm build
-
-    # Restart with PM2
-    pm2 restart adk-agent
-
-    # Or with Docker
-    docker stop adk-agent
-    docker rm adk-agent
-    docker buildx build -t adk-agent:latest .
-    docker run -d --name adk-agent --restart unless-stopped --env-file .env adk-agent:latest
+    pm2 start dist/index.js --name adk-agent
+    pm2 save
+    pm2 startup
     ```
-
-    **Environment Variables for EC2**
-
-    Your EC2 instance needs these environment variables:
-
-    **Common Variables:**
-    - `GOOGLE_API_KEY` - For Google AI models
-    - `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`)
-    - `DISCORD_TOKEN` - For Discord bots
-    - `TELEGRAM_BOT_TOKEN` - For Telegram bots
-    - `NODE_ENV` - Set to `production`
-
-    **Using .env file (simplest):**
-
-    Create a `.env` file on your EC2 instance:
-
+  </Tab>
+  <Tab value="Docker">
     ```bash
-    GOOGLE_API_KEY=your_api_key_here
-    LLM_MODEL=gemini-2.5-flash
-    DISCORD_TOKEN=your_discord_token
-    NODE_ENV=production
+    # Install Docker
+    curl -fsSL https://get.docker.com | sudo sh
+    sudo usermod -aG docker $USER
+
+    # Build and run
+    docker build -t adk-agent .
+    docker run -d \
+      --name adk-agent \
+      --restart unless-stopped \
+      --env-file .env \
+      -p 3000:3000 \
+      adk-agent
     ```
-
-    Set proper permissions:
-
-    ```bash
-    chmod 600 .env
-    ```
-
-    **Using AWS Systems Manager Parameter Store (recommended):**
-
-    Store secrets in Parameter Store and fetch at runtime:
-
-    ```typescript
-    import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
-
-    const client = new SSMClient({ region: "us-east-1" });
-
-    async function getSecret(name: string): Promise<string> {
-      const command = new GetParameterCommand({
-        Name: name,
-        WithDecryption: true,
-      });
-      const response = await client.send(command);
-      return response.Parameter?.Value || "";
-    }
-
-    const apiKey = await getSecret("/adk-agent/production/GOOGLE_API_KEY");
-    ```
-
-    <Callout type="warn" title="Never Commit .env Files">
-      Add `.env` to your `.gitignore`. Never commit environment files to version control.
-    </Callout>
-
   </Tab>
 </Tabs>
 
+## Configuring Environment Variables
+
+Properly managing environment variables and secrets is critical for security and reliability on AWS.
+
+### 1. AWS Secrets Manager (Recommended)
+
+For sensitive information like API keys, use AWS Secrets Manager. You can fetch these at runtime using the AWS SDK:
+
+```typescript
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from "@aws-sdk/client-secrets-manager";
+
+const client = new SecretsManagerClient({ region: "us-east-1" });
+
+async function getSecret(secretName: string) {
+  const response = await client.send(
+    new GetSecretValueCommand({ SecretId: secretName })
+  );
+  return response.SecretString;
+}
+```
+
+### 2. Lambda Environment Variables
+
+For non-sensitive configuration, you can set environment variables directly in your Lambda function:
+
+```bash
+aws lambda update-function-configuration \
+  --function-name adk-agent \
+  --environment "Variables={LLM_MODEL=gemini-3-flash-preview,NODE_ENV=production}"
+```
+
+### 3. ECS Secrets (Parameter Store)
+
+In your Copilot manifest, you can reference secrets stored in AWS Systems Manager Parameter Store:
+
+```yaml
+secrets:
+  GOOGLE_API_KEY: /copilot/adk-agent-app/production/secrets/GOOGLE_API_KEY
+```
+
+### 4. EC2 .env Files
+
+For EC2, you can use a standard `.env` file. Ensure proper permissions and never commit it to version control:
+
+```bash
+chmod 600 .env
+```
+
+
 ## Troubleshooting
 
-**Common Deployment Issues**
+### Common AWS Issues
 
-<Accordions>
-  <Accordion title="Missing Environment Variables">
-    **Problem**: Agent crashes or API keys not found
-
-    **Solutions**:
-    - Verify environment variables are set in AWS service configuration
-    - Check variable names match exactly (case-sensitive)
-    - For Lambda: Use `aws lambda get-function-configuration` to verify
-    - For ECS: Check task definition environment variables
-    - For EC2: Verify `.env` file exists and has correct permissions
-    - Redeploy after adding missing variables
-
-  </Accordion>
-
-  <Accordion title="Build Failures">
-    **Problem**: Docker build fails or deployment fails
-
-    **Solutions**:
-    - Test build locally first: `docker buildx build --platform linux/amd64 .`
-    - Review CloudWatch Logs for specific error messages
-    - Ensure all dependencies are in `package.json`
-    - Check TypeScript compilation succeeds locally
-    - Verify Dockerfile syntax is correct
-    - Ensure sufficient disk space for build
-
-  </Accordion>
-
-  <Accordion title="Container/Function Not Starting">
-    **Problem**: Service deployed but not running
-
-    **Solutions**:
-    - Check CloudWatch Logs for runtime error messages
-    - Verify entry point/command is correct in Dockerfile or configuration
-    - Ensure all required environment variables are set
-    - Check IAM roles have necessary permissions
-    - Verify security groups allow required network access
-
-  </Accordion>
-
-  <Accordion title="Platform Architecture Mismatch">
-    **Problem**: "exec format error" or container won't start
-
-    **Solutions**:
-    - Always build for AMD64: `docker buildx build --platform linux/amd64`
-    - AWS Lambda, ECS, and most EC2 instances use AMD64 architecture
-    - Don't build on Apple Silicon without specifying platform
-
-  </Accordion>
-</Accordions>
-
-**AWS-Specific Issues**
-
-<Accordions>
-  <Accordion title="Lambda Container Image Too Large">
-    **Problem**: Image exceeds 10GB limit
-
-    **Solutions**:
-    - Use multi-stage builds to reduce image size
-    - Remove unnecessary dependencies from production
-    - Use Lambda layers for common dependencies
-    - Consider ECS Fargate for larger images
-
-  </Accordion>
-
-  <Accordion title="Lambda Timeout (15 minutes)">
-    **Problem**: Agent execution exceeds 15-minute limit
-
-    **Solutions**:
-    - Optimize agent processing time
-    - Split work into smaller tasks
-    - Use ECS Fargate or EC2 for long-running tasks
-    - Implement async processing with SQS + Lambda
-
-  </Accordion>
-
-  <Accordion title="ECS Task Failing to Start">
-    **Problem**: Task transitions from PENDING to STOPPED
-
-    **Solutions**:
-    - Check CloudWatch logs for errors
-    - Verify ECR image URI is correct
-    - Ensure task execution role has ECR pull permissions
-    - Check CPU/memory limits are sufficient
-    - Verify secrets exist in Parameter Store/Secrets Manager
-
-  </Accordion>
-
-  <Accordion title="ECS Out of Memory">
-    **Problem**: Task killed due to memory exhaustion
-
-    **Solutions**:
-    - Increase task memory limit in manifest.yml or task definition
-    - Monitor memory usage with CloudWatch Container Insights
-    - Optimize agent memory usage
-    - Use larger Fargate task size
-
-  </Accordion>
-
-  <Accordion title="EC2 Connection Timeout">
-    **Problem**: Cannot SSH into EC2 instance
-
-    **Solutions**:
-    - Verify security group allows SSH (port 22) from your IP
-    - Check instance is in running state
-    - Verify correct key pair is used
-    - Check network ACLs and route tables
-
-  </Accordion>
-
-  <Accordion title="High AWS Costs">
-    **Problem**: Unexpected AWS charges
-
-    **Solutions**:
-    - Review CloudWatch metrics and billing dashboard
-    - Stop unused EC2 instances
-    - Use Lambda for intermittent workloads
-    - Implement auto-scaling to match demand
-    - Consider reserved instances for predictable workloads
-    - Use cost allocation tags to track spending
-
-  </Accordion>
-</Accordions>
+- **Missing Permissions**: Ensure your IAM role (Execution Role for Lambda/ECS, Instance Profile for EC2) has the necessary permissions for the services your agent uses.
+- **Architecture Mismatch**: Always build your Docker images for AMD64 (`--platform linux/amd64`) when deploying to standard AWS environments.
+- **Timeouts**: ADK-TS agents can take time to process requests. Ensure your Lambda timeout (max 15m) or Load Balancer timeout is sufficient.
+- **VPC Networking**: If your agent needs to access private resources (like an RDS database), ensure it is configured to run within the correct VPC and Subnets.
 
 ## Best Practices
 
-**AWS-Specific Best Practices**
-
-<Accordions>
-  <Accordion title="Cost Optimization">
-    - Use Lambda for intermittent, request-driven workloads
-    - Use ECS Fargate for consistent, long-running tasks
-    - Use EC2 reserved instances for predictable 24/7 workloads
-    - Implement auto-scaling to match actual demand
-    - Use Savings Plans for long-term commitments
-    - Monitor costs with AWS Cost Explorer and budgets
-  </Accordion>
-
-{" "}
-
-<Accordion title="Security">
-  - Never commit AWS credentials to version control - Use IAM roles instead of
-  access keys (EC2, ECS, Lambda) - Store secrets in AWS Secrets Manager or
-  Systems Manager Parameter Store - Encrypt environment variables and secrets at
-  rest - Use VPC for network isolation (ECS, EC2) - Implement least-privilege
-  IAM policies - Enable CloudTrail for audit logging - Rotate credentials
-  regularly
-</Accordion>
-
-{" "}
-
-<Accordion title="Monitoring and Logging">
-  - Use CloudWatch for centralized logging - Enable Container Insights for ECS
-  metrics - Set up CloudWatch alarms for errors and performance - Use AWS X-Ray
-  for distributed tracing (optional) - Implement structured logging with JSON
-  format - Set appropriate log retention periods
-</Accordion>
-
-{" "}
-
-<Accordion title="Infrastructure as Code">
-  - Use AWS CDK or CloudFormation for reproducible deployments - Use AWS Copilot
-  for simplified ECS deployments - Version control all infrastructure code -
-  Separate environments (dev, staging, production) - Implement CI/CD pipelines
-  with CodePipeline or GitHub Actions
-</Accordion>
-
-{" "}
-
-<Accordion title="High Availability">
-  - Deploy across multiple Availability Zones - Use Application Load Balancer
-  for ECS services (if exposing HTTP) - Implement health checks for all services
-  - Use auto-scaling for fault tolerance - Set up CloudWatch alarms for critical
-  issues
-</Accordion>
-
-  <Accordion title="Performance">
-    - Choose appropriate instance/task sizes for workload
-    - Use provisioned concurrency for Lambda (reduce cold starts)
-    - Enable Container Insights for ECS performance metrics
-    - Use Amazon ElastiCache for caching (if needed)
-    - Optimize Docker images for faster deployments
-  </Accordion>
-</Accordions>
+- **Cost Management**: Use Lambda for intermittent workloads and ECS Fargate with specialized task sizes for 24/7 agents.
+- **Security**: Never use hardcoded credentials. Always use IAM Roles and Secrets Manager.
+- **Monitoring**: Use **Amazon CloudWatch** to monitor logs and set up alarms for agent failures or high latency.
+- **Infrastructure as Code**: Consider using **AWS Copilot** or the **AWS CDK** to manage your infrastructure predictably.
 
 ## Next Steps
 
-- Explore [Railway](/docs/framework/guides/deployment/railway) for simpler managed deployment
-- Review [Vercel](/docs/framework/guides/deployment/vercel) for serverless API agents
-- Learn about [Docker deployment](/docs/framework/guides/deployment/docker) for self-hosted options
-- Set up monitoring and alerting for your agents
-- Implement CI/CD pipelines for automated deployments
+- Explore [Railway Deployment](./railway) for a simpler container hosting experience.
+- Learn about [Docker](./docker) for generic containerized deployments.
+- Configure [Vercel](./vercel) for serverless API agents.
+
+
