@@ -211,15 +211,17 @@ export async function startHttpServer(
 ): Promise<StartedHttpServer> {
 	const env = envSchema.parse(process.env);
 	const debug = env.ADK_DEBUG;
+	config.host;
 
-	// Initialize telemetry if not already initialized
 	if (!telemetryService.initialized) {
 		await telemetryService.initialize({
 			appName: "adk-cli",
 			appVersion: "1.0.0",
-			otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "",
+			otlpEndpoint:
+				env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318/v1/traces",
 			enableTracing: true,
 			enableMetrics: false,
+			enableAutoInstrumentation: true,
 		});
 	}
 

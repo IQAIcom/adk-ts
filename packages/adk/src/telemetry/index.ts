@@ -42,6 +42,7 @@ import type { Event } from "../events/event";
 import type { LlmRequest } from "../models/llm-request";
 import type { LlmResponse } from "../models/llm-response";
 import type { BaseTool } from "../tools";
+import { ADK_ATTRS } from "./constants";
 import { metricsService } from "./metrics";
 // Import services
 import { setupService } from "./setup";
@@ -469,8 +470,19 @@ export class TelemetryService {
 	/**
 	 * Get traces for a specific session (Debug/Visualization)
 	 */
-	getTraces(sessionId: string): ReadableSpanInternal[] {
-		return setupService.getInMemoryExporter().getTracesForSession(sessionId);
+	getTraces(): ReadableSpanInternal[] {
+		return setupService.getInMemoryExporter().getFinishedSpans();
+	}
+
+	/**
+	 * Get filtered traces for a specific session
+	 * Uses the InMemoryExporter and filters by session ID attribute
+	 */
+	getTracesForSession(sessionId: string): ReadableSpanInternal[] {
+		const allSpans = this.getTraces();
+		return allSpans.filter(
+			(span) => span.attributes[ADK_ATTRS.SESSION_ID] === sessionId,
+		);
 	}
 }
 
@@ -489,8 +501,7 @@ export const shutdownTelemetry = (timeoutMs?: number) =>
 
 export type { ReadableSpanInternal as ReadableSpan };
 
-export const getTraces = (sessionId: string) =>
-	telemetryService.getTraces(sessionId);
+export const getTraces = () => telemetryService.getTraces();
 
 export const traceAgentInvocation = (
 	agent: { name: string; description?: string },
