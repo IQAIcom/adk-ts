@@ -23,6 +23,8 @@ export { LoadArtifactsTool } from "./common/load-artifacts-tool";
 export { LoadMemoryTool } from "./common/load-memory-tool";
 export { TransferToAgentTool } from "./common/transfer-to-agent-tool";
 export { UserInteractionTool } from "./common/user-interaction-tool";
+// Default tools
+export * from "./defaults";
 export { createFunctionTool } from "./function";
 // Function tools
 export { FunctionTool } from "./function/function-tool";
