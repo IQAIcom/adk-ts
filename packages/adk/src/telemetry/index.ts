@@ -42,7 +42,6 @@ import type { Event } from "../events/event";
 import type { LlmRequest } from "../models/llm-request";
 import type { LlmResponse } from "../models/llm-response";
 import type { BaseTool } from "../tools";
-import { ADK_ATTRS } from "./constants";
 import { metricsService } from "./metrics";
 // Import services
 import { setupService } from "./setup";
@@ -471,18 +470,17 @@ export class TelemetryService {
 	 * Get traces for a specific session (Debug/Visualization)
 	 */
 	getTraces(): ReadableSpanInternal[] {
+		console.log(
+			"setupService.getInMemoryExporter().getFinishedSpans()",
+			setupService.getInMemoryExporter().getFinishedSpans(),
+		);
 		return setupService.getInMemoryExporter().getFinishedSpans();
 	}
 
-	/**
-	 * Get filtered traces for a specific session
-	 * Uses the InMemoryExporter and filters by session ID attribute
-	 */
 	getTracesForSession(sessionId: string): ReadableSpanInternal[] {
-		const allSpans = this.getTraces();
-		return allSpans.filter(
-			(span) => span.attributes[ADK_ATTRS.SESSION_ID] === sessionId,
-		);
+		return setupService
+			.getInMemoryExporter()
+			.getFinishedSpansForSession(sessionId);
 	}
 }
 

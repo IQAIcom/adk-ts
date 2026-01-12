@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import "reflect-metadata";
-
-import { CommandFactory } from "nest-commander";
-import { AppModule } from "./app.module";
+import { telemetryService } from "@iqai/adk";
 import { envSchema } from "./common/schema";
 
 // Lightweight, dependency-free version flag handling executed before Nest bootstraps.
@@ -38,6 +36,26 @@ function selectLogger(): any {
 }
 
 async function bootstrap() {
+	// Initialize Telemetry FIRST - before any NestJS modules are loaded
+	// This ensures auto-instrumentation (like @opentelemetry/instrumentation-nestjs-core)
+	// can patch the libraries correctly.
+	const env = envSchema.parse(process.env);
+	if (!telemetryService.initialized) {
+		await telemetryService.initialize({
+			appName: "adk-cli",
+			appVersion: "1.0.0",
+			otlpEndpoint:
+				env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318/v1/traces",
+			enableTracing: true,
+			enableMetrics: false,
+			enableAutoInstrumentation: true,
+		});
+	}
+
+	// Dynamic imports to ensure NestJS is loaded AFTER telemetry init
+	const { CommandFactory } = await import("nest-commander");
+	const { AppModule } = await import("./app.module");
+
 	await CommandFactory.run(AppModule, {
 		logger: selectLogger(),
 	});

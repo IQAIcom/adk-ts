@@ -26,7 +26,6 @@ import {
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import {
 	BatchSpanProcessor,
-	InMemorySpanExporter,
 	NodeTracerProvider,
 	SimpleSpanProcessor,
 	SpanProcessor,
@@ -37,6 +36,7 @@ import {
 	ATTR_SERVICE_VERSION,
 } from "@opentelemetry/semantic-conventions";
 import { ADK_ATTRS, ADK_SYSTEM_NAME, DEFAULTS, ENV_VARS } from "./constants";
+import { CustomInMemorySpanExporter } from "./in-memory-exporter";
 import type { TelemetryConfig } from "./types";
 import {
 	getEnvironment,
@@ -54,7 +54,7 @@ export class SetupService {
 	private tracerProvider: NodeTracerProvider | null = null;
 	private isInitialized = false;
 	private config: TelemetryConfig | null = null;
-	private inMemoryExporter = new InMemorySpanExporter();
+	private inMemoryExporter = new CustomInMemorySpanExporter();
 
 	/**
 	 * Initialize OpenTelemetry with comprehensive configuration
@@ -274,6 +274,8 @@ export class SetupService {
 		// Always add in-memory processor for local access
 		spanProcessors.push(new SimpleSpanProcessor(this.inMemoryExporter));
 
+		console.log("spanProcessors", spanProcessors);
+
 		// NodeSDK will configure and register all providers
 		this.sdk = new NodeSDK({
 			resource,
@@ -386,7 +388,7 @@ export class SetupService {
 		await Promise.race([Promise.all(flushPromises), timeoutPromise]);
 	}
 
-	getInMemoryExporter(): InMemorySpanExporter {
+	getInMemoryExporter() {
 		return this.inMemoryExporter;
 	}
 }
