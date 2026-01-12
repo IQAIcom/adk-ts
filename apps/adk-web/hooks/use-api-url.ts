@@ -28,10 +28,10 @@ export function useApiUrl(): string {
 		const port = searchParams.get("port");
 
 		// If apiUrl is explicitly provided, use it
-		if (apiUrl && apiUrl.length > 0) return apiUrl;
+        if (apiUrl) return apiUrl;
 
 		// If port is explicitly provided, build localhost URL
-		if (port && port.length > 0) return `http://localhost:${port}`;
+		if (port) return `http://localhost:${port}`;
 
 		// BUNDLED MODE: No query params means we're likely served from the CLI
 		// on the same origin. Use relative URLs (empty string prefix).
