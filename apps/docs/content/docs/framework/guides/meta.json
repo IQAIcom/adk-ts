@@ -1,5 +1,11 @@
 {
 	"title": "Guides",
 	"icon": "BookOpen",
-	"pages": ["deployment", "integrations", "agent-instructions"]
+	"pages": [
+		"deployment",
+		"integrations",
+		"best-practices",
+		"troubleshooting",
+		"agent-instructions"
+	]
 }

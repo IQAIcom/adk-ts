@@ -73,44 +73,36 @@ To explore the examples, you can either browse all available examples or run a s
    pnpm start
    
    # Or run a specific example directly
-   pnpm start --name 01-simple-agent
-   pnpm start --name 11-mcp-integrations
+   pnpm start --name 01-getting-started
+   pnpm start --name 06-mcp-and-integrations
  ```
 
 ## 📚 Explore Example Applications
 
-We have **16 comprehensive examples** that cover the complete ADK feature set, organized in a logical learning progression from basic concepts to advanced implementations:
+We have **8 comprehensive examples** that cover the complete ADK feature set, organized in a logical learning progression from basic concepts to advanced implementations:
 
-### 🎯 **Foundational Examples (01-04)**
-
-| Example | Description | Key Concepts |
-|---------|-------------|--------------|
-| **[01-simple-agent](src/01-simple-agent/)** | Basic agent setup and conversation patterns | AgentBuilder basics, simple interactions |
-| **[02-tools-and-state](src/02-tools-and-state/)** | Custom tools with state management | Tool creation, state persistence |
-| **[03-interactive-app](src/03-interactive-app/)** | Building interactive CLI applications | User interaction, input handling |
-| **[04-agent-composition](src/04-agent-composition/)** | Multi-agent systems and coordination | Agent delegation, specialized roles |
-
-### 🔧 **Intermediate Examples (05-08)**
+### 🎯 **Foundational Examples (01-03)**
 
 | Example | Description | Key Concepts |
 |---------|-------------|--------------|
-| **[05-persistence-and-sessions](src/05-persistence-and-sessions/)** | Database integration and session management | Data persistence, session handling |
-| **[06-flows-and-planning](src/06-flows-and-planning/)** | Advanced planning and execution flows | Task decomposition, flow processors |
-| **[07-code-execution](src/07-code-execution/)** | Code generation and execution capabilities | Code tools, sandboxed execution |
-| **[08-external-integrations](src/08-external-integrations/)** | API integrations and external services | HTTP tools, service integration |
+| **[01-getting-started](src/01-getting-started/)** | Basic agent setup and folder structure | AgentBuilder basics, Zod schemas, structured responses |
+| **[02-tools-and-state](src/02-tools-and-state/)** | Custom tools with state management | Tool creation, state persistence, system instructions |
+| **[03-multi-agent-systems](src/03-multi-agent-systems/)** | Multi-agent systems and coordination | Sub-agents, agent delegation, specialized roles |
 
-### 🚀 **Advanced Examples (09-16)**
+### 🔧 **Intermediate Examples (04-05)**
 
 | Example | Description | Key Concepts |
 |---------|-------------|--------------|
-| **[09-observability](src/09-observability/)** | Monitoring, logging, and performance tracking | Telemetry, debugging, metrics |
-| **[10-advanced-workflows](src/10-advanced-workflows/)** | Complex multi-step workflows and automation | Advanced patterns, orchestration |
-| **[11-mcp-integrations](src/11-mcp-integrations/)** | Model Context Protocol with custom servers | MCP servers, sampling, FastMCP |
-| **[12-event-compaction](src/12-event-compaction/)** | Managing long sessions with event summarization | Event compaction, token optimization |
-| **[13-chat-bots](src/13-chat-bots/)** | Platform-specific chat bot implementations | Discord, Telegram, platform APIs |
-| **[14-callbacks](src/14-callbacks/)** | Safety guardrails and callback patterns | Lifecycle hooks, content filtering, safety |
-| **[15-evaluation](src/15-evaluation/)** | Agent performance evaluation and testing | AgentEvaluator, benchmarking, quality assessment |
-| **[16-rewind-session](src/16-rewind-session/)** | Session rewinding and conversation state management | Session rewind, time-travel debugging, state restoration |
+| **[04-persistence-and-sessions](src/04-persistence-and-sessions/)** | Database integration, artifacts, and session rewind | Session persistence, artifacts, event compaction, time-travel |
+| **[05-planning-and-code-execution](src/05-planning-and-code-execution/)** | Planning and code execution capabilities | PlanReActPlanner, BuiltInCodeExecutor, Python sandbox |
+
+### 🚀 **Advanced Examples (06-08)**
+
+| Example | Description | Key Concepts |
+|---------|-------------|--------------|
+| **[06-mcp-and-integrations](src/06-mcp-and-integrations/)** | Model Context Protocol with custom and external servers | MCP servers, sampling handler, Coingecko integration |
+| **[07-guardrails-and-evaluation](src/07-guardrails-and-evaluation/)** | Safety guardrails and agent evaluation | Plugins, lifecycle hooks, content filtering, AgentEvaluator |
+| **[08-observability-and-plugins](src/08-observability-and-plugins/)** | Monitoring, tracing, and metrics | OpenTelemetry, Langfuse integration, observability |
 
 ## 🤝 Contributing
 
@@ -118,4 +110,4 @@ If you would like to add examples or improve existing ones, please check out our
 
 ---
 
-💡 **Pro Tip**: Follow the examples in order (01-16) for a structured learning path, or jump to specific examples based on your needs. Start with `01-simple-agent` to understand the basics, then explore advanced features like MCP integrations, event compaction, callbacks, and specialized agents!
+💡 **Pro Tip**: Follow the examples in order (01-08) for a structured learning path, or jump to specific examples based on your needs. Start with `01-getting-started` to understand the basics, then explore advanced features like multi-agent systems, MCP integrations, guardrails, and observability!

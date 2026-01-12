@@ -93,7 +93,7 @@ AWS provides three primary deployment paths for ADK-TS agents:
           try {
             // Create ADK-TS agent
             const agent = new AgentBuilder()
-              .withModel(process.env.LLM_MODEL || "gpt-4")
+              .withModel(process.env.LLM_MODEL || "gemini-3-flash-preview" || "gpt-4")
               .withInstruction("You are a helpful assistant")
               .buildLlm();
 

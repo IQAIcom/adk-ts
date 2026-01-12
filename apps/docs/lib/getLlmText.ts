@@ -1,26 +1,24 @@
-import { remark } from "remark";
-import remarkGfm from "remark-gfm";
-import remarkMdx from "remark-mdx";
-import { remarkInclude } from "fumadocs-mdx/config";
-import { source } from "@/lib/source";
 import type { InferPageType } from "fumadocs-core/source";
-
-const processor = remark()
-	.use(remarkMdx)
-	// needed for Fumadocs MDX
-	.use(remarkInclude)
-	.use(remarkGfm);
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import matter from "gray-matter";
+import { source } from "@/lib/source";
 
 export async function getLlmText(page: InferPageType<typeof source>) {
-	const processed = await processor.process({
-		path: page.data._file.absolutePath,
-		value: page.data.content,
-	});
+	try {
+		const filePath = join(process.cwd(), "content/docs", page.path);
+		const fileContent = await readFile(filePath, "utf-8");
+		const { content } = matter(fileContent);
 
-	return `# ${page.data.title}
-URL: ${page.url}
+		return content;
+	} catch (error) {
+		console.error(`Failed to read MDX file for ${page.path}:`, error);
 
-${page.data.description}
-
-${processed.value}`;
+		return [
+			`# ${page.data.title}`,
+			`URL: ${page.url}`,
+			"",
+			page.data.description || "",
+		].join("\n");
+	}
 }

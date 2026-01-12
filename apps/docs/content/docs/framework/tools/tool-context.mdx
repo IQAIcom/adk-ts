@@ -194,7 +194,7 @@ const escalateTool = createTool({
 });
 ```
 
-## Best Practices
+## ToolContext Best Practices
 
 - **Keep it Internal**: Never expose `ToolContext` properties directly to the LLM in your return values unless necessary.
 - **Type Safety**: Always import and use the `ToolContext` type for TypeScript support.
@@ -215,9 +215,9 @@ const escalateTool = createTool({
     href="/docs/framework/tools/create-tool"
   />
   <Card
-    title="💾 Sessions & State"
+    title="Sessions & Memory"
     description="Manage data flow and persistence across agent interactions"
-    href="/docs/framework/sessions/session"
+    href="/docs/framework/session-state-memory"
   />
   <Card
     title="🤖 Agents"
