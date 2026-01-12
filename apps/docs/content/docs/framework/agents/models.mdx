@@ -304,63 +304,6 @@ const researchAgent = new LlmAgent({
   pricing.
 </Callout>
 
-### Advanced Configuration
-
-You can pass additional options when creating the OpenRouter instance:
-
-```typescript
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-
-export const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: process.env.OPENROUTER_BASE_URL,
-  headers: {
-    "HTTP-Referer": "https://your-app.com", // Optional: for rankings
-    "X-Title": "Your App Name",              // Optional: for rankings
-  },
-});
-```
-
-### Example: Environment-Based Configuration
-
-Here's a complete example showing how to configure OpenRouter with environment variables:
-
-```typescript
-// env.ts
-import { config } from "dotenv";
-import { z } from "zod";
-
-config();
-
-export const envSchema = z.object({
-  TELEGRAM_BOT_TOKEN: z.string(),
-  LLM_MODEL: z.string().default("google/gemini-2.5-flash"),
-  OPENROUTER_API_KEY: z.string(),
-  OPENROUTER_BASE_URL: z.string().default("https://openrouter.ai/api/v1"),
-  OPENROUTER_ONLINE_MODEL: z.string().default("perplexity/sonar-pro"),
-});
-
-export const env = envSchema.parse(process.env);
-
-// agents/weather-agent.ts
-import { LlmAgent } from "@iqai/adk";
-import { env } from "../env";
-import { openrouter } from "../lib/helpers/open-router";
-import { weatherTool } from "./tools";
-
-export const getWeatherAgent = () => {
-  const weatherAgent = new LlmAgent({
-    name: "weather_agent",
-    description: "Provides weather information for any city",
-    model: openrouter(env.LLM_MODEL),
-    tools: [weatherTool],
-    instruction: "You are a weather assistant that provides accurate weather information",
-  });
-
-  return weatherAgent;
-};
-```
-
 ## Which Option Should You Choose?
 
 | Use Case                    | Recommended Option        | Why                                           |
