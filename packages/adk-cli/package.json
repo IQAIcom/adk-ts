@@ -9,6 +9,7 @@
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
+		"postbuild": "node scripts/copy-web-assets.js",
 		"dev": "tsc -w -p tsconfig.json",
 		"test": "echo 'No tests found in adk-cli, skipping.'",
 		"test:watch": "vitest"
@@ -50,6 +51,7 @@
 		"zod": "^4.1.5"
 	},
 	"devDependencies": {
+		"@iqai/adk-web": "workspace:*",
 		"@iqai/tsconfig": "workspace:*",
 		"@types/marked-terminal": "^6.1.1",
 		"@types/node": "^24.3.1",
@@ -62,6 +64,7 @@
 	},
 	"files": [
 		"dist",
+		"web",
 		"!**/*.test.*",
 		"!**/*.json",
 		"CHANGELOG.md",
