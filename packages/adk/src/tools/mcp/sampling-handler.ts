@@ -82,9 +82,8 @@ export class McpSamplingHandler {
 				mcpParams.systemPrompt,
 			);
 
-			const requestModel =
-				mcpParams.modelPreferences?.hints?.find((h) => h?.name)?.name ||
-				"gemini-2.0-flash";
+			// Extract model from request if available, otherwise use default
+			const requestModel = (mcpParams.model as string) || "gemini-2.0-flash";
 
 			// Prepare ADK request - create a proper LlmRequest instance
 			const adkRequest = new LlmRequest({
@@ -185,7 +184,7 @@ export class McpSamplingHandler {
 		};
 
 		this.logger.debug(
-			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${Array.isArray(mcpMessage.content) ? "array" : ((mcpMessage.content as any)?.type ?? "unknown")}`,
+			`Converted MCP message - role: ${mcpMessage.role} -> ${adkRole}, content type: ${mcpMessage.content.type}`,
 		);
 
 		return adkContent;
@@ -197,76 +196,42 @@ export class McpSamplingHandler {
 	private convertMcpContentToADKParts(
 		mcpContent: McpSamplingRequest["params"]["messages"][0]["content"],
 	): Part[] {
-		// Safe string coercion
-		const safeText = (value: unknown): string =>
-			typeof value === "string" ? value : "";
-
-		// Handle array recursively
-		if (Array.isArray(mcpContent)) {
-			return mcpContent.flatMap((c) => this.convertMcpContentToADKParts(c));
+		if (mcpContent.type === "text") {
+			// Simple text content - ensure text is a string
+			const textContent = mcpContent.text || "";
+			return [{ text: textContent }];
 		}
 
-		switch (mcpContent.type) {
-			case "text": {
-				return [{ text: safeText(mcpContent.text) }];
+		if (mcpContent.type === "image") {
+			// Multimodal content with image
+			const parts: Part[] = [];
+
+			// Add text part if present - ensure text is a string
+			if (mcpContent.text && typeof mcpContent.text === "string") {
+				parts.push({ text: mcpContent.text });
 			}
 
-			case "image":
-			case "audio": {
-				const parts: Part[] = [];
+			// Add image part
+			if (mcpContent.data && typeof mcpContent.data === "string") {
+				// Convert base64 data to inline data format expected by ADK
+				const mimeType = mcpContent.mimeType || "image/jpeg";
 
-				// Optional text part
-				if ("text" in mcpContent) {
-					const t = safeText(mcpContent.text);
-					if (t) parts.push({ text: t });
-				}
-
-				// Validate data
-				const hasData =
-					typeof mcpContent.data === "string" && mcpContent.data.length > 0;
-
-				if (!hasData) {
-					this.logger.warn(
-						`Missing or invalid 'data' for ${mcpContent.type} content.`,
-					);
-
-					// Return existing parts + placeholder
-					return [
-						...parts,
-						{
-							text: `[${mcpContent.type.toUpperCase()} CONTENT MISSING DATA]`,
-						},
-					];
-				}
-
-				// Valid binary content
 				parts.push({
 					inlineData: {
 						data: mcpContent.data,
-						mimeType:
-							safeText(mcpContent.mimeType) ||
-							(mcpContent.type === "image" ? "image/jpeg" : "audio/mpeg"),
+						mimeType,
 					},
 				});
-
-				return parts;
 			}
 
-			case "tool_use": {
-				return [{ text: `[Tool Use: ${safeText(mcpContent.name)}]` }];
-			}
-
-			case "tool_result": {
-				return [{ text: `[Tool Result: ${safeText(mcpContent.toolUseId)}]` }];
-			}
-
-			default: {
-				this.logger.warn(
-					`Unknown MCP content type: ${safeText((mcpContent as any).type)}`,
-				);
-				return [{ text: "[Unknown content type]" }];
-			}
+			return parts.length > 0 ? parts : [{ text: "" }];
 		}
+
+		// Fallback for unknown content types
+		this.logger.warn(`Unknown MCP content type: ${mcpContent.type}`);
+		const fallbackText =
+			typeof mcpContent.data === "string" ? mcpContent.data : "";
+		return [{ text: fallbackText }];
 	}
 
 	/**

@@ -68,13 +68,7 @@ class McpToolAdapter extends BaseTool {
 		client?: Client,
 		handler?: (name: string, args: unknown) => Promise<CallToolResult>,
 	) {
-		let metadata: McpToolMetadata = {};
-
-		if ("metadata" in mcpTool && typeof mcpTool.metadata === "object") {
-			metadata = mcpTool.metadata as McpToolMetadata;
-		} else if (mcpTool._meta && typeof mcpTool._meta === "object") {
-			metadata = mcpTool._meta as McpToolMetadata;
-		}
+		const metadata = (mcpTool.metadata || {}) as McpToolMetadata;
 
 		super({
 			name: mcpTool.name || `mcp_${Date.now()}`,
@@ -121,10 +115,7 @@ class McpToolAdapter extends BaseTool {
 		this.logger.debug(`Executing MCP tool ${this.name} with args:`, args);
 
 		try {
-			if (
-				"execute" in this.mcpTool &&
-				typeof this.mcpTool.execute === "function"
-			) {
+			if (typeof this.mcpTool.execute === "function") {
 				return await this.mcpTool.execute(args);
 			}
 
