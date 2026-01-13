@@ -132,8 +132,11 @@ export class AiSdkLlm extends BaseLlm {
 			const requestParams = {
 				model: this.modelInstance,
 				messages,
-				system: systemMessage,
-				tools: Object.keys(tools).length > 0 ? tools : undefined,
+				system: cacheMetadata?.cacheName ? undefined : systemMessage,
+				tools:
+					cacheMetadata?.cacheName || Object.keys(tools).length === 0
+						? undefined
+						: tools,
 				maxTokens: llmRequest.config?.maxOutputTokens,
 				temperature: llmRequest.config?.temperature,
 				topP: llmRequest.config?.topP,

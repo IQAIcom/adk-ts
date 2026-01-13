@@ -70,25 +70,10 @@ export class GeminiContextCacheManager implements ContextCacheManager {
 		return this.genaiClient;
 	}
 
-	private stripGooglePrefix(modelId: string): string {
-		return modelId.startsWith("google/")
-			? modelId.slice("google/".length)
-			: modelId;
-	}
-
 	async handleContextCaching(
 		llmRequest: LlmRequest,
 	): Promise<CacheMetadata | null> {
-		// Strip google/ prefix for Google GenAI client
-		const originalModel = llmRequest.model;
-		llmRequest.model = this.stripGooglePrefix(originalModel);
-
-		try {
-			return await this.handleContextCachingInternal(llmRequest);
-		} finally {
-			// Always restore original model ID
-			llmRequest.model = originalModel;
-		}
+		return await this.handleContextCachingInternal(llmRequest);
 	}
 
 	private async handleContextCachingInternal(
