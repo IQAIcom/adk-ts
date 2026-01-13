@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TraceSpan } from "@/hooks/use-traces";
 import { findInvocId } from "@/lib/trace-utils";
 
-// import { TraceChartDialog } from "./trace-chart-dialog";
+import { TraceDetailsDialog } from "./trace-details-dialog";
 
 interface TracesPanelProps {
 	tracesByTraceId: Map<string, TraceSpan[]>;
@@ -19,14 +19,14 @@ export function TracesPanel({
 	isLoading = false,
 }: TracesPanelProps) {
 	const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
-	const [_isDialogOpen, setIsDialogOpen] = useState(false);
+	const [isDialogOpen, setIsDialogOpen] = useState(false);
 
 	const handleTraceClick = (traceId: string) => {
 		setSelectedTraceId(traceId);
 		setIsDialogOpen(true);
 	};
 
-	const _selectedSpans = selectedTraceId
+	const selectedSpans = selectedTraceId
 		? tracesByTraceId.get(selectedTraceId) || []
 		: [];
 
@@ -78,11 +78,12 @@ export function TracesPanel({
 				</ScrollArea>
 			</div>
 
-			{/* <TraceChartDialog
+			<TraceDetailsDialog
 				open={isDialogOpen}
 				onOpenChange={setIsDialogOpen}
 				spans={selectedSpans}
-			/> */}
+				traceId={selectedTraceId || undefined}
+			/>
 		</>
 	);
 }

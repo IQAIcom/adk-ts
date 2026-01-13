@@ -1,4 +1,3 @@
-// app/(dashboard)/_components/session-manager.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
