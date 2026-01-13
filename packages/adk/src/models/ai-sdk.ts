@@ -114,9 +114,17 @@ export class AiSdkLlm extends BaseLlm {
 
 			if (llmRequest.cacheConfig && provider === ModelProvider.GOOGLE) {
 				this.logger.debug("Handling Google context caching");
+				// Initialize the cache manager's client before using it
 				const tempManager = new GeminiContextCacheManager(this.logger);
 				const genaiClient = tempManager.getGenaiClient();
 				cacheManager = new GeminiContextCacheManager(this.logger, genaiClient);
+
+				// Normalize model name: remove "google/" prefix if present
+				const modelId = this.getModelId(this.modelInstance) || this.model;
+				const normalizedModel = modelId.replace(/^google\//, "");
+				llmRequest.model = normalizedModel;
+				this.logger.debug(`Normalized model for caching: ${normalizedModel}`);
+
 				cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
 
 				if (cacheMetadata) {
