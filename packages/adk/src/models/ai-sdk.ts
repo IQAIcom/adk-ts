@@ -111,9 +111,12 @@ export class AiSdkLlm extends BaseLlm {
 			const provider = this.detectModelProvider(this.modelInstance);
 			let cacheMetadata: CacheMetadata | null = null;
 			let cacheManager: ContextCacheManager | null = null;
+
 			if (llmRequest.cacheConfig && provider === ModelProvider.GOOGLE) {
 				this.logger.debug("Handling Google context caching");
-				cacheManager = new GeminiContextCacheManager(this.logger);
+				const tempManager = new GeminiContextCacheManager(this.logger);
+				const genaiClient = tempManager.getGenaiClient();
+				cacheManager = new GeminiContextCacheManager(this.logger, genaiClient);
 				cacheMetadata = await cacheManager.handleContextCaching(llmRequest);
 
 				if (cacheMetadata) {
@@ -132,6 +135,7 @@ export class AiSdkLlm extends BaseLlm {
 			const requestParams = {
 				model: this.modelInstance,
 				messages,
+				// When using cached content, system/tools must be undefined
 				system: cacheMetadata?.cacheName ? undefined : systemMessage,
 				tools:
 					cacheMetadata?.cacheName || Object.keys(tools).length === 0
