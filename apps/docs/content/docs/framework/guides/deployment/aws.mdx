@@ -41,28 +41,37 @@ AWS Lambda allows you to run your agents as serverless functions. This is the mo
 Create a `Dockerfile.lambda` in your project root:
 
 ```dockerfile
-# Use AWS Lambda Node.js 24 base image
-FROM public.ecr.aws/lambda/nodejs:24
+# ---- Builder Stage ----
+FROM public.ecr.aws/lambda/nodejs:24 AS builder
+
+WORKDIR /app
 
 # Enable pnpm
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
-# Copy package files
+# Copy package files and install all dependencies
 COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
-# Install production dependencies
-RUN pnpm install --frozen-lockfile --prod
-
-# Copy TypeScript config and source
+# Copy source code and build
 COPY tsconfig.json ./
 COPY src ./src
+RUN pnpm build
 
-# Build TypeScript
-RUN pnpm install --frozen-lockfile && pnpm build
+# ---- Final Stage ----
+FROM public.ecr.aws/lambda/nodejs:24
 
-# Copy compiled code to Lambda task root
-# Note: Ensure your build output is in the 'dist' folder
-COPY --from=builder ${LAMBDA_TASK_ROOT}/dist ${LAMBDA_TASK_ROOT}/
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+
+# Copy package files and install only production dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy compiled code from the builder stage
+COPY --from=builder /app/dist .
 
 # Set the Lambda handler
 CMD [ "index.handler" ]

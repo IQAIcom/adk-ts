@@ -26,7 +26,51 @@ Vercel offers two main deployment methods:
 
 Vercel automatically detects and builds your Node.js/TypeScript project without requiring manual configuration.
 
-### Step 1: Push to GitHub
+### Step 1: Set up your API route
+
+- Install Vercel's dependencies so the platform can build and serve your API route:
+
+```bash
+pnpm add -D vercel @vercel/node
+```
+
+_Or use `npm install --save-dev` if you prefer npm or `yarn add --dev` for yarn._
+
+- Create an API route in the `api` directory (e.g., `api/chat.ts`): This tells Vercel how to handle incoming requests to your agent.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { env } from "./env";
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  try {
+    const { message } = req.body;
+
+    const { runner } = await AgentBuilder.create("assistant")
+      .withModel(env.LLM_MODEL)
+      .withInstruction("You are a helpful assistant")
+      .build();
+
+    const response = await runner.ask(message);
+
+    return res.status(200).json({ response });
+  } catch (error) {
+    console.error("Agent error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export const config = {
+  maxDuration: 60,
+};
+```
+
+### Step 2: Push to GitHub
 
 Commit and push your code to GitHub:
 
@@ -36,7 +80,7 @@ git commit -m "Prepare for Vercel deployment"
 git push origin main
 ```
 
-### Step 2: Connect to Vercel
+### Step 3: Connect to Vercel
 
 1. Log in to [Vercel](https://vercel.com)
 2. Click **"Add New..."** → **"Project"**
@@ -44,11 +88,11 @@ git push origin main
 4. Authorize Vercel to access your Git provider (if first time)
 5. Choose the branch to deploy (usually `main`) and click **"Deploy"**
 
-### Step 3: Configure Environment Variables
+### Step 4: Configure Environment Variables
 
 See [Configuring Environment Variables](#configuring-environment-variables) below for detailed instructions.
 
-### Step 4: Automatic Deployment
+### Step 5: Automatic Deployment
 
 Vercel handles everything automatically:
 
