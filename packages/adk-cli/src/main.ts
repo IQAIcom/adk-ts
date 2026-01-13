@@ -40,9 +40,8 @@ async function bootstrap() {
 		await telemetryService.initialize({
 			appName: "adk-cli",
 			appVersion: "1.0.0",
-			otlpEndpoint: "http://localhost:4318",
 			enableTracing: true,
-			enableMetrics: true,
+			enableMetrics: false,
 			metricExportIntervalMs: 1000,
 		});
 	}

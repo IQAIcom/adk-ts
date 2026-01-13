@@ -157,13 +157,18 @@ export class SetupService {
 	 * Initialize tracing provider
 	 */
 	private initializeTracing(config: TelemetryConfig, resource: any): void {
-		const traceExporter = new OTLPTraceExporter({
-			url: config.otlpEndpoint,
-			headers: config.otlpHeaders,
-		});
+		const spanProcessors: SpanProcessor[] = [];
 
-		const spanProcessor = new BatchSpanProcessor(traceExporter);
+		if (config.otlpEndpoint) {
+			const traceExporter = new OTLPTraceExporter({
+				url: config.otlpEndpoint,
+				headers: config.otlpHeaders,
+			});
+			spanProcessors.push(new BatchSpanProcessor(traceExporter));
+		}
+
 		const inMemoryProcessor = new SimpleSpanProcessor(this.inMemoryExporter);
+		spanProcessors.push(inMemoryProcessor);
 
 		// Create sampler if sampling ratio is specified
 		const sampler =
@@ -174,7 +179,7 @@ export class SetupService {
 		this.tracerProvider = new NodeTracerProvider({
 			resource,
 			sampler,
-			spanProcessors: [spanProcessor, inMemoryProcessor],
+			spanProcessors,
 		});
 
 		// Only register if not using auto-instrumentation (NodeSDK will register it)
@@ -187,6 +192,11 @@ export class SetupService {
 	 * Initialize metrics provider
 	 */
 	private initializeMetrics(config: TelemetryConfig, resource: any): void {
+		if (!config.otlpEndpoint) {
+			diag.debug("Skipping metrics initialization: No otlpEndpoint provided");
+			return;
+		}
+
 		// Convert trace endpoint to metrics endpoint
 		const metricsEndpoint = config.otlpEndpoint.replace(
 			"/v1/traces",
@@ -236,27 +246,30 @@ export class SetupService {
 		const enableMetrics = config.enableMetrics ?? DEFAULTS.ENABLE_METRICS;
 
 		// Create exporters
-		const traceExporter = enableTracing
-			? new OTLPTraceExporter({
-					url: config.otlpEndpoint,
-					headers: config.otlpHeaders,
-				})
-			: undefined;
-
-		const metricsEndpoint = config.otlpEndpoint.replace(
-			"/v1/traces",
-			"/v1/metrics",
-		);
-		const metricReader = enableMetrics
-			? new PeriodicExportingMetricReader({
-					exporter: new OTLPMetricExporter({
-						url: metricsEndpoint,
+		const traceExporter =
+			enableTracing && config.otlpEndpoint
+				? new OTLPTraceExporter({
+						url: config.otlpEndpoint,
 						headers: config.otlpHeaders,
-					}),
-					exportIntervalMillis:
-						config.metricExportIntervalMs ?? DEFAULTS.METRIC_EXPORT_INTERVAL_MS,
-				})
-			: undefined;
+					})
+				: undefined;
+
+		let metricReader: PeriodicExportingMetricReader | undefined;
+
+		if (enableMetrics && config.otlpEndpoint) {
+			const metricsEndpoint = config.otlpEndpoint.replace(
+				"/v1/traces",
+				"/v1/metrics",
+			);
+			metricReader = new PeriodicExportingMetricReader({
+				exporter: new OTLPMetricExporter({
+					url: metricsEndpoint,
+					headers: config.otlpHeaders,
+				}),
+				exportIntervalMillis:
+					config.metricExportIntervalMs ?? DEFAULTS.METRIC_EXPORT_INTERVAL_MS,
+			});
+		}
 
 		// Create sampler if sampling ratio is specified
 		const sampler =

@@ -20,7 +20,7 @@ export interface TelemetryConfig {
 	appVersion?: string;
 
 	/** OTLP endpoint for traces (e.g., http://localhost:4318/v1/traces) */
-	otlpEndpoint: string;
+	otlpEndpoint?: string;
 
 	/** Custom headers for OTLP exporter */
 	otlpHeaders?: Record<string, string>;
