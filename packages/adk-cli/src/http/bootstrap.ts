@@ -256,6 +256,7 @@ export async function startHttpServer(
 			.addTag("state")
 			.addTag("messaging")
 			.addTag("health")
+			.addTag("debug")
 			.build();
 		const document = SwaggerModule.createDocument(app, builder, {
 			deepScanRoutes: true,

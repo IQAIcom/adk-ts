@@ -36,19 +36,14 @@ function selectLogger(): any {
 }
 
 async function bootstrap() {
-	// Initialize Telemetry FIRST - before any NestJS modules are loaded
-	// This ensures auto-instrumentation (like @opentelemetry/instrumentation-nestjs-core)
-	// can patch the libraries correctly.
-	const env = envSchema.parse(process.env);
 	if (!telemetryService.initialized) {
 		await telemetryService.initialize({
 			appName: "adk-cli",
 			appVersion: "1.0.0",
-			otlpEndpoint:
-				env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318/v1/traces",
+			otlpEndpoint: "http://localhost:4318",
 			enableTracing: true,
-			enableMetrics: false,
-			enableAutoInstrumentation: true,
+			enableMetrics: true,
+			metricExportIntervalMs: 1000,
 		});
 	}
 

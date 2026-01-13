@@ -13,6 +13,7 @@ export class CustomInMemorySpanExporter implements SpanExporter {
 		spans: ReadableSpan[],
 		resultCallback: (result: ExportResult) => void,
 	): void {
+		console.log("CustomInMemorySpanExporter spans ->", spans);
 		for (const span of spans) {
 			const traceId = span.spanContext().traceId;
 

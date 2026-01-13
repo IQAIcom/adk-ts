@@ -54,7 +54,7 @@ export class SetupService {
 	private tracerProvider: NodeTracerProvider | null = null;
 	private isInitialized = false;
 	private config: TelemetryConfig | null = null;
-	private inMemoryExporter = new CustomInMemorySpanExporter();
+	private inMemoryExporter: CustomInMemorySpanExporter | null = null;
 
 	/**
 	 * Initialize OpenTelemetry with comprehensive configuration
@@ -72,6 +72,7 @@ export class SetupService {
 		}
 
 		this.config = config;
+		this.inMemoryExporter = new CustomInMemorySpanExporter();
 
 		// Set up diagnostic logging
 		diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
@@ -274,8 +275,6 @@ export class SetupService {
 		// Always add in-memory processor for local access
 		spanProcessors.push(new SimpleSpanProcessor(this.inMemoryExporter));
 
-		console.log("spanProcessors", spanProcessors);
-
 		// NodeSDK will configure and register all providers
 		this.sdk = new NodeSDK({
 			resource,
@@ -388,7 +387,11 @@ export class SetupService {
 		await Promise.race([Promise.all(flushPromises), timeoutPromise]);
 	}
 
-	getInMemoryExporter() {
+	getInMemoryExporter(): CustomInMemorySpanExporter {
+		if (!this.inMemoryExporter) {
+			throw new Error("Telemetry not initialized - call initialize() first");
+		}
+		diag.info("this.inMemoryExporter initialized");
 		return this.inMemoryExporter;
 	}
 }
