@@ -4,6 +4,7 @@ description: Deploy ADK-TS Telegram bots using polling mode
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
 
 ADK-TS Telegram bots use the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to connect your agent to Telegram. The [`@iqai/mcp-telegram`](/docs/mcp-servers/telegram) server handles communication with Telegram's Bot API using the [Telegraf library](https://github.com/telegraf/telegraf). **Best for**: Chat-based agents, customer support bots, and interactive assistants. This guide covers deploying polling-based Telegram bots to various platforms.
 
@@ -13,7 +14,7 @@ ADK-TS Telegram bots use the [Model Context Protocol (MCP)](https://modelcontext
   service causes health check failures and service restarts.
 </Callout>
 
-## Prerequisites
+## What You'll Need
 
 Before deploying your Telegram bot, ensure you have:
 
@@ -22,7 +23,7 @@ Before deploying your Telegram bot, ensure you have:
 - **ADK-TS Telegram Bot Project**: Get started with:
   - Use the [ADK CLI](/docs/cli/commands#adk-new) to create a new project: `adk new my-agent --template telegram-bot`
   - Or clone the [Telegram Personal Assistant sample](https://github.com/IQAIcom/adk-ts-samples/tree/main/apps/telegram-personal-assistant)
-- **Platform Account**: Railway, Render, Heroku, or Docker hosting
+- **Cloud Platform Account**: Railway, Render, Heroku, or Docker hosting
 
 ## How Telegram Polling Works
 
@@ -355,7 +356,20 @@ node dist/index.js
 
 ## Next Steps
 
-- [Telegram Bot API](https://core.telegram.org/bots/api) - Official Telegram documentation
-- [MCP Telegram Documentation](/docs/mcp-servers/telegram) — Learn about MCP Telegram features and configuration
-- [Docker Deployment Guide](/docs/framework/guides/deployment/docker) — Advanced Docker deployment options
-- [Railway Deployment Guide](/docs/framework/guides/deployment/railway) — Detailed Railway setup
+<Cards>
+  <Card title="🤖 Telegram Bot API" href="https://core.telegram.org/bots/api">
+    Official Telegram documentation
+  </Card>
+  <Card title="📚 MCP Telegram Documentation" href="/docs/mcp-servers/telegram">
+    Learn about MCP Telegram features and configuration
+  </Card>
+  <Card title="🐳 Docker Deployment Guide" href="/docs/framework/guides/deployment/docker">
+    Advanced Docker deployment options
+  </Card>
+  <Card title="🚂 Railway Deployment Guide" href="/docs/framework/guides/deployment/railway">
+    Detailed Railway setup
+  </Card>
+  <Card title="📋 Production Best Practices" href="/docs/framework/guides/best-practices">
+    Learn production best practices for your agents
+  </Card>
+</Cards>
