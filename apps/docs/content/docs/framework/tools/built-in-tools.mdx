@@ -3,56 +3,57 @@ title: Built-in Tools
 description: Ready-to-use tools for common tasks like search, file operations, and user interaction
 ---
 
-## Built-in Tools
+## Overview
 
-ADK-TS provides a collection of pre-built tools that handle common agent tasks. These tools are tested, optimized, and ready to use without custom development. Simply import the tool you need and add it to your agent's tools list.
-| Tool | Purpose | Requires Config |
-| ------------------- | --------------------------------------------- | --------------- |
-| **GoogleSearch** | Search the web using Google Custom Search API | Yes (API keys) |
-Here's how to use built-in tools with your agent:
-| **WebFetchTool** | Fetch and parse web page content | No |
-| **HttpRequestTool** | Make HTTP requests to APIs | No |
+ADK-TS provides a comprehensive collection of pre-built tools that handle common agent tasks. These tools are production-ready, thoroughly tested, and optimized for reliability. Simply import the tool you need and add it to your agent's configuration—no custom development required.
+
+### Quick Start
 
 ```typescript
 import { LlmAgent, GoogleSearch, HttpRequestTool } from "@iqai/adk";
-```
 
-```typescript
 const agent = new LlmAgent({
   name: "research_agent",
   description:
-    "An agent that helps users research topics using web search and HTTP requests.",
+    "An agent that helps users research topics using web search and HTTP requests",
   instruction: "Help users research topics using web search and HTTP requests",
   tools: [new GoogleSearch(), new HttpRequestTool()],
 });
 ```
 
-That's it! The agent can now search the web and make HTTP requests.
+That's it! Your agent can now search the web and make HTTP requests.
 
-## Available Tools
+### Available Tools
 
-ADK-TS includes these built-in tools:
+| Tool                    | Purpose                          | Requires Config |
+| ----------------------- | -------------------------------- | --------------- |
+| **GoogleSearch**        | Search the web for information   | Yes (API keys)  |
+| **WebFetchTool**        | Fetch and parse web page content | No              |
+| **HttpRequestTool**     | Make HTTP requests to APIs       | No              |
+| **ReadTool**            | Read file contents               | No              |
+| **WriteTool**           | Create new files                 | No              |
+| **EditTool**            | Edit existing files              | No              |
+| **GlobTool**            | Find files by pattern            | No              |
+| **GrepTool**            | Search file contents             | No              |
+| **FileOperationsTool**  | Comprehensive file management    | Optional        |
+| **BashTool**            | Execute terminal commands        | No              |
+| **UserInteractionTool** | Prompt users for input           | No              |
+| **GetUserChoiceTool**   | Present multiple choice options  | No              |
+| **LoadMemoryTool**      | Search conversation history      | No              |
+| **LoadArtifactsTool**   | Access uploaded files            | No              |
+| **TransferToAgentTool** | Hand off to another agent        | No              |
+| **ExitLoopTool**        | Exit workflow loops              | No              |
 
-| Tool                    | Purpose                         | Requires Config |
-| ----------------------- | ------------------------------- | --------------- |
-| **GoogleSearch**        | Search the web for information  | No              |
-| **HttpRequestTool**     | Make HTTP requests to APIs      | No              |
-| **FileOperationsTool**  | Read/write files on disk        | Optional        |
-| **UserInteractionTool** | Prompt users for input          | No              |
-| **LoadMemoryTool**      | Search conversation history     | No              |
-| **LoadArtifactsTool**   | Access uploaded files           | No              |
-| **GetUserChoiceTool**   | Present multiple choice options | No              |
-| **TransferToAgentTool** | Hand off to another agent       | No              |
-| **ExitLoopTool**        | Exit workflow loops             | No              |
+## Web & API Tools
 
 ### GoogleSearch
 
-Search the web for real-time information.
+Search the web for real-time information using Google's search engine.
 
 **Import:**
 
 ```typescript
-import { LlmAgent, GoogleSearch } from "@iqai/adk";
+import { GoogleSearch } from "@iqai/adk";
 ```
 
 **Setup:**
@@ -65,6 +66,25 @@ const agent = new LlmAgent({
 });
 ```
 
+**Configuration:**
+
+```typescript
+new GoogleSearch({
+  apiKey: process.env.GOOGLE_API_KEY,
+  searchEngineId: process.env.GOOGLE_SEARCH_ENGINE_ID,
+  // Optional parameters
+  safe: "off", // or "active" for safe search
+  siteSearch: "example.com", // restrict to specific site
+  siteSearchFilter: "i", // "i" to include, "e" to exclude
+  startDate: "2024-01-01", // YYYY-MM-DD format
+  endDate: "2024-12-31",
+  includeImages: false,
+  includeImageDescriptions: false,
+  excludeDomains: ["spam.com"],
+  country: "us",
+});
+```
+
 **Tool Parameters:**
 
 | Parameter     | Type   | Required | Description                                       |
@@ -74,579 +94,57 @@ const agent = new LlmAgent({
 
 **How It's Triggered:**
 
-The agent automatically uses this tool when the user asks about current information:
-
 ```typescript
 // User: "What are the latest updates about AI in 2024?"
-// Agent internally decides it needs current information, so it calls:
+// Agent automatically calls:
 // google_search({ query: "latest AI updates 2024", num_results: 5 })
-// Agent receives search results and summarizes them for the user
+// Agent receives search results and summarizes them
 ```
 
-**Capabilities:**
-
-- Real-time web search results
-- Configurable number of results
-- LLM-friendly response formatting
-
-<Callout type="info" title="Current Status">
-  The current GoogleSearch implementation returns mock results. Production use
-  requires integration with actual Google Search API and proper credentials.
-</Callout>
-
-### HttpRequestTool
-
-Make HTTP requests to APIs and web services.
-
-**Import:**
+**Response Format:**
 
 ```typescript
-import { LlmAgent, HttpRequestTool } from "@iqai/adk";
-```
-
-**Setup:**
-
-```typescript
-const agent = new LlmAgent({
-  name: "api_agent",
-  description: "An agent that integrates with external APIs and services",
-  tools: [new HttpRequestTool()],
-});
-```
-
-**Tool Parameters:**
-
-| Parameter | Type   | Required | Description                                                              |
-| --------- | ------ | -------- | ------------------------------------------------------------------------ |
-| `url`     | string | Yes      | The URL to request                                                       |
-| `method`  | string | No       | HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS). Default: GET |
-| `headers` | object | No       | Custom headers (e.g., `{ "Authorization": "Bearer token" }`)             |
-| `body`    | string | No       | Request body (for POST, PUT, PATCH)                                      |
-| `params`  | object | No       | URL query parameters to include                                          |
-| `timeout` | number | No       | Request timeout in milliseconds. Default: 10000                          |
-
-**How It's Triggered:**
-
-The agent uses this tool when it needs to call an external API:
-
-```typescript
-// User: "Get the weather from the API"
-// Agent calls:
-// http_request({
-//   url: "https://api.weather.com/forecast?city=london",
-//   method: "GET",
-//   headers: { "Authorization": "Bearer YOUR_API_KEY" }
-// })
-// Agent receives the response and processes it
-```
-
-**Capabilities:**
-
-- All HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
-- Custom headers for authentication
-- JSON and form data support
-- Response parsing
-
-### FileOperationsTool
-
-Read, write, and manage files on disk.
-
-**Import:**
-
-```typescript
-import { LlmAgent, FileOperationsTool } from "@iqai/adk";
-```
-
-**Setup:**
-
-```typescript
-const agent = new LlmAgent({
-  name: "file_agent",
-  description: "An agent that manages file operations on the local filesystem",
-});
-```
-
-### System Tools
-
-**Tool Parameters:**
-
-| Parameter   | Type   | Required | Description                                                                          |
-| ----------- | ------ | -------- | ------------------------------------------------------------------------------------ |
-| `operation` | string | Yes      | Operation to perform: `read`, `write`, `append`, `delete`, `exists`, `list`, `mkdir` |
-| `filepath`  | string | Yes      | File or directory path (relative to `basePath`)                                      |
-| `content`   | string | No       | Content to write (required for `write` and `append`)                                 |
-| `encoding`  | string | No       | File encoding to use. Default: utf8                                                  |
-
-**How It's Triggered:**
-
-### Memory & Context Tools
-
-```
-// User: "Save this data to a file called results.txt"
-// Agent calls:
-// file_operations({
-//   operation: "write",
-//   path: "results.txt",
-//   content: "The data to save"
-// })
-// Agent: "Saved data to results.txt"
-
-// User: "Read the contents of config.json"
-// Agent calls:
-// file_operations({
-//   operation: "read",
-//   path: "config.json"
-// })
-// Agent reads and displays the content
-```
-
-**Supported Operations:**
-
-- `read` - Read file contents
-- `write` - Write or overwrite files
-- `append` - Add content to existing files
-- `delete` - Remove files
-- `exists` - Check if file exists
-- `list` - List directory contents
-- `mkdir` - Create directories
-
-**Capabilities:**
-
-- Read and write files with multiple encodings
-- Directory management (create, list)
-- File existence checks
-- Append to existing files
-- Delete files safely
-
-**Security:**
-
-- Limited to specified `basePath` directory
-- Prevents path traversal attacks
-- Validates all file operations
-
-### UserInteractionTool
-
-Prompt users for input during agent execution.
-
-**Import:**
-
-## Web & API Tools
-
-```typescript
-import { LlmAgent, UserInteractionTool } from "@iqai/adk";
-```
-
-**Setup:**
-
-```typescript
-const agent = new LlmAgent({
-  name: "approval_agent",
-  description: "An agent that handles user approvals and confirmations",
-  tools: [new UserInteractionTool()],
-});
-```
-
-**Tool Parameters:**
-
-The LLM calls this tool with these parameters:
-
-| Parameter      | Type             | Required | Description                                    |
-| -------------- | ---------------- | -------- | ---------------------------------------------- |
-| `prompt`       | string           | Yes      | The question or message to display to the user |
-| `options`      | array of strings | No       | Multiple choice options to present to the user |
-| `defaultValue` | string           | No       | Default value if user provides no input        |
-
-**How It's Triggered:**
-
-The agent triggers this tool when it needs user input. For example:
-
-**Environment Variables Required:**
-
-```
-// User: "I want to delete my account"
-// Agent internally decides it needs confirmation, so it calls user_interaction:
-
-// The agent LLM generates a call like:
-// user_interaction({
-// prompt: "Are you absolutely sure you want to delete your account? This cannot be undone.",
-// options: ["Yes, delete it", "No, keep it"]
-// })
-
-// User sees: "Are you absolutely sure you want to delete your account? This cannot be undone?"
-// 1. Yes, delete it
-// 2. No, keep it
-// User chooses: 1
-// Agent receives: "Yes, delete it" and proceeds with deletion
-
-```
-
-**Capabilities:**
-
-- Get approval for critical actions
-- Present multiple options and let user choose
-- Confirm important operations before execution
-- Collect user preferences
-- Multi-step workflows requiring decisions
-- Support for default values
-
-<Callout type="info" title="Long-Running by Nature">
-  The UserInteractionTool is marked as `isLongRunning: true` because it waits
-  for user input. The agent will pause execution until the user responds.
-</Callout>
-
-| `safe` | string | No | Safe search filter: "active" or "off" (default: "off") |
-| `siteSearch` | string | No | Restrict results to a specific site |
-
-### LoadMemoryTool
-
-Search conversation history and past interactions.
-
-**Import:**
-
-| `siteSearchFilter` | string | No | Include ("i") or exclude ("e") site |
-
-```typescript
-import { LlmAgent, LoadMemoryTool } from "@iqai/adk";
-```
-
-**Setup:**
-
-```typescript
-// User: "What are the latest updates about AI in 2024?"
-// Agent internally decides it needs current information, so it calls:
-const agent = new LlmAgent({
-  name: "context_agent",
-  description: "An agent that maintains context across conversations",
-  tools: [new LoadMemoryTool()],
-});
-```
-
-**Tool Parameters:**
-
-| Parameter | Type   | Required | Description                                               |
-| --------- | ------ | -------- | --------------------------------------------------------- |
-| `query`   | string | Yes      | What to search for in memory (e.g., "previous purchases") |
-
-**How It's Triggered:**
-
-```typescript
-The agent uses this to recall past information:
+{
+  success: boolean;
   results?: Array<{
     title: string;
-// User: "What did I ask you about last time?"
-// Agent calls:
-// load_memory({ query: "previous conversation topics" })
-// Agent retrieves relevant memories and responds with the information
-
-// User: "I have that preference set, right?"
-// Agent calls:
-// load_memory({ query: "user preferences" })
-// Agent confirms based on retrieved memory
+    link: string;
+    snippet: string;
+  }>;
+  images?: Array<{
+    url: string;
+    description?: string;
+  }>;
+  error?: string;
+}
 ```
-
-**Capabilities:**
-
-- Search past conversations
-- Retrieve user preferences
-- Reference previous decisions
-- Maintain context across sessions
-
-### LoadArtifactsTool
-
-Access and process uploaded files.
-
-**Import:**
-
-```typescript
-import { LlmAgent, LoadArtifactsTool } from "@iqai/adk";
-```
-
-**Setup:**
-
-```
-const agent = new LlmAgent({
-  name: "document_analyzer_agent",
-  description: "An agent that analyzes and processes uploaded documents",
-  tools: [new LoadArtifactsTool()],
-});
-```
-
-**Tool Parameters:**
-
-| Parameter        | Type  | Required | Description                    |
-| ---------------- | ----- | -------- | ------------------------------ |
-| `artifact_names` | array | No       | List of artifact names to load |
-
-**How It's Triggered:**
 
 **Environment Variables Required:**
 
-```
-// User uploads files and asks: "Analyze my resume"
-// Agent calls:
-// load_artifacts({ artifact_names: ["resume.pdf"] })
-// Agent retrieves the uploaded resume and analyzes it
-
-// User: "What's in the contract?"
-// Agent calls:
-// load_artifacts({ artifact_names: ["contract.pdf"] })
-// Agent reads and analyzes the contract
+```bash
+GOOGLE_API_KEY=your_api_key_here
+GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id
 ```
 
-**Capabilities:**
+### WebFetchTool
 
-- Load specific artifacts by name
-- Access file contents
-- Automatic format detection
-- Support for various file types (PDF, images, text, etc.)
-- List all available artifacts
-
-### GetUserChoiceTool
-
-Present users with multiple options and collect their selection.
-
-**Import:**
-| `startDate` | string | No | Return results after this date (YYYY-MM-DD) |
-| `endDate` | string | No | Return results before this date (YYYY-MM-DD) |
-| `includeImages` | boolean | No | Include image search results (default: false) |
-| `includeImageDescriptions` | boolean | No | Include descriptive text for images (default: false) |
-| `excludeDomains` | array | No | Domains to exclude from search |
-| `country` | string | No | Country to prioritize results from
-
-```typescript
-const agent = new LlmAgent({
-  name: "choice_agent",
-  description: "An agent that presents options and collects user selections",
-  tools: [new GetUserChoiceTool()],
-});
-```
-
-**Tool Parameters:**
-
-| Parameter  | Type   | Required | Description                                              |
-| ---------- | ------ | -------- | -------------------------------------------------------- |
-| `options`  | array  | Yes      | List of options for the user to choose from              |
-| `question` | string | No       | The question or prompt to show before presenting options |
-
-**How It's Triggered:**
-
-```typescript
-// User: "I want to choose a subscription plan"
-// Agent calls:
-// get_user_choice({
-//   question: "Which plan would you like?",
-//   options: ["Basic - $9/month", "Pro - $29/month", "Enterprise - $99/month"]
-// })
-// User sees numbered options and selects one
-// Agent receives the selected option and proceeds
-```
-
-**Capabilities:**
-
-- Present multiple choice options
-- Optional question/prompt text
-- Returns user's selected choice
-- Long-running operation (waits for user input)
-  **How It's Triggered:**
-
-// User: "Find recent news about renewable energy"
-Hand off work to another specialized agent.
+Fetch and parse content from web pages with automatic HTML cleaning.
 
 **Import:**
 
-```
-import { LlmAgent, TransferToAgentTool } from "@iqai/adk";
+```typescript
+import { WebFetchTool } from "@iqai/adk";
 ```
 
 **Setup:**
 
 ```typescript
 const agent = new LlmAgent({
-  name: "router_agent",
-  description: "An agent that routes requests to specialized agents",
-  tools: [new TransferToAgentTool()],
+  name: "web_reader_agent",
+  description: "An agent that fetches and analyzes web page content",
+  tools: [new WebFetchTool()],
 });
 ```
-
-**Tool Parameters:**
-
-| Parameter    | Type   | Required | Description                                  |
-| ------------ | ------ | -------- | -------------------------------------------- |
-| `agent_name` | string | Yes      | The name of the agent to transfer control to |
-
-**How It's Triggered:**
-
-```typescript
-// User: "I need help with my payment"
-// Router agent recognizes this is a payment issue and calls:
-// transfer_to_agent({ agent_name: "payment_specialist_agent" })
-// Control transfers to the payment specialist agent
-
-// User: "Can you check my order status?"
-// Router agent calls:
-// transfer_to_agent({ agent_name: "order_tracking_agent" })
-// Control transfers to the order tracking agent
-```
-
-**Capabilities:**
-
-- Transfer control to specialized agents
-- Enable agent orchestration
-- Route requests based on expertise
-- Maintain conversation context during transfer
-
-````
-**Response Format:**
-Exit from workflow loops when completion criteria are met.
-
-**Import:**
-```typescript
-import { LlmAgent, ExitLoopTool } from "@iqai/adk";
-````
-
-**Setup:**
-
-```typescript
-const agent = new LlmAgent({
-  name: "loop_agent",
-  description: "An agent that processes items in loops with exit control",
-  tools: [new ExitLoopTool()],
-});
-```
-
-**Tool Parameters:**
-
-This tool takes no parameters.
-
-**How It's Triggered:**
-
-```
-images?: Array<{
-url: string;
-// Agent is processing items in a loop
-// When instructed to exit, agent calls:
-// exit_loop()
-// Loop execution terminates and control returns to parent workflow
-
-// Example workflow:
-// Agent: Processing item 1... done
-// Agent: Processing item 2... done
-// Agent: Processing item 3... done
-// Agent: All items processed, calling exit_loop()
-// Workflow exits loop successfully
-}>
-
-```
-
-**Capabilities:**
-
-- Exit from execution loops
-- Controlled loop termination
-- Signal completion to parent workflow
-- Prevent infinite loops
-
-## Tool Combinations
-
-Combine multiple built-in tools to create powerful agent capabilities. Here are some common combinations:
-
-### Information Gathering
-
-Combine search and memory tools for comprehensive research that builds on previous conversations:
-
-```typescript
-const researchAgent = new LlmAgent({
-  name: "researcher_agent",
-  description:
-    "A research assistant that searches the web for current information and recalls relevant details from previous conversations to provide comprehensive, context-aware answers",
-  instruction:
-    "Use web search to find current information, then check memory for related previous discussions to provide complete context",
-  tools: [new GoogleSearch(), new LoadMemoryTool()],
-});
-```
-
-### Document Processing
-
-Process uploaded documents and save analysis results to files:
-
-```typescript
-const documentAgent = new LlmAgent({
-  name: "document_processor_agent",
-  description:
-    "An agent that analyzes uploaded documents, extracts key information, and saves processed results or reports to the filesystem",
-  instruction:
-    "Load and analyze uploaded documents, then save your findings, summaries, or processed data to files for future reference",
-  tools: [
-    new LoadArtifactsTool(),
-    new FileOperationsTool({ basePath: "/output" }),
-  ],
-});
-```
-
-### API Integration
-
-Call external APIs and save response data for analysis or caching:
-
-```typescript
-const apiAgent = new LlmAgent({
-  name: "api_integration_agent",
-  description:
-    "An agent that calls external APIs to fetch data, processes the responses, and saves important information to files for later analysis or caching",
-  instruction:
-    "Make API calls to retrieve data, process the responses, and save relevant information to files for future reference or analysis",
-  tools: [new HttpRequestTool(), new FileOperationsTool()],
-});
-```
-
-### Interactive Workflows
-
-Collect user input and confirmations while managing file operations:
-
-```typescript
-const interactiveAgent = new LlmAgent({
-  name: "interactive_workflow_agent",
-  description:
-    "An agent that guides users through multi-step processes, collects their input and confirmations, and manages files as part of the workflow",
-  instruction:
-    "Interact with users to gather requirements and approvals, then perform file operations based on their input and decisions",
-  tools: [new UserInteractionTool(), new FileOperationsTool()],
-});
-```
-
-## Built-in Tool Best Practices
-
-To effectively use built-in tools in your agents:
-
-- **Choose Relevant Tools**: Only add tools that match your agent's purpose. Too many tools can confuse the LLM.
-- **Configure Safely**: Set restrictive `basePath` for `FileOperationsTool` to prevent unauthorized access.
-- **Handle External Failures**: Tools that call external services (`GoogleSearch`, `HttpRequestTool`) depend on network availability. Design agents to handle failures gracefully.
-- **Secure Authentication**: Be cautious with authentication headers in logs when using `HttpRequestTool`.
-- **Protect Sensitive Data**: Don't expose sensitive information in `UserInteractionTool` prompts.
-- **Trust Built-in Error Handling**: Built-in tools handle common errors automatically (network failures, invalid files, user cancellations).
-
-## Related Topics
-
-<Cards>
-  <Card
-    title="📝 Function Tools"
-    description="Create custom tools from TypeScript functions"
-    href="/docs/framework/tools/function-tools"
-  />
-  <Card
-    title="🛠️ createTool Utility"
-    description="Create tools with explicit Zod schema validation"
-    href="/docs/framework/tools/create-tool"
-  />
-  <Card
-    title="🔧 ToolContext"
-    description="Access session state and context in your tools"
-    href="/docs/framework/tools/tool-context"
-  />
-  <Card
-    title="🤖 LLM Agents"
-    description="Learn how to configure agents with tools"
-    href="/docs/framework/agents/llm-agents"
-  />
-</Cards>
 
 **Tool Parameters:**
 
@@ -748,7 +246,6 @@ const agent = new LlmAgent({
 //   params: { city: "london" },
 //   headers: { "Authorization": "Bearer YOUR_API_KEY" }
 // })
-// Agent receives the response and processes it
 ```
 
 **Capabilities:**
@@ -865,7 +362,6 @@ const agent = new LlmAgent({
 //   path: "README.md",
 //   content: "# My Project\n\nDescription here..."
 // })
-// Agent: "File created successfully: README.md"
 ```
 
 **Response Format:**
@@ -893,7 +389,10 @@ const agent = new LlmAgent({
 - Saving analysis results
 - Creating configuration files
 
-**Important:** To modify existing files, use `EditTool` instead.
+<Callout type="warning" title="Overwrite Protection">
+  WriteTool will not overwrite existing files. To modify existing files, use
+  EditTool instead.
+</Callout>
 
 ### EditTool
 
@@ -947,7 +446,7 @@ const agent = new LlmAgent({
 
 **Preview Format:**
 
-```
+```diff
 <<<<<< OLD
 const PORT = 3000;
 ======
@@ -1066,7 +565,7 @@ const agent = new LlmAgent({
 });
 
 // Or with custom configuration:
-const customGrepAgent = new LlmAgent({
+const customAgent = new LlmAgent({
   name: "custom_search_agent",
   description: "Custom search configuration",
   tools: [
@@ -1383,8 +882,12 @@ pwd
 whoami
 ```
 
-**Security Warning:**
-⚠️ **Use with extreme caution.** This tool executes commands with the same permissions as the running process. While basic destructive commands are blocked, many dangerous operations are still possible. Always validate and sanitize commands when possible.
+<Callout type="caution" title="Security Warning">
+  **Use with extreme caution.** This tool executes commands with the same
+  permissions as the running process. While basic destructive commands are
+  blocked, many dangerous operations are still possible. Always validate and
+  sanitize commands when possible.
+</Callout>
 
 **Best Practices:**
 
@@ -1438,7 +941,7 @@ const agent = new LlmAgent({
 
 ```typescript
 // User: "I want to delete my account"
-// Agent internally decides it needs confirmation, so it calls:
+// Agent internally decides it needs confirmation:
 // user_interaction({
 //   prompt: "Are you absolutely sure you want to delete your account? This cannot be undone.",
 //   options: ["Yes, delete it", "No, keep it"]
@@ -1450,7 +953,7 @@ const agent = new LlmAgent({
 // 2. No, keep it
 
 // User chooses: 1
-// Agent receives: "Yes, delete it" and proceeds with deletion
+// Agent receives: "Yes, delete it" and proceeds
 ```
 
 **Capabilities:**
@@ -1472,21 +975,10 @@ const agent = new LlmAgent({
 - Interactive workflows
 - Data validation
 
-**Important Notes:**
-
-- Marked as `isLongRunning: true`
-- Agent pauses until user responds
-- Suitable for interactive applications
-- Not suitable for batch processing
-
 <Callout type="info" title="Long-Running by Nature">
-
-The UserInteractionTool is marked as `isLongRunning: true` because it waits
-for user input. The agent will pause execution until the user responds.
-
+  The UserInteractionTool is marked as `isLongRunning: true` because it waits
+  for user input. The agent will pause execution until the user responds.
 </Callout>
-
----
 
 ### GetUserChoiceTool
 
@@ -1545,8 +1037,6 @@ const agent = new LlmAgent({
 - Preference collection
 - Decision trees
 
----
-
 ## Memory & Context Tools
 
 ### LoadMemoryTool
@@ -1568,3 +1058,339 @@ const agent = new LlmAgent({
   tools: [new LoadMemoryTool()],
 });
 ```
+
+**Tool Parameters:**
+
+| Parameter | Type   | Required | Description                                               |
+| --------- | ------ | -------- | --------------------------------------------------------- |
+| `query`   | string | Yes      | What to search for in memory (e.g., "previous purchases") |
+
+**How It's Triggered:**
+
+```typescript
+// User: "What did I ask you about last time?"
+// Agent calls:
+// load_memory({ query: "previous conversation topics" })
+// Agent retrieves relevant memories and responds
+
+// User: "I have that preference set, right?"
+// Agent calls:
+// load_memory({ query: "user preferences" })
+// Agent confirms based on retrieved memory
+```
+
+**Capabilities:**
+
+- Search past conversations
+- Retrieve user preferences
+- Reference previous decisions
+- Maintain context across sessions
+
+**Use Cases:**
+
+- Remembering user preferences
+- Recalling previous discussions
+- Maintaining conversation continuity
+- Building on past interactions
+
+---
+
+### LoadArtifactsTool
+
+Access and process uploaded files, enabling document analysis and file-based workflows.
+
+**Import:**
+
+```typescript
+import { LoadArtifactsTool } from "@iqai/adk";
+```
+
+**Setup:**
+
+```typescript
+const agent = new LlmAgent({
+  name: "document_analyzer_agent",
+  description: "An agent that analyzes and processes uploaded documents",
+  tools: [new LoadArtifactsTool()],
+});
+```
+
+**Tool Parameters:**
+
+| Parameter        | Type  | Required | Description                    |
+| ---------------- | ----- | -------- | ------------------------------ |
+| `artifact_names` | array | No       | List of artifact names to load |
+
+**How It's Triggered:**
+
+```typescript
+// User uploads files and asks: "Analyze my resume"
+// Agent calls:
+// load_artifacts({ artifact_names: ["resume.pdf"] })
+// Agent retrieves and analyzes the resume
+
+// User: "What's in the contract?"
+// Agent calls:
+// load_artifacts({ artifact_names: ["contract.pdf"] })
+// Agent reads and analyzes the contract
+```
+
+**Capabilities:**
+
+- Load specific artifacts by name
+- Access file contents
+- Automatic format detection
+- Support for various file types (PDF, images, text, etc.)
+- List all available artifacts
+
+**Use Cases:**
+
+- Document analysis
+- File processing workflows
+- Data extraction from uploads
+- Multi-file comparisons
+
+## Agent Orchestration Tools
+
+### TransferToAgentTool
+
+Hand off work to another specialized agent, enabling complex multi-agent workflows.
+
+**Import:**
+
+```typescript
+import { TransferToAgentTool } from "@iqai/adk";
+```
+
+**Setup:**
+
+```typescript
+const agent = new LlmAgent({
+  name: "router_agent",
+  description: "An agent that routes requests to specialized agents",
+  tools: [new TransferToAgentTool()],
+});
+```
+
+**Tool Parameters:**
+
+| Parameter    | Type   | Required | Description                                  |
+| ------------ | ------ | -------- | -------------------------------------------- |
+| `agent_name` | string | Yes      | The name of the agent to transfer control to |
+
+**How It's Triggered:**
+
+```typescript
+// User: "I need help with my payment"
+// Router agent recognizes this is a payment issue:
+// transfer_to_agent({ agent_name: "payment_specialist_agent" })
+// Control transfers to the payment specialist
+
+// User: "Can you check my order status?"
+// Router agent calls:
+// transfer_to_agent({ agent_name: "order_tracking_agent" })
+// Control transfers to the order tracking agent
+```
+
+**Capabilities:**
+
+- Transfer control to specialized agents
+- Enable agent orchestration
+- Route requests based on expertise
+- Maintain conversation context during transfer
+
+**Use Cases:**
+
+- Multi-agent systems
+- Specialized task routing
+- Domain-specific expertise
+- Complex workflow orchestration
+
+---
+
+### ExitLoopTool
+
+Exit from workflow loops when completion criteria are met.
+
+**Import:**
+
+```typescript
+import { ExitLoopTool } from "@iqai/adk";
+```
+
+**Setup:**
+
+```typescript
+const agent = new LlmAgent({
+  name: "loop_agent",
+  description: "An agent that processes items in loops with exit control",
+  tools: [new ExitLoopTool()],
+});
+```
+
+**Tool Parameters:**
+
+This tool takes no parameters.
+
+**How It's Triggered:**
+
+```typescript
+// Agent is processing items in a loop
+// When instructed to exit, agent calls:
+// exit_loop()
+// Loop execution terminates and control returns to parent workflow
+
+// Example workflow:
+// Agent: Processing item 1... done
+// Agent: Processing item 2... done
+// Agent: Processing item 3... done
+// Agent: All items processed, calling exit_loop()
+// Workflow exits loop successfully
+```
+
+**Capabilities:**
+
+- Exit from execution loops
+- Controlled loop termination
+- Signal completion to parent workflow
+- Prevent infinite loops
+
+**Use Cases:**
+
+- Batch processing workflows
+- Iterative tasks with completion criteria
+- Loop-based automation
+- Multi-step processes
+
+## Tool Combinations
+
+Combine multiple built-in tools to create powerful agent capabilities. Here are some proven patterns:
+
+### Information Gathering
+
+Combine search and memory tools for comprehensive research that builds on previous conversations:
+
+```typescript
+const researchAgent = new LlmAgent({
+  name: "researcher_agent",
+  description:
+    "A research assistant that searches the web for current information and recalls relevant details from previous conversations",
+  instruction:
+    "Use web search to find current information, then check memory for related previous discussions",
+  tools: [new GoogleSearch(), new LoadMemoryTool()],
+});
+```
+
+### Document Processing
+
+Process uploaded documents and save analysis results to files:
+
+```typescript
+const documentAgent = new LlmAgent({
+  name: "document_processor_agent",
+  description:
+    "An agent that analyzes uploaded documents and saves processed results",
+  instruction:
+    "Load and analyze uploaded documents, then save findings and summaries to files",
+  tools: [
+    new LoadArtifactsTool(),
+    new FileOperationsTool({ basePath: "/output" }),
+  ],
+});
+```
+
+### API Integration
+
+Call external APIs and save response data for analysis or caching:
+
+```typescript
+const apiAgent = new LlmAgent({
+  name: "api_integration_agent",
+  description: "An agent that calls external APIs and processes responses",
+  instruction:
+    "Make API calls to retrieve data, process responses, and save relevant information",
+  tools: [new HttpRequestTool(), new FileOperationsTool()],
+});
+```
+
+### Interactive Workflows
+
+Collect user input and confirmations while managing file operations:
+
+```typescript
+const interactiveAgent = new LlmAgent({
+  name: "interactive_workflow_agent",
+  description: "An agent that guides users through multi-step processes",
+  instruction:
+    "Interact with users to gather requirements and approvals, then perform file operations based on their input",
+  tools: [new UserInteractionTool(), new FileOperationsTool()],
+});
+```
+
+### Code Analysis & Modification
+
+Search through code and make precise edits:
+
+```typescript
+const codeAgent = new LlmAgent({
+  name: "code_assistant_agent",
+  description: "An agent that analyzes and modifies code files",
+  instruction:
+    "Search for code patterns, analyze files, and make precise edits as requested",
+  tools: [new GrepTool(), new ReadTool(), new EditTool()],
+});
+```
+
+## Best Practices
+
+To effectively use built-in tools in your agents:
+
+### Tool Selection
+
+- **Choose Relevant Tools**: Only add tools that match your agent's purpose. Too many tools can confuse the LLM and degrade performance.
+- **Start Simple**: Begin with essential tools and add more as needed.
+- **Consider Dependencies**: Some tool combinations work better together (e.g., GrepTool + EditTool for code modifications).
+
+### Security & Safety
+
+- **Configure Safely**: Set restrictive `basePath` for `FileOperationsTool` to prevent unauthorized access.
+- **Validate Inputs**: Use BashTool with caution and consider command whitelisting.
+- **Secure Authentication**: Be cautious with authentication headers in logs when using `HttpRequestTool`.
+- **Protect Sensitive Data**: Don't expose sensitive information in `UserInteractionTool` prompts.
+
+### Error Handling
+
+- **Handle External Failures**: Tools that call external services (`GoogleSearch`, `HttpRequestTool`) depend on network availability. Design agents to handle failures gracefully.
+- **Trust Built-in Error Handling**: Built-in tools handle common errors automatically (network failures, invalid files, user cancellations).
+- **Provide Context**: When errors occur, ensure your agent instructions guide the LLM on how to respond.
+
+### Performance
+
+- **Set Appropriate Timeouts**: Configure timeouts for HTTP requests and command executions based on expected response times.
+- **Limit Search Results**: Use `num_results` and `max_matches` parameters to prevent overwhelming the LLM with data.
+- **Monitor Long-Running Operations**: Be aware that user interaction tools will pause agent execution.
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="📝 Function Tools"
+    description="Create custom tools from TypeScript functions"
+    href="/docs/framework/tools/function-tools"
+  />
+  <Card
+    title="🛠️ createTool Utility"
+    description="Create tools with explicit Zod schema validation"
+    href="/docs/framework/tools/create-tool"
+  />
+  <Card
+    title="🔧 ToolContext"
+    description="Access session state and context in your tools"
+    href="/docs/framework/tools/tool-context"
+  />
+  <Card
+    title="🤖 LLM Agents"
+    description="Learn how to configure agents with tools"
+    href="/docs/framework/agents/llm-agents"
+  />
+</Cards>
