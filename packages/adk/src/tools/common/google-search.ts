@@ -1,28 +1,22 @@
 import { Logger } from "@adk/logger";
 import { Type } from "@google/genai";
+import axios, { AxiosResponse } from "axios";
+import { z } from "zod";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
-/**
- * Simple GoogleSearch tool implementation
- */
 export class GoogleSearch extends BaseTool {
 	protected logger = new Logger({ name: "GoogleSearch" });
 
-	/**
-	 * Constructor for GoogleSearch
-	 */
 	constructor() {
 		super({
 			name: "google_search",
-			description: "Search the web using Google",
+			description:
+				"Search the web using Google Custom Search API with full customization",
 		});
 	}
 
-	/**
-	 * Get the function declaration for the tool
-	 */
 	getDeclaration(): FunctionDeclaration {
 		return {
 			name: this.name,
@@ -34,10 +28,42 @@ export class GoogleSearch extends BaseTool {
 						type: Type.STRING,
 						description: "The search query to execute",
 					},
-					num_results: {
+					numResults: {
 						type: Type.INTEGER,
-						description: "Number of results to return (max 10)",
+						description: "Number of results (max 10)",
 						default: 5,
+					},
+					start: {
+						type: Type.INTEGER,
+						description: "Start index for pagination",
+						default: 1,
+					},
+					safe: {
+						type: Type.STRING,
+						enum: ["active", "off"],
+						description: "Safe search filter",
+						default: "off",
+					},
+					siteSearch: {
+						type: Type.STRING,
+						description: "Restrict results to a specific site",
+					},
+					siteSearchFilter: {
+						type: Type.STRING,
+						enum: ["i", "e"],
+						description: "Include or exclude site",
+					},
+					lr: {
+						type: Type.STRING,
+						description: "Language restriction, e.g., 'lang_en'",
+					},
+					cr: {
+						type: Type.STRING,
+						description: "Country restriction, e.g., 'countryUS'",
+					},
+					fields: {
+						type: Type.STRING,
+						description: "Partial response fields to reduce payload",
 					},
 				},
 				required: ["query"],
@@ -45,35 +71,109 @@ export class GoogleSearch extends BaseTool {
 		};
 	}
 
-	/**
-	 * Execute the search
-	 * This is a simplified implementation that doesn't actually search, just returns mock results
-	 */
 	async runAsync(
-		args: {
-			query: string;
-			num_results?: number;
-		},
+		rawArgs: unknown,
 		_context: ToolContext,
-	): Promise<any> {
-		this.logger.debug(
-			`[GoogleSearch] Executing Google search for: ${args.query}`,
-		);
+	): Promise<{
+		results?: GoogleSearchResult[];
+		success: boolean;
+		error?: string;
+	}> {
+		const argsResult = googleSearchArgsSchema.safeParse(rawArgs);
+		if (!argsResult.success) {
+			return { success: false, error: argsResult.error.message };
+		}
 
-		// This would be replaced with an actual API call to Google Search API
-		return {
-			results: [
+		const {
+			query,
+			numResults,
+			start,
+			safe,
+			siteSearch,
+			siteSearchFilter,
+			lr,
+			cr,
+			fields,
+		} = argsResult.data;
+
+		const apiKey = process.env.GOOGLE_API_KEY;
+		const cseId = process.env.GOOGLE_CSE_ID;
+
+		if (!apiKey || !cseId) {
+			return {
+				success: false,
+				error: "Missing GOOGLE_API_KEY or GOOGLE_CSE_ID environment variable",
+			};
+		}
+
+		this.logger.debug(`[GoogleSearch] Executing search for query: ${query}`);
+
+		try {
+			const response: AxiosResponse<GoogleSearchAPIResponse> = await axios.get(
+				"https://www.googleapis.com/customsearch/v1",
 				{
-					title: `Result 1 for ${args.query}`,
-					link: "https://example.com/1",
-					snippet: `This is a sample result for the query "${args.query}".`,
+					params: {
+						key: apiKey,
+						cx: cseId,
+						q: query,
+						num: numResults,
+						start,
+						safe,
+						siteSearch,
+						siteSearchFilter,
+						lr,
+						cr,
+						fields,
+					},
 				},
-				{
-					title: `Result 2 for ${args.query}`,
-					link: "https://example.com/2",
-					snippet: `Another sample result for "${args.query}".`,
-				},
-			],
-		};
+			);
+
+			const items = response.data.items ?? [];
+
+			const results: GoogleSearchResult[] = items.map((item) => ({
+				title: item.title,
+				link: item.link,
+				snippet: item.snippet,
+			}));
+
+			return { success: true, results };
+		} catch (err: unknown) {
+			const errorMessage =
+				err instanceof Error ? err.message : "Unknown error occurred";
+			this.logger.error(
+				`[GoogleSearch] Error executing search: ${errorMessage}`,
+			);
+			return { success: false, error: errorMessage };
+		}
 	}
+}
+
+export type GoogleSearchArgs = z.infer<typeof googleSearchArgsSchema>;
+
+export const googleSearchArgsSchema = z.object({
+	query: z.string().min(1, "Query cannot be empty"),
+	numResults: z.number().int().min(1).max(10).default(5),
+	start: z.number().int().min(1).default(1),
+	safe: z.enum(["active", "off"]).default("off"),
+	siteSearch: z.string().optional(),
+	siteSearchFilter: z.enum(["i", "e"]).optional(),
+	lr: z.string().optional(),
+	cr: z.string().optional(),
+	fields: z.string().optional(),
+});
+
+export type GoogleSearchResult = {
+	title: string;
+	link: string;
+	snippet: string;
+};
+
+interface GoogleSearchItem {
+	title: string;
+	link: string;
+	snippet: string;
+}
+
+interface GoogleSearchAPIResponse {
+	items?: GoogleSearchItem[];
 }
