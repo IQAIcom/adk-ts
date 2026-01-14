@@ -3,12 +3,17 @@ title: Metrics and Scoring
 description: Measurement approaches for trajectory and response quality
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 Effective agent evaluation requires quantifiable metrics that capture both the quality of agent decisions and the value of their outputs.
 
 <Callout type="info" title="Implemented Metrics">
-Currently implemented prebuilt metrics: `tool_trajectory_avg_score`, `response_match_score` (ROUGE‑1), `response_evaluation_score` (LLM judge 1‑5), `safety_v1`, and experimental `final_response_match_v2` (LLM judge binary). Configure via `criteria` thresholds.
+
+Currently implemented prebuilt metrics: `tool_trajectory_avg_score`,
+`response_match_score` (ROUGE‑1), `response_evaluation_score` (LLM judge 1‑5),
+`safety_v1`, and experimental `final_response_match_v2` (LLM judge binary).
+Configure via `criteria` thresholds.
+
 </Callout>
 
 ## Trajectory Metrics
@@ -18,11 +23,13 @@ Trajectory metrics measure the quality of the decision-making process and tool u
 ### Tool Usage Analysis
 
 **Tool Selection Accuracy:**
+
 - **Metric**: Percentage of appropriate tool choices for given tasks
 - **Calculation**: `(Correct tool selections / Total tool selections) * 100`
 - **Threshold**: Typically 85%+ for production agents
 
 **Tool Trajectory Average Score:**
+
 - - **Purpose**: Compares actual vs expected tool usage sequences
 - **Scoring**: Binary (1 for matches, 0 for mismatches)
 - **Patterns**:
@@ -31,6 +38,7 @@ Trajectory metrics measure the quality of the decision-making process and tool u
   - Any-order match: Required tools used regardless of order
 
 **Current Implementation Example:**
+
 ```typescript
 function calculateToolAccuracy(events: Event[], expectedTools: string[]) {
   const actualTools = events
@@ -38,7 +46,7 @@ function calculateToolAccuracy(events: Event[], expectedTools: string[]) {
     .map(fc => fc.name);
 
   const correctSelections = expectedTools.filter(tool =>
-    actualTools.includes(tool)
+    actualTools.includes(tool),
   ).length;
 
   const accuracy = (correctSelections / expectedTools.length) * 100;
@@ -48,7 +56,7 @@ function calculateToolAccuracy(events: Event[], expectedTools: string[]) {
     accuracy,
     expected: expectedTools,
     actual: actualTools,
-    correct: correctSelections
+    correct: correctSelections,
   };
 }
 ```
@@ -56,16 +64,19 @@ function calculateToolAccuracy(events: Event[], expectedTools: string[]) {
 ### Decision Quality Metrics
 
 **Step Efficiency:**
+
 - **Definition**: Ratio of necessary steps to total steps taken
 - **Formula**: `Necessary steps / Total steps`
 - **Target**: Minimize unnecessary actions while maintaining effectiveness
 
 **Error Recovery Rate:**
+
 - **Measurement**: Percentage of errors successfully recovered from
 - **Calculation**: `(Successful recoveries / Total errors) * 100`
 - **Assessment**: Track how agents handle tool failures and incorrect responses
 
 **Strategy Consistency:**
+
 - **Evaluation**: Consistent approach across similar scenarios
 - **Measurement**: Variance in tool usage patterns for equivalent tasks
 - **Goal**: Minimize unnecessary strategy variation
@@ -73,6 +84,7 @@ function calculateToolAccuracy(events: Event[], expectedTools: string[]) {
 ### Performance Metrics
 
 **Response Time Analysis:**
+
 ```typescript
 async function measureResponseTime(agent: LlmAgent, query: string) {
   const startTime = Date.now();
@@ -95,7 +107,7 @@ async function measureResponseTime(agent: LlmAgent, query: string) {
     totalTime,
     toolCallCount: toolCalls,
     avgTimePerTool: toolCalls > 0 ? totalTime / toolCalls : 0,
-    responseComplete
+    responseComplete,
   };
 }
 ```
@@ -107,35 +119,41 @@ Response quality metrics assess the value and appropriateness of agent outputs.
 ### Semantic Similarity Scoring
 
 **ROUGE‑1 (response_match_score):**
+
 - Key: `response_match_score`
 - Range: 0.0–1.0 (F1 overlap of unigrams)
 - Typical threshold: 0.7–0.9
 - Auto-applied when `response_match_score` present in `criteria`.
 
 **LLM Judge (response_evaluation_score):**
+
 - Key: `response_evaluation_score`
 - Range: 1–5 (higher is better)
 - Provide threshold (e.g. 3.5) and optional `judgeModelOptions` (model + numSamples) when extending internals.
 
 **Tool Trajectory (tool_trajectory_avg_score):**
+
 - Binary per case; average across runs.
 - Requires test samples with `expected_tool_use` (legacy path) or tool expectations embedded (future expansion).
 
 **Safety (safety_v1):**
+
 - Integration for safety / harmlessness (returns pass/fail style score 0/1 internally mapped to threshold).
 
 **Experimental Final Response Match V2 (final_response_match_v2):**
+
 - LLM judge binary validity vs reference; score in [0,1].
 - May change; not yet exposed by default criteria (add explicitly if needed).
 
 **Current Manual Assessment:**
+
 ```typescript
 function assessResponseQuality(response: string, query: string) {
   const quality = {
     relevance: 0,
     completeness: 0,
     clarity: 0,
-    accuracy: 0
+    accuracy: 0,
   };
 
   // Relevance assessment
@@ -166,16 +184,19 @@ function assessResponseQuality(response: string, query: string) {
 ### Content Analysis
 
 **Accuracy Assessment:**
+
 - **Factual Correctness**: Verification against known ground truth
 - **Consistency**: Alignment with previous responses and established facts
 - **Source Attribution**: Proper citation when using external information
 
 **Relevance Measurement:**
+
 - **Query Alignment**: How well response addresses the user question
 - **Context Appropriateness**: Suitable for the conversation context
 - **User Intent**: Fulfillment of underlying user needs
 
 **Completeness Evaluation:**
+
 - **Information Coverage**: All necessary information provided
 - **Follow-up Handling**: Addressing natural follow-up questions
 - **Detail Level**: Appropriate depth for the query complexity
@@ -183,28 +204,29 @@ function assessResponseQuality(response: string, query: string) {
 ### Tone and Style Analysis
 
 **Communication Quality:**
+
 ```typescript
 function analyzeCommunicationStyle(response: string) {
   return {
     tone: detectTone(response), // friendly, professional, helpful
     clarity: assessClarity(response), // clear, confusing, verbose
     appropriateness: checkAppropriatenessForContext(response),
-    engagement: measureEngagementLevel(response)
+    engagement: measureEngagementLevel(response),
   };
 }
 
 function detectTone(text: string): string {
   // Simple keyword-based analysis
-  const friendlyWords = ['please', 'thank you', 'happy to help'];
-  const professionalWords = ['regarding', 'furthermore', 'consequently'];
+  const friendlyWords = ["please", "thank you", "happy to help"];
+  const professionalWords = ["regarding", "furthermore", "consequently"];
 
   if (friendlyWords.some(word => text.toLowerCase().includes(word))) {
-    return 'friendly';
+    return "friendly";
   }
   if (professionalWords.some(word => text.toLowerCase().includes(word))) {
-    return 'professional';
+    return "professional";
   }
-  return 'neutral';
+  return "neutral";
 }
 ```
 
@@ -216,10 +238,10 @@ Combine multiple metrics for holistic assessment:
 
 ```typescript
 interface EvaluationWeights {
-  trajectory: number;      // 0.4 - How agents reach solutions
-  accuracy: number;        // 0.3 - Correctness of responses
-  relevance: number;       // 0.2 - Appropriateness to query
-  efficiency: number;      // 0.1 - Speed and resource usage
+  trajectory: number; // 0.4 - How agents reach solutions
+  accuracy: number; // 0.3 - Correctness of responses
+  relevance: number; // 0.2 - Appropriateness to query
+  efficiency: number; // 0.1 - Speed and resource usage
 }
 
 function calculateCompositeScore(
@@ -231,8 +253,8 @@ function calculateCompositeScore(
     trajectory: 0.4,
     accuracy: 0.3,
     relevance: 0.2,
-    efficiency: 0.1
-  }
+    efficiency: 0.1,
+  },
 ): number {
   return (
     trajectoryScore * weights.trajectory +
@@ -246,23 +268,24 @@ function calculateCompositeScore(
 ### Pass/Fail Criteria
 
 **Threshold-Based Evaluation:**
+
 ```typescript
 interface QualityThresholds {
-  trajectory: number;      // Minimum 0.85
-  accuracy: number;        // Minimum 0.90
-  relevance: number;       // Minimum 0.75
-  overall: number;         // Minimum 0.80
+  trajectory: number; // Minimum 0.85
+  accuracy: number; // Minimum 0.90
+  relevance: number; // Minimum 0.75
+  overall: number; // Minimum 0.80
 }
 
 function evaluateAgentPerformance(
   scores: Record<string, number>,
-  thresholds: QualityThresholds
+  thresholds: QualityThresholds,
 ): { pass: boolean; details: Record<string, boolean> } {
   const details = {
     trajectory: scores.trajectory >= thresholds.trajectory,
     accuracy: scores.accuracy >= thresholds.accuracy,
     relevance: scores.relevance >= thresholds.relevance,
-    overall: scores.overall >= thresholds.overall
+    overall: scores.overall >= thresholds.overall,
   };
 
   const pass = Object.values(details).every(Boolean);
@@ -281,7 +304,7 @@ Since agent responses vary, multiple runs provide statistical significance:
 async function runMultipleEvaluations(
   agent: LlmAgent,
   query: string,
-  runs: number = 5
+  runs: number = 5,
 ) {
   const scores = [];
 
@@ -291,14 +314,15 @@ async function runMultipleEvaluations(
   }
 
   const mean = scores.reduce((a, b) => a + b) / scores.length;
-  const variance = scores.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / scores.length;
+  const variance =
+    scores.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / scores.length;
   const stdDev = Math.sqrt(variance);
 
   return {
     mean,
     stdDev,
     confidence95: [mean - 1.96 * stdDev, mean + 1.96 * stdDev],
-    allScores: scores
+    allScores: scores,
   };
 }
 ```
@@ -327,7 +351,7 @@ function analyzePerformanceTrend(records: PerformanceRecord[]) {
     avgScore: scores.reduce((a, b) => a + b) / scores.length,
     minScore: Math.min(...scores),
     maxScore: Math.max(...scores),
-    sampleSize: scores.length
+    sampleSize: scores.length,
   }));
 }
 ```
@@ -337,11 +361,13 @@ function analyzePerformanceTrend(records: PerformanceRecord[]) {
 ### Customer Support Agents
 
 **Resolution Rate:**
+
 - **Metric**: Percentage of issues successfully resolved
 - **Measurement**: Track escalation vs resolution outcomes
 - **Target**: 80%+ first-contact resolution
 
 **User Satisfaction Proxy:**
+
 - **Indicators**: Response helpfulness, clarity, completeness
 - **Measurement**: Structured evaluation of response quality
 - **Benchmarking**: Compare against human agent performance
@@ -349,11 +375,13 @@ function analyzePerformanceTrend(records: PerformanceRecord[]) {
 ### Information Retrieval Agents
 
 **Search Accuracy:**
+
 - **Precision**: Relevant results / Total results returned
 - **Recall**: Relevant results found / Total relevant results available
 - **F1 Score**: Harmonic mean of precision and recall
 
 **Source Attribution:**
+
 - **Metric**: Percentage of claims with proper citations
 - **Quality**: Accuracy and reliability of cited sources
 - **Compliance**: Adherence to attribution requirements
@@ -361,11 +389,13 @@ function analyzePerformanceTrend(records: PerformanceRecord[]) {
 ### Task Automation Agents
 
 **Completion Rate:**
+
 - **Success**: Tasks completed successfully without intervention
 - **Efficiency**: Time to completion vs baseline
 - **Error Handling**: Graceful handling of unexpected conditions
 
 **Integration Quality:**
+
 - **API Usage**: Proper integration with external systems
 - **Data Handling**: Correct processing and transformation
 - **Error Recovery**: Resilience to system failures
@@ -373,20 +403,24 @@ function analyzePerformanceTrend(records: PerformanceRecord[]) {
 ## Available Evaluation Metrics
 
 <Callout type="info" title="Current Implementation">
-The following metrics are available in the ADK evaluation framework. Additional advanced analytics are planned for future releases.
+
+The following metrics are available in the ADK evaluation framework.
+Additional advanced analytics are planned for future releases.
+
 </Callout>
 
 **Built-in Metric Keys (use in criteria):**
 
-| Key | Description | Range | Typical Threshold |
-| --- | ----------- | ----- | ----------------- |
-| tool_trajectory_avg_score | Avg binary match of expected vs actual tool sequences | 0–1 | 1.0 (strict) |
-| response_match_score | ROUGE‑1 similarity F1 | 0–1 | 0.7–0.9 |
-| response_evaluation_score | LLM judge qualitative score | 1–5 | 3–4 |
-| safety_v1 | Safety / harmlessness (pass/fail mapped) | 0–1 | 1.0 |
-| final_response_match_v2 (experimental) | LLM judged exactness vs reference | 0–1 | 0.8–0.95 |
+| Key                                    | Description                                           | Range | Typical Threshold |
+| -------------------------------------- | ----------------------------------------------------- | ----- | ----------------- |
+| tool_trajectory_avg_score              | Avg binary match of expected vs actual tool sequences | 0–1   | 1.0 (strict)      |
+| response_match_score                   | ROUGE‑1 similarity F1                                 | 0–1   | 0.7–0.9           |
+| response_evaluation_score              | LLM judge qualitative score                           | 1–5   | 3–4               |
+| safety_v1                              | Safety / harmlessness (pass/fail mapped)              | 0–1   | 1.0               |
+| final_response_match_v2 (experimental) | LLM judged exactness vs reference                     | 0–1   | 0.8–0.95          |
 
 **Criteria Configuration Example (test_config.json):**
+
 ```json
 {
   "criteria": {
@@ -430,3 +464,4 @@ The following metrics are available in the ADK evaluation framework. Additional 
 **Trend Analysis**: Monitor performance patterns over time
 **Root Cause Analysis**: Investigate performance degradations
 **Improvement Tracking**: Measure impact of optimization efforts
+```

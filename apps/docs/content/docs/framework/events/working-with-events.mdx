@@ -3,8 +3,8 @@ title: Working with Events
 description: Practical patterns and examples for handling events in ADK applications
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 This guide provides practical patterns for handling events in your ADK applications, from basic event processing to advanced patterns for complex workflows.
 
@@ -15,7 +15,7 @@ This guide provides practical patterns for handling events in your ADK applicati
 First, understand what type of event you're dealing with:
 
 ```typescript
-import { Event } from '@iqai/adk';
+import { Event } from "@iqai/adk";
 
 function processEvent(event: Event) {
   console.log(`Event from: ${event.author}`);
@@ -38,7 +38,9 @@ function processEvent(event: Event) {
         console.log(`  Result from: ${response.name}`, response.response);
       });
     } else if (event.content.parts[0]?.text) {
-      console.log(event.partial ? "Type: Streaming Text" : "Type: Complete Text");
+      console.log(
+        event.partial ? "Type: Streaming Text" : "Type: Complete Text",
+      );
     }
   }
 }
@@ -61,9 +63,10 @@ function extractText(event: Event): string | null {
 // Usage
 const text = extractText(event);
 if (text) {
-  console.log("Message:", text);
+console.log("Message:", text);
 }
-```
+
+````
 </Tab>
 
 <Tab value="Function Calls">
@@ -88,7 +91,8 @@ function processFunctionCalls(event: Event) {
     }
   }
 }
-```
+````
+
 </Tab>
 
 <Tab value="Function Responses">
@@ -96,8 +100,8 @@ function processFunctionCalls(event: Event) {
 function processFunctionResponses(event: Event) {
   const responses = event.getFunctionResponses();
 
-  for (const response of responses) {
-    console.log(`Tool ${response.name} returned:`, response.response);
+for (const response of responses) {
+console.log(`Tool ${response.name} returned:`, response.response);
 
     // Handle specific tool responses
     if (response.name === 'search') {
@@ -105,9 +109,11 @@ function processFunctionResponses(event: Event) {
     } else if (response.name === 'sendEmail') {
       showEmailConfirmation(response.response);
     }
-  }
+
 }
-```
+}
+
+````
 </Tab>
 </Tabs>
 
@@ -149,7 +155,7 @@ async function processAgentConversation(runner, query, session) {
     processEventActions(event);
   }
 }
-```
+````
 
 ### Custom Event Filters
 
@@ -157,22 +163,23 @@ Create filters for specific event types:
 
 ```typescript
 // Filter by author
-const agentEvents = events.filter(event => event.author !== 'user');
-const userEvents = events.filter(event => event.author === 'user');
+const agentEvents = events.filter(event => event.author !== "user");
+const userEvents = events.filter(event => event.author === "user");
 
 // Filter by content type
-const textEvents = events.filter(event =>
-  event.content?.parts?.[0]?.text && !event.partial
+const textEvents = events.filter(
+  event => event.content?.parts?.[0]?.text && !event.partial,
 );
 
-const toolEvents = events.filter(event =>
-  event.getFunctionCalls().length > 0 ||
-  event.getFunctionResponses().length > 0
+const toolEvents = events.filter(
+  event =>
+    event.getFunctionCalls().length > 0 ||
+    event.getFunctionResponses().length > 0,
 );
 
 // Filter by time range
-const recentEvents = events.filter(event =>
-  event.timestamp > (Date.now() / 1000) - 3600 // Last hour
+const recentEvents = events.filter(
+  event => event.timestamp > Date.now() / 1000 - 3600, // Last hour
 );
 ```
 
@@ -193,13 +200,13 @@ function handleStateChanges(event: Event) {
 
     // React to specific state changes
     switch (key) {
-      case 'user_preference':
+      case "user_preference":
         updateUserInterface(value);
         break;
-      case 'task_status':
+      case "task_status":
         updateTaskProgress(value);
         break;
-      case 'app:theme':
+      case "app:theme":
         applyTheme(value);
         break;
     }
@@ -221,9 +228,9 @@ function handleArtifactChanges(event: Event) {
     console.log(`File updated: ${filename} (version ${version})`);
 
     // Refresh file displays
-    if (filename.endsWith('.pdf')) {
+    if (filename.endsWith(".pdf")) {
       refreshPdfViewer(filename);
-    } else if (filename.endsWith('.json')) {
+    } else if (filename.endsWith(".json")) {
       refreshDataView(filename);
     }
   }
@@ -246,17 +253,19 @@ class EventAggregator {
 
   getConversationSummary(invocationId: string) {
     const conversationEvents = this.events.filter(
-      event => event.invocationId === invocationId
+      event => event.invocationId === invocationId,
     );
 
     return {
       totalEvents: conversationEvents.length,
-      userMessages: conversationEvents.filter(e => e.author === 'user').length,
-      agentResponses: conversationEvents.filter(e => e.author !== 'user').length,
+      userMessages: conversationEvents.filter(e => e.author === "user").length,
+      agentResponses: conversationEvents.filter(e => e.author !== "user")
+        .length,
       toolCalls: conversationEvents.reduce(
-        (sum, e) => sum + e.getFunctionCalls().length, 0
+        (sum, e) => sum + e.getFunctionCalls().length,
+        0,
       ),
-      duration: this.getConversationDuration(conversationEvents)
+      duration: this.getConversationDuration(conversationEvents),
     };
   }
 
@@ -279,7 +288,7 @@ function replayEvents(events: Event[]): Record<string, any> {
   for (const event of events.sort((a, b) => a.timestamp - b.timestamp)) {
     if (event.actions?.stateDelta) {
       for (const [key, value] of Object.entries(event.actions.stateDelta)) {
-        if (!key.startsWith('temp_')) {
+        if (!key.startsWith("temp_")) {
           state[key] = value;
         }
       }
@@ -305,9 +314,8 @@ function processEventSafely(event: Event) {
 
     // Normal processing
     processEvent(event);
-
   } catch (error) {
-    console.error('Error processing event:', error);
+    console.error("Error processing event:", error);
     logEventError(event, error);
   }
 }
@@ -318,10 +326,10 @@ function handleEventError(event: Event) {
 
   // Show user-friendly error message
   switch (event.errorCode) {
-    case 'SAFETY_FILTER_TRIGGERED':
+    case "SAFETY_FILTER_TRIGGERED":
       showSafetyWarning();
       break;
-    case 'RATE_LIMIT_EXCEEDED':
+    case "RATE_LIMIT_EXCEEDED":
       showRateLimitMessage();
       break;
     default:
@@ -335,7 +343,7 @@ function handleEventError(event: Event) {
 ### React Integration
 
 ```typescript
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 function ConversationComponent({ runner, query, session }) {
   const [events, setEvents] = useState<Event[]>([]);

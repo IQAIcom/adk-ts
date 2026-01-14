@@ -3,13 +3,15 @@ title: Best Practices for Artifact Management
 description: Performance, security, versioning, and production considerations for artifact management
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 This guide covers essential best practices for using artifacts in production environments, focusing on performance optimization, security considerations, and operational excellence.
 
 <Callout type="info">
-  For general ADK-TS best practices, see the [Best Practices
-  Guide](/docs/framework/guides/best-practices).
+
+For general ADK-TS best practices, see the [Best Practices
+Guide](/docs/framework/guides/best-practices).
+
 </Callout>
 
 ## Performance Optimization
@@ -22,10 +24,19 @@ Keep a small in-process cache for hot artifacts.
 const cache = new Map<string, { part: Part; ts: number }>();
 const TTL_MS = 5 * 60 * 1000;
 
-async function loadWithCache(svc: BaseArtifactService, key: {
-  appName: string; userId: string; sessionId: string; filename: string; version?: number
-}): Promise<Part | null> {
-  const k = `${key.appName}:${key.userId}:${key.sessionId}:${key.filename}:${key.version ?? 'latest'}`;
+async function loadWithCache(
+  svc: BaseArtifactService,
+  key: {
+    appName: string;
+    userId: string;
+    sessionId: string;
+    filename: string;
+    version?: number;
+  },
+): Promise<Part | null> {
+  const k = `${key.appName}:${key.userId}:${key.sessionId}:${key.filename}:${
+    key.version ?? "latest"
+  }`;
   const hit = cache.get(k);
   if (hit && Date.now() - hit.ts < TTL_MS) return hit.part;
   const part = await svc.loadArtifact(key);
@@ -38,9 +49,15 @@ async function loadWithCache(svc: BaseArtifactService, key: {
 
 ```typescript
 await Promise.all([
-  svc.saveArtifact({ /* args1 */ }),
-  svc.saveArtifact({ /* args2 */ }),
-  svc.saveArtifact({ /* args3 */ })
+  svc.saveArtifact({
+    /* args1 */
+  }),
+  svc.saveArtifact({
+    /* args2 */
+  }),
+  svc.saveArtifact({
+    /* args3 */
+  }),
 ]);
 ```
 
@@ -49,10 +66,11 @@ await Promise.all([
 ```typescript
 // Compress text/JSON before saving
 const json = JSON.stringify(someData);
-const compact = json.replace(/\s+/g, ' ');
+const compact = json.replace(/\s+/g, " ");
 
 // Validate size (default 10MB)
-const ok = Buffer.from(part.inlineData.data, 'base64').length <= 10 * 1024 * 1024;
+const ok =
+  Buffer.from(part.inlineData.data, "base64").length <= 10 * 1024 * 1024;
 ```
 
 ## Security and Access Control
@@ -60,20 +78,33 @@ const ok = Buffer.from(part.inlineData.data, 'base64').length <= 10 * 1024 * 102
 ### Data Validation
 
 ```typescript
-const ALLOWED = new Set(['text/plain','text/csv','application/json','image/png','image/jpeg','application/pdf']);
+const ALLOWED = new Set([
+  "text/plain",
+  "text/csv",
+  "application/json",
+  "image/png",
+  "image/jpeg",
+  "application/pdf",
+]);
 const MAX = 50 * 1024 * 1024;
 
 function validatePart(filename: string, part: Part) {
-  const errors: string[] = [], warnings: string[] = [];
+  const errors: string[] = [],
+    warnings: string[] = [];
   const mime = part.inlineData.mimeType;
-  const size = Buffer.from(part.inlineData.data, 'base64').length;
+  const size = Buffer.from(part.inlineData.data, "base64").length;
   if (!ALLOWED.has(mime)) errors.push(`Unsupported MIME: ${mime}`);
   if (size > MAX) errors.push(`File too large: ${size}`);
-  if (!/^[a-zA-Z0-9._-]+$/.test(filename.replace('user:', ''))) errors.push('Invalid filename');
-  if (mime === 'application/json') {
-    try { JSON.parse(Buffer.from(part.inlineData.data, 'base64').toString()); } catch { errors.push('Invalid JSON'); }
+  if (!/^[a-zA-Z0-9._-]+$/.test(filename.replace("user:", "")))
+    errors.push("Invalid filename");
+  if (mime === "application/json") {
+    try {
+      JSON.parse(Buffer.from(part.inlineData.data, "base64").toString());
+    } catch {
+      errors.push("Invalid JSON");
+    }
   }
-  if (size === 0) warnings.push('Empty file');
+  if (size === 0) warnings.push("Empty file");
   return { isValid: errors.length === 0, errors, warnings, size };
 }
 ```
@@ -133,7 +164,7 @@ class SecureArtifactService {
     permissions: string[]
   ): Promise<Part | null> {
     // Verify user can read artifacts
-    if (!permissions.includes('artifact:read')) 
+    if (!permissions.includes('artifact:read'))
       throw new Error('Insufficient permissions to read artifacts');
     }
 
@@ -192,7 +223,11 @@ class SecureArtifactService {
 For persistent storage like `GcsArtifactService`, artifacts remain until explicitly deleted. The `deleteArtifact` method allows you to remove artifacts and all their versions. This is a powerful operation that should be used carefully.
 
 <Callout type="warning" title="Safety Consideration">
-The `deleteArtifact` method is intentionally not exposed through context objects (`CallbackContext` or `ToolContext`) for safety reasons. It must be accessed directly through the artifact service instance.
+
+The `deleteArtifact` method is intentionally not exposed through context
+objects (`CallbackContext` or `ToolContext`) for safety reasons. It must be
+accessed directly through the artifact service instance.
+
 </Callout>
 
 ### When to Delete Artifacts
@@ -207,16 +242,16 @@ Consider implementing cleanup strategies when:
 ### Basic Deletion
 
 ```typescript
-import { GcsArtifactService } from '@iqai/adk';
+import { GcsArtifactService } from "@iqai/adk";
 
-const artifactService = new GcsArtifactService('my-bucket');
+const artifactService = new GcsArtifactService("my-bucket");
 
 // Delete a specific artifact (removes all versions)
 await artifactService.deleteArtifact({
-  appName: 'my_app',
-  userId: 'user123',
-  sessionId: 'session456',
-  filename: 'temp_processing.csv'
+  appName: "my_app",
+  userId: "user123",
+  sessionId: "session456",
+  filename: "temp_processing.csv",
 });
 ```
 
@@ -238,8 +273,8 @@ gsutil lifecycle set lifecycle.json gs://my-artifacts-bucket
   "lifecycle": {
     "rule": [
       {
-        "action": {"type": "Delete"},
-        "condition": {"age": 90}
+        "action": { "type": "Delete" },
+        "condition": { "age": 90 }
       }
     ]
   }
@@ -251,30 +286,30 @@ gsutil lifecycle set lifecycle.json gs://my-artifacts-bucket
 Build specific tools or administrative functions that utilize `deleteArtifact`:
 
 ```typescript
-import { BaseArtifactService } from '@iqai/adk';
+import { BaseArtifactService } from "@iqai/adk";
 
 // Simple cleanup function for temporary artifacts
 async function cleanupTemporaryArtifacts(
   artifactService: BaseArtifactService,
   appName: string,
   userId: string,
-  sessionId: string
+  sessionId: string,
 ): Promise<void> {
   const artifacts = await artifactService.listArtifactKeys({
     appName,
     userId,
-    sessionId
+    sessionId,
   });
 
   // Delete artifacts that start with 'temp_'
   for (const filename of artifacts) {
-    if (filename.startsWith('temp_')) {
+    if (filename.startsWith("temp_")) {
       try {
         await artifactService.deleteArtifact({
           appName,
           userId,
           sessionId,
-          filename
+          filename,
         });
       } catch (error) {
         console.warn(`Failed to delete ${filename}:`, error);
@@ -290,31 +325,31 @@ Carefully manage filenames to allow pattern-based deletion:
 
 ```typescript
 // Use consistent naming conventions for easy cleanup
-const TEMP_PREFIX = 'temp_';
-const CACHE_PREFIX = 'cache_';
-const USER_DATA_PREFIX = 'user:';
+const TEMP_PREFIX = "temp_";
+const CACHE_PREFIX = "cache_";
+const USER_DATA_PREFIX = "user:";
 
 async function cleanupByPattern(
   artifactService: BaseArtifactService,
   appName: string,
   userId: string,
-  sessionId: string
+  sessionId: string,
 ) {
   const artifacts = await artifactService.listArtifactKeys({
     appName,
     userId,
-    sessionId
+    sessionId,
   });
 
   // Delete all temporary artifacts
   const tempArtifacts = artifacts.filter(name => name.startsWith(TEMP_PREFIX));
-  
+
   for (const filename of tempArtifacts) {
     await artifactService.deleteArtifact({
       appName,
       userId,
       sessionId,
-      filename
+      filename,
     });
   }
 }
@@ -325,17 +360,17 @@ async function cleanupByPattern(
 Implement scheduled cleanup for production environments:
 
 ```typescript
-import { BaseArtifactService } from '@iqai/adk';
+import { BaseArtifactService } from "@iqai/adk";
 
 class ScheduledArtifactCleanup {
   constructor(
     private artifactService: BaseArtifactService,
-    private appName: string
+    private appName: string,
   ) {}
 
   async runDailyCleanup(): Promise<void> {
     // This would typically be called by a cron job or scheduler
-    console.log('Starting daily artifact cleanup...');
+    console.log("Starting daily artifact cleanup...");
 
     // Get all users (implementation depends on your user management)
     const users = await this.getAllUsers();
@@ -349,12 +384,12 @@ class ScheduledArtifactCleanup {
       }
     }
 
-    console.log('Daily cleanup completed');
+    console.log("Daily cleanup completed");
   }
 
   private async cleanupOldArtifacts(
     userId: string,
-    daysOld: number
+    daysOld: number,
   ): Promise<void> {
     // Implementation would check artifact metadata/timestamps
     // and delete artifacts older than specified days
@@ -390,12 +425,12 @@ class ArtifactVersionManager {
     appName: string,
     userId: string,
     sessionId: string,
-    retentionPolicy: RetentionPolicy
+    retentionPolicy: RetentionPolicy,
   ): Promise<CleanupResult> {
     const artifacts = await this.artifactService.listArtifactKeys({
       appName,
       userId,
-      sessionId
+      sessionId,
     });
 
     let totalDeleted = 0;
@@ -407,12 +442,12 @@ class ArtifactVersionManager {
           appName,
           userId,
           sessionId,
-          filename
+          filename,
         });
 
         const versionsToDelete = this.selectVersionsForDeletion(
           versions,
-          retentionPolicy
+          retentionPolicy,
         );
 
         for (const version of versionsToDelete) {
@@ -421,7 +456,6 @@ class ArtifactVersionManager {
           console.log(`Would delete ${filename} version ${version}`);
           totalDeleted++;
         }
-
       } catch (error) {
         errors.push(`Failed to cleanup ${filename}: ${error.message}`);
       }
@@ -430,26 +464,26 @@ class ArtifactVersionManager {
     return {
       artifactsProcessed: artifacts.length,
       versionsDeleted: totalDeleted,
-      errors
+      errors,
     };
   }
 
   private selectVersionsForDeletion(
     versions: number[],
-    policy: RetentionPolicy
+    policy: RetentionPolicy,
   ): number[] {
     const sortedVersions = [...versions].sort((a, b) => b - a); // newest first
 
     switch (policy.strategy) {
-      case 'keep_latest':
+      case "keep_latest":
         return sortedVersions.slice(policy.count);
 
-      case 'keep_recent':
+      case "keep_recent":
         // Keep versions from the last N days (simplified)
         const cutoffVersion = sortedVersions[policy.count - 1] || 0;
         return versions.filter(v => v < cutoffVersion);
 
-      case 'custom':
+      case "custom":
         return policy.customSelector(versions);
 
       default:
@@ -459,7 +493,7 @@ class ArtifactVersionManager {
 }
 
 interface RetentionPolicy {
-  strategy: 'keep_latest' | 'keep_recent' | 'custom';
+  strategy: "keep_latest" | "keep_recent" | "custom";
   count: number;
   customSelector?: (versions: number[]) => number[];
 }
@@ -479,7 +513,7 @@ Implement backup and recovery for critical artifacts:
 class ArtifactBackupService {
   constructor(
     private primaryService: BaseArtifactService,
-    private backupService: BaseArtifactService
+    private backupService: BaseArtifactService,
   ) {}
 
   async saveWithBackup(args: {
@@ -494,7 +528,7 @@ class ArtifactBackupService {
 
     // Async backup (don't wait for completion)
     this.backupArtifact(args, version).catch(error => {
-      console.error('Backup failed:', error);
+      console.error("Backup failed:", error);
     });
 
     return version;
@@ -508,7 +542,7 @@ class ArtifactBackupService {
       filename: string;
       artifact: Part;
     },
-    version: number
+    version: number,
   ): Promise<void> {
     try {
       // Add backup metadata
@@ -517,17 +551,16 @@ class ArtifactBackupService {
         inlineData: {
           ...args.artifact.inlineData,
           // Add backup metadata to MIME type
-          mimeType: `${args.artifact.inlineData.mimeType}; backup=true; original-version=${version}`
-        }
+          mimeType: `${args.artifact.inlineData.mimeType}; backup=true; original-version=${version}`,
+        },
       };
 
       await this.backupService.saveArtifact({
         ...args,
-        artifact: backupArtifact
+        artifact: backupArtifact,
       });
-
     } catch (error) {
-      console.error('Failed to create backup:', error);
+      console.error("Failed to create backup:", error);
       throw error;
     }
   }
@@ -539,7 +572,7 @@ class ArtifactBackupService {
     filename: string;
     version?: number;
   }): Promise<Part | null> {
-    console.log('Attempting restore from backup...');
+    console.log("Attempting restore from backup...");
 
     try {
       const backup = await this.backupService.loadArtifact(args);
@@ -550,23 +583,22 @@ class ArtifactBackupService {
           ...backup,
           inlineData: {
             ...backup.inlineData,
-            mimeType: backup.inlineData.mimeType.split(';')[0]
-          }
+            mimeType: backup.inlineData.mimeType.split(";")[0],
+          },
         };
 
         // Restore to primary storage
         await this.primaryService.saveArtifact({
           ...args,
-          artifact: cleanArtifact
+          artifact: cleanArtifact,
         });
 
         return cleanArtifact;
       }
 
       return null;
-
     } catch (error) {
-      console.error('Backup restore failed:', error);
+      console.error("Backup restore failed:", error);
       throw error;
     }
   }
@@ -581,8 +613,11 @@ class ArtifactBackupService {
 async function withRetry<T>(op: () => Promise<T>, attempts = 3, base = 1000) {
   let last: unknown;
   for (let i = 0; i <= attempts; i++) {
-    try { return await op(); } catch (e) {
-      last = e; if (i === attempts) break;
+    try {
+      return await op();
+    } catch (e) {
+      last = e;
+      if (i === attempts) break;
       await new Promise(r => setTimeout(r, base * Math.pow(2, i)));
     }
   }
@@ -604,7 +639,7 @@ class ArtifactMetricsCollector {
     errors: 0,
     totalSize: 0,
     averageSize: 0,
-    operationTimes: [] as number[]
+    operationTimes: [] as number[],
   };
 
   constructor(private artifactService: BaseArtifactService) {}
@@ -623,12 +658,11 @@ class ArtifactMetricsCollector {
 
       // Record success metrics
       this.metrics.saves++;
-      const size = Buffer.from(args.artifact.inlineData.data, 'base64').length;
+      const size = Buffer.from(args.artifact.inlineData.data, "base64").length;
       this.updateSizeMetrics(size);
       this.recordOperationTime(Date.now() - startTime);
 
       return version;
-
     } catch (error) {
       this.metrics.errors++;
       throw error;
@@ -651,14 +685,13 @@ class ArtifactMetricsCollector {
       this.metrics.loads++;
 
       if (artifact) {
-        const size = Buffer.from(artifact.inlineData.data, 'base64').length;
+        const size = Buffer.from(artifact.inlineData.data, "base64").length;
         this.updateSizeMetrics(size);
       }
 
       this.recordOperationTime(Date.now() - startTime);
 
       return artifact;
-
     } catch (error) {
       this.metrics.errors++;
       throw error;
@@ -685,13 +718,16 @@ class ArtifactMetricsCollector {
 
     return {
       ...this.metrics,
-      averageOperationTime: times.length > 0
-        ? times.reduce((a, b) => a + b, 0) / times.length
-        : 0,
-      p95OperationTime: times.length > 0
-        ? times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)]
-        : 0,
-      errorRate: (this.metrics.errors / (this.metrics.saves + this.metrics.loads + this.metrics.errors)) * 100
+      averageOperationTime:
+        times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0,
+      p95OperationTime:
+        times.length > 0
+          ? times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)]
+          : 0,
+      errorRate:
+        (this.metrics.errors /
+          (this.metrics.saves + this.metrics.loads + this.metrics.errors)) *
+        100,
     };
   }
 
@@ -702,7 +738,7 @@ class ArtifactMetricsCollector {
       errors: 0,
       totalSize: 0,
       averageSize: 0,
-      operationTimes: []
+      operationTimes: [],
     };
   }
 }
@@ -735,5 +771,8 @@ class ArtifactMetricsCollector {
 - **Security Audits**: Regular security reviews of artifact access
 
 <Callout type="warning">
-Always test artifact operations thoroughly in staging environments before deploying to production.
+
+Always test artifact operations thoroughly in staging environments before
+deploying to production.
+
 </Callout>

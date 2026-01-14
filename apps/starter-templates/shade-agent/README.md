@@ -20,6 +20,7 @@ A template showing how to build AI agents that automatically fetch Ethereum pric
 This template demonstrates how to build **AI-powered applications** that:
 
 1. **🤖 Uses AI Agents** (built with ADK-TS) to fetch real-time data:
+
    - **Price Agent**: Gets current ETH price from CoinGecko API
    - **Sentiment Agent**: Analyzes ETH sentiment from Reddit headlines using AI
 
@@ -103,11 +104,11 @@ npx near-cli-rs account export-account your-name.testnet
 
 > **Important Notes:**
 >
-- 💾 Save both your account ID (e.g., "your-name.testnet") and seed phrase
-- 🔒 Keep your seed phrase secure - it's like a password for your account
-- If you get "account already exists" error:
-  - The account name is taken, try a different name
-  - Or if you created it before, just export the existing account using the export command above
+> - 💾 Save both your account ID (e.g., "your-name.testnet") and seed phrase
+> - 🔒 Keep your seed phrase secure - it's like a password for your account
+> - If you get "account already exists" error:
+>   - The account name is taken, try a different name
+>   - Or if you created it before, just export the existing account using the export command above
 
 #### 🔑 Phala API Key (Required)
 

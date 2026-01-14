@@ -4,25 +4,29 @@ description: Deploy ADK-TS agents using Docker containers
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
 
 Docker allows you to package your ADK-TS agent with all its dependencies into a portable container that can run anywhere. **Best for**: Flexible deployment, any hosting provider, and local development. Docker offers platform-agnostic, reproducible builds with wide hosting options, though it requires container management and orchestration setup. This guide covers creating optimized Docker images and deploying them to various platforms.
 
-## Prerequisites
+## What You'll Need
 
-- **Docker**: Installed and configured - [Get Docker](https://docs.docker.com/get-docker/)
-- **ADK-TS Project**: Your agent code ready to containerize
-- **Container Registry Account**: DockerHub, GitHub Container Registry, or AWS ECR (for publishing)
-- **Hosting Platform**: Choose from Railway, AWS, Google Cloud, or any Docker-compatible host
+Before deploying to Docker, ensure you have:
+
+- **[Docker](https://docs.docker.com/get-docker/)** installed and configured on your local machine
+- A **Container Registry Account** (e.g., Docker Hub, GitHub Container Registry, AWS ECR) for storing your Docker images
+- A **Cloud Platform Account**: (e.g., Railway, AWS, Google Cloud) for deploying your Docker containers
+- Your **ADK-TS project** ready for deployment.
 
 ## Deployment Options
 
-You can deploy Docker containers using:
+Docker-based deployments can be done in two main ways:
 
-1. **Container Registry + Cloud Platform**: Build locally, push to registry, deploy to cloud
-2. **Direct Docker Host**: Deploy to a server running Docker
-3. **Docker Compose**: Manage multi-container deployments locally or on a server
+1. [**Deploy via Container Registry**](#option-1-deploy-via-container-registry): Build locally, push to registry, deploy to cloud
+2. [**Deploy to Docker Host**](#option-2-deploy-to-docker-host): Deploy directly to your own server or VPS running Docker
 
 ## Option 1: Deploy via Container Registry
+
+Build your Docker image locally, push it to a container registry, and deploy to cloud platforms.
 
 ### Step 1: Create Dockerfile
 
@@ -75,9 +79,10 @@ docker buildx build --platform linux/amd64 -t my-adk-agent:latest .
 ```
 
 <Callout type="info" title="Why AMD64?">
-  If you're on an Apple Silicon Mac (M1/M2/M3), your computer uses ARM64. But
-  most cloud providers use AMD64 processors. Building with `--platform
-  linux/amd64` ensures your image works on cloud servers.
+
+If you're on an Apple Silicon Mac (M1/M2/M3), your computer uses ARM64. But
+most cloud providers use AMD64 processors. Building with `--platform linux/amd64` ensures your image works on cloud servers.
+
 </Callout>
 
 ### Step 3: Push to Container Registry
@@ -141,7 +146,7 @@ Now that your image is in a registry, deploy it to a cloud platform.
 2. Create a new project/service
 3. Select **"Deploy from Docker Image"** or similar option
 4. Enter your image name (e.g., `username/my-adk-agent:latest`)
-5. Add your environment variables from your project's `.env` file
+5. **Add environment variables**: Each platform has a Variables/Environment section where you can add required variables
 6. Click Deploy
 
 The platform will pull your image from the registry and run it.
@@ -151,14 +156,15 @@ The platform will pull your image from the registry and run it.
 1. Navigate to the container service in the cloud console
 2. Create a new container instance/service
 3. Specify your container registry image URL
-4. Configure environment variables, memory, and CPU limits
-5. Deploy the service
+4. **Configure environment variables**: Add all required variables (API keys, tokens, model names, etc.) in the environment configuration section
+5. Set memory and CPU limits based on your agent's needs
+6. Deploy the service
 
-Each platform has slightly different interfaces, but the core concept is the same: point to your Docker image and configure settings.
+Each platform has slightly different interfaces, but the core concept is the same: point to your Docker image, configure environment variables, and set resource limits.
 
 ## Option 2: Deploy to Docker Host
 
-This option is for deploying directly to your own server (VPS, dedicated server, etc.) instead of using a managed cloud platform.
+Deploy directly to your own server or VPS running Docker instead of using a managed cloud platform.
 
 ### Step 1: Prepare Your Server
 
@@ -230,8 +236,10 @@ DISCORD_TOKEN=your_token_here
 ```
 
 <Callout type="warn" title="Never Commit Secrets">
-  Add `.env` to your `.gitignore` to prevent committing sensitive data. Never
-  share this file publicly.
+
+Add `.env` to your `.gitignore` to prevent committing sensitive data. Never
+share this file publicly.
+
 </Callout>
 
 ## Verifying Deployment
@@ -460,6 +468,26 @@ README.md
 
 ## Next Steps
 
-- Deploy your Docker image to [Railway](/docs/framework/guides/deployment/railway) for managed hosting
-- Learn production best practices (guide coming soon)
-- Set up monitoring and alerting for your deployed agents
+<Cards>
+  <Card
+    title="🚂 Railway Deployment"
+    href="/docs/framework/guides/deployment/railway"
+  >
+    Deploy to Railway for managed hosting
+  </Card>
+  <Card
+    title="⚡ Vercel Deployment"
+    href="/docs/framework/guides/deployment/vercel"
+  >
+    Configure Vercel for serverless API agents
+  </Card>
+  <Card title="☁️ AWS Deployment" href="/docs/framework/guides/deployment/aws">
+    Deploy to AWS using Lambda, ECS, or EC2
+  </Card>
+  <Card
+    title="📋 Production Best Practices"
+    href="/docs/framework/guides/best-practices"
+  >
+    Learn production best practices for your agents
+  </Card>
+</Cards>

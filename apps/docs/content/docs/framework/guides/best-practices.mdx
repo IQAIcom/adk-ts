@@ -85,13 +85,13 @@ Add comments explaining why, not just what. Future you (and your team) will than
 // Using gemini-2.0-flash-lite for summarization to reduce costs
 // while maintaining adequate quality for event compaction
 const summarizer = new LlmEventSummarizer(
-  LLMRegistry.newLLM("gemini-2.0-flash-lite")
+  LLMRegistry.newLLM("gemini-2.0-flash-lite"),
 );
 
 // ❌ Bad: Only describes code
 // Create summarizer instance
 const summarizer = new LlmEventSummarizer(
-  LLMRegistry.newLLM("gemini-2.0-flash-lite")
+  LLMRegistry.newLLM("gemini-2.0-flash-lite"),
 );
 ```
 
@@ -387,7 +387,7 @@ class RateLimiter {
 
   async checkLimit(): Promise<boolean> {
     const now = Date.now();
-    this.requests = this.requests.filter((time) => now - time < this.windowMs);
+    this.requests = this.requests.filter(time => now - time < this.windowMs);
     if (this.requests.length >= this.maxRequests) return false;
     this.requests.push(now);
     return true;
@@ -441,7 +441,7 @@ app.get("/health", async (req, res) => {
       llm: await checkLLMConnection(),
     },
   };
-  const allHealthy = Object.values(checks.services).every((s) => s === "ok");
+  const allHealthy = Object.values(checks.services).every(s => s === "ok");
   res.status(allHealthy ? 200 : 503).json(checks);
 });
 ```
@@ -457,7 +457,7 @@ function recordMetric(metric: string, value: number) {
       metric,
       value,
       timestamp: new Date().toISOString(),
-    })
+    }),
   );
 }
 ```

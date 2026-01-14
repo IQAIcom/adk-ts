@@ -9,9 +9,11 @@ import { Callout } from "fumadocs-ui/components/callout";
 Integrate REST APIs documented with [OpenAPI specifications](https://swagger.io/specification/) into your ADK agents. You can use the built-in `HttpRequestTool` for general API access or create type-safe custom tools with generated TypeScript types.
 
 <Callout type="info">
-  ADK-TS does not include automatic tool generation from OpenAPI specs. Use
-  `HttpRequestTool` for quick integration or create custom typed tools for
-  better type safety and control.
+
+ADK-TS does not include automatic tool generation from OpenAPI specs. Use
+`HttpRequestTool` for quick integration or create custom typed tools for
+better type safety and control.
+
 </Callout>
 
 ## Two Approaches
@@ -35,13 +37,13 @@ const { runner } = await AgentBuilder.create("api-agent")
     `
     You can make HTTP requests using http_request tool.
     Include authentication headers and handle responses appropriately.
-  `
+  `,
   )
   .build();
 
 // Agent can now call any API by constructing requests
 await runner.ask(
-  "Get the current weather for London from api.openweathermap.org"
+  "Get the current weather for London from api.openweathermap.org",
 );
 ```
 
