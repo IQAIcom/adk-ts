@@ -4,6 +4,12 @@ import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
+export interface GlobToolResult {
+	success: boolean;
+	data?: string[];
+	error?: string;
+}
+
 export class GlobTool extends BaseTool {
 	constructor() {
 		super({
@@ -32,7 +38,7 @@ export class GlobTool extends BaseTool {
 	async runAsync(
 		args: { pattern: string },
 		_context: ToolContext,
-	): Promise<any> {
+	): Promise<GlobToolResult> {
 		try {
 			const matches: string[] = [];
 

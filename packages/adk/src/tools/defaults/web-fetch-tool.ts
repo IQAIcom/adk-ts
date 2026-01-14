@@ -4,6 +4,19 @@ import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
+export interface WebFetchToolResult {
+	success: boolean;
+	data?: {
+		title: string;
+		content: string;
+		metadata: {
+			contentType: string;
+			url: string;
+		};
+	};
+	error?: string;
+}
+
 export class WebFetchTool extends BaseTool {
 	constructor() {
 		super({
@@ -29,7 +42,10 @@ export class WebFetchTool extends BaseTool {
 		};
 	}
 
-	async runAsync(args: { url: string }, _context: ToolContext): Promise<any> {
+	async runAsync(
+		args: { url: string },
+		_context: ToolContext,
+	): Promise<WebFetchToolResult> {
 		try {
 			const response = await axios.get(args.url, {
 				timeout: 30000,

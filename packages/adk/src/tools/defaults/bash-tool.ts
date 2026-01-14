@@ -4,6 +4,12 @@ import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
+export interface BashToolResult {
+	exit_code: number | null;
+	stdout: string;
+	stderr: string;
+}
+
 export class BashTool extends BaseTool {
 	constructor() {
 		super({
@@ -32,7 +38,7 @@ export class BashTool extends BaseTool {
 	async runAsync(
 		args: { command: string },
 		_context: ToolContext,
-	): Promise<any> {
+	): Promise<BashToolResult> {
 		const { command } = args;
 
 		// Warn about destructive commands (simple heuristic)

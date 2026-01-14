@@ -49,7 +49,7 @@ export class TransferToAgentTool extends BaseTool {
 			agent_name: string;
 		},
 		context: ToolContext,
-	): Promise<any> {
+	): Promise<void> {
 		this.logger.debug(`Executing transfer to agent: ${args.agent_name}`);
 		context.actions.transferToAgent = args.agent_name;
 	}

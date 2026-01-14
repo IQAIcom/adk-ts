@@ -5,6 +5,12 @@ import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
+export interface ReadToolResult {
+	success: boolean;
+	data?: string;
+	error?: string;
+}
+
 export class ReadTool extends BaseTool {
 	constructor() {
 		super({
@@ -30,7 +36,10 @@ export class ReadTool extends BaseTool {
 		};
 	}
 
-	async runAsync(args: { path: string }, _context: ToolContext): Promise<any> {
+	async runAsync(
+		args: { path: string },
+		_context: ToolContext,
+	): Promise<ReadToolResult> {
 		try {
 			const filePath = path.resolve(process.cwd(), args.path);
 

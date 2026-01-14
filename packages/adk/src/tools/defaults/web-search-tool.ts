@@ -5,6 +5,13 @@ import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
+export interface WebSearchToolResult {
+	success: boolean;
+	data?: z.infer<typeof tavilySearchResponseSchema>;
+	error?: string | z.ZodError;
+	details?: any;
+}
+
 export class WebSearchTool extends BaseTool {
 	constructor() {
 		super({
@@ -101,7 +108,10 @@ export class WebSearchTool extends BaseTool {
 		};
 	}
 
-	async runAsync(rawArgs: unknown, _context: ToolContext): Promise<any> {
+	async runAsync(
+		_rawArgs: unknown,
+		_context: ToolContext,
+	): Promise<WebSearchToolResult> {
 		const apiKey = process.env.TAVILY_API_KEY;
 
 		if (!apiKey) {
@@ -111,9 +121,9 @@ export class WebSearchTool extends BaseTool {
 			};
 		}
 
-		const argsResult = webSearchArgsSchema.safeParse(rawArgs);
+		const argsResult = webSearchArgsSchema.safeParse(_rawArgs);
 		if (!argsResult.success) {
-			return { success: false, error: z.treeifyError(argsResult.error) };
+			return { success: false, error: argsResult.error };
 		}
 
 		const args = argsResult.data;
