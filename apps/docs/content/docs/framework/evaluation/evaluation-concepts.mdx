@@ -3,7 +3,7 @@ title: Evaluation Concepts
 description: Core principles and challenges in agent evaluation
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 Agent evaluation differs fundamentally from traditional software testing due to the probabilistic and conversational nature of LLM-based systems.
 
@@ -28,7 +28,10 @@ Traditional software testing relies on deterministic "pass/fail" assertions, but
 - **Trust Building**: Demonstrate reliability to stakeholders and users
 
 <Callout type="info" title="Investment in Evaluation">
-Setting up evaluation may seem like extra work, but automating evaluations pays off quickly and is essential for progressing beyond prototype stage.
+
+Setting up evaluation may seem like extra work, but automating evaluations
+pays off quickly and is essential for progressing beyond prototype stage.
+
 </Callout>
 
 ## Evaluation Dimensions
@@ -40,6 +43,7 @@ Agent evaluation encompasses multiple aspects of performance, requiring comprehe
 Analyzing the sequence of steps agents take to reach solutions:
 
 **Key Aspects:**
+
 - **Tool Selection**: Choice of appropriate tools for each task
 - **Step Ordering**: Logical sequence of actions and decisions
 - **Efficiency**: Minimizing unnecessary steps and redundant actions
@@ -47,6 +51,7 @@ Analyzing the sequence of steps agents take to reach solutions:
 - **Error Recovery**: How agents handle and recover from mistakes
 
 **Common Patterns:**
+
 - **Exact Match**: Perfect alignment with expected trajectory
 - **In-Order Match**: Correct actions in proper sequence, allowing extra steps
 - **Any-Order Match**: Required actions completed regardless of order
@@ -57,6 +62,7 @@ Analyzing the sequence of steps agents take to reach solutions:
 Assessing the final outputs provided to users:
 
 **Quality Dimensions:**
+
 - **Accuracy**: Correctness of information and answers
 - **Relevance**: Appropriateness to user queries and context
 - **Completeness**: Coverage of all necessary information
@@ -64,6 +70,7 @@ Assessing the final outputs provided to users:
 - **Consistency**: Reliable behavior across similar scenarios
 
 **Evaluation Methods:**
+
 - **Reference Comparison**: Compare against expected responses
 - **Semantic Similarity**: Measure meaning similarity using metrics like ROUGE
 - **Human Assessment**: Manual evaluation for nuanced quality factors
@@ -74,6 +81,7 @@ Assessing the final outputs provided to users:
 Ensuring agents behave predictably and reliably:
 
 **Consistency Types:**
+
 - **Cross-Session**: Same behavior across different conversations
 - **Multi-Turn**: Maintaining context and coherence within conversations
 - **Cross-User**: Consistent responses to similar queries from different users
@@ -169,5 +177,9 @@ Embed evaluation into development workflows:
 - **Alert Systems**: Notifications when performance degrades
 
 <Callout type="warning" title="Evaluation Limitations">
-Remember that evaluation is a proxy for real-world performance. No evaluation framework can capture every aspect of agent behavior or guarantee production success.
+
+Remember that evaluation is a proxy for real-world performance. No evaluation
+framework can capture every aspect of agent behavior or guarantee production
+success.
+
 </Callout>

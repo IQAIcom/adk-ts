@@ -11,10 +11,12 @@ Multi-Agent Systems enable you to build sophisticated applications by combining 
 ADK-TS provides a robust foundation for multi-agent systems through hierarchical agent organization, shared state management, and flexible communication patterns. You can build everything from simple sequential pipelines to complex, dynamic routing systems that adapt based on user needs.
 
 <Callout type="info" title="When to Use Multi-Agent Systems">
-  **Best for:** Complex workflows requiring multiple specializations, tasks
-  needing different perspectives simultaneously, applications requiring clear
-  separation of concerns, or systems where components need independent
-  development and maintenance.
+
+**Best for:** Complex workflows requiring multiple specializations, tasks
+needing different perspectives simultaneously, applications requiring clear
+separation of concerns, or systems where components need independent
+development and maintenance.
+
 </Callout>
 
 ## Quick Start Example
@@ -84,7 +86,7 @@ const { runner } = await AgentBuilder.create("root_agent")
   .build();
 
 const result = await runner.ask(
-  "Analyze this customer feedback: 'I love the new features, but the interface is confusing and slow.'"
+  "Analyze this customer feedback: 'I love the new features, but the interface is confusing and slow.'",
 );
 
 console.log("Result:", result);

@@ -3,8 +3,8 @@ title: Event Actions
 description: Understanding the EventActions system for state management and control flow
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 Event Actions are the mechanism by which ADK components signal side effects, state changes, and control flow instructions. They enable powerful features like state management, agent transfers, and artifact tracking.
 
@@ -20,7 +20,7 @@ The `EventActions` class represents the actions attached to an event. It contain
 ## EventActions Structure
 
 ```typescript
-import { EventActions } from '@iqai/adk';
+import { EventActions } from "@iqai/adk";
 
 class EventActions {
   // Control tool response processing
@@ -59,11 +59,12 @@ const actions = new EventActions({
 });
 
 const event = new Event({
-  author: 'MyAgent',
-  actions: actions,
-  content: { parts: [{ text: 'Updated preferences' }] }
+author: 'MyAgent',
+actions: actions,
+content: { parts: [{ text: 'Updated preferences' }] }
 });
-```
+
+````
 </Tab>
 
 <Tab value="Example">
@@ -74,12 +75,16 @@ context.state['app:global_setting'] = 'enabled';
 context.state['temp_intermediate_result'] = calculation;
 
 // These changes automatically populate the next event's stateDelta
-```
+````
+
 </Tab>
 </Tabs>
 
 <Callout type="info">
-State keys with `temp_` prefix are excluded from persistence to avoid cluttering permanent session state.
+
+State keys with `temp_` prefix are excluded from persistence to avoid
+cluttering permanent session state.
+
 </Callout>
 
 ### Artifact Management
@@ -89,10 +94,10 @@ Artifact deltas track file saves and versions:
 ```typescript
 const actions = new EventActions({
   artifactDelta: {
-    'report.pdf': 1,
-    'analysis.json': 3,
-    'diagram.png': 1
-  }
+    "report.pdf": 1,
+    "analysis.json": 3,
+    "diagram.png": 1,
+  },
 });
 ```
 
@@ -104,7 +109,7 @@ Transfer control to another agent:
 
 ```typescript
 const actions = new EventActions({
-  transferToAgent: 'BillingAgent'
+  transferToAgent: "BillingAgent",
 });
 
 // The framework will route the next turn to BillingAgent
@@ -116,7 +121,7 @@ Signal that a loop or process should terminate:
 
 ```typescript
 const actions = new EventActions({
-  escalate: true
+  escalate: true,
 });
 
 // Useful in loop agents or error handling
@@ -130,7 +135,7 @@ Prevent the LLM from summarizing tool results:
 
 ```typescript
 const actions = new EventActions({
-  skipSummarization: true
+  skipSummarization: true,
 });
 
 // Tool result will be displayed directly without LLM processing
@@ -143,11 +148,11 @@ Signal that tools need authentication:
 ```typescript
 const actions = new EventActions({
   requestedAuthConfigs: {
-    'gmail-tool': {
-      type: 'oauth',
-      provider: 'gmail'
-    }
-  }
+    "gmail-tool": {
+      type: "oauth",
+      provider: "gmail",
+    },
+  },
 });
 ```
 
@@ -162,12 +167,12 @@ for await (const event of runner.runAsync(query, session)) {
   if (event.actions) {
     // Check for state changes
     if (Object.keys(event.actions.stateDelta).length > 0) {
-      console.log('State updated:', event.actions.stateDelta);
+      console.log("State updated:", event.actions.stateDelta);
     }
 
     // Check for artifact updates
     if (Object.keys(event.actions.artifactDelta).length > 0) {
-      console.log('Artifacts saved:', event.actions.artifactDelta);
+      console.log("Artifacts saved:", event.actions.artifactDelta);
     }
 
     // Check for control signals
@@ -176,7 +181,7 @@ for await (const event of runner.runAsync(query, session)) {
     }
 
     if (event.actions.escalate) {
-      console.log('Escalation signal received');
+      console.log("Escalation signal received");
     }
   }
 }
@@ -187,7 +192,7 @@ for await (const event of runner.runAsync(query, session)) {
 When building custom agents:
 
 ```typescript
-import { Event, EventActions } from '@iqai/adk';
+import { Event, EventActions } from "@iqai/adk";
 
 export class CustomAgent extends BaseAgent {
   async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
@@ -195,19 +200,19 @@ export class CustomAgent extends BaseAgent {
 
     const actions = new EventActions({
       stateDelta: {
-        'task_status': 'completed',
-        'result_count': 5
+        task_status: "completed",
+        result_count: 5,
       },
-      transferToAgent: 'ReviewAgent'
+      transferToAgent: "ReviewAgent",
     });
 
     yield new Event({
       author: this.name,
       invocationId: context.invocationId,
       content: {
-        parts: [{ text: 'Task completed, transferring for review' }]
+        parts: [{ text: "Task completed, transferring for review" }],
       },
-      actions: actions
+      actions: actions,
     });
   }
 }
@@ -223,10 +228,10 @@ Use prefixes to indicate state scope:
 - **No prefix** - Session-specific state
 
 ```typescript
-context.state['app:theme'] = 'dark';           // App setting
-context.state['user:language'] = 'en';         // User preference
-context.state['temp_calculation'] = result;    // Temporary (not persisted)
-context.state['current_task'] = 'processing';  // Session state
+context.state["app:theme"] = "dark"; // App setting
+context.state["user:language"] = "en"; // User preference
+context.state["temp_calculation"] = result; // Temporary (not persisted)
+context.state["current_task"] = "processing"; // Session state
 ```
 
 ## Best Practices

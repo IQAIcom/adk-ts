@@ -3,12 +3,11 @@ title: MCP Fraxlend
 description: Interact with the Fraxlend lending platform
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-fraxlend`](https://www.npmjs.com/package/@iqai/mcp-fraxlend)
 - **Purpose**: Interact with the Fraxlend lending platform
-
 
 ## Usage with ADK TypeScript
 
@@ -25,6 +24,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Verbose">
@@ -47,6 +47,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Claude Desktop">
@@ -137,7 +138,10 @@ Get the pair address for a specific Fraxlend pair:
 ## Environment Variables
 
 <Callout type="warn" title="Security">
-The private key is used for signing transactions for lending, borrowing, etc. Handle with care.
+
+The private key is used for signing transactions for lending, borrowing, etc.
+Handle with care.
+
 </Callout>
 
 - `WALLET_PRIVATE_KEY`: Required for `LEND`, `BORROW`, `ADD_COLLATERAL`, `REMOVE_COLLATERAL`, `REPAY`, `WITHDRAW`

@@ -11,10 +11,11 @@ LangGraph agents orchestrate sophisticated workflows with conditional branching,
 Unlike simple workflow patterns ([sequential](/docs/framework/agents/workflow-agents/sequential-agents), [parallel](/docs/framework/agents/workflow-agents/parallel-agents), [loop](/docs/framework/agents/workflow-agents/loop-agents)), LangGraph agents handle complex decision trees, conditional flows, and dynamic routing based on content analysis, user preferences, or business rules.
 
 <Callout type="info" title="Advanced Orchestration">
-  - **Power:** Handle complex branching logic and conditional workflows -
-  **Flexibility:** Dynamic routing based on content, context, or business rules
-  - **Best for:** Sophisticated processes that require intelligent
-  decision-making
+
+- **Power:** Handle complex branching logic and conditional workflows
+- **Flexibility:** Dynamic routing based on content, context, or business rules
+- **Best for:** Sophisticated processes that require intelligent decision-making
+
 </Callout>
 
 ## Quick Start Example
@@ -140,7 +141,7 @@ const supportWorkflowAgent = new LangGraphAgent({
         try {
           // Parse JSON analysis from the previous event
           const analysis = JSON.parse(
-            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}",
           );
           // Route to technical support if category matches and not critical/angry
           return (
@@ -161,7 +162,7 @@ const supportWorkflowAgent = new LangGraphAgent({
         try {
           // Parse JSON analysis from the previous event
           const analysis = JSON.parse(
-            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}",
           );
           // Route to billing support if category matches and not critical/angry
           return (
@@ -181,7 +182,7 @@ const supportWorkflowAgent = new LangGraphAgent({
         try {
           // Parse JSON analysis from the previous event
           const analysis = JSON.parse(
-            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}",
           );
 
           // Escalate if critical, angry, or complaint
@@ -207,7 +208,7 @@ const supportWorkflowAgent = new LangGraphAgent({
         try {
           // Parse JSON analysis from the previous event
           const analysis = JSON.parse(
-            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}"
+            event.content.match(/\{[\s\S]*\}/)?.[0] || "{}",
           );
           // Route to general support if category matches and not critical/angry
           return (
@@ -294,9 +295,11 @@ Conditional flows determine which path the workflow takes based on the results o
 - Decisions can reference any previous step's output
 
 <Callout type="info" title="Graph Design Patterns">
-  - **Start simple:** Begin with basic routing logic, add complexity gradually
-  - **Plan thoroughly:** Map out all possible paths before implementation
-  - **Handle edge cases:** Always have fallback routes for unexpected conditions
+
+- **Start simple:** Begin with basic routing logic, add complexity gradually
+- **Plan thoroughly:** Map out all possible paths before implementation
+- **Handle edge cases:** Always have fallback routes for unexpected conditions
+
 </Callout>
 
 ## Real-World Use Cases
@@ -322,9 +325,12 @@ Transaction Analysis → Risk Scoring → Investigation Routing → Evidence Gat
 ## When to Choose LangGraph Agents
 
 <Callout type="success" title="Perfect for Complex Decision Trees">
-  - **Use when:** You need sophisticated branching logic and conditional
-  workflows - **Benefit:** Handle complex processes that simple linear or
+
+- **Use when:** You need sophisticated branching logic and conditional
+  workflows
+- **Benefit:** Handle complex processes that simple linear or
   parallel patterns can't address
+
 </Callout>
 
 ### ✅ Choose LangGraph When:
@@ -492,9 +498,11 @@ const parallelIntegratedWorkflow = new LangGraphAgent({
 **Complexity Awareness:** Be mindful of debugging challenges with complex graphs. Start with simpler patterns and gradually add sophistication as you understand the interaction patterns.
 
 <Callout type="warn" title="Graph Complexity Warning">
-  - **Start simple:** Complex graphs are hard to debug and maintain - **Document
-  thoroughly:** Clear documentation is crucial for complex flows - **Test
-  extensively:** Every path and edge case should be tested
+
+- **Start simple:** Complex graphs are hard to debug and maintain
+- **Document thoroughly:** Clear documentation is crucial for complex flows
+- **Test extensively:** Every path and edge case should be tested
+
 </Callout>
 
 ## Related Topics
