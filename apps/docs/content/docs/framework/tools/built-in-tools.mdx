@@ -12,17 +12,20 @@ ADK-TS provides a collection of pre-built tools that handle common agent tasks. 
 Here's how to use built-in tools with your agent:
 | **WebFetchTool** | Fetch and parse web page content | No |
 | **HttpRequestTool** | Make HTTP requests to APIs | No |
+
+```typescript
 import { LlmAgent, GoogleSearch, HttpRequestTool } from "@iqai/adk";
+```
 
+```typescript
 const agent = new LlmAgent({
-name: "research_agent",
-description:
-"An agent that helps users research topics using web search and HTTP requests.",
-instruction: "Help users research topics using web search and HTTP requests",
-tools: [new GoogleSearch(), new HttpRequestTool()],
+  name: "research_agent",
+  description:
+    "An agent that helps users research topics using web search and HTTP requests.",
+  instruction: "Help users research topics using web search and HTTP requests",
+  tools: [new GoogleSearch(), new HttpRequestTool()],
 });
-
-````
+```
 
 That's it! The agent can now search the web and make HTTP requests.
 
@@ -50,7 +53,7 @@ Search the web for real-time information.
 
 ```typescript
 import { LlmAgent, GoogleSearch } from "@iqai/adk";
-````
+```
 
 **Setup:**
 
@@ -160,14 +163,11 @@ import { LlmAgent, FileOperationsTool } from "@iqai/adk";
 const agent = new LlmAgent({
   name: "file_agent",
   description: "An agent that manages file operations on the local filesystem",
-| **ReadTool**           | Read file contents                       | No              |
-    new FileOperationsTool({
-      basePath: "/safe/directory", // Optional, defaults to cwd
-    }),
-| **GlobTool**           | Find files matching glob patterns        | No              |
-| **GrepTool**           | Search for patterns in files using regex | No              |
+});
+```
 
 ### System Tools
+
 **Tool Parameters:**
 
 | Parameter   | Type   | Required | Description                                                                          |
@@ -180,6 +180,8 @@ const agent = new LlmAgent({
 **How It's Triggered:**
 
 ### Memory & Context Tools
+
+```
 // User: "Save this data to a file called results.txt"
 // Agent calls:
 // file_operations({
@@ -230,13 +232,13 @@ Prompt users for input during agent execution.
 
 ## Web & API Tools
 
+```typescript
 import { LlmAgent, UserInteractionTool } from "@iqai/adk";
 ```
 
 **Setup:**
 
-```
-
+```typescript
 const agent = new LlmAgent({
   name: "approval_agent",
   description: "An agent that handles user approvals and confirmations",
@@ -259,6 +261,8 @@ The LLM calls this tool with these parameters:
 The agent triggers this tool when it needs user input. For example:
 
 **Environment Variables Required:**
+
+```
 // User: "I want to delete my account"
 // Agent internally decides it needs confirmation, so it calls user_interaction:
 
@@ -288,27 +292,33 @@ The agent triggers this tool when it needs user input. For example:
 <Callout type="info" title="Long-Running by Nature">
   The UserInteractionTool is marked as `isLongRunning: true` because it waits
   for user input. The agent will pause execution until the user responds.
-| `safe`             | string | No       | Safe search filter: "active" or "off" (default: "off") |
-| `siteSearch`       | string | No       | Restrict results to a specific site                    |
+</Callout>
+
+| `safe` | string | No | Safe search filter: "active" or "off" (default: "off") |
+| `siteSearch` | string | No | Restrict results to a specific site |
+
 ### LoadMemoryTool
 
 Search conversation history and past interactions.
 
 **Import:**
 
-| `siteSearchFilter` | string | No       | Include ("i") or exclude ("e") site                    |
+| `siteSearchFilter` | string | No | Include ("i") or exclude ("e") site |
+
+```typescript
 import { LlmAgent, LoadMemoryTool } from "@iqai/adk";
 ```
 
 **Setup:**
+
+```typescript
 // User: "What are the latest updates about AI in 2024?"
 // Agent internally decides it needs current information, so it calls:
 const agent = new LlmAgent({
-name: "context_agent",
-description: "An agent that maintains context across conversations",
-tools: [new LoadMemoryTool()],
+  name: "context_agent",
+  description: "An agent that maintains context across conversations",
+  tools: [new LoadMemoryTool()],
 });
-
 ```
 
 **Tool Parameters:**
@@ -319,6 +329,7 @@ tools: [new LoadMemoryTool()],
 
 **How It's Triggered:**
 
+```typescript
 The agent uses this to recall past information:
   results?: Array<{
     title: string;
@@ -346,15 +357,13 @@ Access and process uploaded files.
 
 **Import:**
 
----
-
+```typescript
 import { LlmAgent, LoadArtifactsTool } from "@iqai/adk";
 ```
 
 **Setup:**
 
 ```
-
 const agent = new LlmAgent({
   name: "document_analyzer_agent",
   description: "An agent that analyzes and processes uploaded documents",
@@ -371,6 +380,8 @@ const agent = new LlmAgent({
 **How It's Triggered:**
 
 **Environment Variables Required:**
+
+```
 // User uploads files and asks: "Analyze my resume"
 // Agent calls:
 // load_artifacts({ artifact_names: ["resume.pdf"] })
@@ -380,7 +391,6 @@ const agent = new LlmAgent({
 // Agent calls:
 // load_artifacts({ artifact_names: ["contract.pdf"] })
 // Agent reads and analyzes the contract
-
 ```
 
 **Capabilities:**
@@ -396,14 +406,14 @@ const agent = new LlmAgent({
 Present users with multiple options and collect their selection.
 
 **Import:**
-| `startDate`                | string         | No       | Return results after this date (YYYY-MM-DD)                        |
-| `endDate`                  | string         | No       | Return results before this date (YYYY-MM-DD)                       |
-import { LlmAgent, GetUserChoiceTool } from "@iqai/adk";
-| `includeImages`            | boolean        | No       | Include image search results (default: false)                      |
-| `includeImageDescriptions` | boolean        | No       | Include descriptive text for images (default: false)               |
-**Setup:**
-| `excludeDomains`           | array          | No       | Domains to exclude from search                                     |
-| `country`                  | string         | No       | Country to prioritize results from                                 |
+| `startDate` | string | No | Return results after this date (YYYY-MM-DD) |
+| `endDate` | string | No | Return results before this date (YYYY-MM-DD) |
+| `includeImages` | boolean | No | Include image search results (default: false) |
+| `includeImageDescriptions` | boolean | No | Include descriptive text for images (default: false) |
+| `excludeDomains` | array | No | Domains to exclude from search |
+| `country` | string | No | Country to prioritize results from
+
+```typescript
 const agent = new LlmAgent({
   name: "choice_agent",
   description: "An agent that presents options and collects user selections",
@@ -443,11 +453,10 @@ const agent = new LlmAgent({
 Hand off work to another specialized agent.
 
 **Import:**
-// web_search({
-// query: "renewable energy",
-import { LlmAgent, TransferToAgentTool } from "@iqai/adk";
 
-````
+```
+import { LlmAgent, TransferToAgentTool } from "@iqai/adk";
+```
 
 **Setup:**
 
@@ -457,7 +466,7 @@ const agent = new LlmAgent({
   description: "An agent that routes requests to specialized agents",
   tools: [new TransferToAgentTool()],
 });
-````
+```
 
 **Tool Parameters:**
 
@@ -485,7 +494,6 @@ const agent = new LlmAgent({
 - Enable agent orchestration
 - Route requests based on expertise
 - Maintain conversation context during transfer
-  // })
 
 ````
 **Response Format:**
@@ -493,7 +501,6 @@ Exit from workflow loops when completion criteria are met.
 
 **Import:**
 ```typescript
-{
 import { LlmAgent, ExitLoopTool } from "@iqai/adk";
 ````
 
@@ -512,6 +519,8 @@ const agent = new LlmAgent({
 This tool takes no parameters.
 
 **How It's Triggered:**
+
+```
 images?: Array<{
 url: string;
 // Agent is processing items in a loop
@@ -525,6 +534,7 @@ url: string;
 // Agent: Processing item 3... done
 // Agent: All items processed, calling exit_loop()
 // Workflow exits loop successfully
+}>
 
 ```
 
@@ -542,19 +552,17 @@ Combine multiple built-in tools to create powerful agent capabilities. Here are 
 ### Information Gathering
 
 Combine search and memory tools for comprehensive research that builds on previous conversations:
-}
-```
 
+```typescript
 const researchAgent = new LlmAgent({
-name: "researcher_agent",
-description:
-"A research assistant that searches the web for current information and recalls relevant details from previous conversations to provide comprehensive, context-aware answers",
-instruction:
-"Use web search to find current information, then check memory for related previous discussions to provide complete context",
-tools: [new GoogleSearch(), new LoadMemoryTool()],
+  name: "researcher_agent",
+  description:
+    "A research assistant that searches the web for current information and recalls relevant details from previous conversations to provide comprehensive, context-aware answers",
+  instruction:
+    "Use web search to find current information, then check memory for related previous discussions to provide complete context",
+  tools: [new GoogleSearch(), new LoadMemoryTool()],
 });
-
-````
+```
 
 ### Document Processing
 
@@ -572,7 +580,7 @@ const documentAgent = new LlmAgent({
     new FileOperationsTool({ basePath: "/output" }),
   ],
 });
-````
+```
 
 ### API Integration
 
@@ -698,8 +706,6 @@ To effectively use built-in tools in your agents:
 - Processing API responses
 - Content verification
 
----
-
 ### HttpRequestTool
 
 Make HTTP requests to APIs and web services with full control over methods, headers, and parameters.
@@ -760,8 +766,6 @@ const agent = new LlmAgent({
 - Validate URLs before making requests
 - Set appropriate timeouts
 - Handle API rate limits gracefully
-
----
 
 ## File System Tools
 
@@ -824,8 +828,6 @@ const agent = new LlmAgent({
 - Analyzing source code
 - Processing logs
 - Extracting data from text files
-
----
 
 ### WriteTool
 
@@ -892,8 +894,6 @@ const agent = new LlmAgent({
 - Creating configuration files
 
 **Important:** To modify existing files, use `EditTool` instead.
-
----
 
 ### EditTool
 
@@ -976,8 +976,6 @@ const PORT = 8080;
 - Fixing typos in documentation
 - Changing variable names
 
----
-
 ### GlobTool
 
 Find files matching glob patterns for flexible file discovery.
@@ -1047,8 +1045,6 @@ const agent = new LlmAgent({
 - Locating test files
 - Discovering configuration files
 - Building file lists for processing
-
----
 
 ### GrepTool
 
@@ -1194,8 +1190,6 @@ interface GrepConfig {
 - Code archaeology
 - Security audits
 
----
-
 ### FileOperationsTool
 
 Comprehensive file operations tool for reading, writing, and managing files with security restrictions.
@@ -1293,8 +1287,6 @@ const agent = new LlmAgent({
 - Restricted file access in sandboxed environments
 - Multi-operation workflows
 - Directory management
-
----
 
 ## System Tools
 
@@ -1411,8 +1403,6 @@ whoami
 - System information
 - Build processes
 - Development workflows
-
----
 
 ## User Interaction Tools
 
