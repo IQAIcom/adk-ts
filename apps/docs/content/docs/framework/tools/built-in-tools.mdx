@@ -87,8 +87,10 @@ The agent automatically uses this tool when the user asks about current informat
 - LLM-friendly response formatting
 
 <Callout type="info" title="Current Status">
-  The current GoogleSearch implementation returns mock results. Production use
-  requires integration with actual Google Search API and proper credentials.
+
+The current GoogleSearch implementation returns mock results. Production use
+requires integration with actual Google Search API and proper credentials.
+
 </Callout>
 
 ### HttpRequestTool
@@ -283,8 +285,10 @@ The agent triggers this tool when it needs user input. For example:
 - Support for default values
 
 <Callout type="info" title="Long-Running by Nature">
-  The UserInteractionTool is marked as `isLongRunning: true` because it waits
-  for user input. The agent will pause execution until the user responds.
+
+The UserInteractionTool is marked as `isLongRunning: true` because it waits
+for user input. The agent will pause execution until the user responds.
+
 </Callout>
 
 ### LoadMemoryTool

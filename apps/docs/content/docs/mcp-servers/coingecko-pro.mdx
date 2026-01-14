@@ -17,11 +17,13 @@ MCP CoinGecko Pro is a Model Context Protocol server that provides access to Coi
 This MCP server connects to CoinGecko's remote endpoint, eliminating the need for local package installation and providing seamless access to real-time cryptocurrency data.
 
 <Callout type="info" title="Pro vs Free">
-  CoinGecko Pro offers higher rate limits, more frequent data updates, and
-  access to premium endpoints not available in the free tier. Use
-  `McpCoinGeckoPro` for production applications and `McpCoinGecko` for
-  development/testing. For detailed pricing and plan comparison, visit
-  [CoinGecko API Pricing](https://www.coingecko.com/en/api/pricing).
+
+CoinGecko Pro offers higher rate limits, more frequent data updates, and
+access to premium endpoints not available in the free tier. Use
+`McpCoinGeckoPro` for production applications and `McpCoinGecko` for
+development/testing. For detailed pricing and plan comparison, visit
+[CoinGecko API Pricing](https://www.coingecko.com/en/api/pricing).
+
 </Callout>
 
 ## Usage with ADK-TS
@@ -96,7 +98,7 @@ async function main() {
   const { runner } = await AgentBuilder.create("crypto_analyst_agent")
     .withModel("gemini-2.5-flash")
     .withDescription(
-      "A professional cryptocurrency analyst with access to real-time market data"
+      "A professional cryptocurrency analyst with access to real-time market data",
     )
     .withTools(...coinGeckoTools)
     .build();
@@ -104,22 +106,22 @@ async function main() {
   try {
     // Example queries
     const priceAnalysis = await runner.ask(
-      "What's the current price of Bitcoin and Ethereum? Compare their 24h price changes."
+      "What's the current price of Bitcoin and Ethereum? Compare their 24h price changes.",
     );
     console.log(priceAnalysis);
 
     const marketCap = await runner.ask(
-      "Show me the top 10 cryptocurrencies by market cap"
+      "Show me the top 10 cryptocurrencies by market cap",
     );
     console.log(marketCap);
 
     const trendingCoins = await runner.ask(
-      "What are the trending cryptocurrencies today?"
+      "What are the trending cryptocurrencies today?",
     );
     console.log(trendingCoins);
 
     const defiAnalysis = await runner.ask(
-      "Analyze the current DeFi market trends and identify top Protocols"
+      "Analyze the current DeFi market trends and identify top Protocols",
     );
     console.log(defiAnalysis);
   } finally {

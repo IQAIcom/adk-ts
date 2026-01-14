@@ -3,8 +3,8 @@ title: MCP CoinGecko
 description: Access cryptocurrency market data and analytics using the free CoinGecko MCP API endpoint
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 - **Name**: MCP CoinGecko
 - **Package**: Remote endpoint (no installation required)
@@ -15,7 +15,13 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 MCP CoinGecko is a Model Context Protocol server that provides access to CoinGecko's free cryptocurrency market data API. This MCP server connects to CoinGecko's remote endpoint, eliminating the need for local package installation and providing seamless access to real-time cryptocurrency data.
 
 <Callout type="info" title="Free vs Pro">
-  CoinGecko offers a free tier with basic rate limits suitable for development and testing. For production applications requiring higher rate limits and premium features, consider using `McpCoinGeckoPro`. For detailed pricing and plan comparison, visit [CoinGecko API Pricing](https://www.coingecko.com/en/api/pricing).
+
+CoinGecko offers a free tier with basic rate limits suitable for development
+and testing. For production applications requiring higher rate limits and
+premium features, consider using `McpCoinGeckoPro`. For detailed pricing and
+plan comparison, visit [CoinGecko API
+Pricing](https://www.coingecko.com/en/api/pricing).
+
 </Callout>
 
 ## Usage with ADK TypeScript
@@ -29,6 +35,7 @@ MCP CoinGecko is a Model Context Protocol server that provides access to CoinGec
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Verbose">
@@ -50,6 +57,7 @@ MCP CoinGecko is a Model Context Protocol server that provides access to CoinGec
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Claude Desktop">
@@ -147,4 +155,3 @@ main().catch(console.error);
 - [CoinGecko API Status](https://status.coingecko.com/) - Real-time API status and incident reports
 - [CoinGecko MCP Server](https://docs.coingecko.com/docs/mcp-server) - Official MCP server documentation
 - [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
-

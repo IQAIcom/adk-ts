@@ -4,49 +4,46 @@ description: Deploy ADK-TS agents to Vercel as serverless functions
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
 
-Vercel is a serverless platform optimized for frontend frameworks and API routes. **Best for**: API-based agents, webhook handlers, and request-response workflows with automatic scaling.
+Vercel is a serverless platform optimized for frontend frameworks and API routes. **Best for**: API-based agents, webhook handlers, and request-response workflows with automatic scaling. Vercel offers zero-configuration deployment and automatic scaling, though it is limited by serverless function execution times. This guide shows you how to deploy your ADK-TS agent to Vercel.
 
-## Prerequisites
+## What You'll Need
 
-**Required:**
+Before deploying to Railway, ensure you have:
 
-- **Vercel Account**: Sign up at [vercel.com](https://vercel.com)
-- **GitHub Repository**: Your ADK-TS project pushed to GitHub
-- **Built and tested** API-based ADK-TS agent locally
-- **Environment variables** documented
+- A **[Vercel Account](https://vercel.com)** to manage your deployments
+- Your **ADK-TS project** ready for deployment
 
-**Recommended:**
+## Deployment Options
 
-- Understanding of serverless function concepts
-- Familiarity with API routes and HTTP request/response patterns
+Vercel offers two main deployment methods:
 
-## Deployment Option 1: Auto-Deploy from GitHub (Recommended)
+1. [**GitHub Auto-Deploy (Recommended)**](#option-1-github-auto-deploy-recommended): Vercel automatically detects and builds your project from GitHub (Recommended)
+2. [**Vercel CLI (Manual Deployment)**](#option-2-vercel-cli-manual-deployment): Deploy directly from your terminal for manual control and testing
 
-This is the easiest way to deploy - Vercel automatically detects your Node.js/TypeScript project.
+## Option 1: GitHub Auto-Deploy (Recommended)
 
-### Step 1: Prepare Your Project
+Vercel automatically detects and builds your Node.js/TypeScript project without requiring manual configuration.
 
-Ensure your project structure follows Vercel conventions:
+### Step 1: Set up your API route
 
-```
-your-project/
-├── api/                 # Serverless function endpoints
-│   ├── chat.ts         # Example: /api/chat
-│   └── webhook.ts      # Example: /api/webhook
-├── package.json
-├── tsconfig.json
-└── vercel.json         # Optional: Custom configuration
+- Install Vercel's dependencies so the platform can build and serve your API route:
+
+```bash
+pnpm add -D vercel @vercel/node
 ```
 
-**Create an API endpoint** (`api/chat.ts`):
+_Or use `npm install --save-dev` if you prefer npm or `yarn add --dev` for yarn._
+
+- Create an API route in the `api` directory (e.g., `api/chat.ts`): This tells Vercel how to handle incoming requests to your agent.
 
 ```typescript
 import { AgentBuilder } from "@iqai/adk";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { env } from "./env";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only allow POST requests
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -54,14 +51,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { message } = req.body;
 
-    // Create ADK-TS agent
-    const agent = new AgentBuilder()
-      .withModel(process.env.LLM_MODEL || "gemini-3-flash-preview" || "gpt-4")
+    const { runner } = await AgentBuilder.create("assistant")
+      .withModel(env.LLM_MODEL)
       .withInstruction("You are a helpful assistant")
-      .buildLlm();
+      .build();
 
-    // Process request
-    const response = await agent.ask(message);
+    const response = await runner.ask(message);
 
     return res.status(200).json({ response });
   } catch (error) {
@@ -70,60 +65,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-// Configure function settings (optional)
 export const config = {
-  maxDuration: 60, // Maximum execution time in seconds
+  maxDuration: 60,
 };
-```
-
-**Update `package.json`**:
-
-```json
-{
-  "name": "adk-agent-api",
-  "version": "1.0.0",
-  "scripts": {
-    "build": "tsc",
-    "dev": "vercel dev"
-  },
-  "dependencies": {
-    "@iqai/adk": "latest",
-    "@vercel/node": "^3.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "vercel": "^33.0.0"
-  }
-}
-```
-
-**Configure TypeScript** (`tsconfig.json`):
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
-    "outDir": "./dist",
-    "rootDir": "./",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
-  },
-  "include": ["api/**/*"],
-  "exclude": ["node_modules", "dist"]
-}
 ```
 
 ### Step 2: Push to GitHub
 
+Commit and push your code to GitHub:
+
 ```bash
 git add .
-git commit -m "Add Vercel serverless API"
+git commit -m "Prepare for Vercel deployment"
 git push origin main
 ```
 
@@ -131,62 +84,25 @@ git push origin main
 
 1. Log in to [Vercel](https://vercel.com)
 2. Click **"Add New..."** → **"Project"**
-3. **Import** your GitHub repository
-4. Vercel auto-detects the configuration
-5. Click **"Deploy"**
-
-Vercel will automatically:
-
-- Install dependencies
-- Build your TypeScript files
-- Deploy serverless functions from the `api/` directory
+3. Select **"Import Git Repository"** and choose your repository
+4. Authorize Vercel to access your Git provider (if first time)
+5. Choose the branch to deploy (usually `main`) and click **"Deploy"**
 
 ### Step 4: Configure Environment Variables
 
-**Common ADK-TS Environment Variables**
+See [Configuring Environment Variables](#configuring-environment-variables) below for detailed instructions.
 
-Your agent needs these environment variables:
+### Step 5: Automatic Deployment
 
-**LLM Provider API Keys:**
+Vercel handles everything automatically:
 
-- `GOOGLE_API_KEY` - For Google AI models (Gemini)
+- First deployment: Clones your repo, installs dependencies, builds, and deploys
+- Future updates: Every time you push to your connected branch, Vercel rebuilds and redeploys
+- No manual steps needed after initial setup
 
-**Model Configuration:**
+## Option 2: Vercel CLI (Manual Deployment)
 
-- `LLM_MODEL` - Model to use (e.g., `gpt-4`, `gemini-2.5-flash`, `claude-sonnet-4`)
-
-**Application Settings:**
-
-- `NODE_ENV` - Set to `production` for production deployments
-
-**In Vercel:**
-
-1. Go to your project **Settings** → **Environment Variables**
-2. Add required variables from the list above
-3. Select which environments to apply them to (Production, Preview, Development)
-
-Vercel encrypts all environment variables automatically.
-
-<Callout type="info" title="Automatic Redeployment">
-  Every push to your connected branch triggers automatic redeployment. Changes
-  go live in minutes.
-</Callout>
-
-### Step 5: Test Your Deployment
-
-After deployment, Vercel provides a URL like `https://your-project.vercel.app`.
-
-Test your API endpoint:
-
-```bash
-curl -X POST https://your-project.vercel.app/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello, what can you do?"}'
-```
-
-## Deployment Option 2: Vercel CLI
-
-For more control or local testing, use the Vercel CLI.
+Use the Vercel CLI for manual deployments or when you want to deploy without a Git integration.
 
 ### Step 1: Install Vercel CLI
 
@@ -212,216 +128,159 @@ vercel
 vercel --prod
 ```
 
-The CLI will:
+### Step 4: Configure Environment Variables
 
-- Build your project
-- Upload to Vercel
-- Provide deployment URLs
+See [Configuring Environment Variables](#configuring-environment-variables) below.
+
+## Configuring Environment Variables
+
+All deployment options require environment variables to be configured in Vercel. This is a one-time setup for each project.
+
+### Add Environment Variables to Vercel
+
+1. In your Vercel project, go to **"Settings"** → **"Environment Variables"**
+2. Add each required environment variable based on your agent's needs.
+
+<Callout type="info" title="Environment Variables Are Encrypted">
+  Vercel automatically encrypts all environment variables. Never commit these
+  values to your git repository.
+</Callout>
 
 ## Verifying Deployment
 
-### Check Function Logs
+### Check Deployment Status
 
-In Vercel dashboard:
+In your Vercel project dashboard:
 
-1. Go to your project
-2. Click **"Logs"** tab
-3. Filter by function name
-4. Monitor real-time execution logs
+1. Look for the **"Deployments"** tab - it should show "Ready" with a green indicator
+2. Click on the latest deployment to view detailed logs and the deployment URL
+3. Check the logs for your agent's startup messages
+4. Look for any error messages
 
-### Test API Endpoints
+### Test Your Agent
 
-Use curl, Postman, or your frontend:
+Once deployment is active, test that it works:
 
-```bash
-# Test GET endpoint
-curl https://your-project.vercel.app/api/health
-
-# Test POST endpoint
-curl -X POST https://your-project.vercel.app/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Test message"}'
-```
-
-### Monitor Performance
-
-Vercel provides built-in analytics:
-
-- Function execution time
-- Error rates
-- Request volume
-- Cold start frequency
+- **API agents**: Make a test HTTP request to your endpoint (e.g., `https://your-project.vercel.app/api/chat`)
+- **Check logs**: Watch Vercel logs in real-time to see your agent responding
+- **Webhooks**: Verify that your webhook handlers are receiving data
 
 ## Monitoring and Updates
 
-### View Real-Time Logs
+### View Logs
 
-Monitor your functions in real-time:
+Vercel provides real-time logs in the **"Logs"** tab of your deployment. Use them to:
 
-```bash
-vercel logs --follow
-```
-
-Or use the Vercel dashboard Logs tab for detailed insights.
+- Debug issues by viewing error messages
+- Monitor your agent's activity and responses
+- Track performance and execution times
 
 ### Updating Your Deployment
 
-**For GitHub deployments:**
+**For GitHub deployments (Option 1):**
 
 1. Make code changes locally
-2. Test locally: `vercel dev`
-3. Commit and push:
+2. Test changes locally using `vercel dev`
+3. Commit and push to your connected branch:
    ```bash
    git add .
-   git commit -m "Update agent logic"
+   git commit -m "Update agent features"
    git push origin main
    ```
-4. Vercel automatically rebuilds and redeploys
+4. Vercel automatically detects changes, rebuilds, and redeploys
 
-**For CLI deployments:**
+**For CLI deployments (Option 2):**
 
-```bash
-# Deploy to preview
-vercel
+1. Make code changes locally
+2. Deploy again using the CLI:
+   ```bash
+   vercel --prod
+   ```
+3. Vercel will create a new deployment automatically
 
-# Deploy to production
-vercel --prod
-```
+## Vercel Troubleshooting
 
-### Rollback to Previous Version
+### Missing Environment Variables
 
-If a deployment has issues:
+**Problem**: Agent crashes or features don't work
 
-1. Go to **Deployments** in Vercel dashboard
-2. Find a previous working deployment
-3. Click **"..."** → **"Promote to Production"**
+- Go to Vercel's **"Environment Variables"** tab and verify all variables are present
+- Check that variable names match exactly what your code expects (case-sensitive)
+- Look for typos in variable values
+- Trigger a new deployment after updating variables
 
-## Troubleshooting
+### Build Failures
 
-### Common Deployment Issues
+**Problem**: Vercel build fails
 
-**Missing Environment Variables**
+- Click on the failed deployment to view detailed build logs
+- Look for error messages about missing dependencies or syntax errors
+- Ensure all dependencies are listed in `package.json`
+- Check for TypeScript compilation errors in the logs
 
-- **Problem**: Agent crashes or API keys not found
-- **Solutions**:
-  - Go to Vercel project **Settings** → **Environment Variables**
-  - Verify all variables are present and spelled correctly (case-sensitive)
-  - Check that variables are applied to the correct environment (Production/Preview)
-  - Redeploy after adding missing variables
+### Function Timeouts
 
-**Build Failures**
+**Problem**: Agent execution exceeds Vercel's serverless timeout
 
-- **Problem**: Vercel build fails during deployment
-- **Solutions**:
-  - Click on the failed deployment to view detailed build logs
-  - Test build locally: `pnpm build` or `npm run build`
-  - Ensure all dependencies are in `package.json` `dependencies` (not `devDependencies`)
-  - Check for TypeScript compilation errors
-  - Verify `tsconfig.json` is correctly configured
+- Increase `maxDuration` in your function configuration (up to your plan limit)
+- Optimize your agent's processing time
+- For long-running agents, consider using [Railway](/docs/framework/guides/deployment/railway) instead
 
-**Function Not Responding**
+### Deployment Conflicts
 
-- **Problem**: Function deployed but returns errors or timeouts
-- **Solutions**:
-  - Check Vercel logs for runtime error messages
-  - Verify API route file paths match URL structure (`api/chat.ts` → `/api/chat`)
-  - Ensure function exports default handler correctly
-  - Test function locally with `vercel dev`
+**Problem**: Multiple deployments triggering at once
 
-### Vercel-Specific Issues
+- Check the **"Deployments"** tab to see which one is active
+- Cancel unnecessary deployments if they are stuck
+- Ensure your Git branch configuration is correct
 
-**Function Timeout**
+## Vercel Best Practices
 
-- **Problem**: Function exceeds execution time limit
-- **Solutions**:
-  - Increase `maxDuration` in function config (up to plan limit)
-  - Optimize agent processing time
-  - Use background tasks with `waitUntil`
-  - Consider Railway for truly long-running tasks
+### Version Control
 
-**Cold Starts**
+- Use separate environments (Production, Preview) to test changes
+- Always test locally with `vercel dev` before pushing
 
-- **Problem**: First request after idle period is slow
-- **Solutions**:
-  - Use Fluid Compute for AI agents (reduces cold starts)
-  - Implement lightweight initialization
-  - Consider caching expensive operations
-  - Upgrade to Pro plan for better cold start performance
+### Cost Management
 
-**Module Not Found**
+- Monitor function execution counts in the dashboard
+- Set up budget alerts if using a Pro plan
+- Use Vercel's usage dashboard to track resource consumption
 
-- **Problem**: Dependency not found during execution
-- **Solutions**:
-  - Ensure all dependencies are in `package.json` `dependencies` (not `devDependencies`)
-  - Run `npm install` locally and commit `package-lock.json`
-  - Check function logs for specific missing modules
+### Reliability
 
-**Environment Variables Not Working**
+- Implement proper error handling in your serverless functions
+- Use health check endpoints to monitor availability
+- Regularly review logs to catch "Cold Start" or timeout issues
 
-- **Problem**: `process.env.VARIABLE` returns undefined
-- **Solutions**:
-  - Verify variables are set in Vercel dashboard
-  - Redeploy after adding new variables
-  - Check variable names match exactly (case-sensitive)
-  - Ensure variables are set for the correct environment (Production/Preview)
+### Security
 
-**Build Failures**
-
-- **Problem**: TypeScript compilation errors during build
-- **Solutions**:
-  - Test build locally: `npm run build`
-  - Check `tsconfig.json` configuration
-  - Review build logs in Vercel dashboard
-  - Ensure all TypeScript dependencies are installed
-
-## Best Practices
-
-### Vercel-Specific Best Practices
-
-**Function Optimization**
-
-- Keep functions focused and single-purpose
-- Minimize cold start time by reducing initialization code
-- Use dynamic imports for large dependencies
-- Cache expensive operations (API calls, DB queries)
-- Set appropriate `maxDuration` based on actual needs
-
-**Cost Management**
-
-- Monitor function execution time and invocation count
-- Use Vercel Analytics to track usage
-- Set budget alerts in Vercel dashboard
-- Optimize functions to stay within free tier limits
-- Consider edge functions for static content
-
-**Development Workflow**
-
-- Test locally with `vercel dev` before deploying
-- Use preview deployments for testing changes
-- Set up separate environments (development, staging, production)
-- Use environment-specific variables
-- Review deployment logs before promoting to production
-
-**Security**
-
-- Never commit API keys to version control
-- Use Vercel environment variables for secrets
-- Validate and sanitize all request inputs
-- Implement rate limiting for public endpoints
-- Use CORS properly for API routes
-- Enable Vercel's Web Application Firewall (Pro plan)
-
-**API Design**
-
-- Return appropriate HTTP status codes
-- Implement proper error handling
-- Use TypeScript for type safety
-- Document your API endpoints
-- Version your API routes (`/api/v1/...`)
+- Never commit environment variables or secrets to git
+- Use Vercel's Environment Variables for all sensitive data
+- Implement authentication for your API endpoints
 
 ## Next Steps
 
-- Explore [Railway](/docs/guides/deployment/railway) for long-running agents
-- Review [Docker deployment](/docs/guides/deployment/docker) for self-hosted options
-- Learn about [serverless best practices](https://vercel.com/docs/functions) from Vercel docs
-- Set up monitoring and alerting for your agents
+<Cards>
+  <Card
+    title="🚂 Railway Deployment"
+    href="/docs/framework/guides/deployment/railway"
+  >
+    Explore Railway for long-running agents
+  </Card>
+  <Card
+    title="🐳 Docker Deployment"
+    href="/docs/framework/guides/deployment/docker"
+  >
+    Review Docker for containerized options
+  </Card>
+  <Card title="☁️ AWS Deployment" href="/docs/framework/guides/deployment/aws">
+    Deploy to AWS using Lambda, ECS, or EC2
+  </Card>
+  <Card
+    title="📋 Production Best Practices"
+    href="/docs/framework/guides/best-practices"
+  >
+    Learn production best practices for your agents
+  </Card>
+</Cards>

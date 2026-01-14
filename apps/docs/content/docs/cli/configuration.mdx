@@ -18,8 +18,10 @@ The ADK CLI automatically discovers agents in your project through intelligent f
 - **Interactive Selection:** Shows agent selector when multiple agents are found
 
 <Callout type="warn">
-  Ensure your agents are named `agent.ts` or `agent.js` and placed outside
-  excluded directories for successful discovery.
+
+Ensure your agents are named `agent.ts` or `agent.js` and placed outside
+excluded directories for successful discovery.
+
 </Callout>
 
 ### Required Exports
@@ -66,8 +68,10 @@ export const agent = () =>
 ```
 
 <Callout type="warn">
-  The CLI will not detect agents that don't follow these export patterns. For
-  named exports, the export must be called `agent`.
+
+The CLI will not detect agents that don't follow these export patterns. For
+named exports, the export must be called `agent`.
+
 </Callout>
 
 ## Development Workflow
@@ -82,7 +86,9 @@ When creating projects with `adk new`, the CLI auto-detects available package ma
 - 🍞 bun
 
 <Callout type="info">
-  Only package managers installed on your system will appear as options.
+
+Only package managers installed on your system will appear as options.
+
 </Callout>
 
 ## Troubleshooting

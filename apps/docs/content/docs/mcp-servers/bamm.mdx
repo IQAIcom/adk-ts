@@ -3,8 +3,8 @@ title: MCP BAMM
 description: Model Context Protocol Server for Borrow Automated Market Maker
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-bamm`](https://www.npmjs.com/package/@iqai/mcp-bamm)
 - **Purpose**: Interacting with Borrow Automated Market Maker (BAMM) contracts on the Fraxtal blockchain.
@@ -24,6 +24,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Verbose">
@@ -46,6 +47,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Claude Desktop">
@@ -65,7 +67,6 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
   </Tab>
 </Tabs>
 
-
 ## Features
 
 - Allows MCP-compatible clients to manage BAMM positions, borrow against LP tokens, and perform other operations related to the BAMM protocol.
@@ -76,47 +77,55 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 The server exposes the following tools that MCP clients can utilize:
 
 ### `ADD_COLLATERAL`
+
 Add collateral to your BAMM position.
 
 - Parameters: `bammAddress` (string), `amount` (string), `collateralToken` (string, optional), `collateralTokenSymbol` (string, optional)
 - Requires `WALLET_PRIVATE_KEY` in the environment.
 
 ### `BORROW`
+
 Borrow tokens from a BAMM position.
 
 - Parameters: `bammAddress` (string), `amount` (string), `borrowToken` (string, optional), `borrowTokenSymbol` (string, optional)
 - Requires `WALLET_PRIVATE_KEY` in the environment.
 
 ### `REPAY`
+
 Repay borrowed tokens to a BAMM position.
 
 - Parameters: `bammAddress` (string), `amount` (string), `borrowToken` (string, optional), `borrowTokenSymbol` (string, optional)
 - Requires `WALLET_PRIVATE_KEY` in the environment.
 
 ### `LEND`
+
 Lend Fraxswap LP tokens to a BAMM contract.
 
 - Parameters: `bammAddress` (string), `amount` (string)
 - Requires `WALLET_PRIVATE_KEY` in the environment.
 
 ### `WITHDRAW`
+
 Withdraw LP tokens from a BAMM contract by redeeming BAMM tokens.
 
 - Parameters: `bammAddress` (string), `amount` (string)
 - Requires `WALLET_PRIVATE_KEY` in the environment.
 
 ### `REMOVE_COLLATERAL`
+
 Remove collateral from your BAMM position.
 
 - Parameters: `bammAddress` (string), `amount` (string), `collateralToken` (string, optional), `collateralTokenSymbol` (string, optional)
 - Requires `WALLET_PRIVATE_KEY` in the environment.
 
 ### `GET_POSITIONS`
+
 Get all your active BAMM positions.
 
 - Requires `WALLET_PRIVATE_KEY` in the environment.
 
 ### `POOL_STATS`
+
 Get statistics for all BAMM pools.
 
 - Requires `WALLET_PRIVATE_KEY` in the environment.
@@ -124,12 +133,14 @@ Get statistics for all BAMM pools.
 ## Environment Variables
 
 <Callout type="warn" title="Security Note">
-Handle the private key with extreme care. Ensure it is stored securely and only provided to trusted MCP client configurations.
+
+Handle the private key with extreme care. Ensure it is stored securely and
+only provided to trusted MCP client configurations.
+
 </Callout>
 
 - `WALLET_PRIVATE_KEY`: (Required for all blockchain operations)
   - The private key of the wallet to be used for interacting with BAMM contracts (signing transactions for lending, borrowing, etc.).
-
 
 ## Usage Examples
 
