@@ -86,7 +86,7 @@ import { AgentBuilder } from "@iqai/adk";
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const body = JSON.parse(event.body || "{}");
   const { message } = body;
@@ -280,6 +280,7 @@ You can deploy directly using Node.js or via Docker:
     pm2 save
     pm2 startup
     ```
+
   </Tab>
   <Tab value="Docker">
     ```bash
@@ -296,6 +297,7 @@ You can deploy directly using Node.js or via Docker:
       -p 3000:3000 \
       adk-agent
     ```
+
   </Tab>
 </Tabs>
 
@@ -317,7 +319,7 @@ const client = new SecretsManagerClient({ region: "us-east-1" });
 
 async function getSecret(secretName: string) {
   const response = await client.send(
-    new GetSecretValueCommand({ SecretId: secretName })
+    new GetSecretValueCommand({ SecretId: secretName }),
   );
   return response.SecretString;
 }
@@ -350,7 +352,6 @@ For EC2, you can use a standard `.env` file. Ensure proper permissions and never
 chmod 600 .env
 ```
 
-
 ## Troubleshooting
 
 ### Common AWS Issues
@@ -379,9 +380,10 @@ chmod 600 .env
   <Card title="⚡ Vercel Deployment" href="./vercel">
     Configure Vercel for serverless API agents
   </Card>
-  <Card title="📋 Production Best Practices" href="/docs/framework/guides/best-practices">
+  <Card
+    title="📋 Production Best Practices"
+    href="/docs/framework/guides/best-practices"
+  >
     Learn production best practices for your agents
   </Card>
 </Cards>
-
-

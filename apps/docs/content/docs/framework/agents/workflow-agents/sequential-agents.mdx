@@ -11,9 +11,11 @@ Sequential agents create powerful pipelines where agents execute in a specific o
 Perfect for workflows where order matters: research before analysis, writing before editing, data collection before processing. Unlike [parallel agents](/docs/framework/agents/workflow-agents/parallel-agents) that run simultaneously, sequential agents guarantee execution order and enable sophisticated multi-step reasoning.
 
 <Callout type="info" title="When Order Matters">
-  Use sequential agents when each step depends on the previous one's output. The
-  magic happens when agents pass enriched context down the pipeline, creating
-  more sophisticated results than any single agent could achieve.
+
+Use sequential agents when each step depends on the previous one's output. The
+magic happens when agents pass enriched context down the pipeline, creating
+more sophisticated results than any single agent could achieve.
+
 </Callout>
 
 ## Quick Start Example
@@ -88,9 +90,11 @@ Each agent sees the full conversation history, so later agents can reference and
 Execution order is guaranteed - no race conditions or unpredictable results. Perfect for production workflows where consistency matters.
 
 <Callout type="info" title="Data Flow Between Agents">
-  Agents automatically share session state, so later agents can reference
-  earlier results. Use unique `outputKey` values for each agent and clear
-  instructions to help agents understand what information to pass forward.
+
+Agents automatically share session state, so later agents can reference
+earlier results. Use unique `outputKey` values for each agent and clear
+instructions to help agents understand what information to pass forward.
+
 </Callout>
 
 ## Real-World Use Cases
@@ -113,8 +117,10 @@ Data Collection → Statistical Analysis → Peer Review → Conclusion Generati
 ## When to Choose Sequential Agents
 
 <Callout type="success" title="Perfect For Sequential Processing">
-  - **Use when:** Each step builds on the previous one's output
-  - **Benefit:** Creates sophisticated reasoning chains impossible with single agents
+
+- **Use when:** Each step builds on the previous one's output
+- **Benefit:** Creates sophisticated reasoning chains impossible with single agents
+
 </Callout>
 
 ### ✅ Choose Sequential When:

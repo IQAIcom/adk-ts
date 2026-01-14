@@ -103,11 +103,11 @@ npx near-cli-rs account export-account your-name.testnet
 
 > **Important Notes:**
 >
-- 💾 Save both your account ID (e.g., "your-name.testnet") and seed phrase
-- 🔒 Keep your seed phrase secure - it's like a password for your account
-- If you get "account already exists" error:
-  - The account name is taken, try a different name
-  - Or if you created it before, just export the existing account using the export command above
+> - 💾 Save both your account ID (e.g., "your-name.testnet") and seed phrase
+> - 🔒 Keep your seed phrase secure - it's like a password for your account
+> - If you get "account already exists" error:
+>   - The account name is taken, try a different name
+>   - Or if you created it before, just export the existing account using the export command above
 
 #### 🔑 Phala API Key (Required)
 

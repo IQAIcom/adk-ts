@@ -1,10 +1,8 @@
-
 <div align="center">
 
 <img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
 
 <br/>
-
 
 # MCP Server Starter Template
 
@@ -20,15 +18,15 @@ A minimal starter template for building Model Context Protocol (MCP) servers usi
 
 ## Features
 
-* Basic project structure with `src/lib`, `src/services`, `src/tools`.
-* TypeScript setup (compiles to `dist/`).
-* `fastmcp` for MCP server implementation.
-* A weather service example demonstrating:
-  * Proper folder structure (lib, services, tools)
-  * API integration with error handling
-  * Parameter validation using Zod
-  * Separation of concerns
-* GitHub Actions workflows for CI and Release (manual trigger by default).
+- Basic project structure with `src/lib`, `src/services`, `src/tools`.
+- TypeScript setup (compiles to `dist/`).
+- `fastmcp` for MCP server implementation.
+- A weather service example demonstrating:
+  - Proper folder structure (lib, services, tools)
+  - API integration with error handling
+  - Parameter validation using Zod
+  - Separation of concerns
+- GitHub Actions workflows for CI and Release (manual trigger by default).
 
 ## Getting Started
 
@@ -48,6 +46,7 @@ You can also use this template directly by copying the files, but using the CLI 
 **Default (Production/Development) Route**
 
 To run your MCP server in production or for standard development, use:
+
 ```bash
 pnpm dev
 ```
@@ -55,6 +54,7 @@ pnpm dev
 **Fast Iteration & Development Testing**
 
 For rapid prototyping and testing your MCP server setup:
+
 ```bash
 pnpm dev   # Run server in development mode with hot-reloading
 ```
@@ -70,39 +70,39 @@ pnpm dev   # Run server in development mode with hot-reloading
    Get an API key from [OpenWeather](https://openweathermap.org/api).
 
 7. **Initial Commit:**
-    It's a good idea to make an initial commit at this stage.
+   It's a good idea to make an initial commit at this stage.
 
-    ```bash
-    git add .
-    git commit -m "feat: initial project setup from template"
-    ```
+   ```bash
+   git add .
+   git commit -m "feat: initial project setup from template"
+   ```
 
 8. **Develop your server:**
-    * Add your custom tools in the `src/tools/` directory.
-    * Implement logic in `src/lib/` and `src/services/`.
-    * Register tools in `src/index.ts`.
+   - Add your custom tools in the `src/tools/` directory.
+   - Implement logic in `src/lib/` and `src/services/`.
+   - Register tools in `src/index.ts`.
 
 ## Example Weather Tool
 
 This template includes a weather service example that demonstrates:
 
 1. **HTTP Utilities** (`src/lib/http.ts`):
-   * Type-safe HTTP requests with Zod validation
-   * Error handling
+   - Type-safe HTTP requests with Zod validation
+   - Error handling
 
 2. **Configuration** (`src/lib/config.ts`):
-   * Environment variable management
-   * Service configuration
+   - Environment variable management
+   - Service configuration
 
 3. **Weather Service** (`src/services/weather-service.ts`):
-   * API integration
-   * Data transformation
-   * Proper error propagation
+   - API integration
+   - Data transformation
+   - Proper error propagation
 
 4. **Weather Tool** (`src/tools/weather.ts`):
-   * Parameter validation with Zod
-   * User-friendly output formatting
-   * Error handling and user guidance
+   - Parameter validation with Zod
+   - User-friendly output formatting
+   - Error handling and user guidance
 
 To use the weather tool:
 
@@ -126,48 +126,48 @@ pnpm run start
 This template is ready for release management using [Changesets](https://github.com/changesets/changesets).
 
 1. **Install Changesets CLI (if not already in devDependencies):**
-    The template `package.json` should include `@changesets/cli`. If not:
+   The template `package.json` should include `@changesets/cli`. If not:
 
-    ```bash
-    pnpm add -D @changesets/cli
-    ```
+   ```bash
+   pnpm add -D @changesets/cli
+   ```
 
 2. **Initialize Changesets:**
-    This command will create a `.changeset` directory with some configuration files.
+   This command will create a `.changeset` directory with some configuration files.
 
-    ```bash
-    pnpm changeset init
-    # or npx changeset init
-    ```
+   ```bash
+   pnpm changeset init
+   # or npx changeset init
+   ```
 
-    Commit the generated `.changeset` directory and its contents.
+   Commit the generated `.changeset` directory and its contents.
 
 3. **Adding Changesets During Development:**
-    When you make a change that should result in a version bump (fix, feature, breaking change):
+   When you make a change that should result in a version bump (fix, feature, breaking change):
 
-    ```bash
-    pnpm changeset add
-    # or npx changeset add
-    ```
+   ```bash
+   pnpm changeset add
+   # or npx changeset add
+   ```
 
-    Follow the prompts. This will create a markdown file in the `.changeset` directory describing the change.
-    Commit this changeset file along with your code changes.
+   Follow the prompts. This will create a markdown file in the `.changeset` directory describing the change.
+   Commit this changeset file along with your code changes.
 
 4. **Publishing a Release:**
-    The GitHub Actions workflow `release.yml` (in `mcp-server-starter/.github/workflows/`) is set up for this. When you are ready to release:
-    * Ensure all feature PRs with their changeset files are merged to `main`.
-    * **Important:** Before publishing, ensure your `package.json` is complete. Add or update fields like `keywords`, `author`, `repository` (e.g., `"repository": {"type": "git", "url": "https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git"}`), `bugs` (e.g., `"bugs": {"url": "https://github.com/YOUR_USERNAME/YOUR_REPO_NAME/issues"}`), and `homepage` (e.g., `"homepage": "https://github.com/YOUR_USERNAME/YOUR_REPO_NAME#readme"`) for better discoverability and information on npm.
-    * The `release.yml` workflow (manually triggered by default in the template) will:
-        1. Run `changeset version` to consume changeset files, update `package.json` versions, and update `CHANGELOG.md`. It will push these to a `changeset-release/main` branch and open a "Version Packages" PR.
-        2. **Merge the "Version Packages" PR.**
-        3. Upon merging, the workflow runs again on `main`. This time, it will run `pnpm run publish-packages` (which should include `changeset publish`) to publish to npm and create GitHub Releases/tags.
-    * **To enable automatic release flow:** Change `on: workflow_dispatch` in `release.yml` to `on: push: branches: [main]` (or your release branch).
+   The GitHub Actions workflow `release.yml` (in `mcp-server-starter/.github/workflows/`) is set up for this. When you are ready to release:
+   - Ensure all feature PRs with their changeset files are merged to `main`.
+   - **Important:** Before publishing, ensure your `package.json` is complete. Add or update fields like `keywords`, `author`, `repository` (e.g., `"repository": {"type": "git", "url": "https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git"}`), `bugs` (e.g., `"bugs": {"url": "https://github.com/YOUR_USERNAME/YOUR_REPO_NAME/issues"}`), and `homepage` (e.g., `"homepage": "https://github.com/YOUR_USERNAME/YOUR_REPO_NAME#readme"`) for better discoverability and information on npm.
+   - The `release.yml` workflow (manually triggered by default in the template) will:
+     1. Run `changeset version` to consume changeset files, update `package.json` versions, and update `CHANGELOG.md`. It will push these to a `changeset-release/main` branch and open a "Version Packages" PR.
+     2. **Merge the "Version Packages" PR.**
+     3. Upon merging, the workflow runs again on `main`. This time, it will run `pnpm run publish-packages` (which should include `changeset publish`) to publish to npm and create GitHub Releases/tags.
+   - **To enable automatic release flow:** Change `on: workflow_dispatch` in `release.yml` to `on: push: branches: [main]` (or your release branch).
 
 ## Available Scripts
 
-* `pnpm run build`: Compiles TypeScript to JavaScript in `dist/` and makes the output executable.
-* `pnpm run dev`: Runs the server in development mode using `tsx` (hot-reloading for TypeScript).
-* `pnpm run start`: Runs the built server (from `dist/`) using Node.
+- `pnpm run build`: Compiles TypeScript to JavaScript in `dist/` and makes the output executable.
+- `pnpm run dev`: Runs the server in development mode using `tsx` (hot-reloading for TypeScript).
+- `pnpm run start`: Runs the built server (from `dist/`) using Node.
 
 ## Testing Your MCP Server
 
@@ -178,11 +178,13 @@ Use the server directly with MCP clients or integrate it into other applications
 To test your MCP server with ADK TypeScript, create a separate agent project that consumes your MCP server:
 
 1. **Deploy your MCP server:**
+
    ```bash
    pnpm dev  # Run your MCP server in development mode
    ```
 
 2. **Create a test agent project:**
+
    ```bash
    # In a separate directory, create a new ADK project
    npm install -g @iqai/adk-cli
@@ -192,6 +194,7 @@ To test your MCP server with ADK TypeScript, create a separate agent project tha
    ```
 
 3. **Connect to your MCP server using McpToolset:**
+
    ```typescript
    import { McpToolset, AgentBuilder } from "@iqai/adk";
 
@@ -202,7 +205,7 @@ To test your MCP server with ADK TypeScript, create a separate agent project tha
      transport: {
        mode: "stdio",
        command: "node",
-      args: ["../<your-mcp-server-project>/dist/index.js"], // or the host url
+       args: ["../<your-mcp-server-project>/dist/index.js"], // or the host url
        env: {
          OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY,
          PATH: process.env.PATH || "",
@@ -243,6 +246,6 @@ This approach allows you to test how your MCP server tools work within the ADK e
 
 After building (`pnpm run build`), you can run the server:
 
-* Directly if linked or globally installed: `mcp-hello-server` (or your customized bin name).
-* Via node: `node dist/index.js`
-* Via `pnpm dlx` (once published): `pnpm dlx your-published-package-name`
+- Directly if linked or globally installed: `mcp-hello-server` (or your customized bin name).
+- Via node: `node dist/index.js`
+- Via `pnpm dlx` (once published): `pnpm dlx your-published-package-name`

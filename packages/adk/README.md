@@ -50,11 +50,11 @@ npm install @iqai/adk
 ### Simple Example
 
 ```typescript
-import { AgentBuilder } from '@iqai/adk';
+import { AgentBuilder } from "@iqai/adk";
 
-const response = await AgentBuilder
-  .withModel("gpt-4.1")
-  .ask("What is the primary function of an AI agent?");
+const response = await AgentBuilder.withModel("gpt-4.1").ask(
+  "What is the primary function of an AI agent?",
+);
 
 console.log(response);
 ```
@@ -76,8 +76,8 @@ The library uses `dotenv` to load these variables automatically if `dotenv.confi
 Here's a fundamental example of creating and running an agent:
 
 ```typescript
-import { Agent } from '@iqai/adk';
-import dotenv from 'dotenv';
+import { Agent } from "@iqai/adk";
+import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
@@ -87,7 +87,7 @@ const myAgent = new LlmAgent({
   name: "simple_query_assistant",
   model: "gemini-2.5-flash", // Or "gpt-4-turbo", "claude-3-opus"
   description: "A basic assistant to answer questions.",
-  instructions: "You are a helpful AI. Respond clearly and concisely."
+  instructions: "You are a helpful AI. Respond clearly and concisely.",
 });
 
 // Asynchronously run the agent
@@ -97,7 +97,7 @@ async function runQuery() {
     console.log(`User: ${query}`);
 
     const response = await myAgent.run({
-      messages: [{ role: 'user', content: query }]
+      messages: [{ role: "user", content: query }],
     });
 
     console.log(`Agent: ${response.content}`);
@@ -114,15 +114,14 @@ runQuery();
 The `AgentBuilder` provides a fluent interface for creating agents with minimal boilerplate. It's perfect for rapid prototyping and reduces the complexity of agent setup.
 
 ```typescript
-import { AgentBuilder } from '@iqai/adk';
-import dotenv from 'dotenv';
+import { AgentBuilder } from "@iqai/adk";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 // Simple agent creation and execution in one fluent chain
 async function quickQuery() {
-  const response = await AgentBuilder
-    .create("query_assistant")
+  const response = await AgentBuilder.create("query_assistant")
     .withModel("gemini-2.5-flash")
     .withInstruction("You are a helpful AI. Respond clearly and concisely.")
     .ask("What is the capital of France?");
@@ -132,11 +131,14 @@ async function quickQuery() {
 
 // For more complex scenarios, build the agent and get full control
 async function advancedSetup() {
-  const { agent, runner, session } = await AgentBuilder
-    .create("research_assistant")
+  const { agent, runner, session } = await AgentBuilder.create(
+    "research_assistant",
+  )
     .withModel("gpt-4-turbo")
     .withDescription("An advanced research assistant")
-    .withInstruction("You are a research assistant with access to various tools")
+    .withInstruction(
+      "You are a research assistant with access to various tools",
+    )
     .withTools(new GoogleSearchTool(), new FileOperationsTool())
     .withQuickSession("research-app", "researcher-456")
     .build();
@@ -148,15 +150,13 @@ async function advancedSetup() {
 // Specialized agent types for orchestration
 async function createWorkflowAgent() {
   // Sequential execution of multiple agents
-  const workflow = await AgentBuilder
-    .create("data_pipeline")
+  const workflow = await AgentBuilder.create("data_pipeline")
     .asSequential([dataCollector, dataProcessor, dataAnalyzer])
     .withQuickSession("pipeline-app", "admin")
     .build();
 
   // Parallel execution for concurrent tasks
-  const parallelAnalysis = await AgentBuilder
-    .create("multi_analysis")
+  const parallelAnalysis = await AgentBuilder.create("multi_analysis")
     .asParallel([sentimentAnalyzer, topicExtractor, summaryGenerator])
     .build();
 }
@@ -176,8 +176,8 @@ async function createWorkflowAgent() {
 Extend your agent's capabilities by defining and integrating custom tools.
 
 ```typescript
-import { Agent, BaseTool } from '@iqai/adk';
-import dotenv from 'dotenv';
+import { Agent, BaseTool } from "@iqai/adk";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -185,8 +185,9 @@ dotenv.config();
 class CalculatorTool extends BaseTool {
   constructor() {
     super({
-      name: 'calculator',
-      description: 'Performs basic arithmetic operations: add, subtract, multiply, divide.'
+      name: "calculator",
+      description:
+        "Performs basic arithmetic operations: add, subtract, multiply, divide.",
     });
   }
 
@@ -195,30 +196,38 @@ class CalculatorTool extends BaseTool {
       name: this.name,
       description: this.description,
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {
           operation: {
-            type: 'string',
-            enum: ['add', 'subtract', 'multiply', 'divide']
+            type: "string",
+            enum: ["add", "subtract", "multiply", "divide"],
           },
-          operand1: { type: 'number' },
-          operand2: { type: 'number' }
+          operand1: { type: "number" },
+          operand2: { type: "number" },
         },
-        required: ['operation', 'operand1', 'operand2']
-      }
+        required: ["operation", "operand1", "operand2"],
+      },
     };
   }
 
-  async runAsync(args: { operation: string; operand1: number; operand2: number }) {
+  async runAsync(args: {
+    operation: string;
+    operand1: number;
+    operand2: number;
+  }) {
     const { operation, operand1, operand2 } = args;
     switch (operation) {
-      case 'add': return { result: operand1 + operand2 };
-      case 'subtract': return { result: operand1 - operand2 };
-      case 'multiply': return { result: operand1 * operand2 };
-      case 'divide':
-        if (operand2 === 0) return { error: 'Cannot divide by zero.' };
+      case "add":
+        return { result: operand1 + operand2 };
+      case "subtract":
+        return { result: operand1 - operand2 };
+      case "multiply":
+        return { result: operand1 * operand2 };
+      case "divide":
+        if (operand2 === 0) return { error: "Cannot divide by zero." };
         return { result: operand1 / operand2 };
-      default: return { error: `Unknown operation: ${operation}` };
+      default:
+        return { error: `Unknown operation: ${operation}` };
     }
   }
 }
@@ -229,14 +238,12 @@ const mathAgent = new LlmAgent({
   model: "gpt-4-turbo", // Choose a model proficient with tool usage
   instructions:
     "You are a helpful assistant. Use the calculator tool for any mathematical calculations requested.",
-  tools: [new CalculatorTool()]
+  tools: [new CalculatorTool()],
 });
 
 async function performCalculation() {
   const response = await mathAgent.run({
-    messages: [
-      { role: 'user', content: 'What is 15 multiplied by 4?' }
-    ]
+    messages: [{ role: "user", content: "What is 15 multiplied by 4?" }],
   });
   // The response.content will likely include the thought process and the tool's output.
   console.log(JSON.stringify(response, null, 2));
@@ -250,18 +257,16 @@ performCalculation().catch(console.error);
 ### Multi-Agent Systems
 
 ```typescript
-import { AgentBuilder } from '@iqai/adk';
+import { AgentBuilder } from "@iqai/adk";
 
 // Sequential workflow
-const workflow = await AgentBuilder
-  .create("data_pipeline")
+const workflow = await AgentBuilder.create("data_pipeline")
   .asSequential([dataCollector, dataProcessor, dataAnalyzer])
   .withQuickSession("pipeline-app", "admin")
   .build();
 
 // Parallel execution
-const parallelAnalysis = await AgentBuilder
-  .create("multi_analysis")
+const parallelAnalysis = await AgentBuilder.create("multi_analysis")
   .asParallel([sentimentAnalyzer, topicExtractor, summaryGenerator])
   .build();
 ```
@@ -269,32 +274,32 @@ const parallelAnalysis = await AgentBuilder
 ### Memory & Sessions
 
 ```typescript
-import { Agent, InMemorySessionService } from '@iqai/adk';
+import { Agent, InMemorySessionService } from "@iqai/adk";
 
 const agent = new LlmAgent({
   name: "persistent_assistant",
   model: "gpt-4-turbo",
   sessionService: new InMemorySessionService(),
-  instructions: "Remember our conversation history."
+  instructions: "Remember our conversation history.",
 });
 ```
 
 ### Custom Tools
 
 ```typescript
-import { BaseTool } from '@iqai/adk';
+import { BaseTool } from "@iqai/adk";
 
 class WeatherTool extends BaseTool {
   constructor() {
     super({
-      name: 'weather',
-      description: 'Get current weather information'
+      name: "weather",
+      description: "Get current weather information",
     });
   }
 
   async runAsync(args: { location: string }) {
     // Implementation here
-    return { temperature: 72, condition: 'sunny' };
+    return { temperature: 72, condition: "sunny" };
   }
 }
 ```
