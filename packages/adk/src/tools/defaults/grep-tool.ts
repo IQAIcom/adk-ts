@@ -1,4 +1,4 @@
-import type { Dirent } from "node:fs";
+import type { Dirent, Stats } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Type } from "@google/genai";
@@ -9,7 +9,7 @@ import type { ToolContext } from "../tool-context";
 export class GrepTool extends BaseTool {
 	private readonly config: GrepConfig = {
 		maxMatches: 500,
-		maxFileSize: 10 * 1024 * 1024, // 10MB
+		maxFileSize: 10 * 1024 * 1024,
 		contextLines: 2,
 		excludePatterns: [
 			"**/node_modules/**",
@@ -32,7 +32,7 @@ export class GrepTool extends BaseTool {
 		super({
 			name: "grep",
 			description:
-				"Search for patterns in files using regex. Supports glob patterns, case-insensitive search, context lines, and advanced filtering. Returns matching lines with file paths and line numbers.",
+				"Search for patterns in files using regex. Supports glob patterns, case-insensitive search, context lines, and advanced filtering.",
 			shouldRetryOnFailure: false,
 		});
 
@@ -46,39 +46,15 @@ export class GrepTool extends BaseTool {
 			parameters: {
 				type: Type.OBJECT,
 				properties: {
-					pattern: {
-						type: Type.STRING,
-						description: "Regex pattern to search for",
-					},
-					files: {
-						type: Type.STRING,
-						description: "File path or glob pattern",
-					},
-					case_insensitive: {
-						type: Type.BOOLEAN,
-						description: "Case-insensitive search",
-					},
-					context_lines: {
-						type: Type.NUMBER,
-						description: "Context lines before/after match",
-					},
-					max_matches: {
-						type: Type.NUMBER,
-						description: "Maximum matches to return",
-					},
-					whole_word: {
-						type: Type.BOOLEAN,
-						description: "Match whole words only",
-					},
-					invert_match: { type: Type.BOOLEAN, description: "Invert match" },
-					exclude: {
-						type: Type.STRING,
-						description: "Extra exclude patterns",
-					},
-					include: {
-						type: Type.STRING,
-						description: "Extra include patterns",
-					},
+					pattern: { type: Type.STRING },
+					files: { type: Type.STRING },
+					caseInsensitive: { type: Type.BOOLEAN },
+					contextLines: { type: Type.NUMBER },
+					maxMatches: { type: Type.NUMBER },
+					wholeWord: { type: Type.BOOLEAN },
+					invertMatch: { type: Type.BOOLEAN },
+					exclude: { type: Type.STRING },
+					include: { type: Type.STRING },
 				},
 				required: ["pattern", "files"],
 			},
@@ -89,11 +65,11 @@ export class GrepTool extends BaseTool {
 		args: {
 			pattern: string;
 			files: string;
-			case_insensitive?: boolean;
-			context_lines?: number;
-			max_matches?: number;
-			whole_word?: boolean;
-			invert_match?: boolean;
+			caseInsensitive?: boolean;
+			contextLines?: number;
+			maxMatches?: number;
+			wholeWord?: boolean;
+			invertMatch?: boolean;
 			exclude?: string;
 			include?: string;
 		},
@@ -103,21 +79,22 @@ export class GrepTool extends BaseTool {
 		const warnings: string[] = [];
 
 		try {
-			const validatedArgs = this.validateAndSanitizeArgs(args, warnings);
+			const validated = this.validateAndSanitizeArgs(args, warnings);
+
 			const regex = this.buildRegex(
-				validatedArgs.pattern,
-				validatedArgs.case_insensitive,
-				validatedArgs.whole_word,
+				validated.pattern,
+				validated.caseInsensitive,
+				validated.wholeWord,
 			);
 
 			const files = await this.resolveFiles(
-				validatedArgs.files,
-				validatedArgs.exclude,
-				validatedArgs.include,
+				validated.files,
+				validated.exclude,
+				validated.include,
 				warnings,
 			);
 
-			if (files.length === 0) {
+			if (!files.length) {
 				return {
 					success: true,
 					matches: [],
@@ -128,26 +105,26 @@ export class GrepTool extends BaseTool {
 						limitReached: false,
 						duration: Date.now() - startTime,
 					},
-					warnings: ["No files found matching the pattern"],
+					warnings: ["No files matched the provided pattern"],
 				};
 			}
 
-			const searchResult = await this.searchFiles(
+			const result = await this.searchFiles(
 				files,
 				regex,
-				validatedArgs.max_matches,
-				validatedArgs.context_lines,
-				validatedArgs.invert_match,
+				validated.maxMatches,
+				validated.contextLines,
+				validated.invertMatch,
 				warnings,
 			);
 
 			return {
 				success: true,
-				matches: searchResult.matches,
-				stats: { ...searchResult.stats, duration: Date.now() - startTime },
+				matches: result.matches,
+				stats: { ...result.stats, duration: Date.now() - startTime },
 				warnings: warnings.length ? warnings : undefined,
 			};
-		} catch (error) {
+		} catch (e) {
 			return {
 				success: false,
 				matches: [],
@@ -158,72 +135,54 @@ export class GrepTool extends BaseTool {
 					limitReached: false,
 					duration: Date.now() - startTime,
 				},
-				error: error instanceof Error ? error.message : String(error),
+				error: e instanceof Error ? e.message : String(e),
 				warnings: warnings.length ? warnings : undefined,
 			};
 		}
 	}
 
-	private validateAndSanitizeArgs(
-		args: any,
-		warnings: string[],
-	): Required<typeof args> {
-		if (!args.pattern?.trim())
-			throw new Error("Search pattern cannot be empty");
+	private validateAndSanitizeArgs(args: any, warnings: string[]) {
+		if (!args.pattern?.trim()) throw new Error("pattern cannot be empty");
 
-		let contextLines = args.context_lines ?? this.config.contextLines;
+		let contextLines = args.contextLines ?? this.config.contextLines;
 		if (contextLines < 0) {
-			warnings.push("context_lines cannot be negative, using 0");
+			warnings.push("contextLines < 0, using 0");
 			contextLines = 0;
 		}
 		if (contextLines > 10) {
-			warnings.push("context_lines capped at 10");
+			warnings.push("contextLines capped at 10");
 			contextLines = 10;
 		}
 
-		let maxMatches = args.max_matches ?? this.config.maxMatches;
+		let maxMatches = args.maxMatches ?? this.config.maxMatches;
 		if (maxMatches < 1) {
-			warnings.push("max_matches must be at least 1, using 1");
+			warnings.push("maxMatches < 1, using 1");
 			maxMatches = 1;
 		}
 		if (maxMatches > 1000) {
-			warnings.push("max_matches capped at 1000");
+			warnings.push("maxMatches capped at 1000");
 			maxMatches = 1000;
 		}
 
 		return {
-			...args,
 			pattern: args.pattern.trim(),
 			files: args.files.trim(),
-			case_insensitive: args.case_insensitive ?? false,
-			context_lines: contextLines,
-			max_matches: maxMatches,
-			whole_word: args.whole_word ?? false,
-			invert_match: args.invert_match ?? false,
+			caseInsensitive: args.caseInsensitive ?? false,
+			contextLines,
+			maxMatches,
+			wholeWord: args.wholeWord ?? false,
+			invertMatch: args.invertMatch ?? false,
 			exclude: args.exclude ?? "",
 			include: args.include ?? "",
 		};
 	}
 
-	private buildRegex(
-		pattern: string,
-		caseInsensitive: boolean,
-		wholeWord: boolean,
-	): RegExp {
-		try {
-			return new RegExp(
-				wholeWord ? `\\b${pattern}\\b` : pattern,
-				caseInsensitive ? "gi" : "g",
-			);
-		} catch (error) {
-			throw new Error(
-				`Invalid regex: ${error instanceof Error ? error.message : String(error)}`,
-			);
-		}
+	private buildRegex(pattern: string, ci: boolean, ww: boolean): RegExp {
+		return new RegExp(ww ? `\\b${pattern}\\b` : pattern, ci ? "gi" : "g");
 	}
 
 	private async resolveFiles(
-		_filesPattern: string,
+		filesPattern: string,
 		excludeArg: string,
 		includeArg: string,
 		warnings: string[],
@@ -237,36 +196,54 @@ export class GrepTool extends BaseTool {
 			...(includeArg ? includeArg.split(",").map((s) => s.trim()) : []),
 		];
 
+		const cwd = process.cwd();
+		const absPattern = path.resolve(cwd, filesPattern);
 		const files: string[] = [];
-		await this.walkDir(
-			process.cwd(),
-			files,
-			excludePatterns,
-			includePatterns,
-			warnings,
-		);
 
-		return files.filter(async (f) => {
+		let stat: Stats | undefined;
+		try {
+			stat = await fs.stat(absPattern);
+		} catch {
+			stat = undefined;
+		}
+
+		if (stat?.isDirectory()) {
+			await this.walkDir(absPattern, files, excludePatterns, includePatterns);
+		} else {
+			const baseDir = cwd;
+			const matcher = globToRegex(filesPattern.replace(/\\/g, "/"));
+			await this.walkDir(
+				baseDir,
+				files,
+				excludePatterns,
+				includePatterns,
+				matcher,
+			);
+		}
+
+		const filtered: string[] = [];
+		for (const f of files) {
 			try {
-				const stats = await fs.stat(f);
-				if (stats.size > this.config.maxFileSize) {
+				const s = await fs.stat(f);
+				if (s.size > this.config.maxFileSize) {
 					warnings.push(`Skipping ${f}: exceeds max file size`);
-					return false;
+					continue;
 				}
-				return true;
+				filtered.push(f);
 			} catch (e) {
 				warnings.push(`Cannot access ${f}: ${e}`);
-				return false;
 			}
-		});
+		}
+
+		return filtered;
 	}
 
 	private async walkDir(
 		dir: string,
-		outFiles: string[],
-		excludePatterns: string[],
-		includePatterns: string[],
-		warnings: string[],
+		out: string[],
+		exclude: string[],
+		include: string[],
+		matcher?: RegExp,
 	) {
 		let entries: Dirent[];
 		try {
@@ -275,33 +252,22 @@ export class GrepTool extends BaseTool {
 			return;
 		}
 
-		for (const entry of entries) {
-			const fullPath = path.join(dir, entry.name);
-			const relativePath = path
-				.relative(process.cwd(), fullPath)
-				.replace(/\\/g, "/");
+		for (const e of entries) {
+			const full = path.join(dir, e.name);
+			const rel = path.relative(process.cwd(), full).replace(/\\/g, "/");
 
-			if (excludePatterns.some((p) => globToRegex(p).test(relativePath)))
-				continue;
+			if (exclude.some((p) => globToRegex(p).test(rel))) continue;
 
-			if (entry.isDirectory()) {
-				await this.walkDir(
-					fullPath,
-					outFiles,
-					excludePatterns,
-					includePatterns,
-					warnings,
-				);
+			if (e.isDirectory()) {
+				await this.walkDir(full, out, exclude, include, matcher);
 				continue;
 			}
 
-			if (
-				includePatterns.length &&
-				!includePatterns.some((p) => globToRegex(p).test(relativePath))
-			)
+			if (matcher && !matcher.test(rel)) continue;
+			if (include.length && !include.some((p) => globToRegex(p).test(rel)))
 				continue;
 
-			outFiles.push(fullPath);
+			out.push(full);
 		}
 	}
 
@@ -315,29 +281,29 @@ export class GrepTool extends BaseTool {
 	) {
 		const matches: GrepMatch[] = [];
 		let filesSearched = 0;
-		let limitReached = false;
 		let filesMatched = 0;
+		let limitReached = false;
 
-		const tasks = files.map((file) => async () => {
+		const tasks = files.map((f) => async () => {
 			if (matches.length >= maxMatches) {
 				limitReached = true;
 				return;
 			}
 			filesSearched++;
 			try {
-				const fileMatches = await this.searchFile(
-					file,
+				const m = await this.searchFile(
+					f,
 					regex,
 					contextLines,
 					invertMatch,
 					maxMatches - matches.length,
 				);
-				if (fileMatches.length) {
-					matches.push(...fileMatches);
+				if (m.length) {
+					matches.push(...m);
 					filesMatched++;
 				}
 			} catch (e) {
-				warnings.push(`Error reading ${file}: ${e}`);
+				warnings.push(`Error reading ${f}: ${e}`);
 			}
 		});
 
@@ -359,37 +325,32 @@ export class GrepTool extends BaseTool {
 		regex: RegExp,
 		contextLines: number,
 		invertMatch: boolean,
-		remainingMatches: number,
+		remaining: number,
 	): Promise<GrepMatch[]> {
-		const content = await fs.readFile(file, "utf8");
-		const lines = content.split("\n");
+		const lines = (await fs.readFile(file, "utf8")).split("\n");
 		const matches: GrepMatch[] = [];
 
-		for (
-			let i = 0;
-			i < lines.length && matches.length < remainingMatches;
-			i++
-		) {
+		for (let i = 0; i < lines.length && matches.length < remaining; i++) {
 			const line = lines[i];
 			const match = line.match(regex);
-			const hasMatch = !!match;
-			const shouldInclude = invertMatch ? !hasMatch : hasMatch;
-			if (!shouldInclude) continue;
+			const ok = invertMatch ? !match : !!match;
+			if (!ok) continue;
 
-			const column =
-				!invertMatch && match && match.index !== undefined ? match.index : 0;
-			const grepMatch: GrepMatch = {
+			const m: GrepMatch = {
 				file: path.relative(process.cwd(), file),
 				line: i + 1,
-				column,
+				column: match?.index ?? 0,
 				content: line,
 			};
-			if (contextLines)
-				grepMatch.context = {
+
+			if (contextLines) {
+				m.context = {
 					before: lines.slice(Math.max(0, i - contextLines), i),
 					after: lines.slice(i + 1, i + 1 + contextLines),
 				};
-			matches.push(grepMatch);
+			}
+
+			matches.push(m);
 		}
 
 		return matches;
@@ -397,21 +358,12 @@ export class GrepTool extends BaseTool {
 }
 
 function globToRegex(pattern: string): RegExp {
-	// Escape regex special chars
-	let regex = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-
-	// Replace glob patterns
-	regex = regex.replace(/\\\*\\\*/g, ".*"); // ** => any path
-	regex = regex.replace(/\\\*/g, "[^/]*"); // * => anything except /
-	regex = regex.replace(/\\\?/g, "."); // ? => single char
-
-	// Basic alternation {a,b} => (a|b)
-	regex = regex.replace(
-		/\\\{([^}]+)\\\}/g,
-		(_, group) => `(${group.replace(/,/g, "|")})`,
-	);
-
-	return new RegExp(`^${regex}$`);
+	let r = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+	r = r.replace(/\\\*\\\*/g, ".*");
+	r = r.replace(/\\\*/g, "[^/]*");
+	r = r.replace(/\\\?/g, ".");
+	r = r.replace(/\\\{([^}]+)\\\}/g, (_, g) => `(${g.replace(/,/g, "|")})`);
+	return new RegExp(`^${r}$`);
 }
 
 async function asyncPool<T>(
@@ -422,8 +374,8 @@ async function asyncPool<T>(
 	const executing: Promise<void>[] = [];
 
 	for (const task of tasks) {
-		const p = task().then((res) => {
-			results.push(res);
+		const p = task().then((r) => {
+			results.push(r);
 		});
 		executing.push(p);
 
@@ -445,19 +397,14 @@ interface GrepConfig {
 	includePatterns: string[];
 }
 
-/** Single grep match */
 interface GrepMatch {
 	file: string;
 	line: number;
 	column: number;
 	content: string;
-	context?: {
-		before: string[];
-		after: string[];
-	};
+	context?: { before: string[]; after: string[] };
 }
 
-/** Grep result */
 interface GrepResult {
 	success: boolean;
 	matches: GrepMatch[];
