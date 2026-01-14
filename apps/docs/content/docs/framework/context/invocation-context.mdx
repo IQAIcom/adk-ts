@@ -3,7 +3,7 @@ title: InvocationContext
 description: Complete framework access for agent core implementation and invocation management
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 InvocationContext is the most comprehensive context object in ADK, providing complete access to the framework's capabilities. It's primarily used in agent core implementation and represents the full execution environment for a single invocation.
 
@@ -69,6 +69,7 @@ get userId(): string;
 ## Key Methods
 
 ### incrementLlmCallCount()
+
 Tracks and enforces LLM call limits:
 
 ```typescript
@@ -78,6 +79,7 @@ incrementLlmCallCount(): void
 Throws `LlmCallsLimitExceededError` if the configured limit is exceeded.
 
 ### createChildContext()
+
 Creates a child context for sub-agent execution:
 
 ```typescript
@@ -97,7 +99,7 @@ import { BaseAgent, InvocationContext, Event } from "@iqai/adk";
 
 export class CustomAgent extends BaseAgent {
   protected async *runAsyncImpl(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     // Access full framework capabilities
     const session = context.session;
@@ -109,14 +111,14 @@ export class CustomAgent extends BaseAgent {
   }
 
   private async *processWithFullContext(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     // Use all available services and state
     if (context.memoryService) {
       const memories = await context.memoryService.searchMemory({
         query: "relevant context",
         appName: context.appName,
-        userId: context.userId
+        userId: context.userId,
       });
 
       // Process memories and generate events
@@ -130,8 +132,8 @@ export class CustomAgent extends BaseAgent {
       invocationId: context.invocationId,
       author: this.name,
       content: {
-        parts: [{ text: "Processing complete" }]
-      }
+        parts: [{ text: "Processing complete" }],
+      },
     });
 
     yield event;
@@ -146,7 +148,7 @@ An agent that coordinates multiple services:
 ```typescript
 export class MultiServiceAgent extends BaseAgent {
   protected async *runAsyncImpl(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     try {
       // Initialize processing state
@@ -156,8 +158,8 @@ export class MultiServiceAgent extends BaseAgent {
         services: {
           artifact: !!context.artifactService,
           memory: !!context.memoryService,
-          session: !!context.sessionService
-        }
+          session: !!context.sessionService,
+        },
       };
 
       // Update session state
@@ -171,7 +173,6 @@ export class MultiServiceAgent extends BaseAgent {
       } else {
         yield* this.processBasic(context);
       }
-
     } catch (error) {
       // Handle errors with full context
       yield this.createErrorEvent(context, error);
@@ -179,27 +180,27 @@ export class MultiServiceAgent extends BaseAgent {
   }
 
   private async *processWithMemoryAndArtifacts(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     // Search memory for context
     const memoryResults = await context.memoryService!.searchMemory({
       query: "user preferences and history",
       appName: context.appName,
-      userId: context.userId
+      userId: context.userId,
     });
 
     // Load relevant artifacts
     const artifacts = await context.artifactService!.listArtifactKeys({
       appName: context.appName,
       userId: context.userId,
-      sessionId: context.session.id
+      sessionId: context.session.id,
     });
 
     // Process and combine information
     const combinedContext = {
       memories: memoryResults.memories || [],
       artifacts: artifacts,
-      sessionHistory: context.session.events?.length || 0
+      sessionHistory: context.session.events?.length || 0,
     };
 
     // Generate comprehensive response
@@ -207,10 +208,12 @@ export class MultiServiceAgent extends BaseAgent {
       invocationId: context.invocationId,
       author: this.name,
       content: {
-        parts: [{
-          text: `Found ${combinedContext.memories.length} relevant memories and ${combinedContext.artifacts.length} artifacts`
-        }]
-      }
+        parts: [
+          {
+            text: `Found ${combinedContext.memories.length} relevant memories and ${combinedContext.artifacts.length} artifacts`,
+          },
+        ],
+      },
     });
   }
 
@@ -219,12 +222,14 @@ export class MultiServiceAgent extends BaseAgent {
       invocationId: context.invocationId,
       author: this.name,
       content: {
-        parts: [{
-          text: `Error in multi-service processing: ${error instanceof Error ? error.message : String(error)}`
-        }]
+        parts: [
+          {
+            text: `Error in multi-service processing: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
       },
       errorCode: "MULTI_SERVICE_ERROR",
-      errorMessage: error instanceof Error ? error.message : String(error)
+      errorMessage: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -244,8 +249,8 @@ async function processWithAvailableServices(context: InvocationContext) {
     memories: [] as any[],
     processing: {
       timestamp: new Date().toISOString(),
-      invocationId: context.invocationId
-    }
+      invocationId: context.invocationId,
+    },
   };
 
   // Use artifact service if available
@@ -254,7 +259,7 @@ async function processWithAvailableServices(context: InvocationContext) {
       results.artifacts = await context.artifactService.listArtifactKeys({
         appName: context.appName,
         userId: context.userId,
-        sessionId: context.session.id
+        sessionId: context.session.id,
       });
     } catch (error) {
       console.warn("Artifact service error:", error);
@@ -267,7 +272,7 @@ async function processWithAvailableServices(context: InvocationContext) {
       const memoryResponse = await context.memoryService.searchMemory({
         query: "user context",
         appName: context.appName,
-        userId: context.userId
+        userId: context.userId,
       });
       results.memories = memoryResponse.memories || [];
     } catch (error) {
@@ -288,7 +293,7 @@ Use child contexts for sub-agent execution:
 ```typescript
 export class DelegatingAgent extends BaseAgent {
   protected async *runAsyncImpl(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     // Determine if delegation is needed
     const userInput = context.userContent?.parts?.[0]?.text || "";
@@ -301,7 +306,9 @@ export class DelegatingAgent extends BaseAgent {
         const childContext = context.createChildContext(specializedAgent);
 
         // Update branch tracking
-        console.log(`Delegating to ${specializedAgent.name}, branch: ${childContext.branch}`);
+        console.log(
+          `Delegating to ${specializedAgent.name}, branch: ${childContext.branch}`,
+        );
 
         // Execute specialized agent
         yield* specializedAgent.runAsync(childContext);
@@ -316,7 +323,11 @@ export class DelegatingAgent extends BaseAgent {
   }
 
   private requiresSpecialization(input: string): boolean {
-    return input.includes("code") || input.includes("math") || input.includes("research");
+    return (
+      input.includes("code") ||
+      input.includes("math") ||
+      input.includes("research")
+    );
   }
 
   private findSpecializedAgent(input: string): BaseAgent | null {
@@ -324,15 +335,20 @@ export class DelegatingAgent extends BaseAgent {
     return null; // Implementation depends on your agent architecture
   }
 
-  private createDelegationSummary(context: InvocationContext, agentName: string): Event {
+  private createDelegationSummary(
+    context: InvocationContext,
+    agentName: string,
+  ): Event {
     return new Event({
       invocationId: context.invocationId,
       author: this.name,
       content: {
-        parts: [{
-          text: `Completed delegation to ${agentName} for specialized processing`
-        }]
-      }
+        parts: [
+          {
+            text: `Completed delegation to ${agentName} for specialized processing`,
+          },
+        ],
+      },
     });
   }
 }
@@ -346,9 +362,9 @@ Handle branch context for complex agent trees:
 function processBranchContext(context: InvocationContext) {
   const branchInfo = {
     current: context.branch || "root",
-    depth: context.branch?.split('.').length || 0,
-    parentAgents: context.branch?.split('.').slice(0, -1) || [],
-    currentAgent: context.agent.name
+    depth: context.branch?.split(".").length || 0,
+    parentAgents: context.branch?.split(".").slice(0, -1) || [],
+    currentAgent: context.agent.name,
   };
 
   // Update session with branch tracking
@@ -359,7 +375,7 @@ function processBranchContext(context: InvocationContext) {
     branch: branchInfo.current,
     agent: branchInfo.currentAgent,
     timestamp: new Date().toISOString(),
-    invocationId: context.invocationId
+    invocationId: context.invocationId,
   });
 
   // Keep only recent branch history
@@ -379,7 +395,7 @@ Monitor and enforce LLM usage limits:
 ```typescript
 export class CostAwareAgent extends BaseAgent {
   protected async *runAsyncImpl(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     try {
       // Track LLM call
@@ -388,7 +404,7 @@ export class CostAwareAgent extends BaseAgent {
       // Update cost tracking in state
       const costTracking = context.session.state.costTracking || {
         llmCalls: 0,
-        totalCost: 0
+        totalCost: 0,
       };
 
       costTracking.llmCalls += 1;
@@ -396,7 +412,6 @@ export class CostAwareAgent extends BaseAgent {
 
       // Process with cost awareness
       yield* this.processWithCostTracking(context);
-
     } catch (error) {
       if (error instanceof LlmCallsLimitExceededError) {
         yield this.createLimitExceededEvent(context);
@@ -411,11 +426,13 @@ export class CostAwareAgent extends BaseAgent {
       invocationId: context.invocationId,
       author: this.name,
       content: {
-        parts: [{
-          text: "LLM call limit exceeded for this invocation. Please try again later."
-        }]
+        parts: [
+          {
+            text: "LLM call limit exceeded for this invocation. Please try again later.",
+          },
+        ],
       },
-      errorCode: "LLM_LIMIT_EXCEEDED"
+      errorCode: "LLM_LIMIT_EXCEEDED",
     });
   }
 }
@@ -428,7 +445,10 @@ export class CostAwareAgent extends BaseAgent {
 Coordinate state changes across all services:
 
 ```typescript
-async function synchronizeState(context: InvocationContext, updates: Record<string, any>) {
+async function synchronizeState(
+  context: InvocationContext,
+  updates: Record<string, any>,
+) {
   const syncId = `sync_${Date.now()}`;
 
   try {
@@ -437,8 +457,8 @@ async function synchronizeState(context: InvocationContext, updates: Record<stri
       lastSync: {
         id: syncId,
         timestamp: new Date().toISOString(),
-        invocationId: context.invocationId
-      }
+        invocationId: context.invocationId,
+      },
     });
 
     // Persist session changes
@@ -452,8 +472,8 @@ async function synchronizeState(context: InvocationContext, updates: Record<stri
         sessionId: context.session.id,
         filename: `state_snapshot_${syncId}.json`,
         artifact: {
-          text: JSON.stringify(context.session.state, null, 2)
-        }
+          text: JSON.stringify(context.session.state, null, 2),
+        },
       });
     }
 
@@ -466,19 +486,18 @@ async function synchronizeState(context: InvocationContext, updates: Record<stri
         content: `User preferences updated: ${JSON.stringify(updates.userPreferences)}`,
         metadata: {
           type: "user_preferences",
-          syncId: syncId
-        }
+          syncId: syncId,
+        },
       });
     }
 
     return { success: true, syncId };
-
   } catch (error) {
     // Handle synchronization failure
     context.session.state.lastSyncError = {
       syncId,
       error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     throw error;
@@ -493,7 +512,7 @@ Manage the complete invocation lifecycle:
 ```typescript
 export class LifecycleAwareAgent extends BaseAgent {
   protected async *runAsyncImpl(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     // Initialize invocation
     yield* this.initializeInvocation(context);
@@ -510,38 +529,38 @@ export class LifecycleAwareAgent extends BaseAgent {
 
       // Finalize invocation
       yield* this.finalizeInvocation(context);
-
     } catch (error) {
       yield* this.handleInvocationError(context, error);
     }
   }
 
   private async *initializeInvocation(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     // Set up invocation tracking
     context.session.state.currentInvocation = {
       id: context.invocationId,
       started: new Date().toISOString(),
       agent: this.name,
-      branch: context.branch
+      branch: context.branch,
     };
 
     yield new Event({
       invocationId: context.invocationId,
       author: this.name,
       content: {
-        parts: [{ text: "Invocation initialized" }]
-      }
+        parts: [{ text: "Invocation initialized" }],
+      },
     });
   }
 
   private async *finalizeInvocation(
-    context: InvocationContext
+    context: InvocationContext,
   ): AsyncGenerator<Event, void, unknown> {
     // Clean up and finalize
     if (context.session.state.currentInvocation) {
-      context.session.state.currentInvocation.completed = new Date().toISOString();
+      context.session.state.currentInvocation.completed =
+        new Date().toISOString();
     }
 
     // Save final state if needed
@@ -552,12 +571,16 @@ export class LifecycleAwareAgent extends BaseAgent {
         sessionId: context.session.id,
         filename: `invocation_${context.invocationId}_final.json`,
         artifact: {
-          text: JSON.stringify({
-            invocationId: context.invocationId,
-            finalState: context.session.state,
-            completed: new Date().toISOString()
-          }, null, 2)
-        }
+          text: JSON.stringify(
+            {
+              invocationId: context.invocationId,
+              finalState: context.session.state,
+              completed: new Date().toISOString(),
+            },
+            null,
+            2,
+          ),
+        },
       });
     }
 
@@ -565,8 +588,8 @@ export class LifecycleAwareAgent extends BaseAgent {
       invocationId: context.invocationId,
       author: this.name,
       content: {
-        parts: [{ text: "Invocation completed successfully" }]
-      }
+        parts: [{ text: "Invocation completed successfully" }],
+      },
     });
   }
 }
@@ -582,9 +605,9 @@ async function robustServiceOperation(context: InvocationContext) {
     services: {
       session: { available: true, success: false },
       artifact: { available: !!context.artifactService, success: false },
-      memory: { available: !!context.memoryService, success: false }
+      memory: { available: !!context.memoryService, success: false },
     },
-    errors: [] as string[]
+    errors: [] as string[],
   };
 
   // Session service (always available)
@@ -592,7 +615,9 @@ async function robustServiceOperation(context: InvocationContext) {
     await context.sessionService.updateSession(context.session);
     results.services.session.success = true;
   } catch (error) {
-    results.errors.push(`Session: ${error instanceof Error ? error.message : String(error)}`);
+    results.errors.push(
+      `Session: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 
   // Artifact service (optional)
@@ -601,11 +626,13 @@ async function robustServiceOperation(context: InvocationContext) {
       await context.artifactService.listArtifactKeys({
         appName: context.appName,
         userId: context.userId,
-        sessionId: context.session.id
+        sessionId: context.session.id,
       });
       results.services.artifact.success = true;
     } catch (error) {
-      results.errors.push(`Artifact: ${error instanceof Error ? error.message : String(error)}`);
+      results.errors.push(
+        `Artifact: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -615,11 +642,13 @@ async function robustServiceOperation(context: InvocationContext) {
       await context.memoryService.searchMemory({
         query: "test",
         appName: context.appName,
-        userId: context.userId
+        userId: context.userId,
       });
       results.services.memory.success = true;
     } catch (error) {
-      results.errors.push(`Memory: ${error instanceof Error ? error.message : String(error)}`);
+      results.errors.push(
+        `Memory: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -646,18 +675,18 @@ async function cleanupInvocationResources(context: InvocationContext) {
     const artifacts = await context.artifactService.listArtifactKeys({
       appName: context.appName,
       userId: context.userId,
-      sessionId: context.session.id
+      sessionId: context.session.id,
     });
 
     // Remove temp artifacts
-    const tempArtifacts = artifacts.filter(name => name.startsWith('temp_'));
+    const tempArtifacts = artifacts.filter(name => name.startsWith("temp_"));
     for (const tempArtifact of tempArtifacts) {
       try {
         await context.artifactService.deleteArtifact({
           appName: context.appName,
           userId: context.userId,
           sessionId: context.session.id,
-          filename: tempArtifact
+          filename: tempArtifact,
         });
       } catch (error) {
         console.warn(`Failed to clean up ${tempArtifact}:`, error);
@@ -668,7 +697,7 @@ async function cleanupInvocationResources(context: InvocationContext) {
   // Update session with cleanup info
   context.session.state.lastCleanup = {
     invocationId: context.invocationId,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 }
 ```

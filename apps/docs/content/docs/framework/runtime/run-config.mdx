@@ -3,8 +3,8 @@ title: Runtime Configuration
 description: Configure runtime behavior for ADK‑TS agents — streaming, speech, transcription, artifacts, and limits
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
 The RunConfig controls runtime behavior for agents built with ADK‑TS. Use it to enable streaming, configure speech and transcription, save incoming blobs as artifacts, and set safety limits like max LLM calls.
 
@@ -14,33 +14,33 @@ The RunConfig controls runtime behavior for agents built with ADK‑TS. Use it t
 ## TypeScript API
 
 ```ts
-import { RunConfig, StreamingMode } from '@iqai/adk';
+import { RunConfig, StreamingMode } from "@iqai/adk";
 import type {
   SpeechConfig,
   AudioTranscriptionConfig,
   RealtimeInputConfig,
   ProactivityConfig,
-} from '@google/genai';
+} from "@google/genai";
 
 // Streaming mode options
 enum StreamingMode {
-  NONE = 'NONE',
-  SSE = 'sse',
-  BIDI = 'bidi',
+  NONE = "NONE",
+  SSE = "sse",
+  BIDI = "bidi",
 }
 
 class RunConfig {
   speechConfig?: SpeechConfig;
-  responseModalities?: string[];        // e.g. ['AUDIO', 'TEXT']
-  saveInputBlobsAsArtifacts: boolean;   // default: false
-  supportCFC: boolean;                  // default: false (experimental; SSE only)
-  streamingMode: StreamingMode;         // default: NONE
+  responseModalities?: string[]; // e.g. ['AUDIO', 'TEXT']
+  saveInputBlobsAsArtifacts: boolean; // default: false
+  supportCFC: boolean; // default: false (experimental; SSE only)
+  streamingMode: StreamingMode; // default: NONE
   outputAudioTranscription?: AudioTranscriptionConfig;
   inputAudioTranscription?: AudioTranscriptionConfig;
   realtimeInputConfig?: RealtimeInputConfig;
   enableAffectiveDialog?: boolean;
   proactivity?: ProactivityConfig;
-  maxLlmCalls: number;                  // default: 500 (warn if <= 0)
+  maxLlmCalls: number; // default: 500 (warn if <= 0)
 }
 ```
 
@@ -52,22 +52,25 @@ Notes
 
 ## Parameters
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| speechConfig | `SpeechConfig` (from `@google/genai`) | — | Configure speech generation (voice/language) for live agents. |
-| responseModalities | `string[]` | — (AUDIO behavior if unset) | Desired output channels, e.g., `['AUDIO', 'TEXT']`. |
-| saveInputBlobsAsArtifacts | `boolean` | `false` | When `true`, user `inlineData` parts are saved as artifacts automatically. Requires `Runner.artifactService`. |
-| streamingMode | `StreamingMode` | `StreamingMode.NONE` | Controls streaming: `NONE` \| `SSE` \| `BIDI`. |
-| outputAudioTranscription | `AudioTranscriptionConfig` | — | Transcribe model‑generated audio. |
-| inputAudioTranscription | `AudioTranscriptionConfig` | — | Transcribe user audio input. |
-| realtimeInputConfig | `RealtimeInputConfig` | — | Configure realtime audio/video input handling. |
-| enableAffectiveDialog | `boolean` | — | Enable emotion‑aware responses in live modes. |
-| proactivity | `ProactivityConfig` | — | Allow proactive responses and ignoring irrelevant input. |
-| maxLlmCalls | `number` | `500` | Limit total LLM calls per run. Values of 0 or negative mean no enforcement (a warning is logged). |
-| supportCFC | `boolean` | `false` | Experimental Compositional Function Calling; only applicable with `StreamingMode.SSE`. |
+| Parameter                 | Type                                  | Default                     | Description                                                                                                   |
+| ------------------------- | ------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| speechConfig              | `SpeechConfig` (from `@google/genai`) | —                           | Configure speech generation (voice/language) for live agents.                                                 |
+| responseModalities        | `string[]`                            | — (AUDIO behavior if unset) | Desired output channels, e.g., `['AUDIO', 'TEXT']`.                                                           |
+| saveInputBlobsAsArtifacts | `boolean`                             | `false`                     | When `true`, user `inlineData` parts are saved as artifacts automatically. Requires `Runner.artifactService`. |
+| streamingMode             | `StreamingMode`                       | `StreamingMode.NONE`        | Controls streaming: `NONE` \| `SSE` \| `BIDI`.                                                                |
+| outputAudioTranscription  | `AudioTranscriptionConfig`            | —                           | Transcribe model‑generated audio.                                                                             |
+| inputAudioTranscription   | `AudioTranscriptionConfig`            | —                           | Transcribe user audio input.                                                                                  |
+| realtimeInputConfig       | `RealtimeInputConfig`                 | —                           | Configure realtime audio/video input handling.                                                                |
+| enableAffectiveDialog     | `boolean`                             | —                           | Enable emotion‑aware responses in live modes.                                                                 |
+| proactivity               | `ProactivityConfig`                   | —                           | Allow proactive responses and ignoring irrelevant input.                                                      |
+| maxLlmCalls               | `number`                              | `500`                       | Limit total LLM calls per run. Values of 0 or negative mean no enforcement (a warning is logged).             |
+| supportCFC                | `boolean`                             | `false`                     | Experimental Compositional Function Calling; only applicable with `StreamingMode.SSE`.                        |
 
 <Callout type="warning" title="Experimental: supportCFC">
-  The supportCFC flag is experimental and currently takes effect only with streamingMode = StreamingMode.SSE. Behavior may change.
+
+The supportCFC flag is experimental and currently takes effect only with
+streamingMode = StreamingMode.SSE. Behavior may change.
+
 </Callout>
 
 ## Speech settings quick reference
@@ -77,7 +80,7 @@ SpeechConfig (from @google/genai) typically includes:
 ```ts
 type SpeechConfig = {
   voiceConfig?: {
-    prebuiltVoiceConfig?: { voiceName?: string }
+    prebuiltVoiceConfig?: { voiceName?: string };
   };
   languageCode?: string; // e.g. 'en-US'
 };
@@ -95,7 +98,7 @@ Configure these via `RunConfig.speechConfig` to control how your agent sounds wh
 ### Basic (no streaming)
 
 ```ts
-import { RunConfig, StreamingMode } from '@iqai/adk';
+import { RunConfig, StreamingMode } from "@iqai/adk";
 
 const runConfig = new RunConfig({
   streamingMode: StreamingMode.NONE,
@@ -106,7 +109,7 @@ const runConfig = new RunConfig({
 ### Enable SSE streaming
 
 ```ts
-import { RunConfig, StreamingMode } from '@iqai/adk';
+import { RunConfig, StreamingMode } from "@iqai/adk";
 
 const runConfig = new RunConfig({
   streamingMode: StreamingMode.SSE,
@@ -117,17 +120,17 @@ const runConfig = new RunConfig({
 ### Enable speech and transcription
 
 ```ts
-import { RunConfig, StreamingMode } from '@iqai/adk';
-import type { SpeechConfig } from '@google/genai';
+import { RunConfig, StreamingMode } from "@iqai/adk";
+import type { SpeechConfig } from "@google/genai";
 
 const runConfig = new RunConfig({
   streamingMode: StreamingMode.SSE,
-  responseModalities: ['AUDIO', 'TEXT'],
+  responseModalities: ["AUDIO", "TEXT"],
   saveInputBlobsAsArtifacts: true,
   speechConfig: {
-    languageCode: 'en-US',
+    languageCode: "en-US",
     voiceConfig: {
-      prebuiltVoiceConfig: { voiceName: 'Kore' },
+      prebuiltVoiceConfig: { voiceName: "Kore" },
     },
   } satisfies SpeechConfig,
   outputAudioTranscription: { enable: true },
@@ -139,7 +142,7 @@ const runConfig = new RunConfig({
 ### Experimental CFC (SSE only)
 
 ```ts
-import { RunConfig, StreamingMode } from '@iqai/adk';
+import { RunConfig, StreamingMode } from "@iqai/adk";
 
 const runConfig = new RunConfig({
   streamingMode: StreamingMode.SSE,
@@ -171,14 +174,13 @@ for await (const event of runner.runAsync({
 ### Globally with AgentBuilder
 
 ```ts
-import { AgentBuilder } from '@iqai/adk';
+import { AgentBuilder } from "@iqai/adk";
 
-const { runner, session } = await AgentBuilder
-  .create('voice-assistant')
-  .withModel('gemini-2.5-flash')
+const { runner, session } = await AgentBuilder.create("voice-assistant")
+  .withModel("gemini-2.5-flash")
   .withRunConfig({
     streamingMode: StreamingMode.SSE,
-    responseModalities: ['AUDIO', 'TEXT'],
+    responseModalities: ["AUDIO", "TEXT"],
     saveInputBlobsAsArtifacts: true,
   })
   .build();
@@ -193,11 +195,11 @@ const { runner, session } = await AgentBuilder
     href="/docs/framework/artifacts/runner-configuration"
   />
 
-  <Card
-    title="🔄 Event Loop"
-    description="Understanding the cooperative async generator pattern and event flow"
-    href="/docs/framework/runtime/event-loop"
-  />
+<Card
+  title="🔄 Event Loop"
+  description="Understanding the cooperative async generator pattern and event flow"
+  href="/docs/framework/runtime/event-loop"
+/>
 
   <Card
     title="📋 Invocation Lifecycle"

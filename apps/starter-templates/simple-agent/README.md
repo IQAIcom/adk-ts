@@ -1,4 +1,3 @@
-
 <div align="center">
   <img src="https://files.catbox.moe/vumztw.png" alt="ADK TypeScript Logo" width="100" />
   <br/>

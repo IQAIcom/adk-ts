@@ -13,35 +13,46 @@ A global exception filter that provides user-friendly error formatting for ADK a
 ## Error Categories
 
 ### Agent Loading Error
+
 Triggered when an agent fails to load or import.
+
 - Checks for syntax errors
 - Verifies imports
 - Suggests installing dependencies
 
 ### Module Not Found
+
 Triggered when a dependency is missing.
+
 - Extracts module name
 - Suggests installation command
 - Provides package.json guidance
 
 ### Validation Error
+
 Triggered when Zod schema validation fails.
+
 - Lists all validation issues
 - Shows field paths
 - Provides configuration tips
 
 ### Environment Configuration Error
+
 Triggered when environment variables are missing.
+
 - Lists missing variables
 - Suggests checking .env file
 - Recommends running `adk check`
 
 ### Runtime Error
+
 Triggered during agent execution.
+
 - Highlights runtime issues
 - Suggests code review
 
 ### Syntax Error & Type Error
+
 Standard JavaScript/TypeScript errors with helpful context.
 
 ## API Response Format
@@ -76,6 +87,7 @@ Cannot find module 'openai'
 The filter is automatically applied globally in the HTTP server bootstrap.
 
 ### Enable Stack Traces
+
 ```bash
 export ADK_DEBUG_NEST=1
 # or
@@ -87,6 +99,7 @@ export NODE_ENV=development
 The filter is applied automatically to all HTTP requests. No manual configuration needed.
 
 Errors thrown anywhere in the application (controllers, services, agents) will be:
+
 1. Caught by the filter
 2. Categorized and formatted
 3. Logged with appropriate severity

@@ -3,8 +3,8 @@ title: Event Patterns
 description: Common architectural patterns and best practices for event-driven ADK applications
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 This guide covers common architectural patterns for building robust, scalable event-driven applications with ADK.
 
@@ -25,9 +25,8 @@ class EventStore {
   }
 
   getEventHistory(sessionId: string): Event[] {
-    return this.events.filter(e =>
-      e.invocationId === sessionId ||
-      e.content?.sessionId === sessionId
+    return this.events.filter(
+      e => e.invocationId === sessionId || e.content?.sessionId === sessionId,
     );
   }
 
@@ -50,7 +49,7 @@ class EventStore {
       const currentSnapshot = this.snapshots.get(sessionId) || {};
       this.snapshots.set(sessionId, {
         ...currentSnapshot,
-        ...event.actions.stateDelta
+        ...event.actions.stateDelta,
       });
     }
   }
@@ -71,10 +70,10 @@ interface Command {
 }
 
 class CommandHandler {
-  constructor(private eventStore: EventStore) {}
+constructor(private eventStore: EventStore) {}
 
-  async execute(command: Command): Promise<Event[]> {
-    const events: Event[] = [];
+async execute(command: Command): Promise<Event[]> {
+const events: Event[] = [];
 
     switch (command.type) {
       case 'USER_MESSAGE':
@@ -93,17 +92,19 @@ class CommandHandler {
     }
 
     return events;
-  }
 
-  private createUserMessageEvent(command: Command): Event {
-    return new Event({
-      author: 'user',
-      invocationId: command.sessionId,
-      content: { parts: [{ text: command.payload.message }] }
-    });
-  }
 }
-```
+
+private createUserMessageEvent(command: Command): Event {
+return new Event({
+author: 'user',
+invocationId: command.sessionId,
+content: { parts: [{ text: command.payload.message }] }
+});
+}
+}
+
+````
 </Tab>
 
 <Tab value="Query Handler">
@@ -142,7 +143,8 @@ class QueryHandler {
     };
   }
 }
-```
+````
+
 </Tab>
 
 <Tab value="Event Bus">
@@ -150,16 +152,16 @@ class QueryHandler {
 class EventBus {
   private subscribers = new Map<string, Array<(event: Event) => void>>();
 
-  subscribe(eventType: string, handler: (event: Event) => void) {
-    if (!this.subscribers.has(eventType)) {
-      this.subscribers.set(eventType, []);
-    }
-    this.subscribers.get(eventType)!.push(handler);
-  }
+subscribe(eventType: string, handler: (event: Event) => void) {
+if (!this.subscribers.has(eventType)) {
+this.subscribers.set(eventType, []);
+}
+this.subscribers.get(eventType)!.push(handler);
+}
 
-  publish(event: Event) {
-    const eventType = this.getEventType(event);
-    const handlers = this.subscribers.get(eventType) || [];
+publish(event: Event) {
+const eventType = this.getEventType(event);
+const handlers = this.subscribers.get(eventType) || [];
 
     handlers.forEach(handler => {
       try {
@@ -168,17 +170,19 @@ class EventBus {
         console.error('Event handler error:', error);
       }
     });
-  }
 
-  private getEventType(event: Event): string {
-    if (event.author === 'user') return 'USER_EVENT';
-    if (event.getFunctionCalls().length > 0) return 'TOOL_REQUEST';
-    if (event.getFunctionResponses().length > 0) return 'TOOL_RESPONSE';
-    if (event.isFinalResponse()) return 'FINAL_RESPONSE';
-    return 'GENERAL_EVENT';
-  }
 }
-```
+
+private getEventType(event: Event): string {
+if (event.author === 'user') return 'USER_EVENT';
+if (event.getFunctionCalls().length > 0) return 'TOOL_REQUEST';
+if (event.getFunctionResponses().length > 0) return 'TOOL_RESPONSE';
+if (event.isFinalResponse()) return 'FINAL_RESPONSE';
+return 'GENERAL_EVENT';
+}
+}
+
+````
 </Tab>
 </Tabs>
 
@@ -256,7 +260,7 @@ class StateMachine {
     }
   }
 }
-```
+````
 
 ### Saga Pattern
 
@@ -299,14 +303,14 @@ class ConversationSaga {
   }
 
   private async compensate() {
-    console.log('Executing saga compensation');
+    console.log("Executing saga compensation");
 
     // Execute compensations in reverse order
     for (const compensation of this.compensations.reverse()) {
       try {
         await compensation();
       } catch (error) {
-        console.error('Compensation failed:', error);
+        console.error("Compensation failed:", error);
       }
     }
   }
@@ -439,7 +443,7 @@ class EventStream {
       try {
         subscriber(transformedEvent);
       } catch (error) {
-        console.error('Stream subscriber error:', error);
+        console.error("Stream subscriber error:", error);
       }
     });
   }
@@ -447,13 +451,13 @@ class EventStream {
 
 // Usage example
 const userMessageStream = new EventStream()
-  .filter(event => event.author === 'user')
+  .filter(event => event.author === "user")
   .map(event => ({
     ...event,
     content: {
       ...event.content,
-      timestamp: Date.now()
-    }
+      timestamp: Date.now(),
+    },
   }))
   .subscribe(event => processUserMessage(event));
 ```
@@ -468,19 +472,19 @@ Prevent cascade failures:
 class EventCircuitBreaker {
   private failures = 0;
   private lastFailure = 0;
-  private state: 'closed' | 'open' | 'half-open' = 'closed';
+  private state: "closed" | "open" | "half-open" = "closed";
 
   constructor(
     private maxFailures = 5,
-    private timeout = 60000 // 1 minute
+    private timeout = 60000, // 1 minute
   ) {}
 
   async execute(event: Event, handler: (event: Event) => Promise<any>) {
-    if (this.state === 'open') {
+    if (this.state === "open") {
       if (Date.now() - this.lastFailure > this.timeout) {
-        this.state = 'half-open';
+        this.state = "half-open";
       } else {
-        throw new Error('Circuit breaker is open');
+        throw new Error("Circuit breaker is open");
       }
     }
 
@@ -496,7 +500,7 @@ class EventCircuitBreaker {
 
   private onSuccess() {
     this.failures = 0;
-    this.state = 'closed';
+    this.state = "closed";
   }
 
   private onFailure() {
@@ -504,7 +508,7 @@ class EventCircuitBreaker {
     this.lastFailure = Date.now();
 
     if (this.failures >= this.maxFailures) {
-      this.state = 'open';
+      this.state = "open";
     }
   }
 }
@@ -519,7 +523,7 @@ class RetryHandler {
   async withRetry<T>(
     operation: () => Promise<T>,
     maxRetries = 3,
-    baseDelay = 1000
+    baseDelay = 1000,
   ): Promise<T> {
     let lastError: Error;
 
@@ -534,12 +538,17 @@ class RetryHandler {
         }
 
         const delay = this.calculateDelay(attempt, baseDelay);
-        console.warn(`Attempt ${attempt + 1} failed, retrying in ${delay}ms:`, error);
+        console.warn(
+          `Attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
+          error,
+        );
         await this.delay(delay);
       }
     }
 
-    throw new Error(`Operation failed after ${maxRetries + 1} attempts: ${lastError!.message}`);
+    throw new Error(
+      `Operation failed after ${maxRetries + 1} attempts: ${lastError!.message}`,
+    );
   }
 
   private calculateDelay(attempt: number, baseDelay: number): number {
@@ -569,7 +578,7 @@ class EventBatcher {
   constructor(
     private batchSize = 10,
     private flushInterval = 100, // ms
-    private processor: (events: Event[]) => Promise<void>
+    private processor: (events: Event[]) => Promise<void>,
   ) {}
 
   add(event: Event) {
@@ -596,7 +605,7 @@ class EventBatcher {
     try {
       await this.processor(eventsToProcess);
     } catch (error) {
-      console.error('Batch processing error:', error);
+      console.error("Batch processing error:", error);
       // Optionally re-queue failed events
     }
   }
@@ -612,7 +621,8 @@ class EventDeduplicator {
   private processedEvents = new Set<string>();
   private cleanupInterval: NodeJS.Timeout;
 
-  constructor(private ttl = 300000) { // 5 minutes
+  constructor(private ttl = 300000) {
+    // 5 minutes
     // Periodic cleanup of old event IDs
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
@@ -669,7 +679,11 @@ class EventDeduplicator {
 - **Use appropriate data structures**: Choose efficient storage for your access patterns
 
 <Callout type="info">
-These patterns provide building blocks for sophisticated event-driven architectures. Choose patterns that fit your specific use case and complexity requirements.
+
+These patterns provide building blocks for sophisticated event-driven
+architectures. Choose patterns that fit your specific use case and complexity
+requirements.
+
 </Callout>
 
 Event patterns enable you to build maintainable, scalable agent applications that can handle complex workflows and provide excellent user experiences.

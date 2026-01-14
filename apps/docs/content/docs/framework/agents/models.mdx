@@ -205,10 +205,12 @@ const mistralAgent = new LlmAgent({
 The Vercel AI SDK supports many more providers beyond what's shown here. Check the [official documentation](https://ai-sdk.dev/providers) for the complete list of supported providers and models.
 
 <Callout type="info" title="Local & Open Source Models">
-  Local and open source models (like Ollama, self-hosted models) are also
-  supported through the Vercel AI SDK approach. Install the appropriate provider
-  package (`@ai-sdk/ollama`, etc.) and configure as needed. Note that not all
-  local models support function calling reliably.
+
+Local and open source models (like Ollama, self-hosted models) are also
+supported through the Vercel AI SDK approach. Install the appropriate provider
+package (`@ai-sdk/ollama`, etc.) and configure as needed. Note that not all
+local models support function calling reliably.
+
 </Callout>
 
 ## Option 3: OpenRouter Integration
@@ -283,20 +285,21 @@ const researchAgent = new LlmAgent({
   name: "research_agent",
   description: "Research agent with web search capabilities",
   model: openrouter("perplexity/sonar-pro"),
-  instruction: "You are a research assistant with access to current web information",
+  instruction:
+    "You are a research assistant with access to current web information",
 });
 ```
 
 ### Popular OpenRouter Models
 
-| Provider   | Model Name                          | Capabilities                      |
-| ---------- | ----------------------------------- | --------------------------------- |
-| Google     | `google/gemini-2.5-flash`           | Fast, versatile, cost-effective   |
-| Google     | `google/gemini-2.5-pro`             | Advanced reasoning, multimodal    |
-| OpenAI     | `openai/gpt-4o`                     | Powerful general-purpose model    |
+| Provider   | Model Name                             | Capabilities                      |
+| ---------- | -------------------------------------- | --------------------------------- |
+| Google     | `google/gemini-2.5-flash`              | Fast, versatile, cost-effective   |
+| Google     | `google/gemini-2.5-pro`                | Advanced reasoning, multimodal    |
+| OpenAI     | `openai/gpt-4o`                        | Powerful general-purpose model    |
 | Anthropic  | `anthropic/claude-sonnet-4-5-20250929` | Excellent for analysis and coding |
-| Meta       | `meta-llama/llama-3.3-70b-instruct` | Open source, strong performance   |
-| Perplexity | `perplexity/sonar-pro`              | Web search enabled, current info  |
+| Meta       | `meta-llama/llama-3.3-70b-instruct`    | Open source, strong performance   |
+| Perplexity | `perplexity/sonar-pro`                 | Web search enabled, current info  |
 
 <Callout type="info" title="Model Naming Convention">
   OpenRouter models use the format `provider/model-name`. Check the [OpenRouter
@@ -306,15 +309,15 @@ const researchAgent = new LlmAgent({
 
 ## Which Option Should You Choose?
 
-| Use Case                    | Recommended Option        | Why                                           |
-| --------------------------- | ------------------------- | --------------------------------------------- |
-| **Getting Started**         | Option 1 (Gemini default) | Simple setup, just need GOOGLE_API_KEY        |
-| **Production Apps**         | Option 1 with env config  | Simple, reliable, fewer dependencies          |
-| **Multi-Provider**          | Option 3 (OpenRouter)     | Single API key, unified access to 200+ models |
-| **Cost Optimization**       | Option 3 (OpenRouter)     | Easy model comparison and switching           |
-| **Web Search / Online LLMs**| Option 3 (OpenRouter)     | Access to Perplexity and other online models  |
-| **Advanced Features**       | Option 2 (Vercel AI SDK)  | Streaming, advanced config, type safety       |
-| **Local/Private Models**    | Option 2 (Vercel AI SDK)  | Only option that supports local deployment    |
+| Use Case                     | Recommended Option        | Why                                           |
+| ---------------------------- | ------------------------- | --------------------------------------------- |
+| **Getting Started**          | Option 1 (Gemini default) | Simple setup, just need GOOGLE_API_KEY        |
+| **Production Apps**          | Option 1 with env config  | Simple, reliable, fewer dependencies          |
+| **Multi-Provider**           | Option 3 (OpenRouter)     | Single API key, unified access to 200+ models |
+| **Cost Optimization**        | Option 3 (OpenRouter)     | Easy model comparison and switching           |
+| **Web Search / Online LLMs** | Option 3 (OpenRouter)     | Access to Perplexity and other online models  |
+| **Advanced Features**        | Option 2 (Vercel AI SDK)  | Streaming, advanced config, type safety       |
+| **Local/Private Models**     | Option 2 (Vercel AI SDK)  | Only option that supports local deployment    |
 
 <Callout type="info" title="Combining Approaches">
   You can mix and match these options in the same application! Use OpenRouter
