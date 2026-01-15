@@ -6,8 +6,8 @@ import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
-export class GoogleSearch extends BaseTool {
-	protected logger = new Logger({ name: "GoogleSearch" });
+export class GoogleSearchTool extends BaseTool {
+	protected logger = new Logger({ name: "GoogleSearchTool" });
 
 	constructor() {
 		super({

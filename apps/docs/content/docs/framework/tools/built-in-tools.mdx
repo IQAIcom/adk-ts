@@ -10,14 +10,14 @@ ADK-TS provides a comprehensive collection of pre-built tools that handle common
 ### Quick Start
 
 ```typescript
-import { LlmAgent, GoogleSearch, HttpRequestTool } from "@iqai/adk";
+import { LlmAgent, GoogleSearchTool, HttpRequestTool } from "@iqai/adk";
 
 const agent = new LlmAgent({
   name: "research_agent",
   description:
     "An agent that helps users research topics using web search and HTTP requests",
   instruction: "Help users research topics using web search and HTTP requests",
-  tools: [new GoogleSearch(), new HttpRequestTool()],
+  tools: [new GoogleSearchTool(), new HttpRequestTool()],
 });
 ```
 
@@ -27,7 +27,7 @@ That's it! Your agent can now search the web and make HTTP requests.
 
 | Tool                    | Purpose                          | Requires Config |
 | ----------------------- | -------------------------------- | --------------- |
-| **GoogleSearch**        | Search the web for information   | Yes (API keys)  |
+| **GoogleSearchTool**    | Search the web for information   | Yes (API keys)  |
 | **WebFetchTool**        | Fetch and parse web page content | No              |
 | **HttpRequestTool**     | Make HTTP requests to APIs       | No              |
 | **ReadTool**            | Read file contents               | No              |
@@ -46,14 +46,14 @@ That's it! Your agent can now search the web and make HTTP requests.
 
 ## Web & API Tools
 
-### GoogleSearch
+### GoogleSearchTool
 
 Search the web for real-time information using Google's search engine.
 
 **Import:**
 
 ```typescript
-import { GoogleSearch } from "@iqai/adk";
+import { GoogleSearchTool } from "@iqai/adk";
 ```
 
 **Setup:**
@@ -62,42 +62,30 @@ import { GoogleSearch } from "@iqai/adk";
 const agent = new LlmAgent({
   name: "research_agent",
   description: "A research assistant that searches the web for information",
-  tools: [new GoogleSearch()],
+  tools: [new GoogleSearchTool()],
 });
 ```
 
 **Configuration:**
 
-```typescript
-new GoogleSearch({
-  apiKey: process.env.GOOGLE_API_KEY,
-  searchEngineId: process.env.GOOGLE_SEARCH_ENGINE_ID,
-  // Optional parameters
-  safe: "off", // or "active" for safe search
-  siteSearch: "example.com", // restrict to specific site
-  siteSearchFilter: "i", // "i" to include, "e" to exclude
-  startDate: "2024-01-01", // YYYY-MM-DD format
-  endDate: "2024-12-31",
-  includeImages: false,
-  includeImageDescriptions: false,
-  excludeDomains: ["spam.com"],
-  country: "us",
-});
-```
+new GoogleSearchTool(); // Configuration is handled via environment variables or runtime arguments
 
 **Tool Parameters:**
 
-| Parameter     | Type   | Required | Description                                       |
-| ------------- | ------ | -------- | ------------------------------------------------- |
-| `query`       | string | Yes      | The search query to execute                       |
-| `num_results` | number | No       | Number of results to return (default: 5, max: 10) |
+| Parameter          | Type   | Required | Description                                            |
+| ------------------ | ------ | -------- | ------------------------------------------------------ |
+| `query`            | string | Yes      | The search query to execute                            |
+| `numResults`       | number | No       | Number of results to return (default: 5, max: 10)      |
+| `safe`             | string | No       | Safe search filter: "active" or "off" (default: "off") |
+| `siteSearch`       | string | No       | Restrict results to a specific site                    |
+| `siteSearchFilter` | string | No       | Include ("i") or exclude ("e") specific site           |
 
 **How It's Triggered:**
 
 ```typescript
 // User: "What are the latest updates about AI in 2024?"
 // Agent automatically calls:
-// google_search({ query: "latest AI updates 2024", num_results: 5 })
+// google_search({ query: "latest AI updates 2024", numResults: 5 })
 // Agent receives search results and summarizes them
 ```
 
@@ -123,7 +111,7 @@ new GoogleSearch({
 
 ```bash
 GOOGLE_API_KEY=your_api_key_here
-GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id
+GOOGLE_CSE_ID=your_search_engine_id
 ```
 
 ### WebFetchTool
@@ -582,17 +570,17 @@ const customAgent = new LlmAgent({
 
 **Tool Parameters:**
 
-| Parameter          | Type    | Required | Description                                             |
-| ------------------ | ------- | -------- | ------------------------------------------------------- |
-| `pattern`          | string  | Yes      | Regex pattern to search for                             |
-| `files`            | string  | Yes      | File path or glob pattern                               |
-| `case_insensitive` | boolean | No       | Case-insensitive search (default: false)                |
-| `context_lines`    | number  | No       | Context lines before/after match (max: 10, default: 2)  |
-| `max_matches`      | number  | No       | Maximum matches to return (max: 1000, default: 500)     |
-| `whole_word`       | boolean | No       | Match whole words only (default: false)                 |
-| `invert_match`     | boolean | No       | Invert match - show non-matching lines (default: false) |
-| `exclude`          | string  | No       | Additional exclude patterns (comma-separated)           |
-| `include`          | string  | No       | Additional include patterns (comma-separated)           |
+| Parameter         | Type    | Required | Description                                             |
+| ----------------- | ------- | -------- | ------------------------------------------------------- |
+| `pattern`         | string  | Yes      | Regex pattern to search for                             |
+| `files`           | string  | Yes      | File path or glob pattern                               |
+| `caseInsensitive` | boolean | No       | Case-insensitive search (default: false)                |
+| `contextLines`    | number  | No       | Context lines before/after match (max: 10, default: 2)  |
+| `maxMatches`      | number  | No       | Maximum matches to return (max: 1000, default: 500)     |
+| `wholeWord`       | boolean | No       | Match whole words only (default: false)                 |
+| `invertMatch`     | boolean | No       | Invert match - show non-matching lines (default: false) |
+| `exclude`         | string  | No       | Additional exclude patterns (comma-separated)           |
+| `include`         | string  | No       | Additional include patterns (comma-separated)           |
 
 **Configuration Options:**
 
@@ -629,8 +617,8 @@ interface GrepConfig {
 // grep({
 //   pattern: "TODO:",
 //   files: "**/*.ts",
-//   case_insensitive: true,
-//   context_lines: 2
+//   caseInsensitive: true,
+//   contextLines: 2
 // })
 ```
 
@@ -1093,8 +1081,6 @@ const agent = new LlmAgent({
 - Maintaining conversation continuity
 - Building on past interactions
 
----
-
 ### LoadArtifactsTool
 
 Access and process uploaded files, enabling document analysis and file-based workflows.
@@ -1277,7 +1263,7 @@ const researchAgent = new LlmAgent({
     "A research assistant that searches the web for current information and recalls relevant details from previous conversations",
   instruction:
     "Use web search to find current information, then check memory for related previous discussions",
-  tools: [new GoogleSearch(), new LoadMemoryTool()],
+  tools: [new GoogleSearchTool(), new LoadMemoryTool()],
 });
 ```
 
@@ -1360,7 +1346,7 @@ To effectively use built-in tools in your agents:
 
 ### Error Handling
 
-- **Handle External Failures**: Tools that call external services (`GoogleSearch`, `HttpRequestTool`) depend on network availability. Design agents to handle failures gracefully.
+- **Handle External Failures**: Tools that call external services (`GoogleSearchTool`, `HttpRequestTool`) depend on network availability. Design agents to handle failures gracefully.
 - **Trust Built-in Error Handling**: Built-in tools handle common errors automatically (network failures, invalid files, user cancellations).
 - **Provide Context**: When errors occur, ensure your agent instructions guide the LLM on how to respond.
 

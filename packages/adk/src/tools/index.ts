@@ -17,7 +17,7 @@ export { ExitLoopTool } from "./common/exit-loop-tool";
 export { FileOperationsTool } from "./common/file-operations-tool";
 export { GetUserChoiceTool } from "./common/get-user-choice-tool";
 // Common tools
-export { GoogleSearch } from "./common/google-search";
+export { GoogleSearchTool } from "./common/google-search-tool";
 export { HttpRequestTool } from "./common/http-request-tool";
 export { LoadArtifactsTool } from "./common/load-artifacts-tool";
 export { LoadMemoryTool } from "./common/load-memory-tool";
