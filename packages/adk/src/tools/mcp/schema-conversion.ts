@@ -258,7 +258,7 @@ export function mcpSchemaToParameters(mcpTool: McpTool): JSONSchema {
 
 	if (mcpTool.inputSchema) {
 		schema = mcpTool.inputSchema;
-	} else if ("parameters" in mcpTool && mcpTool.parameters) {
+	} else if (mcpTool.parameters) {
 		schema = mcpTool.parameters as Record<string, any>;
 	}
 
