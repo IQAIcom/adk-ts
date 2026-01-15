@@ -354,7 +354,7 @@ export class GeminiContextCacheManager implements ContextCacheManager {
 			`Counting tokens for ${cacheContentsCount} contents (+ system instruction)`,
 		);
 
-		const result = await this.genaiClient.models.countTokens({
+		const result = await this.getGenaiClient().models.countTokens({
 			model: llmRequest.model,
 			contents: contentsToCount,
 			config: countConfig,
@@ -396,7 +396,7 @@ export class GeminiContextCacheManager implements ContextCacheManager {
 			cacheConfig.toolConfig = llmRequest.config.toolConfig;
 		}
 
-		const cachedContent = await this.genaiClient.caches.create({
+		const cachedContent = await this.getGenaiClient().caches.create({
 			model: llmRequest.model,
 			config: cacheConfig,
 		});
@@ -423,7 +423,7 @@ export class GeminiContextCacheManager implements ContextCacheManager {
 	async cleanupCache(cacheName: string): Promise<void> {
 		this.logger.debug(`Attempting to delete cache: ${cacheName}`);
 		try {
-			await this.genaiClient.caches.delete({ name: cacheName });
+			await this.getGenaiClient().caches.delete({ name: cacheName });
 			this.logger.info(`Cache cleaned up: ${cacheName}`);
 		} catch (e) {
 			this.logger.warn(`Failed to cleanup cache ${cacheName}:`, e);
