@@ -25,24 +25,25 @@ That's it! Your agent can now search the web and make HTTP requests.
 
 ### Available Tools
 
-| Tool                    | Purpose                          | Requires Config |
-| ----------------------- | -------------------------------- | --------------- |
-| **GoogleSearchTool**    | Search the web for information   | Yes (API keys)  |
-| **WebFetchTool**        | Fetch and parse web page content | No              |
-| **HttpRequestTool**     | Make HTTP requests to APIs       | No              |
-| **ReadTool**            | Read file contents               | No              |
-| **WriteTool**           | Create new files                 | No              |
-| **EditTool**            | Edit existing files              | No              |
-| **GlobTool**            | Find files by pattern            | No              |
-| **GrepTool**            | Search file contents             | No              |
-| **FileOperationsTool**  | Comprehensive file management    | Optional        |
-| **BashTool**            | Execute terminal commands        | No              |
-| **UserInteractionTool** | Prompt users for input           | No              |
-| **GetUserChoiceTool**   | Present multiple choice options  | No              |
-| **LoadMemoryTool**      | Search conversation history      | No              |
-| **LoadArtifactsTool**   | Access uploaded files            | No              |
-| **TransferToAgentTool** | Hand off to another agent        | No              |
-| **ExitLoopTool**        | Exit workflow loops              | No              |
+| Tool                    | Purpose                                                        | Requires Config |
+| ----------------------- | -------------------------------------------------------------- | --------------- |
+| **GoogleSearchTool**    | Search the web for information (uses Google Custom Search API) | Yes (API keys)  |
+| **WebFetchTool**        | Fetch and parse web page content                               | No              |
+| **HttpRequestTool**     | Make HTTP requests to APIs                                     | No              |
+| **ReadTool**            | Read file contents                                             | No              |
+| **WriteTool**           | Create new files                                               | No              |
+| **EditTool**            | Edit existing files                                            | No              |
+| **GlobTool**            | Find files by pattern                                          | No              |
+| **GrepTool**            | Search file contents                                           | No              |
+| **FileOperationsTool**  | Comprehensive file management                                  | Optional        |
+| **BashTool**            | Execute terminal commands                                      | No              |
+| **UserInteractionTool** | Prompt users for input                                         | No              |
+| **GetUserChoiceTool**   | Present multiple choice options                                | No              |
+| **LoadMemoryTool**      | Search conversation history                                    | No              |
+| **LoadArtifactsTool**   | Access uploaded files                                          | No              |
+| **TransferToAgentTool** | Hand off to another agent                                      | No              |
+| **ExitLoopTool**        | Exit workflow loops                                            | No              |
+| **WebSearchTool**       | Search the web for information                                 | Yes (API keys)  |
 
 ## Web & API Tools
 
@@ -65,10 +66,6 @@ const agent = new LlmAgent({
   tools: [new GoogleSearchTool()],
 });
 ```
-
-**Configuration:**
-
-new GoogleSearchTool(); // Configuration is handled via environment variables or runtime arguments
 
 **Tool Parameters:**
 
