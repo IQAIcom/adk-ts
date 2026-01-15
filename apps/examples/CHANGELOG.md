@@ -122,7 +122,6 @@
 - 1564b7b: Port Python evaluation framework to TypeScript
 
   This change introduces a comprehensive evaluation framework for testing AI agent performance. Key features include:
-
   - **Core evaluation engine** with agent-evaluator and local evaluation service
   - **Built-in evaluators** for response matching, trajectory analysis, LLM-as-judge, and safety checks
   - **Metrics system** with ROUGE scoring and tool trajectory analysis

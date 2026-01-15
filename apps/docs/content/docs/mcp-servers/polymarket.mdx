@@ -3,8 +3,8 @@ title: MCP Polymarket
 description: An MCP server for interacting with the Polymarket prediction market
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-polymarket`](https://www.npmjs.com/package/@iqai/mcp-polymarket)
 - **Purpose**: Interacting with the Polymarket prediction market for trading and market analysis.
@@ -25,6 +25,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Verbose">
@@ -48,6 +49,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Claude Desktop">
@@ -78,7 +80,10 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 ## Environment Variables
 
 <Callout type="warn" title="Security">
-Private keys are used for trading operations. Handle with care and never commit them to version control.
+
+Private keys are used for trading operations. Handle with care and never
+commit them to version control.
+
 </Callout>
 
 - `FUNDER_ADDRESS`: Required. Available to copy from the user menu dropdown on the Polymarket website (different from the wallet address used to log in).
@@ -114,13 +119,17 @@ async function main() {
   // Create agent with Polymarket tools
   const { runner } = await AgentBuilder.create("polymarket_agent")
     .withModel("gemini-2.5-flash")
-    .withDescription("An agent that interacts with Polymarket prediction markets")
+    .withDescription(
+      "An agent that interacts with Polymarket prediction markets",
+    )
     .withTools(...polymarketTools)
     .build();
 
   try {
     // Example queries
-    const response = await runner.ask("Show me available markets on Polymarket");
+    const response = await runner.ask(
+      "Show me available markets on Polymarket",
+    );
     console.log(response);
   } finally {
     // Clean up resources
@@ -144,7 +153,10 @@ main().catch(console.error);
 The `POLYMARKET_PRIVATE_KEY` is the private key of the wallet you use to interact with Polymarket. Ensure this wallet has sufficient funds for trading operations.
 
 <Callout type="warn" title="Important">
-Never share your private key or commit it to version control. Always use environment variables or secure secret management systems.
+
+Never share your private key or commit it to version control. Always use
+environment variables or secure secret management systems.
+
 </Callout>
 
 ## Best Practices
@@ -157,7 +169,9 @@ Never share your private key or commit it to version control. Always use environ
 ## Error Handling
 
 <Callout type="warn" title="Error Scenarios">
+
 The server handles various error scenarios gracefully.
+
 </Callout>
 
 🚨 **Missing credentials**: Ensure both `FUNDER_ADDRESS` and `POLYMARKET_PRIVATE_KEY` are set
@@ -170,4 +184,3 @@ The server handles various error scenarios gracefully.
 
 - [Polymarket](https://polymarket.com) - Polymarket prediction market platform
 - [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
-

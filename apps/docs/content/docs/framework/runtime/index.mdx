@@ -3,8 +3,8 @@ title: Runtime & Execution
 description: Understanding the agent execution engine and event-driven architecture
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
 The ADK Runtime is the execution engine that powers agent applications during user interactions. It orchestrates agents, tools, and services through an event-driven architecture.
 
@@ -21,7 +21,11 @@ The Runtime serves as the coordination layer that connects all components of you
 - **Resource Management**: Handle lifecycle and resource allocation
 
 <Callout type="info" title="Event-Driven Architecture">
-The Runtime operates on events - agents yield events to communicate with the Runner, which processes them and coordinates with services before allowing agents to continue.
+
+The Runtime operates on events - agents yield events to communicate with the
+Runner, which processes them and coordinates with services before allowing
+agents to continue.
+
 </Callout>
 
 ## Quick Start
@@ -29,14 +33,14 @@ The Runtime operates on events - agents yield events to communicate with the Run
 Here's a basic example of how the Runtime works:
 
 ```typescript
-import { LlmAgent, Runner, InMemorySessionService } from '@iqai/adk';
+import { LlmAgent, Runner, InMemorySessionService } from "@iqai/adk";
 
 // Create an agent
 const agent = new LlmAgent({
   name: "assistant",
   model: "gemini-2.5-flash",
   description: "A helpful assistant",
-  instruction: "You are a helpful assistant"
+  instruction: "You are a helpful assistant",
 });
 
 // Set up runtime components
@@ -46,16 +50,16 @@ const session = await sessionService.createSession("example", "user_123");
 const runner = new Runner({
   appName: "example",
   agent,
-  sessionService
+  sessionService,
 });
 
 // Process user input through the runtime
 for await (const event of runner.runAsync({
   userId: "user_123",
   sessionId: session.id,
-  newMessage: { parts: [{ text: "Hello!" }] }
+  newMessage: { parts: [{ text: "Hello!" }] },
 })) {
-  console.log('Event:', event.author, event.content?.parts);
+  console.log("Event:", event.author, event.content?.parts);
 }
 ```
 
@@ -64,12 +68,10 @@ for await (const event of runner.runAsync({
 If you prefer an even simpler API, you can use the AgentBuilder to get up and running quickly without wiring sessions and the runner yourself. See the full guide: [Agent Builder](http://localhost:3000/docs/framework/agents/agent-builder).
 
 ```typescript
-import { AgentBuilder } from '@iqai/adk';
+import { AgentBuilder } from "@iqai/adk";
 
 // One-liner execution with automatic in-memory session and smart defaults
-const response = await AgentBuilder
-  .withModel('gemini-2.5-flash')
-  .ask('Hello!');
+const response = await AgentBuilder.withModel("gemini-2.5-flash").ask("Hello!");
 
 console.log(response);
 ```
@@ -77,28 +79,29 @@ console.log(response);
 You can also keep a handle to the runner and session if you want streaming events and state control while still using the builder:
 
 ```typescript
-import { AgentBuilder } from '@iqai/adk';
+import { AgentBuilder } from "@iqai/adk";
 
-const { runner, session } = await AgentBuilder
-  .create('example-assistant')
-  .withModel('gemini-2.5-flash')
-  .withInstruction('You are a helpful assistant')
+const { runner, session } = await AgentBuilder.create("example-assistant")
+  .withModel("gemini-2.5-flash")
+  .withInstruction("You are a helpful assistant")
   .build();
 
 for await (const event of runner.runAsync({
-  userId: 'user_123',
+  userId: "user_123",
   sessionId: session.id,
-  newMessage: { parts: [{ text: 'Hello!' }] }
+  newMessage: { parts: [{ text: "Hello!" }] },
 })) {
-  console.log('Event:', event.author, event.content?.parts);
+  console.log("Event:", event.author, event.content?.parts);
 }
 ```
 
 <Callout type="info" title="Automatic session management">
-  AgentBuilder auto-creates and manages an in-memory session by default — no
-  setup required. Switch to a persistent SessionService (e.g., Redis/DB) only
-  when you need durable sessions. You can always fall back to the lower-level
-  Runtime pattern above for full control.
+
+AgentBuilder auto-creates and manages an in-memory session by default — no
+setup required. Switch to a persistent SessionService (e.g., Redis/DB) only
+when you need durable sessions. You can always fall back to the lower-level
+Runtime pattern above for full control.
+
 </Callout>
 
 ### What’s happening under the hood?
@@ -115,44 +118,50 @@ Both versions above follow the same Runtime model:
 Several components work together within the ADK Runtime to execute an agent invocation. Understanding their roles clarifies how the event loop functions:
 
 1. ### `Runner`
-  - Role: The main entry point and orchestrator for a single user query (`runAsync`).
-  - Function: Manages the overall event loop, receives events yielded by the execution logic (agents/flows), coordinates with services to persist effects, and forwards processed events upstream (e.g., to the UI). It drives each turn by:
-    - Loading the `Session` via `SessionService`
-    - Creating an `InvocationContext` with an `invocationId`
-    - Appending the new user message as an event
-    - Iterating the agent’s `runAsync` generator, appending non-partial events and updating memory
-    - Yielding events to callers as they occur
+
+- Role: The main entry point and orchestrator for a single user query (`runAsync`).
+- Function: Manages the overall event loop, receives events yielded by the execution logic (agents/flows), coordinates with services to persist effects, and forwards processed events upstream (e.g., to the UI). It drives each turn by:
+  - Loading the `Session` via `SessionService`
+  - Creating an `InvocationContext` with an `invocationId`
+  - Appending the new user message as an event
+  - Iterating the agent’s `runAsync` generator, appending non-partial events and updating memory
+  - Yielding events to callers as they occur
 
 2. ### Execution Logic Components
-  - Role: Your custom reasoning code and core agent capabilities.
-  - Components:
-    - `Agent` (`BaseAgent`, `LlmAgent`, etc.): Primary logic units that process information and decide on actions. They implement the `runAsyncImpl` method and yield `Event` objects to communicate progress, tool calls, state deltas, and final replies.
-    - `Tools` (`BaseTool`, `FunctionTool`, `AgentTool`, etc.): External capabilities invoked by agents. They execute and return results which are wrapped in events; some tools can run other agents (`AgentTool`).
-    - `Callbacks`: Hook points for customizing behavior. On `BaseAgent` you can set `beforeAgentCallback` and `afterAgentCallback`; on `LlmAgent` you can also use `beforeModelCallback`, `afterModelCallback`, `beforeToolCallback`, and `afterToolCallback` to shape requests/responses.
-  - Function: Perform the “thinking,” calculations, and external interactions. They communicate via yielded `Event`s and pause until the `Runner` processes/persists effects.
+
+- Role: Your custom reasoning code and core agent capabilities.
+- Components:
+  - `Agent` (`BaseAgent`, `LlmAgent`, etc.): Primary logic units that process information and decide on actions. They implement the `runAsyncImpl` method and yield `Event` objects to communicate progress, tool calls, state deltas, and final replies.
+  - `Tools` (`BaseTool`, `FunctionTool`, `AgentTool`, etc.): External capabilities invoked by agents. They execute and return results which are wrapped in events; some tools can run other agents (`AgentTool`).
+  - `Callbacks`: Hook points for customizing behavior. On `BaseAgent` you can set `beforeAgentCallback` and `afterAgentCallback`; on `LlmAgent` you can also use `beforeModelCallback`, `afterModelCallback`, `beforeToolCallback`, and `afterToolCallback` to shape requests/responses.
+- Function: Perform the “thinking,” calculations, and external interactions. They communicate via yielded `Event`s and pause until the `Runner` processes/persists effects.
 
 3. ### `Event`
-  - Role: The message passed between the `Runner` and execution logic.
-  - Function: Represents an atomic occurrence (user input, agent text, tool call/result, state change request, control signal). An `Event` contains content plus `actions` (`EventActions`) describing intended side effects, for example:
-    - `stateDelta`: keys to merge into session state (keys prefixed with `temp_` are treated as ephemeral and not persisted into state)
-    - `artifactDelta`: artifact file/version updates associated with the session
-    - `transferToAgent`, `escalate`, and `skipSummarization` control signals
+
+- Role: The message passed between the `Runner` and execution logic.
+- Function: Represents an atomic occurrence (user input, agent text, tool call/result, state change request, control signal). An `Event` contains content plus `actions` (`EventActions`) describing intended side effects, for example:
+  - `stateDelta`: keys to merge into session state (keys prefixed with `temp_` are treated as ephemeral and not persisted into state)
+  - `artifactDelta`: artifact file/version updates associated with the session
+  - `transferToAgent`, `escalate`, and `skipSummarization` control signals
 
 4. ### `Services`
-  - Role: Backend components for persistent/shared resources. Primarily used by the `Runner` during event processing.
-  - Components:
-    - `SessionService` (`BaseSessionService`, `InMemorySessionService`, etc.): Manages `Session` objects, applies `stateDelta` to session state, and appends events to the history.
-    - `ArtifactService` (`BaseArtifactService`, `InMemoryArtifactService`, etc.): Stores and retrieves binary data. The `Runner` can save uploaded blobs as artifacts and events can record `artifactDelta` to reflect updates.
-    - `MemoryService` (`BaseMemoryService`, `InMemoryMemoryService`, etc.): Optional long-term semantic memory; the `Runner` can update memory after appending events.
-  - Function: Provide persistence and retrieval guarantees so that changes signaled by `event.actions` are reliably stored before execution continues.
+
+- Role: Backend components for persistent/shared resources. Primarily used by the `Runner` during event processing.
+- Components:
+  - `SessionService` (`BaseSessionService`, `InMemorySessionService`, etc.): Manages `Session` objects, applies `stateDelta` to session state, and appends events to the history.
+  - `ArtifactService` (`BaseArtifactService`, `InMemoryArtifactService`, etc.): Stores and retrieves binary data. The `Runner` can save uploaded blobs as artifacts and events can record `artifactDelta` to reflect updates.
+  - `MemoryService` (`BaseMemoryService`, `InMemoryMemoryService`, etc.): Optional long-term semantic memory; the `Runner` can update memory after appending events.
+- Function: Provide persistence and retrieval guarantees so that changes signaled by `event.actions` are reliably stored before execution continues.
 
 5. ### `Session`
-  - Role: The data container for one specific conversation between a user and the app.
-  - Function: Holds the current `state` object, ordered `events` history, and metadata. Managed by `SessionService` and used by `Runner` and agents to maintain context across turns.
+
+- Role: The data container for one specific conversation between a user and the app.
+- Function: Holds the current `state` object, ordered `events` history, and metadata. Managed by `SessionService` and used by `Runner` and agents to maintain context across turns.
 
 6. ### `Invocation`
-  - Role: Everything that happens in response to a single user query, from receipt to completion.
-  - Function: Represented at runtime by `InvocationContext` (with a stable `invocationId`). An invocation may include multiple agent runs (e.g., transfers, `AgentTool`), several LLM calls, tool executions, and callbacks. Temporary variables intended only for the current turn should be scoped under keys prefixed with `temp_` in `stateDelta`.
+
+- Role: Everything that happens in response to a single user query, from receipt to completion.
+- Function: Represented at runtime by `InvocationContext` (with a stable `invocationId`). An invocation may include multiple agent runs (e.g., transfers, `AgentTool`), several LLM calls, tool executions, and callbacks. Temporary variables intended only for the current turn should be scoped under keys prefixed with `temp_` in `stateDelta`.
 
 These components interact continuously through the event loop to process the user’s request.
 

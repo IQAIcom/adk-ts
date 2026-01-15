@@ -77,7 +77,7 @@ import { VertexAiRagMemoryService } from "@iqai/adk";
 const memoryService = new VertexAiRagMemoryService(
   "projects/my-project/locations/us-central1/ragCorpora/my-corpus-id",
   10, // Return top 10 results
-  0.5 // Similarity threshold (0.0 strict - 1.0 loose)
+  0.5, // Similarity threshold (0.0 strict - 1.0 loose)
 );
 ```
 
@@ -106,8 +106,10 @@ const memoryService = new VertexAiRagMemoryService(
 **When to use:** Production apps requiring intelligent search
 
 <Callout type="info">
-  See [Vertex AI Sessions](/docs/framework/session-state-memory/vertex-ai) for
-  detailed Vertex AI setup instructions.
+
+See [Vertex AI Sessions](/docs/framework/session-state-memory/vertex-ai) for
+detailed Vertex AI setup instructions.
+
 </Callout>
 
 ## Using Memory
@@ -175,7 +177,7 @@ const sessionService = new InMemorySessionService();
 const session = await sessionService.getSession(
   "my-app",
   "alice",
-  "session-123"
+  "session-123",
 );
 
 // Store in memory
@@ -255,7 +257,7 @@ class PastPurchasesTool extends BaseTool {
     const results = await context.searchMemory(`${args.category} purchases`);
 
     return {
-      purchases: results.memories.map((m) => ({
+      purchases: results.memories.map(m => ({
         item: m.content?.parts?.[0]?.text || "",
         timestamp: m.timestamp,
       })),

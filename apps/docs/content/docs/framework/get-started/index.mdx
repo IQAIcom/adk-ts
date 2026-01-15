@@ -7,8 +7,10 @@ import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="warn" title="Work in Progress">
-  This is a TypeScript port inspired by the original Python ADK. Features and
-  stability are actively being developed.
+
+This is a TypeScript port inspired by the original Python ADK. Features and
+stability are actively being developed.
+
 </Callout>
 
 ## What is ADK-TS?
@@ -34,7 +36,7 @@ ADK-TS enables a wide range of AI agent applications:
 ```typescript
 // Question answering agent
 const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
-  "Explain quantum computing in simple terms"
+  "Explain quantum computing in simple terms",
 );
 ```
 
@@ -160,13 +162,6 @@ Join our community for help, discussions, and updates:
     title="💬 Discussions"
     description="Ask questions, share ideas, and get help"
     href="https://github.com/IQAIcom/adk-ts/discussions"
-    target="_blank"
-    rel="noopener noreferrer"
-  />
-  <Card
-    title="🎯 Discord"
-    description="Join our Discord server for real-time collaboration and support"
-    href="https://discord.gg/w2Uk6ACK4D"
     target="_blank"
     rel="noopener noreferrer"
   />

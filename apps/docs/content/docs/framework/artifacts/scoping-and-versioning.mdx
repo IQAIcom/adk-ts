@@ -8,22 +8,25 @@ description: Session vs user namespaces and how artifact versions work
 Artifacts can be scoped to the current session or to the user across sessions. Use the `user:` filename prefix to switch to user scope.
 
 ```typescript
-import type { CallbackContext } from '@iqai/adk';
+import type { CallbackContext } from "@iqai/adk";
 
 export async function saveScopedArtifacts(ctx: CallbackContext) {
   const text = (s: string) => ({
-    inlineData: { data: Buffer.from(s).toString('base64'), mimeType: 'text/plain' }
+    inlineData: {
+      data: Buffer.from(s).toString("base64"),
+      mimeType: "text/plain",
+    },
   });
 
   // Session-scoped: available only in this session
-  await ctx.saveArtifact('summary.txt', text('session summary'));
+  await ctx.saveArtifact("summary.txt", text("session summary"));
 
   // User-scoped: available across all sessions for this user
-  await ctx.saveArtifact('user:settings.json', {
+  await ctx.saveArtifact("user:settings.json", {
     inlineData: {
-      data: Buffer.from(JSON.stringify({ theme: 'dark' })).toString('base64'),
-      mimeType: 'application/json'
-    }
+      data: Buffer.from(JSON.stringify({ theme: "dark" })).toString("base64"),
+      mimeType: "application/json",
+    },
   });
 }
 ```
@@ -31,8 +34,8 @@ export async function saveScopedArtifacts(ctx: CallbackContext) {
 Loading works the same way — the prefix determines where the service looks:
 
 ```typescript
-const latest = await ctx.loadArtifact('summary.txt'); // session scope
-const userConfig = await ctx.loadArtifact('user:settings.json'); // user scope
+const latest = await ctx.loadArtifact("summary.txt"); // session scope
+const userConfig = await ctx.loadArtifact("user:settings.json"); // user scope
 ```
 
 ## Versioning
@@ -41,20 +44,26 @@ Each save creates a new version starting at 0. Loading without a `version` param
 
 ```typescript
 // v0
-await ctx.saveArtifact('document.txt', {
-  inlineData: { data: Buffer.from('A').toString('base64'), mimeType: 'text/plain' }
+await ctx.saveArtifact("document.txt", {
+  inlineData: {
+    data: Buffer.from("A").toString("base64"),
+    mimeType: "text/plain",
+  },
 });
 
 // v1
-await ctx.saveArtifact('document.txt', {
-  inlineData: { data: Buffer.from('B').toString('base64'), mimeType: 'text/plain' }
+await ctx.saveArtifact("document.txt", {
+  inlineData: {
+    data: Buffer.from("B").toString("base64"),
+    mimeType: "text/plain",
+  },
 });
 
 // Load specific version
-const v0 = await ctx.loadArtifact('document.txt', 0);
+const v0 = await ctx.loadArtifact("document.txt", 0);
 
 // Load latest (v1)
-const latestDoc = await ctx.loadArtifact('document.txt');
+const latestDoc = await ctx.loadArtifact("document.txt");
 ```
 
 ### Listing Versions
@@ -62,15 +71,15 @@ const latestDoc = await ctx.loadArtifact('document.txt');
 The `listVersions` method (on the service, not context) can be used to find all existing version numbers for an artifact. Contexts do not expose version listing.
 
 ```typescript
-import { InMemoryArtifactService } from '@iqai/adk';
+import { InMemoryArtifactService } from "@iqai/adk";
 
 const artifactService = new InMemoryArtifactService();
 // ... after saving some versions
 const versions = await artifactService.listVersions({
-  appName: 'my_app',
-  userId: 'u1',
-  sessionId: 's1',
-  filename: 'document.txt'
+  appName: "my_app",
+  userId: "u1",
+  sessionId: "s1",
+  filename: "document.txt",
 });
 // e.g., [0, 1, 2]
 ```
@@ -80,22 +89,26 @@ const versions = await artifactService.listVersions({
 Deletion removes all versions of a filename in the current scope. The `deleteArtifact` method permanently removes the artifact and all its versions.
 
 <Callout type="warning" title="Direct Service Access Required">
-The `deleteArtifact` method is not available through `CallbackContext` or `ToolContext` for safety reasons. You must access it directly through the artifact service instance.
+
+The `deleteArtifact` method is not available through `CallbackContext` or
+`ToolContext` for safety reasons. You must access it directly through the
+artifact service instance.
+
 </Callout>
 
 ### Basic Deletion
 
 ```typescript
-import { InMemoryArtifactService } from '@iqai/adk';
+import { InMemoryArtifactService } from "@iqai/adk";
 
 const artifactService = new InMemoryArtifactService();
 
 // Delete an artifact (removes all versions)
 await artifactService.deleteArtifact({
-  appName: 'my_app',
-  userId: 'u1',
-  sessionId: 's1',
-  filename: 'document.txt'
+  appName: "my_app",
+  userId: "u1",
+  sessionId: "s1",
+  filename: "document.txt",
 });
 ```
 
@@ -105,7 +118,3 @@ await artifactService.deleteArtifact({
 - **Scope-Aware**: Deletion respects the artifact's scope (session or user namespace)
 - **Irreversible**: Once deleted, artifacts cannot be recovered (unless you have backups)
 - **No Context Access**: Must be called directly on the artifact service, not through contexts
-
-
-
-

@@ -11,6 +11,7 @@ import { Cards, Card } from "fumadocs-ui/components/card";
 Ready to build your first AI agent? This guide will take you from zero to a working agent with tools in just a few minutes.
 
 <Callout title="Quick Start with CLI">
+
 Want to skip the manual setup? Use our CLI to create a complete project with examples:
 
 ```bash
@@ -50,9 +51,11 @@ echo -e ".env\nnode_modules/" > .gitignore
 ```
 
 <Callout type="warn" title="API Key Required">
-  Replace `your_google_api_key_here` with your actual API key from [Google AI
-  Studio](https://aistudio.google.com/app/apikey). ADK-TS supports Google Gemini
-  models by default.
+
+Replace `your_google_api_key_here` with your actual API key from [Google AI
+Studio](https://aistudio.google.com/app/apikey). ADK-TS supports Google Gemini
+models by default.
+
 </Callout>
 
 ### 3. Create Your First Agent
@@ -75,21 +78,25 @@ export async function agent() {
 ```
 
 <Callout type="info" title="Using Different Models">
-  You can easily use other LLM models by changing the model parameter:
-  ```typescript
-  // For OpenAI models
-  .withModel("gpt-4o")
+
+You can easily use other LLM models by changing the model parameter:
+
+```typescript
+// For OpenAI models
+.withModel("gpt-4o")
 
 // For Anthropic models
 .withModel("claude-3-5-sonnet")
 
-````
+```
+
 ADK-TS will automatically detect the provider from the model name, but you'll need to set
 the appropriate API key in your `.env` file (e.g., `OPENAI_API_KEY` for OpenAI
 models or `ANTHROPIC_API_KEY` for Anthropic models).
 
 For advanced LLM configurations, check our [Models
 documentation](/docs/framework/agents/models).
+
 </Callout>
 
 ### 4. Test Your Agent
@@ -101,14 +108,14 @@ Now let's test your agent. Create a simple script to interact with it. Add the f
 import { agent } from "./assistant/agent";
 
 async function main() {
-const { runner } = await agent();
+  const { runner } = await agent();
 
-const response = await runner.ask("What is the capital of France?");
-console.log("🤖 Response:", response);
+  const response = await runner.ask("What is the capital of France?");
+  console.log("🤖 Response:", response);
 }
 
 main().catch(console.error);
-````
+```
 
 Run it in your terminal:
 
@@ -147,12 +154,12 @@ export async function agent() {
   return await AgentBuilder.create("research_assistant")
     .withModel("gemini-2.5-flash")
     .withDescription(
-      "A helpful research assistant with web search capabilities"
+      "A helpful research assistant with web search capabilities",
     )
     .withInstruction(
       "You are a helpful research assistant. When you need current information " +
         "or want to search for specific topics, use the Google Search tool. " +
-        "Always cite your sources when providing information from search results."
+        "Always cite your sources when providing information from search results.",
     )
     .withTools(new GoogleSearch())
     .build();
@@ -171,7 +178,7 @@ async function main() {
   const { runner } = await agent();
 
   const response = await runner.ask(
-    "What are the latest developments in AI technology in 2024?"
+    "What are the latest developments in AI technology in 2024?",
   );
   console.log("🤖 Response:", response);
 }
@@ -188,10 +195,12 @@ npx tsx src/agents/index.ts
 Your agent will now search the web for current information and provide a more comprehensive, up-to-date answer!
 
 <Callout type="info" title="Implementation Note">
-  The current GoogleSearch implementation returns mock results. Integration with
-  actual [Google Search
-  API](https://developers.google.com/custom-search/v1/overview) requires
-  additional configuration.
+
+The current GoogleSearch implementation returns mock results. Integration with
+actual [Google Search
+API](https://developers.google.com/custom-search/v1/overview) requires
+additional configuration.
+
 </Callout>
 
 </Steps>
@@ -219,8 +228,10 @@ npx @iqai/adk-cli run
 ```
 
 <Callout type="info" title="Agent Discovery">
-  For the CLI to auto-discover your agents, make sure your agent files are
-  placed under the `src/agents` directory.
+
+For the CLI to auto-discover your agents, make sure your agent files are
+placed under the `src/agents` directory.
+
 </Callout>
 
 This command will:
@@ -252,8 +263,10 @@ This command will:
 - Show conversation history and formatting
 
 <Callout type="info" title="No Scripts Required">
-  Both `adk run` and `adk web` let you test your agents interactively without
-  writing any test scripts. Perfect for quick testing and experimentation!
+
+Both `adk run` and `adk web` let you test your agents interactively without
+writing any test scripts. Perfect for quick testing and experimentation!
+
 </Callout>
 
 ## Recommended Project Structure

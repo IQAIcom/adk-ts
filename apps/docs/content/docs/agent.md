@@ -45,8 +45,11 @@ const agent = new LLMAgent({
   name: "assistant",
   description: "A helpful AI assistant",
   model: "gemini-2.5-flash",
-  instruction: "You are a helpful assistant that can use tools to solve problems",
-  tools: [/* your tools */],
+  instruction:
+    "You are a helpful assistant that can use tools to solve problems",
+  tools: [
+    /* your tools */
+  ],
 });
 ```
 
@@ -166,13 +169,13 @@ const calculatorTool = new FunctionTool({
   name: "calculator",
   description: "Perform mathematical calculations",
   parameters: {
-    expression: { type: "string", description: "Math expression to evaluate" }
+    expression: { type: "string", description: "Math expression to evaluate" },
   },
-execute: async ({ expression }) => {  
-    // Using 'eval()' is insecure. In a real application, use a safe expression  
-    // evaluation library like 'mathjs' to prevent security vulnerabilities.  
-    throw new Error("Insecure 'eval()' removed from example.");  
-  } 
+  execute: async ({ expression }) => {
+    // Using 'eval()' is insecure. In a real application, use a safe expression
+    // evaluation library like 'mathjs' to prevent security vulnerabilities.
+    throw new Error("Insecure 'eval()' removed from example.");
+  },
 });
 ```
 
@@ -185,8 +188,8 @@ const agent = new LLMAgent({
   // ... config
   memoryService: new VectorMemoryService({
     collection: "agent_memory",
-    embedding: new GoogleGenerativeAIEmbeddings()
-  })
+    embedding: new GoogleGenerativeAIEmbeddings(),
+  }),
 });
 ```
 
@@ -197,12 +200,12 @@ Monitor and customize agent behavior with callbacks:
 ```typescript
 const agent = new LLMAgent({
   // ... config
-  beforeAgentCallback: (context) => {
+  beforeAgentCallback: context => {
     console.log(`Agent ${context.agent.name} starting execution`);
   },
-  afterToolCallback: (context) => {
+  afterToolCallback: context => {
     console.log(`Tool ${context.tool.name} executed in ${context.duration}ms`);
-  }
+  },
 });
 ```
 
@@ -210,35 +213,35 @@ const agent = new LLMAgent({
 
 ### Core Configuration
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | ✅ | Unique agent identifier |
-| `description` | `string` | ✅ | Agent capabilities description |
-| `model` | `string \| BaseLlm \| LanguageModel` | ❌ | LLM model to use |
+| Option        | Type                                 | Required | Description                    |
+| ------------- | ------------------------------------ | -------- | ------------------------------ |
+| `name`        | `string`                             | ✅       | Unique agent identifier        |
+| `description` | `string`                             | ✅       | Agent capabilities description |
+| `model`       | `string \| BaseLlm \| LanguageModel` | ❌       | LLM model to use               |
 
 ### Behavior Configuration
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `instruction` | `string \| InstructionProvider` | Primary behavior instructions |
+| Option              | Type                            | Description                        |
+| ------------------- | ------------------------------- | ---------------------------------- |
+| `instruction`       | `string \| InstructionProvider` | Primary behavior instructions      |
 | `globalInstruction` | `string \| InstructionProvider` | Global instructions for agent tree |
 
 ### Tool Configuration
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `tools` | `ToolUnion[]` | Available tools |
-| `subAgents` | `BaseAgent[]` | Sub-agents for delegation |
+| Option         | Type               | Description               |
+| -------------- | ------------------ | ------------------------- |
+| `tools`        | `ToolUnion[]`      | Available tools           |
+| `subAgents`    | `BaseAgent[]`      | Sub-agents for delegation |
 | `codeExecutor` | `BaseCodeExecutor` | Code execution capability |
 
 ### Session Management
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `userId` | `string` | User identifier |
-| `appName` | `string` | Application identifier |
-| `sessionService` | `BaseSessionService` | Session management |
-| `memoryService` | `BaseMemoryService` | Long-term memory |
+| Option           | Type                 | Description            |
+| ---------------- | -------------------- | ---------------------- |
+| `userId`         | `string`             | User identifier        |
+| `appName`        | `string`             | Application identifier |
+| `sessionService` | `BaseSessionService` | Session management     |
+| `memoryService`  | `BaseMemoryService`  | Long-term memory       |
 
 ## Best Practices
 
@@ -270,7 +273,9 @@ const agent = new LLMAgent({
 ```typescript
 const researchAgent = await AgentBuilder.create("researcher")
   .withModel("gemini-2.5-flash")
-  .withInstruction("You are a research assistant that can search and analyze information")
+  .withInstruction(
+    "You are a research assistant that can search and analyze information",
+  )
   .withTools(webSearchTool, dataAnalyzerTool)
   .build();
 ```
@@ -284,8 +289,8 @@ const analysisWorkflow = new SequentialAgent({
     new DataIngestionAgent(),
     new DataCleaningAgent(),
     new AnalysisAgent(),
-    new ReportGeneratorAgent()
-  ]
+    new ReportGeneratorAgent(),
+  ],
 });
 ```
 
@@ -294,12 +299,9 @@ const analysisWorkflow = new SequentialAgent({
 ```typescript
 const managerAgent = new LLMAgent({
   name: "manager",
-  subAgents: [
-    specialistAgent1,
-    specialistAgent2,
-    coordinatorAgent
-  ],
-  instruction: "Delegate tasks to appropriate specialists and coordinate results"
+  subAgents: [specialistAgent1, specialistAgent2, coordinatorAgent],
+  instruction:
+    "Delegate tasks to appropriate specialists and coordinate results",
 });
 ```
 
