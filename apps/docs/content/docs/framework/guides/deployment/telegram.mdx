@@ -316,49 +316,16 @@ docker push username/my-telegram-bot:latest
 
 Deploy from your registry to [Railway](/docs/framework/guides/deployment/railway), Render, or any Docker-compatible platform by specifying your image URL (e.g., `username/my-telegram-bot:latest`).
 
-## Telegram Bot Troubleshooting
+## Telegram Troubleshooting
 
-### Service Keeps Restarting
+- **Service Keeps Restarting**: If your bot restarts repeatedly, it's likely deployed as a **Web Service** instead of a **Background Worker**. Web services expect a port to be bound, while polling bots do not bind to any port.
+- **Bot Not Responding**: Confirm the `TELEGRAM_BOT_TOKEN` is valid by contacting [@BotFather](https://t.me/botfather). Ensure your bot has permission to read messages in group chats if applicable.
+- **Rate Limiting**: Telegram has strict rate limits for bots. Check logs for `429 Too Many Requests` errors if your bot is handling high traffic.
 
-**Symptom**: Your service shows as unhealthy and restarts repeatedly.
+## Telegram Best Practices
 
-**Cause**: Deployed as a web service instead of a background worker.
-
-**Solution**: Switch to the correct service type:
-
-- **Render**: Use "Background Worker", not "Web Service"
-- **Heroku**: Use `worker:` in Procfile, not `web:`
-- **Railway**: Ensure no port binding is configured
-
-### Bot Not Responding to Messages
-
-**Check these in order:**
-
-1. **Bot token is correct** — Verify in @BotFather
-2. **Service is running** — Check logs for errors
-3. **Environment variables are set** — All required variables present
-4. **Bot has permissions** — Try `/start` command first
-
-### "Cannot find module" Errors
-
-**Cause**: Build step failed or was skipped.
-
-**Solution**: Ensure the build runs before starting the application:
-
-```bash
-pnpm install && pnpm build
-node dist/index.js
-```
-
-### LLM Provider Errors
-
-**Symptom**: Bot connects but responses fail.
-
-**Check**:
-
-1. API key is valid and has quota
-2. `LLM_MODEL` matches your provider
-3. No rate limiting on your account
+- **Separation of Concerns**: Keep your bot's logic in the ADK agent and use the Telegram server primarily as a transport layer.
+- **Error Recovery**: Implement a retry strategy for LLM calls to handle intermittent API failures gracefully without crashing the polling loop.
 
 ## Next Steps
 

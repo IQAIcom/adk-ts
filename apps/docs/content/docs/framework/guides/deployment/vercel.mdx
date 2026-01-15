@@ -200,64 +200,14 @@ Vercel provides real-time logs in the **"Logs"** tab of your deployment. Use the
 
 ## Vercel Troubleshooting
 
-### Missing Environment Variables
-
-**Problem**: Agent crashes or features don't work
-
-- Go to Vercel's **"Environment Variables"** tab and verify all variables are present
-- Check that variable names match exactly what your code expects (case-sensitive)
-- Look for typos in variable values
-- Trigger a new deployment after updating variables
-
-### Build Failures
-
-**Problem**: Vercel build fails
-
-- Click on the failed deployment to view detailed build logs
-- Look for error messages about missing dependencies or syntax errors
-- Ensure all dependencies are listed in `package.json`
-- Check for TypeScript compilation errors in the logs
-
-### Function Timeouts
-
-**Problem**: Agent execution exceeds Vercel's serverless timeout
-
-- Increase `maxDuration` in your function configuration (up to your plan limit)
-- Optimize your agent's processing time
-- For long-running agents, consider using [Railway](/docs/framework/guides/deployment/railway) instead
-
-### Deployment Conflicts
-
-**Problem**: Multiple deployments triggering at once
-
-- Check the **"Deployments"** tab to see which one is active
-- Cancel unnecessary deployments if they are stuck
-- Ensure your Git branch configuration is correct
+- **Function Timeouts**: If your agent takes longer than the default 10-15s to respond, Vercel will terminate the function. Increase `maxDuration` in your function config (up to 60s or more depending on your plan).
+- **Cold Start Latency**: The first request after some inactivity may be slower due to serverless cold starts. If low latency is critical, consider a platform with long-running instances like [Railway](/docs/framework/guides/deployment/railway).
+- **Deployment Conflicts**: If multiple branches are deploying, check the "Deployments" tab to ensure you are testing the correct version.
 
 ## Vercel Best Practices
 
-### Version Control
-
-- Use separate environments (Production, Preview) to test changes
-- Always test locally with `vercel dev` before pushing
-
-### Cost Management
-
-- Monitor function execution counts in the dashboard
-- Set up budget alerts if using a Pro plan
-- Use Vercel's usage dashboard to track resource consumption
-
-### Reliability
-
-- Implement proper error handling in your serverless functions
-- Use health check endpoints to monitor availability
-- Regularly review logs to catch "Cold Start" or timeout issues
-
-### Security
-
-- Never commit environment variables or secrets to git
-- Use Vercel's Environment Variables for all sensitive data
-- Implement authentication for your API endpoints
+- **Local Development**: Always use `vercel dev` to test your API routes locally. This simulates the Vercel environment more accurately than standard Node.js.
+- **Edge Functions**: For simple logic, consider using Edge Functions for faster startup times, though note they have more limited Node.js API support.
 
 ## Next Steps
 

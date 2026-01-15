@@ -369,83 +369,15 @@ When running containers, you can set resource limits and mount volumes for data 
 
 ## Docker Troubleshooting
 
-### Build Failures
+- **Out of disk space**: Clean up unused Docker resources regularly: `docker system prune -a`.
+- **Registry Push Failures**: Confirm you're logged in (`docker login`) and verify the image name format matches your registry's requirements.
+- **Permission Denied**: On Linux, ensure your user is in the `docker` group or use `sudo` for Docker commands.
 
-**Dependencies fail to install**
+## Docker Best Practices
 
-- Clear Docker's build cache and rebuild: `docker build --no-cache -t my-adk-agent:latest .`
-- Check your internet connection and package registry availability
-
-**Out of disk space**
-
-- Clean up unused Docker resources: `docker system prune -a`
-- Free up space on your machine
-
-**TypeScript compilation errors**
-
-- Review build logs for specific error messages
-- Verify `tsconfig.json` is correctly configured
-- Ensure all dependencies are listed in `package.json`
-
-### Container Won't Start
-
-**Container exits immediately after starting**
-
-- Check logs for error messages: `docker logs my-agent`
-- Verify your start command in the Dockerfile is correct
-- Ensure all required environment variables are set
-
-**Environment variables not loading**
-
-- Double-check variable names match exactly what your code expects
-- Verify the `.env` file is in the correct location
-- Check platform documentation for how to set environment variables
-
-### Registry Push Failures
-
-- Confirm you're logged in to the registry
-- Verify the image name format matches your registry's requirements
-- Check you have permission to push to the repository
-- Ensure stable internet connection
-
-### Runtime Issues
-
-**Agent stops responding or crashes**
-
-- Review logs for error messages or stack traces
-- Check if you've hit resource limits (memory/CPU)
-- Verify all required environment variables are set correctly
-- Test external API connectivity if your agent depends on third-party services
-
-## Docker-Specific Best Practices
-
-### Image Optimization
-
-- Use Alpine-based images (smaller size)
-- Implement multi-stage builds
-- Add a `.dockerignore` file to exclude unnecessary files
-- Combine RUN commands to minimize image layers
-
-### Security
-
-- Never run containers as root user
-- Use specific version tags instead of `latest` in production
-- Keep base images updated with security patches
-- Store secrets using environment variables, never hardcode them
-
-### Development Workflow
-
-- Tag images with version numbers or git commit SHAs for tracking
-- Test images locally before deploying to production
-- Implement CI/CD pipelines for automated builds
-- Use separate Dockerfiles for development and production if needed
-
-### Production Deployment
-
-- Use restart policies for automatic recovery from failures
-- Set resource limits to prevent one container from consuming all server resources
-- Implement health checks for monitoring
-- Monitor logs regularly and set up alerts for critical errors
+- **Image Optimization**: Use Alpine-based images and multi-stage builds to minimize image size and attack surface. Add a `.dockerignore` file to exclude unnecessary files like `node_modules` and `.git`.
+- **Security**: Never run containers as the `root` user. Use the `USER` instruction in your `Dockerfile` to switch to a non-privileged user.
+- **Workflow**: Tag images with git commit SHAs in your CI/CD pipeline for perfect traceability between code and running containers.
 
 ### Example .dockerignore
 

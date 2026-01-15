@@ -209,68 +209,14 @@ Railway provides real-time logs in the **"Logs"** tab of your deployment. Use th
 
 ## Railway Troubleshooting
 
-### Docker Push Fails
-
-**Problem**: Can't push image to Docker Hub
-
-- Verify you're logged in (run `docker login`)
-- Check your image name format matches `username/image:tag`
-- Confirm you have permission to push to this repository
-- Check your internet connection
-
-### Missing Environment Variables
-
-**Problem**: Agent crashes or features don't work
-
-- Go to Railway's **"Variables"** tab and verify all variables are present
-- Check that variable names match exactly what your code expects (case-sensitive)
-- Look for typos in variable values
-- Restart the deployment after adding missing variables
-
-### Build Failures
-
-**Problem**: Railway build fails
-
-- Click on the failed deployment to view detailed build logs
-- Look for error messages about missing dependencies or syntax errors
-- Verify your `Dockerfile` has correct syntax
-- Ensure all dependencies are listed in `package.json`
-- Check for TypeScript compilation errors in the logs
-
-### Agent Not Starting
-
-**Problem**: Deployment succeeds but agent doesn't run
-
-- Check Railway logs for runtime error messages
-- Verify the `CMD` in your Dockerfile points to the correct file
-- Ensure all required environment variables are set
-- Confirm your build process creates the expected output files (check `dist/` folder exists)
+- **Railpack Detection**: If Railway fails to detect your project type, ensure your `package.json` and lockfile are in the repository root, or use a custom `Dockerfile`.
+- **Deployment Stuck**: If a deployment is stuck in "Building", check the logs for dependency conflicts or build-time timeouts.
 
 ## Railway Best Practices
 
-### Version Control
-
-- Use specific image tags (like `v1.0`, `v1.1`) instead of `latest` for better tracking
-- Tag images with version numbers or git commit hashes
-
-### Cost Management
-
-- Set resource limits in Railway's settings to prevent unexpected charges
-- Monitor usage in Railway's dashboard
-- Use Railway's sleep feature for non-critical deployments
-
-### Reliability
-
-- Enable health checks if your agent exposes an HTTP endpoint
-- Use Railway's preview environments to test changes before deploying to production
-- Monitor logs regularly to catch issues early
-
-### Security
-
-- Never commit environment variables or secrets to git
-- Railway automatically encrypts environment variables
-- Rotate API keys and tokens regularly
-- Use Railway's audit logs to track changes
+- **Preview Environments**: Use Railway's PR environments to test changes in an isolated production-like environment before merging to `main`.
+- **Sleeping Services**: For development or non-critical bots, use the "Sleep" feature to save on credits when the bot is inactive.
+- **Project Structure**: Keep related services (e.g., your agent and a database) within the same Railway project for easier networking and management.
 
 ## Next Steps
 
