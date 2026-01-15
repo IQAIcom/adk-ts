@@ -25,6 +25,7 @@ import type { BaseSessionService } from "./sessions/base-session-service";
 import { InMemorySessionService } from "./sessions/in-memory-session-service";
 import type { Session } from "./sessions/session";
 import {
+	ADK_ATTRS,
 	extractTextFromContent,
 	SEMCONV,
 	telemetryService,
@@ -245,6 +246,14 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 				newMessage,
 				runConfig,
 			});
+
+			// Set session context on span for telemetry correlation
+			span.setAttribute(ADK_ATTRS.SESSION_ID, session.id);
+			span.setAttribute(ADK_ATTRS.USER_ID, userId);
+			span.setAttribute(
+				ADK_ATTRS.INVOCATION_ID,
+				invocationContext.invocationId,
+			);
 
 			if (newMessage) {
 				await context.with(spanContext, () =>
