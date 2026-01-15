@@ -20,7 +20,9 @@ A Discord bot starter template powered by ADK (AI Development Kit) that enables 
 
 ## Prerequisites
 
-> [!note] > **You'll need the following before you begin.** For details on how to obtain these, see [Configure Your Bot](#3-configure-your-bot).
+> [!note]
+>
+> **You'll need the following before you begin.** For details on how to obtain these, see [Configure Your Bot](#3-configure-your-bot).
 
 - **Discord Bot Token**: Create a bot via Discord Developer Portal
 - **AI API Key**: Get an API key for your chosen AI model (e.g., Google AI Studio for Gemini)
