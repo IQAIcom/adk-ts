@@ -3,6 +3,7 @@ import type {
 	GenerateContentResponseUsageMetadata,
 	GroundingMetadata,
 } from "@google/genai";
+import { CacheMetadata } from "./cache-metadata";
 
 interface Candidate {
 	content?: Content;
@@ -43,6 +44,8 @@ export class LlmResponse {
 
 	customMetadata?: Record<string, any>;
 
+	cacheMetadata?: CacheMetadata;
+
 	usageMetadata?: GenerateContentResponseUsageMetadata;
 
 	candidateIndex?: number;
@@ -62,7 +65,7 @@ export class LlmResponse {
 			generateContentResponse.candidates.length > 0
 		) {
 			const candidate = generateContentResponse.candidates[0];
-			if (candidate.content && (candidate.content as any).parts) {
+			if (candidate.content?.parts) {
 				return new LlmResponse({
 					content: candidate.content,
 					groundingMetadata: candidate.groundingMetadata,
