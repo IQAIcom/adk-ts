@@ -89,7 +89,7 @@ To ensure a stable and secure production environment, follow these best practice
 If you encounter issues during deployment, check these common points before diving into platform-specific configurations:
 
 - **Missing Variables**: The most common cause of startup failure. Verify all required environment variables are set in your platform dashboard (case-sensitive).
-- **Architecture Mismatch**: If using Docker, ensure you are building for the target architecture (usually `linux/amd64`) via `docker buildx build --platform linux/amd64`.
+- **Architecture Mismatch**: If using Docker, ensure you are building for the target architecture (usually `linux/amd64`) via `docker buildx build --platform linux/amd64 -t your-image:tag .`.
 - **Timeouts**: AI processing can take longer than standard API requests. Check your platform's serverless or load balancer timeout settings (e.g., Lambda's 15m limit or Vercel's `maxDuration`).
 - **Build Failures**: Review build logs carefully for missing dependencies, TypeScript compilation errors, or syntax issues in your `Dockerfile`.
 - **Runtime Errors**: Check your service logs for stack traces. Ensure your compiled code (usually in `dist/`) is being correctly referenced in the start command.
