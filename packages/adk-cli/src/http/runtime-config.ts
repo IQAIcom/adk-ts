@@ -17,6 +17,12 @@ export interface RuntimeConfig {
 	 * Defaults to true in non-production when not provided. Disable explicitly in prod if needed.
 	 */
 	swagger?: boolean;
+	/**
+	 * Serve bundled web UI from the CLI package.
+	 * When enabled, static files from the web/ directory are served on the same port.
+	 * Used by the `adk web` command for bundled mode.
+	 */
+	serveWeb?: boolean;
 }
 
 export const RUNTIME_CONFIG = "RUNTIME_CONFIG";
