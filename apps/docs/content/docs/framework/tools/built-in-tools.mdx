@@ -172,8 +172,8 @@ TAVILY_API_KEY=your_tavily_api_key_here
 | `timeRange`                | string  | Optional | "day", "week", "month", "year" (or "d", "w", "m", "y")     |
 | `startDate`                | string  | Optional | Results after this date (YYYY-MM-DD)                       |
 | `endDate`                  | string  | Optional | Results before this date (YYYY-MM-DD)                      |
-| `includeAnswer`            | boolean | Optional | Include LLM-generated answer (or "basic", "advanced")      |
-| `includeRawContent`        | boolean | Optional | Include raw content (or "markdown", "text")                |
+| `includeAnswer`            | string  | Optional | Include LLM-generated answer ("true", "basic", "advanced") |
+| `includeRawContent`        | string  | Optional | Include raw content ("true", "markdown", "text")           |
 | `includeImages`            | boolean | Optional | Include image search results                               |
 | `includeImageDescriptions` | boolean | Optional | Include descriptive text for images                        |
 | `includeFavicon`           | boolean | Optional | Include favicon URL for results                            |
@@ -943,7 +943,7 @@ const sandboxedAgent = new LlmAgent({
 
 - Disabled by default for maximum security
 - Three security modes: whitelist, sandboxed, and unrestricted
-- Blocks dangerous patterns (fork bombs, disk operations, privilege escalation) - [view blocked patterns](https://github.com/IQAIcom/adk-ts/blob/main/packages/adk/src/tools/defaults/bash-tool.ts)
+- Blocks dangerous patterns (fork bombs, disk operations, privilege escalation) - [view blocked patterns](/packages/adk/src/tools/defaults/bash-tool.ts)
 - Configurable timeout protection (default: 30 seconds)
 - Command execution logging
 
