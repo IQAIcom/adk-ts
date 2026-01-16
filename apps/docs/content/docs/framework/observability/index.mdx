@@ -22,73 +22,6 @@ The observability system in ADK-TS is built on OpenTelemetry, providing:
   All telemetry dependencies are included in `@iqai/adk`. No additional installation required.
 </Callout>
 
-## Documentation Structure
-
-<Cards>
-  <Card
-    title="🚀 Getting Started"
-    description="Initialize telemetry, configure basic setup, and run with local development tools"
-    href="/docs/framework/observability/getting-started"
-  />
-  <Card
-    title="🔍 Distributed Tracing"
-    description="Understand what gets traced, view traces, and use custom spans for your operations"
-    href="/docs/framework/observability/tracing"
-  />
-  <Card
-    title="📊 Metrics"
-    description="Available metrics, recording custom metrics, and monitoring agent performance"
-    href="/docs/framework/observability/metrics"
-  />
-  <Card
-    title="🔒 Production Configuration"
-    description="Privacy controls, performance tuning, security best practices, and production deployment"
-    href="/docs/framework/observability/production"
-  />
-  <Card
-    title="🔌 Platform Integrations"
-    description="Integrate with observability platforms: Jaeger, Grafana, Datadog, New Relic, Honeycomb"
-    href="/docs/framework/observability/integrations"
-  />
-</Cards>
-
-## Key Features
-
-### Distributed Tracing
-
-Track the complete lifecycle of agent operations:
-
-- **Agent Invocations** - Full execution traces with session and user context
-- **Tool Executions** - Arguments, responses, and execution duration
-- **LLM Calls** - Model parameters, token usage, and request/response content
-- **Context Propagation** - Trace correlation across async operations
-
-### Metrics Collection
-
-Comprehensive metrics for monitoring:
-
-- **Counters** - Agent invocations, tool executions, LLM calls, errors
-- **Histograms** - Duration tracking for agents, tools, and LLM calls
-- **Token Tracking** - Input, output, and total token usage per LLM call
-- **Error Metrics** - Detailed error context and categorization
-
-### Privacy & Security
-
-Production-ready privacy controls:
-
-- **Content Capture Control** - Disable sensitive data capture via environment variable or config
-- **Selective Filtering** - Metadata captured even when content is disabled
-- **Environment-Based Configuration** - Different settings for dev, staging, and production
-
-### Auto-Instrumentation
-
-Automatic tracing of common operations:
-
-- HTTP/HTTPS requests
-- Database queries
-- File system operations
-- DNS lookups
-
 ## Quick Example
 
 ```typescript
@@ -134,8 +67,30 @@ Backend (Jaeger, Tempo, etc.)
 
 ## Next Steps
 
-1. **Start with Getting Started** - Learn how to initialize and configure telemetry
-2. **Explore Tracing** - Understand what gets traced and how to view traces
-3. **Set Up Metrics** - Monitor your agents' performance
-4. **Configure for Production** - Ensure privacy and optimal performance
-5. **Integrate with Your Platform** - Connect to your observability backend
+<Cards>
+  <Card
+    title="🚀 Getting Started"
+    description="Learn how to initialize and configure telemetry"
+    href="/docs/framework/observability/getting-started"
+  />
+  <Card
+    title="🔍 Distributed Tracing"
+    description="Understand what gets traced and how to view traces"
+    href="/docs/framework/observability/tracing"
+  />
+  <Card
+    title="📊 Metrics"
+    description="Monitor your agents' performance"
+    href="/docs/framework/observability/metrics"
+  />
+  <Card
+    title="🔒 Production Configuration"
+    description="Ensure privacy and optimal performance"
+    href="/docs/framework/observability/production"
+  />
+  <Card
+    title="🔌 Platform Integrations"
+    description="Connect to your observability backend"
+    href="/docs/framework/observability/integrations"
+  />
+</Cards>
