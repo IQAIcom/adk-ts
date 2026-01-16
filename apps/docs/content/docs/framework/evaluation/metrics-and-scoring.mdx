@@ -340,14 +340,11 @@ interface PerformanceRecord {
 }
 
 function analyzePerformanceTrend(records: PerformanceRecord[]) {
-  const byVersion = records.reduce(
-    (acc, record) => {
-      if (!acc[record.version]) acc[record.version] = [];
-      acc[record.version].push(record.scores.overall);
-      return acc;
-    },
-    {} as Record<string, number[]>,
-  );
+  const byVersion = records.reduce((acc, record) => {
+    if (!acc[record.version]) acc[record.version] = [];
+    acc[record.version].push(record.scores.overall);
+    return acc;
+  }, {} as Record<string, number[]>);
 
   return Object.entries(byVersion).map(([version, scores]) => ({
     version,

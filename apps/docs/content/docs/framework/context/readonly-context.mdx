@@ -256,7 +256,9 @@ const robustInstruction = (ctx: ReadonlyContext): string => {
 // Good - Minimal state access
 const efficientInstruction = (ctx: ReadonlyContext): string => {
   const { userLevel, currentMode } = ctx.state;
-  return `Mode: ${currentMode || "standard"}, Level: ${userLevel || "intermediate"}`;
+  return `Mode: ${currentMode || "standard"}, Level: ${
+    userLevel || "intermediate"
+  }`;
 };
 
 // Avoid - Expensive operations in instruction providers

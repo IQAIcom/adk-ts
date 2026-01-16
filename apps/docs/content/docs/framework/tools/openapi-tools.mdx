@@ -77,10 +77,7 @@ import { BaseTool } from "@iqai/adk";
 import type { paths } from "./api-types";
 
 class UserApiTool extends BaseTool {
-  constructor(
-    private baseUrl: string,
-    private apiKey: string,
-  ) {
+  constructor(private baseUrl: string, private apiKey: string) {
     super({
       name: "user_api",
       description: "Manage users via API",

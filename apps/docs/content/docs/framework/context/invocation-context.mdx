@@ -224,7 +224,9 @@ export class MultiServiceAgent extends BaseAgent {
       content: {
         parts: [
           {
-            text: `Error in multi-service processing: ${error instanceof Error ? error.message : String(error)}`,
+            text: `Error in multi-service processing: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
           },
         ],
       },
@@ -483,7 +485,9 @@ async function synchronizeState(
       await context.memoryService.saveMemory({
         appName: context.appName,
         userId: context.userId,
-        content: `User preferences updated: ${JSON.stringify(updates.userPreferences)}`,
+        content: `User preferences updated: ${JSON.stringify(
+          updates.userPreferences,
+        )}`,
         metadata: {
           type: "user_preferences",
           syncId: syncId,

@@ -4,6 +4,13 @@ import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
 
+export interface LoadMemoryResult {
+	memories?: any[];
+	count?: number;
+	error?: string;
+	message?: string;
+}
+
 /**
  * Tool that allows an agent to load memories relevant to a query
  */
@@ -48,7 +55,7 @@ export class LoadMemoryTool extends BaseTool {
 			query: string;
 		},
 		context: ToolContext,
-	): Promise<any> {
+	): Promise<LoadMemoryResult> {
 		this.logger.debug(`Executing load_memory with query: ${args.query}`);
 
 		try {

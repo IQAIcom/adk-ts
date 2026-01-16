@@ -93,7 +93,9 @@ import { ReadonlyContext } from "@iqai/adk";
 
 const dynamicInstruction = (ctx: ReadonlyContext): string => {
   const userState = ctx.state;
-  return `You are helping user in session ${ctx.invocationId}. User context: ${JSON.stringify(userState)}`;
+  return `You are helping user in session ${
+    ctx.invocationId
+  }. User context: ${JSON.stringify(userState)}`;
 };
 ```
 

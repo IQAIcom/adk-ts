@@ -150,7 +150,9 @@ builder
 builder
   .withBeforeToolCallback(async (tool, args, toolCtx) => {
     toolCtx.logger?.info?.(
-      `Before Tool: ${tool.name} (invocation: ${toolCtx.invocationId}) args=${JSON.stringify(args)}`,
+      `Before Tool: ${tool.name} (invocation: ${
+        toolCtx.invocationId
+      }) args=${JSON.stringify(args)}`,
     );
   })
   .withAfterModelCallback(async (ctx, res) => {
@@ -189,7 +191,9 @@ builder
   .withBeforeModelCallback(async (ctx, req) => {
     req.config = {
       ...req.config,
-      systemInstruction: `${req.config?.systemInstruction ?? ""}\nSession: ${ctx.invocationId}`,
+      systemInstruction: `${req.config?.systemInstruction ?? ""}\nSession: ${
+        ctx.invocationId
+      }`,
     };
     return req;
   })

@@ -16,7 +16,9 @@ Choose the right context type based on your security and functionality requireme
 ```typescript
 // Read-only instruction generation - use ReadonlyContext
 const safeInstruction = (ctx: ReadonlyContext): string => {
-  return `Hello ${ctx.state.user?.name || "User"}! Session: ${ctx.invocationId}`;
+  return `Hello ${ctx.state.user?.name || "User"}! Session: ${
+    ctx.invocationId
+  }`;
 };
 
 // State modification in callbacks - use CallbackContext
