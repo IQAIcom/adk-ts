@@ -9,9 +9,11 @@ import {
 	diag,
 	metrics,
 } from "@opentelemetry/api";
-import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
+import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
+import { NestInstrumentation } from "@opentelemetry/instrumentation-nestjs-core";
 import {
 	detectResources,
 	envDetector,
@@ -295,12 +297,15 @@ export class SetupService {
 			metricReader,
 			sampler,
 			instrumentations: [
-				getNodeAutoInstrumentations({
-					// Ignore incoming HTTP requests (we're usually making outgoing calls)
-					"@opentelemetry/instrumentation-http": {
-						ignoreIncomingRequestHook: () => true,
-					},
-				}),
+				new ExpressInstrumentation(),
+				new NestInstrumentation(),
+				new HttpInstrumentation(),
+				// getNodeAutoInstrumentations({
+				// 	// Ignore incoming HTTP requests (we're usually making outgoing calls)
+				// 	"@opentelemetry/instrumentation-http": {
+				// 		ignoreIncomingRequestHook: () => true,
+				// 	},
+				// }),
 			],
 		});
 

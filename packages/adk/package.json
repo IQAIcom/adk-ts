@@ -42,6 +42,8 @@
 		"@opentelemetry/exporter-metrics-otlp-http": "^0.208.0",
 		"@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
 		"@opentelemetry/instrumentation": "^0.209.0",
+		"@opentelemetry/instrumentation-express": "^0.58.0",
+		"@opentelemetry/instrumentation-http": "^0.210.0",
 		"@opentelemetry/instrumentation-nestjs-core": "^0.55.0",
 		"@opentelemetry/instrumentation-openai": "^0.7.1",
 		"@opentelemetry/resources": "^2.2.0",
