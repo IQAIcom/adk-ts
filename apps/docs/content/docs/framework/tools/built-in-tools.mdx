@@ -9,6 +9,8 @@ ADK-TS provides a comprehensive collection of pre-built tools that handle common
 
 ### Quick Start
 
+Here's how to use built-in tools with your agent:
+
 ```typescript
 import { LlmAgent, GoogleSearchTool, HttpRequestTool } from "@iqai/adk";
 
@@ -25,31 +27,37 @@ That's it! Your agent can now search the web and make HTTP requests.
 
 ### Available Tools
 
-| Tool                    | Purpose                                                        | Requires Config |
-| ----------------------- | -------------------------------------------------------------- | --------------- |
-| **GoogleSearchTool**    | Search the web for information (uses Google Custom Search API) | Yes (API keys)  |
-| **WebFetchTool**        | Fetch and parse web page content                               | No              |
-| **HttpRequestTool**     | Make HTTP requests to APIs                                     | No              |
-| **ReadTool**            | Read file contents                                             | No              |
-| **WriteTool**           | Create new files                                               | No              |
-| **EditTool**            | Edit existing files                                            | No              |
-| **GlobTool**            | Find files by pattern                                          | No              |
-| **GrepTool**            | Search file contents                                           | No              |
-| **FileOperationsTool**  | Comprehensive file management                                  | Optional        |
-| **BashTool**            | Execute terminal commands                                      | No              |
-| **UserInteractionTool** | Prompt users for input                                         | No              |
-| **GetUserChoiceTool**   | Present multiple choice options                                | No              |
-| **LoadMemoryTool**      | Search conversation history                                    | No              |
-| **LoadArtifactsTool**   | Access uploaded files                                          | No              |
-| **TransferToAgentTool** | Hand off to another agent                                      | No              |
-| **ExitLoopTool**        | Exit workflow loops                                            | No              |
-| **WebSearchTool**       | Search the web for information                                 | Yes (API keys)  |
+| Tool                    | Purpose                                                        | Environment Variables             |
+| ----------------------- | -------------------------------------------------------------- | --------------------------------- |
+| **GoogleSearchTool**    | Search the web for information (uses Google Custom Search API) | `GOOGLE_API_KEY`, `GOOGLE_CSE_ID` |
+| **WebSearchTool**       | Search the web for information (uses Tavily API)               | `TAVILY_API_KEY`                  |
+| **WebFetchTool**        | Fetch and parse web page content                               |                                   |
+| **HttpRequestTool**     | Make HTTP requests to APIs                                     |                                   |
+| **ReadTool**            | Read file contents                                             |                                   |
+| **WriteTool**           | Create new files                                               |                                   |
+| **EditTool**            | Edit existing files                                            |                                   |
+| **GlobTool**            | Find files by pattern                                          |                                   |
+| **GrepTool**            | Search file contents                                           |                                   |
+| **FileOperationsTool**  | Comprehensive file management                                  |                                   |
+| **BashTool**            | Execute terminal commands                                      |                                   |
+| **UserInteractionTool** | Prompt users for input                                         |                                   |
+| **GetUserChoiceTool**   | Present multiple choice options                                |                                   |
+| **LoadMemoryTool**      | Search conversation history                                    |                                   |
+| **LoadArtifactsTool**   | Access uploaded files                                          |                                   |
+| **TransferToAgentTool** | Hand off to another agent                                      |                                   |
+| **ExitLoopTool**        | Exit workflow loops                                            |                                   |
+
+**Understanding Tool Configuration:**
+
+- **Configuration Options**: Optional parameters passed when creating a tool instance (e.g., `new BashTool({ maxTimeout: 60000 })`). These customize the tool behavior but are not required—the default settings work for most use cases.
+- **Tool Parameters**: Arguments that the agent passes to the tool during execution (e.g., `{ query: "search term" }` for GoogleSearchTool). These are specified by the agent based on the task at hand.
+- **Environment Variables**: External values like API keys that must be set in your environment before using certain tools.
 
 ## Web & API Tools
 
 ### GoogleSearchTool
 
-Search the web for real-time information using Google's search engine.
+Search the web for real-time information using [Google's search engine](https://developers.google.com/custom-search/v1/overview).
 
 **Import:**
 
@@ -67,15 +75,26 @@ const agent = new LlmAgent({
 });
 ```
 
+**Environment Variables:**
+
+```bash
+GOOGLE_API_KEY=your_api_key_here
+GOOGLE_CSE_ID=your_search_engine_id
+```
+
 **Tool Parameters:**
 
-| Parameter          | Type   | Required | Description                                            |
-| ------------------ | ------ | -------- | ------------------------------------------------------ |
-| `query`            | string | Yes      | The search query to execute                            |
-| `numResults`       | number | No       | Number of results to return (default: 5, max: 10)      |
-| `safe`             | string | No       | Safe search filter: "active" or "off" (default: "off") |
-| `siteSearch`       | string | No       | Restrict results to a specific site                    |
-| `siteSearchFilter` | string | No       | Include ("i") or exclude ("e") specific site           |
+| Parameter          | Type    | Required | Description                                            |
+| ------------------ | ------- | -------- | ------------------------------------------------------ |
+| `query`            | string  | Yes      | The search query to execute                            |
+| `numResults`       | integer | Optional | Number of results to return (default: 5, max: 10)      |
+| `start`            | integer | Optional | Start index for pagination (default: 1)                |
+| `safe`             | string  | Optional | Safe search filter: "active" or "off" (default: "off") |
+| `siteSearch`       | string  | Optional | Restrict results to a specific site                    |
+| `siteSearchFilter` | string  | Optional | Include ("i") or exclude ("e") specific site           |
+| `lr`               | string  | Optional | Language restriction (e.g., "lang_en")                 |
+| `cr`               | string  | Optional | Country restriction (e.g., "countryUS")                |
+| `fields`           | string  | Optional | Partial response fields to reduce payload              |
 
 **How It's Triggered:**
 
@@ -96,20 +115,129 @@ const agent = new LlmAgent({
     link: string;
     snippet: string;
   }>;
-  images?: Array<{
-    url: string;
-    description?: string;
-  }>;
   error?: string;
 }
 ```
 
-**Environment Variables Required:**
+**Capabilities:**
+
+- Full control over search parameters including language and country restrictions
+- Pagination support for accessing more results
+- Safe search filtering
+- Site-specific search with include/exclude options
+- Partial field responses to optimize bandwidth
+
+**Use Cases:**
+
+- Real-time web research
+- Finding current information and news
+- Verifying facts with multiple sources
+- Domain-specific searches
+
+### WebSearchTool
+
+Search the web for current information using [Tavily API](https://www.tavily.com/) with advanced search capabilities.
+
+**Import:**
+
+```typescript
+import { WebSearchTool } from "@iqai/adk";
+```
+
+**Setup:**
+
+```typescript
+const agent = new LlmAgent({
+  name: "research_agent",
+  description: "A research assistant with advanced web search",
+  tools: [new WebSearchTool()],
+});
+```
+
+**Environment Variables:**
 
 ```bash
-GOOGLE_API_KEY=your_api_key_here
-GOOGLE_CSE_ID=your_search_engine_id
+TAVILY_API_KEY=your_tavily_api_key_here
 ```
+
+**Tool Parameters:**
+
+| Parameter                  | Type    | Required | Description                                                |
+| -------------------------- | ------- | -------- | ---------------------------------------------------------- |
+| `query`                    | string  | Yes      | Search terms                                               |
+| `searchDepth`              | string  | Optional | "basic", "advanced", "fast", "ultra-fast" (default: basic) |
+| `chunksPerSource`          | number  | Optional | Maximum chunks per source (default: 3, max: 3)             |
+| `maxResults`               | number  | Optional | Maximum search results (default: 5, max: 20)               |
+| `topic`                    | string  | Optional | "general", "news", "finance" (default: general)            |
+| `timeRange`                | string  | Optional | "day", "week", "month", "year" (or "d", "w", "m", "y")     |
+| `startDate`                | string  | Optional | Results after this date (YYYY-MM-DD)                       |
+| `endDate`                  | string  | Optional | Results before this date (YYYY-MM-DD)                      |
+| `includeAnswer`            | string  | Optional | Include LLM-generated answer ("true", "basic", "advanced") |
+| `includeRawContent`        | string  | Optional | Include raw content ("true", "markdown", "text")           |
+| `includeImages`            | boolean | Optional | Include image search results                               |
+| `includeImageDescriptions` | boolean | Optional | Include descriptive text for images                        |
+| `includeFavicon`           | boolean | Optional | Include favicon URL for results                            |
+| `includeDomains`           | array   | Optional | Domains to include in search                               |
+| `excludeDomains`           | array   | Optional | Domains to exclude from search                             |
+| `country`                  | string  | Optional | Country to prioritize results from                         |
+| `autoParameters`           | boolean | Optional | Automatically configure based on query                     |
+| `includeUsage`             | boolean | Optional | Include credit usage information                           |
+
+**How It's Triggered:**
+
+```typescript
+// User: "Find recent news about renewable energy"
+// Agent calls:
+// web_search({
+//   query: "renewable energy news",
+//   topic: "news",
+//   timeRange: "week",
+//   maxResults: 10
+// })
+```
+
+**Response Format:**
+
+```typescript
+{
+  success: boolean;
+  data?: {
+    query: string;
+    results: Array<{
+      title: string;
+      url: string;
+      content: string;
+      raw_content?: string;
+      favicon?: string;
+      score?: number;
+    }>;
+    answer?: string;
+    images?: Array<{
+      url: string;
+      description?: string;
+    }>;
+    response_time: number;
+    usage?: Record<string, string>;
+    request_id?: string;
+  };
+  error?: string;
+}
+```
+
+**Capabilities:**
+
+- Advanced search depth options balancing speed and relevance
+- Topic-specific searches (general, news, finance)
+- Time-based filtering with flexible date ranges
+- Optional AI-generated answers with different detail levels
+- Raw content extraction in multiple formats
+
+**Use Cases:**
+
+- News monitoring and research
+- Financial market analysis
+- Topic-specific deep research
+- Time-sensitive information gathering
 
 ### WebFetchTool
 
@@ -163,29 +291,25 @@ const agent = new LlmAgent({
 }
 ```
 
-**Capabilities:**
-
-- Automatically detects content type (HTML, JSON, text)
-- Strips scripts, styles, and HTML tags from web pages
-- Extracts page title and main content
-- Returns structured data with metadata
-- Handles HTTP redirects (max 5)
-- 30-second timeout protection
-- Custom user agent
-- Content length limiting (20,000 chars for HTML)
-
 **Supported Content Types:**
 
-- **HTML**: Extracts title and clean text
+- **HTML**: Extracts title and clean text with scripts and styles removed
 - **JSON**: Returns formatted JSON string
 - **Plain text**: Returns raw content
 - **PDF**: Returns error (not supported without additional libraries)
+
+**Capabilities:**
+
+- Automatic content type detection (HTML, JSON, text)
+- Clean text extraction with HTML tag, script, and style removal
+- HTTP redirect handling (max 5 redirects)
+- 30-second timeout protection
+- Content length limiting (20,000 chars for HTML)
 
 **Use Cases:**
 
 - Reading documentation pages
 - Extracting article content
-- Analyzing web page structure
 - Processing API responses
 - Content verification
 
@@ -211,14 +335,14 @@ const agent = new LlmAgent({
 
 **Tool Parameters:**
 
-| Parameter | Type   | Required | Description                                                              |
-| --------- | ------ | -------- | ------------------------------------------------------------------------ |
-| `url`     | string | Yes      | The URL to request                                                       |
-| `method`  | string | No       | HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS). Default: GET |
-| `headers` | object | No       | Custom headers (e.g., `{ "Authorization": "Bearer token" }`)             |
-| `body`    | string | No       | Request body (for POST, PUT, PATCH)                                      |
-| `params`  | object | No       | URL query parameters to include                                          |
-| `timeout` | number | No       | Request timeout in milliseconds. Default: 10000                          |
+| Parameter | Type   | Required | Description                                                  |
+| --------- | ------ | -------- | ------------------------------------------------------------ |
+| `url`     | string | Yes      | The URL to request                                           |
+| `method`  | string | Optional | HTTP method: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS    |
+| `headers` | object | Optional | Custom headers (e.g., `{ "Authorization": "Bearer token" }`) |
+| `body`    | string | Optional | Request body (for POST, PUT, PATCH)                          |
+| `params`  | object | Optional | URL query parameters to include                              |
+| `timeout` | number | Optional | Request timeout in milliseconds (default: 10000)             |
 
 **How It's Triggered:**
 
@@ -235,19 +359,18 @@ const agent = new LlmAgent({
 
 **Capabilities:**
 
-- All HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
-- Custom headers for authentication
+- Support for all HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+- Custom headers for authentication and API integration
 - JSON and form data support
 - Query parameter handling
-- Response parsing
-- Configurable timeouts
+- Configurable request timeouts
 
-**Security Best Practices:**
+**Use Cases:**
 
-- Be cautious with authentication headers in logs
-- Validate URLs before making requests
-- Set appropriate timeouts
-- Handle API rate limits gracefully
+- Integrating with REST APIs
+- Fetching data from external services
+- Posting data to webhooks
+- Testing API endpoints
 
 ## File System Tools
 
@@ -298,11 +421,10 @@ const agent = new LlmAgent({
 
 **Capabilities:**
 
-- Reads text files with UTF-8 encoding
-- Detects and rejects binary files automatically
-- Clear error messages for missing files
-- Supports both relative and absolute paths
-- Binary detection prevents reading corrupted content
+- UTF-8 encoding for text files
+- Automatic binary file detection and rejection
+- Support for both relative and absolute paths
+- Clear error messages for missing or inaccessible files
 
 **Use Cases:**
 
@@ -361,9 +483,8 @@ const agent = new LlmAgent({
 
 **Capabilities:**
 
-- Creates new files safely
-- **Prevents accidental overwrites** (returns error if file exists)
-- Automatically creates parent directories
+- Safe file creation with overwrite protection
+- Automatic parent directory creation
 - UTF-8 encoding
 - Clear success/error messages
 
@@ -441,17 +562,10 @@ const PORT = 8080;
 
 **Capabilities:**
 
-- Validates search string exists
-- **Ensures search string is unique** (prevents ambiguous edits)
+- Validates search string exists in the file
+- Ensures search string is unique to prevent ambiguous edits
 - Shows before/after preview of changes
 - Preserves file encoding
-- Clear error messages
-
-**Common Error Messages:**
-
-- `"Search string not found in file"` - The old_str doesn't exist
-- `"Search string found N times"` - The old_str appears multiple times (not unique)
-- `"File not found"` - The specified file doesn't exist
 
 **Use Cases:**
 
@@ -482,9 +596,9 @@ const agent = new LlmAgent({
 
 **Tool Parameters:**
 
-| Parameter | Type   | Required | Description                                    |
-| --------- | ------ | -------- | ---------------------------------------------- |
-| `pattern` | string | Yes      | Glob pattern (e.g., "_.json", "src/\*\*/_.ts") |
+| Parameter | Type   | Required | Description                |
+| --------- | ------ | -------- | -------------------------- |
+| `pattern` | string | Yes      | Glob pattern to search for |
 
 **How It's Triggered:**
 
@@ -517,11 +631,10 @@ const agent = new LlmAgent({
 
 **Capabilities:**
 
-- Supports standard glob patterns
-- **Automatically excludes** `node_modules` and `.git`
-- Returns array of matching file paths
-- Works with nested directory structures
-- Cross-platform compatible
+- Standard glob pattern support with wildcards and path matching
+- Automatic exclusion of `node_modules` and `.git` directories
+- Cross-platform compatible path handling
+- Support for nested directory structures
 
 **Use Cases:**
 
@@ -549,7 +662,7 @@ const agent = new LlmAgent({
   tools: [new GrepTool()],
 });
 
-// Or with custom configuration:
+// With custom configuration:
 const customAgent = new LlmAgent({
   name: "custom_search_agent",
   description: "Custom search configuration",
@@ -565,46 +678,33 @@ const customAgent = new LlmAgent({
 });
 ```
 
-**Tool Parameters:**
-
-| Parameter         | Type    | Required | Description                                             |
-| ----------------- | ------- | -------- | ------------------------------------------------------- |
-| `pattern`         | string  | Yes      | Regex pattern to search for                             |
-| `files`           | string  | Yes      | File path or glob pattern                               |
-| `caseInsensitive` | boolean | No       | Case-insensitive search (default: false)                |
-| `contextLines`    | number  | No       | Context lines before/after match (max: 10, default: 2)  |
-| `maxMatches`      | number  | No       | Maximum matches to return (max: 1000, default: 500)     |
-| `wholeWord`       | boolean | No       | Match whole words only (default: false)                 |
-| `invertMatch`     | boolean | No       | Invert match - show non-matching lines (default: false) |
-| `exclude`         | string  | No       | Additional exclude patterns (comma-separated)           |
-| `include`         | string  | No       | Additional include patterns (comma-separated)           |
-
 **Configuration Options:**
 
-```typescript
-interface GrepConfig {
-  maxMatches: number; // Default: 500
-  maxFileSize: number; // Default: 10MB
-  contextLines: number; // Default: 2
-  excludePatterns: string[]; // Default: see below
-  includePatterns: string[]; // Default: []
-}
-```
+| Option            | Type     | Default   | Description                                     |
+| ----------------- | -------- | --------- | ----------------------------------------------- |
+| `maxMatches`      | number   | 500       | Maximum matches to return                       |
+| `maxFileSize`     | number   | 10485760  | Maximum file size to search (10MB in bytes)     |
+| `contextLines`    | number   | 2         | Number of context lines before/after each match |
+| `excludePatterns` | string[] | See below | Glob patterns for files to exclude              |
+| `includePatterns` | string[] | []        | Glob patterns for files to include              |
 
 **Default Exclusion Patterns:**
 
-- `**/node_modules/**`
-- `**/.git/**`
-- `**/.next/**`
-- `**/dist/**`
-- `**/build/**`
-- `**/.cache/**`
-- `**/coverage/**`
-- `**/.vscode/**`
-- `**/.idea/**`
-- `**/*.min.js`
-- `**/*.bundle.js`
-- `**/*.map`
+Automatically excludes `node_modules`, `.git`, `.next`, `dist`, `build`, `.cache`, `coverage`, `.vscode`, `.idea`, and minified/bundled JavaScript files (`.min.js`, `.bundle.js`, `.map`).
+
+**Tool Parameters:**
+
+| Parameter         | Type    | Required | Description                                   |
+| ----------------- | ------- | -------- | --------------------------------------------- |
+| `pattern`         | string  | Yes      | Regex pattern to search for                   |
+| `files`           | string  | Yes      | File path or glob pattern                     |
+| `caseInsensitive` | boolean | Optional | Case-insensitive search (default: false)      |
+| `contextLines`    | number  | Optional | Context lines before/after match (max: 10)    |
+| `maxMatches`      | number  | Optional | Maximum matches to return (max: 1000)         |
+| `wholeWord`       | boolean | Optional | Match whole words only (default: false)       |
+| `invertMatch`     | boolean | Optional | Show non-matching lines (default: false)      |
+| `exclude`         | string  | Optional | Additional exclude patterns (comma-separated) |
+| `include`         | string  | Optional | Additional include patterns (comma-separated) |
 
 **How It's Triggered:**
 
@@ -648,30 +748,17 @@ interface GrepConfig {
 
 **Capabilities:**
 
-- Regular expression pattern matching
-- Case-insensitive search option
-- Context lines before/after matches
-- Whole word matching
-- Inverted matching (non-matching lines)
-- Glob pattern file selection
-- Automatic binary file detection
-- Performance statistics
-- Configurable exclusion/inclusion patterns
-
-**Advanced Features:**
-
+- Regular expression pattern matching with multiple search options
+- Context lines display for better result understanding
+- Configurable exclusion/inclusion patterns for targeted searches
 - Parallel file processing (5 concurrent files)
-- File size limits to prevent memory issues
-- Match count limits to prevent overwhelming results
-- Detailed warnings for skipped files
+- Performance statistics and warnings for skipped files
 
 **Use Cases:**
 
 - Finding specific code patterns
 - Locating TODO/FIXME comments
 - Searching for function definitions
-- Finding configuration values
-- Code archaeology
 - Security audits
 
 ### FileOperationsTool
@@ -690,93 +777,88 @@ import { FileOperationsTool } from "@iqai/adk";
 const agent = new LlmAgent({
   name: "file_agent",
   description: "An agent that manages file operations on the local filesystem",
+  tools: [new FileOperationsTool()],
+});
+
+// With custom base path for security:
+const restrictedAgent = new LlmAgent({
+  name: "restricted_file_agent",
+  description: "An agent with restricted file access",
   tools: [
     new FileOperationsTool({
-      basePath: "/safe/directory", // Optional, defaults to cwd
+      basePath: "/safe/directory",
     }),
   ],
 });
 ```
 
+**Configuration Options:**
+
+| Option     | Type   | Default         | Description                                           |
+| ---------- | ------ | --------------- | ----------------------------------------------------- |
+| `basePath` | string | `process.cwd()` | Base directory for all file operations (for security) |
+
 **Tool Parameters:**
 
-| Parameter   | Type   | Required | Description                                                               |
-| ----------- | ------ | -------- | ------------------------------------------------------------------------- |
-| `operation` | string | Yes      | Operation: `read`, `write`, `append`, `delete`, `exists`, `list`, `mkdir` |
-| `filepath`  | string | Yes      | File or directory path (relative to `basePath`)                           |
-| `content`   | string | No       | Content to write (required for `write` and `append`)                      |
-| `encoding`  | string | No       | File encoding (default: utf8)                                             |
+| Parameter   | Type   | Required | Description                                          |
+| ----------- | ------ | -------- | ---------------------------------------------------- |
+| `operation` | string | Yes      | Operation type (see Supported Operations)            |
+| `filepath`  | string | Yes      | File or directory path (relative to `basePath`)      |
+| `content`   | string | Optional | Content to write (required for `write` and `append`) |
+| `encoding`  | string | Optional | File encoding (default: utf8)                        |
 
 **Supported Operations:**
 
-**`read`** - Read file contents
+- **`read`**: Read file contents
+- **`write`**: Write or overwrite files
+- **`append`**: Add content to existing files
+- **`delete`**: Remove files
+- **`exists`**: Check if file exists
+- **`list`**: List directory contents with metadata (name, size, timestamps)
+- **`mkdir`**: Create directories recursively
+
+**How It's Triggered:**
 
 ```typescript
 // User: "Read config.json"
 // file_operations({ operation: "read", filepath: "config.json" })
-```
 
-**`write`** - Write or overwrite files
-
-```typescript
 // User: "Save data to output.txt"
 // file_operations({ operation: "write", filepath: "output.txt", content: "data" })
-```
 
-**`append`** - Add content to existing files
-
-```typescript
-// User: "Add this log entry"
-// file_operations({ operation: "append", filepath: "logs.txt", content: "entry" })
-```
-
-**`delete`** - Remove files
-
-```typescript
-// User: "Delete temp.txt"
-// file_operations({ operation: "delete", filepath: "temp.txt" })
-```
-
-**`exists`** - Check if file exists
-
-```typescript
-// User: "Does config.json exist?"
-// file_operations({ operation: "exists", filepath: "config.json" })
-```
-
-**`list`** - List directory contents
-
-```typescript
 // User: "What's in the data folder?"
 // file_operations({ operation: "list", filepath: "data" })
 ```
 
-**`mkdir`** - Create directories
+**Response Format:**
 
 ```typescript
-// User: "Create an output folder"
-// file_operations({ operation: "mkdir", filepath: "output" })
+{
+  success: boolean;
+  data?: any; // Varies by operation
+  error?: string;
+}
 ```
 
 **Security Features:**
 
-- Limited to specified `basePath` directory
-- Prevents path traversal attacks (`../` protection)
-- Validates all file operations
-- Safe error handling
+- Limited to specified `basePath` directory to prevent unauthorized access
+- Path traversal attack prevention (`../` protection)
+- Validates all file operations before execution
+- Safe error handling without exposing system details
 
 **Use Cases:**
 
-- All-in-one file management
-- Restricted file access in sandboxed environments
-- Multi-operation workflows
+- All-in-one file management in sandboxed environments
+- Restricted file access for untrusted operations
+- Multi-operation file workflows
 - Directory management
 
 ## System Tools
 
 ### BashTool
 
-Execute terminal commands in the working directory with timeout and safety protections.
+Execute terminal commands with configurable security restrictions and timeouts.
 
 **Import:**
 
@@ -787,12 +869,45 @@ import { BashTool } from "@iqai/adk";
 **Setup:**
 
 ```typescript
+// Whitelist mode (safest for production):
 const agent = new LlmAgent({
   name: "command_executor_agent",
-  description: "An agent that executes terminal commands",
-  tools: [new BashTool()],
+  description: "An agent that executes safe terminal commands",
+  tools: [
+    new BashTool({
+      enabled: true,
+      mode: "whitelist",
+      allowedCommands: ["ls", "pwd", "cat", "node --version"],
+      maxTimeout: 30000,
+    }),
+  ],
+});
+
+// Sandboxed mode (Docker-based isolation):
+const sandboxedAgent = new LlmAgent({
+  name: "sandboxed_agent",
+  description: "An agent with Docker-sandboxed command execution",
+  tools: [
+    new BashTool({
+      enabled: true,
+      mode: "sandboxed",
+      dockerImage: "alpine:latest",
+    }),
+  ],
 });
 ```
+
+**Configuration Options:**
+
+| Option                | Type     | Default       | Description                                                 |
+| --------------------- | -------- | ------------- | ----------------------------------------------------------- |
+| `enabled`             | boolean  | false         | Must be true to use tool (disabled by default for security) |
+| `mode`                | string   | "disabled"    | "whitelist", "sandboxed", "unrestricted" (dev only)         |
+| `allowedCommands`     | string[] | Default list  | Allowed commands for whitelist mode                         |
+| `dockerImage`         | string   | alpine:latest | Docker image for sandboxed mode                             |
+| `maxTimeout`          | number   | 30000         | Maximum command execution time in milliseconds              |
+| `requireConfirmation` | boolean  | false         | Require user confirmation before executing                  |
+| `enableLogging`       | boolean  | true          | Log all command executions                                  |
 
 **Tool Parameters:**
 
@@ -803,10 +918,6 @@ const agent = new LlmAgent({
 **How It's Triggered:**
 
 ```typescript
-// User: "Install the dependencies"
-// Agent calls:
-// bash({ command: "npm install" })
-
 // User: "What files are in the current directory?"
 // Agent calls:
 // bash({ command: "ls -la" })
@@ -823,74 +934,40 @@ const agent = new LlmAgent({
   exit_code: number | null;
   stdout: string;
   stderr: string;
+  blocked?: boolean;
+  reason?: string;
 }
 ```
 
 **Safety Features:**
 
-- **Blocked destructive commands:**
-  - `rm -rf /`
-  - `:(){ :|:& };:` (fork bomb)
-  - `rm -rf *` (exact match)
-- **30-second timeout** - Prevents hanging processes
-- **Exit code tracking** - Distinguishes success/failure
-- **Timeout detection** - Returns null exit code on timeout
+- Disabled by default for maximum security
+- Three security modes: whitelist, sandboxed, and unrestricted
+- Blocks dangerous patterns (fork bombs, disk operations, privilege escalation) - [view blocked patterns](/packages/adk/src/tools/defaults/bash-tool.ts)
+- Configurable timeout protection (default: 30 seconds)
+- Command execution logging
 
 **Capabilities:**
 
-- Execute any shell command
-- Capture stdout and stderr separately
-- Timeout protection
-- Working directory context
-- Exit code reporting
-
-**Example Commands:**
-
-```bash
-# Package management
-npm install
-pip install requests
-yarn add lodash
-
-# File operations
-ls -la
-cat package.json
-mkdir new-folder
-
-# Git operations
-git status
-git log --oneline -5
-
-# System info
-node --version
-pwd
-whoami
-```
-
-<Callout type="caution" title="Security Warning">
-  **Use with extreme caution.** This tool executes commands with the same
-  permissions as the running process. While basic destructive commands are
-  blocked, many dangerous operations are still possible. Always validate and
-  sanitize commands when possible.
-</Callout>
-
-**Best Practices:**
-
-- Validate user input before executing
-- Use specific tools (ReadTool, WriteTool) when possible
-- Monitor command execution
-- Set up proper permissions
-- Log all command executions
-- Consider implementing command whitelisting
+- Multiple security modes for different trust levels
+- Command whitelisting for production environments
+- Docker-based sandboxing for isolation
+- Timeout protection and exit code tracking
+- Separate stdout and stderr capture
 
 **Use Cases:**
 
-- Package installation
+- Package installation (npm, pip, yarn)
 - Git operations
-- File system queries
-- System information
-- Build processes
+- System information queries
 - Development workflows
+
+<Callout type="caution" title="Security Warning">
+  **BashTool is disabled by default** and requires explicit configuration due to
+  security risks. Only enable in trusted environments with appropriate security
+  mode (`whitelist` or `sandboxed`). The `unrestricted` mode should only be used
+  in isolated development environments.
+</Callout>
 
 ## User Interaction Tools
 
@@ -916,11 +993,11 @@ const agent = new LlmAgent({
 
 **Tool Parameters:**
 
-| Parameter      | Type             | Required | Description                                    |
-| -------------- | ---------------- | -------- | ---------------------------------------------- |
-| `prompt`       | string           | Yes      | The question or message to display to the user |
-| `options`      | array of strings | No       | Multiple choice options to present             |
-| `defaultValue` | string           | No       | Default value if user provides no input        |
+| Parameter      | Type   | Required | Description                                    |
+| -------------- | ------ | -------- | ---------------------------------------------- |
+| `prompt`       | string | Yes      | The question or message to display to the user |
+| `options`      | array  | Optional | Multiple choice options to present             |
+| `defaultValue` | string | Optional | Default value if user provides no input        |
 
 **How It's Triggered:**
 
@@ -932,42 +1009,42 @@ const agent = new LlmAgent({
 //   options: ["Yes, delete it", "No, keep it"]
 // })
 
-// User sees:
-// "Are you absolutely sure you want to delete your account? This cannot be undone."
-// 1. Yes, delete it
-// 2. No, keep it
+// User sees numbered options and selects one
+// Agent receives the user's choice and proceeds
+```
 
-// User chooses: 1
-// Agent receives: "Yes, delete it" and proceeds
+**Response Format:**
+
+```typescript
+{
+  success: boolean;
+  userInput?: string;
+  error?: string;
+}
 ```
 
 **Capabilities:**
 
-- Get approval for critical actions
-- Present multiple options and let user choose
-- Confirm important operations before execution
-- Collect user preferences
-- Multi-step workflows requiring decisions
+- Pause agent execution to collect user input
+- Present multiple choice options
 - Support for default values
-- **Long-running operation** - Waits for user response
+- Long-running operation that waits for user response
 
 **Use Cases:**
 
-- Confirmation dialogs
+- Confirmation dialogs for critical actions
 - Multi-step wizards
 - Collecting user preferences
-- Critical action approvals
 - Interactive workflows
-- Data validation
 
-<Callout type="info" title="Long-Running by Nature">
-  The UserInteractionTool is marked as `isLongRunning: true` because it waits
-  for user input. The agent will pause execution until the user responds.
+<Callout type="info" title="Long-Running Operation">
+  This tool is marked as `isLongRunning: true` because it waits for user input.
+  The agent will pause execution until the user responds.
 </Callout>
 
 ### GetUserChoiceTool
 
-Present users with multiple options and collect their selection in a structured way.
+Present users with multiple options and collect their selection.
 
 **Import:**
 
@@ -990,7 +1067,7 @@ const agent = new LlmAgent({
 | Parameter  | Type   | Required | Description                                              |
 | ---------- | ------ | -------- | -------------------------------------------------------- |
 | `options`  | array  | Yes      | List of options for the user to choose from              |
-| `question` | string | No       | The question or prompt to show before presenting options |
+| `question` | string | Optional | The question or prompt to show before presenting options |
 
 **How It's Triggered:**
 
@@ -1008,11 +1085,9 @@ const agent = new LlmAgent({
 
 **Capabilities:**
 
-- Present multiple choice options
+- Present numbered multiple choice options to users
 - Optional question/prompt text
-- Returns user's selected choice
-- Long-running operation (waits for user input)
-- Clear numbered presentation
+- Long-running operation that waits for user selection
 
 **Use Cases:**
 
@@ -1020,7 +1095,11 @@ const agent = new LlmAgent({
 - Configuration choices
 - Menu navigation
 - Preference collection
-- Decision trees
+
+<Callout type="info" title="Long-Running Operation">
+  This tool is marked as `isLongRunning: true` because it waits for user input.
+  The agent will pause execution until the user selects an option.
+</Callout>
 
 ## Memory & Context Tools
 
@@ -1343,14 +1422,14 @@ To effectively use built-in tools in your agents:
 
 ### Error Handling
 
-- **Handle External Failures**: Tools that call external services (`GoogleSearchTool`, `HttpRequestTool`) depend on network availability. Design agents to handle failures gracefully.
+- **Handle External Failures**: Tools that call external services (e.g. `GoogleSearchTool`, `HttpRequestTool`) depend on network availability. Design agents to handle failures gracefully.
 - **Trust Built-in Error Handling**: Built-in tools handle common errors automatically (network failures, invalid files, user cancellations).
 - **Provide Context**: When errors occur, ensure your agent instructions guide the LLM on how to respond.
 
 ### Performance
 
 - **Set Appropriate Timeouts**: Configure timeouts for HTTP requests and command executions based on expected response times.
-- **Limit Search Results**: Use `num_results` and `max_matches` parameters to prevent overwhelming the LLM with data.
+- **Limit Search Results**: Use `numResults` and `maxMatches` parameters to prevent overwhelming the LLM with data.
 - **Monitor Long-Running Operations**: Be aware that user interaction tools will pause agent execution.
 
 ## Related Topics
