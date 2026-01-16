@@ -1,0 +1,96 @@
+---
+title: Observability
+description: Comprehensive OpenTelemetry integration for distributed tracing, metrics, and monitoring of AI agents
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+
+ADK-TS provides first-class observability support through comprehensive OpenTelemetry integration. Monitor your agents' performance, trace execution flows, collect metrics, and gain insights into LLM interactions, tool usage, and agent behavior.
+
+## Overview
+
+The observability system in ADK-TS is built on OpenTelemetry, providing:
+
+- **Distributed Tracing** - Track agent invocations, tool executions, and LLM calls across your system
+- **Metrics Collection** - Monitor performance with counters, histograms, and token usage tracking
+- **Auto-Instrumentation** - Automatic tracing of HTTP calls, database queries, and file operations
+- **Privacy Controls** - Configurable content capture for production environments
+- **Platform Integration** - Works with Jaeger, Grafana, Datadog, New Relic, Honeycomb, and more
+
+<Callout type="info" title="Built-in Support">
+  All telemetry dependencies are included in `@iqai/adk`. No additional installation required.
+</Callout>
+
+## Quick Example
+
+```typescript
+import { telemetryService } from '@iqai/adk';
+
+// Initialize telemetry
+await telemetryService.initialize({
+  appName: 'my-agent-app',
+  appVersion: '1.0.0',
+  otlpEndpoint: 'http://localhost:4318/v1/traces',
+  enableMetrics: true,
+  enableTracing: true,
+});
+
+// Your agents automatically send traces and metrics
+const agent = AgentBuilder.withModel('gemini-2.5-flash').build();
+const response = await agent.ask('Hello!');
+```
+
+## Architecture
+
+The observability system follows a modular architecture:
+
+```
+Application
+    ↓
+TelemetryService
+    ├─ Setup Service
+    ├─ Tracing Service
+    ├─ Metrics Service
+    └─ Utilities
+    ↓
+OpenTelemetry SDK
+    ├─ TracerProvider
+    └─ MeterProvider
+    ↓
+OTLP Exporters
+    ├─ Trace Exporter
+    └─ Metric Exporter
+    ↓
+Backend (Jaeger, Tempo, etc.)
+```
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="🚀 Getting Started"
+    description="Learn how to initialize and configure telemetry"
+    href="/docs/framework/observability/getting-started"
+  />
+  <Card
+    title="🔍 Distributed Tracing"
+    description="Understand what gets traced and how to view traces"
+    href="/docs/framework/observability/tracing"
+  />
+  <Card
+    title="📊 Metrics"
+    description="Monitor your agents' performance"
+    href="/docs/framework/observability/metrics"
+  />
+  <Card
+    title="🔒 Production Configuration"
+    description="Ensure privacy and optimal performance"
+    href="/docs/framework/observability/production"
+  />
+  <Card
+    title="🔌 Platform Integrations"
+    description="Connect to your observability backend"
+    href="/docs/framework/observability/integrations"
+  />
+</Cards>
