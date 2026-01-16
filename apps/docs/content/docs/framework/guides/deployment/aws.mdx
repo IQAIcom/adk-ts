@@ -352,32 +352,37 @@ For EC2, you can use a standard `.env` file. Ensure proper permissions and never
 chmod 600 .env
 ```
 
-## Troubleshooting
+## AWS Troubleshooting
 
-### Common AWS Issues
+- **Missing Permissions**: Ensure your IAM role (Execution Role for Lambda/ECS, Instance Profile for EC2) has the necessary permissions for the services your agent uses (e.g., S3, Bedrock, DynamoDB).
+- **VPC Networking**: If your agent needs to access private resources (like an RDS database), ensure it is configured to run within the correct VPC and Subnets with appropriate Security Groups.
+- **Cold Starts**: Lambda functions may experience latency during "cold starts." Consider using Provisioned Concurrency for latency-sensitive agents.
 
-- **Missing Permissions**: Ensure your IAM role (Execution Role for Lambda/ECS, Instance Profile for EC2) has the necessary permissions for the services your agent uses.
-- **Architecture Mismatch**: Always build your Docker images for AMD64 (`--platform linux/amd64`) when deploying to standard AWS environments.
-- **Timeouts**: ADK-TS agents can take time to process requests. Ensure your Lambda timeout (max 15m) or Load Balancer timeout is sufficient.
-- **VPC Networking**: If your agent needs to access private resources (like an RDS database), ensure it is configured to run within the correct VPC and Subnets.
+## AWS Best Practices
 
-## Best Practices
-
-- **Cost Management**: Use Lambda for intermittent workloads and ECS Fargate with specialized task sizes for 24/7 agents.
-- **Security**: Never use hardcoded credentials. Always use IAM Roles and Secrets Manager.
-- **Monitoring**: Use **Amazon CloudWatch** to monitor logs and set up alarms for agent failures or high latency.
-- **Infrastructure as Code**: Consider using **AWS Copilot** or the **AWS CDK** to manage your infrastructure predictably.
+- **Infrastructure as Code**: Manage your AWS resources using **AWS Copilot**, **AWS CDK**, or **Terraform** to ensure reproducible and version-controlled environments.
+- **Cost Optimization**: Use Lambda for intermittent workloads and ECS Fargate with specialized task sizes for 24/7 agents. Monitor costs via AWS Budgets.
+- **Security**: Always prefer IAM Roles over IAM user access keys. Use AWS Secrets Manager for rotating credentials.
 
 ## Next Steps
 
 <Cards>
-  <Card title="🚂 Railway Deployment" href="./railway">
+  <Card
+    title="🚂 Railway Deployment Guide"
+    href="/docs/framework/guides/deployment/railway"
+  >
     Explore Railway for simpler managed deployment
   </Card>
-  <Card title="🐳 Docker Deployment" href="./docker">
+  <Card
+    title="🐳 Docker Deployment Guide"
+    href="/docs/framework/guides/deployment/docker"
+  >
     Learn about Docker for self-hosted options
   </Card>
-  <Card title="⚡ Vercel Deployment" href="./vercel">
+  <Card
+    title="⚡ Vercel Deployment Guide"
+    href="/docs/framework/guides/deployment/vercel"
+  >
     Configure Vercel for serverless API agents
   </Card>
   <Card
