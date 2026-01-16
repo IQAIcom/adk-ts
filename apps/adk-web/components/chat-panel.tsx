@@ -145,7 +145,7 @@ export function ChatPanel({
 					jumpOffsetClassName="bottom-4"
 				>
 					{messages.length === 0 ? (
-						<div className="flex flex-col items-center justify-center min-h-[400px] text-center text-muted-foreground">
+						<div className="flex flex-col items-center justify-center min-h-100 text-center text-muted-foreground">
 							<MessageSquare className="h-12 w-12 mb-4 opacity-50" />
 							<h3 className="text-lg font-medium mb-2">Start a conversation</h3>
 							<p className="text-sm">
@@ -157,11 +157,11 @@ export function ChatPanel({
 							{messages.map((message) => (
 								<Message
 									from={message.type === "user" ? "user" : "assistant"}
-									key={message.id}
+									key={`from-${message.type === "user" ? "user" : "assistant"}-${message.id}`}
 								>
 									<MessageContent
 										className={cn(
-											"md:min-w-[140px]",
+											"md:min-w-35",
 											message.type === "user" ? "text-right" : "",
 										)}
 									>
@@ -372,7 +372,7 @@ function EmptyChat() {
 				<div className="text-center max-w-md p-8">
 					{/* Beautiful illustration placeholder */}
 					<div className="mb-8 relative">
-						<div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/30 flex items-center justify-center">
+						<div className="w-24 h-24 mx-auto mb-4 rounded-full bg-linear-to-br from-primary/20 to-accent/30 flex items-center justify-center">
 							<MessageSquare className="h-10 w-10 text-primary" />
 						</div>
 						<div className="absolute top-0 right-1/3 w-3 h-3 bg-primary/40 rounded-full animate-pulse" />

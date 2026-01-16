@@ -366,10 +366,6 @@ export function validateConfig(config: any): string[] {
 		errors.push("appName is required");
 	}
 
-	if (!config.otlpEndpoint) {
-		errors.push("otlpEndpoint is required");
-	}
-
 	if (
 		config.samplingRatio !== undefined &&
 		(config.samplingRatio < 0 || config.samplingRatio > 1)
