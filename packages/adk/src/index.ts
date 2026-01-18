@@ -31,6 +31,7 @@ export * as Events from "./events";
 export * as Flows from "./flows";
 export * as Memory from "./memory";
 export * as Models from "./models";
+export * as Plugins from "./plugins";
 // Re-export runners.ts
 export * from "./runners";
 export * as Sessions from "./sessions";

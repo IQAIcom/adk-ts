@@ -4,16 +4,19 @@ description: Deploy ADK-TS Telegram bots using polling mode
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
 
 ADK-TS Telegram bots use the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to connect your agent to Telegram. The [`@iqai/mcp-telegram`](/docs/mcp-servers/telegram) server handles communication with Telegram's Bot API using the [Telegraf library](https://github.com/telegraf/telegraf). **Best for**: Chat-based agents, customer support bots, and interactive assistants. This guide covers deploying polling-based Telegram bots to various platforms.
 
 <Callout type="warn" title="Important: Background Worker Required">
-  Telegram bots using polling mode **do not expose HTTP endpoints**. They must
-  be deployed as **background workers**, not web services. Deploying as a web
-  service causes health check failures and service restarts.
+
+Telegram bots using polling mode **do not expose HTTP endpoints**. They must
+be deployed as **background workers**, not web services. Deploying as a web
+service causes health check failures and service restarts.
+
 </Callout>
 
-## Prerequisites
+## What You'll Need
 
 Before deploying your Telegram bot, ensure you have:
 
@@ -22,7 +25,7 @@ Before deploying your Telegram bot, ensure you have:
 - **ADK-TS Telegram Bot Project**: Get started with:
   - Use the [ADK CLI](/docs/cli/commands#adk-new) to create a new project: `adk new my-agent --template telegram-bot`
   - Or clone the [Telegram Personal Assistant sample](https://github.com/IQAIcom/adk-ts-samples/tree/main/apps/telegram-personal-assistant)
-- **Platform Account**: Railway, Render, Heroku, or Docker hosting
+- **Cloud Platform Account**: Railway, Render, Heroku, or Docker hosting
 
 ## How Telegram Polling Works
 
@@ -64,8 +67,10 @@ Configure these environment variables on your deployment platform:
 | `ADK_DEBUG`          | Enable debug logging (`true`/`false`)          | Optional |
 
 <Callout type="info" title="Using Other LLM Providers">
-  Replace `GOOGLE_API_KEY` with your provider's environment variable (e.g.,
-  `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) and update `LLM_MODEL` accordingly.
+
+Replace `GOOGLE_API_KEY` with your provider's environment variable (e.g.,
+`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) and update `LLM_MODEL` accordingly.
+
 </Callout>
 
 ## Deploy to Railway
@@ -113,10 +118,12 @@ Confirm your bot is running correctly:
 Render requires explicit configuration for background workers.
 
 <Callout type="warn" title="Use Background Worker">
-  You **must** select "Background Worker" as the service type. Web Services
-  require port binding and will fail. For more context on this configuration,
-  see [GitHub Issue
-  #345](https://github.com/IQAIcom/adk-ts/issues/345#issuecomment-3463370437).
+
+You **must** select "Background Worker" as the service type. Web Services
+require port binding and will fail. For more context on this configuration,
+see [GitHub Issue
+#345](https://github.com/IQAIcom/adk-ts/issues/345#issuecomment-3463370437).
+
 </Callout>
 
 ### Step 1: Create a Background Worker
@@ -309,53 +316,42 @@ docker push username/my-telegram-bot:latest
 
 Deploy from your registry to [Railway](/docs/framework/guides/deployment/railway), Render, or any Docker-compatible platform by specifying your image URL (e.g., `username/my-telegram-bot:latest`).
 
-## Telegram Bot Troubleshooting
+## Telegram Troubleshooting
 
-### Service Keeps Restarting
+- **Service Keeps Restarting**: If your bot restarts repeatedly, it's likely deployed as a **Web Service** instead of a **Background Worker**. Web services expect a port to be bound, while polling bots do not bind to any port.
+- **Bot Not Responding**: Confirm the `TELEGRAM_BOT_TOKEN` is valid by contacting [@BotFather](https://t.me/botfather). Ensure your bot has permission to read messages in group chats if applicable.
+- **Rate Limiting**: Telegram has strict rate limits for bots. Check logs for `429 Too Many Requests` errors if your bot is handling high traffic.
 
-**Symptom**: Your service shows as unhealthy and restarts repeatedly.
+## Telegram Best Practices
 
-**Cause**: Deployed as a web service instead of a background worker.
-
-**Solution**: Switch to the correct service type:
-
-- **Render**: Use "Background Worker", not "Web Service"
-- **Heroku**: Use `worker:` in Procfile, not `web:`
-- **Railway**: Ensure no port binding is configured
-
-### Bot Not Responding to Messages
-
-**Check these in order:**
-
-1. **Bot token is correct** — Verify in @BotFather
-2. **Service is running** — Check logs for errors
-3. **Environment variables are set** — All required variables present
-4. **Bot has permissions** — Try `/start` command first
-
-### "Cannot find module" Errors
-
-**Cause**: Build step failed or was skipped.
-
-**Solution**: Ensure the build runs before starting the application:
-
-```bash
-pnpm install && pnpm build
-node dist/index.js
-```
-
-### LLM Provider Errors
-
-**Symptom**: Bot connects but responses fail.
-
-**Check**:
-
-1. API key is valid and has quota
-2. `LLM_MODEL` matches your provider
-3. No rate limiting on your account
+- **Separation of Concerns**: Keep your bot's logic in the ADK agent and use the Telegram server primarily as a transport layer.
+- **Error Recovery**: Implement a retry strategy for LLM calls to handle intermittent API failures gracefully without crashing the polling loop.
 
 ## Next Steps
 
-- [Telegram Bot API](https://core.telegram.org/bots/api) - Official Telegram documentation
-- [MCP Telegram Documentation](/docs/mcp-servers/telegram) — Learn about MCP Telegram features and configuration
-- [Docker Deployment Guide](/docs/framework/guides/deployment/docker) — Advanced Docker deployment options
-- [Railway Deployment Guide](/docs/framework/guides/deployment/railway) — Detailed Railway setup
+<Cards>
+  <Card title="🤖 Telegram Bot API" href="https://core.telegram.org/bots/api">
+    Official Telegram documentation
+  </Card>
+  <Card title="📚 MCP Telegram Documentation" href="/docs/mcp-servers/telegram">
+    Learn about MCP Telegram features and configuration
+  </Card>
+  <Card
+    title="🐳 Docker Deployment Guide"
+    href="/docs/framework/guides/deployment/docker"
+  >
+    Advanced Docker deployment options
+  </Card>
+  <Card
+    title="🚂 Railway Deployment Guide"
+    href="/docs/framework/guides/deployment/railway"
+  >
+    Detailed Railway setup
+  </Card>
+  <Card
+    title="📋 Production Best Practices"
+    href="/docs/framework/guides/best-practices"
+  >
+    Learn production best practices for your agents
+  </Card>
+</Cards>

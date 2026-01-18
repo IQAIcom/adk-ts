@@ -16,7 +16,9 @@
 			"!**/*.log",
 			"!**/.next",
 			"!**/packages/adk/src/cli/browser",
-			"!**/Api.ts"
+			"!**/Api.ts",
+			"!**/apps/docs/.source",
+			"!**/apps/adk-api-docs/api"
 		]
 	},
 	"formatter": {

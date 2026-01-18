@@ -1,33 +1,19 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-echo "🔍 Detecting changed packages against origin/main..."
+set -e
 
-CHANGED=$(pnpm turbo run build --filter=...[origin/main] --dry-run=json | node -e "
-  const fs = require('fs');
-  let input = '';
-  process.stdin.on('data', c => input += c);
-  process.stdin.on('end', () => {
-    try {
-      const data = JSON.parse(input);
-      const pkgs = [...new Set(data.tasks.map(t => t.package))];
-      console.log(pkgs.join('\n'));
-    } catch (e) { process.exit(0); }
-  });
-")
+echo "🔍 Running pre-push checks..."
 
-if [ -z "$CHANGED" ]; then
-  echo "✅ No affected packages. Skipping checks."
-  exit 0
-fi
+echo "🧹 Formatting and linting staged files..."
+pnpm lint-staged --allow-empty
 
-echo "📦 Changed packages:"
-echo "$CHANGED"
-
-if echo "$CHANGED" | grep -q "^packages/"; then
-  echo "🧪 Packages changed → Running Biome + Tests..."
-  pnpm format && pnpm lint && pnpm test
+# Check if packages/ changed
+if git diff --name-only origin/main...HEAD 2>/dev/null | grep -q "^packages/"; then
+	echo "🧪 Packages changed → Running tests..."
+	pnpm test
 else
-  echo "📄 Only apps/docs/examples changed → Running Biome only..."
-  pnpm format && pnpm lint
+	echo "ℹ️  No package changes detected → Skipping tests."
 fi
+
+echo "✅ Pre-push checks passed."

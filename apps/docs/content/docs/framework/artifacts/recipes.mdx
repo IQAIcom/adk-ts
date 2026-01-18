@@ -6,59 +6,66 @@ description: Practical patterns for saving, loading, and transforming artifacts
 ## Upload → Process → Save Results
 
 ```typescript
-import { createTool } from '@iqai/adk';
-import * as z from 'zod';
+import { createTool } from "@iqai/adk";
+import * as z from "zod";
 
 export const analyzeCsv = createTool({
-  name: 'analyze_csv',
-  description: 'Analyze uploaded CSV',
+  name: "analyze_csv",
+  description: "Analyze uploaded CSV",
   schema: z.object({ filename: z.string() }),
   fn: async ({ filename }, ctx) => {
     const files = await ctx.listArtifacts();
-    if (!files.includes(filename)) return { error: 'File not found', files };
+    if (!files.includes(filename)) return { error: "File not found", files };
 
     const artifact = await ctx.loadArtifact(filename);
-    if (!artifact?.inlineData) return { error: 'Could not load file' };
+    if (!artifact?.inlineData) return { error: "Could not load file" };
 
-    const text = Buffer.from(artifact.inlineData.data, 'base64').toString('utf-8');
-    const [header, ...rows] = text.split('\n').filter(Boolean);
-    const headers = header.split(',').map(h => h.trim());
+    const text = Buffer.from(artifact.inlineData.data, "base64").toString(
+      "utf-8",
+    );
+    const [header, ...rows] = text.split("\n").filter(Boolean);
+    const headers = header.split(",").map(h => h.trim());
 
     const result = {
-      summary: 'CSV analysis complete',
+      summary: "CSV analysis complete",
       rowCount: rows.length,
       columnCount: headers.length,
-      headers
+      headers,
     };
 
     const resultArtifact = {
       inlineData: {
-        data: Buffer.from(JSON.stringify(result, null, 2)).toString('base64'),
-        mimeType: 'application/json'
-      }
+        data: Buffer.from(JSON.stringify(result, null, 2)).toString("base64"),
+        mimeType: "application/json",
+      },
     };
-    const out = `analysis_${filename.replace(/\.[^/.]+$/, '')}.json`;
+    const out = `analysis_${filename.replace(/\.[^/.]+$/, "")}.json`;
     await ctx.saveArtifact(out, resultArtifact);
     return { output: out, ...result };
-  }
+  },
 });
 ```
 
 ## Generate Media → Save + Reuse
 
 ```typescript
-import type { CallbackContext } from '@iqai/adk';
+import type { CallbackContext } from "@iqai/adk";
 
 export async function generateSvg(ctx: CallbackContext) {
   const svg = `<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="100" fill="black"/></svg>`;
-  await ctx.saveArtifact('banner.svg', {
-    inlineData: { data: Buffer.from(svg).toString('base64'), mimeType: 'image/svg+xml' }
+  await ctx.saveArtifact("banner.svg", {
+    inlineData: {
+      data: Buffer.from(svg).toString("base64"),
+      mimeType: "image/svg+xml",
+    },
   });
 
   // Later
-  const loaded = await ctx.loadArtifact('banner.svg');
+  const loaded = await ctx.loadArtifact("banner.svg");
   if (loaded) {
-    const svgText = Buffer.from(loaded.inlineData.data, 'base64').toString('utf-8');
+    const svgText = Buffer.from(loaded.inlineData.data, "base64").toString(
+      "utf-8",
+    );
     // Use svgText (serve to UI, embed in response, etc.)
   }
 }
@@ -67,19 +74,17 @@ export async function generateSvg(ctx: CallbackContext) {
 ## Cache Expensive Binary Output
 
 ```typescript
-import type { CallbackContext } from '@iqai/adk';
+import type { CallbackContext } from "@iqai/adk";
 
 export async function cachedChart(ctx: CallbackContext) {
-  const cacheKey = 'chart.png';
+  const cacheKey = "chart.png";
   const cached = await ctx.loadArtifact(cacheKey);
-  if (cached) return { info: 'hit', cacheKey };
+  if (cached) return { info: "hit", cacheKey };
 
   const png = Buffer.from(/* expensive render */);
   await ctx.saveArtifact(cacheKey, {
-    inlineData: { data: png.toString('base64'), mimeType: 'image/png' }
+    inlineData: { data: png.toString("base64"), mimeType: "image/png" },
   });
-  return { info: 'miss', cacheKey };
+  return { info: "miss", cacheKey };
 }
 ```
-
-

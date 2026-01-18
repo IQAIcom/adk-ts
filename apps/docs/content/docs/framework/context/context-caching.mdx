@@ -1,0 +1,110 @@
+---
+title: Context Caching with Gemini
+description: A guide explaining how to configure and use context caching in ADK with Gemini models to reuse large prompts efficiently, reducing latency and token costs.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+When working with agents to complete tasks, you may want to reuse extended instructions or large sets of data across multiple agent requests to a generative AI model. Resending this data for each agent request is slow, inefficient, and can be expensive. Using context caching features in generative AI models can significantly speed up responses and lower the number of tokens sent to the model for each request.
+
+The ADK Context Caching feature allows you to cache request data with generative AI models that support it, including Gemini 2.0 and higher models. This document explains how to configure and use this feature.
+
+<Callout type="info">
+Context caching is supported for Gemini 2.0+ models. Ensure the selected model and provider support caching.
+</Callout>
+
+## Configure context caching
+
+You configure the context caching feature at the ADK App root level, which wraps your agent. Use the `ContextCacheConfig` class to configure these settings, as shown in the following code sample:
+
+```ts
+import { ContextCacheConfig } from "@iqai/adk";
+
+const cacheConfig = new ContextCacheConfig({
+  minTokens: 4096,   // Minimum tokens required to enable caching
+  ttlSeconds: 600,   // Cache time-to-live (10 minutes)
+  cacheIntervals: 3, // Refresh cache after this many invocations
+});
+````
+
+### Using `AgentBuilder`
+
+You can pass the cache configuration directly to the agent builder:
+
+```ts
+import { AgentBuilder, ContextCacheConfig } from "@iqai/adk";
+
+const cacheConfig = new ContextCacheConfig({
+  minTokens: 4096,
+  ttlSeconds: 600,
+  cacheIntervals: 3,
+});
+
+const { runner } = await AgentBuilder.withModel("gemini-2.5-flash")
+  .withDescription("Simple geography assistant")
+  .withInstruction("Answer geography-related questions concisely.")
+  .withContextCacheConfig(cacheConfig)
+  .build();
+
+// runner.run({ input: "Tell me about Japan" });
+```
+
+### Using `LlmAgent`
+
+Alternatively, when creating an `LlmAgent`, you can provide the same configuration directly:
+
+```ts
+import { LlmAgent, ContextCacheConfig } from "@iqai/adk";
+
+const cacheConfig = new ContextCacheConfig({
+  minTokens: 4096,
+  ttlSeconds: 600,
+  cacheIntervals: 3,
+});
+
+const agent = new LlmAgent({
+  name: "agent",
+  description: "geography research agent",
+  contextCacheConfig: cacheConfig,
+});
+```
+
+With context caching enabled, large static prompts (such as long instructions or reference data) are reused across requests, reducing latency and token usage when working with Gemini models that support caching.
+
+## Configuration settings
+
+The `ContextCacheConfig` class exposes the following options. These settings apply to the agent or app where the configuration is attached.
+
+* **`minTokens`** (`number`):
+  The minimum number of tokens required in a request before caching is enabled.
+  This helps avoid caching overhead for small prompts where performance gains
+  would be minimal.
+  **Default:** `0`
+
+* **`ttlSeconds`** (`number`):
+  The cache time-to-live (TTL) in seconds. After this duration, the cached
+  context expires and is refreshed on the next request.
+  **Default:** `1800` (30 minutes)
+
+* **`cacheIntervals`** (`number`):
+  The maximum number of times cached context can be reused before it is refreshed,
+  even if the TTL has not expired.
+  **Default:** `10`
+
+## Best practices
+
+Use context caching for **large, mostly static prompts**, such as:
+  * Long system instructions
+  * Reference documents
+  * Domain-specific background knowledge
+* Avoid caching highly dynamic content that changes on every request.
+* Tune `minTokens` to ensure caching is only applied where it provides real value.
+
+## Next steps
+
+If your use case relies on instructions that should persist across an entire
+session, consider using static or session-level instructions instead of
+re-sending them on every request.
+
+To evaluate the impact of context caching, compare latency and token usage with
+and without caching enabled while running the same agent workload.

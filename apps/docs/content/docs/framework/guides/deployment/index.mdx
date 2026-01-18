@@ -56,10 +56,12 @@ We're working on guides for additional platforms:
 - **⚓ Kubernetes** - Container orchestration for scalable deployments
 
 <Callout type="info" title="Contributions Welcome">
-  Have experience deploying ADK-TS agents to other platforms? We welcome
-  contributions! Share your deployment guides by opening a pull request on
-  [GitHub](https://github.com/IQAIcom/adk-ts/pulls) or start a discussion in our
-  [community forum](https://github.com/IQAIcom/adk-ts/discussions).
+
+Have experience deploying ADK-TS agents to other platforms? We welcome
+contributions! Share your deployment guides by opening a pull request on
+[GitHub](https://github.com/IQAIcom/adk-ts/pulls) or start a discussion in our
+[community forum](https://github.com/IQAIcom/adk-ts/discussions).
+
 </Callout>
 
 ## Prerequisites
@@ -73,13 +75,25 @@ Before deploying your agent, ensure you have:
 
 ## General Best Practices
 
-- **Environment Variables**: Never commit sensitive data; use platform-specific secret management
-- **Health Checks**: Implement health check endpoints for monitoring
-- **Logging**: Configure proper logging for production debugging
-- **Error Handling**: Ensure graceful error handling and recovery
-- **Resource Limits**: Set appropriate memory and CPU limits
-- **Monitoring**: Set up monitoring and alerting for your deployed agents
+To ensure a stable and secure production environment, follow these best practices:
+
+- **Environment Variables**: Use platform-specific secret management (e.g., AWS Secrets Manager, Vercel/Railway Environment Variables). Never commit `.env` files or sensitive data to version control.
+- **Resource Limits**: Set appropriate memory and CPU limits to prevent resource exhaustion and manage costs.
+- **Logging & Monitoring**: Configure production-grade logging and monitoring. Regularly review logs to catch errors and performance issues early.
+- **Security**: Use IAM roles or service accounts instead of long-lived access keys. Implement the principle of least privilege for all permissions.
+- **Version Control**: Use specific tags (e.g., `v1.0.0`) or git commit SHAs for Docker images and deployments instead of `latest` to ensure reproducible builds.
+- **Health Checks**: If your agent exposes an HTTP endpoint, implement health check routes to allow platform-level monitoring and automatic restarts.
+
+## Troubleshooting Common Issues
+
+If you encounter issues during deployment, check these common points before diving into platform-specific configurations:
+
+- **Missing Variables**: The most common cause of startup failure. Verify all required environment variables are set in your platform dashboard (case-sensitive).
+- **Architecture Mismatch**: If using Docker, ensure you are building for the target architecture (usually `linux/amd64`) via `docker buildx build --platform linux/amd64 -t your-image:tag .`.
+- **Timeouts**: AI processing can take longer than standard API requests. Check your platform's serverless or load balancer timeout settings (e.g., Lambda's 15m limit or Vercel's `maxDuration`).
+- **Build Failures**: Review build logs carefully for missing dependencies, TypeScript compilation errors, or syntax issues in your `Dockerfile`.
+- **Runtime Errors**: Check your service logs for stack traces. Ensure your compiled code (usually in `dist/`) is being correctly referenced in the start command.
 
 ## Next Steps
 
-Choose a deployment platform from the guides above to get started, or explore our other guides for best practices and troubleshooting tips.
+Choose a deployment platform from the guides above to get started, or explore our other guides for advanced configurations and features.
