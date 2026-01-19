@@ -43,6 +43,7 @@ async function bootstrap() {
 			enableTracing: true,
 			enableMetrics: false,
 			metricExportIntervalMs: 1000,
+			debug: true,
 		});
 	}
 

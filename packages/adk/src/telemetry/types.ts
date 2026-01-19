@@ -37,6 +37,9 @@ export interface TelemetryConfig {
 	/** Enable auto-instrumentation for HTTP, databases, etc. (default: true) */
 	enableAutoInstrumentation?: boolean;
 
+	/** Enable debug mode (default: false). When enabled, in-memory exporter is active. */
+	debug?: boolean;
+
 	/** Capture message content in traces (default: true, set false for privacy) */
 	captureMessageContent?: boolean;
 

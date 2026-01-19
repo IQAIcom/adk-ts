@@ -9,6 +9,7 @@ import {
 	diag,
 	metrics,
 } from "@opentelemetry/api";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
@@ -169,8 +170,10 @@ export class SetupService {
 			spanProcessors.push(new BatchSpanProcessor(traceExporter));
 		}
 
-		const inMemoryProcessor = new SimpleSpanProcessor(this.inMemoryExporter);
-		spanProcessors.push(inMemoryProcessor);
+		if (config.debug) {
+			const inMemoryProcessor = new SimpleSpanProcessor(this.inMemoryExporter);
+			spanProcessors.push(inMemoryProcessor);
+		}
 
 		// Create sampler if sampling ratio is specified
 		const sampler =
@@ -287,8 +290,10 @@ export class SetupService {
 			spanProcessors.push(new BatchSpanProcessor(traceExporter));
 		}
 
-		// Always add in-memory processor for local access
-		spanProcessors.push(new SimpleSpanProcessor(this.inMemoryExporter));
+		// Add in-memory processor if debug is enabled
+		if (config.debug) {
+			spanProcessors.push(new SimpleSpanProcessor(this.inMemoryExporter));
+		}
 
 		// NodeSDK will configure and register all providers
 		this.sdk = new NodeSDK({
@@ -300,12 +305,16 @@ export class SetupService {
 				new ExpressInstrumentation(),
 				new NestInstrumentation(),
 				new HttpInstrumentation(),
-				// getNodeAutoInstrumentations({
-				// 	// Ignore incoming HTTP requests (we're usually making outgoing calls)
-				// 	"@opentelemetry/instrumentation-http": {
-				// 		ignoreIncomingRequestHook: () => true,
-				// 	},
-				// }),
+
+				// Only enable auto-instrumentations when NOT in debug
+				...(!config.debug
+					? getNodeAutoInstrumentations({
+							"@opentelemetry/instrumentation-http": {
+								// Ignore incoming HTTP requests (we're usually making outgoing calls)
+								ignoreIncomingRequestHook: () => true,
+							},
+						})
+					: []),
 			],
 		});
 
