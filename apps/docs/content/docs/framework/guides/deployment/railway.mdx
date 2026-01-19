@@ -1,148 +1,158 @@
 ---
-title: Vercel
-description: Deploy ADK-TS agents to Vercel as serverless functions
+title: Railway
+description: Deploy ADK-TS agents to Railway using Docker containers
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Card, Cards } from "fumadocs-ui/components/card";
 
-Vercel is a serverless platform optimized for frontend frameworks and API routes. **Best for**: API-based agents, webhook handlers, and request-response workflows with automatic scaling. Vercel offers zero-configuration deployment and automatic scaling, though it is limited by serverless function execution times. This guide shows you how to deploy your ADK-TS agent to Vercel.
+Railway is a cloud platform that simplifies deploying containerized applications with built-in CI/CD and automatic scaling. **Best for**: Quick deployments, containerized applications, and managed infrastructure. Railway offers simple setup and automatic scaling, though pricing may be higher for large-scale deployments. This guide shows you how to deploy your ADK-TS agent to Railway using a Docker image.
 
 ## What You'll Need
 
 Before deploying to Railway, ensure you have:
 
-- A **[Vercel Account](https://vercel.com)** to manage your deployments
+- A **[Railway Account](https://railway.app)** to manage your deployments
 - Your **ADK-TS project** ready for deployment
+- **[Docker](https://docs.docker.com/get-docker/)** installed and configured on your local machine (Optional)
+- A **Container Registry Account** (e.g., Docker Hub) for storing your Docker images (Optional)
 
 ## Deployment Options
 
-Vercel offers two main deployment methods:
+Railway offers three deployment methods:
 
-1. [**GitHub Auto-Deploy (Recommended)**](#option-1-github-auto-deploy-recommended): Vercel automatically detects and builds your project from GitHub (Recommended)
-2. [**Vercel CLI (Manual Deployment)**](#option-2-vercel-cli-manual-deployment): Deploy directly from your terminal for manual control and testing
+1. [**GitHub Auto-Deploy (No Docker Required)**](#option-1-github-auto-deploy-no-docker-required): Railway automatically detects and builds your project from GitHub.
+2. [**Custom Dockerfile via GitHub**](#option-2-custom-dockerfile-via-github): Use a Dockerfile in your repo for custom builds
+3. [**Pre-Built Docker Image from Docker Hub**](#option-3-pre-built-docker-image-from-docker-hub): Build and push your Docker image to Docker Hub, then deploy it on Railway
 
-## Option 1: GitHub Auto-Deploy (Recommended)
+## Option 1: GitHub Auto-Deploy (No Docker Required)
 
-Vercel automatically detects and builds your Node.js/TypeScript project without requiring manual configuration.
+Railway uses [Railpack](https://railpack.com/) to automatically detect and build your Node.js/TypeScript project without requiring Docker knowledge. **Recommended for beginners.**
 
-### Step 1: Set up your API route
-
-- Install Vercel's dependencies so the platform can build and serve your API route:
-
-```bash
-pnpm add -D vercel @vercel/node
-```
-
-_Or use `npm install --save-dev` if you prefer npm or `yarn add --dev` for yarn._
-
-- Create an API route in the `api` directory (e.g., `api/chat.ts`): This tells Vercel how to handle incoming requests to your agent.
-
-```typescript
-import { AgentBuilder } from "@iqai/adk";
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { env } from "./env";
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  try {
-    const { message } = req.body;
-
-    const { runner } = await AgentBuilder.create("assistant")
-      .withModel(env.LLM_MODEL)
-      .withInstruction("You are a helpful assistant")
-      .build();
-
-    const response = await runner.ask(message);
-
-    return res.status(200).json({ response });
-  } catch (error) {
-    console.error("Agent error:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-export const config = {
-  maxDuration: 60,
-};
-```
-
-### Step 2: Push to GitHub
+### Step 1: Push to GitHub
 
 Commit and push your code to GitHub:
 
 ```bash
 git add .
-git commit -m "Prepare for Vercel deployment"
+git commit -m "Prepare for Railway deployment"
 git push origin main
 ```
 
-### Step 3: Connect to Vercel
+### Step 2: Connect to Railway
 
-1. Log in to [Vercel](https://vercel.com)
-2. Click **"Add New..."** → **"Project"**
-3. Select **"Import Git Repository"** and choose your repository
-4. Authorize Vercel to access your Git provider (if first time)
-5. Choose the branch to deploy (usually `main`) and click **"Deploy"**
+1. Log in to Railway
+2. Click **"New Project"**
+3. Select **"Deploy from GitHub repo"**
+4. Authorize Railway to access your GitHub account (if first time)
+5. Choose your ADK-TS repository from the list
+6. Railway automatically detects it's a Node.js project and starts building
 
-### Step 4: Configure Environment Variables
+### Step 3: Configure Environment Variables
 
 See [Configuring Environment Variables](#configuring-environment-variables) below for detailed instructions.
 
-### Step 5: Automatic Deployment
+### Step 4: Automatic Deployment
 
-Vercel handles everything automatically:
+Railway handles everything automatically:
 
 - First deployment: Clones your repo, installs dependencies, builds, and deploys
-- Future updates: Every time you push to your connected branch, Vercel rebuilds and redeploys
+- Future updates: Every time you push to your connected branch, Railway rebuilds and redeploys
 - No manual steps needed after initial setup
 
-## Option 2: Vercel CLI (Manual Deployment)
+## Option 2: Custom Dockerfile via GitHub
 
-Use the Vercel CLI for manual deployments or when you want to deploy without a Git integration.
+Use a custom Dockerfile when you need more control over the build process or require system-level dependencies.
 
-### Step 1: Install Vercel CLI
+### Step 1: Create Dockerfile and Push to GitHub
 
-```bash
-npm install -g vercel
-```
+Create a `Dockerfile` in your project root. See the [Docker deployment guide](/docs/framework/guides/deployment/docker#step-1-create-dockerfile) for a complete Dockerfile example.
 
-### Step 2: Login
+Commit and push the Dockerfile to GitHub:
 
 ```bash
-vercel login
+git add Dockerfile
+git commit -m "Add Dockerfile for Railway deployment"
+git push origin main
 ```
 
-### Step 3: Deploy
+### Step 2: Connect to Railway
 
-From your project directory:
+1. Log in to Railway
+2. Click **"New Project"**
+3. Select **"Deploy from GitHub repo"**
+4. Authorize Railway to access your GitHub account (if first time)
+5. Choose your ADK-TS repository from the list
+6. Railway will detect the Dockerfile and use it for building
 
-```bash
-# Deploy to preview (staging)
-vercel
-
-# Deploy to production
-vercel --prod
-```
-
-### Step 4: Configure Environment Variables
+### Step 3: Configure Environment Variables
 
 See [Configuring Environment Variables](#configuring-environment-variables) below.
 
+### Step 4: Automatic Deployment
+
+Railway now handles everything automatically:
+
+- First deployment: Detects your `Dockerfile`, builds the image, and deploys
+- Future updates: Every time you push to your connected branch, Railway rebuilds and redeploys
+- No manual steps needed after initial setup
+
+## Option 3: Pre-Built Docker Image from Docker Hub
+
+Build your Docker image locally and deploy it to Railway from Docker Hub for maximum control over the build process.
+
+### Step 1: Build and Push Docker Image
+
+First, create a `Dockerfile` in your project root. See the [Docker deployment guide](/docs/framework/guides/deployment/docker#step-1-create-dockerfile) for a complete Dockerfile example.
+
+**Build for Railway:**
+
+Railway uses AMD64 processors, so build specifically for that platform:
+
+```bash
+# Build for Railway (AMD64 platform)
+docker buildx build --platform linux/amd64 -t your_docker_username/your_agent_name:tag .
+```
+
+Replace `your_docker_username` with your Docker Hub username, `your_agent_name` with your project name, and `tag` with a version (like `v1.0` or `latest`).
+
+**Push to Docker Hub:**
+
+```bash
+# Login to Docker Hub
+docker login
+
+# Push the image
+docker push your_docker_username/your_agent_name:tag
+```
+
+### Step 2: Connect to Railway
+
+1. Log in to Railway
+2. Click **"New Project"** in the top right
+3. Select **"Deploy from Docker Image"** from the options
+4. Enter your full image name exactly as you pushed it: `your_docker_username/your_agent_name:tag`
+5. Railway will pull your image from Docker Hub
+
+### Step 3: Configure Environment Variables
+
+See [Configuring Environment Variables](#configuring-environment-variables) below.
+
+### Step 4: Deploy
+
+Click **"Deploy"** and Railway will start your container using the pulled image.
+
 ## Configuring Environment Variables
 
-All deployment options require environment variables to be configured in Vercel. This is a one-time setup for each project.
+All three deployment options require environment variables to be configured in Railway. This is a one-time setup for each project.
 
-### Add Environment Variables to Vercel
+### Add Environment Variables to Railway
 
-1. In your Vercel project, go to **"Settings"** → **"Environment Variables"**
-2. Add each required environment variable based on your agent's needs.
+1. In your Railway project dashboard, click the **"Variables"** tab
+2. Click **"New Variable"** to add each required environment variable
 
 <Callout type="info" title="Environment Variables Are Encrypted">
-  Vercel automatically encrypts all environment variables. Never commit these
+  Railway automatically encrypts all environment variables. Never commit these
   values to your git repository.
 </Callout>
 
@@ -150,131 +160,84 @@ All deployment options require environment variables to be configured in Vercel.
 
 ### Check Deployment Status
 
-In your Vercel project dashboard:
+In your Railway project dashboard:
 
-1. Look for the **"Deployments"** tab - it should show "Ready" with a green indicator
-2. Click on the latest deployment to view detailed logs and the deployment URL
+1. Look for the **"Deployments"** section - it should show "Active" with a green indicator
+2. Click on the latest deployment to view detailed logs
 3. Check the logs for your agent's startup messages
-4. Look for any error messages
+4. Look for any error messages (shown in red)
 
 ### Test Your Agent
 
 Once deployment is active, test that it works:
 
-- **API agents**: Make a test HTTP request to your endpoint (e.g., `https://your-project.vercel.app/api/chat`)
-- **Check logs**: Watch Vercel logs in real-time to see your agent responding
-- **Webhooks**: Verify that your webhook handlers are receiving data
+- **Discord bots**: Send a command in your Discord server
+- **Telegram bots**: Message your bot
+- **API agents**: Make a test HTTP request to your endpoint
+- **Check logs**: Watch Railway logs in real-time to see your agent responding
 
 ## Monitoring and Updates
 
 ### View Logs
 
-Vercel provides real-time logs in the **"Logs"** tab of your deployment. Use them to:
+Railway provides real-time logs in the **"Logs"** tab of your deployment. Use them to:
 
 - Debug issues by viewing error messages
 - Monitor your agent's activity and responses
-- Track performance and execution times
+- Track warnings or performance issues
 
 ### Updating Your Deployment
 
-**For GitHub deployments (Option 1):**
+**For GitHub deployments (Options 1 & 2):**
 
 1. Make code changes locally
-2. Test changes locally using `vercel dev`
+2. Test changes locally
 3. Commit and push to your connected branch:
    ```bash
    git add .
    git commit -m "Update agent features"
    git push origin main
    ```
-4. Vercel automatically detects changes, rebuilds, and redeploys
+4. Railway automatically detects changes, rebuilds, and redeploys
+5. Watch the deployment logs to confirm success
 
-**For CLI deployments (Option 2):**
+**For Docker Hub deployments (Option 3):**
 
 1. Make code changes locally
-2. Deploy again using the CLI:
-   ```bash
-   vercel --prod
-   ```
-3. Vercel will create a new deployment automatically
+2. Build and push new Docker image with a new tag (e.g., `v1.1`)
+3. In Railway dashboard, update the image reference to the new tag
+4. Railway pulls the new image and redeploys automatically
 
-## Vercel Troubleshooting
+## Railway Troubleshooting
 
-### Missing Environment Variables
+- **Railpack Detection**: If Railway fails to detect your project type, ensure your `package.json` and lockfile are in the repository root, or use a custom `Dockerfile`.
+- **Deployment Stuck**: If a deployment is stuck in "Building", check the logs for dependency conflicts or build-time timeouts.
 
-**Problem**: Agent crashes or features don't work
+## Railway Best Practices
 
-- Go to Vercel's **"Environment Variables"** tab and verify all variables are present
-- Check that variable names match exactly what your code expects (case-sensitive)
-- Look for typos in variable values
-- Trigger a new deployment after updating variables
-
-### Build Failures
-
-**Problem**: Vercel build fails
-
-- Click on the failed deployment to view detailed build logs
-- Look for error messages about missing dependencies or syntax errors
-- Ensure all dependencies are listed in `package.json`
-- Check for TypeScript compilation errors in the logs
-
-### Function Timeouts
-
-**Problem**: Agent execution exceeds Vercel's serverless timeout
-
-- Increase `maxDuration` in your function configuration (up to your plan limit)
-- Optimize your agent's processing time
-- For long-running agents, consider using [Railway](/docs/framework/guides/deployment/railway) instead
-
-### Deployment Conflicts
-
-**Problem**: Multiple deployments triggering at once
-
-- Check the **"Deployments"** tab to see which one is active
-- Cancel unnecessary deployments if they are stuck
-- Ensure your Git branch configuration is correct
-
-## Vercel Best Practices
-
-### Version Control
-
-- Use separate environments (Production, Preview) to test changes
-- Always test locally with `vercel dev` before pushing
-
-### Cost Management
-
-- Monitor function execution counts in the dashboard
-- Set up budget alerts if using a Pro plan
-- Use Vercel's usage dashboard to track resource consumption
-
-### Reliability
-
-- Implement proper error handling in your serverless functions
-- Use health check endpoints to monitor availability
-- Regularly review logs to catch "Cold Start" or timeout issues
-
-### Security
-
-- Never commit environment variables or secrets to git
-- Use Vercel's Environment Variables for all sensitive data
-- Implement authentication for your API endpoints
+- **Preview Environments**: Use Railway's PR environments to test changes in an isolated production-like environment before merging to `main`.
+- **Sleeping Services**: For development or non-critical bots, use the "Sleep" feature to save on credits when the bot is inactive.
+- **Project Structure**: Keep related services (e.g., your agent and a database) within the same Railway project for easier networking and management.
 
 ## Next Steps
 
 <Cards>
   <Card
-    title="🚂 Railway Deployment"
-    href="/docs/framework/guides/deployment/railway"
+    title="⚡ Vercel Deployment Guide"
+    href="/docs/framework/guides/deployment/vercel"
   >
-    Explore Railway for long-running agents
+    Configure Vercel for serverless API agents
   </Card>
   <Card
-    title="🐳 Docker Deployment"
+    title="🐳 Docker Deployment Guide"
     href="/docs/framework/guides/deployment/docker"
   >
-    Review Docker for containerized options
+    Learn about Docker for self-hosted options
   </Card>
-  <Card title="☁️ AWS Deployment" href="/docs/framework/guides/deployment/aws">
+  <Card
+    title="☁️ AWS Deployment Guide"
+    href="/docs/framework/guides/deployment/aws"
+  >
     Deploy to AWS using Lambda, ECS, or EC2
   </Card>
   <Card
