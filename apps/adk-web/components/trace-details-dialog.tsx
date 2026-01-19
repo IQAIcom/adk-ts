@@ -168,7 +168,7 @@ function SpanDetails({ span }: { span: TraceSpan }) {
 	console.log("attributes", attributes);
 
 	const llmRequest = attributes["adk.llm_request"];
-	const llmResponse = attributes["gcp.vertex.agent.llm_response"];
+	const llmResponse = attributes["adk.llm_response"];
 	const eventId = attributes["gcp.vertex.agent.event_id"];
 
 	const parseJson = (str: string | undefined) => {
@@ -185,15 +185,7 @@ function SpanDetails({ span }: { span: TraceSpan }) {
 
 	const eventData = {
 		...span,
-		attributes: {
-			...attributes,
-			"gcp.vertex.agent.llm_request": requestData
-				? "(see Request tab)"
-				: undefined,
-			"gcp.vertex.agent.llm_response": responseData
-				? "(see Response tab)"
-				: undefined,
-		},
+		attributes,
 	};
 
 	return (

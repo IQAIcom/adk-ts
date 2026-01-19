@@ -418,7 +418,6 @@ export class SetupService {
 		if (!this.inMemoryExporter) {
 			throw new Error("Telemetry not initialized - call initialize() first");
 		}
-		diag.info("this.inMemoryExporter initialized");
 		return this.inMemoryExporter;
 	}
 }
