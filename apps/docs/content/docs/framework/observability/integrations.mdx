@@ -36,12 +36,13 @@ docker run -d \
 import { telemetryService } from '@iqai/adk';
 
 await telemetryService.initialize({
-  appName: 'my-agent-app',
-  otlpEndpoint: 'http://localhost:4318/v1/traces',
-  enableMetrics: true,
-  enableTracing: true,
+appName: 'my-agent-app',
+otlpEndpoint: 'http://localhost:4318/v1/traces',
+enableMetrics: true,
+enableTracing: true,
 });
-```
+
+````
   </Tab>
   <Tab value="Production">
 ```typescript
@@ -54,12 +55,16 @@ await telemetryService.initialize({
   enableTracing: true,
   environment: 'production',
 });
-```
+````
+
   </Tab>
 </Tabs>
 
 <Callout type="info" title="Production Deployment">
-  For production, deploy Jaeger using Docker Compose or Kubernetes with proper persistence and scaling. Replace `localhost` with your Jaeger instance URL. See the [Production Configuration](/docs/framework/observability/production) guide for more details.
+  For production, deploy Jaeger using Docker Compose or Kubernetes with proper
+  persistence and scaling. Replace `localhost` with your Jaeger instance URL.
+  See the [Production Configuration](/docs/framework/observability/production)
+  guide for more details.
 </Callout>
 
 ### Viewing Traces
@@ -79,7 +84,7 @@ services:
   tempo:
     image: grafana/tempo:latest
     ports:
-      - "4318:4318"  # OTLP HTTP
+      - "4318:4318" # OTLP HTTP
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
     command: ["-config.file=/etc/tempo.yaml"]
@@ -118,6 +123,7 @@ storage:
 ```
 
 This minimal configuration:
+
 - Sets up the Tempo HTTP server on port 3200
 - Configures OTLP receiver on port 4318 (matching the docker-compose port mapping)
 - Uses local storage for traces (suitable for development)
@@ -126,8 +132,8 @@ This minimal configuration:
 
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-agent-app',
-  otlpEndpoint: 'http://localhost:4318/v1/traces',
+  appName: "my-agent-app",
+  otlpEndpoint: "http://localhost:4318/v1/traces",
   enableMetrics: true,
   enableTracing: true,
 });
@@ -147,10 +153,10 @@ Datadog provides comprehensive APM and monitoring capabilities.
 
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-agent-app',
-  otlpEndpoint: 'https://otlp.datadoghq.com:4318',
+  appName: "my-agent-app",
+  otlpEndpoint: "https://otlp.datadoghq.com:4318",
   otlpHeaders: {
-    'DD-API-KEY': process.env.DD_API_KEY,
+    "DD-API-KEY": process.env.DD_API_KEY,
   },
   enableMetrics: true,
   enableTracing: true,
@@ -158,7 +164,9 @@ await telemetryService.initialize({
 ```
 
 <Callout type="info">
-The ADK telemetry service automatically appends `/v1/traces` and `/v1/metrics` to the OTLP endpoint, so you should only specify the base URL without the path suffix.
+  The ADK telemetry service automatically appends `/v1/traces` and `/v1/metrics`
+  to the OTLP endpoint, so you should only specify the base URL without the path
+  suffix.
 </Callout>
 
 ### Environment Variables
@@ -197,10 +205,10 @@ New Relic offers full-stack observability with APM, infrastructure monitoring, a
 
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-agent-app',
-  otlpEndpoint: 'https://otlp.nr-data.net:4318/v1/traces',
+  appName: "my-agent-app",
+  otlpEndpoint: "https://otlp.nr-data.net:4318/v1/traces",
   otlpHeaders: {
-    'api-key': process.env.NEW_RELIC_LICENSE_KEY,
+    "api-key": process.env.NEW_RELIC_LICENSE_KEY,
   },
   enableMetrics: true,
   enableTracing: true,
@@ -230,11 +238,11 @@ Honeycomb provides high-cardinality observability with powerful query capabiliti
 
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-agent-app',
-  otlpEndpoint: 'https://api.honeycomb.io/v1/traces',
+  appName: "my-agent-app",
+  otlpEndpoint: "https://api.honeycomb.io/v1/traces",
   otlpHeaders: {
-    'x-honeycomb-team': process.env.HONEYCOMB_API_KEY,
-    'x-honeycomb-dataset': 'my-dataset',
+    "x-honeycomb-team": process.env.HONEYCOMB_API_KEY,
+    "x-honeycomb-dataset": "my-dataset",
   },
   enableMetrics: true,
   enableTracing: true,
@@ -311,12 +319,12 @@ docker run -d \
   --config=/etc/otel-collector-config.yaml
 ```
 
-### Application Configuration
+### Configuration
 
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-agent-app',
-  otlpEndpoint: 'http://localhost:4318/v1/traces', // Send to collector
+  appName: "my-agent-app",
+  otlpEndpoint: "http://localhost:4318/v1/traces", // Send to collector
   enableMetrics: true,
   enableTracing: true,
 });
@@ -328,10 +336,10 @@ Any backend that supports OTLP HTTP can be used. Simply configure the endpoint:
 
 ```typescript
 await telemetryService.initialize({
-  appName: 'my-agent-app',
-  otlpEndpoint: 'https://your-custom-backend.com/v1/traces',
+  appName: "my-agent-app",
+  otlpEndpoint: "https://your-custom-backend.com/v1/traces",
   otlpHeaders: {
-    'Authorization': `Bearer ${process.env.API_TOKEN}`,
+    Authorization: `Bearer ${process.env.API_TOKEN}`,
   },
   enableMetrics: true,
   enableTracing: true,
@@ -359,8 +367,9 @@ await telemetryService.initialize({
 ### No Data Appearing
 
 1. **Enable debug logging**:
+
    ```typescript
-   import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
+   import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
    ```
 
