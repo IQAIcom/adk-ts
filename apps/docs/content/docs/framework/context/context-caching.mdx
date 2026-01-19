@@ -3,14 +3,15 @@ title: Context Caching with Gemini
 description: A guide explaining how to configure and use context caching in ADK with Gemini models to reuse large prompts efficiently, reducing latency and token costs.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 When working with agents to complete tasks, you may want to reuse extended instructions or large sets of data across multiple agent requests to a generative AI model. Resending this data for each agent request is slow, inefficient, and can be expensive. Using context caching features in generative AI models can significantly speed up responses and lower the number of tokens sent to the model for each request.
 
 The ADK Context Caching feature allows you to cache request data with generative AI models that support it, including Gemini 2.0 and higher models. This document explains how to configure and use this feature.
 
 <Callout type="info">
-Context caching is supported for Gemini 2.0+ models. Ensure the selected model and provider support caching.
+  Context caching is supported for Gemini 2.0+ models. Ensure the selected model
+  and provider support caching.
 </Callout>
 
 ## Configure context caching
@@ -21,11 +22,11 @@ You configure the context caching feature at the ADK App root level, which wraps
 import { ContextCacheConfig } from "@iqai/adk";
 
 const cacheConfig = new ContextCacheConfig({
-  minTokens: 4096,   // Minimum tokens required to enable caching
-  ttlSeconds: 600,   // Cache time-to-live (10 minutes)
+  minTokens: 4096, // Minimum tokens required to enable caching
+  ttlSeconds: 600, // Cache time-to-live (10 minutes)
   cacheIntervals: 3, // Refresh cache after this many invocations
 });
-````
+```
 
 ### Using `AgentBuilder`
 
@@ -75,18 +76,18 @@ With context caching enabled, large static prompts (such as long instructions or
 
 The `ContextCacheConfig` class exposes the following options. These settings apply to the agent or app where the configuration is attached.
 
-* **`minTokens`** (`number`):
+- **`minTokens`** (`number`):
   The minimum number of tokens required in a request before caching is enabled.
   This helps avoid caching overhead for small prompts where performance gains
   would be minimal.
   **Default:** `0`
 
-* **`ttlSeconds`** (`number`):
+- **`ttlSeconds`** (`number`):
   The cache time-to-live (TTL) in seconds. After this duration, the cached
   context expires and is refreshed on the next request.
   **Default:** `1800` (30 minutes)
 
-* **`cacheIntervals`** (`number`):
+- **`cacheIntervals`** (`number`):
   The maximum number of times cached context can be reused before it is refreshed,
   even if the TTL has not expired.
   **Default:** `10`
@@ -94,11 +95,12 @@ The `ContextCacheConfig` class exposes the following options. These settings app
 ## Best practices
 
 Use context caching for **large, mostly static prompts**, such as:
-  * Long system instructions
-  * Reference documents
-  * Domain-specific background knowledge
-* Avoid caching highly dynamic content that changes on every request.
-* Tune `minTokens` to ensure caching is only applied where it provides real value.
+
+- Long system instructions
+- Reference documents
+- Domain-specific background knowledge
+- Avoid caching highly dynamic content that changes on every request.
+- Tune `minTokens` to ensure caching is only applied where it provides real value.
 
 ## Next steps
 
