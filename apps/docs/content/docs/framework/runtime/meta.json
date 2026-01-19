@@ -1,8 +1,11 @@
 {
 	"icon": "Cpu",
 	"pages": [
-		"index",
 		"event-loop",
+		"runner-orchestration",
+		"event-system",
+		"agent-lifecycle",
+		"llm-integration",
 		"invocation-lifecycle",
 		"run-config",
 		"rewind"
