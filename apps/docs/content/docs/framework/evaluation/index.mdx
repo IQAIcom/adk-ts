@@ -3,13 +3,16 @@ title: Agent Evaluation
 description: Comprehensive framework for testing and validating agent performance across scenarios
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
 Agent evaluation provides systematic approaches to testing and validating agent performance, moving beyond prototype to production-ready AI systems.
 
 <Callout type="info" title="Status">
-Evaluation is available in `@iqai/adk` (public but still evolving). Surface may receive additive changes; core evaluator signatures are stable.
+
+Evaluation is available in `@iqai/adk` (public but still evolving). Surface
+may receive additive changes; core evaluator signatures are stable.
+
 </Callout>
 
 ## Overview
@@ -36,17 +39,17 @@ The ADK evaluation framework provides comprehensive agent testing capabilities:
     href="/docs/framework/evaluation/evaluation-concepts"
   />
 
-  <Card
-    title="🧪 Testing Agents"
-    description="Current approaches and future automated testing methods"
-    href="/docs/framework/evaluation/testing-agents"
-  />
+<Card
+  title="🧪 Testing Agents"
+  description="Current approaches and future automated testing methods"
+  href="/docs/framework/evaluation/testing-agents"
+/>
 
-  <Card
-    title="📊 Metrics and Scoring"
-    description="Measurement approaches for trajectory and response quality"
-    href="/docs/framework/evaluation/metrics-and-scoring"
-  />
+<Card
+  title="📊 Metrics and Scoring"
+  description="Measurement approaches for trajectory and response quality"
+  href="/docs/framework/evaluation/metrics-and-scoring"
+/>
 
   <Card
     title="🎯 Evaluation Patterns"
@@ -74,6 +77,7 @@ Workflow:
 1. **Author Dataset**: Provide either:
    - Legacy array format: `[{ "query": "...", "reference": "..." }]` (auto-migrated at runtime – deprecated warning emitted), or
    - New EvalSet schema (preferred):
+
 ```json
 {
   "evalSetId": "calc-v1",
@@ -85,7 +89,10 @@ Workflow:
       "conversation": [
         {
           "creationTimestamp": 0,
-          "userContent": { "role": "user", "parts": [{ "text": "What is 2 + 2?" }] },
+          "userContent": {
+            "role": "user",
+            "parts": [{ "text": "What is 2 + 2?" }]
+          },
           "finalResponse": { "role": "model", "parts": [{ "text": "4" }] }
         }
       ]
@@ -93,28 +100,33 @@ Workflow:
   ]
 }
 ```
+
 2. **Configure Criteria** in `test_config.json` (sibling to each `*.test.json`):
+
 ```json
 { "criteria": { "response_match_score": 0.8 } }
 ```
+
 3. **Run Evaluation** – signature: `await AgentEvaluator.evaluate(agent, pathOrFile, numRuns?)`.
    - Throws an Error if any metric fails threshold (no return value).
 4. **Iterate** – tighten thresholds / expand cases as agent improves.
 
 Minimal usage example:
-```typescript
-import { AgentBuilder, AgentEvaluator } from '@iqai/adk';
 
-const { agent } = await AgentBuilder.create('eval_agent')
-  .withModel('gemini-2.5-flash')
-  .withInstruction('Answer briefly and accurately.')
+```typescript
+import { AgentBuilder, AgentEvaluator } from "@iqai/adk";
+
+const { agent } = await AgentBuilder.create("eval_agent")
+  .withModel("gemini-2.5-flash")
+  .withInstruction("Answer briefly and accurately.")
   .build();
 
-await AgentEvaluator.evaluate(agent, './evaluation/tests');
+await AgentEvaluator.evaluate(agent, "./evaluation/tests");
 // If it does not throw, all criteria passed.
 ```
 
 Programmatic (advanced) usage using an already loaded EvalSet:
+
 ```typescript
 // If you parsed an EvalSet JSON yourself
 // import type { Evaluation } from '@iqai/adk';
@@ -122,6 +134,7 @@ Programmatic (advanced) usage using an already loaded EvalSet:
 ```
 
 Default criteria if `test_config.json` absent:
+
 ```json
 { "tool_trajectory_avg_score": 1.0, "response_match_score": 0.8 }
 ```
@@ -137,17 +150,17 @@ Each metric key must be one of: `tool_trajectory_avg_score`, `response_evaluatio
     href="/docs/framework/agents"
   />
 
-  <Card
-    title="🔧 Tools"
-    description="Understand tool integration and usage patterns"
-    href="/docs/framework/tools"
-  />
+<Card
+  title="🔧 Tools"
+  description="Understand tool integration and usage patterns"
+  href="/docs/framework/tools"
+/>
 
-  <Card
-    title="💬 Sessions"
-    description="Session management for conversation tracking"
-    href="/docs/framework/session-state-memory/session"
-  />
+<Card
+  title="💬 Sessions"
+  description="Session management for conversation tracking"
+  href="/docs/framework/session-state-memory/session"
+/>
 
   <Card
     title="📋 Callbacks"

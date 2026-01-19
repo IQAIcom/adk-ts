@@ -21,7 +21,9 @@ Instructions serve as your agent's "personality," decision-making framework, and
 ## Instruction Best Practices
 
 <Callout type="info" title="Effective Instruction Patterns">
+
 **Be Specific and Actionable**
+
 - ❌ "You are a helpful assistant"
 - ✅ "You are a customer support specialist. Always ask for order numbers when handling complaints, escalate refund requests over $500 to the billing_agent, and provide tracking links for shipping inquiries."
 
@@ -34,6 +36,7 @@ Instructions serve as your agent's "personality," decision-making framework, and
 
 - ❌ "You can search the web"
 - ✅ "Use web search for current events, stock prices, and recent news. Always verify information with at least 2 sources before presenting facts."
+
 </Callout>
 
 ## Instruction Types & Examples
@@ -114,15 +117,15 @@ Instructions that adapt based on session state and user context:
 ```ts
 const personalAssistant = new LlmAgent({
   name: "personal_assistant",
-  instruction: (ctx) => {
+  instruction: ctx => {
     const user = ctx.session.state.userProfile;
     const timeOfDay = new Date().getHours();
     const greeting =
       timeOfDay < 12
         ? "Good morning"
         : timeOfDay < 18
-        ? "Good afternoon"
-        : "Good evening";
+          ? "Good afternoon"
+          : "Good evening";
 
     return `
       ${greeting}, ${user?.name || "there"}! I'm your personal AI assistant.
@@ -253,13 +256,16 @@ const safetyAgent = new LlmAgent({
 The framework automatically injects session state values into your instructions using template variables. Simply use `{variable_name}` syntax and the framework will replace it with the corresponding value from `context.state`.
 
 <Callout type="info" title="Automatic State Interpolation">
+
 **How it works:**
+
 - Use `{variable_name}` in your instruction strings
 - The framework automatically replaces these with values from session state
 - State is updated by tools using `context.state.set(key, value)`
 - Instructions are re-evaluated with fresh state on each interaction
 
 **Example:** If your state contains `{user_name: "Alice", cart_count: 3}`, then `"Hello {user_name}, you have {cart_count} items"` becomes `"Hello Alice, you have 3 items"`
+
 </Callout>
 
 #### Shopping Cart Example with State Interpolation
@@ -280,7 +286,10 @@ const addItemTool = createTool({
     // Update state - these values will be injected into instructions
     context.state.set("cart", cart);
     context.state.set("cartCount", cart.length);
-    context.state.set("cartTotal", cart.reduce((sum, item) => sum + item.price * item.quantity, 0));
+    context.state.set(
+      "cartTotal",
+      cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    );
 
     return { success: true, item, quantity };
   },
@@ -394,6 +403,7 @@ const salesAgent = new LlmAgent({
 ```
 
 <Callout type="info" title="See State Interpolation in Action">
+
 **Working Example:** Check out the complete working example of state interpolation in the [Tools and State Management example](https://github.com/IQ-AI/adk-ts/tree/main/apps/examples/src/02-tools-and-state) which demonstrates:
 
 - Using `{cartCount}` and `{cart}` in instructions
@@ -402,6 +412,7 @@ const salesAgent = new LlmAgent({
 - Agents referencing state without calling tools
 
 This example shows exactly how the `{variable_name}` syntax works in practice with a shopping cart scenario.
+
 </Callout>
 
 ### Conditional Logic Instructions
@@ -540,7 +551,9 @@ const backendDeveloper = new LlmAgent({
 ## Common Pitfalls to Avoid
 
 <Callout type="warn" title="Instruction Pitfalls">
+
 **Too Vague:** "Be helpful and answer questions"
+
 - Problem: No guidance on approach, tools, or boundaries
 - Solution: Define specific behaviors and decision criteria
 
@@ -558,6 +571,7 @@ const backendDeveloper = new LlmAgent({
 
 - Problem: Important guidelines get lost in noise
 - Solution: Focus on core behaviors, use examples over exhaustive rules
+
 </Callout>
 
 ## Quick Reference Checklist

@@ -136,7 +136,7 @@ To fully test the web interface, you need a running ADK-TS CLI server:
    # From the starter-templates directory ( contains all testable agents)
    cd apps/starter-templates
    adk run
-   
+
    # Or cd into a specific agent to test it individually
    cd apps/starter-templates/simple-agent
    adk run

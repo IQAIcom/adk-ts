@@ -3,7 +3,7 @@ title: CallbackContext
 description: State management and artifact operations for agent lifecycle callbacks
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 CallbackContext extends ReadonlyContext with state modification capabilities and artifact operations. It's designed for agent lifecycle callbacks where you need to manage state and handle file operations.
 
@@ -25,6 +25,7 @@ import { CallbackContext } from "@iqai/adk";
 ## Properties
 
 ### state (Mutable)
+
 Unlike ReadonlyContext, CallbackContext provides a mutable state object:
 
 ```typescript
@@ -39,7 +40,7 @@ function updateUserPreferences(ctx: CallbackContext) {
   ctx.state.userPreferences = {
     theme: "dark",
     language: "en",
-    notifications: true
+    notifications: true,
   };
 
   // Nested modifications also work
@@ -49,6 +50,7 @@ function updateUserPreferences(ctx: CallbackContext) {
 ```
 
 ### eventActions
+
 Access to the event actions for advanced state and flow control:
 
 ```typescript
@@ -60,6 +62,7 @@ This provides access to underlying event tracking and action management.
 ## Artifact Operations
 
 ### loadArtifact()
+
 Loads an artifact attached to the current session:
 
 ```typescript
@@ -82,10 +85,13 @@ async function processUserDocument(ctx: CallbackContext) {
 ```
 
 <Callout type="info">
+
 Requires an artifact service to be configured in the runner or agent setup.
+
 </Callout>
 
 ### saveArtifact()
+
 Saves an artifact and records it in the session:
 
 ```typescript
@@ -96,7 +102,7 @@ async saveArtifact(filename: string, artifact: Part): Promise<number>
 async function saveProcessedData(ctx: CallbackContext, data: any) {
   // Create an artifact part
   const artifactPart = {
-    text: JSON.stringify(data, null, 2)
+    text: JSON.stringify(data, null, 2),
   };
 
   // Save the artifact
@@ -106,7 +112,7 @@ async function saveProcessedData(ctx: CallbackContext, data: any) {
   ctx.state.lastProcessedData = {
     filename: "processed-data.json",
     version: version,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   return version;
@@ -134,7 +140,7 @@ async function preprocessCallback(ctx: CallbackContext) {
   // Set processing flags
   ctx.state.preprocessing = {
     completed: true,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 }
 ```
@@ -151,7 +157,7 @@ async function postprocessCallback(ctx: CallbackContext) {
     invocationId: ctx.invocationId,
     agentName: ctx.agentName,
     timestamp: new Date().toISOString(),
-    userContent: ctx.userContent
+    userContent: ctx.userContent,
   });
 
   // Keep only last 10 interactions
@@ -161,11 +167,11 @@ async function postprocessCallback(ctx: CallbackContext) {
   const summary = {
     totalInteractions: history.length,
     lastAgent: ctx.agentName,
-    lastUpdate: new Date().toISOString()
+    lastUpdate: new Date().toISOString(),
   };
 
   await ctx.saveArtifact("session-summary.json", {
-    text: JSON.stringify(summary, null, 2)
+    text: JSON.stringify(summary, null, 2),
   });
 }
 ```
@@ -186,19 +192,19 @@ async function processUploadedFile(ctx: CallbackContext, filename: string) {
 
   // Process based on file type
   let processedContent;
-  if (filename.endsWith('.json')) {
-    processedContent = JSON.parse(file.text || '{}');
-  } else if (filename.endsWith('.txt')) {
+  if (filename.endsWith(".json")) {
+    processedContent = JSON.parse(file.text || "{}");
+  } else if (filename.endsWith(".txt")) {
     processedContent = {
       content: file.text,
-      wordCount: file.text?.split(' ').length || 0
+      wordCount: file.text?.split(" ").length || 0,
     };
   }
 
   // Save processed result
   const processedFilename = `processed-${filename}`;
   await ctx.saveArtifact(processedFilename, {
-    text: JSON.stringify(processedContent, null, 2)
+    text: JSON.stringify(processedContent, null, 2),
   });
 
   // Update state
@@ -206,7 +212,7 @@ async function processUploadedFile(ctx: CallbackContext, filename: string) {
   ctx.state.processedFiles.push({
     original: filename,
     processed: processedFilename,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 }
 ```
@@ -246,7 +252,7 @@ async function conditionalStateUpdate(ctx: CallbackContext) {
 
     // Save welcome artifact
     await ctx.saveArtifact("welcome-message.txt", {
-      text: "Welcome to the system! This is your first interaction."
+      text: "Welcome to the system! This is your first interaction.",
     });
   }
 
@@ -276,7 +282,7 @@ async function robustStateUpdate(ctx: CallbackContext) {
     const backup = await ctx.loadArtifact("state-backup.json");
 
     if (backup) {
-      const backupState = JSON.parse(backup.text || '{}');
+      const backupState = JSON.parse(backup.text || "{}");
       // Merge with current state
       Object.assign(ctx.state, backupState);
     }
@@ -286,9 +292,8 @@ async function robustStateUpdate(ctx: CallbackContext) {
 
     // Save new backup
     await ctx.saveArtifact("state-backup.json", {
-      text: JSON.stringify(ctx.state, null, 2)
+      text: JSON.stringify(ctx.state, null, 2),
     });
-
   } catch (error) {
     console.error("Error in state update:", error);
 
@@ -296,7 +301,7 @@ async function robustStateUpdate(ctx: CallbackContext) {
     ctx.state.lastError = {
       message: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
-      invocationId: ctx.invocationId
+      invocationId: ctx.invocationId,
     };
   }
 }
@@ -317,7 +322,7 @@ async function migrateState(ctx: CallbackContext) {
     if (ctx.state.oldUserData) {
       ctx.state.userData = {
         profile: ctx.state.oldUserData,
-        migrated: true
+        migrated: true,
       };
       delete ctx.state.oldUserData;
     }
@@ -340,7 +345,10 @@ async function migrateState(ctx: CallbackContext) {
 Process multiple artifacts efficiently:
 
 ```typescript
-async function processBatchArtifacts(ctx: CallbackContext, filenames: string[]) {
+async function processBatchArtifacts(
+  ctx: CallbackContext,
+  filenames: string[],
+) {
   const results = [];
 
   for (const filename of filenames) {
@@ -357,14 +365,14 @@ async function processBatchArtifacts(ctx: CallbackContext, filenames: string[]) 
         results.push({
           original: filename,
           processed: processedName,
-          success: true
+          success: true,
         });
       }
     } catch (error) {
       results.push({
         original: filename,
         error: error instanceof Error ? error.message : String(error),
-        success: false
+        success: false,
       });
     }
   }
@@ -373,14 +381,14 @@ async function processBatchArtifacts(ctx: CallbackContext, filenames: string[]) 
   ctx.state.batchProcessing = {
     timestamp: new Date().toISOString(),
     results: results,
-    totalProcessed: results.filter(r => r.success).length
+    totalProcessed: results.filter(r => r.success).length,
   };
 }
 
 function processArtifact(artifact: any) {
   // Implementation depends on artifact type
   return {
-    text: `Processed: ${artifact.text || 'No text content'}`
+    text: `Processed: ${artifact.text || "No text content"}`,
   };
 }
 ```
@@ -415,8 +423,7 @@ async function safeArtifactOperation(ctx: CallbackContext) {
   try {
     // Perform operation
     const result = await ctx.loadArtifact("important-data.json");
-    ctx.state.importantData = JSON.parse(result?.text || '{}');
-
+    ctx.state.importantData = JSON.parse(result?.text || "{}");
   } catch (error) {
     // Restore original state on error
     Object.assign(ctx.state, JSON.parse(originalState));
@@ -425,7 +432,7 @@ async function safeArtifactOperation(ctx: CallbackContext) {
     ctx.state.lastError = {
       operation: "loadImportantData",
       error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }
@@ -447,7 +454,7 @@ async function efficientArtifactManagement(ctx: CallbackContext) {
   const cutoffDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
   ctx.state.artifactCleanup = {
     lastRun: new Date().toISOString(),
-    cutoffDate: cutoffDate.toISOString()
+    cutoffDate: cutoffDate.toISOString(),
   };
 }
 ```
