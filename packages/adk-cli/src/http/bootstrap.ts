@@ -210,7 +210,6 @@ export async function startHttpServer(
 ): Promise<StartedHttpServer> {
 	const env = envSchema.parse(process.env);
 	const debug = env.ADK_DEBUG;
-	config.host;
 
 	const app = await NestFactory.create<NestExpressApplication>(
 		HttpModule.register(config),
