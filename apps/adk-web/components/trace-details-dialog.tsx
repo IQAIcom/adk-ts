@@ -12,14 +12,13 @@ import {
 import { useMemo, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Button } from "@/components/ui/button"; // <-- Shadcn button
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SpanNode, TraceSpan } from "@/hooks/use-traces";
 import { buildSpanTree, getSpanIcon } from "@/lib/trace-utils";
@@ -55,18 +54,19 @@ export function TraceDetailsDialog({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-6xl h-[80vh] flex flex-col p-0 gap-0">
-				<DialogHeader className="p-4 border-b">
+				<DialogHeader className="p-4 border-b shrink-0">
 					<DialogTitle>
 						Trace Details {traceId && `- ${traceId.slice(0, 8)}`}
 					</DialogTitle>
 				</DialogHeader>
-				<div className="flex flex-1 overflow-hidden">
+
+				<div className="flex flex-1 min-h-0">
 					{/* Left Sidebar: Span Tree */}
-					<div className="w-1/3 border-r bg-muted/10 flex flex-col">
-						<div className="p-2 border-b bg-muted/50 text-xs font-medium text-muted-foreground">
+					<div className="w-1/3 border-r bg-muted/10 flex flex-col min-h-0">
+						<div className="p-2 border-b bg-muted/50 text-xs font-medium text-muted-foreground shrink-0">
 							Spans ({spans.length})
 						</div>
-						<ScrollArea className="flex-1">
+						<div className="flex-1 overflow-y-auto">
 							<div className="p-2">
 								{tree.map((node) => (
 									<SpanTreeItem
@@ -77,11 +77,11 @@ export function TraceDetailsDialog({
 									/>
 								))}
 							</div>
-						</ScrollArea>
+						</div>
 					</div>
 
 					{/* Right Content: Tabs */}
-					<div className="flex-1 flex flex-col min-w-0">
+					<div className="flex-1 flex flex-col min-h-0 min-w-0">
 						{selectedSpan ? (
 							<SpanDetails span={selectedSpan} />
 						) : (
@@ -165,7 +165,9 @@ function SpanTreeItem({
 function SpanDetails({ span }: { span: TraceSpan }) {
 	const attributes = span.attributes || {};
 
-	const llmRequest = attributes["gcp.vertex.agent.llm_request"];
+	console.log("attributes", attributes);
+
+	const llmRequest = attributes["adk.llm_request"];
 	const llmResponse = attributes["gcp.vertex.agent.llm_response"];
 	const eventId = attributes["gcp.vertex.agent.event_id"];
 
@@ -195,60 +197,53 @@ function SpanDetails({ span }: { span: TraceSpan }) {
 	};
 
 	return (
-		<Tabs defaultValue="event" className="flex-1 flex flex-col">
-			<div className="border-b px-4">
-				<TabsList className="my-2">
-					<TabsTrigger value="event">Event</TabsTrigger>
-					<TabsTrigger value="request" disabled={!requestData}>
-						Request
-					</TabsTrigger>
-					<TabsTrigger value="response" disabled={!responseData}>
-						Response
-					</TabsTrigger>
-					<TabsTrigger value="graph" disabled={!eventId}>
-						Graph
-					</TabsTrigger>
-				</TabsList>
-			</div>
-
-			<div className="flex-1 overflow-hidden bg-background">
-				<TabsContent value="event" className="h-full m-0">
-					<ScrollArea className="h-full w-full">
-						<div className="p-4">
-							<JsonViewer data={eventData} />
-						</div>
-					</ScrollArea>
+		<div className="flex flex-col h-full min-h-0">
+			<Tabs defaultValue="event" className="flex-1 min-h-0">
+				<div className="border-b px-4 shrink-0">
+					<TabsList className="my-2">
+						<TabsTrigger value="event">Event</TabsTrigger>
+						<TabsTrigger value="request" disabled={!requestData}>
+							Request
+						</TabsTrigger>
+						<TabsTrigger value="response" disabled={!responseData}>
+							Response
+						</TabsTrigger>
+						<TabsTrigger value="graph" disabled={!eventId}>
+							Graph
+						</TabsTrigger>
+					</TabsList>
+				</div>
+				<TabsContent value="event" className="h-full m-0 overflow-y-auto">
+					<div className="p-4">
+						<JsonViewer data={eventData} />
+					</div>
 				</TabsContent>
 
-				<TabsContent value="request" className="h-full m-0">
-					<ScrollArea className="h-full w-full">
-						<div className="p-4">
-							{requestData ? (
-								<JsonViewer data={requestData} />
-							) : (
-								<div className="text-muted-foreground">
-									No request data available
-								</div>
-							)}
-						</div>
-					</ScrollArea>
+				<TabsContent value="request" className="h-full m-0 overflow-y-auto">
+					<div className="p-4">
+						{requestData ? (
+							<JsonViewer data={requestData} />
+						) : (
+							<div className="text-muted-foreground">
+								No request data available
+							</div>
+						)}
+					</div>
 				</TabsContent>
 
-				<TabsContent value="response" className="h-full m-0">
-					<ScrollArea className="h-full w-full">
-						<div className="p-4">
-							{responseData ? (
-								<JsonViewer data={responseData} />
-							) : (
-								<div className="text-muted-foreground">
-									No response data available
-								</div>
-							)}
-						</div>
-					</ScrollArea>
+				<TabsContent value="response" className="h-full m-0 overflow-y-auto">
+					<div className="p-4">
+						{responseData ? (
+							<JsonViewer data={responseData} />
+						) : (
+							<div className="text-muted-foreground">
+								No response data available
+							</div>
+						)}
+					</div>
 				</TabsContent>
 
-				<TabsContent value="graph" className="h-full m-0">
+				<TabsContent value="graph" className="h-full m-0 overflow-y-auto">
 					<div className="h-full flex items-center justify-center flex-col gap-4 p-8 text-center">
 						<div className="p-4 rounded-full bg-muted">
 							<Activity className="h-8 w-8 text-muted-foreground" />
@@ -264,8 +259,8 @@ function SpanDetails({ span }: { span: TraceSpan }) {
 						</div>
 					</div>
 				</TabsContent>
-			</div>
-		</Tabs>
+			</Tabs>
+		</div>
 	);
 }
 

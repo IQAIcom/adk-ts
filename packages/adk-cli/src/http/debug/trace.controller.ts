@@ -12,9 +12,7 @@ export class TraceController {
 		description: "Return trace data for the session.",
 	})
 	getTraces(@Param("sessionId") sessionId: string) {
-		console.log("sessionId", sessionId);
 		const traces = telemetryService.getTracesForSession(sessionId);
-		console.log("traces", traces);
 		return traces.map((span: ReadableSpan) => {
 			const ctx = span.spanContext();
 			return {
