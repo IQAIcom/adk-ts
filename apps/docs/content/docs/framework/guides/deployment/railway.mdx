@@ -4,59 +4,32 @@ description: Deploy ADK-TS agents to Railway using Docker containers
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Card, Cards } from "fumadocs-ui/components/card";
 
 Railway is a cloud platform that simplifies deploying containerized applications with built-in CI/CD and automatic scaling. **Best for**: Quick deployments, containerized applications, and managed infrastructure. Railway offers simple setup and automatic scaling, though pricing may be higher for large-scale deployments. This guide shows you how to deploy your ADK-TS agent to Railway using a Docker image.
 
-## Prerequisites
+## What You'll Need
 
-**Required:**
+Before deploying to Railway, ensure you have:
 
-- **Railway Account**: Sign up at [railway.app](https://railway.app)
-- **GitHub Repository**: Your ADK-TS project pushed to GitHub
-- **Built and tested** ADK-TS agent locally
-- **Environment variables** documented
-
-**Optional (only for custom Docker builds):**
-
-- **Docker**: Installed locally - [Get Docker](https://docs.docker.com/get-docker/)
-- **DockerHub Account**: For pre-built image deployment
+- A **[Railway Account](https://railway.app)** to manage your deployments
+- Your **ADK-TS project** ready for deployment
+- **[Docker](https://docs.docker.com/get-docker/)** installed and configured on your local machine (Optional)
+- A **Container Registry Account** (e.g., Docker Hub) for storing your Docker images (Optional)
 
 ## Deployment Options
 
 Railway offers three deployment methods:
 
-1. **GitHub Auto-Deploy**: Railway automatically detects and builds your project (Recommended - No Docker needed)
-2. **GitHub with Dockerfile**: Use a custom Dockerfile for advanced build requirements
-3. **DockerHub Image**: Build locally, push to DockerHub, deploy from Railway
+1. [**GitHub Auto-Deploy (No Docker Required)**](#option-1-github-auto-deploy-no-docker-required): Railway automatically detects and builds your project from GitHub.
+2. [**Custom Dockerfile via GitHub**](#option-2-custom-dockerfile-via-github): Use a Dockerfile in your repo for custom builds
+3. [**Pre-Built Docker Image from Docker Hub**](#option-3-pre-built-docker-image-from-docker-hub): Build and push your Docker image to Docker Hub, then deploy it on Railway
 
-## Option 1: GitHub Auto-Deploy (Recommended)
+## Option 1: GitHub Auto-Deploy (No Docker Required)
 
-This is the easiest way to deploy to Railway. It automatically detects your Node.js/TypeScript project and handles everything for you with Railway's auto-detection and build system. **No Docker knowledge required.**
+Railway uses [Railpack](https://railpack.com/) to automatically detect and build your Node.js/TypeScript project without requiring Docker knowledge. **Recommended for beginners.**
 
-### When to Use This Option
-
-Use auto-deploy when your agent:
-
-- Uses standard ADK-TS features (LLM APIs, tools, memory)
-- Has a typical TypeScript build process
-- Doesn't need special system dependencies or custom build steps
-
-### Step 1: Prepare Your Project
-
-Ensure your `package.json` has proper build and start scripts:
-
-```json
-{
-  "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js"
-  }
-}
-```
-
-Railway will automatically run `pnpm install`, `pnpm build`, and then `pnpm start`.
-
-### Step 2: Push to GitHub
+### Step 1: Push to GitHub
 
 Commit and push your code to GitHub:
 
@@ -66,87 +39,55 @@ git commit -m "Prepare for Railway deployment"
 git push origin main
 ```
 
-### Step 3: Connect to Railway
+### Step 2: Connect to Railway
 
-1. Log in to [Railway](https://railway.app)
+1. Log in to Railway
 2. Click **"New Project"**
 3. Select **"Deploy from GitHub repo"**
 4. Authorize Railway to access your GitHub account (if first time)
 5. Choose your ADK-TS repository from the list
 6. Railway automatically detects it's a Node.js project and starts building
 
-### Step 4: Configure Environment Variables
+### Step 3: Configure Environment Variables
 
-**In Railway:**
+See [Configuring Environment Variables](#configuring-environment-variables) below for detailed instructions.
 
-1. In your Railway project, click the **"Variables"** tab
-2. Click **"New Variable"** for each required variable
-3. Add your configuration:
-   - `OPENAI_API_KEY` or `GOOGLE_API_KEY` (depending on your LLM provider)
-   - `LLM_MODEL` (e.g., `gpt-4`, `gemini-2.5-flash`)
-   - Bot tokens (`DISCORD_TOKEN`, `TELEGRAM_BOT_TOKEN`, etc.)
-   - Any other variables your agent needs
+### Step 4: Automatic Deployment
 
-Railway encrypts all environment variables automatically.
+Railway handles everything automatically:
 
-### Step 5: Monitor Deployment
+- First deployment: Clones your repo, installs dependencies, builds, and deploys
+- Future updates: Every time you push to your connected branch, Railway rebuilds and redeploys
+- No manual steps needed after initial setup
 
-Railway automatically deploys after the build completes. Check the **"Deployments"** tab to see:
+## Option 2: Custom Dockerfile via GitHub
 
-- Build logs (dependency installation, TypeScript compilation)
-- Runtime logs (your agent starting up)
-- Deployment status
+Use a custom Dockerfile when you need more control over the build process or require system-level dependencies.
 
-<Callout type="success" title="Automatic Updates">
-  Every time you push to your connected branch, Railway automatically rebuilds
-  and redeploys your agent. No manual steps needed!
-</Callout>
+### Step 1: Create Dockerfile and Push to GitHub
 
-### Verifying Your Deployment
+Create a `Dockerfile` in your project root. See the [Docker deployment guide](/docs/framework/guides/deployment/docker#step-1-create-dockerfile) for a complete Dockerfile example.
 
-After deployment:
-
-- Check Railway logs for successful startup messages
-- Test your agent (send a Discord message, make an API call, etc.)
-- Monitor the Railway dashboard for resource usage and errors
-
-## Option 2: GitHub with Custom Dockerfile
-
-Use this option when you need more control over the build process or have special requirements.
-
-### When to Use This Option
-
-Use a custom Dockerfile when your agent needs:
-
-- **System-level dependencies** (ffmpeg, Chrome/Puppeteer, image processing libraries)
-- **Custom build processes** or optimizations
-- **Multi-stage builds** for smaller production images
-- **Non-standard runtime** configurations
-- **Specific versions** of Node.js or system packages
-
-### Step 1: Push Dockerfile to GitHub
-
-Commit and push your `Dockerfile` to your GitHub repository:
+Commit and push the Dockerfile to GitHub:
 
 ```bash
-git add Dockerfile .dockerignore
+git add Dockerfile
 git commit -m "Add Dockerfile for Railway deployment"
 git push origin main
 ```
 
 ### Step 2: Connect to Railway
 
-1. Log in to [Railway](https://railway.app)
+1. Log in to Railway
 2. Click **"New Project"**
 3. Select **"Deploy from GitHub repo"**
-4. Authorize Railway to access your GitHub account (first time only)
-5. Choose your repository from the list
-6. Select the branch to deploy (usually `main`)
-7. Railway will detect the Dockerfile and use it for building
+4. Authorize Railway to access your GitHub account (if first time)
+5. Choose your ADK-TS repository from the list
+6. Railway will detect the Dockerfile and use it for building
 
 ### Step 3: Configure Environment Variables
 
-Add your environment variables in Railway's "Variables" tab, just like in Option 1.
+See [Configuring Environment Variables](#configuring-environment-variables) below.
 
 ### Step 4: Automatic Deployment
 
@@ -156,41 +97,13 @@ Railway now handles everything automatically:
 - Future updates: Every time you push to your connected branch, Railway rebuilds and redeploys
 - No manual steps needed after initial setup
 
-## Option 3: Deploy from DockerHub
+## Option 3: Pre-Built Docker Image from Docker Hub
+
+Build your Docker image locally and deploy it to Railway from Docker Hub for maximum control over the build process.
 
 ### Step 1: Build and Push Docker Image
 
-Create a `Dockerfile` in your project root:
-
-```dockerfile
-# Use Node.js 20 Alpine as the base image (lightweight Linux distribution)
-FROM node:20-alpine
-
-# Enable pnpm package manager and set a specific version for consistency
-RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
-
-# Set the working directory inside the container
-WORKDIR /app
-
-# Copy package files first for better Docker layer caching
-COPY package.json pnpm-lock.yaml ./
-
-# Install dependencies using frozen lockfile for reproducible builds
-RUN pnpm install --frozen-lockfile
-
-# Copy TypeScript config and source code
-COPY tsconfig.json ./
-COPY src ./src
-
-# Build the project
-RUN pnpm build
-
-# Set production environment
-ENV NODE_ENV=production
-
-# Define the command to run when the container starts
-CMD ["node", "dist/index.js"]
-```
+First, create a `Dockerfile` in your project root. See the [Docker deployment guide](/docs/framework/guides/deployment/docker#step-1-create-dockerfile) for a complete Dockerfile example.
 
 **Build for Railway:**
 
@@ -203,25 +116,19 @@ docker buildx build --platform linux/amd64 -t your_docker_username/your_agent_na
 
 Replace `your_docker_username` with your Docker Hub username, `your_agent_name` with your project name, and `tag` with a version (like `v1.0` or `latest`).
 
-**Push to DockerHub:**
-
-1. Login to Docker Hub:
+**Push to Docker Hub:**
 
 ```bash
+# Login to Docker Hub
 docker login
-```
 
-2. Push your image:
-
-```bash
+# Push the image
 docker push your_docker_username/your_agent_name:tag
 ```
 
-### Step 2: Set Up Railway Project
+### Step 2: Connect to Railway
 
-In the Railway dashboard:
-
-1. Log in to [Railway](https://railway.app)
+1. Log in to Railway
 2. Click **"New Project"** in the top right
 3. Select **"Deploy from Docker Image"** from the options
 4. Enter your full image name exactly as you pushed it: `your_docker_username/your_agent_name:tag`
@@ -229,11 +136,25 @@ In the Railway dashboard:
 
 ### Step 3: Configure Environment Variables
 
-Add variables in the Railway dashboard Variables tab (same process as Option 1).
+See [Configuring Environment Variables](#configuring-environment-variables) below.
 
 ### Step 4: Deploy
 
-Click **"Deploy"** to launch your agent. Railway will pull the Docker image and start your container.
+Click **"Deploy"** and Railway will start your container using the pulled image.
+
+## Configuring Environment Variables
+
+All three deployment options require environment variables to be configured in Railway. This is a one-time setup for each project.
+
+### Add Environment Variables to Railway
+
+1. In your Railway project dashboard, click the **"Variables"** tab
+2. Click **"New Variable"** to add each required environment variable
+
+<Callout type="info" title="Environment Variables Are Encrypted">
+  Railway automatically encrypts all environment variables. Never commit these
+  values to your git repository.
+</Callout>
 
 ## Verifying Deployment
 
@@ -280,7 +201,7 @@ Railway provides real-time logs in the **"Logs"** tab of your deployment. Use th
 4. Railway automatically detects changes, rebuilds, and redeploys
 5. Watch the deployment logs to confirm success
 
-**For DockerHub deployments (Option 3):**
+**For Docker Hub deployments (Option 3):**
 
 1. Make code changes locally
 2. Build and push new Docker image with a new tag (e.g., `v1.1`)
@@ -289,71 +210,40 @@ Railway provides real-time logs in the **"Logs"** tab of your deployment. Use th
 
 ## Railway Troubleshooting
 
-### Docker Push Fails
-
-**Problem**: Can't push image to Docker Hub
-
-- Verify you're logged in (run `docker login`)
-- Check your image name format matches `username/image:tag`
-- Confirm you have permission to push to this repository
-- Check your internet connection
-
-### Missing Environment Variables
-
-**Problem**: Agent crashes or features don't work
-
-- Go to Railway's **"Variables"** tab and verify all variables are present
-- Check that variable names match exactly what your code expects (case-sensitive)
-- Look for typos in variable values
-- Restart the deployment after adding missing variables
-
-### Build Failures
-
-**Problem**: Railway build fails
-
-- Click on the failed deployment to view detailed build logs
-- Look for error messages about missing dependencies or syntax errors
-- Verify your `Dockerfile` has correct syntax
-- Ensure all dependencies are listed in `package.json`
-- Check for TypeScript compilation errors in the logs
-
-### Agent Not Starting
-
-**Problem**: Deployment succeeds but agent doesn't run
-
-- Check Railway logs for runtime error messages
-- Verify the `CMD` in your Dockerfile points to the correct file
-- Ensure all required environment variables are set
-- Confirm your build process creates the expected output files (check `dist/` folder exists)
+- **Railpack Detection**: If Railway fails to detect your project type, ensure your `package.json` and lockfile are in the repository root, or use a custom `Dockerfile`.
+- **Deployment Stuck**: If a deployment is stuck in "Building", check the logs for dependency conflicts or build-time timeouts.
 
 ## Railway Best Practices
 
-### Version Control
-
-- Use specific image tags (like `v1.0`, `v1.1`) instead of `latest` for better tracking
-- Tag images with version numbers or git commit hashes
-
-### Cost Management
-
-- Set resource limits in Railway's settings to prevent unexpected charges
-- Monitor usage in Railway's dashboard
-- Use Railway's sleep feature for non-critical deployments
-
-### Reliability
-
-- Enable health checks if your agent exposes an HTTP endpoint
-- Use Railway's preview environments to test changes before deploying to production
-- Monitor logs regularly to catch issues early
-
-### Security
-
-- Never commit environment variables or secrets to git
-- Railway automatically encrypts environment variables
-- Rotate API keys and tokens regularly
-- Use Railway's audit logs to track changes
+- **Preview Environments**: Use Railway's PR environments to test changes in an isolated production-like environment before merging to `main`.
+- **Sleeping Services**: For development or non-critical bots, use the "Sleep" feature to save on credits when the bot is inactive.
+- **Project Structure**: Keep related services (e.g., your agent and a database) within the same Railway project for easier networking and management.
 
 ## Next Steps
 
-- Explore the [Docker deployment guide](/docs/framework/guides/deployment/docker) for more Docker options
-- Learn about production best practices (guide coming soon)
-- Set up monitoring and alerting for your agent
+<Cards>
+  <Card
+    title="⚡ Vercel Deployment Guide"
+    href="/docs/framework/guides/deployment/vercel"
+  >
+    Configure Vercel for serverless API agents
+  </Card>
+  <Card
+    title="🐳 Docker Deployment Guide"
+    href="/docs/framework/guides/deployment/docker"
+  >
+    Learn about Docker for self-hosted options
+  </Card>
+  <Card
+    title="☁️ AWS Deployment Guide"
+    href="/docs/framework/guides/deployment/aws"
+  >
+    Deploy to AWS using Lambda, ECS, or EC2
+  </Card>
+  <Card
+    title="📋 Production Best Practices"
+    href="/docs/framework/guides/best-practices"
+  >
+    Learn production best practices for your agents
+  </Card>
+</Cards>

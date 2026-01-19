@@ -3,16 +3,21 @@ title: Context Integration
 description: Using artifacts through CallbackContext and ToolContext for file management and data processing
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 Artifacts are accessed through context objects that provide convenient methods for storing and retrieving binary data. Different context types offer varying levels of functionality depending on your use case.
 
 <Callout type="info" title="Auto-save input blobs">
+
 When `saveInputBlobsAsArtifacts` is enabled in the run config, the runner saves any incoming user `inlineData` parts as artifacts automatically before appending the event. Enable it via `withRunConfig({ saveInputBlobsAsArtifacts: true })` on your agent builder, or per run. An `artifactService` on the `Runner` is required.
+
 </Callout>
 
 <Callout type="info" title="Prefer createTool">
-Use `createTool` for concise, schema-validated tools instead of subclassing. See Recipes for examples.
+
+Use `createTool` for concise, schema-validated tools instead of subclassing.
+See Recipes for examples.
+
 </Callout>
 
 ## CallbackContext Access
@@ -24,50 +29,62 @@ The `CallbackContext` provides basic artifact operations available in agent call
 ```typescript
 class CallbackContext {
   // Load an artifact by filename, optionally specifying version
-  async loadArtifact(filename: string, version?: number): Promise<Part | undefined>
+  async loadArtifact(
+    filename: string,
+    version?: number,
+  ): Promise<Part | undefined>;
 
   // Save an artifact and record it as a delta for the session
-  async saveArtifact(filename: string, artifact: Part): Promise<number>
+  async saveArtifact(filename: string, artifact: Part): Promise<number>;
 }
 ```
 
 <Callout type="info" title="Artifact Deletion">
-The `deleteArtifact` method is not exposed through `CallbackContext` or `ToolContext` for safety reasons. To delete artifacts, access the artifact service directly. See [Best Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion) for cleanup strategies.
+
+The `deleteArtifact` method is not exposed through `CallbackContext` or
+`ToolContext` for safety reasons. To delete artifacts, access the artifact
+service directly. See [Best
+Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion)
+for cleanup strategies.
+
 </Callout>
 
 ### Basic Usage in Callbacks
 
 ```typescript
-import { LlmAgent, CallbackContext } from '@iqai/adk';
+import { LlmAgent, CallbackContext } from "@iqai/adk";
 
 const beforeAgentCallback = async (callbackContext: CallbackContext) => {
   try {
     // Load user preferences
-    const prefsArtifact = await callbackContext.loadArtifact('user:preferences.json');
+    const prefsArtifact = await callbackContext.loadArtifact(
+      "user:preferences.json",
+    );
 
     if (prefsArtifact) {
       const preferences = JSON.parse(
-        Buffer.from(prefsArtifact.inlineData.data, 'base64').toString()
+        Buffer.from(prefsArtifact.inlineData.data, "base64").toString(),
       );
 
       // Apply user preferences to session state
-      callbackContext.state.set('user_preferences', preferences);
-      callbackContext.state.set('theme', preferences.theme || 'light');
+      callbackContext.state.set("user_preferences", preferences);
+      callbackContext.state.set("theme", preferences.theme || "light");
     }
 
     // Load conversation history if available
-    const historyArtifact = await callbackContext.loadArtifact('conversation_history.json');
+    const historyArtifact = await callbackContext.loadArtifact(
+      "conversation_history.json",
+    );
 
     if (historyArtifact) {
       const history = JSON.parse(
-        Buffer.from(historyArtifact.inlineData.data, 'base64').toString()
+        Buffer.from(historyArtifact.inlineData.data, "base64").toString(),
       );
 
-      callbackContext.state.set('conversation_count', history.length);
+      callbackContext.state.set("conversation_count", history.length);
     }
-
   } catch (error) {
-    console.warn('Failed to load user data:', error);
+    console.warn("Failed to load user data:", error);
   }
 
   return undefined;
@@ -76,31 +93,37 @@ const beforeAgentCallback = async (callbackContext: CallbackContext) => {
 const afterAgentCallback = async (callbackContext: CallbackContext) => {
   try {
     // Save updated conversation history
-    const currentHistory = callbackContext.state.get('conversation_history') || [];
+    const currentHistory =
+      callbackContext.state.get("conversation_history") || [];
     const historyArtifact = {
       inlineData: {
-        data: Buffer.from(JSON.stringify(currentHistory)).toString('base64'),
-        mimeType: 'application/json'
-      }
+        data: Buffer.from(JSON.stringify(currentHistory)).toString("base64"),
+        mimeType: "application/json",
+      },
     };
 
-    await callbackContext.saveArtifact('conversation_history.json', historyArtifact);
+    await callbackContext.saveArtifact(
+      "conversation_history.json",
+      historyArtifact,
+    );
 
     // Save session summary
-    const summary = callbackContext.state.get('session_summary');
+    const summary = callbackContext.state.get("session_summary");
     if (summary) {
       const summaryArtifact = {
         inlineData: {
-          data: Buffer.from(JSON.stringify(summary)).toString('base64'),
-          mimeType: 'application/json'
-        }
+          data: Buffer.from(JSON.stringify(summary)).toString("base64"),
+          mimeType: "application/json",
+        },
       };
 
-      await callbackContext.saveArtifact('session_summary.json', summaryArtifact);
+      await callbackContext.saveArtifact(
+        "session_summary.json",
+        summaryArtifact,
+      );
     }
-
   } catch (error) {
-    console.error('Failed to save session data:', error);
+    console.error("Failed to save session data:", error);
   }
 
   return undefined;
@@ -110,58 +133,72 @@ const afterAgentCallback = async (callbackContext: CallbackContext) => {
 ### Model Callback Integration
 
 ```typescript
-const beforeModelCallback = async ({ callbackContext }: { callbackContext: CallbackContext }) => {
+const beforeModelCallback = async ({
+  callbackContext,
+}: {
+  callbackContext: CallbackContext;
+}) => {
   try {
     // Load model configuration
-    const configArtifact = await callbackContext.loadArtifact('model_config.json');
+    const configArtifact =
+      await callbackContext.loadArtifact("model_config.json");
 
     if (configArtifact) {
       const config = JSON.parse(
-        Buffer.from(configArtifact.inlineData.data, 'base64').toString()
+        Buffer.from(configArtifact.inlineData.data, "base64").toString(),
       );
 
       // Apply model-specific settings
-      callbackContext.state.set('temperature', config.temperature || 0.7);
-      callbackContext.state.set('max_tokens', config.maxTokens || 1000);
+      callbackContext.state.set("temperature", config.temperature || 0.7);
+      callbackContext.state.set("max_tokens", config.maxTokens || 1000);
     }
 
     // Load context files for the model
-    const contextArtifact = await callbackContext.loadArtifact('context_data.txt');
+    const contextArtifact =
+      await callbackContext.loadArtifact("context_data.txt");
 
     if (contextArtifact) {
-      const contextText = Buffer.from(contextArtifact.inlineData.data, 'base64').toString();
+      const contextText = Buffer.from(
+        contextArtifact.inlineData.data,
+        "base64",
+      ).toString();
 
       // Add context to the request (implementation depends on your setup)
-      callbackContext.state.set('additional_context', contextText);
+      callbackContext.state.set("additional_context", contextText);
     }
-
   } catch (error) {
-    console.warn('Failed to load model configuration:', error);
+    console.warn("Failed to load model configuration:", error);
   }
 
   return undefined;
 };
 
-const afterModelCallback = async ({ callbackContext }: { callbackContext: CallbackContext }) => {
+const afterModelCallback = async ({
+  callbackContext,
+}: {
+  callbackContext: CallbackContext;
+}) => {
   try {
     // Save model response metadata
     const responseMetadata = {
       timestamp: new Date().toISOString(),
-      model: callbackContext.state.get('current_model'),
-      tokens_used: callbackContext.state.get('tokens_used')
+      model: callbackContext.state.get("current_model"),
+      tokens_used: callbackContext.state.get("tokens_used"),
     };
 
     const metadataArtifact = {
       inlineData: {
-        data: Buffer.from(JSON.stringify(responseMetadata)).toString('base64'),
-        mimeType: 'application/json'
-      }
+        data: Buffer.from(JSON.stringify(responseMetadata)).toString("base64"),
+        mimeType: "application/json",
+      },
     };
 
-    await callbackContext.saveArtifact('response_metadata.json', metadataArtifact);
-
+    await callbackContext.saveArtifact(
+      "response_metadata.json",
+      metadataArtifact,
+    );
   } catch (error) {
-    console.error('Failed to save response metadata:', error);
+    console.error("Failed to save response metadata:", error);
   }
 
   return undefined;
@@ -177,16 +214,24 @@ The `ToolContext` extends `CallbackContext` with additional artifact management 
 ```typescript
 class ToolContext extends CallbackContext {
   // Inherited from CallbackContext
-  async loadArtifact(filename: string, version?: number): Promise<Part | undefined>
-  async saveArtifact(filename: string, artifact: Part): Promise<number>
+  async loadArtifact(
+    filename: string,
+    version?: number,
+  ): Promise<Part | undefined>;
+  async saveArtifact(filename: string, artifact: Part): Promise<number>;
 
   // Additional tool-specific methods
-  async listArtifacts(): Promise<string[]>
+  async listArtifacts(): Promise<string[]>;
 }
 ```
 
 <Callout type="info" title="Artifact Deletion">
-The `deleteArtifact` method is not exposed through `ToolContext` for safety reasons. To delete artifacts, access the artifact service directly. See [Best Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion) for cleanup strategies.
+
+The `deleteArtifact` method is not exposed through `ToolContext` for safety
+reasons. To delete artifacts, access the artifact service directly. See [Best
+Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion)
+for cleanup strategies.
+
 </Callout>
 
 ### File Processing Tools
@@ -228,5 +273,8 @@ See Recipes for a minimal SVG/image generation and save workflow.
 [Open recipes](/docs/framework/artifacts/recipes)
 
 <Callout type="info">
-Context integration provides a convenient abstraction over the artifact service, handling session scoping and error management automatically.
+
+Context integration provides a convenient abstraction over the artifact
+service, handling session scoping and error management automatically.
+
 </Callout>

@@ -242,21 +242,17 @@
 ### Patch Changes
 
 - 2da690a: - **Dependency Updates:**
-
   - Upgraded dependencies and devDependencies across multiple packages ensuring compatibility with the latest library versions.
 
   - **Schema Handling:**
-
     - Transitioned schema conversion to use `z.toJSONSchema`, reducing dependencies.
     - Enhanced type safety in the workflow tool's schema handling.
 
   - **Error Reporting and Validation:**
-
     - Improved error messages in `AgentBuilder` for better debugging.
     - Enhanced output validation for LLM.
 
   - **AI SDK and Model Integration:**
-
     - Refined model ID handling in `AiSdkLlm`.
     - Updated field references to align with AI SDK changes.
 
@@ -352,7 +348,6 @@
   This major enhancement improves the ADK CLI server's agent loading capabilities and adds new features to the core framework:
 
   **CLI Server Improvements:**
-
   - **Modular Architecture**: Refactored monolithic server file into organized modules (`server/index.ts`, `server/routes.ts`, `server/services.ts`, `server/types.ts`)
   - **Enhanced Agent Resolution**: New `resolveAgentExport` method supports multiple export patterns:
     - Direct agent exports: `export const agent = new LlmAgent(...)`
@@ -363,13 +358,11 @@
   - **Improved TypeScript Import Handling**: Better project root detection and module resolution for TypeScript files
 
   **Core Framework Enhancements:**
-
   - **New AgentBuilder Method**: Added `withAgent()` method to directly provide existing agent instances with definition locking to prevent accidental configuration overwrites
   - **Two-Tier Tool Deduplication**: Implemented robust deduplication logic to prevent duplicate function declarations that cause errors with LLM providers (especially Google)
   - **Better Type Safety**: Improved type definitions and replaced `any[]` usage with proper typed interfaces
 
   **Testing & Reliability:**
-
   - **Comprehensive Test Coverage**: New `agent-resolution.test.ts` with extensive fixtures testing various agent export patterns
   - **Multiple Test Fixtures**: Added 6 different agent export pattern examples for validation
   - **Edge Case Handling**: Improved error handling and logging throughout the agent loading pipeline

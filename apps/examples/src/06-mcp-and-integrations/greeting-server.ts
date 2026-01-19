@@ -62,8 +62,8 @@ async function main() {
 		}),
 		execute: async (params) => {
 			try {
-				const expression = params.operation.replace(/[^0-9+\-*/\.\s\(\)]/g, "");
-				if (!/^[0-9+\-*/\.\s\(\)]+$/.test(expression)) {
+				const expression = params.operation.replace(/[^0-9+\-*/.\s()]/g, "");
+				if (!/^[0-9+\-*/.\s()]+$/.test(expression)) {
 					return "Invalid operation. Use only numbers and basic operators.";
 				}
 				const result = Function(`"use strict"; return (${expression})`)();

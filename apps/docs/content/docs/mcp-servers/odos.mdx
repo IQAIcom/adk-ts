@@ -3,8 +3,8 @@ title: MCP ODOS
 description: Interact with decentralized exchanges through ODOS aggregation
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-odos`](https://www.npmjs.com/package/@iqai/mcp-odos)
 - **Purpose**: Interact with decentralized exchanges through ODOS aggregation
@@ -24,6 +24,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Verbose">
@@ -46,6 +47,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Claude Desktop">
@@ -64,7 +66,6 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
     ```
   </Tab>
 </Tabs>
-
 
 ## Features
 
@@ -99,7 +100,9 @@ Execute a swap:
 ## Environment Variables
 
 <Callout type="warn" title="Security">
+
 The private key is used for signing transactions. Handle with care.
+
 </Callout>
 
 - `WALLET_PRIVATE_KEY`: Required for executing swaps

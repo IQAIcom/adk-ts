@@ -8,8 +8,10 @@ import { Callout } from "fumadocs-ui/components/callout";
 This guide addresses common issues encountered when working with artifacts in the ADK-TS framework, along with practical solutions to help you resolve them quickly.
 
 <Callout type="info">
-  For general troubleshooting, see the [Troubleshooting
-  Guide](/docs/framework/guides/troubleshooting).
+
+For general troubleshooting, see the [Troubleshooting
+Guide](/docs/framework/guides/troubleshooting).
+
 </Callout>
 
 ## "Artifact service is not initialized"
@@ -17,10 +19,14 @@ This guide addresses common issues encountered when working with artifacts in th
 Ensure your `Runner` is constructed with an `artifactService`.
 
 ```typescript
-import { Runner, InMemoryArtifactService, InMemorySessionService } from '@iqai/adk';
+import {
+  Runner,
+  InMemoryArtifactService,
+  InMemorySessionService,
+} from "@iqai/adk";
 
 const runner = new Runner({
-  appName: 'my_app',
+  appName: "my_app",
   agent,
   sessionService: new InMemorySessionService(),
   artifactService: new InMemoryArtifactService(),
@@ -48,9 +54,7 @@ const runner = new Runner({
 - Handle the nullish result before decoding the data
 
 ```typescript
-const art = await ctx.loadArtifact('maybe_exists.txt');
-if (!art) return { error: 'not found' };
-const text = Buffer.from(art.inlineData.data, 'base64').toString('utf-8');
+const art = await ctx.loadArtifact("maybe_exists.txt");
+if (!art) return { error: "not found" };
+const text = Buffer.from(art.inlineData.data, "base64").toString("utf-8");
 ```
-
-

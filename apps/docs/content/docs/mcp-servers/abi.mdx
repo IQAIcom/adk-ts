@@ -3,12 +3,11 @@ title: MCP ABI
 description: Smart contract ABI interactions for Ethereum-compatible blockchains
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-abi`](https://www.npmjs.com/package/@iqai/mcp-abi)
 - **Purpose**: Smart contract ABI interactions for Ethereum-compatible blockchains
-
 
 ## Usage with ADK TypeScript
 
@@ -30,6 +29,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Verbose">
@@ -57,6 +57,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Claude Desktop">
@@ -127,12 +128,14 @@ The server automatically creates tools for each function in the provided ABI:
 ## Response Examples
 
 **Read Function Response**:
+
 ```
 ✅ Successfully called balanceOf
 Result: "1000000000000000000"
 ```
 
 **Write Function Response**:
+
 ```
 ✅ Successfully executed transfer
 Transaction hash: 0x123abc...
@@ -142,7 +145,10 @@ You can view this transaction on the blockchain explorer.
 ## Error Handling
 
 <Callout type="warn" title="Common Errors">
-The server provides comprehensive error handling for various blockchain interaction scenarios.
+
+The server provides comprehensive error handling for various blockchain
+interaction scenarios.
+
 </Callout>
 
 - 🚨 **Invalid function arguments** - "❌ Error parsing arguments: [specific error]"

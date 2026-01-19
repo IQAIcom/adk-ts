@@ -3,8 +3,8 @@ title: MCP Upbit
 description: An MCP server for interacting with the Upbit cryptocurrency exchange
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-upbit`](https://www.npmjs.com/package/@iqai/mcp-upbit)
 - **Purpose**: Interacting with the Upbit cryptocurrency exchange for market data and trading operations.
@@ -26,6 +26,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Verbose">
@@ -50,6 +51,7 @@ import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     const tools = await toolset.getTools()
     ```
+
   </Tab>
 
   <Tab value="Claude Desktop">
@@ -135,7 +137,9 @@ Cancel an existing order:
 ## Environment Variables
 
 <Callout type="warn" title="Security">
+
 Private keys are used for trading operations. Handle with care.
+
 </Callout>
 
 - `UPBIT_ACCESS_KEY`: Required for private trading operations
@@ -170,7 +174,9 @@ Actions return **structured responses** including:
 ## Error Handling
 
 <Callout type="warn" title="Error Scenarios">
+
 The server handles various error scenarios gracefully.
+
 </Callout>
 
 🚨 **Missing API credentials**

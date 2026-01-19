@@ -3,8 +3,8 @@ title: Event Streaming
 description: Real-time event processing and streaming patterns in ADK
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 ADK's event streaming enables real-time interaction with agents, allowing your applications to process and display responses as they're generated rather than waiting for complete responses.
 
@@ -18,9 +18,9 @@ Key properties that control streaming behavior:
 
 ```typescript
 interface Event {
-  partial?: boolean;      // True for incomplete streaming chunks
+  partial?: boolean; // True for incomplete streaming chunks
   turnComplete?: boolean; // True when the agent's turn is finished
-  content?: any;          // Contains the partial or complete content
+  content?: any; // Contains the partial or complete content
   // ... other properties
 }
 ```
@@ -33,7 +33,7 @@ Handle streaming text responses:
 
 ```typescript
 async function handleStreamingResponse(runner, query, session) {
-  let accumulatedText = '';
+  let accumulatedText = "";
 
   for await (const event of runner.runAsync(query, session)) {
     if (event.content?.parts?.[0]?.text) {
@@ -46,7 +46,7 @@ async function handleStreamingResponse(runner, query, session) {
         accumulatedText += event.content.parts[0].text;
         if (event.isFinalResponse()) {
           displayFinalText(accumulatedText);
-          accumulatedText = ''; // Reset for next response
+          accumulatedText = ""; // Reset for next response
         }
       }
     }
@@ -62,12 +62,12 @@ async function handleStreamingResponse(runner, query, session) {
 import { useState, useEffect } from 'react';
 
 function useEventStream(runner, query, session) {
-  const [streamingText, setStreamingText] = useState('');
-  const [events, setEvents] = useState<Event[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
+const [streamingText, setStreamingText] = useState('');
+const [events, setEvents] = useState<Event[]>([]);
+const [isStreaming, setIsStreaming] = useState(false);
 
-  useEffect(() => {
-    let currentText = '';
+useEffect(() => {
+let currentText = '';
 
     async function processStream() {
       setIsStreaming(true);
@@ -93,11 +93,13 @@ function useEventStream(runner, query, session) {
     }
 
     processStream();
-  }, [query]);
 
-  return { streamingText, events, isStreaming };
+}, [query]);
+
+return { streamingText, events, isStreaming };
 }
-```
+
+````
 </Tab>
 
 <Tab value="Vanilla JS">
@@ -148,7 +150,8 @@ class StreamingRenderer {
     }
   }
 }
-```
+````
+
 </Tab>
 
 <Tab value="Vue Composition">
@@ -160,9 +163,9 @@ export function useEventStream(runner, query, session) {
   const events = ref<Event[]>([]);
   const isStreaming = ref(false);
 
-  const processStream = async () => {
-    let currentText = '';
-    isStreaming.value = true;
+const processStream = async () => {
+let currentText = '';
+isStreaming.value = true;
 
     try {
       for await (const event of runner.runAsync(query, session)) {
@@ -182,13 +185,15 @@ export function useEventStream(runner, query, session) {
     } finally {
       isStreaming.value = false;
     }
-  };
 
-  onMounted(processStream);
+};
 
-  return { streamingText, events, isStreaming };
+onMounted(processStream);
+
+return { streamingText, events, isStreaming };
 }
-```
+
+````
 </Tab>
 </Tabs>
 
@@ -245,7 +250,7 @@ class MultiStreamManager {
     this.streams.delete(streamId);
   }
 }
-```
+````
 
 ### Buffered Streaming
 
@@ -281,7 +286,7 @@ class BufferedStreamRenderer {
 
   private displayChunk(chunk: string) {
     // Implement smooth character-by-character display
-    const element = document.getElementById('output');
+    const element = document.getElementById("output");
     if (element) {
       element.textContent += chunk;
     }
@@ -300,10 +305,10 @@ class PriorityEventQueue {
   private queues = {
     high: [] as Event[],
     normal: [] as Event[],
-    low: [] as Event[]
+    low: [] as Event[],
   };
 
-  enqueue(event: Event, priority: 'high' | 'normal' | 'low' = 'normal') {
+  enqueue(event: Event, priority: "high" | "normal" | "low" = "normal") {
     this.queues[priority].push(event);
     this.processNext();
   }
@@ -350,7 +355,7 @@ Show real-time processing status:
 ```typescript
 class LiveStatusManager {
   private statusElement: HTMLElement;
-  private currentStatus = 'idle';
+  private currentStatus = "idle";
 
   constructor(elementId: string) {
     this.statusElement = document.getElementById(elementId)!;
@@ -358,14 +363,14 @@ class LiveStatusManager {
 
   updateFromEvent(event: Event) {
     if (event.partial) {
-      this.setStatus('streaming', 'Receiving response...');
+      this.setStatus("streaming", "Receiving response...");
     } else if (event.getFunctionCalls().length > 0) {
-      this.setStatus('processing', 'Using tools...');
+      this.setStatus("processing", "Using tools...");
     } else if (event.getFunctionResponses().length > 0) {
-      this.setStatus('processing', 'Processing results...');
+      this.setStatus("processing", "Processing results...");
     } else if (event.isFinalResponse()) {
-      this.setStatus('complete', 'Response complete');
-      setTimeout(() => this.setStatus('idle', 'Ready'), 2000);
+      this.setStatus("complete", "Response complete");
+      setTimeout(() => this.setStatus("idle", "Ready"), 2000);
     }
   }
 
@@ -392,20 +397,21 @@ class TypingIndicator {
 
   show(agentName: string) {
     this.element.textContent = `${agentName} is thinking...`;
-    this.element.style.display = 'block';
+    this.element.style.display = "block";
     this.startAnimation();
   }
 
   hide() {
-    this.element.style.display = 'none';
+    this.element.style.display = "none";
     this.stopAnimation();
   }
 
   private startAnimation() {
-    let dots = '';
+    let dots = "";
     this.timer = setInterval(() => {
-      dots = dots.length >= 3 ? '' : dots + '.';
-      this.element.textContent = this.element.textContent?.replace(/\.+$/, '') + dots;
+      dots = dots.length >= 3 ? "" : dots + ".";
+      this.element.textContent =
+        this.element.textContent?.replace(/\.+$/, "") + dots;
     }, 500);
   }
 
@@ -427,7 +433,7 @@ Reduce UI update frequency:
 ```typescript
 function debounce<T extends (...args: any[]) => void>(
   func: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
   let timeoutId: NodeJS.Timeout;
 
@@ -450,7 +456,7 @@ class OptimizedStreamRenderer {
 
   private updateUI(text: string) {
     // Expensive UI update operation
-    document.getElementById('output')!.textContent = text;
+    document.getElementById("output")!.textContent = text;
   }
 }
 ```
@@ -507,7 +513,7 @@ async function robustStreamProcessing(runner, query, session) {
       if (retries < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 1000 * retries));
       } else {
-        console.error('Max retries exceeded, stream failed');
+        console.error("Max retries exceeded, stream failed");
         throw error;
       }
     }
@@ -516,7 +522,10 @@ async function robustStreamProcessing(runner, query, session) {
 ```
 
 <Callout type="warn">
-When implementing streaming, always handle network interruptions and provide fallback mechanisms for critical functionality.
+
+When implementing streaming, always handle network interruptions and provide
+fallback mechanisms for critical functionality.
+
 </Callout>
 
 Event streaming enables responsive, real-time agent interactions that significantly improve user experience in ADK applications.
