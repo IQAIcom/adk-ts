@@ -470,10 +470,6 @@ export class TelemetryService {
 	 * Get traces for a specific session (Debug/Visualization)
 	 */
 	getTraces(): ReadableSpanInternal[] {
-		console.log(
-			"setupService.getInMemoryExporter().getFinishedSpans()",
-			setupService.getInMemoryExporter().getFinishedSpans(),
-		);
 		return setupService.getInMemoryExporter().getFinishedSpans();
 	}
 

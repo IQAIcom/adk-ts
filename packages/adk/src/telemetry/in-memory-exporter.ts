@@ -3,25 +3,27 @@ import type { ReadableSpan, SpanExporter } from "@opentelemetry/sdk-trace-base";
 import { ADK_ATTRS } from "./constants";
 
 export class CustomInMemorySpanExporter implements SpanExporter {
-	private spans: ReadableSpan[] = [];
+	private spansByTraceId: Map<string, ReadableSpan[]> = new Map();
 	private traceDict: Map<string, string[]> = new Map();
 
-	/**
-	 * Export spans and build session-to-trace mapping
-	 */
 	export(
 		spans: ReadableSpan[],
 		resultCallback: (result: ExportResult) => void,
 	): void {
 		for (const span of spans) {
 			const traceId = span.spanContext().traceId;
+			const existingSpans = this.spansByTraceId.get(traceId);
+			if (existingSpans) {
+				existingSpans.push(span);
+			} else {
+				this.spansByTraceId.set(traceId, [span]);
+			}
 
 			const sessionId = span.attributes[ADK_ATTRS.SESSION_ID] as
 				| string
 				| undefined;
 
 			if (sessionId) {
-				// Add trace ID to session's trace list
 				const existingTraces = this.traceDict.get(sessionId);
 				if (existingTraces) {
 					if (!existingTraces.includes(traceId)) {
@@ -33,10 +35,6 @@ export class CustomInMemorySpanExporter implements SpanExporter {
 			}
 		}
 
-		// Store all spans
-		this.spans.push(...spans);
-
-		// Return success
 		resultCallback({ code: ExportResultCode.SUCCESS });
 	}
 
@@ -44,30 +42,35 @@ export class CustomInMemorySpanExporter implements SpanExporter {
 	 * Get all finished spans
 	 */
 	getFinishedSpans(): ReadableSpan[] {
-		return this.spans;
+		const allSpans: ReadableSpan[] = [];
+		for (const spans of this.spansByTraceId.values()) {
+			allSpans.push(...spans);
+		}
+		return allSpans;
 	}
 
 	/**
-	 * Get spans for a specific session (efficient lookup using trace dict)
+	 * Get spans for a specific session (efficient)
 	 */
 	getFinishedSpansForSession(sessionId: string): ReadableSpan[] {
 		const traceIds = this.traceDict.get(sessionId);
-
 		if (!traceIds || traceIds.length === 0) {
 			return [];
 		}
 
-		// Convert to Set for O(1) lookup
-		const traceIdSet = new Set(traceIds);
+		const result: ReadableSpan[] = [];
+		for (const traceId of traceIds) {
+			const spans = this.spansByTraceId.get(traceId);
+			if (spans) {
+				result.push(...spans);
+			}
+		}
 
-		// Filter spans by trace IDs associated with this session
-		return this.spans.filter((span) =>
-			traceIdSet.has(span.spanContext().traceId),
-		);
+		return result;
 	}
 
 	/**
-	 * Get all session IDs that have been tracked
+	 * Get all session IDs
 	 */
 	getSessionIds(): string[] {
 		return Array.from(this.traceDict.keys());
@@ -81,25 +84,24 @@ export class CustomInMemorySpanExporter implements SpanExporter {
 	}
 
 	/**
-	 * Force flush (no-op for in-memory exporter)
+	 * Force flush (no-op)
 	 */
 	async forceFlush(): Promise<void> {
-		return Promise.resolve();
+		return;
 	}
 
 	/**
-	 * Shutdown the exporter
+	 * Shutdown exporter
 	 */
 	async shutdown(): Promise<void> {
 		this.clear();
-		return Promise.resolve();
 	}
 
 	/**
-	 * Clear all stored spans and trace mappings
+	 * Clear all stored data
 	 */
 	clear(): void {
-		this.spans = [];
+		this.spansByTraceId.clear();
 		this.traceDict.clear();
 	}
 
@@ -115,12 +117,20 @@ export class CustomInMemorySpanExporter implements SpanExporter {
 			spanCount: number;
 		}[];
 	} {
+		let totalSpans = 0;
+		for (const spans of this.spansByTraceId.values()) {
+			totalSpans += spans.length;
+		}
+
 		const sessionStats = Array.from(this.traceDict.entries()).map(
 			([sessionId, traceIds]) => {
-				const traceIdSet = new Set(traceIds);
-				const spanCount = this.spans.filter((span) =>
-					traceIdSet.has(span.spanContext().traceId),
-				).length;
+				let spanCount = 0;
+				for (const traceId of traceIds) {
+					const spans = this.spansByTraceId.get(traceId);
+					if (spans) {
+						spanCount += spans.length;
+					}
+				}
 
 				return {
 					sessionId,
@@ -131,7 +141,7 @@ export class CustomInMemorySpanExporter implements SpanExporter {
 		);
 
 		return {
-			totalSpans: this.spans.length,
+			totalSpans,
 			totalSessions: this.traceDict.size,
 			sessionStats,
 		};
