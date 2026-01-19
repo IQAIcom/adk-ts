@@ -47,7 +47,7 @@ const navigationItems: { id: PanelId; label: string; icon: typeof Database }[] =
 		{ id: PanelIdSchema.enum.events, label: "Events", icon: Activity },
 		{ id: PanelIdSchema.enum.state, label: "State", icon: Archive },
 		{ id: PanelIdSchema.enum.graph, label: "Graph", icon: Share2 },
-		{ id: "traces" as PanelId, label: "Traces", icon: LineChart },
+		{ id: PanelIdSchema.enum.traces, label: "Traces", icon: LineChart },
 	];
 
 export function Sidebar({
