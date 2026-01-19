@@ -18,9 +18,9 @@ The following OpenTelemetry packages are included:
 ```json
 {
   "@opentelemetry/api": "^1.9.0",
-  "@opentelemetry/sdk-metrics": "^2.1.0",
-  "@opentelemetry/exporter-metrics-otlp-http": "^0.205.0",
-  "@opentelemetry/exporter-trace-otlp-http": "^0.205.0"
+  "@opentelemetry/sdk-metrics": "^2.2.0",
+  "@opentelemetry/exporter-metrics-otlp-http": "^0.208.0",
+  "@opentelemetry/exporter-trace-otlp-http": "^0.208.0"
 }
 ```
 
@@ -42,6 +42,7 @@ Initialize the telemetry service before any agent operations:
       enableAutoInstrumentation: true,
     });
     ```
+
   </Tab>
 
   <Tab value="With Options">
@@ -52,23 +53,23 @@ Initialize the telemetry service before any agent operations:
       // Required
       appName: 'my-agent-app',
       otlpEndpoint: 'http://localhost:4318/v1/traces',
-      
+
       // Optional
       appVersion: '1.0.0',
       environment: 'development',
-      
+
       // Feature flags
       enableTracing: true,
       enableMetrics: true,
       enableAutoInstrumentation: true,
-      
+
       // Privacy controls
       captureMessageContent: true, // Set false for production
-      
+
       // Performance tuning
       samplingRatio: 1.0, // 1.0 = 100% sampling
       metricExportIntervalMs: 60000, // 1 minute
-      
+
       // Custom resource attributes
       resourceAttributes: {
         'deployment.name': 'local',
@@ -76,6 +77,7 @@ Initialize the telemetry service before any agent operations:
       },
     });
     ```
+
   </Tab>
 
   <Tab value="Environment Variables">
@@ -99,11 +101,13 @@ Initialize the telemetry service before any agent operations:
     export NODE_ENV=development
     export ADK_CAPTURE_MESSAGE_CONTENT=true
     ```
+
   </Tab>
 </Tabs>
 
 <Callout type="warn" title="Initialize Early">
-  Always initialize telemetry before any agent operations to ensure all traces and metrics are captured.
+  Always initialize telemetry before any agent operations to ensure all traces
+  and metrics are captured.
 </Callout>
 
 ## Local Development Setup
@@ -169,33 +173,31 @@ docker run -d \
 Here's a complete example that initializes telemetry and runs an agent:
 
 ```typescript
-import { telemetryService, AgentBuilder } from '@iqai/adk';
+import { telemetryService, AgentBuilder } from "@iqai/adk";
 
 async function main() {
   // Initialize telemetry first
   await telemetryService.initialize({
-    appName: 'example-agent',
-    appVersion: '1.0.0',
-    otlpEndpoint: 'http://localhost:4318/v1/traces',
+    appName: "example-agent",
+    appVersion: "1.0.0",
+    otlpEndpoint: "http://localhost:4318/v1/traces",
     enableMetrics: true,
     enableTracing: true,
   });
 
   // Build and run agent
-  const agent = AgentBuilder
-    .withModel('gemini-2.5-flash')
-    .build();
+  const agent = AgentBuilder.withModel("gemini-2.5-flash").build();
 
-  const response = await agent.ask('What is the capital of France?');
+  const response = await agent.ask("What is the capital of France?");
   console.log(response);
 
   // Graceful shutdown
-  process.on('SIGTERM', async () => {
+  process.on("SIGTERM", async () => {
     await telemetryService.shutdown(5000);
     process.exit(0);
   });
 
-  process.on('SIGINT', async () => {
+  process.on("SIGINT", async () => {
     await telemetryService.shutdown(5000);
     process.exit(0);
   });
@@ -207,7 +209,8 @@ main().catch(console.error);
 ## Viewing Traces
 
 <Callout type="info" title="Prerequisites">
-  Make sure Jaeger is running before viewing traces. If you haven't set it up yet, see the "Running with Jaeger" section above for setup instructions.
+  Make sure Jaeger is running before viewing traces. If you haven't set it up
+  yet, see the "Running with Jaeger" section above for setup instructions.
 </Callout>
 
 Once your application is running and sending traces:
@@ -218,6 +221,7 @@ Once your application is running and sending traces:
 4. **Explore**: Click on any trace to see the detailed execution flow
 
 You'll see:
+
 - Agent invocation spans
 - Tool execution spans
 - LLM call spans with token usage
