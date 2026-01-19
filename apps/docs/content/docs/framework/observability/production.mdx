@@ -3,6 +3,7 @@ title: Production Configuration
 description: Privacy controls, performance tuning, security best practices, and production deployment
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
@@ -302,6 +303,20 @@ await telemetryService.initialize({
 
 ## Next Steps
 
-- Integrate with [Observability Platforms](/docs/framework/observability/integrations)
-- Learn about [Distributed Tracing](/docs/framework/observability/tracing)
-- Explore [Metrics](/docs/framework/observability/metrics) for monitoring
+<Cards>
+  <Card
+    title="🔌 Platform Integrations"
+    description="Integrate with observability platforms"
+    href="/docs/framework/observability/integrations"
+  />
+  <Card
+    title="🔍 Distributed Tracing"
+    description="Learn about distributed tracing"
+    href="/docs/framework/observability/tracing"
+  />
+  <Card
+    title="📊 Metrics"
+    description="Explore metrics for monitoring"
+    href="/docs/framework/observability/metrics"
+  />
+</Cards>

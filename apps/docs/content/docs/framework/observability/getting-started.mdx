@@ -3,6 +3,7 @@ title: Getting Started with Observability
 description: Initialize telemetry, configure basic setup, and run with local development tools
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
@@ -45,9 +46,9 @@ Initialize the telemetry service before any agent operations:
 
   <Tab value="With Options">
     ```typescript
-    import { telemetryService, TelemetryConfig } from '@iqai/adk';
+    import { telemetryService } from '@iqai/adk';
 
-    const config: TelemetryConfig = {
+    await telemetryService.initialize({
       // Required
       appName: 'my-agent-app',
       otlpEndpoint: 'http://localhost:4318/v1/traces',
@@ -73,9 +74,7 @@ Initialize the telemetry service before any agent operations:
         'deployment.name': 'local',
         'team': 'platform',
       },
-    };
-
-    await telemetryService.initialize(config);
+    });
     ```
   </Tab>
 
@@ -207,6 +206,10 @@ main().catch(console.error);
 
 ## Viewing Traces
 
+<Callout type="info" title="Prerequisites">
+  Make sure Jaeger is running before viewing traces. If you haven't set it up yet, see the "Running with Jaeger" section above for setup instructions.
+</Callout>
+
 Once your application is running and sending traces:
 
 1. **Open Jaeger UI**: Navigate to `http://localhost:16686`
@@ -242,7 +245,25 @@ You'll see:
 
 ## Next Steps
 
-- Learn about [Distributed Tracing](/docs/framework/observability/tracing) to understand what gets traced
-- Explore [Metrics](/docs/framework/observability/metrics) for performance monitoring
-- Configure for [Production](/docs/framework/observability/production) with privacy controls
-- Integrate with [Observability Platforms](/docs/framework/observability/integrations)
+<Cards>
+  <Card
+    title="🔍 Distributed Tracing"
+    description="Understand what gets traced and how to view traces"
+    href="/docs/framework/observability/tracing"
+  />
+  <Card
+    title="📊 Metrics"
+    description="Explore metrics for performance monitoring"
+    href="/docs/framework/observability/metrics"
+  />
+  <Card
+    title="🔒 Production Configuration"
+    description="Configure privacy controls and production settings"
+    href="/docs/framework/observability/production"
+  />
+  <Card
+    title="🔌 Platform Integrations"
+    description="Integrate with observability platforms"
+    href="/docs/framework/observability/integrations"
+  />
+</Cards>

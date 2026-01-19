@@ -3,6 +3,7 @@ title: Platform Integrations
 description: Integrate with observability platforms including Jaeger, Grafana, Datadog, New Relic, and Honeycomb
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
@@ -16,7 +17,7 @@ All integrations use the standard OTLP HTTP endpoint. ADK-TS sends traces and me
 
 Jaeger is an open-source distributed tracing system, perfect for local development and production deployments.
 
-### Local Development
+### Docker Setup
 
 ```bash
 # Start Jaeger all-in-one
@@ -29,6 +30,8 @@ docker run -d \
 
 ### Configuration
 
+<Tabs items={['Local Development', 'Production']}>
+  <Tab value="Local Development">
 ```typescript
 import { telemetryService } from '@iqai/adk';
 
@@ -39,10 +42,30 @@ await telemetryService.initialize({
   enableTracing: true,
 });
 ```
+  </Tab>
+  <Tab value="Production">
+```typescript
+import { telemetryService } from '@iqai/adk';
+
+await telemetryService.initialize({
+  appName: 'my-agent-app',
+  otlpEndpoint: 'https://jaeger.your-domain.com:4318/v1/traces',
+  enableMetrics: true,
+  enableTracing: true,
+  environment: 'production',
+});
+```
+  </Tab>
+</Tabs>
+
+<Callout type="info" title="Production Deployment">
+  For production, deploy Jaeger using Docker Compose or Kubernetes with proper persistence and scaling. Replace `localhost` with your Jaeger instance URL. See the [Production Configuration](/docs/framework/observability/production) guide for more details.
+</Callout>
 
 ### Viewing Traces
 
-Open `http://localhost:16686` in your browser to view traces in the Jaeger UI.
+- **Local**: Open `http://localhost:16686` in your browser
+- **Production**: Access your Jaeger UI at your configured domain
 
 ## Grafana + Tempo
 
@@ -140,9 +163,11 @@ The ADK telemetry service automatically appends `/v1/traces` and `/v1/metrics` t
 
 ### Environment Variables
 
-```bash
-export DD_API_KEY=your-datadog-api-key
-export DD_SITE=datadoghq.com  # or datadoghq.eu for EU
+Create a `.env` file in your project root:
+
+```env
+DD_API_KEY=your-datadog-api-key
+DD_SITE=datadoghq.com  # or datadoghq.eu for EU
 ```
 
 ### Datadog Site Configuration
@@ -184,8 +209,10 @@ await telemetryService.initialize({
 
 ### Environment Variables
 
-```bash
-export NEW_RELIC_LICENSE_KEY=your-license-key
+Create a `.env` file in your project root:
+
+```env
+NEW_RELIC_LICENSE_KEY=your-license-key
 ```
 
 ### Features
@@ -216,9 +243,11 @@ await telemetryService.initialize({
 
 ### Environment Variables
 
-```bash
-export HONEYCOMB_API_KEY=your-api-key
-export HONEYCOMB_DATASET=my-dataset
+Create a `.env` file in your project root:
+
+```env
+HONEYCOMB_API_KEY=your-api-key
+HONEYCOMB_DATASET=my-dataset
 ```
 
 ### Features
@@ -309,20 +338,6 @@ await telemetryService.initialize({
 });
 ```
 
-## Platform Comparison
-
-| Platform | OTLP Support | Metrics | Traces | Logs | Cost |
-|----------|--------------|---------|--------|------|------|
-| Jaeger | ✅ | ❌ | ✅ | ❌ | Free (self-hosted) |
-| Grafana + Tempo | ✅ | ✅ | ✅ | ✅ | Free (self-hosted) |
-| Datadog | ✅ | ✅ | ✅ | ✅ | Paid |
-| New Relic | ✅ | ✅ | ✅ | ✅ | Paid |
-| Honeycomb | ✅ | ✅ | ✅ | ✅ | Paid |
-
-<Callout type="info">
-**Note on Jaeger**: While Jaeger doesn't natively support metrics in its UI, the Jaeger collector can export metrics to other systems like Prometheus for visualization and monitoring.
-</Callout>
-
 ## Best Practices
 
 1. **Use environment variables** - Never hardcode API keys or endpoints
@@ -355,6 +370,20 @@ await telemetryService.initialize({
 
 ## Next Steps
 
-- Configure [Production Settings](/docs/framework/observability/production) for your platform
-- Learn about [Distributed Tracing](/docs/framework/observability/tracing)
-- Explore [Metrics](/docs/framework/observability/metrics) for monitoring
+<Cards>
+  <Card
+    title="🔒 Production Configuration"
+    description="Configure production settings for your platform"
+    href="/docs/framework/observability/production"
+  />
+  <Card
+    title="🔍 Distributed Tracing"
+    description="Learn about distributed tracing"
+    href="/docs/framework/observability/tracing"
+  />
+  <Card
+    title="📊 Metrics"
+    description="Explore metrics for monitoring"
+    href="/docs/framework/observability/metrics"
+  />
+</Cards>

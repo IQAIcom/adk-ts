@@ -3,6 +3,7 @@ title: Metrics
 description: Available metrics, recording custom metrics, and monitoring agent performance
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
 ADK-TS collects comprehensive metrics for monitoring agent performance, tool usage, LLM interactions, and error rates. All metrics follow OpenTelemetry standards and are exported via OTLP.
@@ -46,6 +47,21 @@ All metrics include labels for filtering and aggregation:
 - **`status`** - Operation status (`success`, `error`)
 - **`error_type`** - Type of error (for error metrics)
 - **`context`** - Error context (for error metrics)
+
+## Metric Dimensions
+
+When recording metrics, you can include additional dimensions:
+
+```typescript
+telemetryService.recordAgentInvocation({
+  agentName: 'my-agent',
+  environment: 'production',
+  status: 'success',
+  // Additional dimensions can be added via resource attributes
+});
+```
+
+Resource attributes are automatically included as metric labels, allowing you to filter and aggregate by deployment, team, or any custom attribute.
 
 ## Recording Custom Metrics
 
@@ -103,13 +119,20 @@ await telemetryService.initialize({
 
 ## Viewing Metrics
 
+ADK-TS sends metrics via OTLP to any compatible observability backend. You'll need to set up an external metrics visualization tool separately. Popular options include Grafana (with Tempo or Prometheus), Datadog, New Relic, and Honeycomb.
+
+<Callout type="info" title="No Built-in Viewer">
+  ADK-TS does not include a built-in metrics viewer. You need to set up an external observability platform to view metrics. See the [Platform Integrations](/docs/framework/observability/integrations) guide for setup instructions.
+</Callout>
+
 ### Grafana
 
-Grafana can visualize metrics from various backends:
+Grafana is a popular open-source visualization tool that can display metrics from various backends:
 
-1. **Configure OTLP receiver** in your observability backend
-2. **Create dashboards** with queries for ADK metrics
-3. **Set up alerts** based on metric thresholds
+1. **Set up Grafana**: See the [Platform Integrations](/docs/framework/observability/integrations#grafana--tempo) guide for Docker setup instructions
+2. **Configure OTLP receiver** in your observability backend
+3. **Create dashboards** with queries for ADK metrics
+4. **Set up alerts** based on metric thresholds
 
 Example Grafana queries:
 - `rate(adk_agent_invocations_total[5m])` - Agent invocation rate
@@ -118,7 +141,7 @@ Example Grafana queries:
 
 ### Prometheus
 
-If using Prometheus, configure the OpenTelemetry Collector to export metrics in Prometheus format:
+Prometheus is a metrics database that can be used with Grafana for visualization. If using Prometheus, configure the OpenTelemetry Collector to export metrics in Prometheus format:
 
 ```yaml
 # otel-collector-config.yaml
@@ -168,23 +191,22 @@ Monitor resource consumption:
 4. **Regular review** - Review metrics regularly to identify trends
 5. **Correlate with traces** - Use trace IDs to correlate metrics with specific operations
 
-## Metric Dimensions
-
-When recording metrics, you can include additional dimensions:
-
-```typescript
-telemetryService.recordAgentInvocation({
-  agentName: 'my-agent',
-  environment: 'production',
-  status: 'success',
-  // Additional dimensions can be added via resource attributes
-});
-```
-
-Resource attributes are automatically included as metric labels, allowing you to filter and aggregate by deployment, team, or any custom attribute.
-
 ## Next Steps
 
-- Configure [Production Settings](/docs/framework/observability/production) for optimal metric collection
-- Integrate with [Observability Platforms](/docs/framework/observability/integrations) to visualize metrics
-- Learn about [Distributed Tracing](/docs/framework/observability/tracing) to correlate metrics with traces
+<Cards>
+  <Card
+    title="🔒 Production Configuration"
+    description="Configure optimal metric collection for production"
+    href="/docs/framework/observability/production"
+  />
+  <Card
+    title="🔌 Platform Integrations"
+    description="Integrate with observability platforms to visualize metrics"
+    href="/docs/framework/observability/integrations"
+  />
+  <Card
+    title="🔍 Distributed Tracing"
+    description="Learn how to correlate metrics with traces"
+    href="/docs/framework/observability/tracing"
+  />
+</Cards>

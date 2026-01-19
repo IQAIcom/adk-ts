@@ -3,6 +3,7 @@ title: Distributed Tracing
 description: Understand what gets traced, view traces, and use custom spans for your operations
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
 Distributed tracing in ADK-TS provides complete visibility into agent execution, tool usage, and LLM interactions. Every operation is automatically traced with rich context and metadata.
@@ -130,12 +131,21 @@ This hierarchy shows:
 
 ## Viewing Traces
 
-### Jaeger UI
+ADK-TS sends traces via OTLP to any compatible observability backend. You'll need to set up a trace viewer separately. Popular options include Jaeger (for local development), Grafana, Datadog, New Relic, and Honeycomb.
 
-1. **Open Jaeger**: Navigate to `http://localhost:16686`
-2. **Select Service**: Choose your service name from the dropdown
-3. **Find Traces**: Click "Find Traces" to see all traces
-4. **Explore Details**: Click on any trace to see:
+<Callout type="info" title="No Built-in Viewer">
+  ADK-TS does not include a built-in trace viewer. You need to set up an external observability platform to view traces. See the [Platform Integrations](/docs/framework/observability/integrations) guide for setup instructions.
+</Callout>
+
+### Using Jaeger (Local Development)
+
+Jaeger is a popular open-source option for local development:
+
+1. **Set up Jaeger**: See the [Platform Integrations](/docs/framework/observability/integrations#jaeger) guide for Docker setup instructions
+2. **Open Jaeger UI**: Navigate to `http://localhost:16686`
+3. **Select Service**: Choose your service name from the dropdown
+4. **Find Traces**: Click "Find Traces" to see all traces
+5. **Explore Details**: Click on any trace to see:
    - Complete span hierarchy
    - Attributes and metadata
    - Timing information
@@ -305,6 +315,20 @@ These appear as child spans in your traces, providing complete visibility into e
 
 ## Next Steps
 
-- Learn about [Metrics](/docs/framework/observability/metrics) for performance monitoring
-- Configure [Production Settings](/docs/framework/observability/production) for optimal performance
-- Integrate with [Observability Platforms](/docs/framework/observability/integrations)
+<Cards>
+  <Card
+    title="📊 Metrics"
+    description="Learn about metrics for performance monitoring"
+    href="/docs/framework/observability/metrics"
+  />
+  <Card
+    title="🔒 Production Configuration"
+    description="Configure optimal performance settings"
+    href="/docs/framework/observability/production"
+  />
+  <Card
+    title="🔌 Platform Integrations"
+    description="Integrate with observability platforms"
+    href="/docs/framework/observability/integrations"
+  />
+</Cards>
