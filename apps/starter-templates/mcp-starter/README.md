@@ -87,14 +87,17 @@ pnpm dev   # Run server in development mode with hot-reloading
 This template includes a weather service example that demonstrates:
 
 1. **HTTP Utilities** (`src/lib/http.ts`):
+
    - Type-safe HTTP requests with Zod validation
    - Error handling
 
 2. **Configuration** (`src/lib/config.ts`):
+
    - Environment variable management
    - Service configuration
 
 3. **Weather Service** (`src/services/weather-service.ts`):
+
    - API integration
    - Data transformation
    - Proper error propagation

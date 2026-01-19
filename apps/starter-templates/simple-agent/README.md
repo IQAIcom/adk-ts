@@ -20,11 +20,13 @@ A minimal starter template that shows you how to build AI agents with multi-agen
 This template demonstrates how to build **AI-powered applications** with:
 
 1. **🤖 Multi-Agent Architecture**:
+
    - **Root Agent**: Orchestrates and delegates to specialist agents
    - **Weather Agent**: Provides weather information with custom tools
    - **Joke Agent**: Tells jokes with dynamic tool integration
 
 2. **🛠️ Custom Tool Integration**:
+
    - Weather API integration
    - Joke API integration
    - Dynamic function tools
