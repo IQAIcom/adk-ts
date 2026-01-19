@@ -39,7 +39,6 @@ Initialize the telemetry service before any agent operations:
       otlpEndpoint: 'http://localhost:4318/v1/traces',
       enableMetrics: true,
       enableTracing: true,
-      enableAutoInstrumentation: true,
     });
     ```
 
@@ -61,7 +60,8 @@ Initialize the telemetry service before any agent operations:
       // Feature flags
       enableTracing: true,
       enableMetrics: true,
-      enableAutoInstrumentation: true,
+      // Auto-instrumentation automatically traces HTTP, database, and other operations
+      enableAutoInstrumentation: true, // Set false to disable automatic instrumentation
 
       // Privacy controls
       captureMessageContent: true, // Set false for production
@@ -129,7 +129,7 @@ Your ADK app will send traces to `http://localhost:4318/v1/traces`, and you can 
 
 ### Running with OpenTelemetry Collector
 
-For more advanced setups, use the OpenTelemetry Collector:
+For more advanced setups that need to route telemetry to multiple backends or apply processing, use the OpenTelemetry Collector:
 
 **1. Create collector configuration** (`otel-collector-config.yaml`):
 
@@ -143,8 +143,8 @@ receivers:
 exporters:
   logging:
     loglevel: debug
-  jaeger:
-    endpoint: jaeger:14250
+  otlp/jaeger:
+    endpoint: http://localhost:4317
     tls:
       insecure: true
 
@@ -152,7 +152,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [logging, jaeger]
+      exporters: [logging, otlp/jaeger]
     metrics:
       receivers: [otlp]
       exporters: [logging]
@@ -167,6 +167,13 @@ docker run -d \
   otel/opentelemetry-collector:latest \
   --config=/etc/otel-collector-config.yaml
 ```
+
+<Callout type="info" title="When to Use the Collector">
+  For simple setups, sending directly to Jaeger (as shown above) is sufficient.
+  Use the OpenTelemetry Collector when you need to: - Route telemetry to
+  multiple backends - Apply processing, filtering, or sampling - Transform or
+  enrich telemetry data - Use batch processing for better performance
+</Callout>
 
 ## Complete Example
 
@@ -240,7 +247,7 @@ You'll see:
 - `environment` - Deployment environment (development, staging, production)
 - `enableTracing` - Enable distributed tracing (default: `true`)
 - `enableMetrics` - Enable metrics collection (default: `true`)
-- `enableAutoInstrumentation` - Enable automatic instrumentation (default: `true`)
+- `enableAutoInstrumentation` - Enable automatic instrumentation for HTTP, databases, and file system operations (default: `true`). Set to `false` if you only want ADK-specific traces.
 - `captureMessageContent` - Capture LLM prompts/completions (default: `true`)
 - `samplingRatio` - Trace sampling ratio 0.0-1.0 (default: `1.0`)
 - `metricExportIntervalMs` - Metrics export interval in milliseconds (default: `60000`)
