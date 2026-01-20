@@ -1,5 +1,20 @@
 # @iqai/adk-cli
 
+## 0.3.35
+
+### Patch Changes
+
+- 96e9661: Add Context Caching support for ADK Apps using Gemini 2.0+ models.
+
+  This feature allows agents to reuse extended instructions or large contextual data across requests, reducing token usage and improving performance. Caching behavior is configurable at the App or Agent level via `contextCacheConfig`, with controls for minimum token threshold, cache TTL, and maximum usage intervals.
+
+  All agents within an App can benefit from shared cached context, minimizing redundant data sent to the model while preserving correctness.
+
+- Updated dependencies [8f2167a]
+- Updated dependencies [f2dfa13]
+- Updated dependencies [96e9661]
+  - @iqai/adk@0.6.2
+
 ## 0.3.34
 
 ### Patch Changes
