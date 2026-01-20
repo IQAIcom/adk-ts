@@ -1,15 +1,22 @@
 ---
-title: Event Loop
-description: Understanding the cooperative async generator pattern and event flow
+title: Event Loop Pattern
+description: The cooperative async generator pattern that powers ADK-TS runtime
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-At the heart of the ADK Runtime is an Event Loop that facilitates communication between the Runner component and your execution logic (agents, tools, callbacks).
+At the heart of ADK-TS Runtime is an **Event Loop**—a cooperative pattern where the **Runner** and your **execution logic** (agents, tools, callbacks) take turns exchanging information through **Events**. This pattern enables predictable, manageable asynchronous workflows while maintaining clear separation of concerns.
 
-## Event-Driven Architecture
+<Callout type="info" title="Prerequisite Knowledge">
 
-The Runtime operates on a cooperative async generator pattern where components communicate through events:
+It's helpful to understand the [Key Components](/docs/framework/runtime#key-components-of-the-runtime) (Runner, Events, Services, Session, Invocation) before diving into how they interact here.
+
+</Callout>
+
+## The Basic Cycle
+
+Every user interaction follows the same predictable pattern:
 
 1. **Runner receives** user query and initiates agent processing
 2. **Agent executes** logic until it has something to report (response, tool call, state change)
@@ -18,29 +25,35 @@ The Runtime operates on a cooperative async generator pattern where components c
 5. **Agent resumes** execution after Runner completes event processing
 6. **Cycle repeats** until agent has no more events for the current query
 
-<Callout type="warn" title="Event Processing Order">
+The key point: **agent execution pauses at the yield statement**. The Runner takes over, processes the event, and only then does the agent resume.
 
-Agent execution pauses after yielding events until the Runner completes
-processing. This ensures state consistency and proper event ordering.
+<Callout type="warn" title="Execution Pauses at Yield">
+
+This pause-and-resume behavior is fundamental to understanding ADK-TS. When your code reaches a `yield` statement, execution stops immediately. The Runner processes the event completely (persisting changes, calling services) before your code resumes on the next line.
 
 </Callout>
 
-## Execution Flow
+## The Two Players: Runner and Execution Logic
 
-### Runner Role (Orchestrator)
+Understanding the distinct roles helps clarify what each side is responsible for.
 
-The Runner acts as the central coordinator for a single user invocation. Its responsibilities in the loop are:
+### What the Runner Does
 
-- **Initiation**: Receives the end user's query (new_message) and typically appends it to the session history via the SessionService.
-- **Kick-off**: Starts the event generation process by calling the main agent's execution method (e.g., agent_to_run.run_async(...)).
-- **Receive & Process**: Waits for the agent logic to yield or emit an Event. Upon receiving an event, the Runner promptly processes it. This involves:
-  - Using configured Services (SessionService, ArtifactService, MemoryService) to commit changes indicated in event.actions (like state_delta, artifact_delta).
-  - Performing other internal bookkeeping.
-- **Yield Upstream**: Forwards the processed event onwards (e.g., to the calling application or UI for rendering).
-- **Iterate**: Signals the agent logic that processing is complete for the yielded event, allowing it to resume and generate the next event.
+The Runner acts as the central coordinator for a single user invocation. It orchestrates the entire flow:
+
+- **Initiation**: Receives the user's query and appends it to the session history via `SessionService`
+- **Kick-off**: Calls the agent's async generator to start execution
+- **Event Loop**: Waits for each event the agent yields, processes it, then signals the agent to resume
+- **Service Coordination**: Uses services (SessionService, ArtifactService, MemoryService) to persist changes from `event.actions`
+- **Upstream Forwarding**: Yields processed events to the calling application or UI for rendering
+
+The Runner's core responsibility is orchestrating this cycle. It doesn't execute your business logic—it manages the flow of events and ensures state consistency.
+
+#### Example: Runner's Event Processing Loop
+
+Here's what happens inside the Runner's main loop:
 
 ```typescript
-// Simplified view of Runner's main loop logic
 async function* runAsync(
   userId: string,
   sessionId: string,
@@ -81,21 +94,23 @@ async function* runAsync(
 }
 ```
 
-### Execution Logic Role (Agent, Tool, Callback)
+### What Your Execution Logic Does
 
-Your code within agents, tools, and callbacks is responsible for the actual computation and decision-making. Its interaction with the loop involves:
+Your execution logic is responsible for the actual computation and decision-making. The key interaction points are:
 
-- **Execute**: Runs its logic based on the current InvocationContext, including the session state as it was when execution resumed.
-- **Yield**: When the logic needs to communicate (send a message, call a tool, report a state change), it constructs an Event containing the relevant content and actions, and then yields this event back to the Runner.
-- **Pause**: Crucially, execution of the agent logic pauses immediately after the yield statement. It waits for the Runner to complete step 3 (processing and committing).
-- **Resume**: Only after the Runner has processed the yielded event does the agent logic resume execution from the statement immediately following the yield.
-- **See Updated State**: Upon resumption, the agent logic can now reliably access the session state (ctx.session.state) reflecting the changes that were committed by the Runner from the previously yielded event.
+- **Execute**: Run logic based on the current `InvocationContext`, with access to the latest session state
+- **Yield**: Create an `Event` with the relevant content and actions, then yield it to the Runner
+- **Pause**: Execution pauses immediately after the `yield` statement while the Runner processes the event
+- **Resume**: Only after the Runner commits changes does execution continue from the line after `yield`
+- **See Updated State**: Access the updated `ctx.session.state` reflecting all committed changes from the yielded event
+
+The key insight is that your code pauses at the `yield` statement. The Runner processes the event, persists changes, and only then does your code resume with the updated state available.
+
+#### Example: Agent Yielding an Event with State Changes
+
+Here's how an agent constructs and yields an event with state updates:
 
 ```typescript
-// Simplified view of logic inside Agent.run_async, callbacks, or tools
-
-// ... previous code runs based on current state ...
-
 // 1. Determine a change or output is needed, construct the event
 // Example: Updating state
 const updateData = { field_1: "value_2" };
@@ -125,12 +140,15 @@ console.log(`Resumed execution. Value of field_1 is now: ${val}`);
 
 ## Event Types and Processing
 
+Different events serve different purposes in the event loop. Understanding them helps you know what to yield in different situations.
+
 ### Content Events
 
-Events containing user messages or agent responses:
+Content events carry messages between user and agent. They are the primary way information flows through the conversation.
+
+#### User Messages
 
 ```typescript
-// User message event (generated by Runner)
 const userEvent = new Event({
   invocationId: "inv_123",
   author: "user",
@@ -138,8 +156,11 @@ const userEvent = new Event({
     parts: [{ text: "Hello, how are you?" }],
   },
 });
+```
 
-// Agent response event (generated by Agent)
+#### Agent Responses
+
+```typescript
 const agentEvent = new Event({
   invocationId: "inv_123",
   author: "my_agent",
@@ -151,24 +172,30 @@ const agentEvent = new Event({
 
 ### Function Call Events
 
-Events requesting tool execution:
+Function call events represent tool invocations. When an agent decides to use a tool, it yields a function call event, the tool executes, and results are wrapped in a function response event.
+
+#### Function Call
 
 ```typescript
-// Function call event
 const functionCallEvent = new Event({
   invocationId: "inv_123",
   author: "my_agent",
   content: {
-    parts: [{
-      functionCall: {
-        name: "search_web",
-        args: { query: "latest AI news" }
-      }
-    }]
-  }
+    parts: [
+      {
+        functionCall: {
+          name: "search_web",
+          args: { query: "latest AI news" },
+        },
+      },
+    ],
+  },
 });
+```
 
-// Function response event
+#### Function Response
+
+```typescript
 const functionResponseEvent = new Event({
   invocationId: "inv_123",
   author: "my_agent",
@@ -185,7 +212,7 @@ const functionResponseEvent = new Event({
 
 ### State Change Events
 
-Events that modify session state:
+State change events update the session's persistent state. They use the `EventActions` structure to communicate `stateDelta` that the Runner will merge into the session state.
 
 ```typescript
 import { EventActions, Event } from "@iqai/adk";
@@ -202,11 +229,19 @@ const stateChangeEvent = new Event({
 });
 ```
 
-## Async Generator Pattern
+## Advanced Topics
 
-### Agent Implementation
+Once you understand the basic cycle and event types, these advanced topics explain how specific patterns work.
 
-Agents implement the async generator pattern in their `runAsyncImpl` method:
+### Async Generator Pattern
+
+The async generator pattern is central to ADK-TS. Both agents and the Runner use async generators to yield control back and forth.
+
+#### How Agents Implement It
+
+Agents implement the async generator pattern in their `runAsyncImpl` method. This allows them to yield events one at a time, pause, and resume after the Runner processes each event.
+
+##### **Agent Example**
 
 ```typescript
 import { BaseAgent, InvocationContext, Event } from "@iqai/adk";
@@ -235,9 +270,11 @@ class CustomAgent extends BaseAgent {
 }
 ```
 
-### Runner Processing
+#### How the Runner Processes Events
 
-The Runner processes each yielded event:
+The Runner iterates through each event the agent yields and handles it according to whether it's partial or complete. Partial events stream immediately, while complete events are persisted to the session.
+
+##### **Runner Processing Example**
 
 ```typescript
 // Simplified Runner event processing
@@ -263,39 +300,45 @@ for await (const event of agent.runAsync(invocationContext)) {
 }
 ```
 
-## Event Processing Guarantees
+### Processing Guarantees and Streaming
 
-### Ordering Guarantees
+The Runtime provides strong guarantees about how events are processed.
 
-- Events are processed in the order they are yielded
-- State changes are applied atomically per event
-- No race conditions between event processing
+#### Ordering & Atomicity
 
-### State Consistency
+Events are always processed in the exact order they are yielded. State changes are applied atomically per event, and no race conditions can occur between event processing.
 
-- Agent execution pauses until Runner processes events
-- State changes are committed before agent resumes
-- Rollback support for failed operations
+#### State Consistency
 
-### Error Handling
+Agent execution pauses until the Runner completes event processing. State changes are committed to services before the agent resumes. After resuming, the agent sees the committed state reflected in `ctx.session.state`.
 
-- Exceptions in event processing are propagated to agents
-- Partial state changes are rolled back on failure
-- Graceful degradation for service failures
+#### Error Handling
 
-## Streaming and Partial Events
+Exceptions during event processing are propagated to agents. Partial state changes are rolled back on failure. Services provide graceful degradation for failures, ensuring the system remains resilient.
 
-### Partial Events
+#### Streaming and Partial Events
 
-For real-time user experience, agents can yield partial events:
+Partial events enable real-time streaming responses to users without waiting for the complete response to be ready. They are not persisted to the session, allowing for faster feedback.
+
+##### **When to Use Partial Events**
+
+Partial events are ideal for:
+
+- Streaming LLM responses token-by-token
+- Showing real-time progress updates
+- Providing immediate feedback while processing
+
+##### **Example: Streaming Response**
+
+Here's how an agent can stream a response using partial events:
 
 ```typescript
-// Streaming response
+// Stream partial updates (not persisted)
 yield new Event({
   invocationId: ctx.invocationId,
   author: this.name,
   content: { parts: [{ text: "Thinking" }] },
-  partial: true, // Not persisted to session
+  partial: true,
 });
 
 yield new Event({
@@ -305,11 +348,41 @@ yield new Event({
   partial: true,
 });
 
-// Final response
+// Final response (persisted to session)
 yield new Event({
   invocationId: ctx.invocationId,
   author: this.name,
   content: { parts: [{ text: "Here's my complete response" }] },
-  partial: false, // Persisted to session
+  partial: false,
 });
 ```
+
+## Related Topics
+
+Explore these related topics to deepen your understanding:
+
+<Cards>
+  <Card
+    title="🏃 Runner Orchestration"
+    description="Learn how the Runner coordinates event processing and service interactions"
+    href="/docs/framework/runtime/runner-orchestration"
+  />
+
+<Card
+  title="📦 Event System"
+  description="Understand Event structure, EventActions, and event types"
+  href="/docs/framework/runtime/event-system"
+/>
+
+<Card
+  title="🤖 Agent Lifecycle"
+  description="See how agents implement async generators and yield events"
+  href="/docs/framework/runtime/agent-lifecycle"
+/>
+
+  <Card
+    title="📋 Complete Invocation Flow"
+    description="Walk through a complete user request from start to finish"
+    href="/docs/framework/runtime/invocation-lifecycle"
+  />
+</Cards>
