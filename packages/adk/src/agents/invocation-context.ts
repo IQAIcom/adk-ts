@@ -289,24 +289,21 @@ export class InvocationContext {
 	 * Returns the next LLM span index for this invocation.
 	 */
 	nextLlmSpanIndex(): number {
-		this._spanCounters.llm += 1;
-		return this._spanCounters.llm;
+		return ++this._spanCounters.llm;
 	}
 
 	/**
 	 * Returns the next tool span index for this invocation.
 	 */
 	nextToolSpanIndex(): number {
-		this._spanCounters.tool += 1;
-		return this._spanCounters.tool;
+		return ++this._spanCounters.tool;
 	}
 
 	/**
 	 * Returns the next agent span index for this invocation.
 	 */
 	nextAgentSpanIndex(): number {
-		this._spanCounters.agent += 1;
-		return this._spanCounters.agent;
+		return ++this._spanCounters.agent;
 	}
 
 	/**
