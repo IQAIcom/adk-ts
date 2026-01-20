@@ -211,6 +211,7 @@ export class InvocationContext {
 	 */
 	private readonly _invocationCostManager: InvocationCostManager =
 		new InvocationCostManager();
+	private readonly _spanCounters: { llm: number; tool: number; agent: number };
 
 	/**
 	 * Constructor for InvocationContext
@@ -232,6 +233,7 @@ export class InvocationContext {
 		runConfig?: RunConfig;
 		contextCacheConfig?: ContextCacheConfig;
 		transferContext?: TransferContext;
+		spanCounters?: { llm: number; tool: number; agent: number };
 	}) {
 		this.artifactService = options.artifactService;
 		this.sessionService = options.sessionService;
@@ -249,6 +251,7 @@ export class InvocationContext {
 		this.runConfig = options.runConfig;
 		this.contextCacheConfig = options.contextCacheConfig;
 		this.transferContext = options.transferContext;
+		this._spanCounters = options.spanCounters ?? { llm: 0, tool: 0, agent: 0 };
 	}
 
 	/**
@@ -277,6 +280,37 @@ export class InvocationContext {
 	}
 
 	/**
+	 * Returns the next LLM span index for this invocation.
+	 */
+	nextLlmSpanIndex(): number {
+		this._spanCounters.llm += 1;
+		return this._spanCounters.llm;
+	}
+
+	/**
+	 * Returns the next tool span index for this invocation.
+	 */
+	nextToolSpanIndex(): number {
+		this._spanCounters.tool += 1;
+		return this._spanCounters.tool;
+	}
+
+	/**
+	 * Returns the next agent span index for this invocation.
+	 */
+	nextAgentSpanIndex(): number {
+		this._spanCounters.agent += 1;
+		return this._spanCounters.agent;
+	}
+
+	/**
+	 * Exposes shared span counters for child contexts.
+	 */
+	getSpanCounters(): { llm: number; tool: number; agent: number } {
+		return this._spanCounters;
+	}
+
+	/**
 	 * Creates a child invocation context for a sub-agent
 	 */
 	createChildContext(agent: BaseAgent): InvocationContext {
@@ -297,6 +331,7 @@ export class InvocationContext {
 			runConfig: this.runConfig,
 			contextCacheConfig: this.contextCacheConfig,
 			transferContext: this.transferContext, // Propagate transfer context
+			spanCounters: this._spanCounters,
 		});
 	}
 }
