@@ -217,7 +217,7 @@ When disabled:
 #### Agent Invocations
 
 ```
-agent_run [my-agent]
+agent_run [my-agent] #1
 ├─ Attributes:
 │  ├─ gen_ai.system: iqai-adk
 │  ├─ gen_ai.operation.name: invoke_agent
@@ -232,7 +232,7 @@ agent_run [my-agent]
 #### Tool Executions
 
 ```
-execute_tool [search_web]
+execute_tool [search_web] #1
 ├─ Attributes:
 │  ├─ gen_ai.system: iqai-adk
 │  ├─ gen_ai.operation.name: execute_tool
@@ -243,13 +243,13 @@ execute_tool [search_web]
 └─ Duration: 450ms
 ```
 
-Langfuse labels tool spans using `gen_ai.tool.name`, so the UI may show just
-`search_web` even though the span name is `execute_tool [search_web]`.
+Langfuse labels tool spans using `gen_ai.tool.name`, so the UI may show
+`search_web #1` even though the span name is `execute_tool [search_web] #1`.
 
 #### LLM Calls
 
 ```
-llm_generate [gpt-4]
+llm_generate [gpt-4] #1
 ├─ Attributes:
 │  ├─ gen_ai.system: iqai-adk
 │  ├─ gen_ai.operation.name: chat
@@ -277,13 +277,13 @@ llm_generate [gpt-4]
 #### Trace Hierarchy Example
 
 ```
-agent_run [research-agent] (5.2s)
-├─ llm_generate [gpt-4] (1.8s)
+agent_run [research-agent] #1 (5.2s)
+├─ llm_generate [gpt-4] #1 (1.8s)
 │  └─ HTTP POST to api.openai.com (1.7s) [auto-instrumented]
-├─ execute_tool search_web (450ms)
+├─ execute_tool [search_web] #1 (450ms)
 │  └─ HTTP GET to google.com (420ms) [auto-instrumented]
-├─ execute_tool summarize_text (320ms)
-└─ llm_generate [gpt-4] (1.5s)
+├─ execute_tool [summarize_text] #2 (320ms)
+└─ llm_generate [gpt-4] #2 (1.5s)
    └─ HTTP POST to api.openai.com (1.4s) [auto-instrumented]
 ```
 
