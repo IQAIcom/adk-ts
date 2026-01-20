@@ -105,7 +105,23 @@ export function getSpanIcon(name: string): string {
 
 export function findInvocId(spans: TraceSpan[]): string | undefined {
 	return spans.find(
-		(span) =>
-			span.attributes && "gcp.vertex.agent.invocation_id" in span.attributes,
-	)?.attributes?.["gcp.vertex.agent.invocation_id"];
+		(span) => span.attributes && "adk.invocation_id" in span.attributes,
+	)?.attributes?.["adk.invocation_id"];
+}
+
+export function findUserMessage(spans: TraceSpan[]): string | undefined {
+	console.log("spans", spans);
+	const span = spans.find((s) => s.attributes?.["adk.llm_request"]);
+
+	if (!span?.attributes) return "[no invocation id found]";
+
+	try {
+		const request = JSON.parse(span.attributes["adk.llm_request"]);
+		const userContent = request.contents
+			.filter((c: any) => c.role === "user")
+			.at(-1);
+		return userContent?.parts?.[0]?.text ?? "[attachment]";
+	} catch {
+		return "[error parsing request]";
+	}
 }

@@ -1,13 +1,15 @@
 "use client";
 
 import { Activity } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@/components/ui/accordion";
 import type { TraceSpan } from "@/hooks/use-traces";
-import { findInvocId } from "@/lib/trace-utils";
-
-import { TraceDetailsDialog } from "./trace-details-dialog";
+import { findInvocId, findUserMessage } from "@/lib/trace-utils";
+import { TraceTree } from "./traces-tree";
 
 interface TracesPanelProps {
 	tracesByTraceId: Map<string, TraceSpan[]>;
@@ -18,72 +20,49 @@ export function TracesPanel({
 	tracesByTraceId,
 	isLoading = false,
 }: TracesPanelProps) {
-	const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-	const handleTraceClick = (traceId: string) => {
-		setSelectedTraceId(traceId);
-		setIsDialogOpen(true);
-	};
-
-	const selectedSpans = selectedTraceId
-		? tracesByTraceId.get(selectedTraceId) || []
-		: [];
-
+	console.log("tracesByTraceId", tracesByTraceId);
 	return (
-		<>
-			<div className="h-full flex flex-col bg-background">
-				<ScrollArea className="flex-1">
-					<div className="p-4 space-y-2">
-						{isLoading ? (
-							<div className="text-center text-muted-foreground py-8">
-								Loading traces...
-							</div>
-						) : tracesByTraceId.size === 0 ? (
-							<div className="text-center text-muted-foreground py-8">
-								<Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-								<p className="text-sm">No traces found</p>
-								<p className="text-xs">
-									Traces will appear here once your agent runs
-								</p>
-							</div>
-						) : (
-							Array.from(tracesByTraceId.entries()).map(([traceId, spans]) => {
-								const invocId = findInvocId(spans);
-								const spanCount = spans.length;
+		<div className="flex flex-col h-full bg-background p-4">
+			{isLoading ? (
+				<div className="text-center text-muted-foreground py-8">
+					Loading traces...
+				</div>
+			) : tracesByTraceId.size === 0 ? (
+				<div className="text-center text-muted-foreground py-8">
+					<Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+					<p className="text-sm">No traces found</p>
+					<p className="text-xs">
+						Traces will appear here once your agent runs
+					</p>
+				</div>
+			) : (
+				<Accordion type="single" collapsible className="space-y-2 w-full">
+					{Array.from(tracesByTraceId.entries()).map(([traceId, spans]) => {
+						const invocId = findInvocId(spans);
+						const userMessage = findUserMessage(spans);
 
-								return (
-									<Button
-										key={traceId}
-										variant="outline"
-										className="w-full justify-start h-auto py-3 px-4"
-										onClick={() => handleTraceClick(traceId)}
-									>
-										<div className="flex flex-col items-start gap-1 w-full">
-											<div className="flex items-center gap-2">
-												<Activity className="h-4 w-4" />
-												<span className="font-semibold text-sm">
-													{invocId || traceId.slice(0, 8)}
-												</span>
-											</div>
-											<div className="text-xs text-muted-foreground">
-												{spanCount} span{spanCount !== 1 ? "s" : ""}
-											</div>
-										</div>
-									</Button>
-								);
-							})
-						)}
-					</div>
-				</ScrollArea>
-			</div>
-
-			<TraceDetailsDialog
-				open={isDialogOpen}
-				onOpenChange={setIsDialogOpen}
-				spans={selectedSpans}
-				traceId={selectedTraceId || undefined}
-			/>
-		</>
+						return (
+							<AccordionItem
+								key={traceId}
+								value={traceId}
+								className="border rounded-md bg-surface"
+							>
+								<AccordionTrigger className="w-full px-4 py-3 flex justify-between items-center font-medium text-left hover:bg-muted-foreground/5">
+									<div className="flex items-center gap-2">
+										<Activity className="h-4 w-4" />
+										<span className="truncate">
+											{userMessage || invocId || traceId.slice(0, 8)}
+										</span>
+									</div>
+								</AccordionTrigger>
+								<AccordionContent className="px-0 pb-2 pt-0">
+									<TraceTree spans={spans} />
+								</AccordionContent>
+							</AccordionItem>
+						);
+					})}
+				</Accordion>
+			)}
+		</div>
 	);
 }
