@@ -116,7 +116,7 @@ export function newInvocationContextId(): string {
  *     ┌─────────────────────── invocation ──────────────────────────┐
  *     ┌──────────── llm_agent_call_1 ────────────┐ ┌─ agent_call_2 ─┐
  *     ┌──── step_1 ────────┐ ┌───── step_2 ──────┐
- *     [call_llm] [call_tool] [call_llm] [transfer]
+ *     [llm_generate] [execute_tool] [llm_generate] [transfer]
  *
  */
 export class InvocationContext {
