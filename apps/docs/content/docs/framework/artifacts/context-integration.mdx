@@ -140,8 +140,9 @@ const beforeModelCallback = async ({
 }) => {
   try {
     // Load model configuration
-    const configArtifact =
-      await callbackContext.loadArtifact("model_config.json");
+    const configArtifact = await callbackContext.loadArtifact(
+      "model_config.json",
+    );
 
     if (configArtifact) {
       const config = JSON.parse(
@@ -154,8 +155,9 @@ const beforeModelCallback = async ({
     }
 
     // Load context files for the model
-    const contextArtifact =
-      await callbackContext.loadArtifact("context_data.txt");
+    const contextArtifact = await callbackContext.loadArtifact(
+      "context_data.txt",
+    );
 
     if (contextArtifact) {
       const contextText = Buffer.from(

@@ -1,0 +1,339 @@
+---
+title: Distributed Tracing
+description: Understand what gets traced, view traces, and use custom spans for your operations
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Distributed tracing in ADK-TS provides complete visibility into agent execution, tool usage, and LLM interactions. Every operation is automatically traced with rich context and metadata.
+
+## What Gets Traced
+
+The telemetry system automatically traces three main operation types: agent invocations, tool executions, and LLM calls.
+
+### Agent Invocations
+
+Every agent execution creates a trace span with:
+
+- **Operation**: `invoke_agent`
+- **Attributes**:
+  - `gen_ai.provider.name`: `iqai-adk`
+  - `gen_ai.operation.name`: `invoke_agent`
+  - `gen_ai.agent.name`: Agent name
+  - `gen_ai.conversation.id`: Session ID
+  - `adk.session.id`: Session ID
+  - `adk.user.id`: User ID (if available)
+  - `adk.environment`: Environment name
+- **Duration**: Complete execution time
+
+**Example trace structure:**
+
+```
+agent_run [my-agent]
+├─ Attributes:
+│  ├─ gen_ai.provider.name: iqai-adk
+│  ├─ gen_ai.operation.name: invoke_agent
+│  ├─ gen_ai.agent.name: my-agent
+│  ├─ gen_ai.conversation.id: session-123
+│  ├─ adk.session.id: session-123
+│  ├─ adk.user.id: user-456
+│  └─ adk.environment: production
+└─ Duration: 2.5s
+```
+
+### Tool Executions
+
+Every tool call is traced with:
+
+- **Operation**: `execute_tool`
+- **Attributes**:
+  - `gen_ai.provider.name`: `iqai-adk`
+  - `gen_ai.operation.name`: `execute_tool`
+  - `gen_ai.tool.name`: Tool name
+  - `gen_ai.tool.type`: Tool type/class
+  - `adk.tool.args`: Tool arguments (if content capture enabled)
+  - `adk.tool.response`: Tool response (if content capture enabled)
+- **Duration**: Tool execution time
+
+**Example trace structure:**
+
+```
+execute_tool search_web
+├─ Attributes:
+│  ├─ gen_ai.provider.name: iqai-adk
+│  ├─ gen_ai.operation.name: execute_tool
+│  ├─ gen_ai.tool.name: search_web
+│  ├─ gen_ai.tool.type: SearchTool
+│  ├─ adk.tool.args: {"query": "OpenTelemetry"}
+│  └─ adk.tool.response: {"results": [...]}
+└─ Duration: 450ms
+```
+
+### LLM Calls
+
+Every LLM request is traced with:
+
+- **Span Name**: `llm_generate [model]` or `llm_stream [model]` (for streaming)
+- **Operation**: `chat` (OpenTelemetry GenAI semantic convention)
+- **Attributes**:
+  - `gen_ai.provider.name`: Provider name (e.g., `openai`, `anthropic`, `google`)
+  - `gen_ai.operation.name`: `chat`
+  - `gen_ai.request.model`: Model name
+  - `gen_ai.request.max_tokens`: Maximum tokens
+  - `gen_ai.request.temperature`: Temperature setting
+  - `gen_ai.usage.input_tokens`: Input token count
+  - `gen_ai.usage.output_tokens`: Output token count
+- **Events** (if content capture enabled):
+  - `gen_ai.content.prompt`: Full prompt content
+  - `gen_ai.content.completion`: Full completion content
+- **Duration**: LLM call duration
+
+**Example trace structure:**
+
+```
+llm_generate [gpt-4]
+├─ Attributes:
+│  ├─ gen_ai.provider.name: openai
+│  ├─ gen_ai.operation.name: chat
+│  ├─ gen_ai.request.model: gpt-4
+│  ├─ gen_ai.request.max_tokens: 1024
+│  ├─ gen_ai.request.temperature: 0.7
+│  ├─ gen_ai.usage.input_tokens: 150
+│  └─ gen_ai.usage.output_tokens: 75
+├─ Events:
+│  ├─ gen_ai.content.prompt: [...]
+│  └─ gen_ai.content.completion: [...]
+└─ Duration: 1.8s
+```
+
+## Trace Hierarchy
+
+Traces form a hierarchical structure showing the complete execution flow:
+
+```
+agent_run [research-agent] (5.2s)
+├─ llm_generate [gpt-4] (1.8s)
+│  └─ HTTP POST to api.openai.com (1.7s) [auto-instrumented]
+├─ execute_tool search_web (450ms)
+│  └─ HTTP GET to google.com (420ms) [auto-instrumented]
+├─ execute_tool summarize_text (320ms)
+└─ llm_generate [gpt-4] (1.5s)
+   └─ HTTP POST to api.openai.com (1.4s) [auto-instrumented]
+```
+
+This hierarchy shows:
+
+- Parent-child relationships between operations
+- Nested tool calls and LLM requests
+- Auto-instrumented HTTP calls
+- Complete timing information
+
+## Viewing Traces
+
+ADK-TS sends traces via OTLP to any compatible observability backend. You'll need to set up a trace viewer separately. Popular options include Jaeger (for local development), Grafana, Datadog, New Relic, and Honeycomb.
+
+<Callout type="info" title="No Built-in Viewer">
+  ADK-TS does not include a built-in trace viewer. You need to set up an
+  external observability platform to view traces. See the [Platform
+  Integrations](/docs/framework/observability/integrations) guide for setup
+  instructions.
+</Callout>
+
+### Using Jaeger (Local Development)
+
+Jaeger is a popular open-source option for local development:
+
+1. **Set up Jaeger**: See the [Platform Integrations](/docs/framework/observability/integrations#jaeger) guide for Docker setup instructions
+2. **Open Jaeger UI**: Navigate to `http://localhost:16686`
+3. **Select Service**: Choose your service name from the dropdown
+4. **Find Traces**: Click "Find Traces" to see all traces
+5. **Explore Details**: Click on any trace to see:
+   - Complete span hierarchy
+   - Attributes and metadata
+   - Timing information
+   - Related spans
+
+### Trace Search
+
+Use Jaeger's search features to:
+
+- Filter by service name
+- Search by operation name
+- Filter by tags/attributes
+- Find traces by time range
+- Search for specific error traces
+
+## Custom Spans
+
+Create custom spans for your own operations:
+
+```typescript
+import { telemetryService } from "@iqai/adk";
+
+// Execute function within a traced span
+const result = await telemetryService.withSpan(
+  "custom_operation",
+  async span => {
+    span.setAttribute("custom.attribute", "value");
+
+    // Your work here
+    const result = await doSomething();
+
+    return result;
+  },
+  {
+    "operation.type": "data_processing",
+    "operation.version": "2.0",
+  },
+);
+```
+
+## Async Generator Tracing
+
+Trace async generators for streaming operations:
+
+```typescript
+async function* myGenerator() {
+  yield 1;
+  yield 2;
+  yield 3;
+}
+
+// Wrap with tracing
+const tracedGenerator = telemetryService.traceAsyncGenerator(
+  "my_operation",
+  myGenerator(),
+  {
+    "generator.type": "number_stream",
+  },
+);
+
+for await (const value of tracedGenerator) {
+  console.log(value); // Traced within span
+}
+```
+
+## Adding Events to Spans
+
+Add events to the active span for additional context:
+
+```typescript
+import { telemetryService } from "@iqai/adk";
+
+telemetryService.addEvent("user_action", {
+  "action.type": "button_click",
+  "action.target": "submit",
+});
+```
+
+## Recording Exceptions
+
+Record exceptions with context:
+
+```typescript
+import { telemetryService } from "@iqai/adk";
+
+try {
+  await riskyOperation();
+} catch (error) {
+  telemetryService.recordException(error as Error, {
+    "error.context": "data_validation",
+    "error.severity": "high",
+  });
+  throw error;
+}
+```
+
+## Semantic Conventions
+
+ADK-TS follows OpenTelemetry GenAI semantic conventions for consistent tracing across AI systems.
+
+### Standard Attributes (gen_ai.\*)
+
+```typescript
+import { SEMCONV } from "@iqai/adk";
+
+// Provider identification
+SEMCONV.GEN_AI_PROVIDER_NAME; // "gen_ai.provider.name"
+
+// Operations
+SEMCONV.GEN_AI_OPERATION_NAME; // "gen_ai.operation.name"
+
+// Agents
+SEMCONV.GEN_AI_AGENT_NAME; // "gen_ai.agent.name"
+SEMCONV.GEN_AI_CONVERSATION_ID; // "gen_ai.conversation.id"
+
+// Tools
+SEMCONV.GEN_AI_TOOL_NAME; // "gen_ai.tool.name"
+SEMCONV.GEN_AI_TOOL_TYPE; // "gen_ai.tool.type"
+
+// LLM Requests
+SEMCONV.GEN_AI_REQUEST_MODEL; // "gen_ai.request.model"
+SEMCONV.GEN_AI_REQUEST_MAX_TOKENS; // "gen_ai.request.max_tokens"
+
+// Token Usage
+SEMCONV.GEN_AI_USAGE_INPUT_TOKENS; // "gen_ai.usage.input_tokens"
+SEMCONV.GEN_AI_USAGE_OUTPUT_TOKENS; // "gen_ai.usage.output_tokens"
+```
+
+### ADK-Specific Attributes (adk.\*)
+
+```typescript
+import { ADK_ATTRS } from "@iqai/adk";
+
+// Session and context
+ADK_ATTRS.SESSION_ID; // "adk.session.id"
+ADK_ATTRS.USER_ID; // "adk.user.id"
+ADK_ATTRS.INVOCATION_ID; // "adk.invocation.id"
+
+// Content
+ADK_ATTRS.TOOL_ARGS; // "adk.tool.args"
+ADK_ATTRS.TOOL_RESPONSE; // "adk.tool.response"
+ADK_ATTRS.LLM_REQUEST; // "adk.llm.request"
+ADK_ATTRS.LLM_RESPONSE; // "adk.llm.response"
+```
+
+## Auto-Instrumentation
+
+The telemetry system automatically instruments:
+
+- **HTTP/HTTPS calls** - All HTTP requests are traced
+- **Database queries** - Database operations are captured
+- **File system operations** - File I/O is traced
+- **DNS lookups** - DNS resolution is tracked
+
+These appear as child spans in your traces, providing complete visibility into external dependencies.
+
+<Callout type="info" title="Disable Auto-Instrumentation">
+  If you need to disable auto-instrumentation, set `enableAutoInstrumentation:
+  false` in your telemetry configuration.
+</Callout>
+
+## Best Practices
+
+1. **Use semantic conventions** - Follow standard attribute names for consistency
+2. **Add business context** - Include custom attributes relevant to your domain
+3. **Record exceptions** - Always record exceptions with context
+4. **Keep spans focused** - Create separate spans for distinct operations
+5. **Use events for milestones** - Add events for important state changes
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="📊 Metrics"
+    description="Learn about metrics for performance monitoring"
+    href="/docs/framework/observability/metrics"
+  />
+  <Card
+    title="🔒 Production Configuration"
+    description="Configure optimal performance settings"
+    href="/docs/framework/observability/production"
+  />
+  <Card
+    title="🔌 Platform Integrations"
+    description="Integrate with observability platforms"
+    href="/docs/framework/observability/integrations"
+  />
+</Cards>
