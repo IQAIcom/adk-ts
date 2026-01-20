@@ -1,0 +1,373 @@
+---
+title: Runner Orchestration
+description: Understanding the Runner class and how it orchestrates agent execution
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+The `Runner` serves as the central orchestrator in ADK-TS, coordinating agent execution, event processing, and service interactions. It implements the event loop pattern that powers your agent application, ensuring seamless communication and state management.
+
+Think of it as a conductor in an orchestra: it doesn't perform the tasks itself (like agents or tools), but directs the timing and harmony of each component for efficient, collaborative operation.
+
+<Callout type="info" title="Core Responsibility">
+
+The Runner manages the **event loop**: it calls agents, receives events they yield, processes those events (persisting state changes, updating memory), and continues until the agent completes its response.
+
+</Callout>
+
+## The Runner Class
+
+The Runner is initialized with your application configuration and services:
+
+```typescript
+import { Runner, InMemorySessionService } from "@iqai/adk";
+
+const runner = new Runner({
+  appName: "my-app",
+  agent: myAgent,
+  sessionService: new InMemorySessionService(),
+  memoryService: myMemoryService, // optional
+  artifactService: myArtifactService, // optional
+});
+```
+
+### Constructor Options
+
+| Option                   | Type                     | Required | Description                                  |
+| ------------------------ | ------------------------ | -------- | -------------------------------------------- |
+| `appName`                | `string`                 | Yes      | Your application identifier                  |
+| `agent`                  | `BaseAgent`              | Yes      | The root agent to execute                    |
+| `sessionService`         | `BaseSessionService`     | Yes      | Service for session persistence              |
+| `memoryService`          | `BaseMemoryService`      | No       | Service for long-term memory                 |
+| `artifactService`        | `BaseArtifactService`    | No       | Service for file/binary storage              |
+| `eventsCompactionConfig` | `EventsCompactionConfig` | No       | Configuration for event compaction           |
+| `contextCacheConfig`     | `ContextCacheConfig`     | No       | Configuration for context caching            |
+| `plugins`                | `BasePlugin[]`           | No       | Array of plugins to extend functionality     |
+| `pluginCloseTimeout`     | `number`                 | No       | Timeout for plugin cleanup (default: 5000ms) |
+
+## The runAsync Method
+
+The `runAsync` method is the main entry point that processes a user request:
+
+```typescript
+for await (const event of runner.runAsync({
+  userId: "user_123",
+  sessionId: "session_456",
+  newMessage: { parts: [{ text: "What's the weather?" }] },
+  runConfig: { streamingMode: StreamingMode.SSE },
+})) {
+  // Process each event as it's yielded
+  console.log(event.author, ":", event.content);
+}
+```
+
+### Request Parameters
+
+| Parameter    | Type        | Required | Description                               |
+| ------------ | ----------- | -------- | ----------------------------------------- |
+| `userId`     | `string`    | Yes      | User identifier for the session           |
+| `sessionId`  | `string`    | Yes      | Session identifier                        |
+| `newMessage` | `Content`   | No       | The user's input message                  |
+| `runConfig`  | `RunConfig` | No       | Execution configuration (streaming, etc.) |
+
+## Event Processing Loop
+
+Here's what happens inside `runAsync`:
+
+<Mermaid
+chart="sequenceDiagram
+    participant Client
+    participant Runner
+    participant Agent
+    participant SessionService
+    participant MemoryService
+    participant PluginManager
+
+    Client->>Runner: runAsync(request)
+    Runner->>SessionService: getSession()
+    SessionService-->>Runner: session
+
+    alt newMessage provided
+        Runner->>SessionService: appendEvent(userMessage)
+    end
+
+    Runner->>PluginManager: before_run callbacks
+    PluginManager-->>Runner: early exit event (optional)
+
+    alt Early exit
+        Runner->>SessionService: appendEvent(earlyExitEvent)
+        Runner->>Client: yield early exit event
+    else Continue execution
+        Runner->>Agent: agent.runAsync(context)
+
+        loop Event Loop
+            Agent-->>Runner: yield Event
+            Runner->>PluginManager: on_event callbacks
+            PluginManager-->>Runner: modified event (optional)
+
+            alt Event is partial
+                Runner->>Client: yield partial event
+            else Event is complete
+                Runner->>SessionService: appendEvent()
+                opt MemoryService configured
+                    Runner->>MemoryService: addSessionToMemory()
+                end
+                Runner->>Client: yield complete event
+            end
+
+            alt Event is final response
+                Runner->>PluginManager: after_run callbacks
+                Runner->>Client: end
+            end
+        end
+    end"
+
+/>
+
+### Step-by-Step Execution
+
+1. **Load Session**: Retrieve or create the session via `SessionService`
+2. **Append User Message**: Add the user's input as an event to the session (if `newMessage` provided)
+3. **Plugin Before-Run**: Execute plugin `before_run` callbacks (may cause early exit)
+4. **Early Exit Check**: If plugins return an early exit event, append it and yield to client
+5. **Create Invocation Context**: Generate a unique `invocationId` and context
+6. **Start Agent**: Call `agent.runAsync(context)` to begin execution
+7. **Process Events**: For each event yielded by the agent:
+   - Execute plugin `on_event` callbacks to optionally modify the event
+   - If `partial=true`: Yield immediately without persisting (streaming updates)
+   - If `partial=false`:
+     - Commit event to session via `SessionService.appendEvent()`
+     - Update memory via `MemoryService.addSessionToMemory()` if configured
+     - Yield event to caller
+8. **Check Completion**: If event is a final response (`event.isFinalResponse()`), execute `after_run` plugin callbacks and end loop
+9. **Repeat**: Continue until agent yields final response
+
+## Handling Event Actions
+
+The Runner interprets special actions in `event.actions`:
+
+```typescript
+// Example of event actions being processed
+const event = new Event({
+  author: "assistant",
+  content: { parts: [{ text: "Updated your preference" }] },
+  actions: new EventActions({
+    stateDelta: { userPreference: "dark_mode" },
+    artifactDelta: { "config.json": 2 },
+  }),
+});
+```
+
+### State Delta Processing
+
+When an event contains `stateDelta`, the SessionService:
+
+1. Merges the delta into `session.state`
+2. Handles temporary keys (prefixed with `temp_`):
+   ```typescript
+   stateDelta: {
+     temp_currentCalculation: "42", // Ephemeral, not persisted
+     savedResult: "42" // Persisted to session state
+   }
+   ```
+3. Handles null/undefined values by deleting the key from state
+4. Commits the updated state to persistence
+
+### Artifact Delta Processing
+
+When an event contains `artifactDelta`, the SessionService:
+
+1. Records the artifact filename-version mapping
+2. Associates artifacts with the session for future retrieval
+3. Enables artifact versioning and history tracking
+
+## Service Coordination
+
+The Runner coordinates multiple services during execution:
+
+### SessionService Integration
+
+```typescript
+// Runner manages session lifecycle
+const session = await this.sessionService.getSession(
+  appName,
+  userId,
+  sessionId,
+);
+
+// Appends events with state updates
+await this.sessionService.appendEvent(session, event);
+```
+
+### MemoryService Integration
+
+```typescript
+// After appending non-partial events
+if (this.memoryService && !event.partial) {
+  await this.memoryService.addSessionToMemory(session);
+}
+```
+
+### ArtifactService Integration
+
+The Runner doesn't directly interact with ArtifactService during event processing. Instead, artifacts are managed separately:
+
+```typescript
+// Agents save artifacts via ArtifactService
+const version = await artifactService.saveArtifact({
+  appName,
+  userId,
+  sessionId,
+  filename: "output.txt",
+  artifact: { inlineData: { mimeType: "text/plain", data: "content" } },
+});
+
+// Agents include version in artifactDelta
+event.actions.artifactDelta["output.txt"] = version;
+
+// SessionService persists the filename-version mapping
+```
+
+## Streaming vs Non-Streaming
+
+The Runner supports both execution modes:
+
+### Streaming Mode (SSE)
+
+```typescript
+for await (const event of runner.runAsync({
+  userId,
+  sessionId,
+  newMessage,
+  runConfig: { streamingMode: StreamingMode.SSE },
+})) {
+  // Receive partial and complete events as they occur
+  if (event.partial) {
+    console.log("Streaming chunk:", event.content);
+  } else {
+    console.log("Complete event:", event.content);
+  }
+}
+```
+
+### Non-Streaming Mode
+
+```typescript
+for await (const event of runner.runAsync({
+  userId,
+  sessionId,
+  newMessage,
+  runConfig: { streamingMode: StreamingMode.NONE },
+})) {
+  // Only receive complete events
+  console.log("Complete event:", event.content);
+}
+```
+
+<Callout type="info">
+
+In streaming mode, the Runner yields partial events immediately without persisting them, allowing real-time updates to the UI. Only complete events (where `partial=false`) are persisted to the session.
+
+</Callout>
+
+## Error Handling
+
+The Runner provides robust error handling:
+
+```typescript
+try {
+  for await (const event of runner.runAsync(request)) {
+    // Process events
+  }
+} catch (error) {
+  // Runner errors (session not found, service failures)
+  console.error("Runner error:", error);
+}
+```
+
+Error events from agents are yielded normally:
+
+```typescript
+for await (const event of runner.runAsync(request)) {
+  if (event.errorCode) {
+    console.error("Agent error:", event.errorMessage);
+    // Handle error event
+  }
+}
+```
+
+## Advanced Patterns
+
+### Multiple Agent Invocations
+
+The same Runner instance can process multiple requests:
+
+```typescript
+const runner = new Runner({ appName, agent, sessionService });
+
+// Process multiple user messages in sequence
+for (const userMessage of messages) {
+  for await (const event of runner.runAsync({
+    userId,
+    sessionId,
+    newMessage: userMessage,
+  })) {
+    console.log(event);
+  }
+}
+```
+
+### Custom Service Implementations
+
+Provide your own service implementations for persistence:
+
+```typescript
+import { BaseSessionService } from "@iqai/adk";
+
+class RedisSessionService extends BaseSessionService {
+  async getSession(appName, userId, sessionId) {
+    // Load from Redis
+  }
+
+  async appendEvent(session, event) {
+    // Save to Redis
+  }
+
+  // ... other methods
+}
+
+const runner = new Runner({
+  appName: "my-app",
+  agent: myAgent,
+  sessionService: new RedisSessionService(),
+});
+```
+
+## Best Practices
+
+1. **Reuse Runner Instances**: Create one Runner per agent configuration and reuse it across requests
+2. **Choose Appropriate Services**: Use in-memory services for development, database-backed for production
+3. **Handle Partial Events**: In streaming mode, update UI progressively with partial events
+4. **Monitor Event Flow**: Log events for debugging and observability
+5. **Clean Up Resources**: Call `runner.close()` when shutting down to properly close plugins
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="📦 Event System"
+    description="Understand event structure and communication protocol"
+    href="/docs/framework/runtime/event-system"
+  />
+  <Card
+    title="🤖 Agent Lifecycle"
+    description="See how agents yield events during execution"
+    href="/docs/framework/runtime/agent-lifecycle"
+  />
+  <Card
+    title="🔄 Event Loop Pattern"
+    description="Learn the cooperative async generator pattern"
+    href="/docs/framework/runtime/event-loop"
+  />
+</Cards>
