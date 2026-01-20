@@ -1,6 +1,6 @@
 ---
-title: Context Caching with Gemini
-description: A guide explaining how to configure and use context caching in ADK with Gemini models to reuse large prompts efficiently, reducing latency and token costs.
+title: Context Caching
+description: A guide explaining how to configure and use context caching in ADK with Gemini and Anthropic models to reuse large prompts efficiently, reducing latency and token costs.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -132,6 +132,9 @@ Use context caching for **large, mostly static prompts**, such as:
 - Long system instructions
 - Reference documents
 - Domain-specific background knowledge
+
+Additionally, follow these best practices:
+
 - Avoid caching highly dynamic content that changes on every request.
 - Tune `minTokens` to ensure caching is only applied where it provides real value.
 
