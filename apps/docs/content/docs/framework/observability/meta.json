@@ -1,0 +1,11 @@
+{
+	"title": "Observability",
+	"icon": "Activity",
+	"pages": [
+		"getting-started",
+		"tracing",
+		"metrics",
+		"production",
+		"integrations"
+	]
+}

@@ -61,7 +61,7 @@ export class GetUserChoiceTool extends BaseTool {
 			question?: string;
 		},
 		context: ToolContext,
-	): Promise<any> {
+	): Promise<string | null> {
 		this.logger.debug(
 			`Executing get_user_choice with options: ${args.options.join(", ")}`,
 		);
