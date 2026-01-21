@@ -2,10 +2,7 @@
 	"icon": "Cpu",
 	"pages": [
 		"event-loop",
-		"runner-orchestration",
-		"event-system",
-		"agent-lifecycle",
-		"llm-integration",
+		"runner-events",
 		"invocation-lifecycle",
 		"run-config",
 		"rewind"
