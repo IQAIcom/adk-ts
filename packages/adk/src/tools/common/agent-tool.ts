@@ -183,6 +183,7 @@ export class AgentTool extends BaseTool {
 				pluginManager: parentInvocation.pluginManager,
 				runConfig: parentInvocation.runConfig,
 				contextCacheConfig: parentInvocation.contextCacheConfig,
+				spanCounters: parentInvocation.getSpanCounters(),
 				userContent: {
 					role: "user" as const,
 					parts: [{ text: String(input) }],

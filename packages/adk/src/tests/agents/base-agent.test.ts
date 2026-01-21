@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BaseAgent, type SingleAgentCallback } from "../../agents/base-agent";
-import type { InvocationContext } from "../../agents/invocation-context";
+import { InvocationContext } from "../../agents/invocation-context";
 import { Event } from "../../events/event";
 import { telemetryService } from "../../telemetry";
 
@@ -50,8 +50,23 @@ class TestAgent extends BaseAgent {
 	}
 }
 
-const createMockContext = (agent: BaseAgent): InvocationContext =>
-	({
+const createMockContext = (agent: BaseAgent): InvocationContext => {
+	const mockSessionService = {
+		createSession: vi.fn(),
+		getSession: vi.fn(),
+		deleteSession: vi.fn(),
+		appendEvent: vi.fn(),
+		listEvents: vi.fn(),
+		listSessions: vi.fn(),
+	} as any;
+
+	const mockPluginManager = {
+		plugins: [],
+		runBeforeAgentCallback: vi.fn().mockResolvedValue(undefined),
+		runAfterAgentCallback: vi.fn().mockResolvedValue(undefined),
+	} as any;
+
+	return new InvocationContext({
 		invocationId: "inv-123",
 		agent,
 		branch: "",
@@ -64,10 +79,10 @@ const createMockContext = (agent: BaseAgent): InvocationContext =>
 			events: [],
 			lastUpdateTime: 0,
 		} as any,
-		createChildContext: vi.fn((childAgent) =>
-			createMockContext(childAgent),
-		) as any,
-	}) as InvocationContext;
+		sessionService: mockSessionService,
+		pluginManager: mockPluginManager,
+	});
+};
 
 describe("BaseAgent", () => {
 	let agent: TestAgent;
@@ -159,12 +174,12 @@ describe("BaseAgent", () => {
 			{
 				method: "runAsync" as const,
 				implMock: "runAsyncImplMock" as const,
-				traceName: "agent_run [test_agent]",
+				traceName: "agent_run [test_agent] #1",
 			},
 			{
 				method: "runLive" as const,
 				implMock: "runLiveImplMock" as const,
-				traceName: "agent_run_live [test_agent]",
+				traceName: "agent_run_live [test_agent] #1",
 			},
 		])("$method should trace and call the internal implementation", async ({
 			method,
