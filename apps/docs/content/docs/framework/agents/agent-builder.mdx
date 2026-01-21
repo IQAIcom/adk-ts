@@ -197,12 +197,10 @@ Creates a named builder instance that will generate an LLM agent with the specif
 The name must follow JavaScript identifier rules (start with letter/underscore, contain only letters, numbers, underscores). Choose descriptive names that clearly indicate the agent's purpose.
 
 ```typescript
-const builder = await AgentBuilder.create("research_assistant").withModel(
-  "gemini-2.5-flash",
-);
-const builder2 = await AgentBuilder.create("_data_processor2").withModel(
-  "gemini-2.5-flash",
-);
+const builder =
+  await AgentBuilder.create("research_assistant").withModel("gemini-2.5-flash");
+const builder2 =
+  await AgentBuilder.create("_data_processor2").withModel("gemini-2.5-flash");
 
 // Invalid names (will throw errors)
 ```

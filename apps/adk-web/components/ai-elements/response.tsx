@@ -7,7 +7,7 @@ import { Streamdown } from "streamdown";
 type ResponseProps = ComponentProps<typeof Streamdown>;
 
 const defaultComponents = {
-a: ({ className, children, ...props }: ComponentProps<"a">) => (
+	a: ({ className, children, ...props }: ComponentProps<"a">) => (
 		<a
 			className={cn(
 				"underline underline-offset-2 hover:opacity-80 transition-opacity",
