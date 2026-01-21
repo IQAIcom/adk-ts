@@ -28,7 +28,7 @@ export class LangfusePlugin extends BasePlugin {
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
 
-		let LangfuseClass: any;
+let LangfuseClass: new (args: Omit<LangfusePluginOptions, 'name'>) => Langfuse;
 		try {
 			const { Langfuse: LF } = require("langfuse");
 			LangfuseClass = LF;
