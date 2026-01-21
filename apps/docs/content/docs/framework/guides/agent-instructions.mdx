@@ -124,8 +124,8 @@ const personalAssistant = new LlmAgent({
       timeOfDay < 12
         ? "Good morning"
         : timeOfDay < 18
-        ? "Good afternoon"
-        : "Good evening";
+          ? "Good afternoon"
+          : "Good evening";
 
     return `
       ${greeting}, ${user?.name || "there"}! I'm your personal AI assistant.

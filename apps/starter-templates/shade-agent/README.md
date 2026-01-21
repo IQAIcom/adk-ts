@@ -20,7 +20,6 @@ A template showing how to build AI agents that automatically fetch Ethereum pric
 This template demonstrates how to build **AI-powered applications** that:
 
 1. **🤖 Uses AI Agents** (built with ADK-TS) to fetch real-time data:
-
    - **Price Agent**: Gets current ETH price from CoinGecko API
    - **Sentiment Agent**: Analyzes ETH sentiment from Reddit headlines using AI
 

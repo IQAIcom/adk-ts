@@ -383,7 +383,10 @@ Implement rate limiting for external API calls to prevent abuse, manage costs, a
 ```typescript
 class RateLimiter {
   private requests: number[] = [];
-  constructor(private maxRequests: number, private windowMs: number) {}
+  constructor(
+    private maxRequests: number,
+    private windowMs: number,
+  ) {}
 
   async checkLimit(): Promise<boolean> {
     const now = Date.now();

@@ -28,9 +28,11 @@ export class LangfusePlugin extends BasePlugin {
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
 
-let LangfuseClass: new (args: Omit<LangfusePluginOptions, 'name'>) => Langfuse;
+		let LangfuseClass: new (
+			args: Omit<LangfusePluginOptions, "name">,
+		) => Langfuse;
 		try {
-LangfuseClass = require("langfuse").Langfuse;
+			LangfuseClass = require("langfuse").Langfuse;
 		} catch (_error) {
 			throw new Error(
 				"Missing required peer dependency: langfuse. To use LangfusePlugin, install it with 'npm install langfuse' or 'pnpm add langfuse'.",
