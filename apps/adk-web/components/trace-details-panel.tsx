@@ -3,7 +3,7 @@ import ReactJson from "react-json-view";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TraceSpan } from "@/hooks/use-traces";
-import { jsonViewTheme } from "@/lib/json-view-theme";
+import { createJsonViewTheme } from "@/lib/dynamic-json-theme";
 import { getLlmRequest, getLlmResponse } from "@/lib/trace-utils";
 
 interface TraceDetailsPanelProps {
@@ -17,6 +17,7 @@ export function TraceDetailsPanel({
 }: TraceDetailsPanelProps) {
 	const llmRequest = getLlmRequest(selectedSpan);
 	const llmResponse = getLlmResponse(selectedSpan);
+	const theme = createJsonViewTheme();
 
 	return (
 		<div className="border-t bg-background z-10 flex flex-col h-1/2 min-h-75 fixed bottom-0 w-screen">
@@ -71,7 +72,7 @@ export function TraceDetailsPanel({
 					<TabsContent value="event" className="m-0 h-full">
 						<ReactJson
 							src={selectedSpan}
-							theme={jsonViewTheme}
+							theme={theme}
 							name={false}
 							collapsed={1}
 							enableClipboard={false}
@@ -90,7 +91,7 @@ export function TraceDetailsPanel({
 						{llmRequest ? (
 							<ReactJson
 								src={llmRequest}
-								theme={jsonViewTheme}
+								theme={theme}
 								name={false}
 								collapsed={1}
 								enableClipboard={false}
@@ -114,7 +115,7 @@ export function TraceDetailsPanel({
 						{llmResponse ? (
 							<ReactJson
 								src={llmResponse}
-								theme={jsonViewTheme}
+								theme={theme}
 								name={false}
 								collapsed={1}
 								enableClipboard={false}
