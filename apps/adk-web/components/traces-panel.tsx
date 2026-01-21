@@ -24,7 +24,6 @@ export function TracesPanel({
 }: TracesPanelProps) {
 	const [selectedSpan, setSelectedSpan] = useState<TraceSpan | null>(null);
 
-	console.log("tracesByTraceId", tracesByTraceId);
 	return (
 		<div className="flex flex-col h-full bg-background overflow-hidden">
 			<div className="flex-1 overflow-y-auto min-h-0">

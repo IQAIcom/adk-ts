@@ -1,9 +1,8 @@
 import { X } from "lucide-react";
-import ReactJson from "react-json-view";
 import { Button } from "@/components/ui/button";
+import { JsonViewer } from "@/components/ui/json-viewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TraceSpan } from "@/hooks/use-traces";
-import { createJsonViewTheme } from "@/lib/dynamic-json-theme";
 import { getLlmRequest, getLlmResponse } from "@/lib/trace-utils";
 
 interface TraceDetailsPanelProps {
@@ -17,10 +16,9 @@ export function TraceDetailsPanel({
 }: TraceDetailsPanelProps) {
 	const llmRequest = getLlmRequest(selectedSpan);
 	const llmResponse = getLlmResponse(selectedSpan);
-	const theme = createJsonViewTheme();
 
 	return (
-		<div className="border-t bg-background z-10 flex flex-col h-1/2 min-h-75 fixed bottom-0 w-screen">
+		<div className="border-t bg-background z-10 flex flex-col h-1/2 min-h-75 fixed bottom-0 w-[calc(100vw-60px)]">
 			<div className="flex items-center justify-between p-2 border-b">
 				<div className="flex items-center gap-2 px-2">
 					<h3 className="font-semibold text-sm">Trace Details</h3>
@@ -70,39 +68,19 @@ export function TraceDetailsPanel({
 
 				<div className="flex-1 overflow-auto bg-(--color-card) p-4">
 					<TabsContent value="event" className="m-0 h-full">
-						<ReactJson
-							src={selectedSpan}
-							theme={theme}
-							name={false}
-							collapsed={1}
-							enableClipboard={false}
-							displayDataTypes={false}
-							displayObjectSize={false}
-							indentWidth={2}
-							style={{
-								fontFamily: "var(--font-mono)",
-								fontSize: "0.875rem",
-								backgroundColor: "transparent",
-							}}
+						<JsonViewer
+							data={selectedSpan}
+							defaultExpanded={true}
+							className="bg-transparent"
 						/>
 					</TabsContent>
 
 					<TabsContent value="request" className="m-0 h-full">
 						{llmRequest ? (
-							<ReactJson
-								src={llmRequest}
-								theme={theme}
-								name={false}
-								collapsed={1}
-								enableClipboard={false}
-								displayDataTypes={false}
-								displayObjectSize={false}
-								indentWidth={2}
-								style={{
-									fontFamily: "var(--font-mono)",
-									fontSize: "0.875rem",
-									backgroundColor: "transparent",
-								}}
+							<JsonViewer
+								data={llmRequest}
+								defaultExpanded={true}
+								className="bg-transparent"
 							/>
 						) : (
 							<div className="text-muted-foreground text-sm p-4">
@@ -113,20 +91,10 @@ export function TraceDetailsPanel({
 
 					<TabsContent value="response" className="m-0 h-full">
 						{llmResponse ? (
-							<ReactJson
-								src={llmResponse}
-								theme={theme}
-								name={false}
-								collapsed={1}
-								enableClipboard={false}
-								displayDataTypes={false}
-								displayObjectSize={false}
-								indentWidth={2}
-								style={{
-									fontFamily: "var(--font-mono)",
-									fontSize: "0.875rem",
-									backgroundColor: "transparent",
-								}}
+							<JsonViewer
+								data={llmResponse}
+								defaultExpanded={true}
+								className="bg-transparent"
 							/>
 						) : (
 							<div className="text-muted-foreground text-sm p-4">

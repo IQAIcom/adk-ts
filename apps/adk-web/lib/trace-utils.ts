@@ -110,7 +110,6 @@ export function findInvocId(spans: TraceSpan[]): string | undefined {
 }
 
 export function findUserMessage(spans: TraceSpan[]): string | undefined {
-	console.log("spans", spans);
 	const span = spans.find((s) => s.attributes?.["adk.llm_request"]);
 
 	if (!span?.attributes) return "[no invocation id found]";

@@ -43,7 +43,6 @@
 		"react": "19.1.2",
 		"react-dom": "19.1.2",
 		"react-hook-form": "^7.62.0",
-		"react-json-view": "^1.21.3",
 		"react-markdown": "^10.1.0",
 		"react-syntax-highlighter": "^15.6.6",
 		"rehype-katex": "^7.0.1",
