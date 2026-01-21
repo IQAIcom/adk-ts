@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { Command, CommandRunner, Option } from "nest-commander";
+import { DEFAULT_API_PORT } from "../common/constants";
 import { startHttpServer } from "../http/bootstrap";
 import { createGracefulShutdownHandler } from "../utils/graceful-shutdown";
 
@@ -22,7 +23,7 @@ export class WebCommand extends CommandRunner {
 		_passedParams: string[],
 		options?: WebCommandOptions,
 	): Promise<void> {
-		const apiPort = options?.port ?? 8042;
+		const apiPort = options?.port ?? DEFAULT_API_PORT;
 		const host = options?.host ?? "localhost";
 		const agentsDir = options?.dir ?? process.cwd();
 
@@ -64,7 +65,7 @@ export class WebCommand extends CommandRunner {
 
 			// Build the web app URL - add port param if not using default
 			const url = new URL(webUrl);
-			if (apiPort !== 8042) {
+			if (apiPort !== DEFAULT_API_PORT) {
 				url.searchParams.set("port", apiPort.toString());
 			}
 			const webAppUrl = url.toString();

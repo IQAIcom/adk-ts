@@ -298,13 +298,14 @@ export async function startHttpServer(
 			// Use type assertion since we know NestExpressApplication uses Express
 			app.use((req: Request, res: Response, next: NextFunction) => {
 				// Skip API routes, health checks, docs, and reload endpoints
-				if (
-					req.path.startsWith("/api") ||
-					req.path.startsWith("/health") ||
-					req.path.startsWith("/docs") ||
-					req.path.startsWith("/openapi") ||
-					req.path.startsWith("/reload")
-				) {
+				const API_ROUTE_PREFIXES = [
+					"/api",
+					"/health",
+					"/docs",
+					"/openapi",
+					"/reload",
+				] as const;
+				if (API_ROUTE_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
 					return next();
 				}
 
