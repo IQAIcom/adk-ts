@@ -112,8 +112,9 @@ export abstract class BaseAgent {
 	async *runAsync(
 		parentContext: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
+		const agentSpanIndex = parentContext.nextAgentSpanIndex();
 		yield* telemetryService.traceAsyncGenerator(
-			`agent_run [${this.name}]`,
+			`agent_run [${this.name}] #${agentSpanIndex}`,
 			this.runAsyncInternal(parentContext),
 		);
 	}
@@ -124,8 +125,9 @@ export abstract class BaseAgent {
 	async *runLive(
 		parentContext: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
+		const agentSpanIndex = parentContext.nextAgentSpanIndex();
 		yield* telemetryService.traceAsyncGenerator(
-			`agent_run_live [${this.name}]`,
+			`agent_run_live [${this.name}] #${agentSpanIndex}`,
 			this.runLiveInternal(parentContext),
 		);
 	}

@@ -104,6 +104,7 @@ export abstract class BaseLlmFlow {
 		const llm = this.__getLlm(invocationContext);
 		const isStreaming =
 			invocationContext.runConfig.streamingMode === StreamingMode.SSE;
+		const llmSpanIndex = invocationContext.nextLlmSpanIndex();
 		const generator = async function* (this: BaseLlmFlow) {
 			for await (const llmResponse of this._callLlmAsync(
 				invocationContext,
@@ -123,7 +124,9 @@ export abstract class BaseLlmFlow {
 		}.bind(this)();
 
 		yield* telemetryService.traceAsyncGenerator(
-			isStreaming ? `llm_stream [${llm.model}]` : `llm_generate [${llm.model}]`,
+			isStreaming
+				? `llm_stream [${llm.model}] #${llmSpanIndex}`
+				: `llm_generate [${llm.model}] #${llmSpanIndex}`,
 			generator,
 		);
 	}

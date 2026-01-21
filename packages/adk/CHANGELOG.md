@@ -1,5 +1,36 @@
 # @iqai/adk
 
+## 0.6.3
+
+### Patch Changes
+
+- ad1b38b: Improve tracing with sequential span indices for better observability.
+  - Add span counters to `InvocationContext` for tracking LLM, tool, and agent invocations
+  - Update trace span names to include indices (e.g., `agent_run [my-agent] #1`, `execute_tool [search] #1`, `llm_generate [gpt-4] #1`)
+  - Include app name in invocation span for better traceability
+  - Disable auto instrumentation by default to reduce trace noise
+  - Update telemetry documentation with new span naming conventions
+
+## 0.6.2
+
+### Patch Changes
+
+- 8f2167a: Adds a new suite of default ADK tools and refactors common tooling, including a major upgrade to the Google Search tool.
+  - Introduces a comprehensive set of **default tools** for the ADK (file system, shell, and web utilities) to provide a strong out-of-the-box agent experience.
+  - Adds a new **Tavily-powered web search tool** as part of the default toolset.
+  - Refactors the **Google Search tool** to use the real Google Custom Search API with Axios and Zod-based argument validation.
+  - Improves **type safety** across several common tools by replacing `any` return types with explicit interfaces.
+  - Updates the memory loading tool to return a structured result object.
+
+  This is a **non-breaking feature and refactor** that expands functionality, improves reliability, and strengthens type safety without changing existing APIs.
+
+- f2dfa13: fix: remove unnecessary any type
+- 96e9661: Add Context Caching support for ADK Apps using Gemini 2.0+ models.
+
+  This feature allows agents to reuse extended instructions or large contextual data across requests, reducing token usage and improving performance. Caching behavior is configurable at the App or Agent level via `contextCacheConfig`, with controls for minimum token threshold, cache TTL, and maximum usage intervals.
+
+  All agents within an App can benefit from shared cached context, minimizing redundant data sent to the model while preserving correctness.
+
 ## 0.6.1
 
 ### Patch Changes

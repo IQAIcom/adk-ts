@@ -31,6 +31,7 @@ export function createBranchContextForSubAgent(
 		runConfig: invocationContext.runConfig,
 		pluginManager: invocationContext.pluginManager,
 		contextCacheConfig: invocationContext.contextCacheConfig,
+		spanCounters: invocationContext.getSpanCounters(),
 	});
 }
 

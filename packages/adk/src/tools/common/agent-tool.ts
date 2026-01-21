@@ -156,7 +156,7 @@ export class AgentTool extends BaseTool {
 	async runAsync(
 		params: Record<string, any>,
 		context: ToolContext,
-	): Promise<any> {
+	): Promise<unknown> {
 		try {
 			// Use the first parameter value if input is not provided
 			// This allows support for custom schema parameters
@@ -183,6 +183,7 @@ export class AgentTool extends BaseTool {
 				pluginManager: parentInvocation.pluginManager,
 				runConfig: parentInvocation.runConfig,
 				contextCacheConfig: parentInvocation.contextCacheConfig,
+				spanCounters: parentInvocation.getSpanCounters(),
 				userContent: {
 					role: "user" as const,
 					parts: [{ text: String(input) }],

@@ -91,7 +91,9 @@ export class BasicLoggingPlugin extends BasePlugin {
         .join("")
         .slice(0, 120) || "";
     console.log(
-      `[Plugin:${this.name}] on_event author=${params.event.author} final=${params.event.isFinalResponse()} preview="${preview}"`,
+      `[Plugin:${this.name}] on_event author=${
+        params.event.author
+      } final=${params.event.isFinalResponse()} preview="${preview}"`,
     );
     return undefined;
   }
@@ -153,7 +155,9 @@ export class BasicLoggingPlugin extends BasePlugin {
     toolContext: Tools.ToolContext;
   }): Promise<Record<string, any> | undefined> {
     console.log(
-      `[Plugin:${this.name}] before_tool ${params.tool.name} args=${JSON.stringify(params.toolArgs).slice(0, 120)}`,
+      `[Plugin:${this.name}] before_tool ${
+        params.tool.name
+      } args=${JSON.stringify(params.toolArgs).slice(0, 120)}`,
     );
     return undefined;
   }
@@ -166,7 +170,9 @@ export class BasicLoggingPlugin extends BasePlugin {
     result: Record<string, any>;
   }): Promise<Record<string, any> | undefined> {
     console.log(
-      `[Plugin:${this.name}] after_tool ${params.tool.name} result_preview=${JSON.stringify(params.result).slice(0, 120)}`,
+      `[Plugin:${this.name}] after_tool ${
+        params.tool.name
+      } result_preview=${JSON.stringify(params.result).slice(0, 120)}`,
     );
     return undefined;
   }

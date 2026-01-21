@@ -9,7 +9,7 @@ This document captures how our tracing currently maps to OpenTelemetry GenAI sem
 | What we do         | Details                                                                                                                                             |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | System identifier  | spans set `gen_ai.system = iqai-adk` (**deprecated attr**; spec now uses `gen_ai.provider.name`)                                                    |
-| Operation name     | `gen_ai.operation.name` set per operation (`invoke_agent`, `execute_tool`, `call_llm`, etc.)                                                        |
+| Operation name     | `gen_ai.operation.name` set per operation (`invoke_agent`, `execute_tool`, `chat`, etc.)                                                            |
 | LLM spans          | model, max_tokens, temperature, top_p, finish_reasons, token usage (input/output/total)                                                             |
 | Tool spans         | tool name/description/type/call_id; args/response opt-in via content gate                                                                           |
 | Agent spans        | agent name/description, conversation id                                                                                                             |
@@ -25,13 +25,13 @@ Reference files:
 
 ## Issues in current constants
 
-| Constant                            | Current value               | Problem                                                                                 |
-| ----------------------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
-| `SEMCONV.GEN_AI_SYSTEM`             | `gen_ai.system`             | **Deprecated**. Spec v1.38 uses `gen_ai.provider.name` (required).                      |
-| `SEMCONV.GEN_AI_USAGE_TOTAL_TOKENS` | `gen_ai.usage.total_tokens` | **Not in spec**. Spec only defines input/output tokens; total is computed.              |
-| `SEMCONV.GEN_AI_CONTENT_PROMPT`     | `gen_ai.content.prompt`     | **Non-standard**. Spec uses `gen_ai.input.messages` (structured attr) or event body.    |
-| `SEMCONV.GEN_AI_CONTENT_COMPLETION` | `gen_ai.content.completion` | **Non-standard**. Spec uses `gen_ai.output.messages`.                                   |
-| `OPERATIONS.CALL_LLM`               | `call_llm`                  | **Not a well-known value**. Spec uses `chat`, `text_completion`, or `generate_content`. |
+| Constant                            | Current value               | Problem                                                                                      |
+| ----------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------- |
+| `SEMCONV.GEN_AI_SYSTEM`             | `gen_ai.system`             | **Deprecated**. Spec v1.38 uses `gen_ai.provider.name` (required).                           |
+| `SEMCONV.GEN_AI_USAGE_TOTAL_TOKENS` | `gen_ai.usage.total_tokens` | **Not in spec**. Spec only defines input/output tokens; total is computed.                   |
+| `SEMCONV.GEN_AI_CONTENT_PROMPT`     | `gen_ai.content.prompt`     | **Non-standard**. Spec uses `gen_ai.input.messages` (structured attr) or event body.         |
+| `SEMCONV.GEN_AI_CONTENT_COMPLETION` | `gen_ai.content.completion` | **Non-standard**. Spec uses `gen_ai.output.messages`.                                        |
+| `OPERATIONS.CALL_LLM`               | `call_llm`                  | **Unused**. Tracing uses `chat`; spec uses `chat`, `text_completion`, or `generate_content`. |
 
 Custom ADK operations (`transfer_agent`, `execute_callback`, `search_memory`, `insert_memory`, `execute_plugin`) are fine as framework-specific extensions, but should be documented as non-standard.
 

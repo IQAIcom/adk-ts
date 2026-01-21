@@ -547,7 +547,9 @@ class RetryHandler {
     }
 
     throw new Error(
-      `Operation failed after ${maxRetries + 1} attempts: ${lastError!.message}`,
+      `Operation failed after ${maxRetries + 1} attempts: ${
+        lastError!.message
+      }`,
     );
   }
 

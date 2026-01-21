@@ -1,0 +1,337 @@
+---
+title: Production Configuration
+description: Privacy controls, performance tuning, security best practices, and production deployment
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+This guide covers production-ready configuration for observability in ADK-TS, including privacy controls, performance optimization, and security best practices.
+
+## Privacy & Security
+
+### Content Capture Control
+
+By default, the telemetry system captures LLM request/response content and tool arguments/responses for debugging. For production environments with sensitive data, disable content capture.
+
+<Tabs items={['Environment Variable', 'Configuration', 'What Gets Captured']}>
+  <Tab value="Environment Variable">
+    ```bash
+    # Disable content capture
+    export ADK_CAPTURE_MESSAGE_CONTENT=false
+    ```
+
+    This environment variable is respected automatically by the telemetry system.
+
+  </Tab>
+
+  <Tab value="Configuration">
+    ```typescript
+    await telemetryService.initialize({
+      appName: 'my-app',
+      otlpEndpoint: 'https://your-backend.com/v1/traces',
+      captureMessageContent: false, // Disable content capture
+    });
+    ```
+  </Tab>
+
+  <Tab value="What Gets Captured">
+    When `captureMessageContent` is `false`:
+    
+    - Tool arguments show as `{}`
+    - Tool responses show as `{}`
+    - LLM prompts show as `{}`
+    - LLM completions show as `{}`
+    - **Metadata is still captured**: model, tokens, duration, etc.
+  </Tab>
+</Tabs>
+
+<Callout type="warn" title="Production Recommendation">
+  Always disable content capture in production to protect sensitive user data
+  and comply with privacy regulations.
+</Callout>
+
+## Performance Tuning
+
+### Sampling Ratio
+
+Reduce trace sampling to minimize overhead in high-traffic scenarios:
+
+```typescript
+await telemetryService.initialize({
+  appName: "my-app",
+  otlpEndpoint: "https://your-backend.com/v1/traces",
+  samplingRatio: 0.1, // Sample 10% of traces
+});
+```
+
+**Sampling Guidelines:**
+
+- **Development**: `1.0` (100% sampling)
+- **Staging**: `0.5` (50% sampling)
+- **Production**: `0.1` to `0.2` (10-20% sampling)
+
+### Auto-Instrumentation
+
+Disable auto-instrumentation if you don't need it:
+
+```typescript
+await telemetryService.initialize({
+  appName: "my-app",
+  otlpEndpoint: "https://your-backend.com/v1/traces",
+  enableAutoInstrumentation: false, // Disable HTTP/DB/file tracing
+});
+```
+
+### Metric Export Interval
+
+Adjust metric export frequency:
+
+```typescript
+await telemetryService.initialize({
+  appName: "my-app",
+  otlpEndpoint: "https://your-backend.com/v1/traces",
+  metricExportIntervalMs: 300000, // Export every 5 minutes
+});
+```
+
+**Export Interval Guidelines:**
+
+- **Development**: `60000` (1 minute)
+- **Production**: `300000` to `600000` (5-10 minutes)
+
+## Production Configuration Example
+
+Here's a complete production-ready configuration:
+
+```typescript
+import { telemetryService } from "@iqai/adk";
+
+await telemetryService.initialize({
+  // Required
+  appName: process.env.OTEL_SERVICE_NAME || "my-agent-app",
+  otlpEndpoint:
+    process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
+    "https://your-backend.com/v1/traces",
+
+  // Environment
+  environment: process.env.NODE_ENV || "production",
+  appVersion: process.env.APP_VERSION || "1.0.0",
+
+  // OTLP configuration
+  otlpHeaders: {
+    "api-key": process.env.OTEL_API_KEY,
+  },
+
+  // Feature flags
+  enableTracing: true,
+  enableMetrics: true,
+  enableAutoInstrumentation: true, // Enable if you need HTTP/DB tracing
+
+  // Privacy controls
+  captureMessageContent: process.env.ADK_CAPTURE_MESSAGE_CONTENT !== "false",
+
+  // Performance tuning
+  samplingRatio: parseFloat(process.env.OTEL_SAMPLING_RATIO || "0.1"),
+  metricExportIntervalMs: parseInt(
+    process.env.METRIC_EXPORT_INTERVAL_MS || "300000",
+    10,
+  ),
+
+  // Custom resource attributes
+  resourceAttributes: {
+    "deployment.name": process.env.DEPLOYMENT_NAME || "production",
+    team: process.env.TEAM_NAME || "platform",
+    region: process.env.AWS_REGION || "us-east-1",
+  },
+});
+```
+
+## Environment Variables
+
+Use environment variables for configuration:
+
+```bash
+# Service identification
+export OTEL_SERVICE_NAME=my-agent-app
+export OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production,team=platform
+
+# Privacy control
+export ADK_CAPTURE_MESSAGE_CONTENT=false
+
+# Performance
+export OTEL_SAMPLING_RATIO=0.1
+export METRIC_EXPORT_INTERVAL_MS=300000
+
+# OTLP endpoint
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://your-backend.com/v1/traces
+export OTEL_API_KEY=your-api-key
+
+# Node environment
+export NODE_ENV=production
+```
+
+## Graceful Shutdown
+
+Always shutdown telemetry gracefully to ensure all traces and metrics are flushed:
+
+```typescript
+// At application exit
+process.on("SIGTERM", async () => {
+  await telemetryService.shutdown(5000); // 5 second timeout
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  await telemetryService.shutdown(5000);
+  process.exit(0);
+});
+
+// Or manually
+await telemetryService.shutdown();
+```
+
+<Callout type="warn" title="Shutdown Timeout">
+  The shutdown timeout ensures telemetry is flushed even if the backend is slow.
+  Adjust based on your network conditions.
+</Callout>
+
+## Security Best Practices
+
+### API Key Management
+
+Never hardcode API keys. Use environment variables or secret management:
+
+```typescript
+await telemetryService.initialize({
+  appName: "my-app",
+  otlpEndpoint: "https://your-backend.com/v1/traces",
+  otlpHeaders: {
+    "api-key": process.env.OTEL_API_KEY, // From environment
+  },
+});
+```
+
+### Network Security
+
+- Use HTTPS for OTLP endpoints
+- Verify SSL certificates
+- Use VPN or private networks when possible
+- Implement rate limiting on your backend
+
+### Data Retention
+
+Configure data retention policies in your observability backend:
+
+- **Traces**: Typically 7-30 days
+- **Metrics**: Longer retention (30-90 days)
+- **Logs**: Varies by compliance requirements
+
+## Monitoring Overhead
+
+Monitor the overhead of telemetry in production:
+
+### Signs of High Overhead
+
+- Increased CPU usage
+- Higher memory consumption
+- Slower agent response times
+- Network bandwidth issues
+
+### Mitigation Strategies
+
+1. **Reduce sampling ratio**:
+
+   ```typescript
+   samplingRatio: 0.05; // Sample 5% of traces
+   ```
+
+2. **Disable auto-instrumentation**:
+
+   ```typescript
+   enableAutoInstrumentation: false;
+   ```
+
+3. **Increase metric export interval**:
+
+   ```typescript
+   metricExportIntervalMs: 600000; // 10 minutes
+   ```
+
+4. **Disable content capture**:
+   ```typescript
+   captureMessageContent: false;
+   ```
+
+## Troubleshooting
+
+### No Traces Appearing
+
+1. **Check OTLP endpoint** - Verify the endpoint URL is correct
+2. **Verify backend is running** - Ensure your observability backend is accessible
+3. **Check network connectivity** - Test connection to the endpoint
+4. **Enable debug logging**:
+
+   ```typescript
+   import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
+
+   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
+   ```
+
+### High Overhead
+
+1. **Reduce sampling ratio** - Lower the percentage of traces sampled
+2. **Disable auto-instrumentation** - If you don't need HTTP/DB tracing
+3. **Increase metric export interval** - Export metrics less frequently
+4. **Review resource attributes** - Remove unnecessary custom attributes
+
+### Content Not Captured
+
+Check privacy settings:
+
+```bash
+echo $ADK_CAPTURE_MESSAGE_CONTENT
+# Should be 'true' or unset for content capture
+```
+
+Verify configuration:
+
+```typescript
+await telemetryService.initialize({
+  captureMessageContent: true, // Explicitly enable
+});
+```
+
+## Best Practices Summary
+
+1. **Always initialize early** - Before any agent operations
+2. **Graceful shutdown** - Ensure telemetry is flushed on exit
+3. **Privacy-first** - Disable content capture in production
+4. **Use standard attributes** - Follow GenAI semantic conventions
+5. **Monitor overhead** - Adjust sampling and export intervals
+6. **Test locally** - Use Jaeger for development
+7. **Structured logging** - Correlate logs with traces
+8. **Custom attributes** - Add business context to spans
+9. **Environment variables** - Use env vars for configuration
+10. **Security** - Never hardcode API keys or sensitive data
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="🔌 Platform Integrations"
+    description="Integrate with observability platforms"
+    href="/docs/framework/observability/integrations"
+  />
+  <Card
+    title="🔍 Distributed Tracing"
+    description="Learn about distributed tracing"
+    href="/docs/framework/observability/tracing"
+  />
+  <Card
+    title="📊 Metrics"
+    description="Explore metrics for monitoring"
+    href="/docs/framework/observability/metrics"
+  />
+</Cards>
