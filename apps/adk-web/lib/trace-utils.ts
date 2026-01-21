@@ -125,3 +125,21 @@ export function findUserMessage(spans: TraceSpan[]): string | undefined {
 		return "[error parsing request]";
 	}
 }
+
+export function getLlmRequest(span: TraceSpan): any | undefined {
+	if (!span.attributes?.["adk.llm_request"]) return undefined;
+	try {
+		return JSON.parse(span.attributes["adk.llm_request"]);
+	} catch {
+		return undefined;
+	}
+}
+
+export function getLlmResponse(span: TraceSpan): any | undefined {
+	if (!span.attributes?.["adk.llm_response"]) return undefined;
+	try {
+		return JSON.parse(span.attributes["adk.llm_response"]);
+	} catch {
+		return undefined;
+	}
+}

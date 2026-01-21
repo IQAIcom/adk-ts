@@ -15,6 +15,8 @@ import {
 interface TraceTreeProps {
 	spans: TraceSpan[];
 	invocationId?: string;
+	onSelectSpan?: (span: TraceSpan) => void;
+	selectedSpanId?: string | null;
 }
 
 interface FlatNode {
@@ -22,9 +24,13 @@ interface FlatNode {
 	level: number;
 }
 
-export function TraceTree({ spans, invocationId }: TraceTreeProps) {
+export function TraceTree({
+	spans,
+	invocationId,
+	onSelectSpan,
+	selectedSpanId,
+}: TraceTreeProps) {
 	const [_hoveredNode, setHoveredNode] = useState<FlatNode | null>(null);
-	const [selectedNode, setSelectedNode] = useState<FlatNode | null>(null);
 
 	const { flatTree, baseStartTimeMs, totalDurationMs } = useMemo(() => {
 		const roots = buildSpanTree(spans);
@@ -55,13 +61,11 @@ export function TraceTree({ spans, invocationId }: TraceTreeProps) {
 	};
 
 	const handleSelect = (node: FlatNode) => {
-		setSelectedNode(
-			selectedNode?.span.span_id === node.span.span_id ? null : node,
-		);
+		onSelectSpan?.(node.span);
 	};
 
 	return (
-		<div className="mt-4">
+		<div>
 			{invocationId && (
 				<div className="mb-2 font-mono font-bold text-sm">
 					Invocation ID:{" "}
@@ -73,7 +77,7 @@ export function TraceTree({ spans, invocationId }: TraceTreeProps) {
 
 			<div className="w-full font-mono text-xs rounded-lg overflow-hidden bg-background">
 				{flatTree.map((node) => {
-					const isSelected = selectedNode?.span.span_id === node.span.span_id;
+					const isSelected = selectedSpanId === node.span.span_id;
 					const duration = node.span.duration;
 
 					return (

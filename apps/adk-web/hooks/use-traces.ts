@@ -6,8 +6,8 @@ import type { AgentListItemDto } from "../Api";
 import { useApiUrl } from "./use-api-url";
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
-const TRACE_STALE_TIME_MS = 30_000;
-const TRACE_REFETCH_INTERVAL_MS = 30_000;
+const TRACE_STALE_TIME_MS = 0;
+const TRACE_REFETCH_INTERVAL_MS = 1_000;
 const TRACE_QUERY_RETRY_COUNT = 2;
 
 export interface TraceSpan {

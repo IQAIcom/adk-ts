@@ -44,6 +44,7 @@ async function bootstrap() {
 			enableMetrics: false,
 			metricExportIntervalMs: 1000,
 			debug: true,
+			enableAutoInstrumentation: false,
 		});
 	}
 
