@@ -30,8 +30,7 @@ export class LangfusePlugin extends BasePlugin {
 
 let LangfuseClass: new (args: Omit<LangfusePluginOptions, 'name'>) => Langfuse;
 		try {
-			const { Langfuse: LF } = require("langfuse");
-			LangfuseClass = LF;
+LangfuseClass = require("langfuse").Langfuse;
 		} catch (_error) {
 			throw new Error(
 				"Missing required peer dependency: langfuse. To use LangfusePlugin, install it with 'npm install langfuse' or 'pnpm add langfuse'.",
