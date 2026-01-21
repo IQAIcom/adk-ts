@@ -3,7 +3,7 @@ import { Event } from "@adk/events";
 import { LlmRequest, LlmResponse } from "@adk/models";
 import { BaseTool, ToolContext } from "@adk/tools";
 import { Content, Part } from "@google/genai";
-import {
+import type {
 	Langfuse,
 	LangfuseGenerationClient,
 	LangfuseSpanClient,
@@ -27,7 +27,18 @@ export class LangfusePlugin extends BasePlugin {
 
 	constructor(options: LangfusePluginOptions) {
 		super(options.name ?? "langfuse_plugin");
-		this.client = new Langfuse({
+
+		let LangfuseClass: any;
+		try {
+			const { Langfuse: LF } = require("langfuse");
+			LangfuseClass = LF;
+		} catch (_error) {
+			throw new Error(
+				"Missing required peer dependency: langfuse. To use LangfusePlugin, install it with 'npm install langfuse' or 'pnpm add langfuse'.",
+			);
+		}
+
+		this.client = new LangfuseClass({
 			publicKey: options.publicKey,
 			secretKey: options.secretKey,
 			baseUrl: options.baseUrl ?? "https://us.cloud.langfuse.com",
