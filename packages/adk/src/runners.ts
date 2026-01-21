@@ -229,7 +229,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		newMessage: Content;
 		runConfig?: RunConfig;
 	}): AsyncGenerator<Event, void, unknown> {
-		const span = tracer.startSpan("invocation");
+		const span = tracer.startSpan(`${this.appName}-invocation`);
 		const spanContext = trace.setSpan(context.active(), span);
 
 		// Extract and set input on span (using GenAI semantic conventions)
