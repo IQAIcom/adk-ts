@@ -4,6 +4,18 @@
 	"description": "Agent Development Kit for TypeScript with multi-provider LLM support",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"require": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./constants": {
+			"import": "./dist/constants.js",
+			"require": "./dist/constants.js",
+			"types": "./dist/constants.d.ts"
+		}
+	},
 	"bin": {
 		"adk": "./dist/cli/index.js"
 	},

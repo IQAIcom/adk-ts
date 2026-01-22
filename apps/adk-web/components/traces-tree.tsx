@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot, Circle, MessageSquare, PlayCircle, Wrench } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { SpanNode, TraceSpan } from "@/hooks/use-traces";
 import {
 	buildSpanTree,
@@ -30,8 +30,6 @@ export function TraceTree({
 	onSelectSpan,
 	selectedSpanId,
 }: TraceTreeProps) {
-	const [_hoveredNode, setHoveredNode] = useState<FlatNode | null>(null);
-
 	const { flatTree, baseStartTimeMs, totalDurationMs } = useMemo(() => {
 		const roots = buildSpanTree(spans);
 		const flat = flattenTree(roots);
@@ -75,7 +73,7 @@ export function TraceTree({
 				</div>
 			)}
 
-			<div className="w-full font-mono text-xs rounded-lg overflow-hidden bg-background">
+			<div className="w-full font-mono text-xs rounded-lg overflow-x-auto bg-background">
 				{flatTree.map((node) => {
 					const isSelected = selectedSpanId === node.span.span_id;
 					const duration = node.span.duration;
@@ -85,9 +83,7 @@ export function TraceTree({
 							key={node.span.span_id}
 							type="button"
 							onClick={() => handleSelect(node)}
-							onMouseEnter={() => setHoveredNode(node)}
-							onMouseLeave={() => setHoveredNode(null)}
-							className={`flex items-center w-full text-left h-9 border-b last:border-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset transition-colors cursor-pointer ${
+							className={`flex items-center min-w-max text-left h-9 border-b last:border-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset transition-colors cursor-pointer ${
 								isSelected ? "bg-muted" : "hover:bg-muted-foreground/5"
 							}`}
 						>
@@ -97,7 +93,7 @@ export function TraceTree({
 							>
 								<div
 									className="flex items-center"
-									style={{ marginLeft: node.level * 16 + 8 }}
+									style={{ marginLeft: node.level * 10 + 8 }}
 								>
 									{getIconComponent(getSpanIconName(node.span.name))}
 									<span className="truncate ml-2 font-medium">
@@ -106,7 +102,6 @@ export function TraceTree({
 								</div>
 							</div>
 
-							{/* Right: trace bar area */}
 							<div className="flex-1 relative h-full flex items-center px-2 bg-muted/10 pointer-events-none">
 								<div
 									className="absolute h-5 bg-blue-500/80 rounded-sm flex items-center justify-center text-[10px] text-white font-bold"

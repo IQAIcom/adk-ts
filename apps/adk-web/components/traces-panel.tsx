@@ -52,8 +52,8 @@ export function TracesPanel({
 									className="border-b bg-surface last:border-b-0"
 								>
 									<AccordionTrigger className="w-full px-4 py-3 flex justify-between items-center font-medium text-left hover:bg-muted-foreground/5">
-										<div className="flex items-center gap-2">
-											<Activity className="h-4 w-4" />
+										<div className="flex items-center gap-2 min-w-0 flex-1">
+											<Activity className="h-4 w-4 shrink-0" />
 											<span className="truncate">
 												{userMessage || invocId || traceId.slice(0, 8)}
 											</span>
