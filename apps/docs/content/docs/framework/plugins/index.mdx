@@ -1008,7 +1008,6 @@ async afterRunCallback(params: {
 3. **Be Performance Conscious**: Plugins run on every callback. Avoid heavy computations or blocking operations.
 
 4. **Use Appropriate Hook Patterns**:
-
    - Return `undefined` to observe without interference
    - Return a value only when you need to short-circuit
    - Modify context objects when you need to amend behavior

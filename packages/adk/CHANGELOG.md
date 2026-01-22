@@ -1,5 +1,31 @@
 # @iqai/adk
 
+## 0.6.4
+
+### Patch Changes
+
+- 3382057: Fix optional peer dependency issue with Langfuse.
+
+  Previously, importing `@iqai/adk` would fail if `langfuse` was missing, even when the Langfuse plugin was not used.
+
+  This change:
+  - Uses `import type` for Langfuse to preserve type safety without a runtime import.
+  - Dynamically requires `langfuse` inside `LangfusePlugin` constructor.
+  - Throws a clear error if the plugin is used without `langfuse` installed.
+
+  Now, users can import `@iqai/adk` without installing `langfuse` unless they use the Langfuse plugin.
+
+## 0.6.3
+
+### Patch Changes
+
+- ad1b38b: Improve tracing with sequential span indices for better observability.
+  - Add span counters to `InvocationContext` for tracking LLM, tool, and agent invocations
+  - Update trace span names to include indices (e.g., `agent_run [my-agent] #1`, `execute_tool [search] #1`, `llm_generate [gpt-4] #1`)
+  - Include app name in invocation span for better traceability
+  - Disable auto instrumentation by default to reduce trace noise
+  - Update telemetry documentation with new span naming conventions
+
 ## 0.6.2
 
 ### Patch Changes

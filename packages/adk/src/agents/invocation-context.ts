@@ -12,6 +12,8 @@ import type { LiveRequestQueue } from "./live-request-queue";
 import type { RunConfig } from "./run-config";
 import type { TranscriptionEntry } from "./transcription-entry";
 
+export type SpanCounters = { llm: number; tool: number; agent: number };
+
 /**
  * Transfer context for multi-agent workflows
  * Tracks the chain of agent transfers for telemetry
@@ -116,7 +118,7 @@ export function newInvocationContextId(): string {
  *     ┌─────────────────────── invocation ──────────────────────────┐
  *     ┌──────────── llm_agent_call_1 ────────────┐ ┌─ agent_call_2 ─┐
  *     ┌──── step_1 ────────┐ ┌───── step_2 ──────┐
- *     [call_llm] [call_tool] [call_llm] [transfer]
+ *     [llm_generate] [execute_tool] [llm_generate] [transfer]
  *
  */
 export class InvocationContext {
@@ -211,6 +213,7 @@ export class InvocationContext {
 	 */
 	private readonly _invocationCostManager: InvocationCostManager =
 		new InvocationCostManager();
+	private readonly _spanCounters: SpanCounters;
 
 	/**
 	 * Constructor for InvocationContext
@@ -232,6 +235,7 @@ export class InvocationContext {
 		runConfig?: RunConfig;
 		contextCacheConfig?: ContextCacheConfig;
 		transferContext?: TransferContext;
+		spanCounters?: SpanCounters;
 	}) {
 		this.artifactService = options.artifactService;
 		this.sessionService = options.sessionService;
@@ -249,6 +253,11 @@ export class InvocationContext {
 		this.runConfig = options.runConfig;
 		this.contextCacheConfig = options.contextCacheConfig;
 		this.transferContext = options.transferContext;
+		this._spanCounters = options.spanCounters ?? {
+			llm: 0,
+			tool: 0,
+			agent: 0,
+		};
 	}
 
 	/**
@@ -277,6 +286,34 @@ export class InvocationContext {
 	}
 
 	/**
+	 * Returns the next LLM span index for this invocation.
+	 */
+	nextLlmSpanIndex(): number {
+		return ++this._spanCounters.llm;
+	}
+
+	/**
+	 * Returns the next tool span index for this invocation.
+	 */
+	nextToolSpanIndex(): number {
+		return ++this._spanCounters.tool;
+	}
+
+	/**
+	 * Returns the next agent span index for this invocation.
+	 */
+	nextAgentSpanIndex(): number {
+		return ++this._spanCounters.agent;
+	}
+
+	/**
+	 * Exposes shared span counters for child contexts.
+	 */
+	getSpanCounters(): SpanCounters {
+		return this._spanCounters;
+	}
+
+	/**
 	 * Creates a child invocation context for a sub-agent
 	 */
 	createChildContext(agent: BaseAgent): InvocationContext {
@@ -297,6 +334,7 @@ export class InvocationContext {
 			runConfig: this.runConfig,
 			contextCacheConfig: this.contextCacheConfig,
 			transferContext: this.transferContext, // Propagate transfer context
+			spanCounters: this._spanCounters,
 		});
 	}
 }

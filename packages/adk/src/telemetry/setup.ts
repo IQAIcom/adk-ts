@@ -105,10 +105,9 @@ export class SetupService {
 			}
 
 			this.isInitialized = true;
+			const versionLabel = config.appVersion ? ` v${config.appVersion}` : "";
 			diag.info(
-				`Telemetry initialized successfully for ${config.appName} v${
-					config.appVersion || "unknown"
-				}`,
+				`Telemetry initialized successfully for ${config.appName}${versionLabel}`,
 			);
 		} catch (error) {
 			diag.error("Error initializing telemetry:", error);

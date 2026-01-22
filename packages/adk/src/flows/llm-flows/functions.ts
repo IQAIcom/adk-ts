@@ -6,7 +6,7 @@ import type { AuthConfig } from "../../auth/auth-config";
 import type { AuthToolArguments } from "../../auth/auth-tool";
 import { Event } from "../../events/event";
 import { EventActions } from "../../events/event-actions";
-import { telemetryService } from "../../telemetry";
+import { SEMCONV, telemetryService } from "../../telemetry";
 import type { BaseTool } from "../../tools/base/base-tool";
 import { ToolContext } from "../../tools/tool-context";
 
@@ -153,12 +153,16 @@ export async function handleFunctionCallsAsync(
 			toolsDict,
 		);
 
+		const toolSpanIndex = invocationContext.nextToolSpanIndex();
+
 		// Execute tool
 		const functionArgs = functionCall.args || {};
 
 		// Create tracing span for tool execution (matching Python pattern)
 		const tracer = telemetryService.getTracer();
-		const span = tracer.startSpan(`execute_tool [${tool.name}]`);
+		const span = tracer.startSpan(
+			`execute_tool [${tool.name}] #${toolSpanIndex}`,
+		);
 		const spanContext = trace.setSpan(context.active(), span);
 		const toolStartTime = Date.now();
 		let toolStatus: "success" | "error" = "success";
@@ -269,6 +273,9 @@ export async function handleFunctionCallsAsync(
 					0, // no retry
 					wasOverridden,
 				);
+				telemetryService.setActiveSpanAttributes({
+					[SEMCONV.GEN_AI_TOOL_NAME]: `${tool.name} #${toolSpanIndex}`,
+				});
 
 				return { result, event: functionResponseEvent };
 			});
