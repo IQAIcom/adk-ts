@@ -433,6 +433,32 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP DeBank – Interact with the DeBank platform via the MCP protocol.
+ *
+ * Authentication:
+ * The MCP supports two mutually exclusive access modes:
+ *
+ * 1. Direct DeBank API access
+ *    Required env vars:
+ *    - DEBANK_API_KEY: API key obtained from the DeBank platform.
+ *
+ * 2. Gateway-proxied access
+ *    Required env vars:
+ *    - IQ_GATEWAY_URL: Base URL of the gateway service.
+ *    - IQ_GATEWAY_KEY: Authentication key for the gateway.
+ *
+ * Note: If Both modes are provided, the Gateway-proxied access will be used.
+ */
+export function McpDebank(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Debank MCP Client",
+		"@iqai/mcp-debank",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * Generic MCP server function for any package
  *
  * @param packageName The npm package name of the MCP server
