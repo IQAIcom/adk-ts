@@ -1,146 +1,77 @@
 ---
 title: Session Rewind
-description: Travel back in time by restoring sessions to a previous state before a specific invocation
+description: Restore sessions to previous states for debugging, testing, and undo functionality
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-Session rewind allows you to "undo" a conversation by restoring the session to its state before a specific invocation. This is useful for debugging, A/B testing different agent responses, recovering from errors, or implementing user-facing "undo" functionality.
+Session rewind lets you restore a session to an earlier state by undoing one or more invocations. This is useful for debugging agent behavior, implementing undo features, testing different conversation paths, or recovering from errors.
 
-## What Gets Rewound?
+<Callout type="info" title="Non-Destructive">
 
-When you rewind a session, the framework restores:
-
-- **Session State**: All state keys (including `user:`, `app:`, and unprefixed scopes) are restored to their values before the target invocation
-- **Artifacts**: All artifacts are reverted to their versions before the target invocation
-- **Event History**: Events from the target invocation onwards are marked with a rewind marker, so they're excluded from future LLM context
-
-<Callout type="info" title="History is preserved">
-
-Events are never actually deleted—they're kept in the history but filtered out
-when building LLM context. This maintains audit trails while effectively
-"undoing" the conversation.
+Events are never deleted—they're preserved in the history but marked to be excluded from future LLM context. This maintains complete audit trails while effectively "undoing" the conversation.
 
 </Callout>
 
+## What Gets Restored
+
+When you rewind a session, the framework restores:
+
+- **Session State**: All state keys restored to their values before the target invocation
+- **Artifacts**: Artifact versions reverted to what existed before the target invocation
+- **Event History**: Events from the target invocation onwards are marked with a rewind marker and excluded from LLM context
+
 ## Basic Usage
 
-The `Runner` class provides the `rewind` method:
+Rewind a session using the `Runner.rewind` method:
 
 ```typescript
 import { Runner } from "@iqai/adk";
 
 const runner = new Runner({
-  agent,
-  sessionService,
-  artifactService,
+  appName: "my-app",
+  agent: myAgent,
+  sessionService: sessionService,
+  artifactService: artifactService,
 });
 
+// Rewind to before a specific invocation
 await runner.rewind({
-  userId: "user-123",
-  sessionId: "session-456",
-  rewindBeforeInvocationId: "invocation-789",
+  userId: "user_123",
+  sessionId: "session_456",
+  rewindBeforeInvocationId: "invocation_789",
 });
 ```
 
-This restores the session to the state it had **before** `invocation-789` started. All invocations from that point onwards are effectively undone.
+This restores the session to the state it had **before** `invocation_789` started. All invocations from that point onwards are effectively undone.
 
-## How It Works
+## Common Use Cases
 
-The rewind process involves three steps:
+### Implementing Undo
 
-### 1. State Delta Computation
-
-The runner scans the event history to compute what state changes happened during and after the target invocation:
+Add an "undo last message" feature to your chat application:
 
 ```typescript
-const stateDelta = await runner._computeStateDeltaForRewind(
-  session,
-  rewindBeforeInvocationId,
-);
-```
-
-This produces a delta containing:
-
-- Keys that were modified (with their "before" values)
-- Keys that were created (marked as `null` to delete them)
-
-### 2. Artifact Version Restoration
-
-Similarly, the runner determines which artifact versions to restore:
-
-```typescript
-const artifactDelta = await runner._computeArtifactDeltaForRewind(
-  session,
-  rewindBeforeInvocationId,
-);
-```
-
-This finds the most recent version of each modified artifact that existed before the target invocation.
-
-### 3. Persistence
-
-Finally, the runner:
-
-1. Creates a rewind event marking the cutoff point
-2. Applies the state delta (reverting or deleting keys)
-3. Applies the artifact delta (restoring previous versions)
-
-```typescript
-const rewindEvent = new Event({
-  invocationId: newInvocationId,
-  author: "system",
-  content: { parts: [{ text: "Session rewound" }] },
-  actions: new EventActions({
-    rewindBeforeInvocationId,
-    stateDelta,
-    artifactDelta,
-  }),
-});
-
-await sessionService.appendEvent(session, rewindEvent);
-```
-
-## Example: Implementing Undo
-
-Here's how you might add an "undo" feature to a chat interface:
-
-```typescript
-import {
-  Runner,
-  InMemorySessionService,
-  InMemoryArtifactService,
-} from "@iqai/adk";
+import { Runner } from "@iqai/adk";
 
 class ChatApp {
   private runner: Runner;
   private lastInvocationId?: string;
 
-  constructor(agent) {
-    this.runner = new Runner({
-      agent,
-      sessionService: new InMemorySessionService(),
-      artifactService: new InMemoryArtifactService(),
-    });
-  }
-
   async sendMessage(userId: string, sessionId: string, message: string) {
-    const config = {
+    for await (const event of this.runner.runAsync({
       userId,
       sessionId,
-      appName: "chat-app",
-      userMessage: message,
-    };
-
-    const events = [];
-    for await (const event of this.runner.runAsync(config)) {
-      events.push(event);
+      newMessage: { parts: [{ text: message }] },
+    })) {
+      // Track the last invocation ID
       if (event.invocationId) {
         this.lastInvocationId = event.invocationId;
       }
+      // Display event to user
+      displayEvent(event);
     }
-
-    return events;
   }
 
   async undo(userId: string, sessionId: string) {
@@ -154,39 +85,40 @@ class ChatApp {
       rewindBeforeInvocationId: this.lastInvocationId,
     });
 
-    this.lastInvocationId = undefined;
     console.log("Last message undone");
+    this.lastInvocationId = undefined;
   }
 }
 
-const app = new ChatApp(myAgent);
-
+// Usage
+const app = new ChatApp(runner);
 await app.sendMessage("user-1", "session-1", "What is 2+2?");
+await app.sendMessage("user-1", "session-1", "Tell me about quantum physics");
 
-await app.sendMessage(
-  "user-1",
-  "session-1",
-  "Actually, tell me about quantum physics",
-);
-
+// Undo the last message
 await app.undo("user-1", "session-1");
 ```
 
-## Example: Error Recovery
+### Error Recovery
 
 Automatically rewind when an agent encounters an error:
 
 ```typescript
-async function runWithErrorRecovery(runner, config) {
-  let lastSuccessfulInvocation;
+async function runWithErrorRecovery(runner: Runner, config) {
+  let lastSuccessfulInvocation: string | undefined;
 
   try {
     for await (const event of runner.runAsync(config)) {
-      yield event;
-
-      if (!event.partial && event.invocationId) {
+      // Track successful events
+      if (!event.partial && !event.errorCode && event.invocationId) {
         lastSuccessfulInvocation = event.invocationId;
       }
+
+      if (event.errorCode) {
+        throw new Error(`Agent error: ${event.errorMessage}`);
+      }
+
+      yield event;
     }
   } catch (error) {
     console.error("Agent failed:", error);
@@ -205,14 +137,110 @@ async function runWithErrorRecovery(runner, config) {
 }
 ```
 
-## Implementation Details
+### A/B Testing Agent Responses
 
-### Event Filtering
-
-After a rewind, events from the target invocation onwards are automatically excluded from LLM context. The framework handles this in `llm-flows/contents.ts`:
+Test different agent behaviors by rewinding and trying alternatives:
 
 ```typescript
-export function getContentsForLlmRequest(session: Session): Content[] {
+async function testAgentVariants(runner: Runner, config) {
+  const results = [];
+
+  // Try agent configuration A
+  const agentA = new LlmAgent({ name: "variant-a", ...configA });
+  runner.agent = agentA;
+
+  const eventsA = [];
+  for await (const event of runner.runAsync(config)) {
+    eventsA.push(event);
+  }
+  results.push({ variant: "A", events: eventsA });
+
+  // Get the invocation ID to rewind
+  const invocationId = eventsA[0]?.invocationId;
+
+  if (invocationId) {
+    // Rewind to before this test
+    await runner.rewind({
+      userId: config.userId,
+      sessionId: config.sessionId,
+      rewindBeforeInvocationId: invocationId,
+    });
+
+    // Try agent configuration B
+    const agentB = new LlmAgent({ name: "variant-b", ...configB });
+    runner.agent = agentB;
+
+    const eventsB = [];
+    for await (const event of runner.runAsync(config)) {
+      eventsB.push(event);
+    }
+    results.push({ variant: "B", events: eventsB });
+  }
+
+  return results;
+}
+```
+
+## How Rewind Works
+
+The rewind process involves three steps:
+
+**1. Compute State Delta**
+
+The Runner scans event history to determine what state changes occurred from the target invocation onwards:
+
+```typescript
+// Example of state changes to revert
+{
+  theme: 'light',        // Restore to previous value
+  newKey: null,          // Delete (didn't exist before)
+  unchangedKey: undefined // No change needed
+}
+```
+
+**2. Compute Artifact Delta**
+
+Similarly, the Runner finds the previous versions of modified artifacts:
+
+```typescript
+// Example of artifact versions to restore
+{
+  'report.pdf': 3,  // Restore to version 3
+  'image.png': 1    // Restore to version 1
+}
+```
+
+**3. Apply and Persist**
+
+The Runner creates a rewind event and applies the deltas:
+
+```typescript
+// Create rewind event
+const rewindEvent = new Event({
+  invocationId: newInvocationId,
+  author: "system",
+  content: { parts: [{ text: "Session rewound" }] },
+  actions: new EventActions({
+    rewindBeforeInvocationId,
+    stateDelta,
+    artifactDelta,
+  }),
+});
+
+// Append rewind event to session
+await sessionService.appendEvent(session, rewindEvent);
+```
+
+## Event Filtering
+
+After a rewind, the framework automatically excludes marked events from LLM context:
+
+```typescript
+// Events before rewind marker: included in LLM context
+// Rewind marker event: excluded
+// Events after rewind marker: excluded
+
+function getContentsForLlmRequest(session: Session): Content[] {
   const rewindMarker = findLastRewindMarker(session.events);
 
   return session.events
@@ -221,102 +249,66 @@ export function getContentsForLlmRequest(session: Session): Content[] {
 }
 ```
 
-### State Key Deletion
+## Important Considerations
 
-When rewinding creates a `stateDelta` with `null` values, the session service interprets these as deletions:
+<Callout type="warn" title="External Side Effects">
 
-```typescript
-if (value === null || value === undefined) {
-  delete session.state[key];
-} else {
-  session.state[key] = value;
-}
-```
-
-### Artifact References
-
-Artifacts support references to other artifacts using special URIs:
-
-```typescript
-import { getArtifactUri, parseArtifactUri } from "@iqai/adk";
-
-const uri = getArtifactUri("session", "session-id", "report.pdf", 2);
-
-const { scope, scopeId, filename, version } = parseArtifactUri(uri);
-```
-
-When loading artifacts, the service recursively resolves references and returns the actual data.
-
-## Testing Rewind
-
-The framework includes comprehensive tests in `packages/adk/src/tests/runners-rewind.test.ts`:
-
-```bash
-cd packages/adk
-pnpm test runners-rewind
-```
-
-Tests cover:
-
-- State restoration across scopes (`user:`, `app:`, unprefixed)
-- Artifact version rollback
-- Event history filtering
-- Multiple sequential rewinds
-
-## Limitations and Considerations
-
-<Callout type="warn" title="External side effects">
-
-Rewind only affects session state and artifacts managed by ADK. External side
-effects (API calls, database writes, sent emails) cannot be automatically
-undone.
+Rewind only affects ADK-managed session state and artifacts. External side effects (API calls, database writes, emails sent) cannot be automatically undone.
 
 </Callout>
 
-- **No external rollback**: If your tool made external API calls or wrote to external databases, those changes persist
-- **Memory persistence**: Rewind doesn't affect memory services (if you're using vector stores or RAG systems, those entries remain)
-- **Invocation ID must exist**: The `rewindBeforeInvocationId` must reference a real invocation in the session history
-- **Performance**: For sessions with many events/artifacts, computing deltas can be expensive
+**Limitations:**
+
+- **No external rollback**: API calls, database operations, and other external changes persist
+- **Memory service unaffected**: Vector stores and RAG systems retain their entries
+- **Invocation must exist**: The specified `rewindBeforeInvocationId` must reference a real invocation
+- **Performance**: Computing deltas for sessions with many events/artifacts can be slow
+
+**Best practices:**
+
+- Use rewind for development, debugging, and testing
+- Implement idempotent tools when possible
+- Track external side effects separately if they need reversal
+- Consider performance implications for large sessions
 
 ## When to Use Rewind
 
-Good use cases:
+**Good use cases:**
 
-- **Debugging**: Try different responses without starting over
-- **User control**: Let users undo mistakes or unwanted agent actions
-- **A/B testing**: Compare agent behavior by rewinding and trying alternatives
-- **Error recovery**: Automatically revert to a known good state after failures
+- Debugging agent behavior by trying different paths
+- Implementing user-facing undo functionality
+- A/B testing different agent configurations
+- Recovering from errors automatically
+- Testing conversation flows during development
 
-Not recommended for:
+**Not recommended for:**
 
-- **Real-time streaming undo**: Rewind is designed for completed invocations
-- **Fine-grained version control**: Use git or dedicated versioning systems for code artifacts
-- **Audit compliance**: While events are preserved, rewind complicates audit trails
+- Real-time streaming undo (rewind is for completed invocations)
+- Fine-grained version control of code artifacts
+- Compliance-critical audit trails (complicates forensics)
+- Undoing external API calls or database changes
 
-## Related Topics
+## Next Steps
 
 <Cards>
   <Card
-    title="📊 Session Management"
-    description="Understanding sessions and their lifecycle"
-    href="/docs/framework/session-state-memory/session"
-  />
-
-<Card
-  title="🗂️ State Management"
-  description="Working with session state and scopes"
-  href="/docs/framework/session-state-memory/state"
-/>
-
-<Card
-  title="📦 Artifacts"
-  description="Managing files and binary data"
-  href="/docs/framework/artifacts"
-/>
-
-  <Card
     title="🔄 Invocation Lifecycle"
-    description="How invocations work end-to-end"
+    description="Understand how invocations work from start to finish"
     href="/docs/framework/runtime/invocation-lifecycle"
+  />
+  <Card
+    title="📊 Session State"
+    description="Learn about session state management and scopes"
+    href="/docs/framework/session-state-memory/state"
+  />
+  <Card
+    title="📦 Artifacts"
+    description="Manage files and binary data with versioning"
+    href="/docs/framework/artifacts"
+  />
+  <Card
+    title="🧪 Testing"
+    description="Test agents and validate behavior"
+    href="/docs/framework/evaluation/testing-agents"
   />
 </Cards>
