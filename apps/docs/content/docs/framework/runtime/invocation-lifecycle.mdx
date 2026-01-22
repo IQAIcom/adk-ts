@@ -1,11 +1,20 @@
 ---
 title: Invocation Lifecycle
-description: Complete lifecycle from user query to response completion
+description: Understanding how the Runner executes a single user request from start to finish
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-An invocation represents everything that happens in response to a single user query, from initial receipt until the agent finishes processing.
+An **invocation** represents a complete execution cycle: from receiving a user's message to delivering the final response. Understanding this lifecycle helps you debug issues, optimize performance, and build predictable agent behavior.
+
+<Callout type="info" title="What is an Invocation?">
+
+Each call to `runner.runAsync()` creates a new invocation with a unique `invocationId`. All events yielded during that execution share this ID, linking them to that specific request-response cycle.
+
+</Callout>
+
+## Lifecycle Overview
 
 <Mermaid
   chart="
@@ -18,7 +27,7 @@ sequenceDiagram
   participant L as LLM
   participant T as MyTool
 
-U->>R: Send Query (What’s the capital of France?)
+U->>R: Send Query (What's the capital of France?)
 R->>S: Load Session (app, userId, sessionId)
 S-->>R: Return Session
 R->>S: Add User Query Event to History
@@ -68,131 +77,261 @@ deactivate A
 Note over R: Invocation Completed
 "/>
 
-### Step-by-Step Breakdown
+### Execution Phases
 
-1.  User Input: The user sends a query (for example, "What's the capital of France?").
-2.  Runner Starts: `Runner.runAsync` begins. It loads the relevant `Session` via `SessionService`, appends the user query as the first `Event` in the history, and prepares an `InvocationContext` (`ctx`).
-3.  Agent Execution: The `Runner` calls `agent.runAsync(ctx)` on the designated agent (for example, a `LlmAgent`).
-4.  LLM Call (Example): The agent determines it needs external information and prepares a request for the LLM. Suppose the LLM decides to call `MyTool`.
-5.  Yield FunctionCall Event: The agent receives the `FunctionCall` from the LLM and wraps it in an `Event` (e.g., `author: agent.name`, `content.parts: [{ functionCall: { name: 'MyTool', args: { ... } } }]`), then yields it.
-6.  Agent Pauses: The agent's async generator pauses immediately after the `yield`.
-7.  Runner Processes: The `Runner` receives the `FunctionCall` event, records it in the session via `SessionService`, and emits it upstream to the user interface.
-8.  Agent Resumes: The `Runner` advances the generator (implicit via `next()`), and the agent resumes execution.
-9.  Tool Execution: The runtime executes the requested tool on behalf of the agent (implementation calls `tool.runAsync(...)`) and routes the result back into the agent's flow.
-10. Tool Returns Result: `MyTool` completes and returns a result (for example, `{ result: 'Paris' }`).
-11. Yield FunctionResponse Event: The agent wraps the tool result in an `Event` containing a `FunctionResponse` part (for example, `content.parts: [{ functionResponse: { name: 'MyTool', response: { ... } } }]`). If applicable, the event can also include `actions` such as `stateDelta` or `artifactDelta`.
-12. Agent Pauses: The agent pauses again after yielding the `FunctionResponse`.
-13. Runner Processes: The `Runner` receives the `FunctionResponse`, applies any `actions.stateDelta`/`actions.artifactDelta` through `SessionService`, persists the event, and emits it upstream.
-14. Agent Resumes: The agent resumes, now with the tool result available and any state/artifact changes committed.
-15. Final LLM Call (Example): The agent sends the tool result to the LLM to generate a natural language answer.
-16. Yield Final Text Event: The agent wraps the final text into an `Event` (for example, `content.parts: [{ text: 'The capital of France is Paris.' }]`) and yields it.
-17. Agent Pauses: The agent pauses again.
-18. Runner Processes: The `Runner` persists the final text event via `SessionService` and emits it to the user. This event is typically marked as `isFinalResponse()`.
-19. Agent Resumes & Finishes: The agent resumes and, having no more events to yield for this invocation, its `runAsync` generator completes.
-20. Runner Completes: The `Runner` detects that the agent's generator is exhausted and finishes the loop for this invocation.
+An invocation progresses through several phases:
 
-## Important Runtime Behaviors
+**1. Initialization**
 
-Understanding a few key aspects of how the ADK TypeScript Runtime handles state, streaming, and asynchronous execution will help you build predictable and efficient agents.
+- Runner loads or creates the session via `SessionService`
+- User's message is appended to session history
+- Plugins execute `before_run` callbacks (may cause early exit)
+- Invocation context is created with unique `invocationId`
 
-### State Updates & Commitment Timing
+**2. Agent Execution**
 
-- The rule: When your code (in an agent, tool, or callback) modifies session state, the change is locally visible within the current invocation immediately, but it is only guaranteed to be persisted after you yield a non-partial `Event` that includes the corresponding `stateDelta` in its `actions`. The `Runner` persists that event via `SessionService.appendEvent(...)`, which applies the `stateDelta` to the session.
-- Implication: Code that runs after resuming from a `yield` can reliably assume that the state changes signaled in the yielded event have been committed.
+- Runner calls `agent.runAsync(context)` to start the agent
+- Agent processes input and begins yielding events
+- Each event flows through the Runner's processing pipeline
 
-TypeScript example (agent logic):
+**3. Event Processing Loop**
 
-```ts
-import { Event, EventActions } from "@iqai/adk";
-import type { InvocationContext } from "@iqai/adk";
+- Agent yields events (messages, tool calls, state updates)
+- Runner processes each event:
+  - Partial events: Yielded immediately to client
+  - Complete events: Persisted, state applied, then yielded
+- Loop continues until agent yields final response
 
+**4. Completion**
+
+- Plugins execute `after_run` callbacks
+- Invocation ends, returning control to caller
+
+## Detailed Walkthrough
+
+Let's trace a typical invocation where an agent uses a tool:
+
+**Step 1: User Query**
+
+```typescript
+for await (const event of runner.runAsync({
+  userId: "user_123",
+  sessionId: "session_456",
+  newMessage: { parts: [{ text: "What's the capital of France?" }] },
+})) {
+  console.log(event);
+}
+```
+
+**Step 2: Session Initialization**
+
+- Runner loads session from `SessionService`
+- User message added to session events
+- Session state available to agent
+
+**Step 3: Agent Determines Action**
+
+- Agent receives context with session history
+- Decides to call `searchTool` for factual information
+- LLM returns function call instruction
+
+**Step 4: Function Call Event**
+
+```typescript
+// Agent yields this event
+yield new Event({
+  author: "assistant",
+  content: {
+    parts: [
+      {
+        functionCall: {
+          name: "searchTool",
+          args: { query: "capital of France" },
+        },
+      },
+    ],
+  },
+});
+```
+
+- Runner receives event and persists it
+- Event yielded to client for UI updates
+- Agent execution pauses at this yield point
+
+**Step 5: Tool Execution**
+
+- Runner resumes agent (via generator protocol)
+- Agent executes the tool internally
+- Tool returns result: `{ result: 'Paris' }`
+
+**Step 6: Function Response Event**
+
+```typescript
+// Agent yields tool result
+yield new Event({
+  author: "user",
+  content: {
+    parts: [
+      {
+        functionResponse: {
+          name: "searchTool",
+          response: { result: "Paris" },
+        },
+      },
+    ],
+  },
+});
+```
+
+- Runner persists function response
+- Event yielded to client
+
+**Step 7: Final Response**
+
+- Agent sends tool result to LLM for synthesis
+- LLM generates natural language answer
+
+```typescript
+// Agent yields final response
+yield new Event({
+  author: "assistant",
+  content: { parts: [{ text: "The capital of France is Paris." }] },
+  partial: false,
+});
+```
+
+- Runner persists final event
+- Event marked as final response (`isFinalResponse() === true`)
+- Invocation completes
+
+## Key Runtime Behaviors
+
+Understanding these behaviors helps you build predictable agents and debug issues effectively.
+
+### State Persistence Timing
+
+State changes are **locally visible immediately** but **persisted only when a complete event is yielded**.
+
+```typescript
 async function* runAsyncImpl(ctx: InvocationContext) {
-  // 1) Stage a state change locally and construct an event that carries the delta
-  ctx.session.state["status"] = "processing"; // local visibility (dirty until committed)
-  const event1 = new Event({
-    invocationId: ctx.invocationId,
+  // Modify state locally
+  ctx.session.state.status = "processing";
+
+  // Yield event with stateDelta to persist the change
+  yield new Event({
     author: ctx.agent.name,
-    actions: new EventActions({ stateDelta: { status: "processing" } }),
     content: { parts: [{ text: "Starting work..." }] },
-    partial: false,
+    actions: new EventActions({
+      stateDelta: { status: "processing" },
+    }),
+    partial: false, // Must be complete to persist
   });
 
-  // 2) Yield event with the delta
-  yield event1;
-  // --- PAUSE --- Runner persists event1 and applies stateDelta
-
-  // 3) Resume execution – state is now guaranteed committed
-  const current = ctx.session.state["status"]; // "processing"
-  // ... continue
+  // State is now persisted - guaranteed committed
+  const status = ctx.session.state.status; // 'processing'
 }
 ```
 
-TypeScript example (tool logic using ToolContext):
+**Key Points:**
 
-```ts
-import type { ToolContext } from "@iqai/adk";
+- State changes are visible locally throughout the invocation
+- Only complete events (`partial: false`) trigger persistence
+- Include `stateDelta` in event actions to commit changes
+- After yielding, you can rely on the state being saved
 
-export async function runAsync(params: any, toolCtx: ToolContext) {
-  toolCtx.state["progress"] = "started"; // local visibility during this invocation
-  toolCtx.actions.stateDelta["progress"] = "started"; // ensure it’s committed with the functionResponse event
-  return { ok: true };
+### State Visibility Within Invocation
+
+During a single invocation, state changes are visible across all components (agents, tools, callbacks) even before persistence:
+
+```typescript
+// Before callback modifies state
+async function beforeAgentCallback(ctx: CallbackContext) {
+  ctx.state.userPreference = "dark";
+  // Visible immediately, persisted when event yields
+}
+
+// Tool can see the change in same invocation
+async function toolRun(params: any, ctx: ToolContext) {
+  const pref = ctx.state.userPreference; // 'dark'
+  return { theme: pref };
 }
 ```
 
-Notes:
+**Important:** If the invocation fails before yielding a complete event with `stateDelta`, uncommitted changes are lost. For critical state, always include `stateDelta` in your events.
 
-- Use `CallbackContext.state`/`ToolContext.state` for delta-aware state updates. The runtime will merge local changes and the provided `stateDelta` when a non-partial event is persisted.
-- Persisted state updates occur only on non-partial events. Partial (streaming) events are forwarded but not committed.
+### Streaming Events
 
-### "Dirty Reads" of Session State
+When streaming is enabled, agents can yield multiple partial events before the final complete event:
 
-- Definition: While commitment happens after the yield of a non-partial event, code running later within the same invocation (before the commit) can often see local, uncommitted changes. This is a “dirty read.”
-- Benefit: Lets multiple parts of your logic within a single invocation (e.g., callbacks and tools) coordinate via state without waiting for a full yield/commit cycle.
-- Caveat: Don’t rely on dirty reads for critical transitions. If the invocation fails before the committing event is yielded and processed, the uncommitted change is lost. For critical updates, ensure you attach a `stateDelta` to a non-partial event that will be processed by the `Runner`.
-
-TypeScript example (callback ➜ tool within the same invocation):
-
-```ts
-// beforeAgent callback
-async function beforeAgentCallback(cbCtx: CallbackContext) {
-  cbCtx.state["field_1"] = "value_1"; // staged locally
-  cbCtx.eventActions.stateDelta["field_1"] = "value_1"; // will commit when the next non-partial event is persisted
-}
-
-// later, during the same invocation, inside a tool
-async function runAsync(_params: any, toolCtx: ToolContext) {
-  const val = toolCtx.state["field_1"]; // likely "value_1" (dirty read)
-  // ... do work
-  return { value: val };
-}
-```
-
-### Streaming vs. Non-Streaming Output (partial)
-
-This concerns how LLM responses are handled, especially when using streaming generation APIs.
-
-- Streaming: The LLM generates its response in chunks. The framework yields multiple `Event` objects for one conceptual response. Most of these have `partial: true`.
-- The Runner forwards partial events immediately to the UI but does not persist them or apply `actions` (e.g., `stateDelta`).
-- Eventually, a final event for that response is yielded with `partial: false` (or implicitly as the turn’s completion). The Runner persists only this final event and applies any `actions.stateDelta`/`artifactDelta`.
-- Non-Streaming: The LLM returns the whole response at once; the framework yields a single non-partial event, which the Runner processes fully.
-- Why it matters: Ensures state changes are applied atomically and only once based on the complete response, while still allowing progressive UI updates.
-
-Conceptual Runner loop:
-
-```ts
-for await (const event of agent.runAsync(invocationContext)) {
-  if (!event.partial) {
-    await sessionService.appendEvent(session, event); // applies stateDelta/artifactDelta
+```typescript
+// Streaming response
+for await (const event of runner.runAsync({
+  userId,
+  sessionId,
+  newMessage,
+  runConfig: { streamingMode: StreamingMode.SSE },
+})) {
+  if (event.partial) {
+    // Real-time update - NOT persisted
+    updateUI(event.content);
+  } else {
+    // Complete event - persisted with state changes
+    finalizeUI(event.content);
   }
-  yield event; // always forward upstream
 }
 ```
 
-### Async is Primary (runAsync)
+**Streaming behavior:**
 
-- Core design: The ADK TS Runtime is asynchronous and uses async generators to handle concurrent operations without blocking.
-- Main entry point: `Runner.runAsync` returns an `AsyncGenerator<Event>` for each invocation.
-- Synchronous convenience (`run`): A sync wrapper exists primarily for local testing. Internally it drives `runAsync` and buffers yielded events; prefer `runAsync` in production.
-- Callbacks/tools: You can implement tools and callbacks as `async` functions. Synchronous code works but can block the Node.js event loop. For long-running or CPU-bound work, consider using Worker Threads, child processes, or external queues/services to avoid blocking.
+- Partial events: Yielded immediately for UI updates, not persisted
+- Complete event: Persisted with all state/artifact changes
+- Only the final complete event applies `stateDelta`/`artifactDelta`
 
-Understanding these behaviors will help you write robust ADK TS applications and debug issues related to state consistency, streaming updates, and asynchronous execution.
+**Non-streaming behavior:**
+
+- Single complete event yielded with full response
+- State changes applied immediately
+
+### Asynchronous Execution
+
+ADK-TS is built on async generators for non-blocking execution:
+
+```typescript
+// Primary API - async generator
+for await (const event of runner.runAsync(config)) {
+  // Process events asynchronously
+  await handleEvent(event);
+}
+```
+
+**Best practices:**
+
+- Always use `runAsync` in production (returns `AsyncGenerator<Event>`)
+- Implement tools and callbacks as `async` functions
+- Avoid blocking operations in the event loop
+- Use Worker Threads or external services for CPU-intensive tasks
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="🔄 Runner & Event Processing"
+    description="Learn how the Runner orchestrates execution and processes events"
+    href="/docs/framework/runtime/runner-events"
+  />
+  <Card
+    title="⚙️ Runtime Configuration"
+    description="Configure streaming, speech, and execution limits"
+    href="/docs/framework/runtime/run-config"
+  />
+  <Card
+    title="📊 Session State"
+    description="Manage persistent state across invocations"
+    href="/docs/framework/session-state-memory/state"
+  />
+  <Card
+    title="🔌 Plugins"
+    description="Hook into the invocation lifecycle with plugins"
+    href="/docs/framework/plugins"
+  />
+</Cards>
