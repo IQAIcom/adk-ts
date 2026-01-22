@@ -1,8 +1,8 @@
 {
 	"icon": "Cpu",
 	"pages": [
-		"index",
 		"event-loop",
+		"runner-events",
 		"invocation-lifecycle",
 		"run-config",
 		"rewind"
