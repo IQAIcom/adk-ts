@@ -104,6 +104,27 @@ export function getSpanIcon(name: string): string {
 	return "circle";
 }
 
+export function formatSpanName(name: string): string {
+	if (name === "Invocation" || name === "adk-server-invocation") return "Run";
+	if (name === "call_llm" || name.startsWith("llm_generate")) return "LLM";
+
+	// Handle agent_run [name] #1 -> name
+	const agentMatch = name.match(/agent_run\s+\[(.*?)\]/);
+	if (agentMatch) return agentMatch[1];
+
+	// Handle invoke_agent:name -> name
+	if (name.startsWith("invoke_agent:"))
+		return name.replace("invoke_agent:", "").trim();
+
+	// Handle tool:name -> name
+	if (name.startsWith("tool:")) return name.replace("tool:", "").trim();
+
+	// Handle agent:name -> name
+	if (name.startsWith("agent:")) return name.replace("agent:", "").trim();
+
+	return name;
+}
+
 export function findInvocId(spans: TraceSpan[]): string | undefined {
 	return spans.find(
 		(span) => span.attributes && ADK_ATTRS.INVOCATION_ID in span.attributes,

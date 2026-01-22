@@ -6,6 +6,7 @@ import type { SpanNode, TraceSpan } from "@/hooks/use-traces";
 import {
 	buildSpanTree,
 	flattenTree,
+	formatSpanName,
 	getGlobalTimes,
 	getRelativeStart,
 	getRelativeWidth,
@@ -83,21 +84,18 @@ export function TraceTree({
 							key={node.span.span_id}
 							type="button"
 							onClick={() => handleSelect(node)}
-							className={`flex items-center min-w-max text-left h-9 border-b last:border-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset transition-colors cursor-pointer ${
+							className={`flex items-center min-w-max text-left h-9 first:border-t border-b last:border-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset transition-colors cursor-pointer w-full ${
 								isSelected ? "bg-muted" : "hover:bg-muted-foreground/5"
 							}`}
 						>
-							<div
-								className="flex items-center shrink-0 border-r pr-4 h-full"
-								style={{ width: 350 }}
-							>
+							<div className="flex items-center shrink-0 border-r pr-4 h-full">
 								<div
 									className="flex items-center"
 									style={{ marginLeft: node.level * 10 + 8 }}
 								>
 									{getIconComponent(getSpanIconName(node.span.name))}
 									<span className="truncate ml-2 font-medium">
-										{node.span.name}
+										{formatSpanName(node.span.name)}
 									</span>
 								</div>
 							</div>
@@ -116,9 +114,9 @@ export function TraceTree({
 
 								{getRelativeWidth(node.span, totalDurationMs) <= 15 && (
 									<span
-										className="absolute text-[10px] text-blue-600 font-semibold"
+										className="absolute text-[10px] text-blue-600 font-semibold whitespace-nowrap"
 										style={{
-											left: `${getRelativeStart(node.span, baseStartTimeMs, totalDurationMs) + getRelativeWidth(node.span, totalDurationMs) + 1}%`,
+											left: `calc(${getRelativeStart(node.span, baseStartTimeMs, totalDurationMs) + getRelativeWidth(node.span, totalDurationMs)}% + 4px)`,
 										}}
 									>
 										{duration.toFixed(1)}ms
