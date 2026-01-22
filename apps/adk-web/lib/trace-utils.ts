@@ -105,17 +105,17 @@ export function getSpanIcon(name: string): string {
 
 export function findInvocId(spans: TraceSpan[]): string | undefined {
 	return spans.find(
-		(span) => span.attributes && "adk.invocation_id" in span.attributes,
-	)?.attributes?.["adk.invocation_id"];
+		(span) => span.attributes && "adk.invocation.id" in span.attributes,
+	)?.attributes?.["adk.invocation.id"];
 }
 
 export function findUserMessage(spans: TraceSpan[]): string | undefined {
-	const span = spans.find((s) => s.attributes?.["adk.llm_request"]);
+	const span = spans.find((s) => s.attributes?.["adk.llm.request"]);
 
 	if (!span?.attributes) return "[no invocation id found]";
 
 	try {
-		const request = JSON.parse(span.attributes["adk.llm_request"]);
+		const request = JSON.parse(span.attributes["adk.llm.request"]);
 		const userContent = request.contents
 			.filter((c: any) => c.role === "user")
 			.at(-1);
@@ -126,18 +126,18 @@ export function findUserMessage(spans: TraceSpan[]): string | undefined {
 }
 
 export function getLlmRequest(span: TraceSpan): any | undefined {
-	if (!span.attributes?.["adk.llm_request"]) return undefined;
+	if (!span.attributes?.["adk.llm.request"]) return undefined;
 	try {
-		return JSON.parse(span.attributes["adk.llm_request"]);
+		return JSON.parse(span.attributes["adk.llm.request"]);
 	} catch {
 		return undefined;
 	}
 }
 
 export function getLlmResponse(span: TraceSpan): any | undefined {
-	if (!span.attributes?.["adk.llm_response"]) return undefined;
+	if (!span.attributes?.["adk.llm.response"]) return undefined;
 	try {
-		return JSON.parse(span.attributes["adk.llm_response"]);
+		return JSON.parse(span.attributes["adk.llm.response"]);
 	} catch {
 		return undefined;
 	}
