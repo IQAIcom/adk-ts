@@ -25,7 +25,7 @@ interface FlatNode {
 	level: number;
 }
 
-export default function TraceTree({
+export function TraceTree({
 	spans,
 	invocationId,
 	onSelectSpan,
