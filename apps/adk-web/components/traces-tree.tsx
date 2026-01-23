@@ -25,7 +25,7 @@ interface FlatNode {
 	level: number;
 }
 
-export function TraceTree({
+export default function TraceTree({
 	spans,
 	invocationId,
 	onSelectSpan,
@@ -100,28 +100,30 @@ export function TraceTree({
 								</div>
 							</div>
 
-							<div className="flex-1 relative h-full flex items-center px-2 bg-muted/10 pointer-events-none">
-								<div
-									className="absolute h-5 bg-blue-500/80 rounded-sm flex items-center justify-center text-[10px] text-white font-bold"
-									style={{
-										left: `${getRelativeStart(node.span, baseStartTimeMs, totalDurationMs)}%`,
-										width: `${Math.max(getRelativeWidth(node.span, totalDurationMs), 0.5)}%`,
-									}}
-								>
-									{getRelativeWidth(node.span, totalDurationMs) > 15 &&
-										`${duration.toFixed(1)}ms`}
-								</div>
-
-								{getRelativeWidth(node.span, totalDurationMs) <= 15 && (
-									<span
-										className="absolute text-[10px] text-blue-600 font-semibold whitespace-nowrap"
+							<div className="relative h-full flex items-center px-2 pl-4 min-w-0">
+								<div className="relative h-5" style={{ width: "600px" }}>
+									<div
+										className="absolute h-5 bg-blue-500/80 rounded-sm flex items-center justify-center text-[10px] text-white font-bold"
 										style={{
-											left: `calc(${getRelativeStart(node.span, baseStartTimeMs, totalDurationMs) + getRelativeWidth(node.span, totalDurationMs)}% + 4px)`,
+											left: `${getRelativeStart(node.span, baseStartTimeMs, totalDurationMs)}%`,
+											width: `${Math.max(getRelativeWidth(node.span, totalDurationMs), 0.5)}%`,
 										}}
 									>
-										{duration.toFixed(1)}ms
-									</span>
-								)}
+										{getRelativeWidth(node.span, totalDurationMs) > 15 &&
+											`${duration.toFixed(1)}ms`}
+									</div>
+
+									{getRelativeWidth(node.span, totalDurationMs) <= 15 && (
+										<span
+											className="absolute text-[10px] text-blue-600 font-semibold whitespace-nowrap"
+											style={{
+												left: `calc(${getRelativeStart(node.span, baseStartTimeMs, totalDurationMs) + getRelativeWidth(node.span, totalDurationMs)}% + 4px)`,
+											}}
+										>
+											{duration.toFixed(1)}ms
+										</span>
+									)}
+								</div>
 							</div>
 						</button>
 					);
