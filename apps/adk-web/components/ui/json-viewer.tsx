@@ -89,31 +89,27 @@ function JsonNode({
 		<div
 			className={cn("pl-4 group/object", level > 0 && "border-l border-border")}
 		>
-			<button
-				type="button"
-				className={cn(
-					"flex items-center gap-1 py-1 hover:bg-muted/50 rounded px-1 -ml-4 cursor-pointer group/property w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-					isRoot && "text-primary font-semibold",
-				)}
-				onClick={isExpandable ? handleToggle : undefined}
-			>
+			<div className="flex items-center gap-1 py-1 -ml-4 group/property w-full">
 				{isExpandable ? (
-					<div className="w-4 h-4 flex items-center justify-center shrink-0">
-						{isExpanded ? (
-							<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-						) : (
-							<ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+					<button
+						type="button"
+						onClick={handleToggle}
+						className={cn(
+							"flex items-center gap-1 hover:bg-muted/50 rounded px-1 cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 min-w-0",
+							isRoot && "text-primary font-semibold",
 						)}
-					</div>
-				) : (
-					<div className="w-4 shrink-0" />
-				)}
+					>
+						<div className="w-4 h-4 flex items-center justify-center shrink-0">
+							{isExpanded ? (
+								<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+							) : (
+								<ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+							)}
+						</div>
 
-				<span className="text-primary shrink-0">{name}</span>
+						<span className="text-primary shrink-0">{name}</span>
 
-				<span className="text-muted-foreground shrink-0">
-					{isExpandable ? (
-						<>
+						<span className="text-muted-foreground shrink-0">
 							{dataType === "array" ? "[" : "{"}
 							{!isExpanded && (
 								<span className="text-muted-foreground">
@@ -122,32 +118,31 @@ function JsonNode({
 									{dataType === "array" ? "]" : "}"}
 								</span>
 							)}
-						</>
-					) : (
-						":"
-					)}
-				</span>
+						</span>
+					</button>
+				) : (
+					<div
+						className={cn(
+							"flex items-center gap-1 rounded px-1 flex-1 min-w-0",
+							isRoot && "text-primary font-semibold",
+						)}
+					>
+						<div className="w-4 shrink-0" />
 
-				{!isExpandable && <JsonValue data={data} />}
+						<span className="text-primary shrink-0">{name}</span>
 
-				{!isExpandable && <div className="w-3.5 shrink-0" />}
+						<span className="text-muted-foreground shrink-0">:</span>
 
-				{/** biome-ignore lint/a11y/useSemanticElements: :avoiding hydration errors*/}
-				<div
-					role="button"
-					tabIndex={0}
-					onClick={(e) => {
-						e.stopPropagation();
-						copyToClipboard(e);
-					}}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							e.stopPropagation();
-							copyToClipboard(e as unknown as React.MouseEvent);
-						}
-					}}
-					className="ml-auto opacity-0 group-hover/property:opacity-100 hover:bg-muted p-1 rounded transition-opacity shrink-0 outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+						<JsonValue data={data} />
+
+						<div className="w-3.5 shrink-0" />
+					</div>
+				)}
+
+				<button
+					type="button"
+					onClick={copyToClipboard}
+					className="ml-auto opacity-0 group-hover/property:opacity-100 hover:bg-muted p-1 rounded transition-opacity shrink-0 outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
 					title="Copy to clipboard"
 				>
 					{isCopied ? (
@@ -155,8 +150,8 @@ function JsonNode({
 					) : (
 						<Copy className="h-3.5 w-3.5 text-muted-foreground" />
 					)}
-				</div>
-			</button>
+				</button>
+			</div>
 
 			{isExpandable && isExpanded && data !== null && data !== undefined && (
 				<div className="pl-4">
@@ -223,7 +218,7 @@ function JsonValue({ data }: { data: any }) {
 								</TooltipTrigger>
 								<TooltipContent
 									side="bottom"
-									className="max-w-md text-xs p-2 break-words"
+									className="max-w-md text-xs p-2 wrap-break-word"
 								>
 									{data}
 								</TooltipContent>
