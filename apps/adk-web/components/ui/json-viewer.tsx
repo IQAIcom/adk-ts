@@ -132,13 +132,22 @@ function JsonNode({
 
 				{!isExpandable && <div className="w-3.5 shrink-0" />}
 
-				<button
-					type="button"
+				{/** biome-ignore lint/a11y/useSemanticElements: :avoiding hydration errors*/}
+				<div
+					role="button"
+					tabIndex={0}
 					onClick={(e) => {
 						e.stopPropagation();
 						copyToClipboard(e);
 					}}
-					className="ml-auto opacity-0 group-hover/property:opacity-100 hover:bg-muted p-1 rounded transition-opacity shrink-0 outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							e.stopPropagation();
+							copyToClipboard(e as unknown as React.MouseEvent);
+						}
+					}}
+					className="ml-auto opacity-0 group-hover/property:opacity-100 hover:bg-muted p-1 rounded transition-opacity shrink-0 outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
 					title="Copy to clipboard"
 				>
 					{isCopied ? (
@@ -146,7 +155,7 @@ function JsonNode({
 					) : (
 						<Copy className="h-3.5 w-3.5 text-muted-foreground" />
 					)}
-				</button>
+				</div>
 			</button>
 
 			{isExpandable && isExpanded && data !== null && data !== undefined && (
