@@ -6,14 +6,24 @@
 	"types": "dist/index.d.ts",
 	"exports": {
 		".": {
-			"import": "./dist/index.js",
-			"require": "./dist/index.js",
-			"types": "./dist/index.d.ts"
+			"import": {
+				"types": "./dist/index.d.mts",
+				"default": "./dist/index.mjs"
+			},
+			"require": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
 		},
 		"./constants": {
-			"import": "./dist/constants.js",
-			"require": "./dist/constants.js",
-			"types": "./dist/constants.d.ts"
+			"import": {
+				"types": "./dist/constants.d.mts",
+				"default": "./dist/constants.mjs"
+			},
+			"require": {
+				"types": "./dist/constants.d.ts",
+				"default": "./dist/constants.js"
+			}
 		}
 	},
 	"bin": {
