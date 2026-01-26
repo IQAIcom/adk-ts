@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
+import { Clock, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
 	Card,
@@ -9,8 +11,6 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
-import { Clock, Trash2 } from "lucide-react";
 
 export interface SessionLike {
 	id: string;
@@ -49,7 +49,7 @@ export function SessionCard({
 			<CardHeader className="pb-2">
 				<div className="flex justify-between items-center">
 					<div className="flex-1 min-w-0">
-						<CardTitle className="text-sm font-mono overflow-hidden break-words">
+						<CardTitle className="text-sm font-mono overflow-hidden wrap-break-word">
 							<div className="line-clamp-2">{session.id}</div>
 						</CardTitle>
 						<div className="flex items-center gap-2 mt-1">
