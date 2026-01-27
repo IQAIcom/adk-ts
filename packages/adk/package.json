@@ -14,16 +14,6 @@
 				"types": "./dist/index.d.ts",
 				"default": "./dist/index.js"
 			}
-		},
-		"./constants": {
-			"import": {
-				"types": "./dist/constants.d.mts",
-				"default": "./dist/constants.mjs"
-			},
-			"require": {
-				"types": "./dist/constants.d.ts",
-				"default": "./dist/constants.js"
-			}
 		}
 	},
 	"bin": {

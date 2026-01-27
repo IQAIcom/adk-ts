@@ -1,4 +1,4 @@
-import { ADK_ATTRS, SEMCONV } from "@iqai/adk/constants";
+import { ADK_ATTRS, SEMCONV } from "./constants";
 import type { SpanNode, TraceSpan } from "@/hooks/use-traces";
 
 export function toMs(time: [number, number]): number {
