@@ -302,10 +302,12 @@ export class NewCommand extends CommandRunner {
 							"adk-docs": isWindows
 								? {
 										command: "cmd",
-										args: ["/c", "npx", "-y", "@iqai/mcp-docs-server"],
+										// For testing in development, replace with the actual path to the mcp-docs package
+										args: ["/c", "npx", "-y", "@iqai/mcp-docs"],
 									}
 								: {
 										command: "npx",
+										// For testing in development, replace with the actual path to the mcp-docs package
 										args: ["-y", "@iqai/mcp-docs-server"],
 									},
 						},
@@ -325,7 +327,8 @@ export class NewCommand extends CommandRunner {
 					);
 					console.log(
 						chalk.cyan(
-							"claude mcp add adk-docs -- npx -y @iqai/mcp-docs-server",
+							// For testing in development, replace @iqai/mcp-docs with the actual path to the mcp-docs package
+							"claude mcp add adk-docs -- npx -y @iqai/mcp-docs",
 						),
 					);
 				} else if (ideChoice === "windsurf") {
@@ -337,11 +340,12 @@ export class NewCommand extends CommandRunner {
 					);
 					console.log(
 						chalk.cyan(
+							// For testing in development, replace @iqai/mcp-docs with the actual path to the mcp-docs package
 							`{
   "mcpServers": {
     "adk-docs": {
       "command": "npx",
-      "args": ["-y", "@iqai/mcp-docs-server"]
+      "args": ["-y", "@iqai/mcp-docs"]
     }
   }
 }`,
@@ -357,6 +361,11 @@ export class NewCommand extends CommandRunner {
 					console.log(
 						chalk.cyan(
 							"command: npx, args: [-y, @iqai/mcp-docs-server] (or the Windows equivalent)",
+						),
+					);
+					console.log(
+						chalk.cyan(
+							"\nFor testing in development, replace @iqai/mcp-docs-server with the actual path to the mcp-docs package.",
 						),
 					);
 				}
