@@ -11,15 +11,12 @@ import {
 	type ContextCacheManager,
 	GeminiContextCacheManager,
 } from "./context-cache-manager";
+import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
 const AGENT_ENGINE_TELEMETRY_TAG = "remote_reasoning_engine";
 const AGENT_ENGINE_TELEMETRY_ENV_VARIABLE_NAME = "GOOGLE_CLOUD_AGENT_ENGINE_ID";
-
-const RESOURCE_EXHAUSTED_POSSIBLE_FIX_MESSAGE = `
-On how to mitigate this issue, please refer to:
-`;
 
 /**
  * Google LLM Variant enum
@@ -27,21 +24,6 @@ On how to mitigate this issue, please refer to:
 enum GoogleLLMVariant {
 	VERTEX_AI = "VERTEX_AI",
 	GEMINI_API = "GEMINI_API",
-}
-
-class ResourceExhaustedError extends Error {
-	code: number;
-	details: any;
-	response: any;
-
-	constructor(originalError: any) {
-		const baseMessage = originalError.message || String(originalError);
-		super(`${RESOURCE_EXHAUSTED_POSSIBLE_FIX_MESSAGE}\n\n${baseMessage}`);
-		this.name = "ResourceExhaustedError";
-		this.code = originalError.code || 429;
-		this.details = originalError.details;
-		this.response = originalError.response;
-	}
 }
 
 /**
@@ -241,9 +223,9 @@ export class GoogleLlm extends BaseLlm {
 				yield llmResponse;
 			}
 		} catch (error: any) {
-			// Enhance 429 errors with helpful guidance
+			// Convert rate limit errors to standardized RateLimitError
 			if (error.code === 429 || error.status === 429) {
-				throw new ResourceExhaustedError(error);
+				throw RateLimitError.fromError(error, "google", model);
 			}
 			throw error;
 		}
