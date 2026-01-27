@@ -1,12 +1,21 @@
 "use client";
 
-import { Activity, Archive, Database, Share2, X } from "lucide-react";
+import {
+	Activity,
+	Archive,
+	Database,
+	LineChart,
+	Share2,
+	X,
+} from "lucide-react";
 import Image from "next/image";
 import { EventsPanel } from "@/components/events-panel";
 import { GraphPanel } from "@/components/graph-panel";
 import { SessionsPanel } from "@/components/sessions-panel";
 import { StatePanel } from "@/components/state-panel";
+import { TracesPanel } from "@/components/traces-panel";
 import { Button } from "@/components/ui/button";
+import type { TraceSpan } from "@/hooks/use-traces";
 import { cn } from "@/lib/utils";
 import { PanelId, PanelIdSchema } from "../_schema";
 
@@ -22,6 +31,8 @@ interface SidebarProps {
 	graph: any;
 	graphLoading: boolean;
 	graphError: any;
+	tracesByTraceId: Map<string, TraceSpan[]>;
+	tracesLoading: boolean;
 	onCreateSession: (
 		state?: Record<string, any>,
 		sessionId?: string,
@@ -36,6 +47,7 @@ const navigationItems: { id: PanelId; label: string; icon: typeof Database }[] =
 		{ id: PanelIdSchema.enum.events, label: "Events", icon: Activity },
 		{ id: PanelIdSchema.enum.state, label: "State", icon: Archive },
 		{ id: PanelIdSchema.enum.graph, label: "Graph", icon: Share2 },
+		{ id: PanelIdSchema.enum.traces, label: "Traces", icon: LineChart },
 	];
 
 export function Sidebar({
@@ -50,6 +62,8 @@ export function Sidebar({
 	graph,
 	graphLoading,
 	graphError,
+	tracesByTraceId,
+	tracesLoading,
 	onCreateSession,
 	onDeleteSession,
 	onSwitchSession,
@@ -58,7 +72,7 @@ export function Sidebar({
 		<div className={cn("flex h-full")}>
 			<div className={cn("w-14 border-r bg-card flex flex-col h-full")}>
 				{/* Logo */}
-				<div className="flex items-center justify-center h-[60px] border-b flex-shrink-0">
+				<div className="flex items-center justify-center h-15 border-b shrink-0">
 					<div className="relative">
 						<Image
 							src="/adk.png"
@@ -102,7 +116,7 @@ export function Sidebar({
 			{selectedPanel && (
 				<div className="w-80 border-r bg-background flex flex-col">
 					{/* Panel Header */}
-					<div className="flex h-[60px] items-center justify-between p-4 border-b">
+					<div className="flex h-15 items-center justify-between p-4 border-b">
 						<h2 className="text-lg font-semibold">
 							{selectedPanel === "sessions"
 								? "Sessions"
@@ -110,7 +124,9 @@ export function Sidebar({
 									? "Events"
 									: selectedPanel === "graph"
 										? "Graph"
-										: "State"}
+										: selectedPanel === "traces"
+											? "Traces"
+											: "State"}
 						</h2>
 						<Button
 							variant="ghost"
@@ -152,6 +168,12 @@ export function Sidebar({
 									error={graphError ?? null}
 								/>
 							</div>
+						)}
+						{selectedPanel === "traces" && (
+							<TracesPanel
+								tracesByTraceId={tracesByTraceId}
+								isLoading={tracesLoading}
+							/>
 						)}
 					</div>
 				</div>

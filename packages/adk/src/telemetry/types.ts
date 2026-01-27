@@ -20,7 +20,7 @@ export interface TelemetryConfig {
 	appVersion?: string;
 
 	/** OTLP endpoint for traces (e.g., http://localhost:4318/v1/traces) */
-	otlpEndpoint: string;
+	otlpEndpoint?: string;
 
 	/** Custom headers for OTLP exporter */
 	otlpHeaders?: Record<string, string>;
@@ -36,6 +36,9 @@ export interface TelemetryConfig {
 
 	/** Enable auto-instrumentation for HTTP, databases, etc. (default: true) */
 	enableAutoInstrumentation?: boolean;
+
+	/** Enable debug mode (default: false). When enabled, in-memory exporter is active. */
+	debug?: boolean;
 
 	/** Capture message content in traces (default: true, set false for privacy) */
 	captureMessageContent?: boolean;
