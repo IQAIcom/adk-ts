@@ -2,6 +2,7 @@ packages:
   - 'apps/docs'
   - 'apps/adk-api-docs'
   - 'apps/examples'
+  - 'apps/mcp-docs'
   - 'packages/*'
   - 'apps/adk-web'
 minimumReleaseAge: 1440
