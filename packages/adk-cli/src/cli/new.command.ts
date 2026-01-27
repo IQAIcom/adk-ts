@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { confirm, intro, outro, select, spinner, text } from "@clack/prompts";
 import chalk from "chalk";
@@ -239,6 +239,132 @@ export class NewCommand extends CommandRunner {
 				console.log(
 					chalk.cyan(
 						`cd ${finalProjectName} && ${selectedPackageManager.command} ${selectedPackageManager.args.join(" ")}`,
+					),
+				);
+			}
+		}
+
+		const shouldSetupMcpDocs = await confirm({
+			message: "Set up ADK docs MCP server for your IDE?",
+			initialValue: true,
+		});
+		if (typeof shouldSetupMcpDocs === "symbol") {
+			outro("Operation cancelled");
+			process.exit(0);
+		}
+
+		if (shouldSetupMcpDocs) {
+			const ideChoice = await select({
+				message: "Which IDE or environment are you using?",
+				options: [
+					{
+						value: "cursor",
+						label: "Cursor / VS Code (Cursor extension)",
+						hint: ".cursor/mcp.json in this project",
+					},
+					{
+						value: "claude",
+						label: "Claude Code / Claude Desktop",
+						hint: "Uses `claude mcp add` command",
+					},
+					{
+						value: "windsurf",
+						label: "Windsurf",
+						hint: "~/.codeium/windsurf/mcp_config.json",
+					},
+					{
+						value: "other",
+						label: "Other IDE / environment",
+						hint: "Shows generic MCP setup instructions",
+					},
+				],
+			});
+			if (typeof ideChoice === "symbol") {
+				outro("Operation cancelled");
+				process.exit(0);
+			}
+
+			const s3 = spinner();
+			s3.start("Configuring MCP docs server...");
+			const projectPath = join(process.cwd(), finalProjectName);
+			const cursorDir = join(projectPath, ".cursor");
+			const isWindows = process.platform === "win32";
+
+			try {
+				if (ideChoice === "cursor") {
+					if (!existsSync(cursorDir)) {
+						mkdirSync(cursorDir, { recursive: true });
+					}
+
+					const mcpConfigPath = join(cursorDir, "mcp.json");
+					const mcpConfig = {
+						mcpServers: {
+							"adk-docs": isWindows
+								? {
+										command: "cmd",
+										args: ["/c", "npx", "-y", "@iqai/mcp-docs-server"],
+									}
+								: {
+										command: "npx",
+										args: ["-y", "@iqai/mcp-docs-server"],
+									},
+						},
+					};
+
+					writeFileSync(
+						mcpConfigPath,
+						`${JSON.stringify(mcpConfig, null, 2)}\n`,
+					);
+					s3.stop("MCP docs server configured for Cursor!");
+				} else if (ideChoice === "claude") {
+					s3.stop("MCP docs server instructions for Claude:");
+					console.log(
+						chalk.cyan(
+							"\nRun this in your terminal to add the MCP server to Claude:",
+						),
+					);
+					console.log(
+						chalk.cyan(
+							"claude mcp add adk-docs -- npx -y @iqai/mcp-docs-server",
+						),
+					);
+				} else if (ideChoice === "windsurf") {
+					s3.stop("MCP docs server instructions for Windsurf:");
+					console.log(
+						chalk.cyan(
+							"\nAdd this to your ~/.codeium/windsurf/mcp_config.json file:",
+						),
+					);
+					console.log(
+						chalk.cyan(
+							`{
+  "mcpServers": {
+    "adk-docs": {
+      "command": "npx",
+      "args": ["-y", "@iqai/mcp-docs-server"]
+    }
+  }
+}`,
+						),
+					);
+				} else {
+					s3.stop("MCP docs server generic instructions:");
+					console.log(
+						chalk.cyan(
+							'\nConfigure an MCP server named "adk-docs" in your IDE pointing to:',
+						),
+					);
+					console.log(
+						chalk.cyan(
+							"command: npx, args: [-y, @iqai/mcp-docs-server] (or the Windows equivalent)",
+						),
+					);
+				}
+			} catch (_error) {
+				s3.stop("Failed to configure MCP docs server");
+				console.log(
+					chalk.yellow(
+						"\nYou can configure it manually by following the instructions in the @iqai/mcp-docs README.",
 					),
 				);
 			}
