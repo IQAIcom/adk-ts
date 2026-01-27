@@ -1,3 +1,8 @@
+const GITHUB_URLS = {
+	SHARE_PROJECT: "https://github.com/IQAIcom/adk-ts/discussions/404",
+	DISCUSSIONS: "https://github.com/IQAIcom/adk-ts/discussions",
+};
+
 const ShowcaseFooter = () => {
 	return (
 		<section className="w-full bg-card/20 border-t border-border mt-16">
@@ -16,7 +21,7 @@ const ShowcaseFooter = () => {
 						</p>
 						<div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
 							<a
-								href="https://github.com/IQAIcom/adk-ts/discussions/404"
+								href={GITHUB_URLS.SHARE_PROJECT}
 								target="_blank"
 								rel="noopener noreferrer"
 								className="group inline-flex items-center justify-center rounded-lg bg-primary px-4 sm:px-6 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 shadow-lg hover:shadow-primary/25"
@@ -38,7 +43,7 @@ const ShowcaseFooter = () => {
 								</svg>
 							</a>
 							<a
-								href="https://github.com/IQAIcom/adk-ts/discussions"
+								href={GITHUB_URLS.DISCUSSIONS}
 								target="_blank"
 								rel="noopener noreferrer"
 								className="group inline-flex items-center justify-center rounded-lg border border-border bg-background/80 backdrop-blur-sm px-4 sm:px-6 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-accent hover:text-accent-foreground hover:scale-105 hover:shadow-lg"
