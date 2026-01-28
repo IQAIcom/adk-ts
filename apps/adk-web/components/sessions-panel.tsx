@@ -129,10 +129,19 @@ export function SessionsPanel({
 	};
 
 	const handleSwitchSession = async (sessionId: string) => {
+		if (sessionId === currentSessionId) {
+			return;
+		}
+
+		const sessionExists = sessions.some((s) => s.id === sessionId);
+		if (!sessionExists) {
+			return;
+		}
+
 		try {
 			await onSwitchSession(sessionId);
 		} catch (_error) {
-			toast.error("Failed to switch session. Please try again.");
+			// Error handling is done in the hook's onError handler
 		}
 	};
 
