@@ -1,6 +1,6 @@
+import { readFileSync } from "node:fs";
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
-import { readFileSync } from "node:fs";
 import { logger } from "../logger.js";
 
 const infoInputSchema = z.object({});

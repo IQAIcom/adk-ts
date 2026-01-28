@@ -341,14 +341,18 @@ export class NewCommand extends CommandRunner {
 					console.log(
 						chalk.cyan(
 							// For testing in development, replace @iqai/mcp-docs with the actual path to the mcp-docs package
-							`{
-  "mcpServers": {
-    "adk-docs": {
-      "command": "npx",
-      "args": ["-y", "@iqai/mcp-docs"]
-    }
-  }
-}`,
+							JSON.stringify(
+								{
+									mcpServers: {
+										"adk-docs": {
+											command: "npx",
+											args: ["-y", "@iqai/mcp-docs"],
+										},
+									},
+								},
+								null,
+								2,
+							),
 						),
 					);
 				} else {

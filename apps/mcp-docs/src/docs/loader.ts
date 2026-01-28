@@ -1,15 +1,15 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import fg from "fast-glob";
-import fs from "fs/promises";
-import path from "path";
 import matter from "gray-matter";
-import type { DocSection, DocCategory } from "../types.js";
 import { logger } from "../logger.js";
+import type { DocCategory, DocSection } from "../types.js";
 
 // Find docs root relative to the package directory
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const pkgRoot = path.resolve(__dirname, "../../");
 const DOCS_ROOT = path.resolve(pkgRoot, "../../apps/docs/content/docs");
-const MCP_SERVERS_DOCS = path.resolve(
+const _MCP_SERVERS_DOCS = path.resolve(
 	pkgRoot,
 	"../../apps/docs/content/docs/mcp-servers",
 );
@@ -262,7 +262,7 @@ export async function listDocsDirectory(
 			if (entry.name === "meta.json") continue;
 
 			if (entry.isDirectory()) {
-				dirs.push(entry.name + "/");
+				dirs.push(`${entry.name}/`);
 			} else if (entry.isFile() && /\.(md|mdx)$/.test(entry.name)) {
 				files.push(entry.name);
 			}
@@ -297,7 +297,7 @@ export async function listDocsDirectory(
 		}
 
 		return { dirs, files, meta };
-	} catch (error) {
+	} catch (_error) {
 		logger.debug("Directory not found", { path: dirPath });
 		return { dirs: [], files: [], meta: null };
 	}
@@ -390,7 +390,7 @@ export async function readDocPath(
 		if (frontmatter.title) header.push(`# ${frontmatter.title}`);
 		if (frontmatter.description) header.push(`\n${frontmatter.description}\n`);
 
-		return { found: true, content: header.join("") + "\n" + content };
+		return { found: true, content: `${header.join("")}\n${content}` };
 	} catch {
 		const availablePaths = await getAvailablePaths();
 		return {

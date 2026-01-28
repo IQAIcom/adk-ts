@@ -99,7 +99,7 @@ function extractSnippet(
 	}
 
 	if (bestIndex === -1) {
-		return content.slice(0, maxLength).trim() + "...";
+		return `${content.slice(0, maxLength).trim()}...`;
 	}
 
 	// Extract context around match, trying to break at sentence boundaries if possible
@@ -110,8 +110,8 @@ function extractSnippet(
 
 	let snippet = content.slice(start, end).trim().replace(/\s+/g, " "); // Normalize whitespace
 
-	if (start > 0) snippet = "..." + snippet;
-	if (end < content.length) snippet = snippet + "...";
+	if (start > 0) snippet = `...${snippet}`;
+	if (end < content.length) snippet = `${snippet}...`;
 
 	return snippet;
 }

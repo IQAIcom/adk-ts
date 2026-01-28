@@ -1,6 +1,6 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
-import { listDocsDirectory, getAvailablePaths } from "../docs/loader.js";
+import { getAvailablePaths, listDocsDirectory } from "../docs/loader.js";
 import { logger } from "../logger.js";
 
 const navigateInputSchema = z.object({

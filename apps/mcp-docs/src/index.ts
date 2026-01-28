@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { FastMCP } from "fastmcp";
 import { loadDocs } from "./docs/loader.js";
 import { setDocs } from "./docs/store.js";
+import { logger } from "./logger.js";
 import { registerDocsTool } from "./tools/docs.js";
-import { registerSearchTool } from "./tools/search.js";
+import { registerInfoTool } from "./tools/info.js";
 import { registerMcpServersTool } from "./tools/mcp-servers.js";
 import { registerNavigateTool } from "./tools/navigate.js";
-import { registerInfoTool } from "./tools/info.js";
-import { logger } from "./logger.js";
+import { registerSearchTool } from "./tools/search.js";
 
 const packageJson = JSON.parse(
 	readFileSync(new URL("../package.json", import.meta.url), "utf8"),
