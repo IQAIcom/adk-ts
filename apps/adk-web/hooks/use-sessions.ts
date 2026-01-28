@@ -19,10 +19,8 @@ interface CreateSessionRequest {
 export function useSessions(selectedAgent: AgentListItemDto | null) {
 	const apiUrl = useApiUrl();
 	const queryClient = useQueryClient();
-	const apiClient = useMemo(
-		() => (apiUrl ? new Api({ baseUrl: apiUrl }) : null),
-		[apiUrl],
-	);
+	// apiUrl can be "" in bundled mode (same origin), which is valid
+	const apiClient = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
 
 	// Fetch sessions for the selected agent
 	const {
@@ -33,14 +31,14 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 	} = useQuery({
 		queryKey: ["sessions", apiUrl, selectedAgent?.relativePath],
 		queryFn: async (): Promise<SessionResponseDto[]> => {
-			if (!apiClient || !selectedAgent) return [];
+			if (!selectedAgent) return [];
 			const res = await apiClient.api.sessionsControllerListSessions(
 				encodeURIComponent(selectedAgent.relativePath),
 			);
 			const data: SessionsResponseDto = res.data as any;
 			return data.sessions;
 		},
-		enabled: !!apiClient && !!selectedAgent,
+		enabled: typeof window !== "undefined" && !!selectedAgent,
 		staleTime: 30000,
 		retry: 2,
 	});
@@ -51,8 +49,7 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 			state,
 			sessionId,
 		}: CreateSessionRequest): Promise<SessionResponseDto> => {
-			if (!apiClient || !selectedAgent)
-				throw new Error("API URL and agent required");
+			if (!selectedAgent) throw new Error("Agent required");
 			try {
 				const res = await apiClient.api.sessionsControllerCreateSession(
 					encodeURIComponent(selectedAgent.relativePath),
@@ -81,8 +78,7 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 	// Delete session mutation
 	const deleteSessionMutation = useMutation({
 		mutationFn: async (sessionId: string): Promise<void> => {
-			if (!apiClient || !selectedAgent)
-				throw new Error("API URL and agent required");
+			if (!selectedAgent) throw new Error("Agent required");
 			await apiClient.api.sessionsControllerDeleteSession(
 				encodeURIComponent(selectedAgent.relativePath),
 				sessionId,
@@ -104,8 +100,7 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 	// Switch session mutation
 	const switchSessionMutation = useMutation({
 		mutationFn: async (sessionId: string): Promise<void> => {
-			if (!apiClient || !selectedAgent)
-				throw new Error("API URL and agent required");
+			if (!selectedAgent) throw new Error("Agent required");
 			await apiClient.api.sessionsControllerSwitchSession(
 				encodeURIComponent(selectedAgent.relativePath),
 				sessionId,

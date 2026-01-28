@@ -228,7 +228,8 @@ export function useAgents(currentSessionId?: string | null) {
 		selectedAgent,
 		messages,
 		agentStatus: {},
-		connected: !!apiUrl,
+		// In bundled mode, apiUrl is "" which is valid - check for successful query instead
+		connected: !error && !loading && agents !== undefined,
 		loading,
 		error,
 		sendMessage,
