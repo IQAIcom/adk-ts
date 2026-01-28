@@ -65,7 +65,16 @@ export function useSessions(
 			return res.data as SessionResponseDto;
 		},
 		onSuccess: (created) => {
-			// Refetch sessions after successful creation
+			// Optimistically add the created session to the cache
+			const queryKey = ["sessions", apiUrl, selectedAgent?.relativePath];
+			queryClient.setQueryData<SessionResponseDto[]>(queryKey, (old = []) => {
+				// Check if session already exists (shouldn't happen, but be safe)
+				if (old.some((s) => s.id === created.id)) {
+					return old;
+				}
+				return [created, ...old];
+			});
+			// Also refetch to ensure consistency
 			queryClient.invalidateQueries({
 				queryKey: ["sessions", apiUrl, selectedAgent?.relativePath],
 			});
@@ -153,9 +162,8 @@ export function useSessions(
 
 	// Session management effect - handles auto-switching and validation
 	useEffect(() => {
-		if (!sessionId || !onSessionChange) return;
+		if (!onSessionChange) return;
 
-		// const { sessionId, onSessionChange } = options;
 		const currentAgentPath = selectedAgent?.relativePath ?? null;
 
 		// Agent switched - clear session
@@ -165,8 +173,8 @@ export function useSessions(
 			return;
 		}
 
-		// No sessions available yet or still loading
-		if (sessions.length === 0 || isLoading) {
+		// Wait for initial load - but if we have cached sessions, use them
+		if (sessions.length === 0 && isLoading) {
 			return;
 		}
 
@@ -180,7 +188,10 @@ export function useSessions(
 			});
 		} else if (sessionId) {
 			// URL has invalid sessionId (e.g., session was deleted) - clear it
-			onSessionChange(null);
+			// But only if we're not currently loading (to avoid clearing during creation/refetch)
+			if (!isLoading) {
+				onSessionChange(null);
+			}
 		} else if (sessions.length > 0) {
 			// No URL sessionId - auto-select first session
 			const firstSessionId = sessions[0].id;
