@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { marked } from "marked";
 import * as markedTerminal from "marked-terminal";
 import { Command, CommandRunner, Option } from "nest-commander";
+import { DEFAULT_API_PORT } from "../common/constants";
 import { envSchema } from "../common/schema";
 import { startHttpServer } from "../http/bootstrap";
 
@@ -547,7 +548,7 @@ export class RunCommand extends CommandRunner {
 		}
 
 		if (options?.server) {
-			const apiPort = 8042;
+			const apiPort = DEFAULT_API_PORT;
 			const host = options.host || "localhost";
 
 			if (isVerbose) {
@@ -578,7 +579,7 @@ export class RunCommand extends CommandRunner {
 		}
 
 		// Interactive chat mode
-		const apiUrl = `http://${options?.host || "localhost"}:8042`;
+		const apiUrl = `http://${options?.host || "localhost"}:${DEFAULT_API_PORT}`;
 
 		await consoleManager.withAllowedOutput(async () => {
 			p.intro("🤖 ADK Agent Chat");
@@ -588,7 +589,7 @@ export class RunCommand extends CommandRunner {
 		const healthResponse = await fetch(`${apiUrl}/health`).catch(() => null);
 		if (!healthResponse || !healthResponse.ok) {
 			await startHttpServer({
-				port: 8042,
+				port: DEFAULT_API_PORT,
 				host: options?.host || "localhost",
 				agentsDir: process.cwd(),
 				quiet: !isVerbose,

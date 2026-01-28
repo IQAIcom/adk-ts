@@ -1,7 +1,11 @@
 import chalk from "chalk";
 import { Command, CommandRunner, Option } from "nest-commander";
+import { DEFAULT_API_PORT } from "../common/constants";
 import { startHttpServer } from "../http/bootstrap";
 import { createGracefulShutdownHandler } from "../utils/graceful-shutdown";
+
+// Default hosted web app URL (fallback when bundled assets unavailable or --web-url provided)
+const HOSTED_WEB_URL = "https://adk-web.iqai.com";
 
 interface WebCommandOptions {
 	port?: number;
@@ -19,35 +23,63 @@ export class WebCommand extends CommandRunner {
 		_passedParams: string[],
 		options?: WebCommandOptions,
 	): Promise<void> {
-		const apiPort = options?.port ?? 8042;
+		const apiPort = options?.port ?? DEFAULT_API_PORT;
 		const host = options?.host ?? "localhost";
-		const webUrl = options?.webUrl ?? "https://adk-web.iqai.com";
+		const agentsDir = options?.dir ?? process.cwd();
+
+		// Determine mode: bundled (default) vs hosted (when --web-url provided)
+		const useHostedMode = !!options?.webUrl;
+		const webUrl = options?.webUrl ?? HOSTED_WEB_URL;
 
 		console.log(chalk.blue("🌐 Starting ADK Web Interface..."));
 
-		// Start the API server first (quiet)
+		// Start the server with web serving enabled in bundled mode
 		const server = await startHttpServer({
 			port: apiPort,
 			host,
-			agentsDir: options?.dir ?? process.cwd(),
+			agentsDir,
 			quiet: true,
+			serveWeb: !useHostedMode, // Only serve bundled web UI if not using hosted mode
 		});
 
-		// Build the web app URL - add port param if not using default
-		const url = new URL(webUrl);
-		if (apiPort !== 8042) {
-			url.searchParams.set("port", apiPort.toString());
-		}
-		const webAppUrl = url.toString();
+		// Determine what URL to show the user
+		if (!useHostedMode && server.webAssetsAvailable) {
+			// BUNDLED MODE: Web UI is served on the same port as API
+			const localUrl = `http://${host}:${apiPort}`;
+			console.log(chalk.green("✅ Web UI and API running on the same server"));
+			console.log(chalk.cyan(`🔗 Open in your browser: ${localUrl}`));
+		} else {
+			// HOSTED MODE: Either explicitly requested or bundled assets not available
+			if (!useHostedMode && !server.webAssetsAvailable) {
+				console.log(
+					chalk.yellow(
+						"⚠️  Bundled web assets not found. Falling back to hosted version.",
+					),
+				);
+				console.log(
+					chalk.gray(
+						"   Run 'pnpm build' in the adk-cli package to enable bundled mode.",
+					),
+				);
+			}
 
-		console.log(chalk.cyan(`🔗 Open this URL in your browser: ${webAppUrl}`));
-		console.log(chalk.gray(`   API Server: http://${host}:${apiPort}`));
-		console.log(chalk.cyan("Press Ctrl+C to stop the API server"));
+			// Build the web app URL - add port param if not using default
+			const url = new URL(webUrl);
+			if (apiPort !== DEFAULT_API_PORT) {
+				url.searchParams.set("port", apiPort.toString());
+			}
+			const webAppUrl = url.toString();
+
+			console.log(chalk.cyan(`🔗 Open this URL in your browser: ${webAppUrl}`));
+			console.log(chalk.gray(`   API Server: http://${host}:${apiPort}`));
+		}
+
+		console.log(chalk.cyan("Press Ctrl+C to stop the server"));
 
 		// Graceful shutdown with single-invocation guard and force-exit fallback
 		const cleanup = createGracefulShutdownHandler(server, {
 			quiet: false, // web command always shows output
-			name: "API server",
+			name: "server",
 		});
 
 		process.on("SIGINT", cleanup);
@@ -59,7 +91,7 @@ export class WebCommand extends CommandRunner {
 
 	@Option({
 		flags: "-p, --port <port>",
-		description: "Port for API server",
+		description: "Port for API server (and web UI in bundled mode)",
 	})
 	parsePort(val: string): number {
 		return Number(val);
@@ -83,7 +115,8 @@ export class WebCommand extends CommandRunner {
 
 	@Option({
 		flags: "--web-url <url>",
-		description: "URL of the web application",
+		description:
+			"Use hosted web UI instead of bundled (e.g., https://adk-web.iqai.com)",
 	})
 	parseWebUrl(val: string): string {
 		return val;
