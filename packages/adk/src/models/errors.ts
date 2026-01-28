@@ -6,7 +6,6 @@ export interface LlmErrorOptions {
 	model?: string;
 	provider?: string;
 	originalError?: Error;
-	retryAfterMs?: number;
 }
 
 /**
@@ -51,12 +50,10 @@ export class LlmError extends Error {
  */
 export class RateLimitError extends LlmError {
 	readonly code = 429;
-	readonly retryAfterMs?: number;
 
 	constructor(message: string, options: LlmErrorOptions = {}) {
 		super(message, options);
 		this.name = "RateLimitError";
-		this.retryAfterMs = options.retryAfterMs;
 	}
 
 	/**
@@ -69,47 +66,12 @@ export class RateLimitError extends LlmError {
 	): RateLimitError {
 		const err = originalError as ProviderError | undefined;
 		const message = err?.message || String(originalError);
-		const retryAfterMs = RateLimitError.extractRetryAfter(originalError);
 
 		return new RateLimitError(message, {
 			model,
 			provider,
 			originalError: originalError instanceof Error ? originalError : undefined,
-			retryAfterMs,
 		});
-	}
-
-	/**
-	 * Extract retry-after value from error headers (in milliseconds)
-	 */
-	static extractRetryAfter(error: unknown): number | undefined {
-		if (!error || typeof error !== "object") return undefined;
-
-		const err = error as ProviderError;
-		const headers = err.headers || err.response?.headers || err.error?.headers;
-
-		if (!headers) return undefined;
-
-		const retryAfter =
-			(typeof headers.get === "function" ? headers.get("retry-after") : null) ||
-			(headers as Record<string, string>)["retry-after"] ||
-			(headers as Record<string, string>)["Retry-After"];
-
-		if (!retryAfter) return undefined;
-
-		const value = Number(retryAfter);
-		if (!Number.isNaN(value)) {
-			// Value is in seconds, convert to ms
-			return value * 1000;
-		}
-
-		// Could be a date string
-		const date = Date.parse(retryAfter);
-		if (!Number.isNaN(date)) {
-			return Math.max(0, date - Date.now());
-		}
-
-		return undefined;
 	}
 
 	/**
