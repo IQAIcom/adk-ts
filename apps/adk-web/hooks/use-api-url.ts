@@ -6,16 +6,20 @@ import { useMemo } from "react";
 /**
  * useApiUrl
  *
- * Resolves the ADK API base URL based on how the web app is being served:
+ * Resolves the ADK API base URL based on how the web app is being served.
  *
- * 1. BUNDLED MODE (default): When the web app is served by the CLI on the same
- *    origin as the API, we return an empty string to use relative URLs.
- *    This eliminates CORS issues and works on any port.
- *
- * 2. HOSTED MODE: When using the hosted web app (adk-web.iqai.com) or
- *    during development, query params can specify the API location:
+ * Priority:
+ * 1. Explicit query params:
  *    - `?apiUrl=http://...` - Full API URL
- *    - `?port=8042` - Shorthand for http://localhost:<port>
+ *    - `?port=8042`         - Shorthand for http://localhost:<port>
+ *
+ * 2. Environment-based defaults:
+ *    - Local dev (Next dev server, usually http://localhost:3000):
+ *        → http://localhost:8042
+ *    - Hosted web (e.g. https://adk-web.iqai.com):
+ *        → http://localhost:8042
+ *    - Bundled CLI mode (static export served from CLI on same origin as API):
+ *        → "" (empty string) so all requests are relative and same-origin
  *
  * The value is memoized to remain stable for a given set of params.
  */
@@ -23,7 +27,7 @@ export function useApiUrl(): string {
 	const searchParams = useSearchParams();
 
 	return useMemo(() => {
-		// Check for explicit query param overrides (hosted mode)
+		// 1. Explicit query param overrides
 		const apiUrl = searchParams.get("apiUrl");
 		const port = searchParams.get("port");
 
@@ -33,15 +37,33 @@ export function useApiUrl(): string {
 		// If port is explicitly provided, build localhost URL
 		if (port) return `http://localhost:${port}`;
 
-		// BUNDLED MODE: No query params means we're likely served from the CLI
-		// on the same origin. Use relative URLs (empty string prefix).
-		// This makes API calls go to the same host:port that served the page.
 		if (typeof window !== "undefined") {
-			// We're in the browser - use relative URLs for same-origin requests
-			return "";
+			const { hostname, port: currentPort } = window.location;
+
+			const isLocalhost =
+				hostname === "localhost" ||
+				hostname === "127.0.0.1" ||
+				hostname === "[::1]";
+
+			// Any localhost origin (dev or preview): send API traffic to 8042
+			if (isLocalhost && currentPort) {
+				return "http://localhost:8042";
+			}
+
+			// Bundled CLI mode (static export served from CLI) is expected to use a
+			// relative base URL (\"\"), but in the current configuration all localhost
+			// origins are routed to http://localhost:8042 above. If we re‑enable true
+			// same‑origin bundled mode in the future, that logic should live here.
+			if (isLocalhost) {
+				// Empty string makes all requests relative to current origin
+				return "";
+			}
+
+			// Hosted web (e.g. adk-web.iqai.com) – API still runs locally
+			return "http://localhost:8042";
 		}
 
-		// SSR fallback (shouldn't happen with static export, but just in case)
+		// SSR / non-browser fallback
 		return "http://localhost:8042";
 	}, [searchParams]);
 }
