@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import {
 	type AgentListItemDto,
@@ -16,11 +16,20 @@ interface CreateSessionRequest {
 	sessionId?: string;
 }
 
-export function useSessions(selectedAgent: AgentListItemDto | null) {
+interface UseSessionsOptions {
+	sessionId: string | null;
+	onSessionChange: (id: string | null) => void;
+}
+
+export function useSessions(
+	selectedAgent: AgentListItemDto | null,
+	options: UseSessionsOptions,
+) {
 	const apiUrl = useApiUrl();
 	const queryClient = useQueryClient();
 	// apiUrl can be "" in bundled mode (same origin), which is valid
 	const apiClient = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
+	const { sessionId, onSessionChange } = options;
 
 	// Fetch sessions for the selected agent
 	const {
@@ -116,11 +125,87 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 				queryKey: ["events"],
 			});
 		},
-		onError: (error) => {
+		onError: (error: unknown) => {
 			console.error(error);
+
+			const isNotFoundError = (err: unknown): boolean => {
+				if (err && typeof err === "object") {
+					if ("status" in err && err.status === 404) {
+						return true;
+					}
+					if (
+						"error" in err &&
+						err.error &&
+						typeof err.error === "object" &&
+						"message" in err.error &&
+						typeof err.error.message === "string" &&
+						err.error.message.toLowerCase().includes("not found")
+					) {
+						return true;
+					}
+				}
+				return false;
+			};
+
+			if (isNotFoundError(error)) {
+				// Session was likely deleted - silently handle it
+				// The sessions list will refresh and UI will update accordingly
+				return;
+			}
+
 			toast.error("Failed to switch session. Please try again.");
 		},
 	});
+
+	const prevAgentRef = useRef<string | null>(null);
+	const switchSessionFn = switchSessionMutation.mutateAsync;
+
+	// Session management effect - handles auto-switching and validation
+	useEffect(() => {
+		if (!sessionId || !onSessionChange) return;
+
+		// const { sessionId, onSessionChange } = options;
+		const currentAgentPath = selectedAgent?.relativePath ?? null;
+
+		// Agent switched - clear session
+		if (currentAgentPath !== prevAgentRef.current) {
+			onSessionChange(null);
+			prevAgentRef.current = currentAgentPath;
+			return;
+		}
+
+		// No sessions available yet or still loading
+		if (sessions.length === 0 || isLoading) {
+			return;
+		}
+
+		// Validate URL sessionId
+		const isUrlSessionValid =
+			sessionId && sessions.some((s) => s.id === sessionId);
+
+		if (isUrlSessionValid) {
+			switchSessionFn(sessionId).catch((error) => {
+				console.error("Failed to switch to URL session:", error);
+			});
+		} else if (sessionId) {
+			// URL has invalid sessionId (e.g., session was deleted) - clear it
+			onSessionChange(null);
+		} else if (sessions.length > 0) {
+			// No URL sessionId - auto-select first session
+			const firstSessionId = sessions[0].id;
+			onSessionChange(firstSessionId);
+			switchSessionFn(firstSessionId).catch((error) => {
+				console.error("Failed to auto-select first session:", error);
+			});
+		}
+	}, [
+		sessions,
+		isLoading,
+		selectedAgent,
+		switchSessionFn,
+		onSessionChange,
+		sessionId,
+	]);
 
 	return {
 		sessions,
