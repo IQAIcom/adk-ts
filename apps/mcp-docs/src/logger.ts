@@ -1,4 +1,5 @@
 import type { FastMCP } from "fastmcp";
+import winston from "winston";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -7,63 +8,56 @@ interface LoggerOptions {
 	server?: FastMCP;
 }
 
-const LOG_LEVELS: Record<LogLevel, number> = {
-	debug: 0,
-	info: 1,
-	warn: 2,
-	error: 3,
-};
-
 class Logger {
-	private level: LogLevel;
+	private winstonLogger: winston.Logger;
 	private server?: FastMCP;
 
 	constructor(options: LoggerOptions = {}) {
-		this.level = options.level ?? "info";
 		this.server = options.server;
-	}
+		const level = options.level ?? "info";
 
-	private shouldLog(level: LogLevel): boolean {
-		return LOG_LEVELS[level] >= LOG_LEVELS[this.level];
-	}
-
-	private formatMessage(
-		level: LogLevel,
-		message: string,
-		data?: unknown,
-	): string {
-		const timestamp = new Date().toISOString();
-		const dataStr = data ? ` ${JSON.stringify(data)}` : "";
-		return `[${timestamp}] [${level.toUpperCase()}] ${message}${dataStr}`;
+		this.winstonLogger = winston.createLogger({
+			level,
+			format: winston.format.combine(
+				winston.format.timestamp(),
+				winston.format.printf(({ timestamp, level, message, ...data }) => {
+					const dataStr = Object.keys(data).length
+						? ` ${JSON.stringify(data)}`
+						: "";
+					return `[${timestamp}] [${level.toUpperCase()}] ${message}${dataStr}`;
+				}),
+			),
+			transports: [
+				new winston.transports.Console({
+					stderrLevels: ["error", "warn", "info", "debug"], // Force all levels to stderr
+				}),
+			],
+		});
 	}
 
 	// IMPORTANT: Use stderr for all logging to avoid interfering with
 	// MCP JSON-RPC protocol which uses stdout
 	debug(message: string, data?: unknown): void {
-		if (this.shouldLog("debug")) {
-			console.error(this.formatMessage("debug", message, data));
-		}
+		this.winstonLogger.debug(message, data as any);
 	}
 
 	info(message: string, data?: unknown): void {
-		if (this.shouldLog("info")) {
-			console.error(this.formatMessage("info", message, data));
-		}
+		this.winstonLogger.info(message, data as any);
 	}
 
 	warn(message: string, data?: unknown): void {
-		if (this.shouldLog("warn")) {
-			console.error(this.formatMessage("warn", message, data));
-		}
+		this.winstonLogger.warn(message, data as any);
 	}
 
 	error(message: string, error?: unknown): void {
-		if (this.shouldLog("error")) {
-			const errorData =
-				error instanceof Error
-					? { name: error.name, message: error.message, stack: error.stack }
-					: error;
-			console.error(this.formatMessage("error", message, errorData));
+		if (error instanceof Error) {
+			this.winstonLogger.error(message, {
+				name: error.name,
+				message: error.message,
+				stack: error.stack,
+			});
+		} else {
+			this.winstonLogger.error(message, error as any);
 		}
 	}
 
@@ -72,7 +66,7 @@ class Logger {
 	}
 
 	setLevel(level: LogLevel): void {
-		this.level = level;
+		this.winstonLogger.level = level;
 	}
 }
 
