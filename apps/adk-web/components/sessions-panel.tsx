@@ -135,6 +135,7 @@ export function SessionsPanel({
 
 		const sessionExists = sessions.some((s) => s.id === sessionId);
 		if (!sessionExists) {
+			console.warn(`Attempted to switch to non-existent session: ${sessionId}`);
 			return;
 		}
 
