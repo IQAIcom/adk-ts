@@ -1,18 +1,30 @@
 import "reflect-metadata";
 import type { FSWatcher } from "node:fs";
 import { existsSync, readFileSync, watch } from "node:fs";
-import { resolve, sep } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import z from "zod";
 import { environmentEnum, envSchema } from "../common/schema";
-import { HttpModule } from "./http.module";
 import { PrettyErrorFilter } from "./filters/pretty-error.filter";
+import { HttpModule } from "./http.module";
 import { AgentManager } from "./providers/agent-manager.service";
 import { DIRECTORIES_TO_SKIP } from "./providers/agent-scanner.service";
 import { HotReloadService } from "./reload/hot-reload.service";
 import type { RuntimeConfig } from "./runtime-config";
+import type { Request, Response, NextFunction } from "express";
+
+/**
+ * Resolves the path to the bundled web assets directory.
+ * The web/ directory is at the package root, relative to dist/http/bootstrap.js
+ */
+function getWebAssetsDir(): string {
+	// In CommonJS build, __dirname is available
+	// Path: dist/http/bootstrap.js -> ../../web
+	const currentDir = __dirname;
+	return join(currentDir, "..", "..", "web");
+}
 
 function pathHasSkippedDir(p: string): boolean {
 	const parts = p.split(sep).filter(Boolean);
@@ -196,6 +208,8 @@ export interface StartedHttpServer {
 	app: NestExpressApplication;
 	url: string;
 	stop: () => Promise<void>;
+	/** True if bundled web UI is being served (serveWeb was enabled and assets exist) */
+	webAssetsAvailable: boolean;
 }
 
 /**
@@ -255,6 +269,7 @@ export async function startHttpServer(
 			.addTag("state")
 			.addTag("messaging")
 			.addTag("health")
+			.addTag("debug")
 			.build();
 		const document = SwaggerModule.createDocument(app, builder, {
 			deepScanRoutes: true,
@@ -265,6 +280,52 @@ export async function startHttpServer(
 		});
 		if (!config.quiet && debug)
 			console.log("[openapi] Docs available at /docs (json: /openapi.json)");
+	}
+
+	// Serve bundled web UI when enabled (used by `adk web` command)
+	let webAssetsAvailable = false;
+	if (config.serveWeb) {
+		const webDir = getWebAssetsDir();
+		if (existsSync(webDir)) {
+			webAssetsAvailable = true;
+
+			// Serve static assets from the web/ directory
+			app.useStaticAssets(webDir);
+
+			// SPA fallback: serve index.html for non-API routes
+			// This must be added after all other routes are registered
+			const indexPath = join(webDir, "index.html");
+
+			// Use type assertion since we know NestExpressApplication uses Express
+			app.use((req: Request, res: Response, next: NextFunction) => {
+				// Skip API routes, health checks, docs, and reload endpoints
+				const API_ROUTE_PREFIXES = [
+					"/api",
+					"/health",
+					"/docs",
+					"/openapi",
+					"/reload",
+				] as const;
+				if (API_ROUTE_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
+					return next();
+				}
+
+				// Skip requests for static files (have extensions)
+				if (req.path.includes(".")) {
+					return next();
+				}
+
+				// Serve index.html for SPA client-side routing
+				return res.sendFile(indexPath);
+			});
+
+			if (!config.quiet) console.log(`[web] Serving bundled UI from ${webDir}`);
+		} else {
+			if (!config.quiet)
+				console.warn(
+					"[web] Web assets not found. Run 'pnpm build' to generate them.",
+				);
+		}
 	}
 
 	const { teardownHotReload } = setupHotReload(
@@ -288,5 +349,5 @@ export async function startHttpServer(
 		}
 	};
 
-	return { app, url, stop };
+	return { app, url, stop, webAssetsAvailable };
 }

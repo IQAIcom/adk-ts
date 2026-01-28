@@ -11,10 +11,8 @@ export function useEvents(
 ) {
 	const apiUrl = useApiUrl();
 	const queryClient = useQueryClient();
-	const apiClient = useMemo(
-		() => (apiUrl ? new Api({ baseUrl: apiUrl }) : null),
-		[apiUrl],
-	);
+	// apiUrl can be "" in bundled mode (same origin), which is valid
+	const apiClient = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
 
 	const {
 		data: eventsResponse,
@@ -24,7 +22,7 @@ export function useEvents(
 	} = useQuery<EventsResponseDto>({
 		queryKey: ["events", apiUrl, selectedAgent?.relativePath, sessionId],
 		queryFn: async () => {
-			if (!apiClient || !selectedAgent || !sessionId)
+			if (!selectedAgent || !sessionId)
 				return { events: [], totalCount: 0 } as EventsResponseDto;
 			const res = await apiClient.api.eventsControllerGetEvents(
 				encodeURIComponent(selectedAgent.relativePath),
@@ -32,7 +30,7 @@ export function useEvents(
 			);
 			return res.data as EventsResponseDto;
 		},
-		enabled: !!apiClient && !!selectedAgent && !!sessionId,
+		enabled: typeof window !== "undefined" && !!selectedAgent && !!sessionId,
 		staleTime: 10000,
 		retry: 2,
 		refetchInterval: 30000,

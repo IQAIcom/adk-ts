@@ -15,4 +15,5 @@ export const envSchema = z.object({
 		.optional()
 		.transform((val) => val === "1" || val === "true")
 		.default(false),
+	OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
 });

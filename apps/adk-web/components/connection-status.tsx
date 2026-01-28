@@ -34,20 +34,30 @@ interface ConnectionStatusProps {
 export function ConnectionStatus({ apiUrl }: ConnectionStatusProps) {
 	const router = useRouter();
 	const [dialogOpen, setDialogOpen] = useState(false);
+
+	// For display and form purposes, resolve the effective URL
+	// In bundled mode, apiUrl is "" (empty string) meaning same origin
+	const effectiveUrl = useMemo(() => {
+		if (apiUrl) return apiUrl;
+		// In bundled mode, use current window location as the display URL
+		if (typeof window !== "undefined") {
+			return window.location.origin;
+		}
+		return "http://localhost:8042";
+	}, [apiUrl]);
+
 	const form = useForm<{ apiUrl: string }>({
-		defaultValues: { apiUrl },
+		defaultValues: { apiUrl: effectiveUrl },
 		mode: "onSubmit",
 	});
 
-	const DEFAULT_API_URL = "http://localhost:8042";
-
 	const currentHost = useMemo(() => {
 		try {
-			return new URL(apiUrl).host;
+			return new URL(effectiveUrl).host;
 		} catch {
-			return apiUrl;
+			return effectiveUrl;
 		}
-	}, [apiUrl]);
+	}, [effectiveUrl]);
 
 	const buildUrlWithParam = useCallback((nextApiUrl: string | null) => {
 		const url = new URL(window.location.href);
@@ -72,7 +82,7 @@ export function ConnectionStatus({ apiUrl }: ConnectionStatusProps) {
 	};
 
 	const handleOpen = () => {
-		form.reset({ apiUrl });
+		form.reset({ apiUrl: effectiveUrl });
 		setDialogOpen(true);
 	};
 
@@ -91,8 +101,14 @@ export function ConnectionStatus({ apiUrl }: ConnectionStatusProps) {
 	};
 
 	const handleReset = () => {
-		form.reset({ apiUrl: DEFAULT_API_URL });
-		// Remove apiUrl and port from query to use default
+		// Reset to bundled mode (same origin) by clearing query params
+		// The form will show current window origin as the effective URL
+		const resetUrl =
+			typeof window !== "undefined"
+				? window.location.origin
+				: "http://localhost:8042";
+		form.reset({ apiUrl: resetUrl });
+		// Remove apiUrl and port from query to use bundled mode
 		router.replace(buildUrlWithParam(null));
 		setDialogOpen(false);
 	};

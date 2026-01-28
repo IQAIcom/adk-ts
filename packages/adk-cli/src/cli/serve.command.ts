@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { Command, CommandRunner, Option } from "nest-commander";
+import { DEFAULT_API_PORT } from "../common/constants";
 import { startHttpServer } from "../http/bootstrap";
 import { createGracefulShutdownHandler } from "../utils/graceful-shutdown";
 
@@ -21,7 +22,7 @@ export class ServeCommand extends CommandRunner {
 		_passedParams: string[],
 		options?: ServeCommandOptions,
 	): Promise<void> {
-		const port = options?.port ?? 8042;
+		const port = options?.port ?? DEFAULT_API_PORT;
 		const host = options?.host ?? "localhost";
 		const agentsDir = options?.dir ?? process.cwd();
 		const quiet = !!options?.quiet;

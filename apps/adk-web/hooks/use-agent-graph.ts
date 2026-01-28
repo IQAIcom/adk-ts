@@ -9,16 +9,14 @@ export function useAgentGraph(selectedAgent: { relativePath: string } | null) {
 	const apiUrl = useApiUrl();
 	const agentId = selectedAgent?.relativePath;
 
-	const apiClient = useMemo(
-		() => (apiUrl ? new Api({ baseUrl: apiUrl }) : null),
-		[apiUrl],
-	);
+	// apiUrl can be "" in bundled mode (same origin), which is valid
+	const apiClient = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
 
 	return useQuery<GraphResponseDto, Error>({
 		queryKey: ["graph", apiUrl, agentId],
-		enabled: !!apiUrl && !!agentId,
+		// Empty apiUrl is valid (bundled mode), only check for agentId
+		enabled: typeof window !== "undefined" && !!agentId,
 		queryFn: async () => {
-			if (!apiClient) throw new Error("API client not available");
 			const res = await apiClient.api.graphControllerGetGraph(
 				encodeURIComponent(agentId!),
 			);
