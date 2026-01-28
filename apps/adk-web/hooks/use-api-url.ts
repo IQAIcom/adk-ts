@@ -3,6 +3,9 @@
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
+const DEFAULT_API_PORT = 8042;
+const DEFAULT_API_URL = `http://localhost:${DEFAULT_API_PORT}`;
+
 /**
  * useApiUrl
  *
@@ -45,14 +48,14 @@ export function useApiUrl(): string {
 				hostname === "127.0.0.1" ||
 				hostname === "[::1]";
 
-			// Any localhost origin (dev or preview): send API traffic to 8042
+			// Any localhost origin (dev or preview): send API traffic to default port
 			if (isLocalhost && currentPort) {
-				return "http://localhost:8042";
+				return DEFAULT_API_URL;
 			}
 
 			// Bundled CLI mode (static export served from CLI) is expected to use a
-			// relative base URL (\"\"), but in the current configuration all localhost
-			// origins are routed to http://localhost:8042 above. If we re‑enable true
+			// relative base URL (""), but in the current configuration all localhost
+			// origins are routed to the default API URL above. If we re‑enable true
 			// same‑origin bundled mode in the future, that logic should live here.
 			if (isLocalhost) {
 				// Empty string makes all requests relative to current origin
@@ -60,10 +63,10 @@ export function useApiUrl(): string {
 			}
 
 			// Hosted web (e.g. adk-web.iqai.com) – API still runs locally
-			return "http://localhost:8042";
+			return DEFAULT_API_URL;
 		}
 
 		// SSR / non-browser fallback
-		return "http://localhost:8042";
+		return DEFAULT_API_URL;
 	}, [searchParams]);
 }
