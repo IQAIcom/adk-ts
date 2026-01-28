@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
-import { toast } from "sonner";
 import {
 	type AgentListItemDto,
 	Api,
@@ -59,16 +58,11 @@ export function useSessions(
 			sessionId,
 		}: CreateSessionRequest): Promise<SessionResponseDto> => {
 			if (!selectedAgent) throw new Error("Agent required");
-			try {
-				const res = await apiClient.api.sessionsControllerCreateSession(
-					encodeURIComponent(selectedAgent.relativePath),
-					{ state, sessionId },
-				);
-				return res.data as SessionResponseDto;
-			} catch (e: any) {
-				toast.error("Failed to create session. Please try again.");
-				throw new Error(e?.message || "Failed to create session");
-			}
+			const res = await apiClient.api.sessionsControllerCreateSession(
+				encodeURIComponent(selectedAgent.relativePath),
+				{ state, sessionId },
+			);
+			return res.data as SessionResponseDto;
 		},
 		onSuccess: (created) => {
 			// Refetch sessions after successful creation
@@ -80,7 +74,6 @@ export function useSessions(
 		},
 		onError: (error) => {
 			console.error(error);
-			toast.error("Failed to create session. Please try again.");
 		},
 	});
 
@@ -94,7 +87,6 @@ export function useSessions(
 			);
 		},
 		onSuccess: () => {
-			toast.success("Session deleted successfully!");
 			// Refetch sessions after successful deletion
 			queryClient.invalidateQueries({
 				queryKey: ["sessions", apiUrl, selectedAgent?.relativePath],
@@ -102,7 +94,6 @@ export function useSessions(
 		},
 		onError: (error) => {
 			console.error(error);
-			toast.error("Failed to delete session. Please try again.");
 		},
 	});
 
@@ -153,7 +144,7 @@ export function useSessions(
 				return;
 			}
 
-			toast.error("Failed to switch session. Please try again.");
+			// Error will be thrown and can be handled by the component
 		},
 	});
 

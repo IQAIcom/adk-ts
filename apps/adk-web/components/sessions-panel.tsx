@@ -141,7 +141,7 @@ export function SessionsPanel({
 		try {
 			await onSwitchSession(sessionId);
 		} catch (_error) {
-			// Error handling is done in the hook's onError handler
+			toast.error("Failed to switch session. Please try again.");
 		}
 	};
 
