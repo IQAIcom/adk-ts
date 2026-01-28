@@ -89,9 +89,9 @@ export function SessionManager({
 				console.error("Failed to switch to URL session:", error);
 			});
 		} else if (sessionId) {
-			// URL has invalid sessionId - clear it
+			// URL has invalid sessionId (e.g., session was deleted) - clear it
 			onSessionChange(null);
-		} else {
+		} else if (sessions.length > 0) {
 			// No URL sessionId - auto-select first session
 			const firstSessionId = sessions[0].id;
 			onSessionChange(firstSessionId);
@@ -117,10 +117,12 @@ export function SessionManager({
 	};
 
 	const handleDeleteSession = async (deleteSessionId: string) => {
-		await deleteSession(deleteSessionId);
+		// If deleting the current session, clear it from URL first to prevent
+		// the useEffect from trying to switch to it after deletion
 		if (sessionId === deleteSessionId) {
 			onSessionChange(null);
 		}
+		await deleteSession(deleteSessionId);
 	};
 
 	const handleSwitchSession = async (newSessionId: string) => {
