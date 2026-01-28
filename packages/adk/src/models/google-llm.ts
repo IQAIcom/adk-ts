@@ -223,8 +223,7 @@ export class GoogleLlm extends BaseLlm {
 				yield llmResponse;
 			}
 		} catch (error: any) {
-			// Convert rate limit errors to standardized RateLimitError
-			if (error.code === 429 || error.status === 429) {
+			if (RateLimitError.isRateLimitError(error)) {
 				throw RateLimitError.fromError(error, "google", model);
 			}
 			throw error;

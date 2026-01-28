@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
-import { isRateLimitError, RateLimitError } from "./errors";
+import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -255,8 +255,7 @@ export class OpenAiLlm extends BaseLlm {
 				}
 			}
 		} catch (error: any) {
-			// Convert rate limit errors to standardized RateLimitError
-			if (isRateLimitError(error)) {
+			if (RateLimitError.isRateLimitError(error)) {
 				throw RateLimitError.fromError(error, "openai", model);
 			}
 			throw error;

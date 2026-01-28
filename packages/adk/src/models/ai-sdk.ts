@@ -15,7 +15,7 @@ import {
 	type ContextCacheManager,
 	GeminiContextCacheManager,
 } from "./context-cache-manager";
-import { isRateLimitError, RateLimitError } from "./errors";
+import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -290,8 +290,7 @@ export class AiSdkLlm extends BaseLlm {
 				yield* this.handleNonStreamingResponse(requestParams, provider);
 			}
 		} catch (error: any) {
-			// Convert rate limit errors to standardized RateLimitError
-			if (isRateLimitError(error)) {
+			if (RateLimitError.isRateLimitError(error)) {
 				throw RateLimitError.fromError(error, "ai-sdk", this.model);
 			}
 
