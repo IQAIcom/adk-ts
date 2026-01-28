@@ -150,8 +150,21 @@ function HomeContent() {
 		const displayUrl =
 			finalApiUrl ||
 			(typeof window !== "undefined" ? window.location.origin : "the server");
+
+		const describeError = (err: unknown): string => {
+			if (!err) return "Unknown error";
+			if (err instanceof Error) return err.message;
+			if (typeof err === "string") return err;
+			if (typeof Response !== "undefined" && err instanceof Response) {
+				const status = err.status ? `HTTP ${err.status}` : "";
+				const text = err.statusText || "";
+				return `${status} ${text}`.trim() || "Request failed";
+			}
+			return "Unknown error";
+		};
+
 		const errorMessage = compatError
-			? `Failed to check CLI compatibility: ${compatError.message || compatError}`
+			? `Failed to check CLI compatibility: ${describeError(compatError)}`
 			: `Failed to connect to ADK server at ${displayUrl}. Make sure the server is running.`;
 
 		return (
