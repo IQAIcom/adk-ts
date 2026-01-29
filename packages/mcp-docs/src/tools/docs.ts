@@ -1,6 +1,6 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
-import { readDocPath } from "../docs/loader.js";
+import { readDocPathFromRemote } from "../docs/remote-loader.js";
 import { logger } from "../logger.js";
 
 const docsInputSchema = z.object({
@@ -33,7 +33,7 @@ export function registerDocsTool(server: FastMCP) {
 			logger.debug("Executing adkDocs tool", { path: docPath });
 
 			try {
-				const result = await readDocPath(docPath);
+				const result = await readDocPathFromRemote(docPath);
 
 				if (result.found) {
 					return result.content;

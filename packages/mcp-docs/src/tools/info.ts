@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
+import { getDocs } from "../docs/store.js";
 import { logger } from "../logger.js";
 
 const infoInputSchema = z.object({});
@@ -17,6 +18,15 @@ export function registerInfoTool(server: FastMCP) {
 		execute: async () => {
 			logger.debug("Executing adkInfo tool");
 
+			// Get MCP servers dynamically from loaded docs
+			const allDocs = getDocs();
+			const mcpServerDocs = allDocs.filter((doc) =>
+				doc.path.startsWith("mcp-servers/"),
+			);
+			const mcpServers = mcpServerDocs.map((doc) =>
+				doc.path.replace("mcp-servers/", ""),
+			);
+
 			return JSON.stringify(
 				{
 					name: "ADK-TS (Agent Development Kit for TypeScript)",
@@ -26,19 +36,8 @@ export function registerInfoTool(server: FastMCP) {
 					homepage: "https://adk.iqai.com",
 					docs: "https://adk.iqai.com/docs",
 					github: "https://github.com/IQAIcom/adk-ts",
-					mcpServers: [
-						"near",
-						"twitter",
-						"telegram",
-						"coingecko",
-						"discord",
-						"abi",
-						"atp",
-						"bamm",
-						"odos",
-						"polymarket",
-						"upbit",
-					],
+					totalDocs: allDocs.length,
+					mcpServers: mcpServers.length > 0 ? mcpServers : ["Loading..."],
 				},
 				null,
 				2,

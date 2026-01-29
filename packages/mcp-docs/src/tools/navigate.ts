@@ -1,7 +1,8 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
-import { getAvailablePaths, listDocsDirectory } from "../docs/loader.js";
+import { getAvailablePathsFromRemote } from "../docs/remote-loader.js";
 import { logger } from "../logger.js";
+import { getDocs } from "../docs/store.js";
 
 const navigateInputSchema = z.object({
 	path: z
@@ -30,31 +31,54 @@ export function registerNavigateTool(server: FastMCP) {
 			logger.debug("Executing adkNavigate tool", { path: dirPath });
 
 			try {
-				const result = await listDocsDirectory(dirPath);
+				// Get all loaded docs
+				const allDocs = getDocs();
 
-				if (result.dirs.length === 0 && result.files.length === 0) {
-					return `Path "${dirPath}" not found or empty.\n\n${await getAvailablePaths()}`;
+				// Normalize the search path
+				const normalizedPath = dirPath.replace(/^\/+|\/+$/g, "");
+
+				// Filter docs that match the path prefix
+				const matchingDocs = normalizedPath
+					? allDocs.filter((doc) => doc.path.startsWith(normalizedPath))
+					: allDocs;
+
+				if (matchingDocs.length === 0) {
+					return `Path "${dirPath}" not found or empty.\n\n${await getAvailablePathsFromRemote()}`;
 				}
 
-				const lines = [
-					`## Documentation: ${(result.meta?.title ?? dirPath) || "Root"}`,
-				];
-				if (result.meta?.icon) lines[0] = `${result.meta.icon} ${lines[0]}`;
+				// Group by immediate subdirectory or file
+				const items = new Set<string>();
+				const sections = new Set<string>();
 
-				lines.push("");
+				for (const doc of matchingDocs) {
+					const relativePath = normalizedPath
+						? doc.path.substring(normalizedPath.length).replace(/^\/+/, "")
+						: doc.path;
 
-				if (result.dirs.length > 0) {
+					if (relativePath.includes("/")) {
+						// It's in a subdirectory
+						const subDir = relativePath.split("/")[0];
+						sections.add(`${subDir}/`);
+					} else {
+						// It's a file in this directory
+						items.add(relativePath);
+					}
+				}
+
+				const lines = [`## Documentation: ${normalizedPath || "Root"}`, ""];
+
+				if (sections.size > 0) {
 					lines.push("### Sections:");
-					for (const d of result.dirs) {
-						lines.push(`- [ ] ${d}`);
+					for (const section of Array.from(sections).sort()) {
+						lines.push(`- [ ] ${section}`);
 					}
 					lines.push("");
 				}
 
-				if (result.files.length > 0) {
+				if (items.size > 0) {
 					lines.push("### Pages:");
-					for (const f of result.files) {
-						lines.push(`- [ ] ${f}`);
+					for (const item of Array.from(items).sort()) {
+						lines.push(`- [ ] ${item}`);
 					}
 				}
 
