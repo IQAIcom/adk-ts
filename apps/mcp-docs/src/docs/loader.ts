@@ -8,11 +8,16 @@ import type { DocCategory, DocSection } from "../types.js";
 // Find docs root relative to the package directory
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const pkgRoot = path.resolve(__dirname, "../../");
-const DOCS_ROOT = path.resolve(pkgRoot, "../../apps/docs/content/docs");
-const _MCP_SERVERS_DOCS = path.resolve(
-	pkgRoot,
-	"../../apps/docs/content/docs/mcp-servers",
-);
+
+// Try to use .docs first (for published package), fallback to monorepo location (for development)
+const publishedDocsPath = path.resolve(pkgRoot, ".docs");
+const monorepoDocsPath = path.resolve(pkgRoot, "../../apps/docs/content/docs");
+
+// Check if .docs exists (published package) or use monorepo path (development)
+const DOCS_ROOT = await fs
+	.access(publishedDocsPath)
+	.then(() => publishedDocsPath)
+	.catch(() => monorepoDocsPath);
 
 // Meta.json structure
 interface MetaJson {

@@ -1,5 +1,5 @@
 {
-	"name": "@iqai/mcp-docs-server",
+	"name": "@iqai/mcp-docs",
 	"version": "0.1.0",
 	"description": "MCP server for accessing ADK-TS documentation, examples, API reference, and MCP server integrations.",
 	"type": "module",
@@ -9,8 +9,7 @@
 	"files": [
 		"dist",
 		".docs",
-		"README.md",
-		"CHANGELOG.md"
+		"README.md"
 	],
 	"exports": {
 		".": {
@@ -23,13 +22,15 @@
 	},
 	"scripts": {
 		"dev": "tsx src/index.ts",
-		"build": "tsc",
+		"build": "tsc && npm run copy-docs",
+		"copy-docs": "mkdir -p .docs && cp -r ../../apps/docs/content/docs/* .docs/",
 		"start": "node dist/index.js",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage"
 	},
 	"keywords": [
+		"iqai",
 		"mcp",
 		"adk",
 		"adk-ts",
@@ -61,7 +62,8 @@
 	"homepage": "https://adk.iqai.com",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/iqaicom/mcp-docs-server.git"
+		"url": "https://github.com/IQAIcom/adk-ts.git",
+		"directory": "apps/mcp-docs"
 	},
 	"engines": {
 		"node": ">=20.0.0"
