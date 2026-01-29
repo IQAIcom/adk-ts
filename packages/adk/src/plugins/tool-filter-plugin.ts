@@ -459,20 +459,10 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 		// Clean up markdown code blocks
 		responseText = responseText.trim();
 
-		if (responseText.startsWith("```")) {
-			const lines = responseText.split("\n");
-			if (lines.length > 1) {
-				// Remove first line (```jq or similar)
-				let contentLines = lines.slice(1);
-				// Remove closing fence if present
-				if (
-					contentLines.length > 0 &&
-					contentLines[contentLines.length - 1].trim() === "```"
-				) {
-					contentLines = contentLines.slice(0, -1);
-				}
-				responseText = contentLines.join("\n").trim();
-			}
+		// Use regex to handle both single-line and multi-line code blocks
+		const codeBlockMatch = responseText.match(/^```(?:[a-z]+)?\s*([\s\S]*?)\s*```$/);
+		if (codeBlockMatch) {
+			responseText = codeBlockMatch[1].trim();
 		}
 
 		// Remove surrounding quotes if present
@@ -532,9 +522,24 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 					return;
 				}
 
+				const trimmedOutput = stdoutData.trim();
+				if (!trimmedOutput) {
+					resolve(null);
+					return;
+				}
+
 				try {
-					const result = JSON.parse(stdoutData.trim());
-					resolve(result);
+					// If the output contains newlines, it's likely a stream of JSON objects from jq -c.
+					if (trimmedOutput.includes("\n")) {
+						const results = trimmedOutput
+							.split("\n")
+							.map((line) => JSON.parse(line));
+						resolve(results);
+					} else {
+						// Otherwise, it's a single JSON object.
+						const result = JSON.parse(trimmedOutput);
+						resolve(result);
+					}
 				} catch (parseError: any) {
 					this.log(`JQ output JSON parse error: ${parseError.message}`);
 					resolve(null);
