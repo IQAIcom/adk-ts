@@ -8,6 +8,7 @@ import { HealthModule } from "./health/health.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { ProvidersModule } from "./providers/providers.module";
 import { ReloadModule } from "./reload/reload.module";
+import { RunnerModule } from "./runner/runner.module";
 import type { RuntimeConfig } from "./runtime-config";
 import { SessionsModule } from "./sessions/sessions.module";
 import { StateModule } from "./state/state.module";
@@ -24,6 +25,7 @@ export class HttpModule {
 				MessagingModule,
 				SessionsModule,
 				ArtifactsModule,
+				RunnerModule,
 				EventsModule,
 				StateModule,
 				ReloadModule,
