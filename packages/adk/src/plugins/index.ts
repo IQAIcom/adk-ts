@@ -19,3 +19,9 @@ export {
 	REFLECT_AND_RETRY_RESPONSE_TYPE,
 	ReflectAndRetryToolPlugin,
 } from "./reflect-retry-tool-plugin";
+
+export type {
+	FilterConfig,
+	ToolOutputFilterPluginOptions,
+} from "./tool-filter-plugin";
+export { ToolOutputFilterPlugin } from "./tool-filter-plugin";
