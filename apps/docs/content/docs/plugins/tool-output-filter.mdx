@@ -30,6 +30,29 @@ This plugin intercepts tool outputs that exceed configurable size thresholds and
 pnpm add @iqai/adk
 ```
 
+<Callout type="warning" title="External Dependency">
+  This plugin requires the `jq` command-line tool to be installed and available in your system's PATH. You can install it from [stedolan.github.io/jq](https://stedolan.github.io/jq/download/) or using your system's package manager.
+</Callout>
+
+**Installing jq:**
+
+```bash
+# macOS (using Homebrew)
+brew install jq
+
+# Ubuntu/Debian
+sudo apt-get install jq
+
+# CentOS/RHEL/Fedora
+sudo yum install jq    # or dnf install jq
+
+# Windows (using Chocolatey)
+choco install jq
+
+# Verify installation
+jq --version
+```
+
 ## Basic Usage
 
 <Tabs items={['Simple', 'Advanced', 'Tool-Specific']}>

@@ -107,14 +107,28 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 		);
 
 		// Return filtered result with metadata
-		return {
+		const metadata = {
 			_mcp_filtered: true,
 			_original_size: analysis.size,
 			_filtered_size: filterResult.finalSize,
 			_reduction_percent: filterResult.reduction,
 			_jq_filters: filterResult.filters,
 			_iterations: filterResult.iterations,
-            data: filterResult.data,
+		};
+
+		// For object-based results, spread the filtered data into the result
+		// For other data types (arrays, primitives), use the data key
+		if (
+			typeof filterResult.data === "object" &&
+			!Array.isArray(filterResult.data) &&
+			filterResult.data !== null
+		) {
+			return { ...metadata, ...filterResult.data };
+		}
+
+		return {
+			...metadata,
+			data: filterResult.data,
 		};
 	}
 
@@ -438,22 +452,7 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 - Truncating or omitting string fields`;
 	}
 
-	private extractJqCommand(agentResponse: any): string | null {
-		let responseText = "";
-
-		// Handle different response formats
-		if (typeof agentResponse === "string") {
-			responseText = agentResponse;
-		} else if (agentResponse?.text) {
-			responseText = agentResponse.text;
-		} else if (agentResponse?.parts?.[0]?.text) {
-			responseText = agentResponse.parts[0].text;
-		} else if (agentResponse?.content?.parts?.[0]?.text) {
-			responseText = agentResponse.content.parts[0].text;
-		} else if (agentResponse?.message?.content?.[0]?.text) {
-			responseText = agentResponse.message.content[0].text;
-		}
-
+	private extractJqCommand(responseText: string): string | null {
 		if (!responseText) return null;
 
 		// Clean up markdown code blocks
@@ -529,16 +528,17 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 				}
 
 				try {
-					// If the output contains newlines, it's likely a stream of JSON objects from jq -c.
-					if (trimmedOutput.includes("\n")) {
-						const results = trimmedOutput
-							.split("\n")
-							.map((line) => JSON.parse(line));
-						resolve(results);
-					} else {
-						// Otherwise, it's a single JSON object.
+					// First, try to parse as a single JSON object
+					try {
 						const result = JSON.parse(trimmedOutput);
 						resolve(result);
+					} catch {
+						// If that fails, it might be a stream of JSON objects
+						const results = trimmedOutput
+							.split("\n")
+							.filter(Boolean) // Remove empty lines
+							.map((line) => JSON.parse(line));
+						resolve(results);
 					}
 				} catch (parseError: any) {
 					this.log(`JQ output JSON parse error: ${parseError.message}`);
