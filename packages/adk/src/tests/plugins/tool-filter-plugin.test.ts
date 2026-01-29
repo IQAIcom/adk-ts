@@ -355,6 +355,168 @@ describe("ToolOutputFilterPlugin", () => {
 
 			expect(result).toBeUndefined();
 		});
+
+		it("should perform complete filtering workflow for large responses", async () => {
+			// Mock LLM responses for filter generation
+			const mockModel = createMockFilterModel([
+				"{id, name, summary}", // First iteration filter
+				"{id, name}", // Second iteration filter (more aggressive)
+			]);
+
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+				config: {
+					sizeThreshold: 100, // Low threshold to trigger filtering
+					keyThreshold: 5, // Low key threshold to trigger filtering
+					targetSize: 50, // Target size to reach
+					maxIterations: 3,
+					debug: true,
+				},
+			});
+
+			// Create large mock data that exceeds thresholds
+			const largeToolResult = {
+				id: 1,
+				name: "Test Item",
+				description: "Very long description that makes this response large and verbose, containing lots of unnecessary details that could be filtered out to reduce the overall size of the response.",
+				metadata: {
+					created: "2024-01-01",
+					updated: "2024-01-02",
+					version: "1.0.0",
+					tags: ["tag1", "tag2", "tag3", "tag4", "tag5"],
+				},
+				details: {
+					field1: "value1",
+					field2: "value2",
+					field3: "value3",
+					nested: {
+						deep: "value",
+						deeper: {
+							evenDeeper: "nested value that adds to size",
+						},
+					},
+				},
+			};
+
+			// Mock the first jq filter application (partial reduction)
+			let callCount = 0;
+			const mockProcess1 = {
+				stdout: {
+					on: vi.fn((event, callback) => {
+						if (event === "data") {
+							callback('{"id":1,"name":"Test Item","summary":"Filtered summary"}');
+						}
+					}),
+				},
+				stderr: { on: vi.fn() },
+				on: vi.fn((event, callback) => {
+					if (event === "close") callback(0);
+				}),
+				stdin: { write: vi.fn(), end: vi.fn() },
+			};
+
+			// Mock the second jq filter application (more aggressive)
+			const mockProcess2 = {
+				stdout: {
+					on: vi.fn((event, callback) => {
+						if (event === "data") {
+							callback('{"id":1,"name":"Test Item"}');
+						}
+					}),
+				},
+				stderr: { on: vi.fn() },
+				on: vi.fn((event, callback) => {
+					if (event === "close") callback(0);
+				}),
+				stdin: { write: vi.fn(), end: vi.fn() },
+			};
+
+			// Configure mockSpawn to return different processes for each call
+			mockSpawn
+				.mockReturnValueOnce(mockProcess1)
+				.mockReturnValueOnce(mockProcess2);
+
+			const result = await plugin.afterToolCallback({
+				tool: createMockTool("large_data_tool"),
+				toolArgs: { query: "fetch all data" },
+				toolContext: createMockToolContext(),
+				result: largeToolResult,
+			});
+
+			// Verify that filtering was applied
+			expect(result).toBeDefined();
+			expect(result?._mcp_filtered).toBe(true);
+			expect(result?._original_size).toBeGreaterThan(result?._filtered_size);
+			expect(result?._reduction_percent).toBeGreaterThan(0);
+			expect(result?._jq_filters).toEqual(["{id, name, summary}", "{id, name}"]);
+			expect(result?._iterations).toBe(2);
+
+			// Verify the filtered data structure (object spread)
+			expect(result?.id).toBe(1);
+			expect(result?.name).toBe("Test Item");
+
+			// Verify spawn was called with correct parameters
+			expect(mockSpawn).toHaveBeenCalledTimes(2);
+			expect(mockSpawn).toHaveBeenNthCalledWith(1, "jq", ["-c", "{id, name, summary}"], {
+				timeout: 10000,
+			});
+			expect(mockSpawn).toHaveBeenNthCalledWith(2, "jq", ["-c", "{id, name}"], {
+				timeout: 10000,
+			});
+
+			// Verify LLM was called to generate filters
+			expect(mockModel.generateContentAsync).toHaveBeenCalledTimes(2);
+		});
+
+		it("should handle filtering workflow with array results", async () => {
+			const mockModel = createMockFilterModel([".[]"]);
+
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+				config: {
+					sizeThreshold: 50,
+					targetSize: 30,
+				},
+			});
+
+			const largeArrayResult = {
+				items: [
+					{ id: 1, data: "large data 1" },
+					{ id: 2, data: "large data 2" },
+					{ id: 3, data: "large data 3" },
+				],
+			};
+
+			// Mock jq returning an array result
+			const mockProcess = {
+				stdout: {
+					on: vi.fn((event, callback) => {
+						if (event === "data") {
+							callback('[{"id":1},{"id":2}]');
+						}
+					}),
+				},
+				stderr: { on: vi.fn() },
+				on: vi.fn((event, callback) => {
+					if (event === "close") callback(0);
+				}),
+				stdin: { write: vi.fn(), end: vi.fn() },
+			};
+
+			mockSpawn.mockReturnValue(mockProcess);
+
+			const result = await plugin.afterToolCallback({
+				tool: createMockTool("array_tool"),
+				toolArgs: {},
+				toolContext: createMockToolContext(),
+				result: largeArrayResult,
+			});
+
+			// Verify array results use 'data' key (not spread)
+			expect(result).toBeDefined();
+			expect(result?._mcp_filtered).toBe(true);
+			expect(result?.data).toEqual([{ id: 1 }, { id: 2 }]);
+		});
 	});
 
 	describe("applyJqFilter", () => {
