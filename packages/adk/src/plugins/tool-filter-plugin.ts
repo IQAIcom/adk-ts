@@ -1,10 +1,7 @@
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { spawn } from "node:child_process";
 import { BaseLlm, LlmRequest } from "@adk/models";
 import { BaseTool, ToolContext } from "@adk/tools";
 import { BasePlugin } from "./base-plugin";
-
-const execAsync = promisify(exec);
 
 export interface FilterConfig {
 	/** Size threshold in characters to trigger filtering */
@@ -506,18 +503,47 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 			}
 		}
 
-		try {
+		return new Promise((resolve) => {
 			const input = JSON.stringify(data);
-			const { stdout } = await execAsync(
-				`echo '${input.replace(/'/g, "'\\''")}' | jq -c '${jqFilter}'`,
-				{ timeout: 10000 },
-			);
+			// Use spawn to avoid command injection vulnerabilities.
+			const jqProcess = spawn("jq", ["-c", jqFilter], {
+				timeout: 10000,
+			});
 
-			return JSON.parse(stdout.trim());
-		} catch (error: any) {
-			this.log(`JQ execution failed: ${error.message}`);
-			return null;
-		}
+			let stdoutData = "";
+			let stderrData = "";
+
+			jqProcess.stdout.on("data", (chunk) => {
+				stdoutData += chunk.toString();
+			});
+			jqProcess.stderr.on("data", (chunk) => {
+				stderrData += chunk.toString();
+			});
+
+			jqProcess.on("error", (err) => {
+				this.log(`JQ process spawn error: ${err.message}`);
+				resolve(null);
+			});
+
+			jqProcess.on("close", (code) => {
+				if (code !== 0) {
+					this.log(`JQ execution failed with code ${code}: ${stderrData}`);
+					resolve(null);
+					return;
+				}
+
+				try {
+					const result = JSON.parse(stdoutData.trim());
+					resolve(result);
+				} catch (parseError: any) {
+					this.log(`JQ output JSON parse error: ${parseError.message}`);
+					resolve(null);
+				}
+			});
+
+			jqProcess.stdin.write(input);
+			jqProcess.stdin.end();
+		});
 	}
 
 	private log(message: string): void {
