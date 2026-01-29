@@ -1,4 +1,4 @@
-import type { CallbackContext } from "@adk/agents";
+import type { BaseAgent, CallbackContext } from "@adk/agents";
 import { Logger } from "@adk/logger";
 import type { LlmRequest } from "@adk/models";
 import type { BaseLlm } from "../models/base-llm";
@@ -13,6 +13,10 @@ const DEFAULT_RETRY_DELAY_MS = 1000;
 interface FallbackState {
 	retryCount: number;
 	fallbackIndex: number;
+}
+
+interface AgentWithCanonicalModel extends BaseAgent {
+	canonicalModel?: BaseLlm;
 }
 
 /**
@@ -64,8 +68,8 @@ export class ModelFallbackPlugin extends BasePlugin {
 		const currentModel =
 			fallbackState.fallbackIndex === -1
 				? llmRequest.model ||
-					(callbackContext.invocationContext.agent as any).canonicalModel
-						?.model ||
+					(callbackContext.invocationContext.agent as AgentWithCanonicalModel)
+						.canonicalModel?.model ||
 					"unknown"
 				: this.fallbackModels[fallbackState.fallbackIndex];
 
@@ -81,8 +85,10 @@ export class ModelFallbackPlugin extends BasePlugin {
 			try {
 				const llm =
 					fallbackState.fallbackIndex === -1
-						? ((callbackContext.invocationContext.agent as any)
-								.canonicalModel as BaseLlm)
+						? ((
+								callbackContext.invocationContext
+									.agent as AgentWithCanonicalModel
+							).canonicalModel as BaseLlm)
 						: LLMRegistry.newLLM(currentModel);
 
 				const response = await this.executeModel(llm, llmRequest);
