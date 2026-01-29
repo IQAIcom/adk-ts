@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Standalone entry point for running the MCP docs server via npx
- * Usage: npx @iqai/mcp-docs-server
+ * Usage: npx @iqai/mcp-docs
  */
 
 import { createServer } from "./index.js";
