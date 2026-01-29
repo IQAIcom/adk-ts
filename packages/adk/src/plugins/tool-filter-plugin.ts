@@ -150,7 +150,7 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 		);
 	}
 
-	private countKeys(obj: any, depth: number, maxDepth = 10): number {
+	private countKeys(obj: unknown, depth: number, maxDepth = 10): number {
 		if (depth > maxDepth) return 0;
 
 		if (Array.isArray(obj)) {
@@ -172,7 +172,7 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 		return 0;
 	}
 
-	private extractSchema(obj: any, depth: number): any {
+	private extractSchema(obj: unknown, depth: number): any {
 		if (depth > this.config.maxSchemaDepth) {
 			return "...";
 		}
