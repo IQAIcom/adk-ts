@@ -456,20 +456,20 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 		if (!responseText) return null;
 
 		// Clean up markdown code blocks
-		responseText = responseText.trim();
+		let cleaned = responseText.trim();
 
 		// Use regex to handle both single-line and multi-line code blocks
-		const codeBlockMatch = responseText.match(/^```(?:[a-z]+)?\s*([\s\S]*?)\s*```$/);
+		const codeBlockMatch = cleaned.match(/^```(?:[a-z]+)?\s*([\s\S]*?)\s*```$/);
 		if (codeBlockMatch) {
-			responseText = codeBlockMatch[1].trim();
+			cleaned = codeBlockMatch[1].trim();
 		}
 
 		// Remove surrounding quotes if present
-		if (responseText.startsWith('"') && responseText.endsWith('"')) {
-			responseText = responseText.slice(1, -1);
+		if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+			cleaned = cleaned.slice(1, -1);
 		}
 
-		return responseText || null;
+		return cleaned || null;
 	}
 
 	private async applyJqFilter(
