@@ -306,7 +306,7 @@ as-is.
 
 **Type:** `string[]` | **Default:** `[]`
 
-Configures fallback models to use when the primary model encounters rate limit errors (HTTP 429). When rate limited, the system first retries the current model up to 3 times with a 1-second delay between attempts. If retries are exhausted, it automatically switches to the next fallback model in the provided order the the current request only.
+Configures fallback models to use when the primary model encounters rate limit errors (HTTP 429). When rate limited, the system first retries the current model up to 3 times with a 1-second delay between attempts. If retries are exhausted, it automatically switches to the next fallback model in the provided order for the current request only.
 
 This provides resilience against rate limits without requiring manual intervention, making your agents more reliable in production environments with varying API quotas.
 
