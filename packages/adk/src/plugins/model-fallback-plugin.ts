@@ -1,6 +1,7 @@
 import type { BaseAgent, CallbackContext } from "@adk/agents";
 import { Logger } from "@adk/logger";
 import type { LlmRequest } from "@adk/models";
+import { StreamingMode } from "../agents/run-config";
 import type { BaseLlm } from "../models/base-llm";
 import { RateLimitError } from "../models/errors";
 import { LLMRegistry } from "../models/llm-registry";
@@ -58,6 +59,9 @@ export class ModelFallbackPlugin extends BasePlugin {
 		}
 
 		const invocationId = callbackContext.invocationContext.invocationId;
+		const isStreaming =
+			callbackContext.invocationContext.runConfig.streamingMode ===
+			StreamingMode.SSE;
 
 		let fallbackState = this.state.get(invocationId);
 		if (!fallbackState) {
@@ -91,7 +95,7 @@ export class ModelFallbackPlugin extends BasePlugin {
 							).canonicalModel as BaseLlm)
 						: LLMRegistry.newLLM(currentModel);
 
-				const response = await this.executeModel(llm, llmRequest);
+				const response = await this.executeModel(llm, llmRequest, isStreaming);
 				this.logger.info(
 					`Retry ${fallbackState.retryCount} successful on ${currentModel}`,
 				);
@@ -124,7 +128,11 @@ export class ModelFallbackPlugin extends BasePlugin {
 
 		try {
 			const fallbackLlm = LLMRegistry.newLLM(fallbackModel);
-			const response = await this.executeModel(fallbackLlm, llmRequest);
+			const response = await this.executeModel(
+				fallbackLlm,
+				llmRequest,
+				isStreaming,
+			);
 
 			this.logger.info(`Fallback to ${fallbackModel} successful`);
 			this.state.delete(invocationId);
@@ -153,10 +161,11 @@ export class ModelFallbackPlugin extends BasePlugin {
 	private async executeModel(
 		llm: BaseLlm,
 		llmRequest: LlmRequest,
+		stream: boolean,
 	): Promise<LlmResponse> {
 		let finalResponse: LlmResponse | undefined;
 
-		for await (const response of llm.generateContentAsync(llmRequest, false)) {
+		for await (const response of llm.generateContentAsync(llmRequest, stream)) {
 			finalResponse = response;
 		}
 
