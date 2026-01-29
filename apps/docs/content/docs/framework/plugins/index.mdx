@@ -37,6 +37,7 @@ Plugin functionality builds on [Callbacks](/docs/framework/callbacks), which is 
 
 ADK includes several plugins that you can add to your agent workflows immediately:
 
+- [Model Fallback Plugin](/docs/framework/plugins/model-fallback-plugin): Automatically handles rate limit errors (429) by retrying with configurable delays and falling back to alternative models when the primary model is unavailable.
 - [Reflect and Retry Tools](/docs/framework/plugins/reflect-and-retry): Automatically tracks tool execution failures and implements intelligent retry logic with guided feedback to help agents recover from errors and successfully complete tool operations.
 - [Langfuse Plugin](/docs/framework/plugins/langfuse-plugin): Provides comprehensive observability and tracing for your agent workflows by integrating with Langfuse, enabling you to monitor user interactions, agent decisions, model calls, and tool executions with detailed performance metrics and debugging insights.
 
@@ -1028,7 +1029,12 @@ Now that you understand how to build and use Plugins, explore these resources:
 
 <Cards>
   <Card
-    title="🔄 Reflect and Retry Plugin"
+    title="🔄 Model Fallback Plugin"
+    description="Handle rate limits with automatic fallback"
+    href="/docs/framework/plugins/model-fallback-plugin"
+  />
+  <Card
+    title="🔁 Reflect and Retry Plugin"
     description="Learn about intelligent error recovery"
     href="/docs/framework/plugins/reflect-and-retry"
   />
