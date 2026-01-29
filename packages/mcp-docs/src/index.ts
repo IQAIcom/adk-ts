@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { FastMCP } from "fastmcp";
-import { loadDocs } from "./docs/loader.js";
+import { loadDocsFromRemote } from "./docs/remote-loader.js";
 import { setDocs } from "./docs/store.js";
 import { logger } from "./logger.js";
 import { registerDocsTool } from "./tools/docs.js";
@@ -20,16 +20,24 @@ export async function createServer(): Promise<FastMCP> {
 		version: version,
 	});
 
-	// Load documentation
-	const docs = await loadDocs();
-	setDocs(docs);
-
-	// Register all tools
+	// Register all tools first
 	registerDocsTool(server);
 	registerSearchTool(server);
 	registerMcpServersTool(server);
 	registerNavigateTool(server);
 	registerInfoTool(server);
+
+	// Load documentation from remote site (blocking)
+	try {
+		logger.info("Loading documentation...");
+		const docs = await loadDocsFromRemote();
+		setDocs(docs);
+		logger.info(`Documentation initialized: ${docs.length} sections available`);
+	} catch (error) {
+		logger.error("Failed to load documentation during startup", error);
+		// Set empty docs so tools still work
+		setDocs([]);
+	}
 
 	return server;
 }
