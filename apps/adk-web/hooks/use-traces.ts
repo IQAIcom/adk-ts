@@ -53,6 +53,10 @@ export function useTraces(
 			);
 
 			if (!response.ok) {
+				// Return empty array for 404s (session not found) instead of throwing
+				if (response.status === 404) {
+					return [];
+				}
 				throw new Error("Failed to fetch traces");
 			}
 

@@ -1,5 +1,5 @@
 import { type ReadableSpan, telemetryService } from "@iqai/adk";
-import { Controller, Get, Param } from "@nestjs/common";
+import { Controller, Get, Param, NotFoundException } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 
 @ApiTags("debug")
@@ -11,8 +11,20 @@ export class TraceController {
 		status: 200,
 		description: "Return trace data for the session.",
 	})
+	@ApiResponse({
+		status: 404,
+		description: "Session not found or no traces available.",
+	})
 	getTraces(@Param("sessionId") sessionId: string) {
+		// Check if telemetry service is initialized
+		if (!telemetryService.initialized) {
+			return [];
+		}
+
 		const traces = telemetryService.getTracesForSession(sessionId);
+
+		// Return empty array if no traces found for the session
+		// This prevents 404 errors when frontend polls for non-existent sessions
 		return traces.map((span: ReadableSpan) => {
 			const ctx = span.spanContext();
 			return {
