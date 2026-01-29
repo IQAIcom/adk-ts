@@ -1,13 +1,13 @@
 ---
 title: Platform Integrations
-description: Integrate with observability platforms including Jaeger, Grafana, Datadog, New Relic, and Honeycomb
+description: Connect ADK-TS to Jaeger, Grafana, Datadog, New Relic, Honeycomb, and other OTLP backends
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-ADK-TS uses the OpenTelemetry Protocol (OTLP) for telemetry export, making it compatible with any observability platform that supports OTLP. This guide covers integration with popular platforms.
+ADK-TS uses the OpenTelemetry Protocol (OTLP) for telemetry export, making it compatible with any observability platform that supports OTLP.
 
 ## OTLP Compatibility
 
@@ -63,7 +63,7 @@ await telemetryService.initialize({
 <Callout type="info" title="Production Deployment">
   For production, deploy Jaeger using Docker Compose or Kubernetes with proper
   persistence and scaling. Replace `localhost` with your Jaeger instance URL.
-  See the [Production Configuration](/docs/framework/observability/production)
+  See the [Production Deployment](/docs/framework/observability/production)
   guide for more details.
 </Callout>
 
@@ -332,7 +332,7 @@ await telemetryService.initialize({
 
 ## Custom Backends
 
-Any backend that supports OTLP HTTP can be used. Simply configure the endpoint:
+Any backend that supports OTLP HTTP can be used:
 
 ```typescript
 await telemetryService.initialize({
@@ -346,53 +346,22 @@ await telemetryService.initialize({
 });
 ```
 
-## Best Practices
-
-1. **Use environment variables** - Never hardcode API keys or endpoints
-2. **Test locally first** - Use Jaeger for development
-3. **Monitor costs** - Be aware of data ingestion costs for paid platforms
-4. **Use sampling** - Reduce sampling ratio in production to control costs
-5. **Configure retention** - Set appropriate retention policies
-6. **Set up alerts** - Create alerts for critical metrics and errors
-
-## Troubleshooting
-
-### Connection Issues
-
-1. **Verify endpoint URL** - Ensure the OTLP endpoint is correct
-2. **Check network connectivity** - Test connection to the endpoint
-3. **Verify API keys** - Ensure API keys are correct and have proper permissions
-4. **Check firewall rules** - Ensure outbound connections are allowed
-
-### No Data Appearing
-
-1. **Enable debug logging**:
-
-   ```typescript
-   import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
-   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
-   ```
-
-2. **Check backend status** - Verify the observability backend is running
-3. **Verify configuration** - Double-check endpoint and headers
-4. **Review logs** - Check application logs for telemetry errors
-
-## Next Steps
+## Related Topics
 
 <Cards>
   <Card
-    title="🔒 Production Configuration"
-    description="Configure production settings for your platform"
+    title="🔒 Production Deployment"
+    description="Privacy controls, performance tuning, and best practices"
     href="/docs/framework/observability/production"
   />
   <Card
     title="🔍 Distributed Tracing"
-    description="Learn about distributed tracing"
+    description="Understand what gets traced and create custom spans"
     href="/docs/framework/observability/tracing"
   />
   <Card
     title="📊 Metrics"
-    description="Explore metrics for monitoring"
+    description="Monitor agent performance with counters and histograms"
     href="/docs/framework/observability/metrics"
   />
 </Cards>

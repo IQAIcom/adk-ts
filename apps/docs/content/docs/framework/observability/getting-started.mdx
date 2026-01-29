@@ -1,28 +1,19 @@
 ---
-title: Getting Started with Observability
-description: Initialize telemetry, configure basic setup, and run with local development tools
+title: Getting Started
+description: Initialize telemetry and start collecting traces and metrics for your AI agents
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-This guide will help you get started with observability in ADK-TS. You'll learn how to initialize the telemetry service and start collecting traces and metrics. The initialization patterns shown here work for both local development and production environments. For production-specific considerations like privacy controls, performance tuning, and security, see the [Production Configuration](/docs/framework/observability/production) guide.
+This guide covers initializing the telemetry service and collecting traces and metrics. The patterns shown here work for both local development and production environments.
 
-## Installation
+For production-specific considerations like privacy controls and performance tuning, see the [Production Deployment](/docs/framework/observability/production) guide.
 
-Telemetry dependencies are already included in `@iqai/adk`. No additional installation is required.
+## Prerequisites
 
-The following OpenTelemetry packages are included:
-
-```json
-{
-  "@opentelemetry/api": "^1.9.0",
-  "@opentelemetry/sdk-metrics": "^2.2.0",
-  "@opentelemetry/exporter-metrics-otlp-http": "^0.208.0",
-  "@opentelemetry/exporter-trace-otlp-http": "^0.208.0"
-}
-```
+Telemetry dependencies are included in `@iqai/adk`—no additional packages required.
 
 ## Basic Initialization
 
@@ -35,8 +26,8 @@ Initialize the telemetry service before any agent operations:
 
     await telemetryService.initialize({
       appName: 'my-agent-app',
-      appVersion: '1.0.0',
       otlpEndpoint: 'http://localhost:4318/v1/traces',
+      appVersion: '1.0.0',
       enableMetrics: true,
       enableTracing: true,
     });
@@ -60,8 +51,7 @@ Initialize the telemetry service before any agent operations:
       // Feature flags
       enableTracing: true,
       enableMetrics: true,
-      // Auto-instrumentation automatically traces HTTP, database, and other operations
-      enableAutoInstrumentation: true, // Set false to disable automatic instrumentation
+      enableAutoInstrumentation: true, // Enable HTTP/database auto-tracing
 
       // Privacy controls
       captureMessageContent: true, // Set false for production
@@ -95,12 +85,16 @@ Initialize the telemetry service before any agent operations:
     ```
 
     ```bash
-    # Set environment variables
+    # Set environment variables (shell session)
     export OTEL_SERVICE_NAME=my-agent-app
     export OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development,team=platform
     export NODE_ENV=development
     export ADK_CAPTURE_MESSAGE_CONTENT=true
     ```
+
+    <Callout type="tip" title="Using .env Files">
+      For local development, you can also set these variables in a `.env` file in your project root. The ADK automatically loads `.env` files using `dotenv`.
+    </Callout>
 
   </Tab>
 </Tabs>
@@ -108,6 +102,36 @@ Initialize the telemetry service before any agent operations:
 <Callout type="warn" title="Initialize Early">
   Always initialize telemetry before any agent operations to ensure all traces
   and metrics are captured.
+</Callout>
+
+## Configuration Reference
+
+### Required Options
+
+| Option         | Type     | Description                                                      |
+| -------------- | -------- | ---------------------------------------------------------------- |
+| `appName`      | `string` | Service name for identification in traces                        |
+| `otlpEndpoint` | `string` | OTLP HTTP endpoint URL (e.g., `http://localhost:4318/v1/traces`) |
+
+### Optional Options
+
+| Option                      | Type                     | Default       | Description                                               |
+| --------------------------- | ------------------------ | ------------- | --------------------------------------------------------- |
+| `appVersion`                | `string`                 | `"unknown"`   | Application version                                       |
+| `environment`               | `string`                 | Auto-detected | Deployment environment (development, staging, production) |
+| `enableTracing`             | `boolean`                | `true`        | Enable distributed tracing                                |
+| `enableMetrics`             | `boolean`                | `true`        | Enable metrics collection                                 |
+| `enableAutoInstrumentation` | `boolean`                | `false`       | Enable automatic HTTP/database tracing                    |
+| `captureMessageContent`     | `boolean`                | `true`        | Capture LLM prompts and completions                       |
+| `samplingRatio`             | `number`                 | `1.0`         | Trace sampling ratio (0.0-1.0)                            |
+| `metricExportIntervalMs`    | `number`                 | `60000`       | Metrics export interval in milliseconds                   |
+| `otlpHeaders`               | `Record<string, string>` | —             | Custom headers for OTLP requests                          |
+| `resourceAttributes`        | `Record<string, string>` | —             | Custom resource attributes                                |
+| `debug`                     | `boolean`                | `false`       | Enable in-memory exporter for debugging                   |
+
+<Callout type="warn" title="Privacy in Production">
+  Set `captureMessageContent: false` in production to avoid capturing sensitive
+  user data in traces.
 </Callout>
 
 ## Local Development Setup
@@ -169,10 +193,14 @@ docker run -d \
 ```
 
 <Callout type="info" title="When to Use the Collector">
-  For simple setups, sending directly to Jaeger (as shown above) is sufficient.
-  Use the OpenTelemetry Collector when you need to: - Route telemetry to
-  multiple backends - Apply processing, filtering, or sampling - Transform or
-  enrich telemetry data - Use batch processing for better performance
+  
+For simple setups, sending directly to Jaeger is sufficient. Use the
+OpenTelemetry Collector when you need to:
+
+- Route telemetry to multiple backends
+- Apply processing, filtering, or sampling
+- Transform or enrich telemetry data
+
 </Callout>
 
 ## Complete Example
@@ -193,9 +221,9 @@ async function main() {
   });
 
   // Build and run agent
-  const agent = AgentBuilder.withModel("gemini-2.5-flash").build();
-
-  const response = await agent.ask("What is the capital of France?");
+  const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
+    "What is the capital of France?",
+  );
   console.log(response);
 
   // Graceful shutdown
@@ -234,47 +262,27 @@ You'll see:
 - LLM call spans with token usage
 - Auto-instrumented HTTP calls
 
-## Configuration Options
-
-### Required Options
-
-- `appName` - Service name for identification in traces
-- `otlpEndpoint` - OTLP HTTP endpoint URL for sending traces
-
-### Optional Options
-
-- `appVersion` - Application version
-- `environment` - Deployment environment (development, staging, production)
-- `enableTracing` - Enable distributed tracing (default: `true`)
-- `enableMetrics` - Enable metrics collection (default: `true`)
-- `enableAutoInstrumentation` - Enable automatic instrumentation for HTTP, databases, and file system operations (default: `true`). Set to `false` if you only want ADK-specific traces.
-- `captureMessageContent` - Capture LLM prompts/completions (default: `true`)
-- `samplingRatio` - Trace sampling ratio 0.0-1.0 (default: `1.0`)
-- `metricExportIntervalMs` - Metrics export interval in milliseconds (default: `60000`)
-- `otlpHeaders` - Custom headers for OTLP requests
-- `resourceAttributes` - Custom resource attributes
-
-## Next Steps
+## Related Topics
 
 <Cards>
   <Card
     title="🔍 Distributed Tracing"
-    description="Understand what gets traced and how to view traces"
+    description="Understand what gets traced and create custom spans"
     href="/docs/framework/observability/tracing"
   />
   <Card
     title="📊 Metrics"
-    description="Explore metrics for performance monitoring"
+    description="Monitor agent performance with counters and histograms"
     href="/docs/framework/observability/metrics"
   />
   <Card
-    title="🔒 Production Configuration"
-    description="Configure privacy controls and production settings"
-    href="/docs/framework/observability/production"
+    title="🔌 Platform Integrations"
+    description="Connect to Jaeger, Grafana, Datadog, and other backends"
+    href="/docs/framework/observability/integrations"
   />
   <Card
-    title="🔌 Platform Integrations"
-    description="Integrate with observability platforms"
-    href="/docs/framework/observability/integrations"
+    title="🔒 Production Deployment"
+    description="Privacy controls, performance tuning, and best practices"
+    href="/docs/framework/observability/production"
   />
 </Cards>
