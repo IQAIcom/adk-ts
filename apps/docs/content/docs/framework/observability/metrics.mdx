@@ -1,12 +1,12 @@
 ---
 title: Metrics
-description: Available metrics, recording custom metrics, and monitoring agent performance
+description: Monitor agent performance with counters, histograms, and token usage tracking
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-ADK-TS collects comprehensive metrics for monitoring agent performance, tool usage, LLM interactions, and error rates. All metrics follow OpenTelemetry standards and are exported via OTLP.
+ADK-TS collects metrics for agent performance, tool usage, LLM interactions, and error rates. All metrics follow OpenTelemetry standards and are exported via OTLP.
 
 ## Available Metrics
 
@@ -161,57 +161,31 @@ service:
       exporters: [prometheus]
 ```
 
-## Metric Use Cases
+## Common Use Cases
 
-### Performance Monitoring
+| Use Case        | Metrics to Monitor                                              |
+| --------------- | --------------------------------------------------------------- |
+| **Performance** | `adk.agent.duration`, `adk.tool.duration`, `adk.llm.duration`   |
+| **Costs**       | `adk.llm.tokens.input`, `adk.llm.tokens.output`                 |
+| **Reliability** | `adk.errors`, error rates by `error_type`                       |
+| **Usage**       | `adk.agent.invocations`, `adk.tool.executions`, `adk.llm.calls` |
 
-Track agent performance over time:
-
-- **Agent duration** - Monitor execution time trends
-- **Tool duration** - Identify slow tools
-- **LLM duration** - Track LLM response times
-- **Token usage** - Monitor LLM costs
-
-### Error Tracking
-
-Monitor error rates and types:
-
-- **Error counters** - Track total errors
-- **Error types** - Categorize errors
-- **Error context** - Understand error sources
-
-### Resource Usage
-
-Monitor resource consumption:
-
-- **Token usage** - Track LLM token consumption
-- **Invocation rates** - Monitor agent usage
-- **Tool usage** - Track tool popularity
-
-## Best Practices
-
-1. **Use appropriate labels** - Add labels that help you filter and aggregate metrics
-2. **Monitor key metrics** - Focus on metrics that matter for your use case
-3. **Set up alerts** - Create alerts for critical metrics (error rates, latency)
-4. **Regular review** - Review metrics regularly to identify trends
-5. **Correlate with traces** - Use trace IDs to correlate metrics with specific operations
-
-## Next Steps
+## Related Topics
 
 <Cards>
   <Card
-    title="🔒 Production Configuration"
-    description="Configure optimal metric collection for production"
-    href="/docs/framework/observability/production"
+    title="🔍 Distributed Tracing"
+    description="Correlate metrics with traces for debugging"
+    href="/docs/framework/observability/tracing"
   />
   <Card
     title="🔌 Platform Integrations"
-    description="Integrate with observability platforms to visualize metrics"
+    description="Visualize metrics in Grafana, Datadog, and other platforms"
     href="/docs/framework/observability/integrations"
   />
   <Card
-    title="🔍 Distributed Tracing"
-    description="Learn how to correlate metrics with traces"
-    href="/docs/framework/observability/tracing"
+    title="🔒 Production Deployment"
+    description="Configure optimal metric collection for production"
+    href="/docs/framework/observability/production"
   />
 </Cards>
