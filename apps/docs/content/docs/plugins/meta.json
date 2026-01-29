@@ -1,0 +1,11 @@
+{
+	"title": "Plugins",
+	"icon": "Settings",
+	"root": true,
+	"pages": [
+		"index",
+		"tool-output-filter",
+		"reflect-and-retry",
+		"langfuse-plugin"
+	]
+}
