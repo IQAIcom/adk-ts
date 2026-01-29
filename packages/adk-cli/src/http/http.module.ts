@@ -1,4 +1,5 @@
 import { type DynamicModule, Module } from "@nestjs/common";
+import { ArtifactsModule } from "./artifacts/artifacts.module";
 import { ConfigModule } from "./config/config.module";
 import { DebugModule } from "./debug/debug.module";
 import { DiscoveryModule } from "./discovery/discovery.module";
@@ -22,6 +23,7 @@ export class HttpModule {
 				DiscoveryModule,
 				MessagingModule,
 				SessionsModule,
+				ArtifactsModule,
 				EventsModule,
 				StateModule,
 				ReloadModule,
