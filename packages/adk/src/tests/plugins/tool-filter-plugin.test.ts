@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BaseLlm } from "../../models/base-llm";
 import type { LlmResponse } from "../../models/llm-response";
+
+// Mock spawn before importing the plugin
+const mockSpawn = vi.fn();
+vi.mock("node:child_process", () => ({
+	spawn: mockSpawn,
+}));
+
 import { ToolOutputFilterPlugin } from "../../plugins/tool-filter-plugin";
 
 // Mock LLM model for testing
@@ -31,6 +38,11 @@ const createMockToolContext = () =>
 	}) as any;
 
 describe("ToolOutputFilterPlugin", () => {
+	// Reset mocks before each test
+	beforeEach(() => {
+		mockSpawn.mockClear();
+	});
+
 	describe("Constructor", () => {
 		it("should initialize with default config values", () => {
 			const mockModel = createMockFilterModel(["."]);
@@ -346,10 +358,6 @@ describe("ToolOutputFilterPlugin", () => {
 	});
 
 	describe("applyJqFilter", () => {
-		beforeEach(() => {
-			vi.clearAllMocks();
-		});
-
 		it("should successfully apply a simple jq filter", async () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
@@ -357,7 +365,7 @@ describe("ToolOutputFilterPlugin", () => {
 			});
 
 			// Mock spawn to simulate successful jq execution
-			const mockSpawn = vi.fn().mockReturnValue({
+			const mockProcess = {
 				stdout: {
 					on: vi.fn((event, callback) => {
 						if (event === "data") {
@@ -377,9 +385,9 @@ describe("ToolOutputFilterPlugin", () => {
 					write: vi.fn(),
 					end: vi.fn(),
 				},
-			});
+			};
 
-			vi.doMock("node:child_process", () => ({ spawn: mockSpawn }));
+			mockSpawn.mockReturnValue(mockProcess);
 
 			const testData = { id: 1, name: "test", description: "long description" };
 			const result = await (plugin as any).applyJqFilter("{id, name}", testData);
@@ -397,7 +405,7 @@ describe("ToolOutputFilterPlugin", () => {
 			});
 
 			// Mock spawn to simulate jq producing multiple JSON objects
-			const mockSpawn = vi.fn().mockReturnValue({
+			const mockProcess = {
 				stdout: {
 					on: vi.fn((event, callback) => {
 						if (event === "data") {
@@ -417,9 +425,9 @@ describe("ToolOutputFilterPlugin", () => {
 					write: vi.fn(),
 					end: vi.fn(),
 				},
-			});
+			};
 
-			vi.doMock("node:child_process", () => ({ spawn: mockSpawn }));
+			mockSpawn.mockReturnValue(mockProcess);
 
 			const testData = { users: [{ id: 1 }, { id: 2 }, { id: 3 }] };
 			const result = await (plugin as any).applyJqFilter(
@@ -437,7 +445,7 @@ describe("ToolOutputFilterPlugin", () => {
 			});
 
 			// Mock spawn to simulate empty output
-			const mockSpawn = vi.fn().mockReturnValue({
+			const mockProcess = {
 				stdout: {
 					on: vi.fn((event, callback) => {
 						if (event === "data") {
@@ -457,9 +465,9 @@ describe("ToolOutputFilterPlugin", () => {
 					write: vi.fn(),
 					end: vi.fn(),
 				},
-			});
+			};
 
-			vi.doMock("node:child_process", () => ({ spawn: mockSpawn }));
+			mockSpawn.mockReturnValue(mockProcess);
 
 			const testData = { users: [] };
 			const result = await (plugin as any).applyJqFilter(".users[]", testData);
@@ -474,7 +482,7 @@ describe("ToolOutputFilterPlugin", () => {
 			});
 
 			// Mock spawn to simulate jq failure
-			const mockSpawn = vi.fn().mockReturnValue({
+			const mockProcess = {
 				stdout: {
 					on: vi.fn(),
 				},
@@ -494,9 +502,9 @@ describe("ToolOutputFilterPlugin", () => {
 					write: vi.fn(),
 					end: vi.fn(),
 				},
-			});
+			};
 
-			vi.doMock("node:child_process", () => ({ spawn: mockSpawn }));
+			mockSpawn.mockReturnValue(mockProcess);
 
 			const testData = { data: "test" };
 			const result = await (plugin as any).applyJqFilter(
@@ -514,7 +522,7 @@ describe("ToolOutputFilterPlugin", () => {
 			});
 
 			// Mock spawn to simulate invalid JSON output
-			const mockSpawn = vi.fn().mockReturnValue({
+			const mockProcess = {
 				stdout: {
 					on: vi.fn((event, callback) => {
 						if (event === "data") {
@@ -534,9 +542,9 @@ describe("ToolOutputFilterPlugin", () => {
 					write: vi.fn(),
 					end: vi.fn(),
 				},
-			});
+			};
 
-			vi.doMock("node:child_process", () => ({ spawn: mockSpawn }));
+			mockSpawn.mockReturnValue(mockProcess);
 
 			const testData = { data: "test" };
 			const result = await (plugin as any).applyJqFilter(".", testData);
@@ -551,7 +559,7 @@ describe("ToolOutputFilterPlugin", () => {
 			});
 
 			// Mock spawn to simulate process spawn error
-			const mockSpawn = vi.fn().mockReturnValue({
+			const mockProcess = {
 				stdout: {
 					on: vi.fn(),
 				},
@@ -567,9 +575,9 @@ describe("ToolOutputFilterPlugin", () => {
 					write: vi.fn(),
 					end: vi.fn(),
 				},
-			});
+			};
 
-			vi.doMock("node:child_process", () => ({ spawn: mockSpawn }));
+			mockSpawn.mockReturnValue(mockProcess);
 
 			const testData = { data: "test" };
 			const result = await (plugin as any).applyJqFilter(".", testData);
