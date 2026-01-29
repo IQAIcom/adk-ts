@@ -1,4 +1,4 @@
-# @iqai/mcp-docs-server
+# @iqai/mcp-docs
 
 A Model Context Protocol (MCP) server that provides AI assistants with direct access to ADK-TS (Agent Development Kit for TypeScript) complete knowledge base. This includes:
 
@@ -21,7 +21,7 @@ Create or update `.cursor/mcp.json` in your project root:
   "mcpServers": {
     "adk-docs": {
       "command": "npx",
-      "args": ["-y", "@iqai/mcp-docs-server"]
+      "args": ["-y", "@iqai/mcp-docs"]
     }
   }
 }
@@ -34,7 +34,7 @@ Create or update `.cursor/mcp.json` in your project root:
   "mcpServers": {
     "adk-docs": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@iqai/mcp-docs-server"]
+      "args": ["/c", "npx", "-y", "@iqai/mcp-docs"]
     }
   }
 }
@@ -49,7 +49,7 @@ Create or update `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "adk-docs": {
       "command": "npx",
-      "args": ["-y", "@iqai/mcp-docs-server"]
+      "args": ["-y", "@iqai/mcp-docs"]
     }
   }
 }
@@ -58,79 +58,123 @@ Create or update `~/.codeium/windsurf/mcp_config.json`:
 ### In Claude Code
 
 ```sh
-claude mcp add adk-docs -- npx -y @iqai/mcp-docs-server
+claude mcp add adk-docs -- npx -y @iqai/mcp-docs
 ```
 
 ### In an ADK-TS Agent
 
 ```typescript
-import { MCPClient } from "@iqai/adk-core";
-import { Agent } from "@iqai/adk-core";
+import { AgentBuilder, McpToolset } from "@iqai/adk";
 
-const mcp = new MCPClient({
-  servers: {
-    docs: {
-      command: "npx",
-      args: ["-y", "@iqai/mcp-docs-server"],
-    },
+// Create MCP toolset for ADK docs
+const toolset = new McpToolset({
+  name: "ADK Documentation",
+  description: "Access ADK-TS documentation and examples",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@iqai/mcp-docs"],
   },
 });
 
-const agent = new Agent({
-  name: "doc-assistant",
-  model: "gemini-2.0-flash",
-  tools: await mcp.listTools(),
-});
+// Create agent with MCP tools
+const agent = new AgentBuilder()
+  .withName("doc-assistant")
+  .withModel("gemini-2.0-flash")
+  .withTools(await toolset.getTools())
+  .buildLlm();
+
+// Use the agent
+const response = await agent.ask("How do I create a custom tool?");
 ```
 
 ## Tools
 
 ### `adkDocs`
 
-Get ADK-TS documentation by requesting specific paths. Supports:
+Read the full content of a specific ADK-TS documentation file or directory.
 
-- Multiple paths in a single request
-- Directory exploration
-- Keyword-based content suggestions
+**Features:**
+
+- Access complete documentation pages by path
+- Directory exploration with section summaries
+- Supports paths with or without file extensions
+- Returns suggestions for similar paths when not found
+
+**Example paths:**
+
+- `framework/agents/llm-agents`
+- `tools/built-in-tools/google-search`
+- `mcp-servers/telegram`
 
 ### `adkSearch`
 
-Search documentation with TF-IDF-based ranking:
+Search ADK-TS documentation by keyword or concept with TF-IDF-based ranking.
 
-- Full-text search across all docs
-- Category filtering (framework, agents, tools, etc.)
-- Relevance-scored results
+**Features:**
 
-### `adkExamples`
+- Full-text search across all documentation
+- Category filtering (framework, agents, tools, mcp-servers, cli, examples, api, etc.)
+- Relevance-scored results with snippets
+- Configurable result limits (1-20)
+- Exact phrase matching prioritization
 
-Access code examples:
+### `adkNavigate`
 
-- List all available examples
-- Get specific example source code
-- Keyword matching for finding relevant examples
+Explore the hierarchical structure of ADK-TS documentation.
 
-### `adkChanges`
+**Features:**
 
-Get package changelogs:
+- Discover available documentation sections and pages
+- Browse documentation organization
+- Find exact paths for use with `adkDocs`
+- List top-level sections when no path provided
 
-- List all package changelogs
-- Fetch specific package changelog content
+**Use this to:**
+
+- Understand the documentation structure
+- Find the right path before reading with `adkDocs`
+- Browse available topics and sections
 
 ### `adkMcpServers`
 
-Catalog of available MCP server integrations:
+List and get details about available MCP server integrations for ADK-TS.
 
-- List all MCP servers by category
-- Get configuration examples
-- Installation instructions
+**Features:**
 
-### `adkApi`
+- List all available MCP servers with descriptions
+- Get full documentation for specific servers
+- Installation and configuration examples
+- Integration code samples
 
-API reference lookup:
+**Available servers include:**
 
-- Search for functions, classes, types
-- Get signatures and examples
-- Links to full TypeDoc documentation
+- **abi**: Smart contract ABI interactions
+- **atp**: IQ AI Agent Tokenization Platform
+- **bamm**: Borrow Automated Market Maker on Fraxtal
+- **coingecko**: Free cryptocurrency market data
+- **coingecko-pro**: Premium crypto market data
+- **discord**: Discord bot messaging
+- **fraxlend**: Fraxlend lending platform
+- **iqwiki**: IQ.wiki data access
+- **near-agent**: NEAR Protocol blockchain operations
+- **near-intents**: NEAR cross-chain swaps
+- **odos**: DEX aggregation
+- **polymarket**: Prediction markets
+- **telegram**: Telegram bot messaging
+- **upbit**: Upbit exchange integration
+
+### `adkInfo`
+
+Get general information about the ADK-TS framework.
+
+**Returns:**
+
+- Framework name and version
+- Description and key features
+- Homepage and documentation links
+- GitHub repository
+- List of available MCP servers
 
 ## Development
 
