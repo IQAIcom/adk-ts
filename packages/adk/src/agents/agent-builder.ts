@@ -252,9 +252,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param model The model identifier (e.g., "gemini-2.5-flash")
 	 * @returns This builder instance for chaining
 	 */
-	withModel(
-		model: string | BaseLlm | LanguageModel,
-	): AgentBuilder<TOut, TMulti> {
+	withModel(model: string | BaseLlm | LanguageModel): this {
 		this.warnIfLocked("withModel");
 		this.config.model = model;
 		return this;
@@ -276,13 +274,13 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param instruction System instruction for the agent
 	 * @returns This builder instance for chaining
 	 */
-	withInstruction(instruction: string): AgentBuilder<TOut, TMulti> {
+	withInstruction(instruction: string): this {
 		this.warnIfLocked("withInstruction");
 		this.config.instruction = instruction;
 		return this;
 	}
 
-	withInputSchema(schema: ZodSchema): AgentBuilder<TOut, TMulti> {
+	withInputSchema(schema: ZodSchema): this {
 		this.warnIfLocked("withInputSchema");
 		this.config.inputSchema = schema;
 		return this;
@@ -311,7 +309,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param tools Tools to add to the agent
 	 * @returns This builder instance for chaining
 	 */
-	withTools(...tools: BaseTool[]): AgentBuilder<TOut, TMulti> {
+	withTools(...tools: BaseTool[]): this {
 		this.warnIfLocked("withTools");
 		this.config.tools = [...(this.config.tools || []), ...tools];
 		return this;
@@ -377,9 +375,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param callback Callback to invoke before agent execution
 	 * @returns This builder instance for chaining
 	 */
-	withBeforeAgentCallback(
-		callback: BeforeAgentCallback,
-	): AgentBuilder<TOut, TMulti> {
+	withBeforeAgentCallback(callback: BeforeAgentCallback): this {
 		this.warnIfLocked("withBeforeAgentCallback");
 		this.config.beforeAgentCallback = callback;
 		return this;
@@ -390,9 +386,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param callback Callback to invoke after agent execution
 	 * @returns This builder instance for chaining
 	 */
-	withAfterAgentCallback(
-		callback: AfterAgentCallback,
-	): AgentBuilder<TOut, TMulti> {
+	withAfterAgentCallback(callback: AfterAgentCallback): this {
 		this.warnIfLocked("withAfterAgentCallback");
 		this.config.afterAgentCallback = callback;
 		return this;
@@ -403,9 +397,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param callback Callback to invoke before calling the LLM
 	 * @returns This builder instance for chaining
 	 */
-	withBeforeModelCallback(
-		callback: BeforeModelCallback,
-	): AgentBuilder<TOut, TMulti> {
+	withBeforeModelCallback(callback: BeforeModelCallback): this {
 		this.warnIfLocked("withBeforeModelCallback");
 		this.config.beforeModelCallback = callback;
 		return this;
@@ -416,9 +408,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param callback Callback to invoke after receiving LLM response
 	 * @returns This builder instance for chaining
 	 */
-	withAfterModelCallback(
-		callback: AfterModelCallback,
-	): AgentBuilder<TOut, TMulti> {
+	withAfterModelCallback(callback: AfterModelCallback): this {
 		this.warnIfLocked("withAfterModelCallback");
 		this.config.afterModelCallback = callback;
 		return this;
@@ -429,9 +419,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param callback Callback to invoke before running a tool
 	 * @returns This builder instance for chaining
 	 */
-	withBeforeToolCallback(
-		callback: BeforeToolCallback,
-	): AgentBuilder<TOut, TMulti> {
+	withBeforeToolCallback(callback: BeforeToolCallback): this {
 		this.warnIfLocked("withBeforeToolCallback");
 		this.config.beforeToolCallback = callback;
 		return this;
@@ -442,9 +430,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param callback Callback to invoke after running a tool
 	 * @returns This builder instance for chaining
 	 */
-	withAfterToolCallback(
-		callback: AfterToolCallback,
-	): AgentBuilder<TOut, TMulti> {
+	withAfterToolCallback(callback: AfterToolCallback): this {
 		this.warnIfLocked("withAfterToolCallback");
 		this.config.afterToolCallback = callback;
 		return this;
@@ -467,7 +453,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 *   .build();
 	 * ```
 	 */
-	withPlugins(...plugins: BasePlugin[]): AgentBuilder<TOut, TMulti> {
+	withPlugins(...plugins: BasePlugin[]): this {
 		this.warnIfLocked("withPlugins");
 		this.config.plugins = [...(this.config.plugins || []), ...plugins];
 		return this;
@@ -630,7 +616,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @returns This builder instance for chaining
 	 * @throws Error if no session service has been configured via withSessionService()
 	 */
-	withSession(session: Session): AgentBuilder<TOut, TMulti> {
+	withSession(session: Session): this {
 		// Require that withSessionService() was called first
 		if (!this.sessionService) {
 			const msg =
@@ -660,7 +646,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param memoryService Memory service to use for conversation history and context
 	 * @returns This builder instance for chaining
 	 */
-	withMemory(memoryService: BaseMemoryService): AgentBuilder<TOut, TMulti> {
+	withMemory(memoryService: BaseMemoryService): this {
 		this.memoryService = memoryService;
 		return this;
 	}
@@ -670,9 +656,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param artifactService Artifact service to use for managing generated artifacts
 	 * @returns This builder instance for chaining
 	 */
-	withArtifactService(
-		artifactService: BaseArtifactService,
-	): AgentBuilder<TOut, TMulti> {
+	withArtifactService(artifactService: BaseArtifactService): this {
 		this.artifactService = artifactService;
 		return this;
 	}
@@ -680,9 +664,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	/**
 	 * Configure runtime behavior for runs
 	 */
-	withRunConfig(
-		config: RunConfig | Partial<RunConfig>,
-	): AgentBuilder<TOut, TMulti> {
+	withRunConfig(config: RunConfig | Partial<RunConfig>): this {
 		this.runConfig =
 			config instanceof RunConfig
 				? config
@@ -706,9 +688,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 *   .build();
 	 * ```
 	 */
-	withEventsCompaction(
-		config: EventsCompactionConfig,
-	): AgentBuilder<TOut, TMulti> {
+	withEventsCompaction(config: EventsCompactionConfig): this {
 		this.eventsCompactionConfig = config;
 		return this;
 	}
@@ -719,13 +699,11 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param options Session configuration options (userId and appName)
 	 * @returns This builder instance for chaining
 	 */
-	withQuickSession(options: SessionOptions = {}): AgentBuilder<TOut, TMulti> {
+	withQuickSession(options: SessionOptions = {}): this {
 		return this.withSessionService(new InMemorySessionService(), options);
 	}
 
-	withContextCacheConfig(
-		config: ContextCacheConfig,
-	): AgentBuilder<TOut, TMulti> {
+	withContextCacheConfig(config: ContextCacheConfig): this {
 		this.contextCacheConfig = config;
 		return this;
 	}
