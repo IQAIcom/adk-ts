@@ -139,49 +139,25 @@ export type AgentType =
 	| "langgraph";
 
 /**
- * AgentBuilder with typed output schema
- * This interface ensures all builder methods return the correct type after withOutputSchema is called
+ * AgentBuilder with typed output schema using mapped types
+ * This automatically preserves all method signatures from AgentBuilder while ensuring proper type inference
+ * NOTE: This type must be kept in sync with chainable methods on `AgentBuilder`.
  */
-export interface AgentBuilderWithSchema<T, M extends boolean = false> {
-	// Core build and ask methods with proper typing
-	build(): Promise<BuiltAgent<T, M>>;
-	buildWithSchema<U = T>(): Promise<BuiltAgent<U, M>>;
-	ask(message: string | FullMessage): Promise<RunnerAskReturn<T, M>>;
-
-	// All builder methods that return 'this' - they should return AgentBuilderWithSchema
-	withModel(model: string | BaseLlm | LanguageModel): this;
-	withDescription(description: string): this;
-	withInstruction(instruction: string): this;
-	withInputSchema(schema: ZodSchema): this;
-	withTools(...tools: BaseTool[]): this;
-	withPlanner(planner: BasePlanner): this;
-	withCodeExecutor(codeExecutor: BaseCodeExecutor): this;
-	withOutputKey(outputKey: string): this;
-	withSubAgents(subAgents: BaseAgent[]): this;
-	withBeforeAgentCallback(callback: BeforeAgentCallback): this;
-	withAfterAgentCallback(callback: AfterAgentCallback): this;
-	withBeforeModelCallback(callback: BeforeModelCallback): this;
-	withAfterModelCallback(callback: AfterModelCallback): this;
-	withBeforeToolCallback(callback: BeforeToolCallback): this;
-	withAfterToolCallback(callback: AfterToolCallback): this;
-	withPlugins(...plugins: BasePlugin[]): this;
-	withAgent(agent: BaseAgent): this;
-	withSessionService(
-		service: BaseSessionService,
-		options?: SessionOptions,
-	): this;
-	withSession(session: Session): this;
-	withMemory(memoryService: BaseMemoryService): this;
-	withArtifactService(artifactService: BaseArtifactService): this;
-	withRunConfig(config: RunConfig | Partial<RunConfig>): this;
-	withEventsCompaction(config: EventsCompactionConfig): this;
-	withQuickSession(options?: SessionOptions): this;
-	withContextCacheConfig(config: ContextCacheConfig): this;
-
-	// Methods that change the agent type
-	asLoop(subAgents: BaseAgent[], maxIterations?: number): this;
-	asLangGraph(nodes: LangGraphNode[], rootNode: string): this;
-	// Note: asSequential and asParallel are not included as they would change M to true
+export type AgentBuilderWithSchema<T, M extends boolean = false> = {
+	[K in keyof AgentBuilder<any, any>]: K extends 'withOutputSchema'
+		? AgentBuilder<any, any>[K]  // Keep original signature for withOutputSchema
+		: AgentBuilder<any, any>[K] extends (...args: any[]) => AgentBuilder<any, any>
+			? (...args: Parameters<AgentBuilder<any, any>[K]>) => AgentBuilderWithSchema<T, M>
+			: K extends 'build' | 'buildWithSchema' | 'ask'
+				? // Override these specific methods with proper return types
+				K extends 'build'
+					? () => Promise<BuiltAgent<T, M>>
+					: K extends 'buildWithSchema'
+						? <U = T>() => Promise<BuiltAgent<U, M>>
+						: K extends 'ask'
+							? (message: string | FullMessage) => Promise<RunnerAskReturn<T, M>>
+							: never
+				: AgentBuilder<any, any>[K]  // Keep other properties as-is
 }
 
 /**
