@@ -1,12 +1,14 @@
 # @iqai/mcp-docs
 
-A Model Context Protocol (MCP) server that provides AI assistants with direct access to ADK-TS (Agent Development Kit for TypeScript) complete knowledge base. This includes:
+A Model Context Protocol (MCP) server that provides AI assistants with direct access to ADK-TS (Agent Development Kit for TypeScript) complete knowledge base. Documentation is fetched directly from the live site at [adk.iqai.com](https://adk.iqai.com) and includes:
 
 - 📚 **Comprehensive documentation** with MDX support
 - 💻 **Code examples** for common patterns
 - 📝 **Package changelogs** for version updates
 - 🔌 **MCP server catalog** for available integrations
 - 🔍 **API reference** for functions, classes, and types
+
+Documentation is indexed and persistently cached on disk for up to 24 hours. On startup, the server automatically loads all documentation sections, ensuring lightning-fast search and immediate availability of all knowledge.
 
 ## Installation
 
@@ -78,14 +80,13 @@ const toolset = new McpToolset({
 });
 
 // Create agent with MCP tools
-const agent = new AgentBuilder()
-  .withName("doc-assistant")
+const { runner } = await AgentBuilder.create("doc-assistant")
   .withModel("gemini-2.0-flash")
-  .withTools(await toolset.getTools())
-  .buildLlm();
+  .withTools(...(await toolset.getTools()))
+  .build();
 
 // Use the agent
-const response = await agent.ask("How do I create a custom tool?");
+const response = await runner.ask("How do I create a custom tool?");
 ```
 
 ## Tools
@@ -194,4 +195,4 @@ pnpm test
 
 ## License
 
-Apache-2.0
+MIT
