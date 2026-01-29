@@ -114,7 +114,7 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 			_reduction_percent: filterResult.reduction,
 			_jq_filters: filterResult.filters,
 			_iterations: filterResult.iterations,
-			...filterResult.data,
+            data: filterResult.data,
 		};
 	}
 
