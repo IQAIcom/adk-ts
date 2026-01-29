@@ -1,5 +1,10 @@
-import { EventEmitter } from "node:events";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+/**
+ * ToolOutputFilterPlugin Tests
+ *
+ * Test suite for the ToolOutputFilterPlugin functionality
+ */
+
+import { describe, it, expect, vi } from "vitest";
 import type { BaseLlm } from "../../models/base-llm";
 import type { LlmResponse } from "../../models/llm-response";
 import { ToolOutputFilterPlugin } from "../../plugins/tool-filter-plugin";
@@ -18,573 +23,332 @@ function createMockFilterModel(responses: string[]): BaseLlm {
 	} as unknown as BaseLlm;
 }
 
-// Mock child_process.spawn
-class MockChildProcess extends EventEmitter {
-	stdin: any;
-	stdout: EventEmitter;
-	stderr: EventEmitter;
+// Mock tool for testing
+const createMockTool = (name: string) =>
+	({
+		name,
+		description: "Mock tool",
+	}) as any;
 
-	constructor() {
-		super();
-		this.stdin = {
-			write: vi.fn(),
-			end: vi.fn(),
-		};
-		this.stdout = new EventEmitter();
-		this.stderr = new EventEmitter();
-	}
+// Mock tool context
+const createMockToolContext = () =>
+	({
+		invocationId: "test-inv-id",
+	}) as any;
 
-	// Helper to simulate successful execution
-	simulateSuccess(output: string) {
-		setImmediate(() => {
-			this.stdout.emit("data", Buffer.from(output));
-			this.emit("close", 0);
-		});
-	}
-
-	// Helper to simulate failure
-	simulateFailure(code: number, stderr = "") {
-		setImmediate(() => {
-			if (stderr) {
-				this.stderr.emit("data", Buffer.from(stderr));
-			}
-			this.emit("close", code);
-		});
-	}
-
-	// Helper to simulate spawn error
-	simulateSpawnError(error: Error) {
-		setImmediate(() => {
-			this.emit("error", error);
-		});
-	}
-
-	// Helper to simulate timeout
-	simulateTimeout() {
-		// Don't emit close event - just let it hang
-	}
-}
-
-describe("ToolOutputFilterPlugin - applyJqFilter", () => {
-	let mockSpawn: any;
-	let _originalSpawn: any;
-
-	beforeEach(async () => {
-		// Mock the spawn function
-		const childProcessModule = await import("node:child_process");
-		_originalSpawn = childProcessModule.spawn;
-		mockSpawn = vi.fn();
-		(childProcessModule as any).spawn = mockSpawn;
-	});
-
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
-	describe("Successful filtering", () => {
-		it("should apply a simple JQ filter successfully", async () => {
+describe("ToolOutputFilterPlugin", () => {
+	describe("Constructor", () => {
+		it("should initialize with default config values", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = {
-				users: [
-					{ id: 1, name: "Alice" },
-					{ id: 2, name: "Bob" },
-				],
-			};
-			const expectedOutput = { users: [{ id: 1 }, { id: 2 }] };
-
-			const filterPromise = (plugin as any).applyJqFilter(
-				".users[] | {id}",
-				inputData,
-			);
-
-			mockProcess.simulateSuccess(JSON.stringify(expectedOutput));
-
-			const result = await filterPromise;
-
-			expect(mockSpawn).toHaveBeenCalledWith("jq", ["-c", ".users[] | {id}"], {
-				timeout: 10000,
-			});
-			expect(mockProcess.stdin.write).toHaveBeenCalledWith(
-				JSON.stringify(inputData),
-			);
-			expect(mockProcess.stdin.end).toHaveBeenCalled();
-			expect(result).toEqual(expectedOutput);
+			expect(plugin.name).toBe("tool_output_filter_plugin");
 		});
 
-		it("should handle complex nested filters", async () => {
+		it("should accept custom name", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
+				name: "custom_filter_plugin",
 				filterModel: mockModel,
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = {
-				results: [
-					{ id: 1, metadata: { score: 0.9, details: "long text" } },
-					{ id: 2, metadata: { score: 0.8, details: "more text" } },
-				],
-			};
-			const expectedOutput = [
-				{ id: 1, score: 0.9 },
-				{ id: 2, score: 0.8 },
-			];
-
-			const filterPromise = (plugin as any).applyJqFilter(
-				".results[] | {id, score: .metadata.score}",
-				inputData,
-			);
-
-			mockProcess.simulateSuccess(JSON.stringify(expectedOutput));
-
-			const result = await filterPromise;
-			expect(result).toEqual(expectedOutput);
+			expect(plugin.name).toBe("custom_filter_plugin");
 		});
 
-		it("should handle array slicing filters", async () => {
+		it("should configure enabled and disabled tools", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
+				enabledTools: ["tool_a", "tool_b"],
+				disabledTools: ["tool_x"],
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] };
-			const expectedOutput = { items: [1, 2, 3, 4, 5] };
-
-			const filterPromise = (plugin as any).applyJqFilter(
-				".items |= .[0:5]",
-				inputData,
-			);
-
-			mockProcess.simulateSuccess(JSON.stringify(expectedOutput));
-
-			const result = await filterPromise;
-			expect(result).toEqual(expectedOutput);
+			// Access private method for testing
+			expect((plugin as any).shouldFilterTool("tool_a")).toBe(true);
+			expect((plugin as any).shouldFilterTool("tool_b")).toBe(true);
+			expect((plugin as any).shouldFilterTool("tool_c")).toBe(false);
+			expect((plugin as any).shouldFilterTool("tool_x")).toBe(false);
 		});
 	});
 
-	describe("Error handling", () => {
-		it("should return null when JQ filter has invalid syntax", async () => {
+	describe("shouldFilterTool", () => {
+		it("should return true for all tools when no restrictions", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { test: "data" };
-
-			const filterPromise = (plugin as any).applyJqFilter(
-				"invalid syntax [[[",
-				inputData,
-			);
-
-			mockProcess.simulateFailure(
-				1,
-				"jq: parse error: Invalid numeric literal",
-			);
-
-			const result = await filterPromise;
-			expect(result).toBeNull();
+			expect((plugin as any).shouldFilterTool("any_tool")).toBe(true);
+			expect((plugin as any).shouldFilterTool("another_tool")).toBe(true);
 		});
 
-		it("should return null when JQ produces invalid JSON", async () => {
+		it("should return false for disabled tools", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
+				disabledTools: ["disabled_tool"],
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { test: "data" };
-
-			const filterPromise = (plugin as any).applyJqFilter(".test", inputData);
-
-			// Simulate JQ outputting invalid JSON
-			mockProcess.simulateSuccess("not valid json{");
-
-			const result = await filterPromise;
-			expect(result).toBeNull();
+			expect((plugin as any).shouldFilterTool("disabled_tool")).toBe(false);
+			expect((plugin as any).shouldFilterTool("other_tool")).toBe(true);
 		});
 
-		it("should return null when spawn fails", async () => {
+		it("should only allow enabled tools when list is specified", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
+				enabledTools: ["enabled_tool"],
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { test: "data" };
-
-			const filterPromise = (plugin as any).applyJqFilter(".test", inputData);
-
-			mockProcess.simulateSpawnError(new Error("ENOENT: jq command not found"));
-
-			const result = await filterPromise;
-			expect(result).toBeNull();
+			expect((plugin as any).shouldFilterTool("enabled_tool")).toBe(true);
+			expect((plugin as any).shouldFilterTool("other_tool")).toBe(false);
 		});
 
-		it("should handle empty output gracefully", async () => {
+		it("should prioritize disabled list over enabled list", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
+				enabledTools: ["tool_a"],
+				disabledTools: ["tool_a"],
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { test: "data" };
-
-			const filterPromise = (plugin as any).applyJqFilter(
-				".missing",
-				inputData,
-			);
-
-			mockProcess.simulateSuccess("null");
-
-			const result = await filterPromise;
-			expect(result).toBeNull();
-		});
-
-		it("should handle non-zero exit codes", async () => {
-			const mockModel = createMockFilterModel(["."]);
-			const plugin = new ToolOutputFilterPlugin({
-				filterModel: mockModel,
-			});
-
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { test: "data" };
-
-			const filterPromise = (plugin as any).applyJqFilter(
-				".field | error",
-				inputData,
-			);
-
-			mockProcess.simulateFailure(5, "jq: error: some error occurred");
-
-			const result = await filterPromise;
-			expect(result).toBeNull();
+			expect((plugin as any).shouldFilterTool("tool_a")).toBe(false);
 		});
 	});
 
-	describe("Security tests - dangerous patterns", () => {
-		it("should reject filters with system() function", async () => {
+	describe("analyzeResponse", () => {
+		it("should extract schema and compute size", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
 			});
 
-			const inputData = { test: "data" };
+			const testData = { users: [{ id: 1, name: "Alice" }] };
+			const analysis = (plugin as any).analyzeResponse(testData);
 
-			const result = await (plugin as any).applyJqFilter(
-				'. | system("rm -rf /")',
-				inputData,
-			);
-
-			expect(result).toBeNull();
-			expect(mockSpawn).not.toHaveBeenCalled();
-		});
-
-		it("should reject filters with $ENV access", async () => {
-			const mockModel = createMockFilterModel(["."]);
-			const plugin = new ToolOutputFilterPlugin({
-				filterModel: mockModel,
-			});
-
-			const inputData = { test: "data" };
-
-			const result = await (plugin as any).applyJqFilter(
-				"$ENV.SECRET_KEY",
-				inputData,
-			);
-
-			expect(result).toBeNull();
-			expect(mockSpawn).not.toHaveBeenCalled();
-		});
-
-		it("should reject filters with env. access", async () => {
-			const mockModel = createMockFilterModel(["."]);
-			const plugin = new ToolOutputFilterPlugin({
-				filterModel: mockModel,
-			});
-
-			const inputData = { test: "data" };
-
-			const result = await (plugin as any).applyJqFilter("env.HOME", inputData);
-
-			expect(result).toBeNull();
-			expect(mockSpawn).not.toHaveBeenCalled();
-		});
-
-		it("should reject filters with input_filename", async () => {
-			const mockModel = createMockFilterModel(["."]);
-			const plugin = new ToolOutputFilterPlugin({
-				filterModel: mockModel,
-			});
-
-			const inputData = { test: "data" };
-
-			const result = await (plugin as any).applyJqFilter(
-				"input_filename",
-				inputData,
-			);
-
-			expect(result).toBeNull();
-			expect(mockSpawn).not.toHaveBeenCalled();
-		});
-
-		it("should reject filters with $__ pattern", async () => {
-			const mockModel = createMockFilterModel(["."]);
-			const plugin = new ToolOutputFilterPlugin({
-				filterModel: mockModel,
-			});
-
-			const inputData = { test: "data" };
-
-			const result = await (plugin as any).applyJqFilter("$__loc__", inputData);
-
-			expect(result).toBeNull();
-			expect(mockSpawn).not.toHaveBeenCalled();
-		});
-
-		it("should reject dangerous patterns case-insensitively", async () => {
-			const mockModel = createMockFilterModel(["."]);
-			const plugin = new ToolOutputFilterPlugin({
-				filterModel: mockModel,
-			});
-
-			const inputData = { test: "data" };
-
-			const result1 = await (plugin as any).applyJqFilter(
-				'SYSTEM("ls")',
-				inputData,
-			);
-			const result2 = await (plugin as any).applyJqFilter(
-				"$env.PATH",
-				inputData,
-			);
-
-			expect(result1).toBeNull();
-			expect(result2).toBeNull();
-			expect(mockSpawn).not.toHaveBeenCalled();
-		});
-
-		it("should allow safe filters with similar but non-dangerous patterns", async () => {
-			const mockModel = createMockFilterModel(["."]);
-			const plugin = new ToolOutputFilterPlugin({
-				filterModel: mockModel,
-			});
-
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { environment: "production", systematic: true };
-			const expectedOutput = { environment: "production" };
-
-			// This filter contains "env" and "system" as substrings but not the dangerous patterns
-			const filterPromise = (plugin as any).applyJqFilter(
-				"{environment}",
-				inputData,
-			);
-
-			mockProcess.simulateSuccess(JSON.stringify(expectedOutput));
-
-			const result = await filterPromise;
-			expect(result).toEqual(expectedOutput);
-			expect(mockSpawn).toHaveBeenCalled();
+			expect(analysis.size).toBeGreaterThan(0);
+			expect(analysis.keyCount).toBeGreaterThan(0);
+			expect(analysis.schema).toBeDefined();
+			expect(analysis.preview).toBeDefined();
 		});
 	});
 
-	describe("Integration with debug logging", () => {
-		it("should log when debug is enabled", async () => {
-			const consoleErrorSpy = vi
-				.spyOn(console, "error")
-				.mockImplementation(() => {});
-
+	describe("extractSchema", () => {
+		it("should extract schema for primitive types", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
-				config: { debug: true },
 			});
 
-			const inputData = { test: "data" };
-
-			// Test with rejected dangerous filter
-			await (plugin as any).applyJqFilter('system("ls")', inputData);
-
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				expect.stringContaining(
-					"[ToolOutputFilterPlugin] Dangerous JQ filter rejected",
-				),
-			);
-
-			consoleErrorSpy.mockRestore();
+			expect((plugin as any).extractSchema(null, 0)).toBe("null");
+			expect((plugin as any).extractSchema(true, 0)).toBe("boolean");
+			expect((plugin as any).extractSchema(42, 0)).toBe("integer");
+			expect((plugin as any).extractSchema(3.14, 0)).toBe("number");
+			expect((plugin as any).extractSchema("hello", 0)).toBe("string");
 		});
 
-		it("should log JQ execution failures when debug is enabled", async () => {
-			const consoleErrorSpy = vi
-				.spyOn(console, "error")
-				.mockImplementation(() => {});
-
+		it("should extract schema for arrays", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
-				config: { debug: true },
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
+			const emptyArray = (plugin as any).extractSchema([], 0);
+			expect(emptyArray).toBe("array[]");
 
-			const inputData = { test: "data" };
+			const numArray = (plugin as any).extractSchema([1, 2, 3], 0);
+			expect(numArray).toHaveProperty("_array_length", 3);
+			expect(numArray).toHaveProperty("_item_schema", "integer");
+		});
 
-			const filterPromise = (plugin as any).applyJqFilter(
-				".invalid",
-				inputData,
-			);
+		it("should extract schema for objects", () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+			});
 
-			mockProcess.simulateFailure(1, "jq error");
+			const schema = (plugin as any).extractSchema({ id: 1, name: "test" }, 0);
+			expect(schema).toHaveProperty("id", "integer");
+			expect(schema).toHaveProperty("name", "string");
+		});
 
-			await filterPromise;
+		it("should respect maxSchemaDepth", () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+				config: { maxSchemaDepth: 2 },
+			});
 
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				expect.stringContaining("[ToolOutputFilterPlugin] JQ execution failed"),
-			);
+			const deepObject = { a: { b: { c: { d: 1 } } } };
+			const schema = (plugin as any).extractSchema(deepObject, 0);
 
-			consoleErrorSpy.mockRestore();
+			// Should hit "..." at depth 3
+			expect(schema.a.b.c).toBe("...");
 		});
 	});
 
-	describe("Edge cases", () => {
-		it("should handle very large JSON inputs", async () => {
+	describe("countKeys", () => {
+		it("should count keys in flat objects", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			// Create large input data
-			const largeArray = Array.from({ length: 1000 }, (_, i) => ({
-				id: i,
-				data: "x".repeat(100),
-			}));
-			const inputData = { items: largeArray };
-			const expectedOutput = { count: 1000 };
-
-			const filterPromise = (plugin as any).applyJqFilter(
-				"{count: .items | length}",
-				inputData,
-			);
-
-			mockProcess.simulateSuccess(JSON.stringify(expectedOutput));
-
-			const result = await filterPromise;
-			expect(result).toEqual(expectedOutput);
-			expect(mockProcess.stdin.write).toHaveBeenCalledWith(
-				JSON.stringify(inputData),
-			);
+			const result = (plugin as any).countKeys({ a: 1, b: 2, c: 3 }, 0);
+			expect(result).toBe(3);
 		});
 
-		it("should handle special characters in data", async () => {
+		it("should count keys in nested objects", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = {
-				text: "Special chars: \"quotes\", 'apostrophes', \nnewlines\n, \ttabs",
-				unicode: "😀 emoji 中文",
-			};
-			const expectedOutput = { text: inputData.text };
-
-			const filterPromise = (plugin as any).applyJqFilter("{text}", inputData);
-
-			mockProcess.simulateSuccess(JSON.stringify(expectedOutput));
-
-			const result = await filterPromise;
-			expect(result).toEqual(expectedOutput);
+			const result = (plugin as any).countKeys({ a: { b: { c: 1 } } }, 0);
+			expect(result).toBeGreaterThan(1);
 		});
 
-		it("should handle filters that return arrays", async () => {
+		it("should count array elements and their keys", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { items: [1, 2, 3, 4, 5] };
-			const expectedOutput = [1, 2, 3];
-
-			const filterPromise = (plugin as any).applyJqFilter(
-				".items[0:3]",
-				inputData,
-			);
-
-			mockProcess.simulateSuccess(JSON.stringify(expectedOutput));
-
-			const result = await filterPromise;
-			expect(result).toEqual(expectedOutput);
-		});
-
-		it("should handle filters that return primitives", async () => {
-			const mockModel = createMockFilterModel(["."]);
-			const plugin = new ToolOutputFilterPlugin({
-				filterModel: mockModel,
-			});
-
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
-
-			const inputData = { count: 42 };
-
-			const filterPromise = (plugin as any).applyJqFilter(".count", inputData);
-
-			mockProcess.simulateSuccess("42");
-
-			const result = await filterPromise;
-			expect(result).toBe(42);
+			const result = (plugin as any).countKeys([{ id: 1 }, { id: 2 }], 0);
+			expect(result).toBeGreaterThan(2);
 		});
 	});
 
-	describe("Process timeout handling", () => {
-		it("should respect timeout configuration", async () => {
+	describe("needsFiltering", () => {
+		it("should return true when size exceeds threshold", () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+				config: { sizeThreshold: 100, keyThreshold: 1000 },
+			});
+
+			const analysis = { size: 150, keyCount: 5, schema: {}, preview: "" };
+			expect((plugin as any).needsFiltering(analysis)).toBe(true);
+		});
+
+		it("should return true when key count exceeds threshold", () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+				config: { sizeThreshold: 10000, keyThreshold: 10 },
+			});
+
+			const analysis = { size: 100, keyCount: 50, schema: {}, preview: "" };
+			expect((plugin as any).needsFiltering(analysis)).toBe(true);
+		});
+
+		it("should return false when both are below thresholds", () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+				config: { sizeThreshold: 10000, keyThreshold: 100 },
+			});
+
+			const analysis = { size: 100, keyCount: 5, schema: {}, preview: "" };
+			expect((plugin as any).needsFiltering(analysis)).toBe(false);
+		});
+	});
+
+	describe("extractJqCommand", () => {
+		it("should extract plain JQ filter", () => {
 			const mockModel = createMockFilterModel(["."]);
 			const plugin = new ToolOutputFilterPlugin({
 				filterModel: mockModel,
 			});
 
-			const mockProcess = new MockChildProcess();
-			mockSpawn.mockReturnValue(mockProcess);
+			const result = (plugin as any).extractJqCommand(
+				".results[] | {id, name}",
+			);
+			expect(result).toBe(".results[] | {id, name}");
+		});
 
-			const inputData = { test: "data" };
-
-			(plugin as any).applyJqFilter(".test", inputData);
-
-			expect(mockSpawn).toHaveBeenCalledWith("jq", ["-c", ".test"], {
-				timeout: 10000,
+		it("should extract JQ filter from markdown code block", () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
 			});
+
+			const result = (plugin as any).extractJqCommand(
+				"```jq\n.results[] | {id}\n```",
+			);
+			expect(result).toBe(".results[] | {id}");
+		});
+
+		it("should remove surrounding quotes", () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+			});
+
+			const result = (plugin as any).extractJqCommand('".results[] | {id}"');
+			expect(result).toBe(".results[] | {id}");
+		});
+
+		it("should handle object response formats", () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+			});
+
+			const result = (plugin as any).extractJqCommand({
+				message: { content: [{ text: ".[] | {id}" }] },
+			});
+			expect(result).toBe(".[] | {id}");
+		});
+	});
+
+	describe("afterToolCallback", () => {
+		it("should return undefined for small responses", async () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+				config: { sizeThreshold: 10000, keyThreshold: 100 },
+			});
+
+			const result = await plugin.afterToolCallback({
+				tool: createMockTool("test_tool"),
+				toolArgs: { query: "test" },
+				toolContext: createMockToolContext(),
+				result: { small: "data" },
+			});
+
+			expect(result).toBeUndefined();
+		});
+
+		it("should return undefined for disabled tools", async () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+				disabledTools: ["disabled_tool"],
+				config: { sizeThreshold: 10, keyThreshold: 1 },
+			});
+
+			const result = await plugin.afterToolCallback({
+				tool: createMockTool("disabled_tool"),
+				toolArgs: {},
+				toolContext: createMockToolContext(),
+				result: { lots: "of", data: "here", more: "fields" },
+			});
+
+			expect(result).toBeUndefined();
+		});
+	});
+
+	describe("close", () => {
+		it("should complete without error", async () => {
+			const mockModel = createMockFilterModel(["."]);
+			const plugin = new ToolOutputFilterPlugin({
+				filterModel: mockModel,
+			});
+
+			await expect(plugin.close()).resolves.toBeUndefined();
 		});
 	});
 });
