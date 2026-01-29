@@ -175,7 +175,7 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 		return 0;
 	}
 
-	private extractSchema(obj: any, depth: number): any {
+	private extractSchema(obj: unknown, depth: number): any {
 		if (depth > this.config.maxSchemaDepth) {
 			return "...";
 		}
