@@ -153,7 +153,7 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 		);
 	}
 
-	private countKeys(obj: any, depth: number, maxDepth = 10): number {
+	private countKeys(obj: unknown, depth: number, maxDepth = 10): number {
 		if (depth > maxDepth) return 0;
 
 		if (Array.isArray(obj)) {
