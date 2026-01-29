@@ -4,7 +4,7 @@
  * Test suite for the ToolOutputFilterPlugin functionality
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ToolOutputFilterPlugin } from "../../plugins/tool-filter-plugin";
 import type { BaseLlm } from "../../models/base-llm";
 import type { LlmResponse } from "../../models/llm-response";
