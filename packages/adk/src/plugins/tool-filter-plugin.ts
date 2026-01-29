@@ -452,11 +452,20 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 - Truncating or omitting string fields`;
 	}
 
-	private extractJqCommand(responseText: string): string | null {
+	private extractJqCommand(responseText: string | any): string | null {
 		if (!responseText) return null;
 
+		let text = responseText;
+		if (typeof responseText === "object") {
+			if (responseText.message?.content?.[0]?.text) {
+				text = responseText.message.content[0].text;
+			}
+		}
+
+		if (typeof text !== "string") return null;
+
 		// Clean up markdown code blocks
-		let cleaned = responseText.trim();
+		let cleaned = text.trim();
 
 		// Use regex to handle both single-line and multi-line code blocks
 		const codeBlockMatch = cleaned.match(/^```(?:[a-z]+)?\s*([\s\S]*?)\s*```$/);
