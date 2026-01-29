@@ -63,7 +63,7 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/IQAIcom/adk-ts.git",
-		"directory": "apps/mcp-docs"
+		"directory": "packages/mcp-docs"
 	},
 	"engines": {
 		"node": ">=20.0.0"

@@ -369,52 +369,6 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  apps/mcp-docs:
-    dependencies:
-      '@iqai/adk':
-        specifier: 0.6.2
-        version: 0.6.2(@opentelemetry/core@2.4.0(@opentelemetry/api@1.9.0))(@types/better-sqlite3@7.6.13)(@types/node@25.0.10)(@types/pg@8.16.0)(better-sqlite3@12.5.0)(hono@4.11.3)(langfuse@3.38.6)(mysql2@3.16.0)(pg@8.16.3)(typescript@5.9.3)(ws@8.19.0)
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.25.3
-        version: 1.25.3(hono@4.11.3)(zod@3.25.76)
-      '@openrouter/ai-sdk-provider':
-        specifier: 1.2.0
-        version: 1.2.0(ai@6.0.15(zod@3.25.76))(zod@3.25.76)
-      fast-glob:
-        specifier: ^3.3.3
-        version: 3.3.3
-      fastmcp:
-        specifier: ^3.30.1
-        version: 3.30.1(hono@4.11.3)(jose@6.1.3)
-      gray-matter:
-        specifier: ^4.0.3
-        version: 4.0.3
-      marked:
-        specifier: ^17.0.1
-        version: 17.0.1
-      winston:
-        specifier: ^3.19.0
-        version: 3.19.0
-      zod:
-        specifier: ^3.25.0
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^25.0.10
-        version: 25.0.10
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@types/node@25.0.10)(typescript@5.9.3)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@25.0.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
-
   packages/adk:
     dependencies:
       '@anthropic-ai/sdk':
@@ -656,6 +610,52 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
+
+  packages/mcp-docs:
+    dependencies:
+      '@iqai/adk':
+        specifier: 0.6.2
+        version: 0.6.2(@opentelemetry/core@2.4.0(@opentelemetry/api@1.9.0))(@types/better-sqlite3@7.6.13)(@types/node@25.0.10)(@types/pg@8.16.0)(better-sqlite3@12.5.0)(hono@4.11.3)(langfuse@3.38.6)(mysql2@3.16.0)(pg@8.16.3)(typescript@5.9.3)(ws@8.19.0)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.25.3
+        version: 1.25.3(hono@4.11.3)(zod@3.25.76)
+      '@openrouter/ai-sdk-provider':
+        specifier: 1.2.0
+        version: 1.2.0(ai@6.0.15(zod@3.25.76))(zod@3.25.76)
+      fast-glob:
+        specifier: ^3.3.3
+        version: 3.3.3
+      fastmcp:
+        specifier: ^3.30.1
+        version: 3.30.1(hono@4.11.3)(jose@6.1.3)
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
+      marked:
+        specifier: ^17.0.1
+        version: 17.0.1
+      winston:
+        specifier: ^3.19.0
+        version: 3.19.0
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.0.10
+        version: 25.0.10
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@types/node@25.0.10)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@25.0.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/tsconfig: {}
 
