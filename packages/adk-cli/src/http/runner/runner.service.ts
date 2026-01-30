@@ -4,7 +4,7 @@ import {
 	RunConfig,
 	StreamingMode,
 } from "@iqai/adk";
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import type { Response } from "express";
 import { AgentManager } from "../providers/agent-manager.service";
 
@@ -45,7 +45,7 @@ export class RunnerService {
 			);
 
 			if (!session) {
-				return { error: `Session not found: ${sessionId}` };
+				throw new NotFoundException(`Session not found: ${sessionId}`);
 			}
 
 			// Get the loaded agent

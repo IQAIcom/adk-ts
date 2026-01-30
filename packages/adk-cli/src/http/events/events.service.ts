@@ -72,14 +72,18 @@ export class EventsService {
 
 			if (functionCalls.length > 0) {
 				for (const functionCall of functionCalls) {
-					highlights.push([event.author!, functionCall.name!]);
+					if (event.author && functionCall.name) {
+						highlights.push([event.author, functionCall.name]);
+					}
 				}
 			} else if (functionResponses.length > 0) {
 				for (const functionResponse of functionResponses) {
-					highlights.push([functionResponse.name!, event.author!]);
+					if (functionResponse.name && event.author) {
+						highlights.push([functionResponse.name, event.author]);
+					}
 				}
 			} else {
-				highlights = [[event.author!, ""]];
+				highlights = [[event.author ?? "", ""]];
 			}
 
 			// Get the agent graph

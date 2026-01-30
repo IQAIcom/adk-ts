@@ -1,6 +1,6 @@
 import { format } from "node:util";
 import { InMemoryArtifactService } from "@iqai/adk";
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { USER_ID_PREFIX } from "../../common/constants";
 import { SessionsService } from "../sessions/sessions.service";
 
@@ -76,7 +76,7 @@ export class ArtifactsService {
 		try {
 			const loaded = await this.sessionsService.ensureAgentLoaded(agentPath);
 			if (!loaded) {
-				return { error: "Failed to load agent" };
+				throw new NotFoundException("Failed to load agent");
 			}
 
 			this.logger.log(
