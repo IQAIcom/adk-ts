@@ -1,5 +1,9 @@
 {
-	"title": "Plugins",
 	"icon": "Settings",
-	"pages": ["plugins", "reflect-and-retry", "langfuse-plugin"]
+	"pages": [
+		"index",
+		"tool-output-filter",
+		"reflect-and-retry",
+		"langfuse-plugin"
+	]
 }
