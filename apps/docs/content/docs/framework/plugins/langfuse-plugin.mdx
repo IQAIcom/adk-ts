@@ -6,8 +6,6 @@ description: Capture, track, and analyze agent and tool interactions with Langfu
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-# Langfuse Plugin
-
 The **Langfuse Plugin** integrates `@iqai/adk` agents with **[Langfuse](https://langfuse.com/docs)** for robust tracing, monitoring, and observability of LLM and tool executions. It automatically records user messages, agent actions, model generations, and tool calls, including errors and token usage.
 
 This plugin is especially useful for:
@@ -69,7 +67,7 @@ pnpm add @iqai/adk langfuse
     ```
 
   </Tab>
-  
+
   <Tab value="Direct Agent">
     ```typescript
     import { LlmAgent, LangfusePlugin } from "@iqai/adk";
@@ -87,7 +85,7 @@ pnpm add @iqai/adk langfuse
     ```
 
   </Tab>
-  
+
   <Tab value="Advanced Configuration">
     ```typescript
     import { LlmAgent, LangfusePlugin } from "@iqai/adk";

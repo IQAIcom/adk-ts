@@ -6,8 +6,6 @@ description: Automatically filter and reduce large tool outputs using intelligen
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-# Tool Output Filter Plugin
-
 The Tool Output Filter Plugin automatically detects and reduces oversized tool outputs using intelligent JQ filtering powered by LLM. This plugin helps maintain optimal token usage by filtering verbose API responses, large datasets, and nested structures while preserving essential information.
 
 ## Overview
@@ -83,7 +81,7 @@ jq --version
     ```
 
   </Tab>
-  
+
   <Tab value="Advanced">
     ```typescript
     import { InMemoryRunner, LlmAgent } from "@iqai/adk";
@@ -109,7 +107,7 @@ jq --version
     ```
 
   </Tab>
-  
+
   <Tab value="Tool-Specific">
     ```typescript
     import { InMemoryRunner, LlmAgent } from "@iqai/adk";

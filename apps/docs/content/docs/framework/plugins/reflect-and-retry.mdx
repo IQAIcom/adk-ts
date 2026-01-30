@@ -6,8 +6,6 @@ description: Automatically reflect on tool errors and retry with corrected calls
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-# Reflect and Retry Plugin
-
 The Reflect and Retry Plugin helps your agent recover from tool execution errors by guiding the model to reflect on failures and retry with corrected arguments or strategy. It intercepts tool failures, generates structured reflection guidance, and retries the operation up to a configurable limit.
 
 This plugin is especially useful for improving robustness when tools may fail due to invalid parameters, transient state, or incorrect function selection.
@@ -71,7 +69,7 @@ pnpm add @iqai/adk
     ```
 
   </Tab>
-  
+
   <Tab value="Direct Agent">
     ```typescript
     import { LlmAgent, ReflectAndRetryToolPlugin } from "@iqai/adk";
@@ -88,7 +86,7 @@ pnpm add @iqai/adk
     ```
 
   </Tab>
-  
+
   <Tab value="Custom Configuration">
     ```typescript
     import { LlmAgent, ReflectAndRetryToolPlugin } from "@iqai/adk";
