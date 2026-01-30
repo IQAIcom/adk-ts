@@ -1,6 +1,6 @@
 {
 	"name": "@iqai/mcp-docs",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"description": "MCP server for accessing ADK-TS documentation, examples, API reference, and MCP server integrations.",
 	"type": "module",
 	"main": "dist/index.js",
