@@ -141,24 +141,29 @@ export type AgentType =
 /**
  * AgentBuilder with typed output schema using mapped types
  * This automatically preserves all method signatures from AgentBuilder while ensuring proper type inference
- * NOTE: This type must be kept in sync with chainable methods on `AgentBuilder`.
  */
 export type AgentBuilderWithSchema<T, M extends boolean = false> = {
-	[K in keyof AgentBuilder<any, any>]: K extends 'withOutputSchema'
-		? AgentBuilder<any, any>[K]  // Keep original signature for withOutputSchema
-		: AgentBuilder<any, any>[K] extends (...args: any[]) => AgentBuilder<any, any>
-			? (...args: Parameters<AgentBuilder<any, any>[K]>) => AgentBuilderWithSchema<T, M>
-			: K extends 'build' | 'buildWithSchema' | 'ask'
+	[K in keyof AgentBuilder<any, any>]: K extends "withOutputSchema"
+		? AgentBuilder<any, any>[K] // Keep original signature for withOutputSchema
+		: AgentBuilder<any, any>[K] extends (
+					...args: any[]
+				) => AgentBuilder<any, any>
+			? (
+					...args: Parameters<AgentBuilder<any, any>[K]>
+				) => AgentBuilderWithSchema<T, M>
+			: K extends "build" | "buildWithSchema" | "ask"
 				? // Override these specific methods with proper return types
-				K extends 'build'
+					K extends "build"
 					? () => Promise<BuiltAgent<T, M>>
-					: K extends 'buildWithSchema'
+					: K extends "buildWithSchema"
 						? <U = T>() => Promise<BuiltAgent<U, M>>
-						: K extends 'ask'
-							? (message: string | FullMessage) => Promise<RunnerAskReturn<T, M>>
+						: K extends "ask"
+							? (
+									message: string | FullMessage,
+								) => Promise<RunnerAskReturn<T, M>>
 							: never
-				: AgentBuilder<any, any>[K]  // Keep other properties as-is
-}
+				: AgentBuilder<any, any>[K]; // Keep other properties as-is
+};
 
 /**
  * Configuration for creating a Runner instance
