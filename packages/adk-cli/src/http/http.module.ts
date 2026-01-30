@@ -1,4 +1,5 @@
 import { type DynamicModule, Module } from "@nestjs/common";
+import { ArtifactsModule } from "./artifacts/artifacts.module";
 import { ConfigModule } from "./config/config.module";
 import { DebugModule } from "./debug/debug.module";
 import { DiscoveryModule } from "./discovery/discovery.module";
@@ -7,6 +8,7 @@ import { HealthModule } from "./health/health.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { ProvidersModule } from "./providers/providers.module";
 import { ReloadModule } from "./reload/reload.module";
+import { RunnerModule } from "./runner/runner.module";
 import type { RuntimeConfig } from "./runtime-config";
 import { SessionsModule } from "./sessions/sessions.module";
 import { StateModule } from "./state/state.module";
@@ -22,6 +24,8 @@ export class HttpModule {
 				DiscoveryModule,
 				MessagingModule,
 				SessionsModule,
+				ArtifactsModule,
+				RunnerModule,
 				EventsModule,
 				StateModule,
 				ReloadModule,

@@ -121,3 +121,35 @@ export class GraphResponseDto {
 	@ApiProperty({ type: [GraphNodeDto] }) nodes!: GraphNodeDto[];
 	@ApiProperty({ type: [GraphEdgeDto] }) edges!: GraphEdgeDto[];
 }
+
+// Artifacts
+export class ArtifactResponseDto {
+	@ApiProperty({ example: "output.txt" }) filename!: string;
+	@ApiProperty({ example: "text/plain" }) mimeType!: string;
+	@ApiProperty({
+		type: String,
+		description: "Base64 encoded content or text content",
+	})
+	contents!: string | Uint8Array;
+	@ApiProperty({ example: 1 }) version!: number;
+	@ApiProperty({ example: Date.now() }) timestamp!: number;
+}
+
+export class ArtifactKeyDto {
+	@ApiProperty({ example: "output.txt" }) filename!: string;
+}
+
+export class ArtifactsListResponseDto {
+	@ApiProperty({ type: [ArtifactKeyDto] })
+	artifacts!: ArtifactKeyDto[];
+}
+
+export class ArtifactVersionDto {
+	@ApiProperty({ example: 1 }) version!: number;
+	@ApiProperty({ example: Date.now() }) timestamp!: number;
+}
+
+export class ArtifactVersionsResponseDto {
+	@ApiProperty({ type: [ArtifactVersionDto] })
+	versions!: ArtifactVersionDto[];
+}
