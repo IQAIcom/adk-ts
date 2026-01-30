@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
+import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -74,46 +75,147 @@ export class OpenAiLlm extends BaseLlm {
 			stream,
 		};
 
-		if (stream) {
-			const streamResponse = await this.client.chat.completions.create({
-				...requestParams,
-				stream: true,
-			});
+		try {
+			if (stream) {
+				const streamResponse = await this.client.chat.completions.create({
+					...requestParams,
+					stream: true,
+				});
 
-			let thoughtText = "";
-			let text = "";
-			let usageMetadata: OpenAI.CompletionUsage | undefined;
-			const accumulatedToolCalls: OpenAI.ChatCompletionChunk.Choice.Delta.ToolCall[] =
-				[];
+				let thoughtText = "";
+				let text = "";
+				let usageMetadata: OpenAI.CompletionUsage | undefined;
+				const accumulatedToolCalls: OpenAI.ChatCompletionChunk.Choice.Delta.ToolCall[] =
+					[];
 
-			for await (const chunk of streamResponse) {
-				const choice = chunk.choices[0];
-				if (!choice) continue;
+				for await (const chunk of streamResponse) {
+					const choice = chunk.choices[0];
+					if (!choice) continue;
 
-				const delta = choice.delta;
+					const delta = choice.delta;
 
-				// Create LlmResponse for this chunk
-				const llmResponse = this.createChunkResponse(delta, chunk.usage);
-				if (chunk.usage) {
-					usageMetadata = chunk.usage;
+					// Create LlmResponse for this chunk
+					const llmResponse = this.createChunkResponse(delta, chunk.usage);
+					if (chunk.usage) {
+						usageMetadata = chunk.usage;
+					}
+
+					// Handle content accumulation similar to Google LLM
+					if (llmResponse.content?.parts?.[0]?.text) {
+						const part0 = llmResponse.content.parts[0];
+						if ((part0 as any).thought) {
+							thoughtText += part0.text;
+						} else {
+							text += part0.text;
+						}
+						llmResponse.partial = true;
+					} else if (
+						(thoughtText || text) &&
+						(!llmResponse.content ||
+							!llmResponse.content.parts ||
+							!this.hasInlineData(llmResponse))
+					) {
+						// Yield merged content - equivalent to Google's pattern
+						const parts: any[] = [];
+						if (thoughtText) {
+							parts.push({ text: thoughtText, thought: true });
+						}
+						if (text) {
+							parts.push({ text });
+						}
+
+						yield new LlmResponse({
+							content: {
+								parts,
+								role: "model",
+							},
+							usageMetadata: usageMetadata
+								? {
+										promptTokenCount: usageMetadata.prompt_tokens,
+										candidatesTokenCount: usageMetadata.completion_tokens,
+										totalTokenCount: usageMetadata.total_tokens,
+									}
+								: undefined,
+						});
+						thoughtText = "";
+						text = "";
+					}
+
+					// Handle tool calls accumulation
+					if (delta.tool_calls) {
+						for (const toolCall of delta.tool_calls) {
+							const index = toolCall.index || 0;
+							if (!accumulatedToolCalls[index]) {
+								accumulatedToolCalls[index] = {
+									index,
+									id: toolCall.id || "",
+									type: "function",
+									function: { name: "", arguments: "" },
+								};
+							}
+
+							if (toolCall.function?.name) {
+								accumulatedToolCalls[index].function!.name +=
+									toolCall.function.name;
+							}
+							if (toolCall.function?.arguments) {
+								accumulatedToolCalls[index].function!.arguments +=
+									toolCall.function.arguments;
+							}
+						}
+					}
+
+					// Handle final response - similar to Google's finish reason handling
+					if (choice.finish_reason) {
+						const parts: any[] = [];
+
+						// Add accumulated text content
+						if (thoughtText) {
+							parts.push({ text: thoughtText, thought: true });
+						}
+						if (text) {
+							parts.push({ text });
+						}
+
+						// Add accumulated tool calls
+						if (accumulatedToolCalls.length > 0) {
+							for (const toolCall of accumulatedToolCalls) {
+								if (toolCall.function?.name) {
+									parts.push({
+										functionCall: {
+											id: toolCall.id,
+											name: toolCall.function.name,
+											args: JSON.parse(toolCall.function.arguments || "{}"),
+										},
+									});
+								}
+							}
+						}
+
+						const finalResponse = new LlmResponse({
+							content: {
+								role: "model",
+								parts,
+							},
+							usageMetadata: usageMetadata
+								? {
+										promptTokenCount: usageMetadata.prompt_tokens,
+										candidatesTokenCount: usageMetadata.completion_tokens,
+										totalTokenCount: usageMetadata.total_tokens,
+									}
+								: undefined,
+							finishReason: this.toAdkFinishReason(choice.finish_reason),
+						});
+
+						yield finalResponse;
+					} else {
+						// Yield partial response if we have content
+						yield llmResponse;
+					}
 				}
 
-				// Handle content accumulation similar to Google LLM
-				if (llmResponse.content?.parts?.[0]?.text) {
-					const part0 = llmResponse.content.parts[0];
-					if ((part0 as any).thought) {
-						thoughtText += part0.text;
-					} else {
-						text += part0.text;
-					}
-					llmResponse.partial = true;
-				} else if (
-					(thoughtText || text) &&
-					(!llmResponse.content ||
-						!llmResponse.content.parts ||
-						!this.hasInlineData(llmResponse))
-				) {
-					// Yield merged content - equivalent to Google's pattern
+				// Final yield condition - equivalent to Google's final check
+				if ((text || thoughtText) && usageMetadata) {
 					const parts: any[] = [];
 					if (thoughtText) {
 						parts.push({ text: thoughtText, thought: true });
@@ -127,130 +229,36 @@ export class OpenAiLlm extends BaseLlm {
 							parts,
 							role: "model",
 						},
-						usageMetadata: usageMetadata
-							? {
-									promptTokenCount: usageMetadata.prompt_tokens,
-									candidatesTokenCount: usageMetadata.completion_tokens,
-									totalTokenCount: usageMetadata.total_tokens,
-								}
-							: undefined,
-					});
-					thoughtText = "";
-					text = "";
-				}
-
-				// Handle tool calls accumulation
-				if (delta.tool_calls) {
-					for (const toolCall of delta.tool_calls) {
-						const index = toolCall.index || 0;
-						if (!accumulatedToolCalls[index]) {
-							accumulatedToolCalls[index] = {
-								index,
-								id: toolCall.id || "",
-								type: "function",
-								function: { name: "", arguments: "" },
-							};
-						}
-
-						if (toolCall.function?.name) {
-							accumulatedToolCalls[index].function!.name +=
-								toolCall.function.name;
-						}
-						if (toolCall.function?.arguments) {
-							accumulatedToolCalls[index].function!.arguments +=
-								toolCall.function.arguments;
-						}
-					}
-				}
-
-				// Handle final response - similar to Google's finish reason handling
-				if (choice.finish_reason) {
-					const parts: any[] = [];
-
-					// Add accumulated text content
-					if (thoughtText) {
-						parts.push({ text: thoughtText, thought: true });
-					}
-					if (text) {
-						parts.push({ text });
-					}
-
-					// Add accumulated tool calls
-					if (accumulatedToolCalls.length > 0) {
-						for (const toolCall of accumulatedToolCalls) {
-							if (toolCall.function?.name) {
-								parts.push({
-									functionCall: {
-										id: toolCall.id,
-										name: toolCall.function.name,
-										args: JSON.parse(toolCall.function.arguments || "{}"),
-									},
-								});
-							}
-						}
-					}
-
-					const finalResponse = new LlmResponse({
-						content: {
-							role: "model",
-							parts,
+						usageMetadata: {
+							promptTokenCount: usageMetadata.prompt_tokens,
+							candidatesTokenCount: usageMetadata.completion_tokens,
+							totalTokenCount: usageMetadata.total_tokens,
 						},
-						usageMetadata: usageMetadata
-							? {
-									promptTokenCount: usageMetadata.prompt_tokens,
-									candidatesTokenCount: usageMetadata.completion_tokens,
-									totalTokenCount: usageMetadata.total_tokens,
-								}
-							: undefined,
-						finishReason: this.toAdkFinishReason(choice.finish_reason),
 					});
+				}
+			} else {
+				const response = await this.client.chat.completions.create({
+					...requestParams,
+					stream: false,
+				});
 
-					yield finalResponse;
-				} else {
-					// Yield partial response if we have content
+				const choice = response.choices[0];
+				if (choice) {
+					const llmResponse = this.openAiMessageToLlmResponse(
+						choice,
+						response.usage,
+					);
+					this.logger.debug(
+						`OpenAI response: ${response.usage?.completion_tokens || 0} tokens`,
+					);
 					yield llmResponse;
 				}
 			}
-
-			// Final yield condition - equivalent to Google's final check
-			if ((text || thoughtText) && usageMetadata) {
-				const parts: any[] = [];
-				if (thoughtText) {
-					parts.push({ text: thoughtText, thought: true });
-				}
-				if (text) {
-					parts.push({ text });
-				}
-
-				yield new LlmResponse({
-					content: {
-						parts,
-						role: "model",
-					},
-					usageMetadata: {
-						promptTokenCount: usageMetadata.prompt_tokens,
-						candidatesTokenCount: usageMetadata.completion_tokens,
-						totalTokenCount: usageMetadata.total_tokens,
-					},
-				});
+		} catch (error: any) {
+			if (RateLimitError.isRateLimitError(error)) {
+				throw RateLimitError.fromError(error, "openai", model);
 			}
-		} else {
-			const response = await this.client.chat.completions.create({
-				...requestParams,
-				stream: false,
-			});
-
-			const choice = response.choices[0];
-			if (choice) {
-				const llmResponse = this.openAiMessageToLlmResponse(
-					choice,
-					response.usage,
-				);
-				this.logger.debug(
-					`OpenAI response: ${response.usage?.completion_tokens || 0} tokens`,
-				);
-				yield llmResponse;
-			}
+			throw error;
 		}
 	}
 

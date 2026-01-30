@@ -1,6 +1,7 @@
 export { BasePlugin } from "./base-plugin";
 export type { LangfusePluginOptions } from "./langfuse-plugin";
 export { LangfusePlugin } from "./langfuse-plugin";
+export { ModelFallbackPlugin } from "./model-fallback-plugin";
 
 export type { PluginCallbackName } from "./plugin-manager";
 export {

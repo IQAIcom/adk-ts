@@ -1,0 +1,136 @@
+---
+title: Model Fallback Plugin
+description: Automatic model fallback on rate limit errors in @iqai/adk
+---
+
+# Model Fallback Plugin
+
+The Model Fallback Plugin provides automatic recovery from rate limit errors (HTTP 429) by retrying the current model and falling back to alternative models when retries are exhausted. This improves agent reliability in production environments where API quotas may be limited or shared.
+
+### Key capabilities
+
+- **Automatic retry**: Retries the current model with configurable delay before falling back
+- **Ordered fallback chain**: Falls back through a prioritized list of alternative models
+- **Universal rate limit detection**: Detects rate limits across all providers (OpenAI, Anthropic, Google, etc.)
+- **Per-request isolation**: Each request has independent retry/fallback state
+- **Configurable behavior**: Customize retry count and delay timing
+
+## Quick Start
+
+The simplest way to use model fallback is through `AgentBuilder.withFallbackModels()`:
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("resilient_agent")
+  .withModel("gpt-4o")
+  .withFallbackModels("gpt-4o-mini", "gemini-2.0-flash")
+  .build();
+
+// If gpt-4o hits rate limits:
+// 1. Retries gpt-4o up to 3 times (1s delay each)
+// 2. Falls back to gpt-4o-mini (with same retry logic)
+// 3. Falls back to gemini-2.0-flash as last resort
+const response = await runner.ask("Hello!");
+```
+
+## Advanced Usage
+
+For custom retry counts or delays, instantiate `ModelFallbackPlugin` directly:
+
+```typescript
+import { AgentBuilder, ModelFallbackPlugin } from "@iqai/adk";
+
+const fallbackPlugin = new ModelFallbackPlugin(
+  ["gpt-4o-mini", "gemini-2.0-flash"], // fallback models
+  5, // maxRetries (default: 3)
+  2000, // retryDelayMs (default: 1000)
+);
+
+const { runner } = await AgentBuilder.create("custom_fallback_agent")
+  .withModel("gpt-4o")
+  .withPlugins(fallbackPlugin)
+  .build();
+```
+
+### Using with LlmAgent
+
+```typescript
+import { LlmAgent, ModelFallbackPlugin } from "@iqai/adk";
+
+const agent = new LlmAgent({
+  name: "resilient_agent",
+  model: "gpt-4o",
+  plugins: [new ModelFallbackPlugin(["gpt-4o-mini", "gemini-2.0-flash"])],
+});
+```
+
+## How It Works
+
+When a model call fails with a rate limit error:
+
+```
+Request → Primary Model → 429 Error
+                              ↓
+                    Retry same model (up to maxRetries)
+                    with retryDelayMs delay between attempts
+                              ↓
+                    Still failing? → Try fallback[0]
+                              ↓
+                    Still failing? → Try fallback[1]
+                              ↓
+                    All exhausted → Error propagates
+```
+
+Each fallback model also gets the full retry cycle before moving to the next.
+
+## Configuration Options
+
+| Option           | Type       | Default  | Description                                  |
+| ---------------- | ---------- | -------- | -------------------------------------------- |
+| `fallbackModels` | `string[]` | Required | Ordered list of fallback model names         |
+| `maxRetries`     | `number`   | `3`      | Retry attempts per model before falling back |
+| `retryDelayMs`   | `number`   | `1000`   | Delay in milliseconds between retry attempts |
+
+## Rate Limit Detection
+
+The plugin uses `RateLimitError.isRateLimitError()` to detect rate limits across all providers:
+
+**Detected via status code:**
+
+- HTTP 429 status
+
+**Detected via error type:**
+
+- `rate_limit_error`
+- `RateLimitError`
+
+**Detected via message patterns:**
+
+- "rate limit"
+- "too many requests"
+- "resource exhausted"
+- "quota exceeded"
+
+### Using RateLimitError directly
+
+You can also use `RateLimitError` for custom error handling:
+
+```typescript
+import { RateLimitError } from "@iqai/adk";
+
+try {
+  await agent.run(message);
+} catch (error) {
+  if (RateLimitError.isRateLimitError(error)) {
+    // Handle rate limit specifically
+    console.log("Rate limited, please wait...");
+  }
+}
+```
+
+## Behavior Notes
+
+- **Per-request state**: Fallback state is isolated per invocation. After a request completes (success or failure), the next request starts fresh with the primary model.
+- **No sticky fallback**: The plugin does not "remember" that a model was rate limited. Each new request tries the primary model first.
+- **Non-rate-limit errors**: Other errors (network, auth, invalid request) are not handled by this plugin and propagate normally.
