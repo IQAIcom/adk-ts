@@ -139,14 +139,31 @@ export type AgentType =
 	| "langgraph";
 
 /**
- * AgentBuilder with typed output schema
+ * AgentBuilder with typed output schema using mapped types
+ * This automatically preserves all method signatures from AgentBuilder while ensuring proper type inference
  */
-export interface AgentBuilderWithSchema<T, M extends boolean = false>
-	extends Omit<AgentBuilder<any, any>, "build" | "ask" | "withOutputSchema"> {
-	build(): Promise<BuiltAgent<T, M>>;
-	buildWithSchema<U = T>(): Promise<BuiltAgent<U, M>>;
-	ask(message: string | FullMessage): Promise<RunnerAskReturn<T, M>>;
-}
+export type AgentBuilderWithSchema<T, M extends boolean = false> = {
+	[K in keyof AgentBuilder<any, any>]: K extends "withOutputSchema"
+		? AgentBuilder<any, any>[K] // Keep original signature for withOutputSchema
+		: AgentBuilder<any, any>[K] extends (
+					...args: any[]
+				) => AgentBuilder<any, any>
+			? (
+					...args: Parameters<AgentBuilder<any, any>[K]>
+				) => AgentBuilderWithSchema<T, M>
+			: K extends "build" | "buildWithSchema" | "ask"
+				? // Override these specific methods with proper return types
+					K extends "build"
+					? () => Promise<BuiltAgent<T, M>>
+					: K extends "buildWithSchema"
+						? <U = T>() => Promise<BuiltAgent<U, M>>
+						: K extends "ask"
+							? (
+									message: string | FullMessage,
+								) => Promise<RunnerAskReturn<T, M>>
+							: never
+				: AgentBuilder<any, any>[K]; // Keep other properties as-is
+};
 
 /**
  * Configuration for creating a Runner instance
