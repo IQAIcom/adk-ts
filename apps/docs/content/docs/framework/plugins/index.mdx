@@ -23,17 +23,17 @@ ADK-TS plugins extend your agent's capabilities with specialized functionality t
   <Card
     title="🔧 Tool Output Filter"
     description="Automatically filter and reduce large tool outputs using intelligent JQ filtering to maintain optimal token usage"
-    href="/docs/plugins/tool-output-filter"
+    href="/docs/framework/plugins/tool-output-filter"
   />
   <Card
     title="🔄 Reflect and Retry"
     description="Automatically reflect on tool errors and retry with corrected calls using intelligent error recovery"
-    href="/docs/plugins/reflect-and-retry"
+    href="/docs/framework/plugins/reflect-and-retry"
   />
   <Card
     title="📊 Langfuse Plugin"
     description="Comprehensive observability and tracing integration with Langfuse for detailed monitoring and analytics"
-    href="/docs/plugins/langfuse-plugin"
+    href="/docs/framework/plugins/langfuse-plugin"
   />
 </Cards>
 
@@ -68,7 +68,7 @@ Plugins are registered at the Runner level and apply globally to all agents, too
     ```
 
   </Tab>
-  
+
   <Tab value="Advanced">
     ```typescript
     import { InMemoryRunner, LlmAgent } from "@iqai/adk";
@@ -94,14 +94,14 @@ Plugins are registered at the Runner level and apply globally to all agents, too
     ```
 
   </Tab>
-  
+
   <Tab value="Multiple Plugins">
     ```typescript
     import { InMemoryRunner, LlmAgent } from "@iqai/adk";
-    import { 
-      ToolOutputFilterPlugin, 
+    import {
+      ToolOutputFilterPlugin,
       ReflectAndRetryToolPlugin,
-      LangfusePlugin 
+      LangfusePlugin
     } from "@iqai/adk";
 
     // Combine multiple plugins for comprehensive functionality
