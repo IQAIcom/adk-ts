@@ -400,6 +400,55 @@ export function McpPolymarket(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP Limitless - Interact with the Limitless prediction markets via the MCP protocol.
+ *
+ * No required env vars.
+ */
+export function McpLimitless(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Limitless MCP Client",
+		"@iqai/mcp-limitless",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Kalshi - Interact with Kalshi prediction markets via the MCP protocol.
+ *
+ * Required env vars:
+ * - KALSHI_API_KEY: Your Kalshi API key ID
+ * - KALSHI_PRIVATE_KEY_PATH: Path to your RSA private key PEM file.
+ * or
+ * - KALSHI_PRIVATE_KEY_PEM: RSA private key as PEM string (alternative to path).
+ *
+ * Note: Provide either KALSHI_PRIVATE_KEY_PATH or KALSHI_PRIVATE_KEY_PEM.
+ */
+export function McpKalshi(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Kalshi MCP Client",
+		"@iqai/mcp-kalshi",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Opinion - Interact with opinion.trade prediction market via the MCP protocol.
+ *
+ * Required env vars:
+ * - OPINION_API_KEY: Your Opinion.trade API key.
+ */
+export function McpOpinion(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Opinion MCP Client",
+		"@iqai/mcp-opinion",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * Popular third-party MCP servers
  * These can be added as we expand support for community MCP servers
  */
