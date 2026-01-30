@@ -1,5 +1,45 @@
 # @iqai/adk-cli
 
+## 0.4.0
+
+### Minor Changes
+
+- e0d20c0: Add MCP docs IDE integration step to `adk new` command flow. Users can now configure the @iqai/mcp-docs server directly during project creation for seamless access to ADK documentation in their IDE.
+
+### Patch Changes
+
+- f85e4bb: ADK Web Versioning - Bundled UI Support
+
+  Added bundled web UI mode allowing the CLI to serve the web interface directly, eliminating CORS issues and simplifying local development setup.
+
+  **Key Changes:**
+  - Configured Next.js for static export with automatic asset copying to CLI package
+  - Enhanced API URL resolution to support both bundled (same-origin) and hosted modes
+  - Implemented SPA fallback middleware for serving static web assets
+  - Extracted DEFAULT_API_PORT constant and added --web-url option for custom configurations
+  - Updated API client hooks with proper SSR guards for static generation
+
+  **Benefits:**
+  - Eliminates CORS issues when running locally
+  - Simplifies setup (no separate web server needed)
+  - Maintains compatibility with hosted mode for development/production
+
+## 0.3.38
+
+### Patch Changes
+
+- 3666f6e: Introduced backend support for **trace visualization** of agent execution sessions. The system now captures OpenTelemetry spans in-memory (in addition to OTLP export), groups them by `sessionId`, and exposes them via a new debug API. This enables the UI to reconstruct full execution trees and timelines for agents, tools, and LLM calls.
+
+  **Highlights**
+  - In-memory span storage with rolling buffer scoped per session
+  - Dual export: OTLP + in-memory trace store
+  - New API: `GET /debug/trace/session/:sessionId`
+  - Visualization-ready trace format (IDs, hierarchy, timing, attributes)
+  - Designed for local development and debugging workflows
+
+- Updated dependencies [3666f6e]
+  - @iqai/adk@0.6.5
+
 ## 0.3.37
 
 ### Patch Changes

@@ -13,6 +13,7 @@ export function useCompatibility() {
 	const minCliVersion = compat.minCliVersion;
 
 	// Fetch CLI version from health endpoint
+	// Note: apiUrl can be "" in bundled mode (same origin), which is valid
 	const {
 		data: healthData,
 		isLoading: loading,
@@ -20,11 +21,11 @@ export function useCompatibility() {
 	} = useQuery({
 		queryKey: ["health", apiUrl],
 		queryFn: async (): Promise<HealthResponseDto> => {
-			if (!apiUrl) throw new Error("API URL is required");
 			const res = await api.health.healthControllerHealth();
 			return res.data;
 		},
-		enabled: !!apiUrl,
+		// Always enabled - empty string (bundled mode) is valid
+		enabled: typeof window !== "undefined",
 		staleTime: 60000, // Cache for 1 minute
 		retry: 2,
 		retryDelay: 1000,

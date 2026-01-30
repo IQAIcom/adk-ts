@@ -8,6 +8,11 @@ dist/
 build/
 *.tsbuildinfo
 .turbo/
+.docs/
+
+# Static web assets (generated during build)
+apps/adk-web/out/
+packages/adk-cli/web/
 
 # Testing
 coverage/
