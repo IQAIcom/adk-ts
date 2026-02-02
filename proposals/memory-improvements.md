@@ -82,9 +82,11 @@ interface MemoryServiceConfig {
 }
 
 interface MemoryTriggerConfig {
-  type: "session_end" | "inactivity" | "message_count";
-  inactivityMs?: number;
-  messageCount?: number;
+  type: "session_end" | "inactivity" | "message_count" | "compaction";
+  inactivityMs?: number; // For 'inactivity' type
+  messageCount?: number; // For 'message_count' type
+  // 'compaction' type: triggers when eventsCompactionConfig fires
+  // Creates memory from each compaction event as it happens
 }
 
 interface SummaryProvider {
@@ -164,7 +166,19 @@ new MemoryService({
 });
 ```
 
-### With Compaction Reuse (Recommended)
+### With Compaction Trigger (Recommended)
+
+```typescript
+// Memory created each time compaction fires - zero extra LLM cost
+// Uses compaction summary directly as memory
+new MemoryService({
+  trigger: { type: "compaction" },
+  embedding: { provider: new OpenAIEmbedding() },
+  // No summarization needed - uses compaction summary directly
+});
+```
+
+### With Compaction at Session End
 
 ```typescript
 // Simple: config object with model
