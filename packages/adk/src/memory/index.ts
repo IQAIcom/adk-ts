@@ -31,6 +31,7 @@ export { LlmSummaryProvider } from "./summary-providers/llm-summary-provider";
 
 // Embedding providers
 export { OpenAIEmbedding } from "./embeddings/openai-embedding";
+export { OpenRouterEmbedding } from "./embeddings/openrouter-embedding";
 
 // Vector stores
 export { InMemoryVectorStore } from "./vector-stores/in-memory-vector-store";
