@@ -1,20 +1,20 @@
 import {
+	AgentBuilder,
 	InMemorySessionService,
-	LlmAgent,
 	LlmSummaryProvider,
 	MemoryService,
 	OpenAIEmbedding,
 	RecallMemoryTool,
-	Runner,
 } from "@iqai/adk";
 
 const model = process.env.LLM_MODEL || "gemini-2.5-flash";
 const appName = "memory-demo";
+const userId = "user-123";
 
 /**
- * Creates shared services for the memory system demo
+ * Creates shared services for memory persistence across sessions
  */
-export function createServices() {
+export function createSharedServices() {
 	const sessionService = new InMemorySessionService();
 	const memoryService = new MemoryService({
 		trigger: { type: "session_end" },
@@ -29,46 +29,36 @@ export function createServices() {
 		searchTopK: 3,
 	});
 
-	return { sessionService, memoryService, appName };
+	return { sessionService, memoryService };
 }
 
 /**
- * Creates a basic assistant agent (no memory tools)
+ * Creates a basic assistant agent (no memory recall)
  */
-export function createBasicAgent() {
-	return new LlmAgent({
-		name: "assistant",
-		description: "A helpful assistant",
-		model,
-		instruction: "You are a helpful assistant.",
-	});
+export async function getBasicAgent(
+	sessionService: ReturnType<typeof createSharedServices>["sessionService"],
+	memoryService: ReturnType<typeof createSharedServices>["memoryService"],
+) {
+	return AgentBuilder.withModel(model)
+		.withInstruction("You are a helpful assistant.")
+		.withSessionService(sessionService, { appName, userId })
+		.withMemory(memoryService)
+		.build();
 }
 
 /**
  * Creates an assistant agent with memory recall capabilities
  */
-export function createMemoryAgent() {
-	return new LlmAgent({
-		name: "assistant_with_memory",
-		description: "A helpful assistant with memory recall capabilities",
-		model,
-		instruction:
-			"You are a helpful assistant with memory. Use recall_memory to search past conversations when relevant.",
-		tools: [new RecallMemoryTool()],
-	});
-}
-
-/**
- * Creates a runner for an agent with the given services
- */
-export function createRunner(
-	agent: LlmAgent,
-	services: ReturnType<typeof createServices>,
+export async function getMemoryAgent(
+	sessionService: ReturnType<typeof createSharedServices>["sessionService"],
+	memoryService: ReturnType<typeof createSharedServices>["memoryService"],
 ) {
-	return new Runner({
-		appName: services.appName,
-		agent,
-		sessionService: services.sessionService,
-		memoryService: services.memoryService,
-	});
+	return AgentBuilder.withModel(model)
+		.withInstruction(
+			"You are a helpful assistant with memory. Use recall_memory to search past conversations when relevant.",
+		)
+		.withTools(new RecallMemoryTool())
+		.withSessionService(sessionService, { appName, userId })
+		.withMemory(memoryService)
+		.build();
 }
