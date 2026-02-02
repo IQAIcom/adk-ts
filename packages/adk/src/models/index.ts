@@ -20,6 +20,8 @@ export * from "./base-llm";
 export * from "./base-llm-connection";
 // Context cache manager
 export * from "./context-cache-manager";
+// LLM error types
+export * from "./errors";
 // LLM Request and Response models
 export * from "./function-declaration";
 export * from "./google-llm";
