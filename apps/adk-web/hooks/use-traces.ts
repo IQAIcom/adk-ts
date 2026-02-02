@@ -35,8 +35,24 @@ export interface SpanNode extends TraceSpan {
 export function useTraces(
 	selectedAgent: AgentListItemDto | null,
 	sessionId: string | null,
+	sessionCreatedAt?: number, // Optional timestamp when session was created
 ) {
 	const apiUrl = useApiUrl();
+
+	// Calculate if session is new (less than 5 seconds old)
+	const isNewSession = useMemo(() => {
+		if (!sessionCreatedAt) return false;
+		const sessionAge = Date.now() - sessionCreatedAt;
+		return sessionAge < 5000; // 5 seconds
+	}, [sessionCreatedAt]);
+
+	// Use longer polling interval for new sessions to avoid premature requests
+	const pollingInterval = useMemo(() => {
+		if (isNewSession) {
+			return TRACE_REFETCH_INTERVAL_MS * 3; // 3 seconds for new sessions
+		}
+		return TRACE_REFETCH_INTERVAL_MS; // 1 second for active sessions
+	}, [isNewSession]);
 
 	const {
 		data: traces = [],
@@ -44,7 +60,13 @@ export function useTraces(
 		error,
 		refetch,
 	} = useQuery({
-		queryKey: ["traces", apiUrl, selectedAgent?.relativePath, sessionId],
+		queryKey: [
+			"traces",
+			apiUrl,
+			selectedAgent?.relativePath,
+			sessionId,
+			sessionCreatedAt,
+		],
 		queryFn: async (): Promise<TraceSpan[]> => {
 			if (!apiUrl || !selectedAgent || !sessionId) return [];
 
@@ -53,6 +75,10 @@ export function useTraces(
 			);
 
 			if (!response.ok) {
+				// Return empty array for 404s (session not found) instead of throwing
+				if (response.status === 404) {
+					return [];
+				}
 				throw new Error("Failed to fetch traces");
 			}
 
@@ -61,7 +87,7 @@ export function useTraces(
 		enabled: Boolean(apiUrl && selectedAgent && sessionId),
 		staleTime: TRACE_STALE_TIME_MS,
 		retry: TRACE_QUERY_RETRY_COUNT,
-		refetchInterval: TRACE_REFETCH_INTERVAL_MS,
+		refetchInterval: pollingInterval,
 	});
 
 	const tracesByTraceId = useMemo(() => {
