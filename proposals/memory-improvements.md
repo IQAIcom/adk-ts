@@ -17,15 +17,19 @@
   - `EmbeddingConfig`
   - `EmbeddingProvider` interface
   - `VectorStore` interface
+  - `SummaryProvider` interface
+  - `SessionSummary`
   - `MemorySummary`
 - [ ] **4. Create `InMemoryVectorStore`** - cosine similarity search
 - [ ] **5. Create `MemoryService`** class with config support
-- [ ] **6. Create `UnifiedSummarizer`** - implements `EventsSummarizer`, works for both compaction & memory
+- [ ] **6. Create `SummaryProvider` interface** and implementations:
+  - `LlmSummaryProvider` - summarizes via LLM
+  - `CompactionSummaryProvider` - extracts from compaction events
+  - `HybridSummaryProvider` - uses compaction + LLM for remainder
 - [ ] **7. Create `RecallMemoryTool`** - agent-initiated memory search
 - [ ] **8. Create `PreloadMemoryTool`** - optional auto-preload (injects into instructions)
 - [ ] **9. Create `OpenAIEmbedding`** provider
 - [ ] **10. Add `endSession()` to `BaseSessionService`** for trigger support
-- [ ] **11. Add `reuseCompactionSummaries`** option to reuse compaction work for memory
 
 ### Key Files to Modify/Create
 
@@ -37,6 +41,11 @@ packages/adk/src/memory/
 ├── memory-entry.ts       (cleaned up)
 ├── in-memory-memory-service.ts (deprecate)
 ├── vertex-ai-rag-memory-service.ts (deprecate)
+├── summary-providers/
+│   ├── summary-provider.ts      (NEW - interface)
+│   ├── llm-summary-provider.ts  (NEW - LLM-based summarization)
+│   ├── compaction-summary-provider.ts (NEW - extracts from compaction events)
+│   └── hybrid-summary-provider.ts (NEW - compaction + LLM fallback)
 ├── vector-stores/
 │   └── in-memory-vector-store.ts (NEW)
 └── embeddings/
@@ -185,19 +194,42 @@ interface MemoryTriggerConfig {
 
 interface SummarizationConfig {
   /**
-   * Model to use for summarization.
-   * Can be a model string or LLM instance.
+   * Summary provider instance.
+   * Determines how summaries are generated.
    */
-  model: string | BaseLlm;
+  provider: SummaryProvider;
+}
 
+/**
+ * Interface for providing summaries from a session.
+ * Implementations can generate summaries via LLM, extract from compaction events, or combine both.
+ */
+interface SummaryProvider {
   /**
-   * Custom prompt for summarization.
-   * Has a sensible default if not provided.
+   * Get summaries for a session.
+   * May return multiple summaries (e.g., one per compaction window).
    */
-  prompt?: string;
+  getSummaries(session: Session): Promise<SessionSummary[]>;
+}
 
-  /** Max tokens for summary output */
-  maxTokens?: number;
+interface SessionSummary {
+  /** Human-readable summary text */
+  summary: string;
+
+  /** Key topics discussed */
+  topics?: string[];
+
+  /** Important facts about the user */
+  keyFacts?: string[];
+
+  /** Start of the summarized time range */
+  startTimestamp?: string;
+
+  /** End of the summarized time range */
+  endTimestamp?: string;
+
+  /** Number of events summarized */
+  eventCount?: number;
 }
 
 interface EmbeddingConfig {
@@ -352,7 +384,7 @@ const runner = new Runner({
   memoryService: new MemoryService({
     trigger: { type: "session_end" },
     summarization: {
-      model: "gpt-4o-mini",
+      provider: new LlmSummaryProvider({ model: "gpt-4o-mini" }),
     },
   }),
 });
@@ -368,11 +400,13 @@ const runner = new Runner({
   memoryService: new MemoryService({
     trigger: { type: "session_end" },
     summarization: {
-      model: "gpt-4o-mini",
-      prompt: `Summarize this conversation. Focus on:
-        - What the user was trying to accomplish
-        - Key decisions or preferences expressed
-        - Any facts about the user worth remembering`,
+      provider: new LlmSummaryProvider({
+        model: "gpt-4o-mini",
+        prompt: `Summarize this conversation. Focus on:
+          - What the user was trying to accomplish
+          - Key decisions or preferences expressed
+          - Any facts about the user worth remembering`,
+      }),
     },
     embedding: {
       provider: new OpenAIEmbedding({
@@ -382,6 +416,36 @@ const runner = new Runner({
     },
     searchTopK: 5,
   }),
+});
+```
+
+### With Compaction Reuse (Recommended)
+
+```typescript
+// Reuses compaction summaries + LLM for remaining events
+const runner = new Runner({
+  appName: "my-app",
+  agent: myAgent,
+  sessionService: new InMemorySessionService(),
+  memoryService: new MemoryService({
+    trigger: { type: "session_end" },
+    summarization: {
+      provider: new HybridSummaryProvider(
+        new CompactionSummaryProvider(),
+        new LlmSummaryProvider({ model: "gpt-4o-mini" }),
+      ),
+    },
+    embedding: {
+      provider: new OpenAIEmbedding({
+        apiKey: process.env.OPENAI_API_KEY,
+      }),
+    },
+  }),
+  // Enable compaction for HybridSummaryProvider to work
+  eventsCompactionConfig: {
+    compactionInterval: 10,
+    summarizer: new LlmEventSummarizer({ model: "gpt-4o-mini" }),
+  },
 });
 ```
 
@@ -395,7 +459,7 @@ const runner = new Runner({
   memoryService: new MemoryService({
     trigger: { type: "session_end" },
     summarization: {
-      model: "gemini-2.0-flash",
+      provider: new LlmSummaryProvider({ model: "gemini-2.0-flash" }),
     },
     embedding: {
       provider: new OpenAIEmbedding(),
@@ -591,9 +655,11 @@ Return only valid JSON:
 ### Phase 2: Default Implementations
 
 - [ ] `InMemoryVectorStore` - cosine similarity search for dev/testing
-- [ ] `UnifiedSummarizer` - LLM-based summarization (implements `EventsSummarizer`)
+- [ ] `SummaryProvider` interface and implementations:
+  - [ ] `LlmSummaryProvider` - LLM-based summarization
+  - [ ] `CompactionSummaryProvider` - extracts summaries from compaction events
+  - [ ] `HybridSummaryProvider` - uses compaction where available, LLM for remainder
 - [ ] Update `MemoryService` class with new config options
-- [ ] Add `reuseCompactionSummaries` option for efficiency
 
 ### Phase 3: Embedding Providers
 
@@ -694,7 +760,7 @@ Users who want auto-preload behavior can explicitly add `PreloadMemoryTool` to t
 
 ## Integration with Event Compaction
 
-Event compaction and memory summarization serve related purposes and can share infrastructure.
+Event compaction and memory summarization serve related purposes. The **SummaryProvider** pattern enables clean reuse of compaction work for memory creation.
 
 ### Relationship
 
@@ -703,106 +769,217 @@ Event compaction and memory summarization serve related purposes and can share i
 | **Event Compaction**     | Shrink session context  | During session (every N invocations) | Compaction event in session |
 | **Memory Summarization** | Store for future recall | End of session                       | Memory in vector store      |
 
-### Unified Summarizer
+### The Problem with UnifiedSummarizer
 
-Both features can share the same LLM summarizer:
+A naive approach would create a single class that:
+
+1. Implements `EventsSummarizer` for compaction
+2. Has a separate method for memory summarization
 
 ```typescript
-interface UnifiedSummarizerConfig {
-  model: string | BaseLlm;
+// ❌ Bad: One class doing two different things
+class UnifiedSummarizer implements EventsSummarizer {
+  maybeSummarizeEvents(events): Promise<Event | undefined>; // For compaction
+  summarizeForMemory(events): Promise<MemorySummary>; // For memory
+}
+```
 
-  /** Prompt for compacting events within a session */
-  compactionPrompt?: string;
+**Problems:**
 
-  /** Prompt for summarizing session into long-term memory */
-  memoryPrompt?: string;
+- Violates single responsibility principle
+- Tight coupling between unrelated systems
+- `reuseCompactionSummaries` boolean is confusing
+- Hard to test and extend
+
+### The SummaryProvider Pattern
+
+Instead, we use **composition**: memory service asks for summaries without knowing the source.
+
+```typescript
+// ✅ Good: Clean interface - "give me summaries for this session"
+interface SummaryProvider {
+  getSummaries(session: Session): Promise<SessionSummary[]>;
+}
+```
+
+**Implementations:**
+
+```typescript
+/**
+ * Generates fresh summaries via LLM.
+ * Use when compaction is disabled or you want independent memory summaries.
+ */
+class LlmSummaryProvider implements SummaryProvider {
+  constructor(
+    private config: {
+      model: string | BaseLlm;
+      prompt?: string;
+      maxTokens?: number;
+    },
+  ) {}
+
+  async getSummaries(session: Session): Promise<SessionSummary[]> {
+    const events = session.events.filter(e => e.content?.parts);
+    const response = await this.llm.generate({
+      prompt: this.config.prompt + formatEvents(events),
+    });
+    return [parseSummaryResponse(response)];
+  }
 }
 
-class UnifiedSummarizer implements EventsSummarizer {
-  constructor(private config: UnifiedSummarizerConfig) {}
+/**
+ * Extracts summaries from existing compaction events.
+ * Zero LLM cost - reuses work already done during the session.
+ */
+class CompactionSummaryProvider implements SummaryProvider {
+  async getSummaries(session: Session): Promise<SessionSummary[]> {
+    const compactionEvents = session.events.filter(e => e.actions?.compaction);
 
-  // For event compaction (within session)
-  async maybeSummarizeEvents(events: Event[]): Promise<Event | undefined> {
-    // Uses compactionPrompt
+    return compactionEvents.map(e => ({
+      summary: e.actions.compaction.compactedContent.parts[0].text,
+      startTimestamp: e.actions.compaction.startTimestamp,
+      endTimestamp: e.actions.compaction.endTimestamp,
+    }));
   }
+}
 
-  // For memory creation (end of session)
-  async summarizeForMemory(events: Event[]): Promise<MemorySummary> {
-    // Uses memoryPrompt
+/**
+ * Best of both worlds: uses compaction where available, LLM for the rest.
+ * Recommended when using both compaction and memory.
+ */
+class HybridSummaryProvider implements SummaryProvider {
+  constructor(
+    private compactionProvider: CompactionSummaryProvider,
+    private llmProvider: LlmSummaryProvider,
+  ) {}
+
+  async getSummaries(session: Session): Promise<SessionSummary[]> {
+    // 1. Get summaries from compaction events (free!)
+    const compacted = await this.compactionProvider.getSummaries(session);
+
+    // 2. Find events not yet compacted
+    const lastCompactedTime = compacted.at(-1)?.endTimestamp;
+    const remainingEvents = lastCompactedTime
+      ? session.events.filter(e => e.timestamp > lastCompactedTime)
+      : session.events;
+
+    // 3. Summarize remainder via LLM (only if needed)
+    if (remainingEvents.length > 0) {
+      const remainder = await this.llmProvider.getSummaries({
+        ...session,
+        events: remainingEvents,
+      });
+      return [...compacted, ...remainder];
+    }
+
+    return compacted;
   }
 }
 ```
 
-### Option: Reuse Compaction Summaries for Memory
+### Usage Examples
 
-Instead of re-summarizing at session end, **reuse compaction summaries**:
+**Option 1: LLM Only (No Compaction)**
 
 ```typescript
 const memoryService = new MemoryService({
   trigger: { type: "session_end" },
   summarization: {
-    model: "gpt-4o-mini",
-    // Use existing compaction summaries instead of re-summarizing
-    reuseCompactionSummaries: true,
-    // Only summarize events after last compaction
-    summarizeRemainder: true,
+    provider: new LlmSummaryProvider({
+      model: "gpt-4o-mini",
+      prompt: "Summarize this conversation...",
+    }),
   },
+  embedding: { provider: embeddingProvider },
 });
 ```
 
-**Flow:**
-
-```
-Session with compaction enabled:
-├── Events 1-50    → Compaction Summary A (already created)
-├── Events 51-100  → Compaction Summary B (already created)
-├── Events 101-120 → (not yet compacted)
-└── Session ends:
-    Memory = Summary A + Summary B + summarize(Events 101-120)
-
-    No need to re-summarize events 1-100!
-```
-
-### Shared Configuration
+**Option 2: Compaction Only (Zero Extra LLM Cost)**
 
 ```typescript
-// Create a shared summarizer
-const summarizer = new UnifiedSummarizer({
-  model: "gpt-4o-mini",
-});
-
+// Memory summaries come entirely from compaction events
 const memoryService = new MemoryService({
-  summarization: { summarizer },
+  trigger: { type: "session_end" },
+  summarization: {
+    provider: new CompactionSummaryProvider(),
+  },
   embedding: { provider: embeddingProvider },
 });
 
 const runner = new Runner({
-  appName: "my-app",
-  agent: myAgent,
+  agent,
   sessionService,
   memoryService,
-  // Compaction uses the same summarizer
+  // Compaction must be enabled for this to work
   eventsCompactionConfig: {
     compactionInterval: 10,
-    overlapSize: 2,
-    summarizer: summarizer, // Same instance!
+    summarizer: new LlmEventSummarizer({ model: "gpt-4o-mini" }),
   },
 });
 ```
 
+**Option 3: Hybrid (Recommended)**
+
+```typescript
+// Reuse compaction summaries + LLM for any remaining events
+const llmProvider = new LlmSummaryProvider({ model: "gpt-4o-mini" });
+
+const memoryService = new MemoryService({
+  trigger: { type: "session_end" },
+  summarization: {
+    provider: new HybridSummaryProvider(
+      new CompactionSummaryProvider(),
+      llmProvider,
+    ),
+  },
+  embedding: { provider: embeddingProvider },
+});
+```
+
+### How Hybrid Works
+
+```
+Session with compaction enabled:
+├── Events 1-50    → Compaction Event A (already created during session)
+├── Events 51-100  → Compaction Event B (already created during session)
+├── Events 101-120 → (not yet compacted)
+└── Session ends:
+    │
+    ├── CompactionSummaryProvider extracts: [Summary A, Summary B]
+    ├── HybridSummaryProvider sees 20 remaining events
+    ├── LlmSummaryProvider summarizes events 101-120 → Summary C
+    └── Memory stores: [Summary A, Summary B, Summary C]
+
+    Only 20 events sent to LLM instead of 120!
+```
+
+### Comparison: Old vs New
+
+| Aspect         | UnifiedSummarizer                | SummaryProvider                  |
+| -------------- | -------------------------------- | -------------------------------- |
+| Responsibility | Two methods, two purposes        | Single purpose per class         |
+| Configuration  | `reuseCompactionSummaries: true` | `new HybridSummaryProvider(...)` |
+| Extensibility  | Modify one class                 | Add new provider                 |
+| Testing        | Mock complex class               | Mock simple interface            |
+| Clarity        | Hidden behavior                  | Explicit composition             |
+
 ### Benefits
 
-1. **Single LLM config** - One model for both features
-2. **Efficiency** - Don't re-summarize already compacted events
-3. **Consistent summaries** - Same style/format
-4. **Cost savings** - Fewer LLM calls
+1. **Single Responsibility** - Each provider does one thing well
+2. **Composable** - Mix and match providers for different strategies
+3. **Testable** - Simple interface, easy to mock
+4. **Explicit** - Reading the code shows exactly what happens
+5. **Efficient** - HybridProvider avoids re-summarizing compacted events
+6. **Cost Savings** - Reuse LLM work from compaction
 
 ### Implementation Tasks
 
-- [ ] Create `UnifiedSummarizer` that implements `EventsSummarizer`
-- [ ] Add `reuseCompactionSummaries` option to `SummarizationConfig`
-- [ ] Extract compaction summaries from session events at session end
-- [ ] Combine compaction summaries + remainder for memory creation
+- [ ] Create `SummaryProvider` interface
+- [ ] Implement `LlmSummaryProvider`
+- [ ] Implement `CompactionSummaryProvider`
+- [ ] Implement `HybridSummaryProvider`
+- [ ] Update `MemoryService` to use `SummaryProvider`
+- [ ] Add tests for each provider
 
 ## Open Questions
 
@@ -830,6 +1007,7 @@ import {
   InMemorySessionService,
   RecallMemoryTool,
   OpenAIEmbedding,
+  LlmSummaryProvider,
 } from "@iqai/adk";
 
 // Create the embedding provider
@@ -842,8 +1020,9 @@ const embeddingProvider = new OpenAIEmbedding({
 const memoryService = new MemoryService({
   trigger: { type: "session_end" },
   summarization: {
-    model: "gpt-4o-mini",
-    prompt: `Summarize this conversation for long-term memory.
+    provider: new LlmSummaryProvider({
+      model: "gpt-4o-mini",
+      prompt: `Summarize this conversation for long-term memory.
 
 Focus on:
 - What topics were discussed
@@ -852,6 +1031,7 @@ Focus on:
 - Decisions or conclusions reached
 
 Return JSON: { "summary": "...", "topics": [...], "keyFacts": [...] }`,
+    }),
   },
   embedding: {
     provider: embeddingProvider,
@@ -1090,13 +1270,16 @@ import {
   InMemorySessionService,
   RecallMemoryTool,
   OpenAIEmbedding,
+  LlmSummaryProvider,
 } from "@iqai/adk";
 
 async function main() {
   // === SETUP ===
   const memoryService = new MemoryService({
     trigger: { type: "session_end" },
-    summarization: { model: "gpt-4o-mini" },
+    summarization: {
+      provider: new LlmSummaryProvider({ model: "gpt-4o-mini" }),
+    },
     embedding: {
       provider: new OpenAIEmbedding({
         apiKey: process.env.OPENAI_API_KEY,
