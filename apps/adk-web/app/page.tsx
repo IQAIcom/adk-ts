@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useRef } from "react";
 import { IncompatibleState } from "@/components/ui/incompatible-state";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { useAgents } from "@/hooks/use-agent";
+import { useApiUrl } from "@/hooks/use-api-url";
 import { useCompatibility } from "@/hooks/use-compatibility";
 import { SessionManager } from "./(dashboard)/_components/session-manager";
 import { isPanelId } from "./(dashboard)/_schema";
@@ -22,19 +23,9 @@ function HomeContent() {
 		},
 	});
 
-	const {
-		apiUrl,
-		port,
-		sessionId,
-		agent: agentName,
-		panel: selectedPanel,
-	} = urlState;
+	const { sessionId, agent: agentName, panel: selectedPanel } = urlState;
 
-	const finalApiUrl = apiUrl
-		? apiUrl
-		: port
-			? `http://localhost:${port}`
-			: "http://localhost:8042";
+	const finalApiUrl = useApiUrl();
 
 	const queryClient = useQueryClient();
 	const {
@@ -73,7 +64,8 @@ function HomeContent() {
 	useEffect(() => {
 		// SSE hot-reload subscription
 		let es: EventSource | null = null;
-		if (finalApiUrl) {
+		// Always set up EventSource - empty string means relative URL (bundled mode)
+		if (typeof window !== "undefined") {
 			try {
 				es = new EventSource(`${finalApiUrl}/reload/stream`);
 				es.onmessage = (ev) => {
@@ -153,19 +145,27 @@ function HomeContent() {
 		return <LoadingState message="Connecting to ADK server..." />;
 	}
 
-	if (!finalApiUrl) {
-		return (
-			<ErrorState
-				title="ADK-TS Web"
-				message="This interface needs to be launched from the ADK CLI. Run adk web to start."
-			/>
-		);
-	}
-
 	if (!connected || error || compatError) {
+		// In bundled mode, finalApiUrl is "" (same origin), so show current location
+		const displayUrl =
+			finalApiUrl ||
+			(typeof window !== "undefined" ? window.location.origin : "the server");
+
+		const describeError = (err: unknown): string => {
+			if (!err) return "Unknown error";
+			if (err instanceof Error) return err.message;
+			if (typeof err === "string") return err;
+			if (typeof Response !== "undefined" && err instanceof Response) {
+				const status = err.status ? `HTTP ${err.status}` : "";
+				const text = err.statusText || "";
+				return `${status} ${text}`.trim() || "Request failed";
+			}
+			return "Unknown error";
+		};
+
 		const errorMessage = compatError
-			? `Failed to check CLI compatibility: ${compatError.message || compatError}`
-			: `Failed to connect to ADK server at ${finalApiUrl}. Make sure the server is running.`;
+			? `Failed to check CLI compatibility: ${describeError(compatError)}`
+			: `Failed to connect to ADK server at ${displayUrl}. Make sure the server is running.`;
 
 		return (
 			<ErrorState

@@ -129,6 +129,16 @@ export function SessionsPanel({
 	};
 
 	const handleSwitchSession = async (sessionId: string) => {
+		if (sessionId === currentSessionId) {
+			return;
+		}
+
+		const sessionExists = sessions.some((s) => s.id === sessionId);
+		if (!sessionExists) {
+			console.warn(`Attempted to switch to non-existent session: ${sessionId}`);
+			return;
+		}
+
 		try {
 			await onSwitchSession(sessionId);
 		} catch (_error) {

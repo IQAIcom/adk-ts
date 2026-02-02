@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import type { AgentListItemDto as Agent } from "@/Api";
 import { Sidebar } from "@/app/(dashboard)/_components/sidebar";
 import { ChatPanel } from "@/components/chat-panel";
@@ -8,6 +7,8 @@ import { Navbar } from "@/components/navbar";
 import { useAgentGraph } from "@/hooks/use-agent-graph";
 import { useEvents } from "@/hooks/use-events";
 import { useSessions } from "@/hooks/use-sessions";
+import { useTraces } from "@/hooks/use-traces";
+import { useState, useEffect } from "react";
 import type { Message, PanelId } from "../_schema";
 
 interface SessionManagerProps {
@@ -37,13 +38,20 @@ export function SessionManager({
 	onAgentSelect,
 	onSendMessage,
 }: SessionManagerProps) {
+	const [sessionCreatedAt, setSessionCreatedAt] = useState<
+		number | undefined
+	>();
+
 	const {
 		sessions,
 		isLoading: sessionsLoading,
 		createSession,
 		deleteSession,
 		switchSession,
-	} = useSessions(selectedAgent);
+	} = useSessions(selectedAgent, {
+		sessionId,
+		onSessionChange,
+	});
 
 	const { events, isLoading: eventsLoading } = useEvents(
 		selectedAgent,
@@ -56,51 +64,23 @@ export function SessionManager({
 		error: graphError,
 	} = useAgentGraph(selectedAgent);
 
-	const prevAgentRef = useRef<string | null>(null);
-
-	// Single effect for session management
+	// Track when current session was created
 	useEffect(() => {
-		const currentAgentPath = selectedAgent?.relativePath ?? null;
-
-		// Agent switched - clear session
-		if (currentAgentPath !== prevAgentRef.current) {
-			onSessionChange(null);
-			prevAgentRef.current = currentAgentPath;
-			return;
-		}
-
-		// No sessions available yet or still loading
-		if (sessions.length === 0 || sessionsLoading) {
-			return;
-		}
-
-		// Validate URL sessionId
-		const isUrlSessionValid =
-			sessionId && sessions.some((s) => s.id === sessionId);
-
-		if (isUrlSessionValid) {
-			switchSession(sessionId).catch((error) => {
-				console.error("Failed to switch to URL session:", error);
-			});
-		} else if (sessionId) {
-			// URL has invalid sessionId - clear it
-			onSessionChange(null);
+		if (sessionId && sessions.length > 0) {
+			const currentSession = sessions.find((s) => s.id === sessionId);
+			if (currentSession?.createdAt) {
+				setSessionCreatedAt(currentSession.createdAt * 1000); // Convert to milliseconds
+			}
 		} else {
-			// No URL sessionId - auto-select first session
-			const firstSessionId = sessions[0].id;
-			onSessionChange(firstSessionId);
-			switchSession(firstSessionId).catch((error) => {
-				console.error("Failed to auto-select first session:", error);
-			});
+			setSessionCreatedAt(undefined);
 		}
-	}, [
-		sessions,
-		sessionsLoading,
-		sessionId,
+	}, [sessionId, sessions]);
+
+	const { tracesByTraceId, isLoading: tracesLoading } = useTraces(
 		selectedAgent,
-		onSessionChange,
-		switchSession,
-	]);
+		sessionId,
+		sessionCreatedAt,
+	);
 
 	const handleCreateSession = async (
 		state?: Record<string, any>,
@@ -111,10 +91,12 @@ export function SessionManager({
 	};
 
 	const handleDeleteSession = async (deleteSessionId: string) => {
-		await deleteSession(deleteSessionId);
+		// If deleting the current session, clear it from URL first to prevent
+		// the useEffect from trying to switch to it after deletion
 		if (sessionId === deleteSessionId) {
 			onSessionChange(null);
 		}
+		await deleteSession(deleteSessionId);
 	};
 
 	const handleSwitchSession = async (newSessionId: string) => {
@@ -128,7 +110,7 @@ export function SessionManager({
 
 	return (
 		<div className="h-screen flex bg-background">
-			<div className="flex-shrink-0 h-full">
+			<div className="shrink-0 h-full">
 				<Sidebar
 					key={selectedAgent?.relativePath || "__no_agent__"}
 					selectedPanel={selectedPanel}
@@ -142,6 +124,8 @@ export function SessionManager({
 					graph={graph}
 					graphLoading={graphLoading}
 					graphError={graphError}
+					tracesByTraceId={tracesByTraceId}
+					tracesLoading={tracesLoading}
 					onCreateSession={handleCreateSession}
 					onDeleteSession={handleDeleteSession}
 					onSwitchSession={handleSwitchSession}
@@ -152,7 +136,7 @@ export function SessionManager({
 			<div className="flex-1 flex min-h-0">
 				<div className="flex-1 flex flex-col min-h-0">
 					{/* Navbar */}
-					<div className="flex-shrink-0">
+					<div className="shrink-0">
 						<Navbar
 							apiUrl={apiUrl}
 							agents={agents}

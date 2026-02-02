@@ -1,5 +1,6 @@
 import { type DynamicModule, Module } from "@nestjs/common";
 import { ConfigModule } from "./config/config.module";
+import { DebugModule } from "./debug/debug.module";
 import { DiscoveryModule } from "./discovery/discovery.module";
 import { EventsModule } from "./events/events.module";
 import { HealthModule } from "./health/health.module";
@@ -25,6 +26,7 @@ export class HttpModule {
 				StateModule,
 				ReloadModule,
 				HealthModule,
+				DebugModule,
 			],
 		};
 	}

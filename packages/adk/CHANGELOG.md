@@ -1,5 +1,30 @@
 # @iqai/adk
 
+## 0.6.6
+
+### Patch Changes
+
+- 78bac0e: Previously, chaining builder methods after `withOutputSchema()` caused TypeScript to lose the inferred output type, resulting in `EnhancedRunner<any, any>` instead of the schema-derived type.
+
+  This update:
+  - Makes all chainable builder methods return `this` to preserve polymorphic typing.
+  - Refactors `AgentBuilderWithSchema` using a mapped type that preserves all methods from `AgentBuilder` while correctly typing `build`, `buildWithSchema`, and `ask`.
+
+  Now, the inferred output type `T` flows correctly through the builder chain, ensuring `BuiltAgent<T, M>` and `EnhancedRunner<T, M>` are fully typed.
+
+## 0.6.5
+
+### Patch Changes
+
+- 3666f6e: Introduced backend support for **trace visualization** of agent execution sessions. The system now captures OpenTelemetry spans in-memory (in addition to OTLP export), groups them by `sessionId`, and exposes them via a new debug API. This enables the UI to reconstruct full execution trees and timelines for agents, tools, and LLM calls.
+
+  **Highlights**
+  - In-memory span storage with rolling buffer scoped per session
+  - Dual export: OTLP + in-memory trace store
+  - New API: `GET /debug/trace/session/:sessionId`
+  - Visualization-ready trace format (IDs, hierarchy, timing, attributes)
+  - Designed for local development and debugging workflows
+
 ## 0.6.4
 
 ### Patch Changes

@@ -1,12 +1,12 @@
 ---
 title: Distributed Tracing
-description: Understand what gets traced, view traces, and use custom spans for your operations
+description: Track agent invocations, tool executions, and LLM calls with OpenTelemetry spans
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Distributed tracing in ADK-TS provides complete visibility into agent execution, tool usage, and LLM interactions. Every operation is automatically traced with rich context and metadata.
+ADK-TS automatically traces agent execution, tool usage, and LLM interactions. Every operation creates spans with rich metadata, giving you complete visibility into your agent's behavior.
 
 ## What Gets Traced
 
@@ -142,7 +142,7 @@ ADK-TS sends traces via OTLP to any compatible observability backend. You'll nee
 
 ### Using Jaeger (Local Development)
 
-Jaeger is a popular open-source option for local development:
+Jaeger is a popular open-source option for local development. It allows you to visualize and analyze traces in a user-friendly interface.
 
 1. **Set up Jaeger**: See the [Platform Integrations](/docs/framework/observability/integrations#jaeger) guide for Docker setup instructions
 2. **Open Jaeger UI**: Navigate to `http://localhost:16686`
@@ -154,19 +154,11 @@ Jaeger is a popular open-source option for local development:
    - Timing information
    - Related spans
 
-### Trace Search
-
-Use Jaeger's search features to:
-
-- Filter by service name
-- Search by operation name
-- Filter by tags/attributes
-- Find traces by time range
-- Search for specific error traces
+Jaeger's search features allow you to filter by service name or tags/attributes, search by operation name, and find traces within specific time ranges.
 
 ## Custom Spans
 
-Create custom spans for your own operations:
+Custom spans allow you to create your own trace segments for specific operations, providing detailed insights into your application's behavior.
 
 ```typescript
 import { telemetryService } from "@iqai/adk";
@@ -296,44 +288,39 @@ ADK_ATTRS.LLM_RESPONSE; // "adk.llm.response"
 
 ## Auto-Instrumentation
 
-The telemetry system automatically instruments:
+When `enableAutoInstrumentation: true` is set, the telemetry system automatically instruments:
 
-- **HTTP/HTTPS calls** - All HTTP requests are traced
-- **Database queries** - Database operations are captured
-- **File system operations** - File I/O is traced
-- **DNS lookups** - DNS resolution is tracked
+| Operation              | Description                           |
+| ---------------------- | ------------------------------------- |
+| HTTP/HTTPS calls       | All outbound HTTP requests are traced |
+| Database queries       | Database operations are captured      |
+| File system operations | File I/O is traced                    |
+| DNS lookups            | DNS resolution is tracked             |
 
-These appear as child spans in your traces, providing complete visibility into external dependencies.
+These appear as child spans in your traces, providing visibility into external dependencies.
 
-<Callout type="info" title="Disable Auto-Instrumentation">
-  If you need to disable auto-instrumentation, set `enableAutoInstrumentation:
-  false` in your telemetry configuration.
+<Callout type="info" title="Auto-Instrumentation is Opt-In">
+  Auto-instrumentation is disabled by default. Enable it with
+  `enableAutoInstrumentation: true` if you want to trace HTTP calls, database
+  queries, and other external operations.
 </Callout>
 
-## Best Practices
-
-1. **Use semantic conventions** - Follow standard attribute names for consistency
-2. **Add business context** - Include custom attributes relevant to your domain
-3. **Record exceptions** - Always record exceptions with context
-4. **Keep spans focused** - Create separate spans for distinct operations
-5. **Use events for milestones** - Add events for important state changes
-
-## Next Steps
+## Related Topics
 
 <Cards>
   <Card
     title="📊 Metrics"
-    description="Learn about metrics for performance monitoring"
+    description="Monitor agent performance with counters and histograms"
     href="/docs/framework/observability/metrics"
   />
   <Card
-    title="🔒 Production Configuration"
-    description="Configure optimal performance settings"
-    href="/docs/framework/observability/production"
+    title="🔌 Platform Integrations"
+    description="Connect to Jaeger, Grafana, Datadog, and other backends"
+    href="/docs/framework/observability/integrations"
   />
   <Card
-    title="🔌 Platform Integrations"
-    description="Integrate with observability platforms"
-    href="/docs/framework/observability/integrations"
+    title="🔒 Production Deployment"
+    description="Privacy controls, performance tuning, and best practices"
+    href="/docs/framework/observability/production"
   />
 </Cards>

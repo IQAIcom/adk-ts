@@ -1,8 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useRef } from "react";
 import {
 	type AgentListItemDto,
 	Api,
@@ -16,13 +15,20 @@ interface CreateSessionRequest {
 	sessionId?: string;
 }
 
-export function useSessions(selectedAgent: AgentListItemDto | null) {
+interface UseSessionsOptions {
+	sessionId: string | null;
+	onSessionChange: (id: string | null) => void;
+}
+
+export function useSessions(
+	selectedAgent: AgentListItemDto | null,
+	options: UseSessionsOptions,
+) {
 	const apiUrl = useApiUrl();
 	const queryClient = useQueryClient();
-	const apiClient = useMemo(
-		() => (apiUrl ? new Api({ baseUrl: apiUrl }) : null),
-		[apiUrl],
-	);
+	// apiUrl can be "" in bundled mode (same origin), which is valid
+	const apiClient = useMemo(() => new Api({ baseUrl: apiUrl }), [apiUrl]);
+	const { sessionId, onSessionChange } = options;
 
 	// Fetch sessions for the selected agent
 	const {
@@ -33,14 +39,14 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 	} = useQuery({
 		queryKey: ["sessions", apiUrl, selectedAgent?.relativePath],
 		queryFn: async (): Promise<SessionResponseDto[]> => {
-			if (!apiClient || !selectedAgent) return [];
+			if (!selectedAgent) return [];
 			const res = await apiClient.api.sessionsControllerListSessions(
 				encodeURIComponent(selectedAgent.relativePath),
 			);
 			const data: SessionsResponseDto = res.data as any;
 			return data.sessions;
 		},
-		enabled: !!apiClient && !!selectedAgent,
+		enabled: typeof window !== "undefined" && !!selectedAgent,
 		staleTime: 30000,
 		retry: 2,
 	});
@@ -51,21 +57,24 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 			state,
 			sessionId,
 		}: CreateSessionRequest): Promise<SessionResponseDto> => {
-			if (!apiClient || !selectedAgent)
-				throw new Error("API URL and agent required");
-			try {
-				const res = await apiClient.api.sessionsControllerCreateSession(
-					encodeURIComponent(selectedAgent.relativePath),
-					{ state, sessionId },
-				);
-				return res.data as SessionResponseDto;
-			} catch (e: any) {
-				toast.error("Failed to create session. Please try again.");
-				throw new Error(e?.message || "Failed to create session");
-			}
+			if (!selectedAgent) throw new Error("Agent required");
+			const res = await apiClient.api.sessionsControllerCreateSession(
+				encodeURIComponent(selectedAgent.relativePath),
+				{ state, sessionId },
+			);
+			return res.data as SessionResponseDto;
 		},
 		onSuccess: (created) => {
-			// Refetch sessions after successful creation
+			// Optimistically add the created session to the cache
+			const queryKey = ["sessions", apiUrl, selectedAgent?.relativePath];
+			queryClient.setQueryData<SessionResponseDto[]>(queryKey, (old = []) => {
+				// Check if session already exists (shouldn't happen, but be safe)
+				if (old.some((s) => s.id === created.id)) {
+					return old;
+				}
+				return [created, ...old];
+			});
+			// Also refetch to ensure consistency
 			queryClient.invalidateQueries({
 				queryKey: ["sessions", apiUrl, selectedAgent?.relativePath],
 			});
@@ -74,22 +83,19 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 		},
 		onError: (error) => {
 			console.error(error);
-			toast.error("Failed to create session. Please try again.");
 		},
 	});
 
 	// Delete session mutation
 	const deleteSessionMutation = useMutation({
 		mutationFn: async (sessionId: string): Promise<void> => {
-			if (!apiClient || !selectedAgent)
-				throw new Error("API URL and agent required");
+			if (!selectedAgent) throw new Error("Agent required");
 			await apiClient.api.sessionsControllerDeleteSession(
 				encodeURIComponent(selectedAgent.relativePath),
 				sessionId,
 			);
 		},
 		onSuccess: () => {
-			toast.success("Session deleted successfully!");
 			// Refetch sessions after successful deletion
 			queryClient.invalidateQueries({
 				queryKey: ["sessions", apiUrl, selectedAgent?.relativePath],
@@ -97,15 +103,13 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 		},
 		onError: (error) => {
 			console.error(error);
-			toast.error("Failed to delete session. Please try again.");
 		},
 	});
 
 	// Switch session mutation
 	const switchSessionMutation = useMutation({
 		mutationFn: async (sessionId: string): Promise<void> => {
-			if (!apiClient || !selectedAgent)
-				throw new Error("API URL and agent required");
+			if (!selectedAgent) throw new Error("Agent required");
 			await apiClient.api.sessionsControllerSwitchSession(
 				encodeURIComponent(selectedAgent.relativePath),
 				sessionId,
@@ -121,11 +125,89 @@ export function useSessions(selectedAgent: AgentListItemDto | null) {
 				queryKey: ["events"],
 			});
 		},
-		onError: (error) => {
+		onError: (error: unknown) => {
 			console.error(error);
-			toast.error("Failed to switch session. Please try again.");
+
+			const isNotFoundError = (err: unknown): boolean => {
+				if (err && typeof err === "object") {
+					if ("status" in err && err.status === 404) {
+						return true;
+					}
+					if (
+						"error" in err &&
+						err.error &&
+						typeof err.error === "object" &&
+						"message" in err.error &&
+						typeof err.error.message === "string" &&
+						err.error.message.toLowerCase().includes("not found")
+					) {
+						return true;
+					}
+				}
+				return false;
+			};
+
+			if (isNotFoundError(error)) {
+				// Session was likely deleted - silently handle it
+				// The sessions list will refresh and UI will update accordingly
+				return;
+			}
+
+			// Error will be thrown and can be handled by the component
 		},
 	});
+
+	const prevAgentRef = useRef<string | null>(null);
+	const switchSessionFn = switchSessionMutation.mutateAsync;
+
+	// Session management effect - handles auto-switching and validation
+	useEffect(() => {
+		if (!onSessionChange) return;
+
+		const currentAgentPath = selectedAgent?.relativePath ?? null;
+
+		// Agent switched - clear session
+		if (currentAgentPath !== prevAgentRef.current) {
+			onSessionChange(null);
+			prevAgentRef.current = currentAgentPath;
+			return;
+		}
+
+		// Wait for initial load - but if we have cached sessions, use them
+		if (sessions.length === 0 && isLoading) {
+			return;
+		}
+
+		// Validate URL sessionId
+		const isUrlSessionValid =
+			sessionId && sessions.some((s) => s.id === sessionId);
+
+		if (isUrlSessionValid) {
+			switchSessionFn(sessionId).catch((error) => {
+				console.error("Failed to switch to URL session:", error);
+			});
+		} else if (sessionId) {
+			// URL has invalid sessionId (e.g., session was deleted) - clear it
+			// But only if we're not currently loading (to avoid clearing during creation/refetch)
+			if (!isLoading) {
+				onSessionChange(null);
+			}
+		} else if (sessions.length > 0) {
+			// No URL sessionId - auto-select first session
+			const firstSessionId = sessions[0].id;
+			onSessionChange(firstSessionId);
+			switchSessionFn(firstSessionId).catch((error) => {
+				console.error("Failed to auto-select first session:", error);
+			});
+		}
+	}, [
+		sessions,
+		isLoading,
+		selectedAgent,
+		switchSessionFn,
+		onSessionChange,
+		sessionId,
+	]);
 
 	return {
 		sessions,
