@@ -90,6 +90,9 @@ export class OpenAIEmbedding implements EmbeddingProvider {
 	 */
 	async embed(text: string): Promise<number[]> {
 		const response = await this.callOpenAI([text]);
+		if (!response.data || response.data.length === 0) {
+			throw new Error("OpenAI embedding response contained no data");
+		}
 		return response.data[0].embedding;
 	}
 

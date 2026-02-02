@@ -135,6 +135,9 @@ export class OpenRouterEmbedding implements EmbeddingProvider {
 	 */
 	async embed(text: string): Promise<number[]> {
 		const response = await this.callOpenRouter([text]);
+		if (!response.data || response.data.length === 0) {
+			throw new Error("OpenRouter embedding response contained no data");
+		}
 		return response.data[0].embedding;
 	}
 

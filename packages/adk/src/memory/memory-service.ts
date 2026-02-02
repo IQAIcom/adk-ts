@@ -148,7 +148,14 @@ export class MemoryService implements BaseMemoryService {
 		try {
 			const summaries = await this.summaryProvider.getSummaries(session);
 
+			if (!summaries || summaries.length === 0) {
+				return;
+			}
+
 			for (const summary of summaries) {
+				if (!summary.summary) {
+					continue;
+				}
 				const memoryId = `${session.id}-${randomUUID()}`;
 
 				const memorySummary: MemorySummary = {

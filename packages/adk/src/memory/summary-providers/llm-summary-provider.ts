@@ -48,6 +48,10 @@ export class LlmSummaryProvider implements SummaryProvider {
 	 * Generates summaries from a session using the configured LLM
 	 */
 	async getSummaries(session: Session): Promise<SessionSummary[]> {
+		if (!session.events || session.events.length === 0) {
+			return [];
+		}
+
 		const events = session.events.filter(
 			(event) => event.content?.parts?.length,
 		);
