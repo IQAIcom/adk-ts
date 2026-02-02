@@ -286,8 +286,7 @@ export abstract class BaseLlmFlow {
 
 		// Handle function calls for live mode
 		if (finalizedEvent.getFunctionCalls()) {
-			// TODO: Implement functions.handleFunctionCallsLive when available
-			const functionResponseEvent = await functions.handleFunctionCallsAsync(
+			const functionResponseEvent = await functions.handleFunctionCallsLive(
 				invocationContext,
 				finalizedEvent,
 				llmRequest.toolsDict || {},
