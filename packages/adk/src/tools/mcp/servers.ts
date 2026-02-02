@@ -449,6 +449,27 @@ export function McpOpinion(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP Defillama - Interact with the Defillama, a comprehensive DeFi data aggregator, via the MCP protocol.
+ * No required env vars.
+ * Optional env vars:
+ * - DEFILLAMA_API_KEY: Your Defillama API key.
+ * - IQ_GATEWAY_URL: Custom IQ Gateway URL for enhanced resolution.
+ * - IQ_GATEWAY_KEY: API key for IQ Gateway access.
+ * - OPENROUTER_API_KEY: API key for OpenRouter LLM integration.
+ * or
+ * - GOOGLE_GENERATIVE_AI_API_KEY: Google generativeAI API key.
+ * - LLM_MODEL: Model name for LLM integration(default: openai/gpt-4.1-mini).
+ */
+export function McpDefillama(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Defillama MCP Client",
+		"@iqai/defillama-mcp",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * Popular third-party MCP servers
  * These can be added as we expand support for community MCP servers
  */
