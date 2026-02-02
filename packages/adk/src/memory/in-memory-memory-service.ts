@@ -138,7 +138,7 @@ export class InMemoryMemoryService implements BaseMemoryService {
 	 * @param sessionId The session ID
 	 * @returns The session or undefined if not found
 	 */
-	getSession(sessionId: string): Session | undefined {
+	getSession(_sessionId: string): Session | undefined {
 		// This method doesn't exist in Python version, keeping for backward compatibility
 		console.warn(
 			"getSession() is deprecated and may not work correctly with the new memory structure",

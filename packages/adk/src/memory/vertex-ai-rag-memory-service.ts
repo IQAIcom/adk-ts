@@ -91,7 +91,9 @@ function _mergeEventLists(eventLists: Event[][]): Event[][] {
 					// Overlap exists, so we merge and use the merged list to check again
 					const newEvents = other.filter((e) => !currentTs.has(e.timestamp));
 					current.push(...newEvents);
-					newEvents.forEach((e) => currentTs.add(e.timestamp));
+					newEvents.forEach((e) => {
+						currentTs.add(e.timestamp);
+					});
 					mergeFound = true;
 				} else {
 					remaining.push(other);
@@ -268,7 +270,7 @@ export class VertexAiRagMemoryService implements BaseMemoryService {
 		}
 
 		// Remove overlap and combine events from the same session
-		for (const [sessionId, eventLists] of sessionEventsMap.entries()) {
+		for (const [_sessionId, eventLists] of sessionEventsMap.entries()) {
 			const mergedEventLists = _mergeEventLists(eventLists);
 
 			for (const events of mergedEventLists) {
