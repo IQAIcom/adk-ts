@@ -248,11 +248,37 @@ class PreloadMemoryTool extends BaseTool {
 
 ## Behavior Matrix
 
-| Summarization | Embedding | Behavior                            |
-| ------------- | --------- | ----------------------------------- |
-| No            | No        | Current: raw events, keyword search |
-| Yes           | No        | Summarized, keyword search          |
-| Yes           | Yes       | Full semantic search (recommended)  |
+| Summarization | Embedding | Behavior                                      |
+| ------------- | --------- | --------------------------------------------- |
+| No            | No        | Current: raw events, keyword search           |
+| Yes           | No        | Summarized, keyword search                    |
+| No            | Yes       | Raw event embeddings (warns, not recommended) |
+| Yes           | Yes       | Full semantic search (recommended)            |
+
+### Configuration Validation
+
+The `MemoryService` validates config at initialization and warns about suboptimal configurations:
+
+```typescript
+class MemoryService {
+  constructor(config?: MemoryServiceConfig) {
+    if (config?.embedding && !config?.summarization) {
+      console.warn(
+        "[MemoryService] Embedding without summarization is not recommended. " +
+          "Raw events produce noisy embeddings with poor search quality. " +
+          "Consider adding a SummaryProvider for better results.",
+      );
+    }
+  }
+}
+```
+
+**Why warn instead of error?**
+
+- Doesn't break experimentation or testing
+- Educates users about best practices
+- Advanced users can intentionally ignore if needed
+- Graceful degradation - still works, just suboptimally
 
 ## SummaryProvider Implementations
 
