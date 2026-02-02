@@ -14,8 +14,7 @@
 - [ ] **4. Create `MemoryService`** class with config support
 - [ ] **5. Create SummaryProvider implementations**:
   - `LlmSummaryProvider` - summarizes via LLM
-  - `CompactionSummaryProvider` - extracts from compaction events
-  - `HybridSummaryProvider` - uses compaction + LLM for remainder
+  - `CompactionAwareSummaryProvider` - reuses compaction events, LLM for remainder
 - [ ] **6. Create `RecallMemoryTool`** - agent-initiated memory search
 - [ ] **7. Create `PreloadMemoryTool`** - optional auto-preload
 - [ ] **8. Create `OpenAIEmbedding`** provider
@@ -29,8 +28,7 @@ packages/adk/src/memory/
 ├── memory-service.ts           (NEW - main service)
 ├── summary-providers/
 │   ├── llm-summary-provider.ts
-│   ├── compaction-summary-provider.ts
-│   └── hybrid-summary-provider.ts
+│   └── compaction-aware-summary-provider.ts
 ├── vector-stores/
 │   └── in-memory-vector-store.ts
 └── embeddings/
@@ -172,10 +170,7 @@ new MemoryService({
 new MemoryService({
   trigger: { type: "session_end" },
   summarization: {
-    provider: new HybridSummaryProvider(
-      new CompactionSummaryProvider(),
-      new LlmSummaryProvider({ model: "gpt-4o-mini" }),
-    ),
+    provider: new CompactionAwareSummaryProvider({ model: "gpt-4o-mini" }),
   },
   embedding: { provider: new OpenAIEmbedding() },
 });
@@ -283,8 +278,10 @@ class MemoryService {
 ## SummaryProvider Implementations
 
 ```typescript
-// LLM-based: Fresh summaries via LLM
+// LLM-based: Fresh summaries via LLM (summarizes all events)
 class LlmSummaryProvider implements SummaryProvider {
+  constructor(private config: { model: string; prompt?: string }) {}
+
   async getSummaries(session: Session): Promise<SessionSummary[]> {
     const events = session.events.filter(e => e.content?.parts);
     const response = await this.llm.generate({ prompt: formatEvents(events) });
@@ -292,40 +289,34 @@ class LlmSummaryProvider implements SummaryProvider {
   }
 }
 
-// Compaction: Zero LLM cost - reuses existing compaction events
-class CompactionSummaryProvider implements SummaryProvider {
-  async getSummaries(session: Session): Promise<SessionSummary[]> {
-    return session.events
-      .filter(e => e.actions?.compaction)
-      .map(e => ({
-        summary: e.actions.compaction.compactedContent.parts[0].text,
-        startTimestamp: e.actions.compaction.startTimestamp,
-        endTimestamp: e.actions.compaction.endTimestamp,
-      }));
-  }
-}
-
-// Hybrid: Best of both - compaction where available, LLM for remainder
-class HybridSummaryProvider implements SummaryProvider {
-  constructor(
-    private compactionProvider: CompactionSummaryProvider,
-    private llmProvider: LlmSummaryProvider,
-  ) {}
+// Compaction-aware: Reuses compaction events, LLM only for remainder
+// Use this when eventsCompactionConfig is enabled on the Runner
+class CompactionAwareSummaryProvider implements SummaryProvider {
+  constructor(private config: { model: string; prompt?: string }) {}
 
   async getSummaries(session: Session): Promise<SessionSummary[]> {
-    const compacted = await this.compactionProvider.getSummaries(session);
+    // 1. Extract summaries from compaction events (free - no LLM cost)
+    const compactionEvents = session.events.filter(e => e.actions?.compaction);
+    const compacted = compactionEvents.map(e => ({
+      summary: e.actions.compaction.compactedContent.parts[0].text,
+      startTimestamp: e.actions.compaction.startTimestamp,
+      endTimestamp: e.actions.compaction.endTimestamp,
+    }));
+
+    // 2. Find events not yet compacted
     const lastCompactedTime = compacted.at(-1)?.endTimestamp;
     const remaining = lastCompactedTime
       ? session.events.filter(e => e.timestamp > lastCompactedTime)
       : session.events;
 
+    // 3. Summarize remainder via LLM (only if needed)
     if (remaining.length > 0) {
-      const remainder = await this.llmProvider.getSummaries({
-        ...session,
-        events: remaining,
+      const response = await this.llm.generate({
+        prompt: formatEvents(remaining),
       });
-      return [...compacted, ...remainder];
+      return [...compacted, parseSummaryResponse(response)];
     }
+
     return compacted;
   }
 }
