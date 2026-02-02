@@ -503,6 +503,55 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP GitHub - GitHub's official MCP server for repository operations, issues, pull requests, and more
+ *
+ * Uses the remote GitHub MCP server hosted at api.githubcopilot.com.
+ *
+ * Required env vars:
+ * - GITHUB_PERSONAL_ACCESS_TOKEN: A GitHub Personal Access Token with appropriate permissions
+ *
+ * Optional env vars:
+ * - GITHUB_TOOLSETS: Comma-separated list of enabled tool groups (repos, issues, pull_requests, actions, code_security)
+ *
+ * Features include:
+ * - Repository management (browse, query code, search files, analyze commits)
+ * - Issue & PR automation (create, update, manage, triage)
+ * - CI/CD & workflow intelligence (monitor Actions, analyze builds, manage releases)
+ * - Code analysis (security findings, Dependabot alerts)
+ */
+export function McpGitHub(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"GitHub MCP Client",
+		"https://api.githubcopilot.com/mcp/",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Notion - Official Notion MCP server for workspace operations
+ *
+ * Required env vars:
+ * - NOTION_TOKEN: Integration secret token (starts with ntn_)
+ *
+ * Features include:
+ * - Data source operations (query, retrieve, update, create)
+ * - Page management (create, retrieve, update, move)
+ * - Database interactions
+ * - Comment functionality
+ * - Search capabilities
+ * - Markdown-based page editing
+ */
+export function McpNotion(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Notion MCP Client",
+		"@notionhq/notion-mcp-server",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * MCP DeBank – Interact with the DeBank platform via the MCP protocol.
  *
  * Authentication:
