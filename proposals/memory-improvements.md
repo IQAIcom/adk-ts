@@ -20,10 +20,12 @@
   - `MemorySummary`
 - [ ] **4. Create `InMemoryVectorStore`** - cosine similarity search
 - [ ] **5. Create `MemoryService`** class with config support
-- [ ] **6. Create `RecallMemoryTool`** - agent-initiated memory search
-- [ ] **7. Create `PreloadMemoryTool`** - optional auto-preload (injects into instructions)
-- [ ] **8. Create `OpenAIEmbedding`** provider
-- [ ] **9. Add `endSession()` to `BaseSessionService`** for trigger support
+- [ ] **6. Create `UnifiedSummarizer`** - implements `EventsSummarizer`, works for both compaction & memory
+- [ ] **7. Create `RecallMemoryTool`** - agent-initiated memory search
+- [ ] **8. Create `PreloadMemoryTool`** - optional auto-preload (injects into instructions)
+- [ ] **9. Create `OpenAIEmbedding`** provider
+- [ ] **10. Add `endSession()` to `BaseSessionService`** for trigger support
+- [ ] **11. Add `reuseCompactionSummaries`** option to reuse compaction work for memory
 
 ### Key Files to Modify/Create
 
@@ -589,8 +591,9 @@ Return only valid JSON:
 ### Phase 2: Default Implementations
 
 - [ ] `InMemoryVectorStore` - cosine similarity search for dev/testing
-- [ ] `MemorySummarizer` - LLM-based summarization
+- [ ] `UnifiedSummarizer` - LLM-based summarization (implements `EventsSummarizer`)
 - [ ] Update `MemoryService` class with new config options
+- [ ] Add `reuseCompactionSummaries` option for efficiency
 
 ### Phase 3: Embedding Providers
 
@@ -688,6 +691,118 @@ The following content is from your previous conversations with the user.
 4. **Keep** `LoadMemoryTool` / `RecallMemoryTool` for agent-initiated recall
 
 Users who want auto-preload behavior can explicitly add `PreloadMemoryTool` to their agent.
+
+## Integration with Event Compaction
+
+Event compaction and memory summarization serve related purposes and can share infrastructure.
+
+### Relationship
+
+| Feature                  | Purpose                 | When                                 | Output                      |
+| ------------------------ | ----------------------- | ------------------------------------ | --------------------------- |
+| **Event Compaction**     | Shrink session context  | During session (every N invocations) | Compaction event in session |
+| **Memory Summarization** | Store for future recall | End of session                       | Memory in vector store      |
+
+### Unified Summarizer
+
+Both features can share the same LLM summarizer:
+
+```typescript
+interface UnifiedSummarizerConfig {
+  model: string | BaseLlm;
+
+  /** Prompt for compacting events within a session */
+  compactionPrompt?: string;
+
+  /** Prompt for summarizing session into long-term memory */
+  memoryPrompt?: string;
+}
+
+class UnifiedSummarizer implements EventsSummarizer {
+  constructor(private config: UnifiedSummarizerConfig) {}
+
+  // For event compaction (within session)
+  async maybeSummarizeEvents(events: Event[]): Promise<Event | undefined> {
+    // Uses compactionPrompt
+  }
+
+  // For memory creation (end of session)
+  async summarizeForMemory(events: Event[]): Promise<MemorySummary> {
+    // Uses memoryPrompt
+  }
+}
+```
+
+### Option: Reuse Compaction Summaries for Memory
+
+Instead of re-summarizing at session end, **reuse compaction summaries**:
+
+```typescript
+const memoryService = new MemoryService({
+  trigger: { type: "session_end" },
+  summarization: {
+    model: "gpt-4o-mini",
+    // Use existing compaction summaries instead of re-summarizing
+    reuseCompactionSummaries: true,
+    // Only summarize events after last compaction
+    summarizeRemainder: true,
+  },
+});
+```
+
+**Flow:**
+
+```
+Session with compaction enabled:
+├── Events 1-50    → Compaction Summary A (already created)
+├── Events 51-100  → Compaction Summary B (already created)
+├── Events 101-120 → (not yet compacted)
+└── Session ends:
+    Memory = Summary A + Summary B + summarize(Events 101-120)
+
+    No need to re-summarize events 1-100!
+```
+
+### Shared Configuration
+
+```typescript
+// Create a shared summarizer
+const summarizer = new UnifiedSummarizer({
+  model: "gpt-4o-mini",
+});
+
+const memoryService = new MemoryService({
+  summarization: { summarizer },
+  embedding: { provider: embeddingProvider },
+});
+
+const runner = new Runner({
+  appName: "my-app",
+  agent: myAgent,
+  sessionService,
+  memoryService,
+  // Compaction uses the same summarizer
+  eventsCompactionConfig: {
+    compactionInterval: 10,
+    overlapSize: 2,
+    summarizer: summarizer, // Same instance!
+  },
+});
+```
+
+### Benefits
+
+1. **Single LLM config** - One model for both features
+2. **Efficiency** - Don't re-summarize already compacted events
+3. **Consistent summaries** - Same style/format
+4. **Cost savings** - Fewer LLM calls
+
+### Implementation Tasks
+
+- [ ] Create `UnifiedSummarizer` that implements `EventsSummarizer`
+- [ ] Add `reuseCompactionSummaries` option to `SummarizationConfig`
+- [ ] Extract compaction summaries from session events at session end
+- [ ] Combine compaction summaries + remainder for memory creation
 
 ## Open Questions
 
