@@ -1,301 +1,125 @@
 # Proposal: Enhanced Memory System
 
-> **For Implementation**: This document contains all specifications needed. Start with the "Quick Implementation Checklist" below.
+> **For Implementation**: Start with the "Quick Implementation Checklist" below.
 
 ## Quick Implementation Checklist
 
 ### Immediate Tasks (Branch: `memory-improvements`)
 
-- [ ] **1. Remove duplicate code** - Already done: cleaned `memory-entry.ts`
-- [ ] **2. Delete `SharedMemoryRequestProcessor`**
+- [ ] **1. Delete `SharedMemoryRequestProcessor`**
   - Remove from `packages/adk/src/flows/llm-flows/single-flow.ts` (line 17, 36)
   - Delete `packages/adk/src/flows/llm-flows/shared-memory.ts`
-- [ ] **3. Create new types** in `packages/adk/src/memory/types.ts`:
-  - `MemoryServiceConfig`
-  - `MemoryTriggerConfig`
-  - `SummarizationConfig`
-  - `EmbeddingConfig`
-  - `EmbeddingProvider` interface
-  - `VectorStore` interface
-  - `SummaryProvider` interface
-  - `SessionSummary`
-  - `MemorySummary`
-- [ ] **4. Create `InMemoryVectorStore`** - cosine similarity search
-- [ ] **5. Create `MemoryService`** class with config support
-- [ ] **6. Create `SummaryProvider` interface** and implementations:
+- [ ] **2. Create new types** in `packages/adk/src/memory/types.ts`
+- [ ] **3. Create `InMemoryVectorStore`** - cosine similarity search
+- [ ] **4. Create `MemoryService`** class with config support
+- [ ] **5. Create SummaryProvider implementations**:
   - `LlmSummaryProvider` - summarizes via LLM
   - `CompactionSummaryProvider` - extracts from compaction events
   - `HybridSummaryProvider` - uses compaction + LLM for remainder
-- [ ] **7. Create `RecallMemoryTool`** - agent-initiated memory search
-- [ ] **8. Create `PreloadMemoryTool`** - optional auto-preload (injects into instructions)
-- [ ] **9. Create `OpenAIEmbedding`** provider
-- [ ] **10. Add `endSession()` to `BaseSessionService`** for trigger support
+- [ ] **6. Create `RecallMemoryTool`** - agent-initiated memory search
+- [ ] **7. Create `PreloadMemoryTool`** - optional auto-preload
+- [ ] **8. Create `OpenAIEmbedding`** provider
+- [ ] **9. Add `endSession()` to `BaseSessionService`**
 
-### Key Files to Modify/Create
+### Key Files
 
 ```
 packages/adk/src/memory/
-├── types.ts              (NEW - all interfaces)
-├── memory-service.ts     (NEW - main configurable service)
-├── base-memory-service.ts (keep, update interface)
-├── memory-entry.ts       (cleaned up)
-├── in-memory-memory-service.ts (deprecate)
-├── vertex-ai-rag-memory-service.ts (deprecate)
+├── types.ts                    (NEW - all interfaces)
+├── memory-service.ts           (NEW - main service)
 ├── summary-providers/
-│   ├── summary-provider.ts      (NEW - interface)
-│   ├── llm-summary-provider.ts  (NEW - LLM-based summarization)
-│   ├── compaction-summary-provider.ts (NEW - extracts from compaction events)
-│   └── hybrid-summary-provider.ts (NEW - compaction + LLM fallback)
+│   ├── llm-summary-provider.ts
+│   ├── compaction-summary-provider.ts
+│   └── hybrid-summary-provider.ts
 ├── vector-stores/
-│   └── in-memory-vector-store.ts (NEW)
+│   └── in-memory-vector-store.ts
 └── embeddings/
-    └── openai-embedding.ts (NEW)
+    └── openai-embedding.ts
 
 packages/adk/src/tools/common/
-├── recall-memory-tool.ts  (NEW or update load-memory-tool.ts)
-└── preload-memory-tool.ts (NEW)
+├── recall-memory-tool.ts
+└── preload-memory-tool.ts
 
 packages/adk/src/flows/llm-flows/
-├── single-flow.ts        (MODIFY - remove sharedMemoryRequestProcessor)
-└── shared-memory.ts      (DELETE)
+├── single-flow.ts              (MODIFY - remove sharedMemoryRequestProcessor)
+└── shared-memory.ts            (DELETE)
 ```
 
 ---
 
-## Overview
-
-This proposal outlines improvements to ADK-TS's memory system, inspired by OpenClaw's approach. The goal is to provide intelligent, configurable memory that summarizes sessions, embeds them for semantic search, and gives agents tools to recall relevant context across their lifetime.
-
 ## Problem Statement
 
-### Current Limitations
-
-1. **Naive Storage**: Stores raw events without summarization, leading to bloated memory
-2. **Keyword Matching**: Search relies on exact word matches - "what bird did we discuss" won't find "parrot" memories
-3. **No Semantic Understanding**: Can't find conceptually related memories
-4. **Wasteful Triggers**: `addSessionToMemory` is called after every single event
-5. **ADK-TS Deviation**: `SharedMemoryRequestProcessor` auto-injects memory on every request - this doesn't exist in Python ADK and should be removed
-
-### Example Failure
+1. **Naive Storage**: Stores raw events without summarization
+2. **Keyword Matching**: "what bird did we discuss" won't find "parrot" memories
+3. **Wasteful Triggers**: `addSessionToMemory` called after every event
+4. **ADK-TS Deviation**: `SharedMemoryRequestProcessor` auto-injects memory on every request (doesn't exist in Python ADK)
 
 ```
-Session 1: User discusses parrots, migration patterns, African Grey species
-Session 2: User asks "remind me about that flying animal we talked about"
+Session 1: User discusses parrots, African Grey species
+Session 2: User asks "remind me about that flying animal"
 
-Current system: ❌ No match (no word overlap)
-Proposed system: ✅ Finds parrot discussion via semantic similarity
+Current:  ❌ No match (no word overlap)
+Proposed: ✅ Finds via semantic similarity
 ```
 
-## Proposed Solution
-
-### Architecture
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Session Ends                             │
-│              (or trigger condition met)                     │
-└─────────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Summarizer (optional, configurable)                        │
-│  ─────────────────────────────────────────────────────────  │
-│  Input: Session events                                      │
-│  Output: MemorySummary {                                    │
-│    summary: "User discussed parrot care and migration...",  │
-│    topics: ["birds", "parrots", "pet care"],                │
-│    keyFacts: ["User owns an African Grey parrot"],          │
-│    timestamp, sessionId, userId, appName                    │
-│  }                                                          │
-└─────────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Embedding Provider (optional, pluggable)                   │
-│  ─────────────────────────────────────────────────────────  │
-│  - OpenAI, Cohere, Voyage, Ollama, custom                   │
-│  - Converts summary text → vector embedding                 │
-│  - Skipped if not configured (falls back to keyword search) │
-└─────────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Vector Store (pluggable)                                   │
-│  ─────────────────────────────────────────────────────────  │
-│  - InMemoryVectorStore (default, for dev/testing)           │
-│  - PineconeStore, QdrantStore, ChromaStore (production)     │
-│  - Stores: { id, embedding, metadata: MemorySummary }       │
-└─────────────────────────────────────────────────────────────┘
+Session Ends → Summarizer → Embedding Provider → Vector Store
+                   ↓               ↓                  ↓
+            MemorySummary    number[]         {id, embedding, metadata}
 
-                ... new session starts ...
-
-┌─────────────────────────────────────────────────────────────┐
-│  RecallMemoryTool (agent-initiated)                         │
-│  ─────────────────────────────────────────────────────────  │
-│  Agent calls: recall_memory({ query: "birds we discussed" })│
-│  1. Embed query                                             │
-│  2. Similarity search in vector store                       │
-│  3. Return top-K relevant memory summaries                  │
-└─────────────────────────────────────────────────────────────┘
+New Session → RecallMemoryTool → Embed query → Similarity search → Return top-K
 ```
 
 ## Interface Design
 
-### Configuration
-
 ```typescript
 interface MemoryServiceConfig {
-  /**
-   * When to process sessions into memory.
-   * Default: 'session_end'
-   */
   trigger?: MemoryTriggerConfig;
-
-  /**
-   * Summarization settings.
-   * If not provided, stores raw event text (current behavior).
-   */
-  summarization?: SummarizationConfig;
-
-  /**
-   * Embedding settings.
-   * If not provided, falls back to keyword-based search.
-   */
-  embedding?: EmbeddingConfig;
-
-  /**
-   * Vector store for persisting embeddings.
-   * Default: InMemoryVectorStore
-   */
+  summarization?: { provider: SummaryProvider };
+  embedding?: { provider: EmbeddingProvider; model?: string };
   vectorStore?: VectorStore;
-
-  /**
-   * Number of results to return from search.
-   * Default: 5
-   */
-  searchTopK?: number;
+  searchTopK?: number; // Default: 5
 }
 
 interface MemoryTriggerConfig {
-  /**
-   * When to trigger memory processing:
-   * - 'session_end': When session explicitly ends
-   * - 'inactivity': After period of no messages
-   * - 'message_count': After N messages in session
-   */
   type: "session_end" | "inactivity" | "message_count";
-
-  /** Milliseconds of inactivity before triggering (for 'inactivity' type) */
   inactivityMs?: number;
-
-  /** Number of messages before triggering (for 'message_count' type) */
   messageCount?: number;
 }
 
-interface SummarizationConfig {
-  /**
-   * Summary provider instance.
-   * Determines how summaries are generated.
-   */
-  provider: SummaryProvider;
-}
-
-/**
- * Interface for providing summaries from a session.
- * Implementations can generate summaries via LLM, extract from compaction events, or combine both.
- */
 interface SummaryProvider {
-  /**
-   * Get summaries for a session.
-   * May return multiple summaries (e.g., one per compaction window).
-   */
   getSummaries(session: Session): Promise<SessionSummary[]>;
 }
 
 interface SessionSummary {
-  /** Human-readable summary text */
   summary: string;
-
-  /** Key topics discussed */
   topics?: string[];
-
-  /** Important facts about the user */
   keyFacts?: string[];
-
-  /** Start of the summarized time range */
   startTimestamp?: string;
-
-  /** End of the summarized time range */
   endTimestamp?: string;
-
-  /** Number of events summarized */
   eventCount?: number;
 }
 
-interface EmbeddingConfig {
-  /** Embedding provider instance */
-  provider: EmbeddingProvider;
-
-  /** Model name (provider-specific) */
-  model?: string;
-}
-```
-
-### Pluggable Providers
-
-```typescript
-/**
- * Interface for embedding providers.
- * Implementations: OpenAIEmbedding, CohereEmbedding, OllamaEmbedding, etc.
- */
 interface EmbeddingProvider {
-  /**
-   * Generate embedding for a single text.
-   */
   embed(text: string): Promise<number[]>;
-
-  /**
-   * Generate embeddings for multiple texts (optional optimization).
-   */
   embedBatch?(texts: string[]): Promise<number[][]>;
-
-  /**
-   * Dimension of the embedding vectors.
-   */
   readonly dimensions: number;
 }
 
-/**
- * Interface for vector storage.
- * Implementations: InMemoryVectorStore, PineconeStore, QdrantStore, etc.
- */
 interface VectorStore {
-  /**
-   * Insert or update a memory embedding.
-   */
   upsert(
     id: string,
     embedding: number[],
     metadata: MemorySummary,
   ): Promise<void>;
-
-  /**
-   * Search for similar embeddings.
-   */
   search(
     embedding: number[],
     topK: number,
     filter?: VectorStoreFilter,
   ): Promise<VectorSearchResult[]>;
-
-  /**
-   * Delete a memory by ID.
-   */
   delete?(id: string): Promise<void>;
-
-  /**
-   * Delete all memories matching a filter.
-   */
   deleteMany?(filter: VectorStoreFilter): Promise<number>;
 }
 
@@ -303,236 +127,87 @@ interface VectorStoreFilter {
   userId?: string;
   appName?: string;
   sessionId?: string;
-  /** Filter by timestamp range */
   after?: string;
   before?: string;
 }
 
-interface VectorSearchResult {
-  id: string;
-  score: number;
-  metadata: MemorySummary;
-}
-```
-
-### Memory Data Types
-
-```typescript
-/**
- * Structured summary of a session stored in memory.
- */
 interface MemorySummary {
-  /** Unique identifier for this memory */
   id: string;
-
-  /** Session this memory was created from */
   sessionId: string;
-
-  /** User who owns this memory */
   userId: string;
-
-  /** Application name */
   appName: string;
-
-  /** Human-readable summary of what happened */
   summary: string;
-
-  /** Key topics discussed (for filtering/display) */
   topics?: string[];
-
-  /** Important facts to remember about the user */
   keyFacts?: string[];
-
-  /** When this memory was created */
   timestamp: string;
-
-  /** Optional: raw event count in original session */
   eventCount?: number;
-}
-
-/**
- * Result from memory search.
- */
-interface MemorySearchResult {
-  memory: MemorySummary;
-  /** Similarity score (0-1, higher is more similar) */
-  score: number;
 }
 ```
 
 ## Usage Examples
 
-### Basic Usage (Keyword Search Only)
+### Basic (Keyword Search)
 
 ```typescript
-// No config = current behavior (keyword matching)
-const runner = new Runner({
-  appName: "my-app",
-  agent: myAgent,
-  sessionService: new InMemorySessionService(),
-  memoryService: new MemoryService(),
-});
-```
-
-### With Summarization (No Embeddings)
-
-```typescript
-const runner = new Runner({
-  appName: "my-app",
-  agent: myAgent,
-  sessionService: new InMemorySessionService(),
-  memoryService: new MemoryService({
-    trigger: { type: "session_end" },
-    summarization: {
-      provider: new LlmSummaryProvider({ model: "gpt-4o-mini" }),
-    },
-  }),
-});
+new MemoryService(); // No config = current behavior
 ```
 
 ### Full Semantic Search
 
 ```typescript
-const runner = new Runner({
-  appName: "my-app",
-  agent: myAgent,
-  sessionService: new InMemorySessionService(),
-  memoryService: new MemoryService({
-    trigger: { type: "session_end" },
-    summarization: {
-      provider: new LlmSummaryProvider({
-        model: "gpt-4o-mini",
-        prompt: `Summarize this conversation. Focus on:
-          - What the user was trying to accomplish
-          - Key decisions or preferences expressed
-          - Any facts about the user worth remembering`,
-      }),
-    },
-    embedding: {
-      provider: new OpenAIEmbedding({
-        apiKey: process.env.OPENAI_API_KEY,
-      }),
-      model: "text-embedding-3-small",
-    },
-    searchTopK: 5,
-  }),
+new MemoryService({
+  trigger: { type: "session_end" },
+  summarization: {
+    provider: new LlmSummaryProvider({ model: "gpt-4o-mini" }),
+  },
+  embedding: {
+    provider: new OpenAIEmbedding({ apiKey: process.env.OPENAI_API_KEY }),
+  },
 });
 ```
 
 ### With Compaction Reuse (Recommended)
 
 ```typescript
-// Reuses compaction summaries + LLM for remaining events
-const runner = new Runner({
-  appName: "my-app",
-  agent: myAgent,
-  sessionService: new InMemorySessionService(),
-  memoryService: new MemoryService({
-    trigger: { type: "session_end" },
-    summarization: {
-      provider: new HybridSummaryProvider(
-        new CompactionSummaryProvider(),
-        new LlmSummaryProvider({ model: "gpt-4o-mini" }),
-      ),
-    },
-    embedding: {
-      provider: new OpenAIEmbedding({
-        apiKey: process.env.OPENAI_API_KEY,
-      }),
-    },
-  }),
-  // Enable compaction for HybridSummaryProvider to work
-  eventsCompactionConfig: {
-    compactionInterval: 10,
-    summarizer: new LlmEventSummarizer({ model: "gpt-4o-mini" }),
+new MemoryService({
+  trigger: { type: "session_end" },
+  summarization: {
+    provider: new HybridSummaryProvider(
+      new CompactionSummaryProvider(),
+      new LlmSummaryProvider({ model: "gpt-4o-mini" }),
+    ),
   },
-});
-```
-
-### Production Setup with Pinecone
-
-```typescript
-const runner = new Runner({
-  appName: "my-app",
-  agent: myAgent,
-  sessionService: new DatabaseSessionService(),
-  memoryService: new MemoryService({
-    trigger: { type: "session_end" },
-    summarization: {
-      provider: new LlmSummaryProvider({ model: "gemini-2.0-flash" }),
-    },
-    embedding: {
-      provider: new OpenAIEmbedding(),
-      model: "text-embedding-3-small",
-    },
-    vectorStore: new PineconeStore({
-      apiKey: process.env.PINECONE_API_KEY,
-      index: "agent-memories",
-      namespace: "production",
-    }),
-  }),
+  embedding: { provider: new OpenAIEmbedding() },
 });
 ```
 
 ## Agent Memory Tools
 
-Following Python ADK's approach, we provide **two explicit tools** for memory access. Both must be explicitly added to the agent - no auto-injection.
+Two explicit tools (both opt-in, must be added to agent):
 
-### Tool Options
+| Tool                | Behavior                                      |
+| ------------------- | --------------------------------------------- |
+| `RecallMemoryTool`  | Agent calls `recall_memory(query)` explicitly |
+| `PreloadMemoryTool` | Auto-searches, injects into **instructions**  |
 
-| Tool                | When to use                  | Behavior                                       |
-| ------------------- | ---------------------------- | ---------------------------------------------- |
-| `RecallMemoryTool`  | Agent decides when to recall | Agent calls `recall_memory(query)` explicitly  |
-| `PreloadMemoryTool` | Auto-load on every request   | Searches memory, injects into **instructions** |
-
-### Option 1: `RecallMemoryTool` (Recommended)
-
-Agent explicitly decides when to search memory. **This is the recommended approach.**
+### RecallMemoryTool (Recommended)
 
 ```typescript
 const agent = new AgentBuilder()
-  .withName("assistant")
-  .withModel("gpt-4o")
-  .withTools([
-    new RecallMemoryTool(), // Explicit - you see exactly what tools the agent has
-  ])
-  .withInstruction(
-    `
-    You are a helpful assistant with long-term memory.
-    Use the recall_memory tool when you need to remember past conversations
-    or user preferences.
-  `,
-  )
+  .withTools([new RecallMemoryTool()])
+  .withInstruction("Use recall_memory when you need past context.")
   .build();
 ```
-
-### Why Explicit?
-
-1. **Clarity** - Reading the code shows exactly what tools the agent has
-2. **No magic** - What you configure is what you get
-3. **Multi-agent control** - Easy to see which agents can access memory
-4. **Debuggable** - "Why is this agent recalling memories?" → check the tools list
-
-### Tool Definition
 
 ```typescript
 class RecallMemoryTool extends BaseTool {
   name = "recall_memory";
-  description =
-    "Search your memory for relevant past conversations and user information.";
-
+  description = "Search memory for past conversations.";
   parameters = {
     type: "object",
     properties: {
-      query: {
-        type: "string",
-        description:
-          "What to search for in memory (e.g., 'user preferences', 'previous project discussions')",
-      },
-      limit: {
-        type: "number",
-        description: "Maximum number of memories to return (default: 5)",
-      },
+      query: { type: "string", description: "What to search for" },
+      limit: { type: "number", description: "Max results (default: 5)" },
     },
     required: ["query"],
   };
@@ -543,43 +218,16 @@ class RecallMemoryTool extends BaseTool {
   ) {
     const results = await context.searchMemory(args.query, args.limit);
     return {
-      memories: results.map(r => ({
-        summary: r.memory.summary,
-        topics: r.memory.topics,
-        keyFacts: r.memory.keyFacts,
-        timestamp: r.memory.timestamp,
-        relevance: r.score,
-      })),
+      memories: results.map(r => ({ ...r.memory, relevance: r.score })),
     };
   }
 }
 ```
 
-### Option 2: `PreloadMemoryTool` (Auto-preload)
-
-For users who want automatic memory injection on every request. Unlike the removed `SharedMemoryRequestProcessor`, this is:
-
-- **Explicit** - You must add it to the agent's tools
-- **Clean injection** - Injects into instructions, not fake user messages
-
-```typescript
-const agent = new AgentBuilder()
-  .withName("assistant")
-  .withModel("gpt-4o")
-  .withTools([
-    new PreloadMemoryTool(), // Auto-preloads memory on every request
-  ])
-  .build();
-```
-
-**How it works:**
+### PreloadMemoryTool
 
 ```typescript
 class PreloadMemoryTool extends BaseTool {
-  name = "preload_memory";
-  description = "preload_memory"; // Not shown to model
-
-  // This runs automatically before each LLM request
   async processLlmRequest(toolContext: ToolContext, llmRequest: LlmRequest) {
     const userQuery = toolContext.userContent?.parts?.[0]?.text;
     if (!userQuery) return;
@@ -587,41 +235,104 @@ class PreloadMemoryTool extends BaseTool {
     const response = await toolContext.searchMemory(userQuery);
     if (!response.memories.length) return;
 
-    // Inject into INSTRUCTIONS (clean, not fake user messages)
-    const memoryText = response.memories
-      .map(m => `${m.author}: ${m.summary}`)
-      .join("\n");
-
     llmRequest.appendInstructions([
       `
-The following content is from your previous conversations with the user.
-They may be useful for answering the user's current query.
-<PAST_CONVERSATIONS>
-${memoryText}
-</PAST_CONVERSATIONS>
-`,
+      <PAST_CONVERSATIONS>
+      ${response.memories.map(m => m.summary).join("\n")}
+      </PAST_CONVERSATIONS>
+    `,
     ]);
   }
 }
 ```
 
-### Which Tool to Choose?
-
-| Scenario                               | Recommended Tool        |
-| -------------------------------------- | ----------------------- |
-| Agent should decide when to recall     | `RecallMemoryTool`      |
-| Always want context from past sessions | `PreloadMemoryTool`     |
-| Both behaviors                         | Add both tools          |
-| Maximum control                        | `RecallMemoryTool` only |
-
 ## Behavior Matrix
 
-| Summarization | Embedding | Behavior                                            |
-| ------------- | --------- | --------------------------------------------------- |
-| No            | No        | Current behavior: stores raw events, keyword search |
-| Yes           | No        | Summarizes sessions, keyword search on summaries    |
-| No            | Yes       | Embeds raw event text (not recommended)             |
-| Yes           | Yes       | Full semantic search on summaries                   |
+| Summarization | Embedding | Behavior                            |
+| ------------- | --------- | ----------------------------------- |
+| No            | No        | Current: raw events, keyword search |
+| Yes           | No        | Summarized, keyword search          |
+| Yes           | Yes       | Full semantic search (recommended)  |
+
+## SummaryProvider Implementations
+
+```typescript
+// LLM-based: Fresh summaries via LLM
+class LlmSummaryProvider implements SummaryProvider {
+  async getSummaries(session: Session): Promise<SessionSummary[]> {
+    const events = session.events.filter(e => e.content?.parts);
+    const response = await this.llm.generate({ prompt: formatEvents(events) });
+    return [parseSummaryResponse(response)];
+  }
+}
+
+// Compaction: Zero LLM cost - reuses existing compaction events
+class CompactionSummaryProvider implements SummaryProvider {
+  async getSummaries(session: Session): Promise<SessionSummary[]> {
+    return session.events
+      .filter(e => e.actions?.compaction)
+      .map(e => ({
+        summary: e.actions.compaction.compactedContent.parts[0].text,
+        startTimestamp: e.actions.compaction.startTimestamp,
+        endTimestamp: e.actions.compaction.endTimestamp,
+      }));
+  }
+}
+
+// Hybrid: Best of both - compaction where available, LLM for remainder
+class HybridSummaryProvider implements SummaryProvider {
+  constructor(
+    private compactionProvider: CompactionSummaryProvider,
+    private llmProvider: LlmSummaryProvider,
+  ) {}
+
+  async getSummaries(session: Session): Promise<SessionSummary[]> {
+    const compacted = await this.compactionProvider.getSummaries(session);
+    const lastCompactedTime = compacted.at(-1)?.endTimestamp;
+    const remaining = lastCompactedTime
+      ? session.events.filter(e => e.timestamp > lastCompactedTime)
+      : session.events;
+
+    if (remaining.length > 0) {
+      const remainder = await this.llmProvider.getSummaries({
+        ...session,
+        events: remaining,
+      });
+      return [...compacted, ...remainder];
+    }
+    return compacted;
+  }
+}
+```
+
+## Migration
+
+### Backward Compatibility
+
+```typescript
+new InMemoryMemoryService(); // Old
+new MemoryService(); // New - equivalent behavior
+```
+
+### Deprecations
+
+- `InMemoryMemoryService` → `new MemoryService()`
+- `VertexAiRagMemoryService` → `new MemoryService({ vectorStore: new VertexAIStore() })`
+- `SharedMemoryRequestProcessor` → **REMOVE** (use `PreloadMemoryTool` instead)
+
+### Why Remove `SharedMemoryRequestProcessor`
+
+**Current behavior** (problematic):
+
+- Runs on EVERY LLM request with no opt-out
+- Injects as fake user messages (pollutes context)
+- Doesn't exist in Python ADK
+
+**Replacement** (`PreloadMemoryTool`):
+
+- Explicit opt-in (add to agent's tools)
+- Injects into instructions, not contents
+- Aligns with Python ADK
 
 ## Default Summarization Prompt
 
@@ -632,724 +343,58 @@ Analyze this conversation and create a memory summary.
 {events}
 
 ## Instructions
-Create a JSON summary with:
-1. "summary": A 2-3 sentence summary of what happened
-2. "topics": Array of 3-5 key topics discussed
-3. "keyFacts": Array of important facts about the user (preferences, decisions, personal info they shared)
-
-Focus on information that would be useful to recall in future conversations.
-
-## Output
-Return only valid JSON:
+Return JSON with:
+1. "summary": 2-3 sentence summary
+2. "topics": 3-5 key topics
+3. "keyFacts": Important user preferences/decisions
 ```
-
-## Implementation Plan
-
-### Phase 1: Core Interfaces & Types
-
-- [ ] Define all TypeScript interfaces in `packages/adk/src/memory/types.ts`
-- [ ] Update `MemoryEntry` to support new `MemorySummary` structure
-- [ ] Create `EmbeddingProvider` interface
-- [ ] Create `VectorStore` interface
-
-### Phase 2: Default Implementations
-
-- [ ] `InMemoryVectorStore` - cosine similarity search for dev/testing
-- [ ] `SummaryProvider` interface and implementations:
-  - [ ] `LlmSummaryProvider` - LLM-based summarization
-  - [ ] `CompactionSummaryProvider` - extracts summaries from compaction events
-  - [ ] `HybridSummaryProvider` - uses compaction where available, LLM for remainder
-- [ ] Update `MemoryService` class with new config options
-
-### Phase 3: Embedding Providers
-
-- [ ] `OpenAIEmbedding` - text-embedding-3-small/large
-- [ ] `CohereEmbedding` - embed-english-v3.0
-- [ ] Document how to create custom providers
-
-### Phase 4: Production Vector Stores
-
-- [ ] `PineconeStore`
-- [ ] `QdrantStore`
-- [ ] `ChromaStore`
-
-### Phase 5: Tools & Integration
-
-- [ ] Update `RecallMemoryTool` for new memory format
-- [ ] **Remove `SharedMemoryRequestProcessor`** from `SingleFlow` (ADK-TS deviation)
-- [ ] **Delete `shared-memory.ts`** file
-- [ ] Add `PreloadMemoryTool` (optional, aligns with Python ADK)
-- [ ] Add memory lifecycle hooks (onMemoryCreated, onMemoryRecalled)
-- [ ] Update documentation with explicit tool usage examples
-
-## Migration Path
-
-### Backward Compatibility
-
-The new `MemoryService` with no config should behave identically to current `InMemoryMemoryService`:
-
-```typescript
-// These should be equivalent:
-new InMemoryMemoryService();
-new MemoryService(); // No config = keyword search on raw events
-```
-
-### Deprecation
-
-- `InMemoryMemoryService` → Deprecated, use `new MemoryService()`
-- `VertexAiRagMemoryService` → Deprecated, use `new MemoryService({ vectorStore: new VertexAIStore() })`
-- **`SharedMemoryRequestProcessor` → REMOVE (see below)**
-
-### Removing `SharedMemoryRequestProcessor`
-
-**This is an ADK-TS deviation that doesn't exist in Python ADK and should be removed.**
-
-#### What it currently does:
-
-```typescript
-// In flows/llm-flows/shared-memory.ts
-// Runs automatically in SingleFlow pipeline on EVERY LLM request
-class SharedMemoryRequestProcessor extends BaseLlmRequestProcessor {
-  async *runAsync(invocationContext, llmRequest) {
-    // 1. Takes user's last message as query
-    // 2. Searches memory
-    // 3. Auto-injects ALL matches into llmRequest.contents as fake user messages
-    llmRequest.contents.push({
-      role: "user",
-      parts: [{ text: `[${memory.author}] said: ${memoryText}` }],
-    });
-  }
-}
-```
-
-#### Why it's problematic:
-
-1. **Doesn't exist in Python ADK** - We added this, upstream doesn't have it
-2. **Always runs** - No opt-out, memory search happens on every request
-3. **Injects as fake user messages** - Pollutes conversation context
-4. **No control** - Agent can't decide when/what to recall
-5. **Redundant** - We also have `LoadMemoryTool` for explicit recall
-
-#### Python ADK's approach (what we should align with):
-
-Python ADK has **two explicit tools** (both opt-in):
-
-| Tool                | Purpose                  | How it works                                                                 |
-| ------------------- | ------------------------ | ---------------------------------------------------------------------------- |
-| `LoadMemoryTool`    | Agent-initiated recall   | Agent calls `load_memory(query)`                                             |
-| `PreloadMemoryTool` | Auto-preload per request | You add it to agent's tools, it injects into **instructions** (not contents) |
-
-```python
-# Python's PreloadMemoryTool - injects cleanly into instructions
-llm_request.append_instructions([f"""
-The following content is from your previous conversations with the user.
-<PAST_CONVERSATIONS>
-{memory_text}
-</PAST_CONVERSATIONS>
-"""])
-```
-
-#### Migration:
-
-1. **Remove** `SharedMemoryRequestProcessor` from `SingleFlow`
-2. **Remove** `shared-memory.ts` file
-3. **Add** `PreloadMemoryTool` (optional, explicit) that injects into instructions
-4. **Keep** `LoadMemoryTool` / `RecallMemoryTool` for agent-initiated recall
-
-Users who want auto-preload behavior can explicitly add `PreloadMemoryTool` to their agent.
-
-## Integration with Event Compaction
-
-Event compaction and memory summarization serve related purposes. The **SummaryProvider** pattern enables clean reuse of compaction work for memory creation.
-
-### Relationship
-
-| Feature                  | Purpose                 | When                                 | Output                      |
-| ------------------------ | ----------------------- | ------------------------------------ | --------------------------- |
-| **Event Compaction**     | Shrink session context  | During session (every N invocations) | Compaction event in session |
-| **Memory Summarization** | Store for future recall | End of session                       | Memory in vector store      |
-
-### The Problem with UnifiedSummarizer
-
-A naive approach would create a single class that:
-
-1. Implements `EventsSummarizer` for compaction
-2. Has a separate method for memory summarization
-
-```typescript
-// ❌ Bad: One class doing two different things
-class UnifiedSummarizer implements EventsSummarizer {
-  maybeSummarizeEvents(events): Promise<Event | undefined>; // For compaction
-  summarizeForMemory(events): Promise<MemorySummary>; // For memory
-}
-```
-
-**Problems:**
-
-- Violates single responsibility principle
-- Tight coupling between unrelated systems
-- `reuseCompactionSummaries` boolean is confusing
-- Hard to test and extend
-
-### The SummaryProvider Pattern
-
-Instead, we use **composition**: memory service asks for summaries without knowing the source.
-
-```typescript
-// ✅ Good: Clean interface - "give me summaries for this session"
-interface SummaryProvider {
-  getSummaries(session: Session): Promise<SessionSummary[]>;
-}
-```
-
-**Implementations:**
-
-```typescript
-/**
- * Generates fresh summaries via LLM.
- * Use when compaction is disabled or you want independent memory summaries.
- */
-class LlmSummaryProvider implements SummaryProvider {
-  constructor(
-    private config: {
-      model: string | BaseLlm;
-      prompt?: string;
-      maxTokens?: number;
-    },
-  ) {}
-
-  async getSummaries(session: Session): Promise<SessionSummary[]> {
-    const events = session.events.filter(e => e.content?.parts);
-    const response = await this.llm.generate({
-      prompt: this.config.prompt + formatEvents(events),
-    });
-    return [parseSummaryResponse(response)];
-  }
-}
-
-/**
- * Extracts summaries from existing compaction events.
- * Zero LLM cost - reuses work already done during the session.
- */
-class CompactionSummaryProvider implements SummaryProvider {
-  async getSummaries(session: Session): Promise<SessionSummary[]> {
-    const compactionEvents = session.events.filter(e => e.actions?.compaction);
-
-    return compactionEvents.map(e => ({
-      summary: e.actions.compaction.compactedContent.parts[0].text,
-      startTimestamp: e.actions.compaction.startTimestamp,
-      endTimestamp: e.actions.compaction.endTimestamp,
-    }));
-  }
-}
-
-/**
- * Best of both worlds: uses compaction where available, LLM for the rest.
- * Recommended when using both compaction and memory.
- */
-class HybridSummaryProvider implements SummaryProvider {
-  constructor(
-    private compactionProvider: CompactionSummaryProvider,
-    private llmProvider: LlmSummaryProvider,
-  ) {}
-
-  async getSummaries(session: Session): Promise<SessionSummary[]> {
-    // 1. Get summaries from compaction events (free!)
-    const compacted = await this.compactionProvider.getSummaries(session);
-
-    // 2. Find events not yet compacted
-    const lastCompactedTime = compacted.at(-1)?.endTimestamp;
-    const remainingEvents = lastCompactedTime
-      ? session.events.filter(e => e.timestamp > lastCompactedTime)
-      : session.events;
-
-    // 3. Summarize remainder via LLM (only if needed)
-    if (remainingEvents.length > 0) {
-      const remainder = await this.llmProvider.getSummaries({
-        ...session,
-        events: remainingEvents,
-      });
-      return [...compacted, ...remainder];
-    }
-
-    return compacted;
-  }
-}
-```
-
-### Usage Examples
-
-**Option 1: LLM Only (No Compaction)**
-
-```typescript
-const memoryService = new MemoryService({
-  trigger: { type: "session_end" },
-  summarization: {
-    provider: new LlmSummaryProvider({
-      model: "gpt-4o-mini",
-      prompt: "Summarize this conversation...",
-    }),
-  },
-  embedding: { provider: embeddingProvider },
-});
-```
-
-**Option 2: Compaction Only (Zero Extra LLM Cost)**
-
-```typescript
-// Memory summaries come entirely from compaction events
-const memoryService = new MemoryService({
-  trigger: { type: "session_end" },
-  summarization: {
-    provider: new CompactionSummaryProvider(),
-  },
-  embedding: { provider: embeddingProvider },
-});
-
-const runner = new Runner({
-  agent,
-  sessionService,
-  memoryService,
-  // Compaction must be enabled for this to work
-  eventsCompactionConfig: {
-    compactionInterval: 10,
-    summarizer: new LlmEventSummarizer({ model: "gpt-4o-mini" }),
-  },
-});
-```
-
-**Option 3: Hybrid (Recommended)**
-
-```typescript
-// Reuse compaction summaries + LLM for any remaining events
-const llmProvider = new LlmSummaryProvider({ model: "gpt-4o-mini" });
-
-const memoryService = new MemoryService({
-  trigger: { type: "session_end" },
-  summarization: {
-    provider: new HybridSummaryProvider(
-      new CompactionSummaryProvider(),
-      llmProvider,
-    ),
-  },
-  embedding: { provider: embeddingProvider },
-});
-```
-
-### How Hybrid Works
-
-```
-Session with compaction enabled:
-├── Events 1-50    → Compaction Event A (already created during session)
-├── Events 51-100  → Compaction Event B (already created during session)
-├── Events 101-120 → (not yet compacted)
-└── Session ends:
-    │
-    ├── CompactionSummaryProvider extracts: [Summary A, Summary B]
-    ├── HybridSummaryProvider sees 20 remaining events
-    ├── LlmSummaryProvider summarizes events 101-120 → Summary C
-    └── Memory stores: [Summary A, Summary B, Summary C]
-
-    Only 20 events sent to LLM instead of 120!
-```
-
-### Comparison: Old vs New
-
-| Aspect         | UnifiedSummarizer                | SummaryProvider                  |
-| -------------- | -------------------------------- | -------------------------------- |
-| Responsibility | Two methods, two purposes        | Single purpose per class         |
-| Configuration  | `reuseCompactionSummaries: true` | `new HybridSummaryProvider(...)` |
-| Extensibility  | Modify one class                 | Add new provider                 |
-| Testing        | Mock complex class               | Mock simple interface            |
-| Clarity        | Hidden behavior                  | Explicit composition             |
-
-### Benefits
-
-1. **Single Responsibility** - Each provider does one thing well
-2. **Composable** - Mix and match providers for different strategies
-3. **Testable** - Simple interface, easy to mock
-4. **Explicit** - Reading the code shows exactly what happens
-5. **Efficient** - HybridProvider avoids re-summarizing compacted events
-6. **Cost Savings** - Reuse LLM work from compaction
-
-### Implementation Tasks
-
-- [ ] Create `SummaryProvider` interface
-- [ ] Implement `LlmSummaryProvider`
-- [ ] Implement `CompactionSummaryProvider`
-- [ ] Implement `HybridSummaryProvider`
-- [ ] Update `MemoryService` to use `SummaryProvider`
-- [ ] Add tests for each provider
 
 ## Open Questions
 
-1. **Memory Expiration**: Should memories expire after a certain time? Should this be configurable?
+1. **Memory Expiration**: Should memories expire? Configurable TTL?
+2. **Consolidation**: Periodically merge old memories into higher-level summaries?
+3. **User Feedback**: "Forget that I said X" - allow correction/deletion?
+4. **Cross-App**: Share memories across apps for same user?
+5. **Size Limits**: Max memories per user? Eviction policy?
 
-2. **Memory Consolidation**: Should we periodically consolidate old memories into higher-level summaries?
-
-3. **User Feedback**: Should users be able to correct/delete memories? ("Forget that I said X")
-
-4. **Cross-App Memory**: Should memories be shareable across different apps for the same user?
-
-5. **Memory Size Limits**: Should we limit total memories per user? If so, which to evict?
-
-## Practical Example: Full Working Code
-
-This example demonstrates the complete flow - from setup, through a session about birds, to recalling that memory in a new session.
-
-### Step 1: Setup the Agent with Memory
+## Quick Example
 
 ```typescript
-import {
-  AgentBuilder,
-  Runner,
-  MemoryService,
-  InMemorySessionService,
-  RecallMemoryTool,
-  OpenAIEmbedding,
-  LlmSummaryProvider,
-} from "@iqai/adk";
-
-// Create the embedding provider
-const embeddingProvider = new OpenAIEmbedding({
-  apiKey: process.env.OPENAI_API_KEY,
-  model: "text-embedding-3-small",
-});
-
-// Create the memory service with full config
+// Setup
 const memoryService = new MemoryService({
   trigger: { type: "session_end" },
-  summarization: {
-    provider: new LlmSummaryProvider({
-      model: "gpt-4o-mini",
-      prompt: `Summarize this conversation for long-term memory.
-
-Focus on:
-- What topics were discussed
-- User preferences or opinions expressed
-- Any facts the user shared about themselves
-- Decisions or conclusions reached
-
-Return JSON: { "summary": "...", "topics": [...], "keyFacts": [...] }`,
-    }),
-  },
-  embedding: {
-    provider: embeddingProvider,
-  },
-  searchTopK: 3,
+  summarization: { provider: new LlmSummaryProvider({ model: "gpt-4o-mini" }) },
+  embedding: { provider: new OpenAIEmbedding() },
 });
 
-// Create an agent with explicit memory tool
 const agent = new AgentBuilder()
-  .withName("assistant")
-  .withModel("gpt-4o")
-  .withTools([new RecallMemoryTool()]) // Explicit - clear what tools the agent has
-  .withInstruction(
-    `
-    You are a helpful assistant with long-term memory.
-
-    When the user references past conversations or you need context from
-    previous sessions, use the recall_memory tool to search your memories.
-
-    Always acknowledge when you're recalling information from past conversations.
-  `,
-  )
+  .withTools([new RecallMemoryTool()])
+  .withInstruction("Use recall_memory for past context.")
   .build();
 
-// Create the runner
-const sessionService = new InMemorySessionService();
 const runner = new Runner({
-  appName: "bird-chat",
+  appName: "my-app",
   agent,
   sessionService,
   memoryService,
 });
-```
 
-### Step 2: First Session - Discussing Birds
-
-```typescript
-async function firstSession() {
-  // Create a new session
-  const session = await sessionService.createSession({
-    appName: "bird-chat",
-    userId: "user-123",
-  });
-
-  console.log("=== SESSION 1: Discussing Birds ===\n");
-
-  // User asks about parrots
-  const response1 = runner.runAsync({
-    userId: "user-123",
-    sessionId: session.id,
-    newMessage: {
-      role: "user",
-      parts: [
-        {
-          text: "I'm thinking about getting a pet parrot. What should I know?",
-        },
-      ],
-    },
-  });
-
-  for await (const event of response1) {
-    if (event.content?.parts?.[0]?.text) {
-      console.log("Assistant:", event.content.parts[0].text, "\n");
-    }
-  }
-
-  // User shares a preference
-  const response2 = runner.runAsync({
-    userId: "user-123",
-    sessionId: session.id,
-    newMessage: {
-      role: "user",
-      parts: [
-        {
-          text: "I really like African Grey parrots because they can talk. My apartment is small though.",
-        },
-      ],
-    },
-  });
-
-  for await (const event of response2) {
-    if (event.content?.parts?.[0]?.text) {
-      console.log("Assistant:", event.content.parts[0].text, "\n");
-    }
-  }
-
-  // End the session - this triggers memory summarization & embedding
-  await sessionService.endSession(session.id);
-
-  console.log("Session 1 ended. Memory has been created.\n");
-}
-```
-
-### Step 3: What Happens Behind the Scenes
-
-When the session ends, the memory service:
-
-```typescript
-// 1. Collects all events from the session
-const events = session.events;
-
-// 2. Sends to LLM for summarization
-const summaryResponse = await llm.generate({
-  prompt: summarizationPrompt + formatEvents(events),
-});
-
-// Result:
-const memorySummary = {
-  id: "mem_abc123",
-  sessionId: "session_xyz",
+// Session 1: User discusses parrots
+await runner.runAsync({
   userId: "user-123",
-  appName: "bird-chat",
-  summary:
-    "User is considering getting a pet parrot. They expressed interest in African Grey parrots specifically because of their talking ability. User mentioned they live in a small apartment, which may be a constraint for larger birds.",
-  topics: ["parrots", "pets", "African Grey", "apartment living"],
-  keyFacts: [
-    "User wants a pet parrot",
-    "User prefers African Grey parrots for their talking ability",
-    "User lives in a small apartment",
-  ],
-  timestamp: "2024-01-15T10:30:00Z",
-  eventCount: 4,
-};
-
-// 3. Generates embedding for the summary
-const embedding = await embeddingProvider.embed(
-  memorySummary.summary + " " + memorySummary.topics.join(" "),
-);
-// Result: [0.023, -0.041, 0.089, ...] (1536 dimensions)
-
-// 4. Stores in vector store
-await vectorStore.upsert(memorySummary.id, embedding, memorySummary);
-```
-
-### Step 4: New Session - Recalling the Memory
-
-```typescript
-async function secondSession() {
-  // Create a completely new session (days/weeks later)
-  const session = await sessionService.createSession({
-    appName: "bird-chat",
-    userId: "user-123",
-  });
-
-  console.log("=== SESSION 2: New Conversation ===\n");
-
-  // User asks about something related but doesn't mention "parrot"
-  const response = runner.runAsync({
-    userId: "user-123",
-    sessionId: session.id,
-    newMessage: {
-      role: "user",
-      parts: [
-        {
-          text: "Hey, remember that pet we talked about? Did you have any other suggestions for my small space?",
-        },
-      ],
-    },
-  });
-
-  for await (const event of response) {
-    if (event.content?.parts?.[0]?.text) {
-      console.log("Assistant:", event.content.parts[0].text, "\n");
-    }
-  }
-}
-```
-
-### Step 5: What the Agent Does
-
-The agent recognizes it needs past context and uses the recall tool:
-
-```typescript
-// Agent's internal reasoning:
-// "User is asking about a pet we discussed before. I should check my memory."
-
-// Agent calls the tool:
-const toolCall = {
-  name: "recall_memory",
-  args: {
-    query: "pet suggestions small space apartment",
+  sessionId: s1.id,
+  newMessage: {
+    role: "user",
+    parts: [{ text: "I love African Grey parrots!" }],
   },
-};
-
-// Memory service processes the search:
-// 1. Embed the query
-const queryEmbedding = await embeddingProvider.embed("pet suggestions small space apartment");
-
-// 2. Search vector store for similar memories
-const results = await vectorStore.search(queryEmbedding, topK: 3, {
-  userId: "user-123",
-  appName: "bird-chat",
 });
+await sessionService.endSession(s1.id); // Triggers memory creation
 
-// 3. Return to agent:
-const memories = [
-  {
-    summary: "User is considering getting a pet parrot. They expressed interest in African Grey parrots...",
-    topics: ["parrots", "pets", "African Grey", "apartment living"],
-    keyFacts: [
-      "User wants a pet parrot",
-      "User prefers African Grey parrots for their talking ability",
-      "User lives in a small apartment"
-    ],
-    timestamp: "2024-01-15T10:30:00Z",
-    relevance: 0.89,
-  }
-];
+// Session 2: Agent recalls via semantic search
+await runner.runAsync({
+  userId: "user-123",
+  sessionId: s2.id,
+  newMessage: { role: "user", parts: [{ text: "What bird did I like?" }] },
+});
+// Agent uses recall_memory → finds "African Grey parrots" via embedding similarity
 ```
-
-### Step 6: Agent's Response
-
-With the memory context, the agent can now respond intelligently:
-
-```
-Assistant: Yes, I remember! You were interested in getting an African Grey parrot
-because you love that they can talk. You mentioned your apartment is small, which
-is definitely something to consider.
-
-For a smaller space, you might want to look at:
-- Budgies (parakeets) - Much smaller, still can learn to talk
-- Cockatiels - Medium-sized, great personalities, apartment-friendly
-- Parrotlets - Tiny but feisty, nicknamed "pocket parrots"
-
-African Greys are wonderful but they do need significant space and can be quite
-loud. Would you like more details on any of these smaller alternatives?
-```
-
-### Complete Runnable Example
-
-```typescript
-import {
-  AgentBuilder,
-  Runner,
-  MemoryService,
-  InMemorySessionService,
-  RecallMemoryTool,
-  OpenAIEmbedding,
-  LlmSummaryProvider,
-} from "@iqai/adk";
-
-async function main() {
-  // === SETUP ===
-  const memoryService = new MemoryService({
-    trigger: { type: "session_end" },
-    summarization: {
-      provider: new LlmSummaryProvider({ model: "gpt-4o-mini" }),
-    },
-    embedding: {
-      provider: new OpenAIEmbedding({
-        apiKey: process.env.OPENAI_API_KEY,
-      }),
-    },
-  });
-
-  const agent = new AgentBuilder()
-    .withName("assistant")
-    .withModel("gpt-4o")
-    .withTools([new RecallMemoryTool()]) // Explicit tool addition
-    .withInstruction(
-      "You are a helpful assistant with long-term memory. Use recall_memory when you need context from past conversations.",
-    )
-    .build();
-
-  const sessionService = new InMemorySessionService();
-  const runner = new Runner({
-    appName: "my-app",
-    agent,
-    sessionService,
-    memoryService,
-  });
-
-  // === SESSION 1 ===
-  const session1 = await sessionService.createSession({
-    appName: "my-app",
-    userId: "user-123",
-  });
-
-  // Have a conversation about birds...
-  for await (const event of runner.runAsync({
-    userId: "user-123",
-    sessionId: session1.id,
-    newMessage: {
-      role: "user",
-      parts: [{ text: "I love African Grey parrots!" }],
-    },
-  })) {
-    console.log(event.content?.parts?.[0]?.text);
-  }
-
-  // End session - triggers memory creation
-  await sessionService.endSession(session1.id);
-
-  // === SESSION 2 (later) ===
-  const session2 = await sessionService.createSession({
-    appName: "my-app",
-    userId: "user-123",
-  });
-
-  // Ask about past conversation - agent will use recall_memory tool
-  for await (const event of runner.runAsync({
-    userId: "user-123",
-    sessionId: session2.id,
-    newMessage: {
-      role: "user",
-      parts: [{ text: "What bird did I say I liked?" }],
-    },
-  })) {
-    console.log(event.content?.parts?.[0]?.text);
-  }
-  // Output: "You mentioned that you love African Grey parrots!"
-}
-
-main();
-```
-
-## References
-
-- [OpenClaw Memory System](https://github.com/openclaw)
-- [LangChain Memory](https://python.langchain.com/docs/modules/memory/)
-- [MemGPT](https://memgpt.ai/) - Inspiration for hierarchical memory
