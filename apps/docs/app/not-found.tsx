@@ -36,7 +36,7 @@ const popularSections = [
 
 export default function NotFound() {
 	return (
-		<main className="flex flex-col flex-1 items-center justify-center px-6 py-24 bg-gradient-to-b from-background via-card/40 to-muted/40">
+		<main className="flex flex-col flex-1 items-center justify-center px-6 py-24 bg-linear-to-b from-background via-card/40 to-muted/40">
 			<div className="flex max-w-4xl flex-col items-center gap-8 text-center">
 				<LibrarianScene />
 			</div>

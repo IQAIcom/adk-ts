@@ -11,6 +11,7 @@ import type { BaseMemoryService } from "../memory/base-memory-service.js";
 import type { BaseLlm } from "../models/base-llm.js";
 import type { BasePlanner } from "../planners/base-planner.js";
 import { BasePlugin } from "../plugins/base-plugin.js";
+import { ModelFallbackPlugin } from "../plugins/model-fallback-plugin.js";
 import { Runner } from "../runners.js";
 import type { BaseSessionService } from "../sessions/base-session-service.js";
 import { InMemorySessionService } from "../sessions/in-memory-session-service.js";
@@ -60,6 +61,7 @@ export interface AgentBuilderConfig {
 	inputSchema?: ZodSchema;
 	outputSchema?: ZodSchema;
 	plugins?: BasePlugin[];
+	fallbackModels?: string[];
 }
 
 /**
@@ -139,14 +141,31 @@ export type AgentType =
 	| "langgraph";
 
 /**
- * AgentBuilder with typed output schema
+ * AgentBuilder with typed output schema using mapped types
+ * This automatically preserves all method signatures from AgentBuilder while ensuring proper type inference
  */
-export interface AgentBuilderWithSchema<T, M extends boolean = false>
-	extends Omit<AgentBuilder<any, any>, "build" | "ask" | "withOutputSchema"> {
-	build(): Promise<BuiltAgent<T, M>>;
-	buildWithSchema<U = T>(): Promise<BuiltAgent<U, M>>;
-	ask(message: string | FullMessage): Promise<RunnerAskReturn<T, M>>;
-}
+export type AgentBuilderWithSchema<T, M extends boolean = false> = {
+	[K in keyof AgentBuilder<any, any>]: K extends "withOutputSchema"
+		? AgentBuilder<any, any>[K] // Keep original signature for withOutputSchema
+		: AgentBuilder<any, any>[K] extends (
+					...args: any[]
+				) => AgentBuilder<any, any>
+			? (
+					...args: Parameters<AgentBuilder<any, any>[K]>
+				) => AgentBuilderWithSchema<T, M>
+			: K extends "build" | "buildWithSchema" | "ask"
+				? // Override these specific methods with proper return types
+					K extends "build"
+					? () => Promise<BuiltAgent<T, M>>
+					: K extends "buildWithSchema"
+						? <U = T>() => Promise<BuiltAgent<U, M>>
+						: K extends "ask"
+							? (
+									message: string | FullMessage,
+								) => Promise<RunnerAskReturn<T, M>>
+							: never
+				: AgentBuilder<any, any>[K]; // Keep other properties as-is
+};
 
 /**
  * Configuration for creating a Runner instance
@@ -460,6 +479,26 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	}
 
 	/**
+	 * Configure fallback models to use when the primary model hits rate limits.
+	 * Models will be tried in order when the primary model fails with a 429 error.
+	 *
+	 * @param models Fallback model names in priority order
+	 * @returns This builder instance for chaining
+	 * @example
+	 * ```typescript
+	 * const response = await AgentBuilder
+	 *   .withModel("gpt-4o")
+	 *   .withFallbackModels("gpt-3.5-turbo", "gemini-2.0-flash")
+	 *   .ask("Hello");
+	 * ```
+	 */
+	withFallbackModels(...models: string[]): this {
+		this.warnIfLocked("withFallbackModels");
+		this.config.fallbackModels = models;
+		return this;
+	}
+
+	/**
 	 * Convenience method to start building with an existing agent
 	 * @param agent The agent instance to wrap
 	 * @returns New AgentBuilder instance with agent set
@@ -713,6 +752,19 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @returns Built agent with optional runner and session
 	 */
 	async build<T = TOut>(): Promise<BuiltAgent<T, TMulti>> {
+		// Auto-register fallback plugin if fallback models are configured
+		if (this.config.fallbackModels && this.config.fallbackModels.length > 0) {
+			const hasFallbackPlugin = this.config.plugins?.some(
+				(p) => p.name === "model_fallback_plugin",
+			);
+			if (!hasFallbackPlugin) {
+				this.config.plugins = [
+					...(this.config.plugins || []),
+					new ModelFallbackPlugin(this.config.fallbackModels),
+				];
+			}
+		}
+
 		const agent = this.createAgent();
 		let runner: EnhancedRunner<T, any> | undefined;
 		let session: Session | undefined;

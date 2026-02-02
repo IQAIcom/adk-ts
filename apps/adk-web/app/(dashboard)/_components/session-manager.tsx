@@ -8,6 +8,7 @@ import { useAgentGraph } from "@/hooks/use-agent-graph";
 import { useEvents } from "@/hooks/use-events";
 import { useSessions } from "@/hooks/use-sessions";
 import { useTraces } from "@/hooks/use-traces";
+import { useState, useEffect } from "react";
 import type { Message, PanelId } from "../_schema";
 
 interface SessionManagerProps {
@@ -37,6 +38,10 @@ export function SessionManager({
 	onAgentSelect,
 	onSendMessage,
 }: SessionManagerProps) {
+	const [sessionCreatedAt, setSessionCreatedAt] = useState<
+		number | undefined
+	>();
+
 	const {
 		sessions,
 		isLoading: sessionsLoading,
@@ -59,9 +64,22 @@ export function SessionManager({
 		error: graphError,
 	} = useAgentGraph(selectedAgent);
 
+	// Track when current session was created
+	useEffect(() => {
+		if (sessionId && sessions.length > 0) {
+			const currentSession = sessions.find((s) => s.id === sessionId);
+			if (currentSession?.createdAt) {
+				setSessionCreatedAt(currentSession.createdAt * 1000); // Convert to milliseconds
+			}
+		} else {
+			setSessionCreatedAt(undefined);
+		}
+	}, [sessionId, sessions]);
+
 	const { tracesByTraceId, isLoading: tracesLoading } = useTraces(
 		selectedAgent,
 		sessionId,
+		sessionCreatedAt,
 	);
 
 	const handleCreateSession = async (

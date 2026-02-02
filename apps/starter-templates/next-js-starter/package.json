@@ -8,7 +8,7 @@
 		"start": "next start"
 	},
 	"dependencies": {
-		"@iqai/adk": "0.6.5",
+		"@iqai/adk": "0.6.6",
 		"@radix-ui/react-dialog": "^1.1.15",
 		"@radix-ui/react-slot": "^1.2.3",
 		"class-variance-authority": "^0.7.1",

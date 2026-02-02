@@ -69,13 +69,14 @@ main().catch(console.error);
 
 Basic agent setup and behavior:
 
-| Method                         | Type                                 | Description                      |
-| ------------------------------ | ------------------------------------ | -------------------------------- |
-| `create(name)`                 | `string`                             | Creates a named builder instance |
-| `withModel(model)`             | `string \| BaseLlm \| LanguageModel` | Sets the LLM model               |
-| `withDescription(description)` | `string`                             | Adds agent description           |
-| `withInstruction(instruction)` | `string \| InstructionProvider`      | Sets behavior instructions       |
-| `withAgent(agent)`             | `BaseAgent`                          | Wraps existing agent             |
+| Method                          | Type                                 | Description                                        |
+| ------------------------------- | ------------------------------------ | -------------------------------------------------- |
+| `create(name)`                  | `string`                             | Creates a named builder instance                   |
+| `withModel(model)`              | `string \| BaseLlm \| LanguageModel` | Sets the LLM model                                 |
+| `withDescription(description)`  | `string`                             | Adds agent description                             |
+| `withInstruction(instruction)`  | `string \| InstructionProvider`      | Sets behavior instructions                         |
+| `withAgent(agent)`              | `BaseAgent`                          | Wraps existing agent                               |
+| `withFallbackModels(...models)` | `string[]`                           | Configures fallback models for rate limit recovery |
 
 ### Input/Output Configuration
 
@@ -300,6 +301,32 @@ or `withTools()` are ignored. The existing agent's configuration is used
 as-is.
 
 </Callout>
+
+### withFallbackModels(...models)
+
+**Type:** `string[]` | **Default:** `[]`
+
+Configures fallback models to use when the primary model encounters rate limit errors (HTTP 429). When rate limited, the system first retries the current model up to 3 times with a 1-second delay between attempts. If retries are exhausted, it automatically switches to the next fallback model in the provided order for the current request only.
+
+This provides resilience against rate limits without requiring manual intervention, making your agents more reliable in production environments with varying API quotas.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("resilient_agent")
+  .withModel("gpt-4o")
+  .withFallbackModels("gpt-4o-mini", "gemini-2.0-flash")
+  .withInstruction("You are a helpful assistant")
+  .build();
+
+// If gpt-4o hits rate limits:
+// 1. Retries gpt-4o up to 3 times (1s delay each)
+// 2. Falls back to gpt-4o-mini (with same retry logic)
+// 3. Falls back to gemini-2.0-flash as last resort
+const response = await runner.ask("Hello!");
+```
+
+For advanced configuration (custom retry counts, delays), use the `ModelFallbackPlugin` directly. See [Model Fallback Plugin](/docs/framework/plugins/model-fallback-plugin) for details.
 
 ### withInputSchema(schema)
 
