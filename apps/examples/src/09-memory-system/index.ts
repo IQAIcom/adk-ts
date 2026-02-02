@@ -1,9 +1,5 @@
 import { ask } from "../utils";
-import {
-	createSharedServices,
-	getBasicAgent,
-	getMemoryAgent,
-} from "./agents/agent";
+import { getRootAgent } from "./agents/agent";
 
 /**
  * 09. Memory System
@@ -25,30 +21,25 @@ import {
 async function main() {
 	console.log("\n🧠 Memory System Example\n");
 
-	// Shared services persist memory across sessions
-	const { sessionService, memoryService } = createSharedServices();
+	const { runner, session, sessionService, memoryService } =
+		await getRootAgent();
 
 	// =============================================
 	// SESSION 1: Discuss parrots
 	// =============================================
-	console.log("📍 Session 1: Creating agent...");
-	const { runner: runner1, session: session1 } = await getBasicAgent(
-		sessionService,
-		memoryService,
-	);
-	console.log(`   Created session: ${session1.id}\n`);
+	console.log(`📍 Session 1: ${session.id}\n`);
 
 	await ask(
-		runner1,
+		runner,
 		"I love African Grey parrots! They can learn over 1000 words.",
 	);
 
-	// End session 1 - this triggers memory storage
+	// End session 1 - triggers memory storage
 	console.log("\n🔚 Ending Session 1 → triggers memory storage...");
 	const endedSession = await sessionService.endSession(
-		session1.appName,
-		session1.userId,
-		session1.id,
+		session.appName,
+		session.userId,
+		session.id,
 	);
 	if (endedSession) {
 		await memoryService.addSessionToMemory(endedSession);
@@ -59,19 +50,27 @@ async function main() {
 	// SESSION 2: Test semantic recall
 	// =============================================
 	console.log("═".repeat(50));
-	console.log("\n📍 Session 2: Creating NEW agent (same memory)...");
-	const { runner: runner2, session: session2 } = await getMemoryAgent(
-		sessionService,
-		memoryService,
+	const session2 = await sessionService.createSession(
+		session.appName,
+		session.userId,
 	);
-	console.log(`   Created session: ${session2.id}\n`);
+	console.log(`\n📍 Session 2: ${session2.id}`);
+	console.log('   (No word overlap with "African Grey parrot")\n');
 
-	console.log('   (Note: No word overlap with "African Grey parrot")\n');
-	await ask(runner2, "What flying animal did I mention that I liked?");
+	// Use runAsync with the new session
+	for await (const event of runner.runAsync({
+		userId: session2.userId,
+		sessionId: session2.id,
+		newMessage: {
+			parts: [{ text: "What flying animal did I mention that I liked?" }],
+		},
+	})) {
+		if (event.turnComplete && event.content?.parts?.[0]?.text) {
+			console.log(`🤖 Agent: ${event.content.parts[0].text}\n`);
+		}
+	}
 
-	console.log(
-		"\n✅ Done! Semantic search found 'parrots' from 'flying animal'.\n",
-	);
+	console.log("✅ Semantic search found 'parrots' from 'flying animal'.\n");
 }
 
 main().catch(console.error);

@@ -7,14 +7,7 @@ import {
 	RecallMemoryTool,
 } from "@iqai/adk";
 
-const model = process.env.LLM_MODEL || "gemini-2.5-flash";
-const appName = "memory-demo";
-const userId = "user-123";
-
-/**
- * Creates shared services for memory persistence across sessions
- */
-export function createSharedServices() {
+export async function getRootAgent() {
 	const sessionService = new InMemorySessionService();
 	const memoryService = new MemoryService({
 		trigger: { type: "session_end" },
@@ -29,36 +22,19 @@ export function createSharedServices() {
 		searchTopK: 3,
 	});
 
-	return { sessionService, memoryService };
-}
-
-/**
- * Creates a basic assistant agent (no memory recall)
- */
-export async function getBasicAgent(
-	sessionService: ReturnType<typeof createSharedServices>["sessionService"],
-	memoryService: ReturnType<typeof createSharedServices>["memoryService"],
-) {
-	return AgentBuilder.withModel(model)
-		.withInstruction("You are a helpful assistant.")
-		.withSessionService(sessionService, { appName, userId })
-		.withMemory(memoryService)
-		.build();
-}
-
-/**
- * Creates an assistant agent with memory recall capabilities
- */
-export async function getMemoryAgent(
-	sessionService: ReturnType<typeof createSharedServices>["sessionService"],
-	memoryService: ReturnType<typeof createSharedServices>["memoryService"],
-) {
-	return AgentBuilder.withModel(model)
+	const result = await AgentBuilder.withModel(
+		process.env.LLM_MODEL || "gemini-2.5-flash",
+	)
 		.withInstruction(
 			"You are a helpful assistant with memory. Use recall_memory to search past conversations when relevant.",
 		)
 		.withTools(new RecallMemoryTool())
-		.withSessionService(sessionService, { appName, userId })
+		.withSessionService(sessionService, {
+			appName: "memory-demo",
+			userId: "user-123",
+		})
 		.withMemory(memoryService)
 		.build();
+
+	return { ...result, memoryService };
 }
