@@ -167,10 +167,25 @@ new MemoryService({
 ### With Compaction Reuse (Recommended)
 
 ```typescript
+// Simple: config object with model
 new MemoryService({
   trigger: { type: "session_end" },
   summarization: {
     provider: new CompactionAwareSummaryProvider({ model: "gpt-4o-mini" }),
+  },
+  embedding: { provider: new OpenAIEmbedding() },
+});
+
+// Advanced: pass custom provider directly
+new MemoryService({
+  trigger: { type: "session_end" },
+  summarization: {
+    provider: new CompactionAwareSummaryProvider(
+      new LlmSummaryProvider({
+        model: "gemini-2.0-flash",
+        prompt: "Custom summarization prompt...",
+      }),
+    ),
   },
   embedding: { provider: new OpenAIEmbedding() },
 });
@@ -292,7 +307,19 @@ class LlmSummaryProvider implements SummaryProvider {
 // Compaction-aware: Reuses compaction events, LLM only for remainder
 // Use this when eventsCompactionConfig is enabled on the Runner
 class CompactionAwareSummaryProvider implements SummaryProvider {
-  constructor(private config: { model: string; prompt?: string }) {}
+  private provider: SummaryProvider;
+
+  // Simple: pass config with model
+  // Advanced: pass provider directly
+  constructor(
+    configOrProvider: SummaryProvider | { model: string; prompt?: string },
+  ) {
+    if ("getSummaries" in configOrProvider) {
+      this.provider = configOrProvider;
+    } else {
+      this.provider = new LlmSummaryProvider(configOrProvider);
+    }
+  }
 
   async getSummaries(session: Session): Promise<SessionSummary[]> {
     // 1. Extract summaries from compaction events (free - no LLM cost)
@@ -309,12 +336,13 @@ class CompactionAwareSummaryProvider implements SummaryProvider {
       ? session.events.filter(e => e.timestamp > lastCompactedTime)
       : session.events;
 
-    // 3. Summarize remainder via LLM (only if needed)
+    // 3. Summarize remainder via provider (only if needed)
     if (remaining.length > 0) {
-      const response = await this.llm.generate({
-        prompt: formatEvents(remaining),
+      const remainder = await this.provider.getSummaries({
+        ...session,
+        events: remaining,
       });
-      return [...compacted, parseSummaryResponse(response)];
+      return [...compacted, ...remainder];
     }
 
     return compacted;
