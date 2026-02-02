@@ -1,4 +1,4 @@
-import z from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import type { BaseAgent } from "../../agents/base-agent";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
@@ -65,7 +65,7 @@ class InstructionsLlmRequestProcessor extends BaseLlmRequestProcessor {
 		// Append schema guidance to system instruction if provided
 		if (agent.outputSchema) {
 			try {
-				const raw = z.toJSONSchema(agent.outputSchema);
+				const raw = zodToJsonSchema(agent.outputSchema);
 				const { $schema, ...json } = (raw as any) || {};
 				// Insert the schema as plain JSON (no markdown/code fences) so the model
 				// can directly emit valid JSON. Do NOT wrap the response in code fences.

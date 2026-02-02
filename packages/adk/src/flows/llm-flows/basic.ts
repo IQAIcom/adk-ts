@@ -1,4 +1,4 @@
-import * as z from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import type { InvocationContext } from "../../agents/invocation-context";
 import type { LlmAgent } from "../../agents/llm-agent";
 import type { Event } from "../../events/event";
@@ -56,7 +56,7 @@ class BasicLlmRequestProcessor extends BaseLlmRequestProcessor {
 			if (!hasTools && !hasTransfers) {
 				try {
 					// Convert Zod schema to JSON Schema for LLM compatibility
-					const jsonSchema = z.toJSONSchema(agent.outputSchema);
+					const jsonSchema = zodToJsonSchema(agent.outputSchema);
 					// Remove $schema field which is not needed for LLM response schemas
 					const { $schema, ...cleanSchema } = jsonSchema as any;
 					llmRequest.setOutputSchema(cleanSchema);

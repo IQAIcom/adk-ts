@@ -388,10 +388,10 @@ importers:
         version: 1.10.0
       '@google/genai':
         specifier: ^1.19.0
-        version: 1.34.0(@modelcontextprotocol/sdk@1.25.1(hono@4.11.3)(zod@4.2.1))
+        version: 1.34.0(@modelcontextprotocol/sdk@1.25.3(hono@4.11.3)(zod@3.25.76))
       '@modelcontextprotocol/sdk':
-        specifier: 1.25.1
-        version: 1.25.1(hono@4.11.3)(zod@4.2.1)
+        specifier: ^1.25.2
+        version: 1.25.3(hono@4.11.3)(zod@3.25.76)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -445,7 +445,7 @@ importers:
         version: 2.8.19
       ai:
         specifier: ^5.0.39
-        version: 5.0.117(zod@4.2.1)
+        version: 5.0.117(zod@3.25.76)
       axios:
         specifier: ^1.11.0
         version: 1.13.2(debug@4.4.3)
@@ -478,7 +478,7 @@ importers:
         version: 3.38.6
       openai:
         specifier: ^5.20.0
-        version: 5.23.2(ws@8.19.0)(zod@4.2.1)
+        version: 5.23.2(ws@8.19.0)(zod@3.25.76)
       socket.io:
         specifier: ^4.8.1
         version: 4.8.3
@@ -489,8 +489,11 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       zod:
-        specifier: ^4.1.5
-        version: 4.2.1
+        specifier: ^3.23.8
+        version: 3.25.76
+      zod-to-json-schema:
+        specifier: ^3.23.0
+        version: 3.25.1(zod@3.25.76)
     devDependencies:
       '@iqai/tsconfig':
         specifier: workspace:*
@@ -8835,6 +8838,13 @@ packages:
 
 snapshots:
 
+  '@ai-sdk/gateway@2.0.24(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.1
+      '@ai-sdk/provider-utils': 3.0.20(zod@3.25.76)
+      '@vercel/oidc': 3.0.5
+      zod: 3.25.76
+
   '@ai-sdk/gateway@2.0.24(zod@4.2.1)':
     dependencies:
       '@ai-sdk/provider': 2.0.1
@@ -8861,6 +8871,13 @@ snapshots:
       '@ai-sdk/provider': 2.0.1
       '@ai-sdk/provider-utils': 3.0.20(zod@4.2.1)
       zod: 4.2.1
+
+  '@ai-sdk/provider-utils@3.0.20(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.1
+      '@standard-schema/spec': 1.1.0
+      eventsource-parser: 3.0.6
+      zod: 3.25.76
 
   '@ai-sdk/provider-utils@3.0.20(zod@4.2.1)':
     dependencies:
@@ -9557,6 +9574,17 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@google/genai@1.34.0(@modelcontextprotocol/sdk@1.25.3(hono@4.11.3)(zod@3.25.76))':
+    dependencies:
+      google-auth-library: 10.5.0
+      ws: 8.19.0
+    optionalDependencies:
+      '@modelcontextprotocol/sdk': 1.25.3(hono@4.11.3)(zod@3.25.76)
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   '@grpc/grpc-js@1.14.3':
     dependencies:
       '@grpc/proto-loader': 0.8.0
@@ -10120,7 +10148,7 @@ snapshots:
 
   '@openrouter/sdk@0.1.27':
     dependencies:
-      zod: 4.3.5
+      zod: 3.25.76
 
   '@opentelemetry/api-logs@0.208.0':
     dependencies:
@@ -12763,6 +12791,14 @@ snapshots:
 
   agent-base@7.1.4: {}
 
+  ai@5.0.117(zod@3.25.76):
+    dependencies:
+      '@ai-sdk/gateway': 2.0.24(zod@3.25.76)
+      '@ai-sdk/provider': 2.0.1
+      '@ai-sdk/provider-utils': 3.0.20(zod@3.25.76)
+      '@opentelemetry/api': 1.9.0
+      zod: 3.25.76
+
   ai@5.0.117(zod@4.2.1):
     dependencies:
       '@ai-sdk/gateway': 2.0.24(zod@4.2.1)
@@ -14046,8 +14082,8 @@ snapshots:
       '@babel/parser': 7.28.5
       eslint: 9.39.2(jiti@2.6.1)
       hermes-parser: 0.25.1
-      zod: 4.3.5
-      zod-validation-error: 4.0.2(zod@4.3.5)
+      zod: 3.25.76
+      zod-validation-error: 4.0.2(zod@3.25.76)
     transitivePeerDependencies:
       - supports-color
 
@@ -16561,10 +16597,10 @@ snapshots:
       regex: 6.1.0
       regex-recursion: 6.0.2
 
-  openai@5.23.2(ws@8.19.0)(zod@4.2.1):
+  openai@5.23.2(ws@8.19.0)(zod@3.25.76):
     optionalDependencies:
       ws: 8.19.0
-      zod: 4.2.1
+      zod: 3.25.76
 
   openai@5.23.2(ws@8.19.0)(zod@4.3.5):
     optionalDependencies:
@@ -18874,9 +18910,9 @@ snapshots:
     dependencies:
       zod: 4.3.5
 
-  zod-validation-error@4.0.2(zod@4.3.5):
+  zod-validation-error@4.0.2(zod@3.25.76):
     dependencies:
-      zod: 4.3.5
+      zod: 3.25.76
 
   zod@3.25.76: {}
 
