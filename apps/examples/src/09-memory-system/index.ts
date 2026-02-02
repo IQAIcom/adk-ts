@@ -1,43 +1,32 @@
 import {
-	InMemorySessionService,
-	LlmAgent,
-	LlmSummaryProvider,
-	MemoryService,
-	OpenAIEmbedding,
-	RecallMemoryTool,
-	Runner,
-} from "@iqai/adk";
+	createBasicAgent,
+	createMemoryAgent,
+	createRunner,
+	createServices,
+} from "./agents/agent";
 
 /**
  * 09. Memory System
  *
- * Demonstrates semantic memory search:
+ * Demonstrates semantic memory search with embeddings:
  * 1. Create session with trigger: "session_end"
  * 2. User discusses "African Grey parrots"
- * 3. End session → triggers memory storage
+ * 3. End session → triggers memory storage with embeddings
  * 4. Create NEW session (same memory service)
  * 5. Ask about "flying animal" - agent recalls parrots via semantic search
+ *
+ * Key concepts:
+ * - MemoryService with semantic search via embeddings
+ * - LlmSummaryProvider for session summarization
+ * - OpenAIEmbedding for vector embeddings
+ * - RecallMemoryTool for explicit memory search
+ * - Session lifecycle with endSession() triggering memory storage
  */
 async function main() {
 	console.log("\n🧠 Memory System Example\n");
 
-	// Shared services
-	const sessionService = new InMemorySessionService();
-	const memoryService = new MemoryService({
-		trigger: { type: "session_end" },
-		summarization: {
-			provider: new LlmSummaryProvider({
-				model: process.env.LLM_MODEL || "openrouter/openai/gpt-4o-mini",
-			}),
-		},
-		embedding: {
-			provider: new OpenAIEmbedding({ model: "text-embedding-3-small" }),
-		},
-		searchTopK: 3,
-	});
-
-	const model = process.env.LLM_MODEL || "gemini-2.5-flash";
-	const appName = "memory-demo";
+	const services = createServices();
+	const { sessionService, memoryService, appName } = services;
 	const userId = "user-123";
 
 	// =============================================
@@ -47,20 +36,8 @@ async function main() {
 	const session1 = await sessionService.createSession(appName, userId);
 	console.log(`   Created session: ${session1.id}\n`);
 
-	// Build agent for session 1
-	const agent1 = new LlmAgent({
-		name: "assistant",
-		description: "A helpful assistant",
-		model,
-		instruction: "You are a helpful assistant.",
-	});
-
-	const runner1 = new Runner({
-		appName,
-		agent: agent1,
-		sessionService,
-		memoryService,
-	});
+	const agent1 = createBasicAgent();
+	const runner1 = createRunner(agent1, services);
 
 	console.log(
 		"👤 User: I love African Grey parrots! They can learn over 1000 words.\n",
@@ -107,22 +84,8 @@ async function main() {
 	const session2 = await sessionService.createSession(appName, userId);
 	console.log(`   Created session: ${session2.id}\n`);
 
-	// Build agent for session 2 with RecallMemoryTool
-	const agent2 = new LlmAgent({
-		name: "assistant_with_memory",
-		description: "A helpful assistant with memory recall capabilities",
-		model,
-		instruction:
-			"You are a helpful assistant with memory. Use recall_memory to search past conversations when relevant.",
-		tools: [new RecallMemoryTool()],
-	});
-
-	const runner2 = new Runner({
-		appName,
-		agent: agent2,
-		sessionService,
-		memoryService,
-	});
+	const agent2 = createMemoryAgent();
+	const runner2 = createRunner(agent2, services);
 
 	const question = "What flying animal did I mention that I liked?";
 	console.log(`👤 User: ${question}`);
