@@ -221,7 +221,8 @@ export class AgentScheduler {
 	}
 
 	/**
-	 * Trigger a job immediately (outside of schedule)
+	 * Trigger a job immediately (outside of schedule).
+	 * Collects all events and returns them once execution completes.
 	 */
 	async triggerNow(jobId: string): Promise<Event[]> {
 		const state = this.jobs.get(jobId);
@@ -242,88 +243,7 @@ export class AgentScheduler {
 			throw new Error(`Job '${jobId}' not found`);
 		}
 
-		const { config } = state;
-
-		// Check max executions
-		if (
-			config.maxExecutions !== undefined &&
-			state.executionCount >= config.maxExecutions
-		) {
-			this.logger.info(
-				`Job ${config.id} reached max executions (${config.maxExecutions})`,
-			);
-			this.pause(config.id);
-			return;
-		}
-
-		// Mark as running
-		state.isRunning = true;
-		state.lastRunTime = Date.now();
-
-		// Emit trigger event
-		config.onTrigger?.(config.id);
-		this.emitEvent({
-			type: "schedule:triggered",
-			scheduleId: config.id,
-			timestamp: Date.now(),
-		});
-
-		const events: Event[] = [];
-
-		try {
-			// Prepare input message
-			const inputMessage: Content =
-				typeof config.input === "string"
-					? { parts: [{ text: config.input }] }
-					: config.input;
-
-			// Stream events from the runner
-			for await (const event of config.runner.runAsync({
-				userId: config.userId,
-				sessionId: config.sessionId || `scheduled-${config.id}-${Date.now()}`,
-				newMessage: inputMessage,
-			})) {
-				events.push(event);
-				yield event;
-			}
-
-			// Mark as completed
-			state.isRunning = false;
-			state.executionCount++;
-			state.lastError = undefined;
-
-			// Emit completion
-			config.onComplete?.(config.id, events);
-			this.emitEvent({
-				type: "schedule:completed",
-				scheduleId: config.id,
-				timestamp: Date.now(),
-				data: { eventCount: events.length },
-			});
-
-			this.logger.info(`Job ${config.id} completed`, {
-				eventCount: events.length,
-				executionCount: state.executionCount,
-			});
-		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error));
-
-			// Mark as failed
-			state.isRunning = false;
-			state.lastError = err;
-
-			// Emit failure
-			config.onError?.(config.id, err);
-			this.emitEvent({
-				type: "schedule:failed",
-				scheduleId: config.id,
-				timestamp: Date.now(),
-				data: { error: err.message },
-			});
-
-			this.logger.error(`Job ${config.id} failed:`, err);
-			throw err;
-		}
+		yield* this.runJobCore(state);
 	}
 
 	/**
@@ -512,9 +432,24 @@ export class AgentScheduler {
 	}
 
 	/**
-	 * Execute a job
+	 * Execute a job and collect all events.
+	 * Thin wrapper around runJobCore that consumes the generator and calls onEvent.
 	 */
 	private async executeJob(state: JobState): Promise<Event[]> {
+		const events: Event[] = [];
+		for await (const event of this.runJobCore(state)) {
+			events.push(event);
+			state.config.onEvent?.(state.config.id, event);
+		}
+		return events;
+	}
+
+	/**
+	 * Core job execution logic as an async generator.
+	 * Handles all state management, guards, and lifecycle events.
+	 * Both executeJob and triggerNowStream delegate to this method.
+	 */
+	private async *runJobCore(state: JobState): AsyncGenerator<Event> {
 		const { config } = state;
 
 		// Skip if already running (prevent overlapping executions)
@@ -522,7 +457,7 @@ export class AgentScheduler {
 			this.logger.warn(
 				`Job ${config.id} skipped: previous execution still running`,
 			);
-			return [];
+			return;
 		}
 
 		// Check max executions
@@ -534,7 +469,7 @@ export class AgentScheduler {
 				`Job ${config.id} reached max executions (${config.maxExecutions})`,
 			);
 			this.pause(config.id);
-			return [];
+			return;
 		}
 
 		// Mark as running
@@ -558,14 +493,14 @@ export class AgentScheduler {
 					? { parts: [{ text: config.input }] }
 					: config.input;
 
-			// Execute the runner and stream events
+			// Stream events from the runner
 			for await (const event of config.runner.runAsync({
 				userId: config.userId,
 				sessionId: config.sessionId || `scheduled-${config.id}-${Date.now()}`,
 				newMessage: inputMessage,
 			})) {
 				events.push(event);
-				config.onEvent?.(config.id, event);
+				yield event;
 			}
 
 			// Mark as completed
@@ -586,8 +521,6 @@ export class AgentScheduler {
 				eventCount: events.length,
 				executionCount: state.executionCount,
 			});
-
-			return events;
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));
 
