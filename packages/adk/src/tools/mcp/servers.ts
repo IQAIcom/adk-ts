@@ -337,35 +337,6 @@ export function McpDiscord(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
- * MCP CoinGecko - Access cryptocurrency market data and analytics via remote endpoint
- *
- * Uses the public CoinGecko MCP API endpoint. No API key required for basic functionality.
- */
-export function McpCoinGecko(config: McpServerConfig = {}): McpToolset {
-	const mcpConfig = createMcpConfig(
-		"CoinGecko MCP Client",
-		"https://mcp.api.coingecko.com/mcp",
-		config,
-	);
-	return new McpToolset(mcpConfig);
-}
-
-/**
- * MCP CoinGecko Pro - Access premium cryptocurrency market data and analytics via remote endpoint
- *
- * Uses the professional CoinGecko MCP API endpoint with enhanced features and higher rate limits.
- * Requires a CoinGecko Pro API subscription.
- */
-export function McpCoinGeckoPro(config: McpServerConfig = {}): McpToolset {
-	const mcpConfig = createMcpConfig(
-		"CoinGecko Pro MCP Client",
-		"https://mcp.pro-api.coingecko.com/mcp",
-		config,
-	);
-	return new McpToolset(mcpConfig);
-}
-
-/**
  * MCP Upbit - Interact with the Upbit cryptocurrency exchange
  *
  * Public tools require no auth.
@@ -470,6 +441,61 @@ export function McpDefillama(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP DeBank – Interact with the DeBank platform via the MCP protocol.
+ *
+ * Authentication:
+ * The MCP supports two mutually exclusive access modes:
+ *
+ * 1. Direct DeBank API access
+ *    Required env vars:
+ *    - DEBANK_API_KEY: API key obtained from the DeBank platform.
+ *
+ * 2. Gateway-proxied access
+ *    Required env vars:
+ *    - IQ_GATEWAY_URL: Base URL of the gateway service.
+ *    - IQ_GATEWAY_KEY: Authentication key for the gateway.
+ *
+ * Note: If Both modes are provided, the Gateway-proxied access will be used.
+ */
+export function McpDebank(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Debank MCP Client",
+		"@iqai/mcp-debank",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP CoinGecko - Access cryptocurrency market data and analytics via remote endpoint
+ *
+ * Uses the public CoinGecko MCP API endpoint. No API key required for basic functionality.
+ */
+export function McpCoinGecko(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"CoinGecko MCP Client",
+		"https://mcp.api.coingecko.com/mcp",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP CoinGecko Pro - Access premium cryptocurrency market data and analytics via remote endpoint
+ *
+ * Uses the professional CoinGecko MCP API endpoint with enhanced features and higher rate limits.
+ * Requires a CoinGecko Pro API subscription.
+ */
+export function McpCoinGeckoPro(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"CoinGecko Pro MCP Client",
+		"https://mcp.pro-api.coingecko.com/mcp",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * Popular third-party MCP servers
  * These can be added as we expand support for community MCP servers
  */
@@ -497,81 +523,6 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Memory MCP Client",
 		"@modelcontextprotocol/server-memory",
-		config,
-	);
-	return new McpToolset(mcpConfig);
-}
-
-/**
- * MCP GitHub - GitHub's official MCP server for repository operations, issues, pull requests, and more
- *
- * Uses the remote GitHub MCP server hosted at api.githubcopilot.com.
- *
- * Required env vars:
- * - GITHUB_PERSONAL_ACCESS_TOKEN: A GitHub Personal Access Token with appropriate permissions
- *
- * Optional env vars:
- * - GITHUB_TOOLSETS: Comma-separated list of enabled tool groups (repos, issues, pull_requests, actions, code_security)
- *
- * Features include:
- * - Repository management (browse, query code, search files, analyze commits)
- * - Issue & PR automation (create, update, manage, triage)
- * - CI/CD & workflow intelligence (monitor Actions, analyze builds, manage releases)
- * - Code analysis (security findings, Dependabot alerts)
- */
-export function McpGitHub(config: McpServerConfig = {}): McpToolset {
-	const mcpConfig = createMcpConfig(
-		"GitHub MCP Client",
-		"https://api.githubcopilot.com/mcp/",
-		config,
-	);
-	return new McpToolset(mcpConfig);
-}
-
-/**
- * MCP Notion - Official Notion MCP server for workspace operations
- *
- * Required env vars:
- * - NOTION_TOKEN: Integration secret token (starts with ntn_)
- *
- * Features include:
- * - Data source operations (query, retrieve, update, create)
- * - Page management (create, retrieve, update, move)
- * - Database interactions
- * - Comment functionality
- * - Search capabilities
- * - Markdown-based page editing
- */
-export function McpNotion(config: McpServerConfig = {}): McpToolset {
-	const mcpConfig = createMcpConfig(
-		"Notion MCP Client",
-		"@notionhq/notion-mcp-server",
-		config,
-	);
-	return new McpToolset(mcpConfig);
-}
-
-/**
- * MCP DeBank – Interact with the DeBank platform via the MCP protocol.
- *
- * Authentication:
- * The MCP supports two mutually exclusive access modes:
- *
- * 1. Direct DeBank API access
- *    Required env vars:
- *    - DEBANK_API_KEY: API key obtained from the DeBank platform.
- *
- * 2. Gateway-proxied access
- *    Required env vars:
- *    - IQ_GATEWAY_URL: Base URL of the gateway service.
- *    - IQ_GATEWAY_KEY: Authentication key for the gateway.
- *
- * Note: If Both modes are provided, the Gateway-proxied access will be used.
- */
-export function McpDebank(config: McpServerConfig = {}): McpToolset {
-	const mcpConfig = createMcpConfig(
-		"Debank MCP Client",
-		"@iqai/mcp-debank",
 		config,
 	);
 	return new McpToolset(mcpConfig);
