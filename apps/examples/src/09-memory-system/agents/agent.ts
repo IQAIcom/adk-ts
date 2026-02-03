@@ -1,24 +1,29 @@
 import {
 	AgentBuilder,
+	CompactionAwareSummaryProvider,
 	InMemorySessionService,
-	LlmSummaryProvider,
+	InMemoryVectorStore,
 	MemoryService,
-	OpenAIEmbedding,
+	OpenRouterEmbedding,
 	RecallMemoryTool,
 } from "@iqai/adk";
 
 export async function getRootAgent() {
 	const sessionService = new InMemorySessionService();
 	const memoryService = new MemoryService({
-		trigger: { type: "session_end" },
 		summarization: {
-			provider: new LlmSummaryProvider({
+			// CompactionAwareSummaryProvider auto-detects compaction summaries
+			// and reuses them - zero extra LLM cost for compacted content
+			provider: new CompactionAwareSummaryProvider({
 				model: process.env.LLM_MODEL || "openrouter/openai/gpt-4o-mini",
 			}),
 		},
 		embedding: {
-			provider: new OpenAIEmbedding({ model: "text-embedding-3-small" }),
+			provider: new OpenRouterEmbedding({
+				model: "openai/text-embedding-3-small",
+			}),
 		},
+		vectorStore: new InMemoryVectorStore(),
 		searchTopK: 3,
 	});
 

@@ -7,8 +7,6 @@ export type {
 	EmbeddingProvider,
 	MemoryServiceConfig,
 	MemorySummary,
-	MemoryTriggerConfig,
-	MemoryTriggerType,
 	SessionSummary,
 	SummaryProvider,
 	VectorSearchResult,

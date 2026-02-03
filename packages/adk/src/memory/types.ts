@@ -1,35 +1,6 @@
 import type { Session } from "../sessions/session";
 
 /**
- * Types of triggers that can initiate memory storage
- */
-export type MemoryTriggerType =
-	| "session_end"
-	| "inactivity"
-	| "message_count"
-	| "compaction";
-
-/**
- * Configuration for memory storage triggers
- */
-export interface MemoryTriggerConfig {
-	/**
-	 * The type of trigger that initiates memory storage
-	 */
-	type: MemoryTriggerType;
-
-	/**
-	 * Inactivity timeout in milliseconds (only for "inactivity" trigger)
-	 */
-	inactivityMs?: number;
-
-	/**
-	 * Number of messages before triggering (only for "message_count" trigger)
-	 */
-	messageCount?: number;
-}
-
-/**
  * Summary of a session for memory storage
  */
 export interface SessionSummary {
@@ -248,11 +219,6 @@ export interface VectorStore {
  */
 export interface MemoryServiceConfig {
 	/**
-	 * Trigger configuration for when to store memories
-	 */
-	trigger?: MemoryTriggerConfig;
-
-	/**
 	 * Summarization provider configuration
 	 */
 	summarization?: {
@@ -264,7 +230,6 @@ export interface MemoryServiceConfig {
 	 */
 	embedding?: {
 		provider: EmbeddingProvider;
-		model?: string;
 	};
 
 	/**
