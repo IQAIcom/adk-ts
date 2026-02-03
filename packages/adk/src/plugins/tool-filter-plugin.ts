@@ -76,8 +76,23 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 			return undefined;
 		}
 
+		// Check if result is JSON-serializable and filterable
+		if (!this.isFilterable(result)) {
+			this.log(
+				`Skipping filtering for ${tool.name}: output is not filterable (non-JSON or primitive)`,
+			);
+			return undefined;
+		}
+
 		// Extract schema and check if filtering is needed
 		const analysis = this.analyzeResponse(result);
+		if (!analysis) {
+			this.log(
+				`Skipping filtering for ${tool.name}: failed to analyze response`,
+			);
+			return undefined;
+		}
+
 		if (!this.needsFiltering(analysis)) {
 			this.log("Response within threshold, skipping filter");
 			return undefined;
@@ -147,14 +162,51 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 		return true;
 	}
 
-	private analyzeResponse(result: any): SchemaExtractionResult {
-		const resultStr = JSON.stringify(result);
-		return {
-			schema: this.extractSchema(result, 0),
-			preview: resultStr.substring(0, 1000),
-			size: resultStr.length,
-			keyCount: this.countKeys(result, 0),
-		};
+	/**
+	 * Check if the result is filterable (JSON-serializable and complex enough)
+	 */
+	private isFilterable(result: any): boolean {
+		// Null or undefined - not filterable
+		if (result == null) {
+			return false;
+		}
+
+		// Primitive types - not worth filtering
+		if (
+			typeof result === "string" ||
+			typeof result === "number" ||
+			typeof result === "boolean"
+		) {
+			return false;
+		}
+
+		// Check if JSON-serializable (handles circular references, etc.)
+		try {
+			JSON.stringify(result);
+			return true;
+		} catch (error) {
+			this.log(
+				`Result is not JSON-serializable: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			return false;
+		}
+	}
+
+	private analyzeResponse(result: any): SchemaExtractionResult | null {
+		try {
+			const resultStr = JSON.stringify(result);
+			return {
+				schema: this.extractSchema(result, 0),
+				preview: resultStr.substring(0, 1000),
+				size: resultStr.length,
+				keyCount: this.countKeys(result, 0),
+			};
+		} catch (error) {
+			this.log(
+				`Failed to analyze response: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			return null;
+		}
 	}
 
 	private needsFiltering(analysis: SchemaExtractionResult): boolean {
@@ -278,12 +330,21 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 			// Apply filter
 			const filteredData = await this.applyJqFilter(jqFilter, currentData);
 
-			if (!filteredData) {
+			if (filteredData === null) {
 				this.log(`JQ filter failed on iteration ${iteration}`);
 				break;
 			}
 
-			const newSize = JSON.stringify(filteredData).length;
+			// Ensure filtered data is still JSON-serializable
+			let newSize: number;
+			try {
+				newSize = JSON.stringify(filteredData).length;
+			} catch (_error) {
+				this.log(
+					`Filtered data became non-serializable on iteration ${iteration}`,
+				);
+				break;
+			}
 
 			// Check for progress
 			if (newSize >= currentSize) {
@@ -374,7 +435,9 @@ export class ToolOutputFilterPlugin extends BasePlugin {
 
 			return this.extractJqCommand(responseText);
 		} catch (error) {
-			this.log(`Filter model error: ${error}`);
+			this.log(
+				`Filter model error: ${error instanceof Error ? error.message : String(error)}`,
+			);
 			return null;
 		}
 	}
@@ -502,7 +565,17 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 		}
 
 		return new Promise((resolve) => {
-			const input = JSON.stringify(data);
+			let input: string;
+			try {
+				input = JSON.stringify(data);
+			} catch (error) {
+				this.log(
+					`Failed to stringify data for jq: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				resolve(null);
+				return;
+			}
+
 			// Use spawn to avoid command injection vulnerabilities.
 			const jqProcess = spawn("jq", ["-c", jqFilter], {
 				timeout: 10000,
@@ -532,6 +605,7 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 
 				const trimmedOutput = stdoutData.trim();
 				if (!trimmedOutput) {
+					this.log("JQ produced empty output");
 					resolve(null);
 					return;
 				}
@@ -550,7 +624,9 @@ Generate a MORE AGGRESSIVE jq filter. Consider:
 						resolve(results);
 					}
 				} catch (parseError: any) {
-					this.log(`JQ output JSON parse error: ${parseError.message}`);
+					this.log(
+						`JQ output JSON parse error: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+					);
 					resolve(null);
 				}
 			});
