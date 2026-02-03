@@ -455,6 +455,9 @@ importers:
       cors:
         specifier: ^2.8.5
         version: 2.8.5
+      croner:
+        specifier: ^10.0.1
+        version: 10.0.1
       dedent:
         specifier: ^1.7.0
         version: 1.7.1
@@ -4428,6 +4431,10 @@ packages:
 
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
+
+  croner@10.0.1:
+    resolution: {integrity: sha512-ixNtAJndqh173VQ4KodSdJEI6nuioBWI0V1ITNKhZZsO0pEMoDxz539T4FTTbSZ/xIOSuDnzxLVRqBVSvPNE2g==}
+    engines: {node: '>=18.0'}
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -13319,6 +13326,8 @@ snapshots:
     optional: true
 
   create-require@1.1.1: {}
+
+  croner@10.0.1: {}
 
   cross-spawn@7.0.6:
     dependencies:

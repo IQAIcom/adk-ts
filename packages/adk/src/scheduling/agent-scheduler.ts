@@ -1,6 +1,7 @@
 import type { Event } from "@adk/events";
 import { Logger } from "@adk/logger";
 import type { Content } from "@google/genai";
+import { Cron } from "croner";
 import type { EnhancedRunner } from "../agents/agent-builder";
 
 /**
@@ -58,6 +59,7 @@ export interface ScheduledJob {
 interface JobState {
 	config: ScheduledJob;
 	timerId?: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>;
+	cronJob?: Cron;
 	executionCount: number;
 	isRunning: boolean;
 	lastRunTime?: number;
@@ -119,6 +121,22 @@ export class AgentScheduler {
 			throw new Error("Either 'cron' or 'intervalMs' must be provided");
 		}
 
+		// Validate cron expression early
+		if (config.cron) {
+			try {
+				const testCron = new Cron(config.cron, { paused: true });
+				const nextDate = testCron.nextRun();
+				if (!nextDate) {
+					throw new Error("Cron expression has no upcoming runs");
+				}
+				testCron.stop();
+			} catch (err) {
+				throw new Error(
+					`Invalid cron expression '${config.cron}': ${err instanceof Error ? err.message : String(err)}`,
+				);
+			}
+		}
+
 		const state: JobState = {
 			config: { ...config, enabled: config.enabled ?? true },
 			executionCount: 0,
@@ -126,7 +144,9 @@ export class AgentScheduler {
 		};
 
 		if (config.cron) {
-			state.nextRunTime = this.calculateNextRunTime(config.cron);
+			const cron = new Cron(config.cron, { paused: true });
+			state.nextRunTime = cron.nextRun()?.getTime();
+			cron.stop();
 		}
 
 		this.jobs.set(config.id, state);
@@ -376,7 +396,7 @@ export class AgentScheduler {
 			this.stopJob(jobId);
 		}
 
-		// Wait for any running executions to complete
+		// Wait for any running executions to complete (with 30s timeout)
 		const runningJobs = Array.from(this.jobs.values()).filter(
 			(s) => s.isRunning,
 		);
@@ -384,13 +404,22 @@ export class AgentScheduler {
 			this.logger.info(
 				`Waiting for ${runningJobs.length} running jobs to complete...`,
 			);
+			const STOP_TIMEOUT_MS = 30_000;
 			await new Promise<void>((resolve) => {
+				const timeout = setTimeout(() => {
+					clearInterval(checkInterval);
+					this.logger.warn(
+						`Stop timed out after ${STOP_TIMEOUT_MS}ms with jobs still running`,
+					);
+					resolve();
+				}, STOP_TIMEOUT_MS);
 				const checkInterval = setInterval(() => {
 					const stillRunning = Array.from(this.jobs.values()).filter(
 						(s) => s.isRunning,
 					);
 					if (stillRunning.length === 0) {
 						clearInterval(checkInterval);
+						clearTimeout(timeout);
 						resolve();
 					}
 				}, 100);
@@ -422,7 +451,7 @@ export class AgentScheduler {
 	 */
 	private startJob(jobId: string): void {
 		const state = this.jobs.get(jobId);
-		if (!state || state.timerId) {
+		if (!state || state.timerId || state.cronJob) {
 			return;
 		}
 
@@ -439,47 +468,26 @@ export class AgentScheduler {
 				`Job ${jobId} started with interval: ${config.intervalMs}ms`,
 			);
 		} else if (config.cron) {
-			// Cron-based scheduling - use timeout to next run
-			this.scheduleNextCronRun(state);
-		}
-	}
+			// Cron-based scheduling via croner
+			state.cronJob = new Cron(config.cron, async () => {
+				try {
+					await this.executeJob(state);
+				} catch (err) {
+					this.logger.error(`Error executing job ${jobId}:`, err);
+				}
 
-	/**
-	 * Schedule the next cron run
-	 */
-	private scheduleNextCronRun(state: JobState): void {
-		if (!state.config.cron || !state.config.enabled) {
-			return;
-		}
-
-		const nextRunTime = this.calculateNextRunTime(state.config.cron);
-		const delay = nextRunTime - Date.now();
-
-		if (delay < 0) {
-			// Run immediately if we're past the scheduled time
-			this.executeJob(state).catch((err) => {
-				this.logger.error(`Error executing job ${state.config.id}:`, err);
+				// Update next run time
+				const nextRun = state.cronJob?.nextRun();
+				state.nextRunTime = nextRun?.getTime();
 			});
-			return;
+
+			const nextRun = state.cronJob.nextRun();
+			state.nextRunTime = nextRun?.getTime();
+
+			this.logger.debug(
+				`Job ${jobId} started with cron: ${config.cron}${nextRun ? `, next run: ${nextRun.toISOString()}` : ""}`,
+			);
 		}
-
-		state.nextRunTime = nextRunTime;
-		state.timerId = setTimeout(async () => {
-			try {
-				await this.executeJob(state);
-			} catch (err) {
-				this.logger.error(`Error executing job ${state.config.id}:`, err);
-			}
-
-			// Schedule next run
-			if (this.isRunning && state.config.enabled) {
-				this.scheduleNextCronRun(state);
-			}
-		}, delay);
-
-		this.logger.debug(
-			`Job ${state.config.id} scheduled for ${new Date(nextRunTime).toISOString()}`,
-		);
 	}
 
 	/**
@@ -487,13 +495,20 @@ export class AgentScheduler {
 	 */
 	private stopJob(jobId: string): void {
 		const state = this.jobs.get(jobId);
-		if (!state || !state.timerId) {
+		if (!state) {
 			return;
 		}
 
-		clearTimeout(state.timerId);
-		clearInterval(state.timerId);
-		state.timerId = undefined;
+		if (state.timerId) {
+			clearTimeout(state.timerId);
+			clearInterval(state.timerId);
+			state.timerId = undefined;
+		}
+
+		if (state.cronJob) {
+			state.cronJob.stop();
+			state.cronJob = undefined;
+		}
 	}
 
 	/**
@@ -501,6 +516,14 @@ export class AgentScheduler {
 	 */
 	private async executeJob(state: JobState): Promise<Event[]> {
 		const { config } = state;
+
+		// Skip if already running (prevent overlapping executions)
+		if (state.isRunning) {
+			this.logger.warn(
+				`Job ${config.id} skipped: previous execution still running`,
+			);
+			return [];
+		}
 
 		// Check max executions
 		if (
@@ -584,72 +607,6 @@ export class AgentScheduler {
 			this.logger.error(`Job ${config.id} failed:`, err);
 			throw err;
 		}
-	}
-
-	/**
-	 * Calculate next run time from cron expression
-	 * Simplified implementation - production should use a library like 'croner'
-	 */
-	private calculateNextRunTime(cronExpression: string): number {
-		const parts = cronExpression.trim().split(/\s+/);
-		if (parts.length !== 5) {
-			this.logger.warn(`Invalid cron expression: ${cronExpression}`);
-			return Date.now() + 60000;
-		}
-
-		const now = new Date();
-		const next = new Date(now);
-
-		const [minute, hour, _dayOfMonth, _month, dayOfWeek] = parts;
-
-		// Handle common patterns
-		if (minute === "*" && hour === "*") {
-			// Every minute
-			next.setSeconds(0);
-			next.setMilliseconds(0);
-			next.setMinutes(next.getMinutes() + 1);
-		} else if (minute !== "*" && hour === "*") {
-			// Every hour at specific minute
-			const targetMinute = Number.parseInt(minute, 10);
-			next.setMinutes(targetMinute);
-			next.setSeconds(0);
-			next.setMilliseconds(0);
-
-			if (next <= now) {
-				next.setHours(next.getHours() + 1);
-			}
-		} else if (minute !== "*" && hour !== "*") {
-			// Specific time
-			const targetHour = Number.parseInt(hour, 10);
-			const targetMinute = Number.parseInt(minute, 10);
-
-			next.setHours(targetHour);
-			next.setMinutes(targetMinute);
-			next.setSeconds(0);
-			next.setMilliseconds(0);
-
-			if (next <= now) {
-				// Handle day of week
-				if (dayOfWeek !== "*") {
-					const targetDow = Number.parseInt(dayOfWeek, 10);
-					const currentDow = next.getDay();
-					let daysUntil = targetDow - currentDow;
-					if (daysUntil <= 0) {
-						daysUntil += 7;
-					}
-					next.setDate(next.getDate() + daysUntil);
-				} else {
-					next.setDate(next.getDate() + 1);
-				}
-			}
-		} else {
-			// Fallback: next minute
-			next.setSeconds(0);
-			next.setMilliseconds(0);
-			next.setMinutes(next.getMinutes() + 1);
-		}
-
-		return next.getTime();
 	}
 
 	/**
