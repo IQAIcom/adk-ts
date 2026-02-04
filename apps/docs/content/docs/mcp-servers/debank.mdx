@@ -1,0 +1,219 @@
+---
+title: MCP DeBank
+description: An MCP server for interacting with the DeBank portfolio tracking platform
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Package**: [`@iqai/mcp-debank`](https://www.npmjs.com/package/@iqai/mcp-debank)
+- **Purpose**: Interacting with the DeBank platform for DeFi portfolio tracking and wallet analytics.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpDebank} from "@iqai/adk";
+
+    const toolset = McpDebank({
+      env: {
+        DEBANK_API_KEY: process.env.DEBANK_API_KEY,
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Debank MCP Client",
+      description: "Client for DeBank portfolio tracking",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-debank"],
+        env: {
+          DEBANK_API_KEY: process.env.DEBANK_API_KEY,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "debank-mcp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-debank"],
+          "env": {
+            "DEBANK_API_KEY": "your_debank_api_key"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Available Tools (18)
+
+### Chain & Protocol Data
+
+| Tool                                           | Description                                                 |
+| ---------------------------------------------- | ----------------------------------------------------------- |
+| `debank_get_supported_chain_list`              | List all blockchain networks supported by DeBank            |
+| `debank_get_chain`                             | Fetch detailed information about a specific blockchain      |
+| `debank_get_gas_prices`                        | Get current gas pricing at different transaction speeds     |
+| `debank_get_all_protocols_of_supported_chains` | Retrieve DeFi protocols across specified chains             |
+| `debank_get_protocol_information`              | Get comprehensive protocol details                          |
+| `debank_get_pool_information`                  | Fetch liquidity pool details including TVL and user metrics |
+
+### Token Data
+
+| Tool                                 | Description                                                       |
+| ------------------------------------ | ----------------------------------------------------------------- |
+| `debank_get_token_information`       | Get comprehensive token details (supports wrapped token keywords) |
+| `debank_get_list_token_information`  | Retrieve data for multiple tokens at once (up to 100)             |
+| `debank_get_token_history_price`     | Get historical token pricing for specified dates                  |
+| `debank_get_top_holders_of_token`    | Identify major token holders ranked by holdings                   |
+| `debank_get_top_holders_of_protocol` | List largest stakeholders within a protocol                       |
+
+### User Portfolio
+
+| Tool                                        | Description                                           |
+| ------------------------------------------- | ----------------------------------------------------- |
+| `debank_get_user_all_token_list`            | Fetch comprehensive token balances across chains      |
+| `debank_get_user_chain_balance`             | Get USD-valued account balance on a specified chain   |
+| `debank_get_user_all_simple_protocol_list`  | Show simplified protocol balances overview            |
+| `debank_get_user_all_complex_protocol_list` | Display detailed portfolio positions across protocols |
+| `debank_get_user_all_nft_list`              | List NFT holdings across all chains                   |
+| `debank_get_user_all_history_list`          | Retrieve transaction history across chains            |
+
+### Transactions
+
+| Tool                         | Description                                              |
+| ---------------------------- | -------------------------------------------------------- |
+| `debank_explain_transaction` | Decode and explain transactions in human-readable format |
+
+## Environment Variables
+
+The MCP supports two mutually exclusive access modes:
+
+### Option 1: Direct DeBank API access
+
+- `DEBANK_API_KEY`: Required. API key obtained from the DeBank platform.
+
+### Option 2: Gateway-proxied access
+
+- `IQ_GATEWAY_URL`: Required. Base URL of the gateway service.
+- `IQ_GATEWAY_KEY`: Required. Authentication key for the gateway.
+
+<Callout type="info" title="Access Modes">
+
+If both modes are configured, the gateway-proxied access will be used.
+
+</Callout>
+
+## Usage Examples
+
+Here's a complete example of using MCP DeBank with an ADK agent:
+
+```typescript
+import { McpDebank, AgentBuilder } from "@iqai/adk";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+async function main() {
+  // Initialize DeBank MCP toolset
+  const toolset = McpDebank({
+    env: {
+      DEBANK_API_KEY: process.env.DEBANK_API_KEY,
+    },
+    debug: false,
+    retryOptions: {
+      maxRetries: 3,
+      initialDelay: 500,
+    },
+  });
+
+  // Get available tools
+  const debankTools = await toolset.getTools();
+
+  // Create agent with DeBank tools
+  const { runner } = await AgentBuilder.create("debank_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("An agent that tracks DeFi portfolios using DeBank")
+    .withTools(...debankTools)
+    .build();
+
+  try {
+    // Example queries
+    const response = await runner.ask(
+      "Show me the DeFi portfolio for wallet 0x1234...",
+    );
+    console.log(response);
+  } finally {
+    // Clean up resources
+    await toolset.close();
+  }
+}
+
+main().catch(console.error);
+```
+
+## Getting Your Credentials
+
+### DeBank API Key
+
+1. Visit [DeBank Cloud](https://cloud.debank.com)
+2. Sign up for an account
+3. Generate an API key from the dashboard
+
+### Gateway Access (Alternative)
+
+If using gateway-proxied access, obtain your `IQ_GATEWAY_URL` and `IQ_GATEWAY_KEY` from the IQ Gateway service.
+
+<Callout type="warn" title="Important">
+
+Never share your API keys or commit them to version control. Always use
+environment variables or secure secret management systems.
+
+</Callout>
+
+## Best Practices
+
+- **Security**: Store API keys in environment variables, never hardcode them
+- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
+- **Error Handling**: Implement proper error handling for portfolio data requests
+- **Rate Limits**: Be aware of DeBank API rate limits and implement appropriate retry logic
+
+## Error Handling
+
+<Callout type="warn" title="Error Scenarios">
+
+The server handles various error scenarios gracefully.
+
+</Callout>
+
+🚨 **Missing credentials**: Ensure either `DEBANK_API_KEY` or gateway credentials are set
+🔄 **Invalid wallet addresses**: Verify wallet addresses are correct
+🌐 **Network issues**: Check your internet connection and DeBank API status
+
+## Resources
+
+- [DeBank](https://debank.com) - DeFi portfolio tracker
+- [DeBank Cloud](https://cloud.debank.com) - DeBank API platform
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
