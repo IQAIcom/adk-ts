@@ -31,13 +31,11 @@ export async function* textStreamFrom(
 	events: AsyncIterable<Event>,
 ): AsyncGenerator<string, void, unknown> {
 	for await (const event of events) {
-		// Only yield text from partial (streaming) events
-		if (event.partial && event.content?.parts) {
-			// Extract text from all parts that contain text
-			for (const part of event.content.parts) {
-				if (part.text) {
-					yield part.text;
-				}
+		if (!event.partial || !event.content?.parts) continue;
+
+		for (const part of event.content.parts) {
+			if (part.text) {
+				yield part.text;
 			}
 		}
 	}
@@ -125,12 +123,11 @@ export function streamTextWithFinalEvent(events: AsyncIterable<Event>): {
 		for await (const event of events) {
 			lastEvent = event;
 
-			// Yield text from partial events
-			if (event.partial && event.content?.parts) {
-				for (const part of event.content.parts) {
-					if (part.text) {
-						yield part.text;
-					}
+			if (!event.partial || !event.content?.parts) continue;
+
+			for (const part of event.content.parts) {
+				if (part.text) {
+					yield part.text;
 				}
 			}
 		}
