@@ -23,6 +23,7 @@ export {
 export {
 	FileStorageProvider,
 	InMemoryStorageProvider,
+	InMemoryVectorStore,
 	VectorStorageProvider,
 } from "./storage/index";
 export type {

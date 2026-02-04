@@ -128,6 +128,7 @@ export interface BuiltAgent<T = string, M extends boolean = false> {
 	runner: EnhancedRunner<T, M>;
 	session: Session;
 	sessionService: BaseSessionService;
+	memoryService?: BaseMemoryService;
 }
 
 /**
@@ -809,6 +810,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 			runner: runner! as EnhancedRunner<T, TMulti>,
 			session: session!,
 			sessionService: this.sessionService!,
+			memoryService: this.memoryService,
 		} as BuiltAgent<T, TMulti>;
 	}
 

@@ -12,7 +12,9 @@ import { getRootAgent } from "./agents/agent";
  *
  * Key concepts:
  * - User controls WHEN to store memory (call addSessionToMemory when you want)
- * - CompactionAwareSummaryProvider auto-detects and reuses compaction summaries
+ * - Pluggable providers: storage, summarization, embeddings
+ * - VectorStorageProvider for semantic search with vector databases
+ * - OpenAIEmbeddingProvider for text embeddings
  * - RecallMemoryTool for explicit memory search by agent
  */
 async function main() {
@@ -31,15 +33,15 @@ async function main() {
 		"I love African Grey parrots! They can learn over 1000 words.",
 	);
 
-	// End session 1 and store to memory (user controls when)
-	console.log("\n🔚 Ending Session 1 and storing to memory...");
-	const endedSession = await sessionService.endSession(
+	// Store session 1 to memory (user controls when)
+	console.log("\n💾 Storing Session 1 to memory...");
+	const currentSession = await sessionService.getSession(
 		session.appName,
 		session.userId,
 		session.id,
 	);
-	if (endedSession) {
-		await memoryService.addSessionToMemory(endedSession);
+	if (currentSession) {
+		await memoryService.addSessionToMemory(currentSession);
 		console.log("✅ Memory stored!\n");
 	}
 
