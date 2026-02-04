@@ -4,12 +4,14 @@ export type {
 	CohereEmbeddingProviderConfig,
 	OllamaEmbeddingProviderConfig,
 	OpenAIEmbeddingProviderConfig,
+	OpenRouterEmbeddingProviderConfig,
 } from "./embeddings/index";
 // Embedding Providers
 export {
 	CohereEmbeddingProvider,
 	OllamaEmbeddingProvider,
 	OpenAIEmbeddingProvider,
+	OpenRouterEmbeddingProvider,
 } from "./embeddings/index";
 // Core Service
 export {
