@@ -1,0 +1,190 @@
+---
+title: MCP Filesystem
+description: File system operations (read/write/list) using Anthropic's filesystem MCP server
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Name**: MCP Filesystem
+- **Package**: `@modelcontextprotocol/server-filesystem`
+- **Provider**: Anthropic
+
+## Overview
+
+MCP Filesystem is a third-party Model Context Protocol server from Anthropic that provides file system operations. It allows agents to read, write, and list files in designated directories with secure path restrictions.
+
+<Callout type="warning" title="Security">
+
+Always specify `ALLOWED_DIRECTORIES` to restrict file access to specific paths. Without this, the server may have broad file system access.
+
+</Callout>
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import { McpFilesystem } from "@iqai/adk";
+
+    const toolset = McpFilesystem({
+      env: {
+        ALLOWED_DIRECTORIES: "/workspace,/project/data",
+      },
+    });
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import { McpToolset } from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Filesystem MCP Client",
+      description: "Client for filesystem operations",
+      transport: {
+        mode: "stdio",
+        command: "npx",
+        args: [
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "/workspace",
+        ],
+        env: {
+          PATH: process.env.PATH || "",
+        },
+      },
+    });
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    If you want to use this MCP with Claude Desktop, add this to your Claude Desktop configuration file:
+
+    **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+    ```json
+    {
+      "mcpServers": {
+        "filesystem": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/workspace"
+          ]
+        }
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>
+
+## Environment Variables
+
+| Variable              | Type     | Description                                     |
+| --------------------- | -------- | ----------------------------------------------- |
+| `ALLOWED_DIRECTORIES` | Optional | Comma-separated list of allowed directory paths |
+
+## Configuration Options
+
+All MCP servers support these configuration options:
+
+| Option                      | Type            | Description                              |
+| --------------------------- | --------------- | ---------------------------------------- |
+| `env`                       | object          | Environment variables (see table above)  |
+| `debug`                     | boolean         | Enable debug logging                     |
+| `description`               | string          | Custom description                       |
+| `retryOptions.maxRetries`   | number          | Max retry attempts (default: 2)          |
+| `retryOptions.initialDelay` | number          | Initial retry delay in ms (default: 200) |
+| `samplingHandler`           | SamplingHandler | Handler for MCP sampling requests        |
+
+## Available Tools
+
+The filesystem MCP server provides tools for:
+
+- **read_file** - Read file contents
+- **write_file** - Write content to files
+- **list_directory** - List directory contents
+- **create_directory** - Create new directories
+- **move_file** - Move or rename files
+- **search_files** - Search for files matching patterns
+
+<Callout type="info" title="Tool Discovery">
+
+Use `await toolset.getTools()` to retrieve the full list of available tools with their schemas and descriptions.
+
+</Callout>
+
+## Complete Example
+
+```typescript
+import { McpFilesystem, LlmAgent } from "@iqai/adk";
+
+async function main() {
+  // Initialize filesystem toolset with restricted access
+  const filesystemToolset = McpFilesystem({
+    env: {
+      ALLOWED_DIRECTORIES: "/workspace,/project/data",
+    },
+    debug: true,
+  });
+
+  try {
+    // Get available tools
+    const tools = await filesystemToolset.getTools();
+
+    // Create agent with filesystem tools
+    const agent = new LlmAgent({
+      name: "file_manager",
+      model: "gemini-2.5-flash",
+      description: "An agent that manages files and directories",
+      instruction: `You can read, write, and manage files in the allowed directories.
+        Always ask before modifying files. Be careful with destructive operations.`,
+      tools,
+    });
+
+    // Use the agent
+    const response = await agent.ask("List all markdown files in /workspace");
+    console.log(response);
+  } finally {
+    // Always cleanup
+    await filesystemToolset.close();
+  }
+}
+
+main();
+```
+
+## Best Practices
+
+- **Restrict Access**: Always specify `ALLOWED_DIRECTORIES` to limit file system access
+- **Validate Paths**: Ensure paths are absolute and within allowed directories
+- **Error Handling**: Implement proper error handling for file operations
+- **Cleanup**: Always call `toolset.close()` when done to free resources
+- **Permissions**: Ensure the process has appropriate file system permissions
+
+## Troubleshooting
+
+| Issue              | Solution                                               |
+| ------------------ | ------------------------------------------------------ |
+| Permission denied  | Check file system permissions and allowed directories  |
+| Path not allowed   | Add path to `ALLOWED_DIRECTORIES` environment variable |
+| File not found     | Verify the file path is correct and accessible         |
+| Connection timeout | Check if npm/npx is installed and in PATH              |
+
+## Related Resources
+
+- [Official Filesystem MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem)
+- [MCP Tools Documentation](/docs/framework/tools/mcp-tools)
+- [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps)
+- [Integrating External MCPs](/docs/mcp-servers/external-mcps)
