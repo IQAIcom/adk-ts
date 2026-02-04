@@ -54,15 +54,9 @@ async function main() {
 		session.userId,
 	);
 	console.log(`\n📍 Session 2: ${session2.id}`);
-	console.log('   (No word overlap with "African Grey parrot")\n');
 
-	// Note: runner.ask() uses session 1, so we use runAsync for session 2
-	const question = "What flying animal did I mention that I liked?";
-	console.log(`👤 User:  ${question}`);
-	const response = await runner.ask({
-		parts: [{ text: question }],
-	});
-	console.log(`🤖 Agent: ${response}\n`);
+	// No word overlap with "African Grey parrot
+	await ask(runner, "What flying animal did I mention that I liked?");
 
 	console.log("✅ Semantic search found 'parrots' from 'flying animal'.\n");
 }
