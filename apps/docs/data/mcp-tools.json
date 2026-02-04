@@ -1,0 +1,696 @@
+{
+	"generatedAt": "2026-02-03T19:40:50.669Z",
+	"servers": {
+		"abi": {
+			"name": "ABI MCP Client",
+			"package": "@iqai/mcp-abi",
+			"tools": [],
+			"error": "Tools are dynamically generated from a user-provided contract ABI"
+		},
+		"atp": {
+			"name": "ATP MCP Client",
+			"package": "@iqai/mcp-atp",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		},
+		"bamm": {
+			"name": "BAMM MCP Client",
+			"package": "@iqai/mcp-bamm",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		},
+		"fraxlend": {
+			"name": "Fraxlend MCP Client",
+			"package": "@iqai/mcp-fraxlend",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		},
+		"iqwiki": {
+			"name": "IQWiki MCP Client",
+			"package": "@iqai/mcp-iqwiki",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		},
+		"near-agent": {
+			"name": "NEAR Agent MCP Client",
+			"package": "@iqai/mcp-near-agent",
+			"tools": [
+				{
+					"name": "watch_near_event",
+					"description": "Start watching for specific events on a NEAR contract and process them with AI responses",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"eventName": {
+								"type": "string",
+								"description": "Name of the NEAR event to watch for"
+							},
+							"contractId": {
+								"type": "string",
+								"description": "NEAR contract ID to monitor"
+							},
+							"responseMethodName": {
+								"type": "string",
+								"default": "agent_response",
+								"description": "Contract method to call with the response (defaults to agent_response)"
+							},
+							"responseParameterName": {
+								"type": "string",
+								"default": "response",
+								"description": "Name of the parameter to pass to the response method (defaults to response)"
+							},
+							"cronExpression": {
+								"type": "string",
+								"default": "*/10 * * * * *",
+								"description": "Cron expression for polling frequency (default: every 10 seconds)"
+							}
+						},
+						"required": ["eventName", "contractId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "stop_watching_near_event",
+					"description": "Stop watching for specific events on a NEAR contract",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"contractId": {
+								"type": "string",
+								"description": "NEAR contract ID to stop monitoring"
+							},
+							"eventName": {
+								"type": "string",
+								"description": "Name of the event to stop watching"
+							}
+						},
+						"required": ["contractId", "eventName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "list_watched_near_events",
+					"description": "List all currently watched NEAR events and their status",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"includeStats": {
+								"type": "boolean",
+								"description": "Include detailed statistics"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
+		},
+		"near-intents": {
+			"name": "Near Intents Swaps MCP Client",
+			"package": "@iqai/mcp-near-intents",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		},
+		"odos": {
+			"name": "ODOS MCP Client",
+			"package": "@iqai/mcp-odos",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		},
+		"telegram": {
+			"name": "Telegram MCP Client",
+			"package": "@iqai/mcp-telegram",
+			"tools": [
+				{
+					"name": "SEND_MESSAGE",
+					"description": "Send a message to a Telegram chat or channel",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chatId": {
+								"type": ["string", "number"],
+								"description": "The chat ID or channel username (e.g., @channelname or -1001234567890)"
+							},
+							"text": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The message text to send"
+							},
+							"topicId": {
+								"type": "number",
+								"description": "The topic ID for forum channels (optional)"
+							}
+						},
+						"required": ["chatId", "text"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_CHANNEL_INFO",
+					"description": "Get information about a Telegram channel or chat",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": ["string", "number"],
+								"description": "The channel ID or username (e.g., @channelname or -1001234567890)"
+							}
+						},
+						"required": ["channelId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "FORWARD_MESSAGE",
+					"description": "Forward a message from one chat to another",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"fromChatId": {
+								"type": ["string", "number"],
+								"description": "Source chat ID or username"
+							},
+							"toChatId": {
+								"type": ["string", "number"],
+								"description": "Destination chat ID or username"
+							},
+							"messageId": {
+								"type": "number",
+								"description": "ID of the message to forward"
+							},
+							"disableNotification": {
+								"type": "boolean",
+								"description": "Forward message silently"
+							}
+						},
+						"required": ["fromChatId", "toChatId", "messageId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "PIN_MESSAGE",
+					"description": "Pin a message in a Telegram chat or channel",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chatId": {
+								"type": ["string", "number"],
+								"description": "The chat ID or channel username"
+							},
+							"messageId": {
+								"type": "number",
+								"description": "ID of the message to pin"
+							},
+							"disableNotification": {
+								"type": "boolean",
+								"description": "Pin message silently"
+							}
+						},
+						"required": ["chatId", "messageId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_CHANNEL_MEMBERS",
+					"description": "Get a list of channel administrators and members",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": ["string", "number"],
+								"description": "The channel ID or username"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 50,
+								"default": 10,
+								"description": "Maximum number of members to retrieve (1-50)"
+							}
+						},
+						"required": ["channelId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
+		},
+		"discord": {
+			"name": "Discord MCP Client",
+			"package": "@iqai/mcp-discord",
+			"tools": [
+				{
+					"name": "discord_create_category",
+					"description": "Creates a new category in a Discord server.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"guildId": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"position": {
+								"type": "number"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["guildId", "name"]
+					}
+				},
+				{
+					"name": "discord_edit_category",
+					"description": "Edits an existing Discord category (name and position).",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"categoryId": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"position": {
+								"type": "number"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["categoryId"]
+					}
+				},
+				{
+					"name": "discord_delete_category",
+					"description": "Deletes a Discord category by ID.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"categoryId": {
+								"type": "string"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["categoryId"]
+					}
+				},
+				{
+					"name": "discord_login",
+					"description": "Logs in to Discord using the configured token",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"token": {
+								"type": "string"
+							}
+						},
+						"required": []
+					}
+				},
+				{
+					"name": "discord_send",
+					"description": "Sends a message to a specified Discord text channel",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": "string"
+							},
+							"message": {
+								"type": "string"
+							}
+						},
+						"required": ["channelId", "message"]
+					}
+				},
+				{
+					"name": "discord_get_forum_channels",
+					"description": "Lists all forum channels in a specified Discord server (guild)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"guildId": {
+								"type": "string"
+							}
+						},
+						"required": ["guildId"]
+					}
+				},
+				{
+					"name": "discord_create_forum_post",
+					"description": "Creates a new post in a Discord forum channel with optional tags",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"forumChannelId": {
+								"type": "string"
+							},
+							"title": {
+								"type": "string"
+							},
+							"content": {
+								"type": "string"
+							},
+							"tags": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							}
+						},
+						"required": ["forumChannelId", "title", "content"]
+					}
+				},
+				{
+					"name": "discord_get_forum_post",
+					"description": "Retrieves details about a forum post including its messages",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"threadId": {
+								"type": "string"
+							}
+						},
+						"required": ["threadId"]
+					}
+				},
+				{
+					"name": "discord_reply_to_forum",
+					"description": "Adds a reply to an existing forum post or thread",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"threadId": {
+								"type": "string"
+							},
+							"message": {
+								"type": "string"
+							}
+						},
+						"required": ["threadId", "message"]
+					}
+				},
+				{
+					"name": "discord_create_text_channel",
+					"description": "Creates a new text channel in a Discord server with an optional topic",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"guildId": {
+								"type": "string"
+							},
+							"channelName": {
+								"type": "string"
+							},
+							"topic": {
+								"type": "string"
+							}
+						},
+						"required": ["guildId", "channelName"]
+					}
+				},
+				{
+					"name": "discord_delete_channel",
+					"description": "Deletes a Discord channel with an optional reason",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": "string"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["channelId"]
+					}
+				},
+				{
+					"name": "discord_read_messages",
+					"description": "Retrieves messages from a Discord text channel with a configurable limit",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": "string"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 100,
+								"default": 50
+							}
+						},
+						"required": ["channelId"]
+					}
+				},
+				{
+					"name": "discord_get_server_info",
+					"description": "Retrieves detailed information about a Discord server including channels and member count",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"guildId": {
+								"type": "string"
+							}
+						},
+						"required": ["guildId"]
+					}
+				},
+				{
+					"name": "discord_add_reaction",
+					"description": "Adds an emoji reaction to a specific Discord message",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": "string"
+							},
+							"messageId": {
+								"type": "string"
+							},
+							"emoji": {
+								"type": "string"
+							}
+						},
+						"required": ["channelId", "messageId", "emoji"]
+					}
+				},
+				{
+					"name": "discord_add_multiple_reactions",
+					"description": "Adds multiple emoji reactions to a Discord message at once",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": "string"
+							},
+							"messageId": {
+								"type": "string"
+							},
+							"emojis": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							}
+						},
+						"required": ["channelId", "messageId", "emojis"]
+					}
+				},
+				{
+					"name": "discord_remove_reaction",
+					"description": "Removes a specific emoji reaction from a Discord message",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": "string"
+							},
+							"messageId": {
+								"type": "string"
+							},
+							"emoji": {
+								"type": "string"
+							},
+							"userId": {
+								"type": "string"
+							}
+						},
+						"required": ["channelId", "messageId", "emoji"]
+					}
+				},
+				{
+					"name": "discord_delete_forum_post",
+					"description": "Deletes a forum post or thread with an optional reason",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"threadId": {
+								"type": "string"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["threadId"]
+					}
+				},
+				{
+					"name": "discord_delete_message",
+					"description": "Deletes a specific message from a Discord text channel",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": "string"
+							},
+							"messageId": {
+								"type": "string"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["channelId", "messageId"]
+					}
+				},
+				{
+					"name": "discord_create_webhook",
+					"description": "Creates a new webhook for a Discord channel",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"channelId": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"avatar": {
+								"type": "string"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["channelId", "name"]
+					}
+				},
+				{
+					"name": "discord_send_webhook_message",
+					"description": "Sends a message to a Discord channel using a webhook",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"webhookId": {
+								"type": "string"
+							},
+							"webhookToken": {
+								"type": "string"
+							},
+							"content": {
+								"type": "string"
+							},
+							"username": {
+								"type": "string"
+							},
+							"avatarURL": {
+								"type": "string"
+							},
+							"threadId": {
+								"type": "string"
+							}
+						},
+						"required": ["webhookId", "webhookToken", "content"]
+					}
+				},
+				{
+					"name": "discord_edit_webhook",
+					"description": "Edits an existing webhook for a Discord channel",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"webhookId": {
+								"type": "string"
+							},
+							"webhookToken": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"avatar": {
+								"type": "string"
+							},
+							"channelId": {
+								"type": "string"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["webhookId"]
+					}
+				},
+				{
+					"name": "discord_delete_webhook",
+					"description": "Deletes an existing webhook for a Discord channel",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"webhookId": {
+								"type": "string"
+							},
+							"webhookToken": {
+								"type": "string"
+							},
+							"reason": {
+								"type": "string"
+							}
+						},
+						"required": ["webhookId"]
+					}
+				}
+			],
+			"error": null
+		},
+		"coingecko": {
+			"name": "CoinGecko MCP Client",
+			"package": "https://mcp.api.coingecko.com/mcp",
+			"tools": [],
+			"error": "Remote MCP endpoint requires browser-based authorization via mcp-remote"
+		},
+		"coingecko-pro": {
+			"name": "CoinGecko Pro MCP Client",
+			"package": "https://mcp.pro-api.coingecko.com/mcp",
+			"tools": [],
+			"error": "Remote MCP endpoint requires CoinGecko Pro API key authorization"
+		},
+		"upbit": {
+			"name": "Upbit MCP Client",
+			"package": "@iqai/mcp-upbit",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		},
+		"polymarket": {
+			"name": "Polymarket MCP Client",
+			"package": "@iqai/mcp-polymarket",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		}
+	}
+}
