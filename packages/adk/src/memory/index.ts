@@ -1,4 +1,42 @@
 // Types
+
+export type {
+	CohereEmbeddingProviderConfig,
+	OllamaEmbeddingProviderConfig,
+	OpenAIEmbeddingProviderConfig,
+} from "./embeddings/index";
+// Embedding Providers
+export {
+	CohereEmbeddingProvider,
+	OllamaEmbeddingProvider,
+	OpenAIEmbeddingProvider,
+} from "./embeddings/index";
+// Core Service
+export {
+	MemoryService,
+	MemoryService as BaseMemoryService,
+} from "./memory-service";
+export type {
+	FileStorageProviderConfig,
+	FileVectorStoreConfig,
+	SearchMode,
+	VectorStore,
+	VectorStorageProviderConfig,
+} from "./storage/index";
+// Storage Providers
+export {
+	FileStorageProvider,
+	FileVectorStore,
+	InMemoryStorageProvider,
+	InMemoryVectorStore,
+	VectorStorageProvider,
+} from "./storage/index";
+export type { LlmSummaryProviderConfig } from "./summary/index";
+// Summary Providers
+export {
+	LlmSummaryProvider,
+	PassthroughSummaryProvider,
+} from "./summary/index";
 export type {
 	EmbeddingProvider,
 	Entity,
@@ -12,42 +50,3 @@ export type {
 	MemorySummaryProvider,
 	TopicSegment,
 } from "./types";
-
-// Core Service
-export {
-	MemoryService,
-	MemoryService as BaseMemoryService,
-} from "./memory-service";
-
-// Storage Providers
-export {
-	FileStorageProvider,
-	InMemoryStorageProvider,
-	InMemoryVectorStore,
-	VectorStorageProvider,
-} from "./storage/index";
-export type {
-	FileStorageProviderConfig,
-	SearchMode,
-	VectorStore,
-	VectorStorageProviderConfig,
-} from "./storage/index";
-
-// Summary Providers
-export {
-	LlmSummaryProvider,
-	PassthroughSummaryProvider,
-} from "./summary/index";
-export type { LlmSummaryProviderConfig } from "./summary/index";
-
-// Embedding Providers
-export {
-	CohereEmbeddingProvider,
-	OllamaEmbeddingProvider,
-	OpenAIEmbeddingProvider,
-} from "./embeddings/index";
-export type {
-	CohereEmbeddingProviderConfig,
-	OllamaEmbeddingProviderConfig,
-	OpenAIEmbeddingProviderConfig,
-} from "./embeddings/index";
