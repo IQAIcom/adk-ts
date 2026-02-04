@@ -118,11 +118,47 @@ const config = {
 			},
 		];
 
-		const otherRedirects = specificRedirects.map(({ from, to }) => ({
-			source: from,
-			destination: to,
-			permanent: true,
-		}));
+		// MCP server redirects for moved pages
+		const mcpServerRedirects = [
+			// IQ AI Built-in Servers
+			...[
+				"abi",
+				"atp",
+				"bamm",
+				"coingecko",
+				"coingecko-pro",
+				"debank",
+				"defillama",
+				"discord",
+				"fraxlend",
+				"iqwiki",
+				"kalshi",
+				"limitless",
+				"near-agent",
+				"near-intents",
+				"odos",
+				"opinion",
+				"polymarket",
+				"telegram",
+				"upbit",
+			].map((page) => ({
+				from: `/docs/mcp-servers/${page}`,
+				to: `/docs/mcp-servers/iq-ai-servers/${page}`,
+			})),
+			// Third-Party Wrappers
+			...["filesystem", "memory"].map((page) => ({
+				from: `/docs/mcp-servers/${page}`,
+				to: `/docs/mcp-servers/third-party-wrappers/${page}`,
+			})),
+		];
+
+		const otherRedirects = [...specificRedirects, ...mcpServerRedirects].map(
+			({ from, to }) => ({
+				source: from,
+				destination: to,
+				permanent: true,
+			}),
+		);
 
 		return [...oldDocRedirects, ...frameworkRedirects, ...otherRedirects];
 	},

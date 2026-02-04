@@ -6,26 +6,7 @@
 		"index",
 		"external-mcps",
 		"creating-custom-mcps",
-		"abi",
-		"atp",
-		"bamm",
-		"coingecko",
-		"coingecko-pro",
-		"debank",
-		"defillama",
-		"discord",
-		"filesystem",
-		"fraxlend",
-		"iqwiki",
-		"kalshi",
-		"limitless",
-		"memory",
-		"near-agent",
-		"near-intents",
-		"odos",
-		"opinion",
-		"polymarket",
-		"telegram",
-		"upbit"
+		"iq-ai-servers",
+		"third-party-wrappers"
 	]
 }

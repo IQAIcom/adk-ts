@@ -1,0 +1,117 @@
+---
+title: Third-Party MCP Wrappers
+description: Convenient wrappers for popular third-party MCP servers from Anthropic and the community
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+
+ADK-TS provides convenience wrappers for popular third-party MCP servers, making them as easy to use as IQ AI's built-in servers. These wrappers follow the same simple configuration pattern.
+
+<Callout type="info" title="Community Servers">
+
+These are wrappers around MCP servers built by Anthropic and the community. You can also connect to any MCP-compliant server using `McpToolset` directly.
+
+[Learn more about integrating external MCPs →](/docs/mcp-servers/external-mcps)
+
+</Callout>
+
+## Utilities
+
+MCP servers for file operations, memory management, and utility functions.
+
+<Cards>
+  <Card
+    title="MCP Filesystem"
+    description="File system operations (read/write/list) using Anthropic's filesystem server"
+    href="/docs/mcp-servers/third-party-wrappers/filesystem"
+  />
+  <Card
+    title="MCP Memory"
+    description="Memory and note-taking capabilities for persistent agent knowledge"
+    href="/docs/mcp-servers/third-party-wrappers/memory"
+  />
+</Cards>
+
+## Quick Start
+
+Third-party wrappers follow the same simple pattern as IQ AI servers:
+
+```typescript
+import { McpFilesystem, McpMemory, LlmAgent } from "@iqai/adk";
+
+// Initialize filesystem with allowed directories
+const filesystemToolset = McpFilesystem({
+  env: {
+    ALLOWED_DIRECTORIES: "/workspace,/project/data",
+  },
+});
+
+// Initialize memory (no config needed)
+const memoryToolset = McpMemory();
+
+// Get tools
+const [fileTools, memoryTools] = await Promise.all([
+  filesystemToolset.getTools(),
+  memoryToolset.getTools(),
+]);
+
+// Create agent with combined tools
+const agent = new LlmAgent({
+  name: "smart_assistant",
+  description: "An assistant with file system and memory capabilities",
+  model: "gemini-2.5-flash",
+  tools: [...fileTools, ...memoryTools],
+});
+
+// Always cleanup
+await Promise.all([filesystemToolset.close(), memoryToolset.close()]);
+```
+
+## Common Configuration
+
+All third-party wrappers support these configuration options:
+
+| Option                      | Type            | Description                              |
+| --------------------------- | --------------- | ---------------------------------------- |
+| `env`                       | object          | Environment variables (server-specific)  |
+| `debug`                     | boolean         | Enable debug logging                     |
+| `description`               | string          | Custom description                       |
+| `retryOptions.maxRetries`   | number          | Max retry attempts (default: 2)          |
+| `retryOptions.initialDelay` | number          | Initial retry delay in ms (default: 200) |
+| `samplingHandler`           | SamplingHandler | Handler for MCP sampling requests        |
+
+## Using Other External MCPs
+
+Don't see a wrapper for the MCP server you want to use? You can connect to any MCP-compliant server using `McpToolset` directly:
+
+```typescript
+import { McpToolset } from "@iqai/adk";
+
+// Connect to any MCP server
+const toolset = new McpToolset({
+  name: "Custom MCP Server",
+  description: "Any MCP-compliant server",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@some-org/mcp-server-package"],
+    env: {
+      API_KEY: process.env.API_KEY || "",
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+
+const tools = await toolset.getTools();
+```
+
+[Learn more about integrating external MCPs →](/docs/mcp-servers/external-mcps)
+
+## Related Resources
+
+- [MCP Tools Framework Documentation](/docs/framework/tools/mcp-tools)
+- [Integrating External MCPs](/docs/mcp-servers/external-mcps)
+- [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps)
+- [Anthropic's MCP Servers](https://github.com/modelcontextprotocol/servers)
+- [Community MCP Servers](https://github.com/punkpeye/awesome-mcp-servers)
