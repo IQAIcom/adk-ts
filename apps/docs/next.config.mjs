@@ -145,7 +145,7 @@ const config = {
 				from: `/docs/mcp-servers/${page}`,
 				to: `/docs/mcp-servers/iq-ai-servers/${page}`,
 			})),
-			// Third-Party Wrappers
+			// IQ AI's Third-Party MCP Wrappers
 			...["filesystem", "memory"].map((page) => ({
 				from: `/docs/mcp-servers/${page}`,
 				to: `/docs/mcp-servers/third-party-wrappers/${page}`,

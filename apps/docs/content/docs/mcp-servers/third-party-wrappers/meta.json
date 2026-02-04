@@ -1,5 +1,5 @@
 {
-	"title": "Third-Party Wrappers",
+	"title": "IQ AI's Third-Party MCP Wrappers",
 	"icon": "Package",
 	"pages": ["---Utilities", "filesystem", "memory"]
 }
