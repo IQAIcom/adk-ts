@@ -10,6 +10,22 @@ import { LlmResponse } from "./llm-response";
 type AnthropicRole = "user" | "assistant";
 
 const DEFAULT_MAX_OUTPUT_TOKENS = 1024;
+const THOUGHT_OPEN_TAGS = [
+	"<thinking>",
+	"[thinking]",
+	"<thought>",
+	"[thought]",
+];
+const THOUGHT_CLOSE_TAGS = [
+	"</thinking>",
+	"[/thinking]",
+	"</thought>",
+	"[/thought]",
+];
+
+function containsAny(text: string, tags: string[]): boolean {
+	return tags.some((tag) => text.includes(tag));
+}
 const ANTHROPIC_CACHE_LONG_TTL_THRESHOLD = 1800; // 30 minutes
 
 /**
@@ -207,13 +223,7 @@ export class AnthropicLlm extends BaseLlm {
 					if (event.delta.type === "text_delta") {
 						const deltaText = event.delta.text;
 
-						// Check for state transitions
-						if (
-							deltaText.includes("<thinking>") ||
-							deltaText.includes("[thinking]") ||
-							deltaText.includes("<thought>") ||
-							deltaText.includes("[thought]")
-						) {
+						if (containsAny(deltaText, THOUGHT_OPEN_TAGS)) {
 							inThoughtMode = true;
 						}
 
@@ -238,13 +248,7 @@ export class AnthropicLlm extends BaseLlm {
 							});
 						}
 
-						// Check if we should exit thought mode
-						if (
-							deltaText.includes("</thinking>") ||
-							deltaText.includes("[/thinking]") ||
-							deltaText.includes("</thought>") ||
-							deltaText.includes("[/thought]")
-						) {
+						if (containsAny(deltaText, THOUGHT_CLOSE_TAGS)) {
 							inThoughtMode = false;
 						}
 					} else if (event.delta.type === "input_json_delta") {
