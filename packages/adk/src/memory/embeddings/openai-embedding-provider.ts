@@ -1,3 +1,4 @@
+import { Logger } from "../../logger";
 import type { EmbeddingProvider } from "../types";
 
 /**
@@ -51,6 +52,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
 	private readonly apiKey: string;
 	private readonly model: string;
 	private readonly baseUrl: string;
+	private readonly logger = new Logger({ name: "OpenAIEmbeddingProvider" });
 	readonly dimensions: number;
 
 	constructor(config: OpenAIEmbeddingProviderConfig = {}) {
@@ -65,6 +67,8 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
 		this.model = config.model ?? "text-embedding-3-small";
 		this.baseUrl = config.baseUrl ?? "https://api.openai.com/v1";
 		this.dimensions = MODEL_DIMENSIONS[this.model] ?? 1536;
+
+		this.logger.debug(`Initialized with model: ${this.model}`);
 	}
 
 	/**
@@ -99,6 +103,8 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
 		if (texts.length === 0) {
 			return [];
 		}
+
+		this.logger.debug("Generating batch embeddings", { count: texts.length });
 
 		const response = await fetch(`${this.baseUrl}/embeddings`, {
 			method: "POST",

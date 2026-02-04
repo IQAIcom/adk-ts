@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Logger } from "../logger";
 import type { Session } from "../sessions/session";
 import type {
 	EmbeddingProvider,
@@ -45,12 +46,18 @@ export class MemoryService {
 	private readonly summaryProvider?: MemorySummaryProvider;
 	private readonly embeddingProvider?: EmbeddingProvider;
 	private readonly searchLimit: number;
+	private readonly logger = new Logger({ name: "MemoryService" });
 
 	constructor(config: MemoryServiceConfig) {
 		this.storage = config.storage;
 		this.summaryProvider = config.summaryProvider;
 		this.embeddingProvider = config.embeddingProvider;
 		this.searchLimit = config.searchLimit ?? DEFAULT_SEARCH_LIMIT;
+
+		this.logger.debug("Initialized", {
+			hasEmbeddings: !!config.embeddingProvider,
+			hasSummaryProvider: !!config.summaryProvider,
+		});
 	}
 
 	/**
@@ -77,6 +84,12 @@ export class MemoryService {
 		const userId = options?.userId ?? session.userId;
 		const appName = options?.appName ?? session.appName;
 
+		this.logger.debug("Adding session to memory", {
+			sessionId: session.id,
+			userId,
+			eventCount: session.events.length,
+		});
+
 		// Step 1: Generate memory content
 		const content = await this.generateContent(session);
 
@@ -96,6 +109,8 @@ export class MemoryService {
 
 		await this.storage.store(record);
 
+		this.logger.debug("Memory stored", { memoryId: record.id });
+
 		return record;
 	}
 
@@ -114,6 +129,12 @@ export class MemoryService {
 			limit?: number;
 		},
 	): Promise<MemorySearchResult[]> {
+		this.logger.debug("Searching memories", {
+			query: query.query,
+			userId: query.userId,
+			useEmbeddings: !!this.embeddingProvider,
+		});
+
 		// Generate query embedding if provider configured
 		const queryEmbedding = this.embeddingProvider
 			? await this.embeddingProvider.embed(query.query)
@@ -125,7 +146,11 @@ export class MemoryService {
 			limit: query.limit ?? this.searchLimit,
 		};
 
-		return this.storage.search(searchQuery);
+		const results = await this.storage.search(searchQuery);
+
+		this.logger.debug("Search complete", { resultCount: results.length });
+
+		return results;
 	}
 
 	/**
@@ -135,7 +160,13 @@ export class MemoryService {
 	 * @returns Number of memories deleted
 	 */
 	async delete(filter: MemoryDeleteFilter): Promise<number> {
-		return this.storage.delete(filter);
+		this.logger.debug("Deleting memories", { filter });
+
+		const deleted = await this.storage.delete(filter);
+
+		this.logger.debug("Memories deleted", { count: deleted });
+
+		return deleted;
 	}
 
 	/**

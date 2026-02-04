@@ -1,3 +1,4 @@
+import { Logger } from "../../logger";
 import type { Session } from "../../sessions/session";
 import type {
 	Entity,
@@ -113,6 +114,7 @@ export class LlmSummaryProvider implements MemorySummaryProvider {
 	>;
 	private readonly apiKey?: string;
 	private readonly baseUrl?: string;
+	private readonly logger = new Logger({ name: "LlmSummaryProvider" });
 
 	constructor(config: LlmSummaryProviderConfig) {
 		this.model = config.model;
@@ -120,16 +122,24 @@ export class LlmSummaryProvider implements MemorySummaryProvider {
 		this.extract = { ...DEFAULT_EXTRACT, ...config.extract };
 		this.apiKey = config.apiKey;
 		this.baseUrl = config.baseUrl;
+
+		this.logger.debug(`Initialized with model: ${this.model}`);
 	}
 
 	/**
 	 * Summarize a session using an LLM.
 	 */
 	async summarize(session: Session): Promise<MemoryContent> {
+		this.logger.debug("Summarizing session", {
+			sessionId: session.id,
+			eventCount: session.events.length,
+		});
+
 		// Extract conversation text
 		const conversationText = this.extractConversationText(session);
 
 		if (!conversationText.trim()) {
+			this.logger.debug("No conversation text to summarize");
 			return { rawText: "" };
 		}
 
@@ -143,7 +153,15 @@ export class LlmSummaryProvider implements MemorySummaryProvider {
 		const response = await this.callLlm(fullPrompt);
 
 		// Parse the response
-		return this.parseResponse(response, conversationText);
+		const content = this.parseResponse(response, conversationText);
+
+		this.logger.debug("Summary generated", {
+			hasSummary: !!content.summary,
+			segmentCount: content.segments?.length ?? 0,
+			entityCount: content.entities?.length ?? 0,
+		});
+
+		return content;
 	}
 
 	/**
@@ -344,8 +362,11 @@ export class LlmSummaryProvider implements MemorySummaryProvider {
 			content.rawText = fallbackText;
 
 			return content;
-		} catch {
+		} catch (error) {
 			// If parsing fails, return raw text with the response as summary
+			this.logger.warn("Failed to parse LLM response as JSON, using raw text", {
+				error: error instanceof Error ? error.message : String(error),
+			});
 			return {
 				rawText: fallbackText,
 				summary: response.trim(),
