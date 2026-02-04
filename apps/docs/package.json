@@ -3,10 +3,11 @@
 	"private": true,
 	"version": "0.0.0",
 	"scripts": {
-		"build": "next build",
+		"build": "tsx scripts/fetch-mcp-tools.ts && next build",
 		"dev": "next dev --turbo",
 		"start": "next start",
-		"postinstall": "fumadocs-mdx"
+		"postinstall": "fumadocs-mdx",
+		"fetch-tools": "tsx scripts/fetch-mcp-tools.ts"
 	},
 	"dependencies": {
 		"@radix-ui/react-slot": "^1.2.3",
@@ -31,7 +32,9 @@
 		"tailwind-merge": "^3.3.1"
 	},
 	"devDependencies": {
+		"@modelcontextprotocol/sdk": "^1.12.1",
 		"@tailwindcss/postcss": "^4.1.11",
+		"tsx": "^4.19.4",
 		"@types/mdx": "^2.0.13",
 		"@types/node": "24.0.7",
 		"@types/react": "19.2.7",
