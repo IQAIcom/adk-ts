@@ -287,29 +287,6 @@ export class AnthropicLlm extends BaseLlm {
 		}
 	}
 
-	/**
-	 * Detect content type for flow control (thought vs regular)
-	 * Heuristic-based detection similar to OpenAiLlm
-	 */
-	private getTypeFromContent(content: string): "thought" | "regular" {
-		if (
-			content.includes("<thinking>") ||
-			content.includes("[thinking]") ||
-			content.includes("<thought>") ||
-			content.includes("[thought]")
-		) {
-			return "thought";
-		}
-		return "regular";
-	}
-
-	/**
-	 * Detect content type for flow control
-	 */
-	private getContentType(content: string): "thought" | "regular" {
-		return this.getTypeFromContent(content);
-	}
-
 	private shouldEnableCache(llmRequest: LlmRequest): boolean {
 		return (
 			llmRequest.cacheConfig !== undefined && llmRequest.cacheConfig !== null
