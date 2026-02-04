@@ -398,8 +398,20 @@ export class FileVectorStore implements VectorStore {
 		id: string,
 		metadata: Record<string, unknown>,
 	): void {
-		const content = metadata.content as MemoryContent | undefined;
-		if (!content) return;
+		const rawContent = metadata.content;
+		if (!rawContent) return;
+
+		// Parse if content is a JSON string (from VectorStorageProvider)
+		let content: MemoryContent;
+		if (typeof rawContent === "string") {
+			try {
+				content = JSON.parse(rawContent) as MemoryContent;
+			} catch {
+				return;
+			}
+		} else {
+			content = rawContent as MemoryContent;
+		}
 
 		const lines: string[] = [];
 		const timestamp = metadata.timestamp as string | undefined;
@@ -452,21 +464,6 @@ export class FileVectorStore implements VectorStore {
 				lines.push(segment.summary);
 				lines.push("");
 			}
-		}
-
-		// Raw conversation (collapsed for readability)
-		if (content.rawText) {
-			lines.push("## Full Conversation");
-			lines.push("");
-			lines.push("<details>");
-			lines.push("<summary>Click to expand</summary>");
-			lines.push("");
-			lines.push("```");
-			lines.push(content.rawText);
-			lines.push("```");
-			lines.push("");
-			lines.push("</details>");
-			lines.push("");
 		}
 
 		// Write file
