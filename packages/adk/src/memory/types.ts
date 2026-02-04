@@ -1,244 +1,252 @@
 import type { Session } from "../sessions/session";
 
+// =============================================================================
+// Core Memory Types
+// =============================================================================
+
 /**
- * Summary of a session for memory storage
+ * Main memory service configuration - orchestrates storage, summarization, and search.
  */
-export interface SessionSummary {
+export interface MemoryServiceConfig {
 	/**
-	 * The summarized content of the session
+	 * Where and how memories are stored.
+	 * Default: InMemoryStorageProvider
 	 */
-	summary: string;
+	storage: MemoryStorageProvider;
 
 	/**
-	 * Topics discussed in the session
+	 * How sessions become memories.
+	 * If not provided, stores session reference only (no summarization).
 	 */
-	topics?: string[];
+	summaryProvider?: MemorySummaryProvider;
 
 	/**
-	 * Key facts extracted from the session
+	 * How to generate embeddings for semantic search.
+	 * If not provided, storage provider uses its own search (likely keyword).
 	 */
+	embeddingProvider?: EmbeddingProvider;
+
+	/**
+	 * Number of results to return from search.
+	 * Default: 5
+	 */
+	searchLimit?: number;
+}
+
+// =============================================================================
+// Storage Provider
+// =============================================================================
+
+/**
+ * Interface for memory storage backends.
+ * Agent developers implement this or use provided defaults.
+ *
+ * Implementations decide:
+ * - How data is persisted (files, database, vector store, etc.)
+ * - How search works (keyword, vector, hybrid, full-text)
+ * - What filters are supported
+ */
+export interface MemoryStorageProvider {
+	/**
+	 * Store a memory record.
+	 */
+	store(record: MemoryRecord): Promise<void>;
+
+	/**
+	 * Search memories. Implementation decides the search algorithm.
+	 */
+	search(query: MemorySearchQuery): Promise<MemorySearchResult[]>;
+
+	/**
+	 * Delete memories matching filter.
+	 */
+	delete(filter: MemoryDeleteFilter): Promise<number>;
+
+	/**
+	 * Count memories matching filter (for quota management).
+	 */
+	count?(filter: MemoryDeleteFilter): Promise<number>;
+}
+
+/**
+ * A memory record stored in the storage provider.
+ */
+export interface MemoryRecord {
+	/** Unique identifier for this memory */
+	id: string;
+
+	/** Session this memory was created from */
+	sessionId: string;
+
+	/** User who owns this memory */
+	userId: string;
+
+	/** Application name */
+	appName: string;
+
+	/** When this memory was created */
+	timestamp: string;
+
+	/**
+	 * The memory content - structure depends on SummaryProvider.
+	 * Could be: raw text, structured summary, custom schema.
+	 */
+	content: MemoryContent;
+
+	/**
+	 * Vector embedding (if EmbeddingProvider configured).
+	 * Storage provider can use this for similarity search.
+	 */
+	embedding?: number[];
+}
+
+/**
+ * Query parameters for searching memories.
+ */
+export interface MemorySearchQuery {
+	/** The search query text */
+	query: string;
+
+	/** User ID to scope search */
+	userId: string;
+
+	/** Optional: limit to specific app */
+	appName?: string;
+
+	/** Maximum results to return */
+	limit?: number;
+
+	/**
+	 * Optional: pre-computed query embedding.
+	 * If provided, storage can use for vector search.
+	 */
+	queryEmbedding?: number[];
+
+	/**
+	 * Additional filters - storage provider decides what to support.
+	 */
+	filters?: {
+		after?: string;
+		before?: string;
+		sessionId?: string;
+		[key: string]: unknown;
+	};
+}
+
+/**
+ * A single search result with relevance score.
+ */
+export interface MemorySearchResult {
+	/** The memory record */
+	memory: MemoryRecord;
+
+	/** Relevance score (0-1, higher is better) */
+	score: number;
+}
+
+/**
+ * Filter for deleting memories.
+ */
+export interface MemoryDeleteFilter {
+	userId?: string;
+	appName?: string;
+	sessionId?: string;
+	before?: string;
+	after?: string;
+	ids?: string[];
+}
+
+// =============================================================================
+// Summary Provider
+// =============================================================================
+
+/**
+ * Interface for transforming sessions into memory content.
+ * If not provided, MemoryService stores session reference only.
+ */
+export interface MemorySummaryProvider {
+	/**
+	 * Transform a session into memory content.
+	 * Implementation decides the output structure.
+	 */
+	summarize(session: Session): Promise<MemoryContent>;
+}
+
+/**
+ * Flexible memory content - structure depends on use case.
+ */
+export type MemoryContent = {
+	/** Human-readable summary */
+	summary?: string;
+
+	/**
+	 * Topic segments for granular search.
+	 * Each segment can be embedded separately for precision.
+	 */
+	segments?: TopicSegment[];
+
+	/** Named entities mentioned */
+	entities?: Entity[];
+
+	/** Key facts to remember */
 	keyFacts?: string[];
 
-	/**
-	 * Start timestamp of the summarized period (seconds since epoch)
-	 */
-	startTimestamp?: number;
+	/** Raw text (if no summarization) */
+	rawText?: string;
 
-	/**
-	 * End timestamp of the summarized period (seconds since epoch)
-	 */
-	endTimestamp?: number;
-
-	/**
-	 * Number of events covered by this summary
-	 */
-	eventCount?: number;
-}
+	/** Custom fields - agent developer's schema */
+	[key: string]: unknown;
+};
 
 /**
- * Provider interface for generating session summaries
+ * A topic segment within a memory for granular search.
  */
-export interface SummaryProvider {
-	/**
-	 * Generates summaries from a session
-	 * @param session The session to summarize
-	 * @returns Array of session summaries
-	 */
-	getSummaries(session: Session): Promise<SessionSummary[]>;
+export interface TopicSegment {
+	/** Short topic label */
+	topic: string;
+
+	/** Detailed summary of this topic */
+	summary: string;
+
+	/** How prominent was this topic */
+	relevance?: "high" | "medium" | "low";
 }
 
 /**
- * Provider interface for generating text embeddings
+ * A named entity extracted from a conversation.
+ */
+export interface Entity {
+	/** Entity name */
+	name: string;
+
+	/** Entity type */
+	type: "person" | "place" | "organization" | "thing" | "other";
+
+	/** Relationship to user */
+	relation?: string;
+}
+
+// =============================================================================
+// Embedding Provider
+// =============================================================================
+
+/**
+ * Interface for embedding providers.
+ * If not provided, storage provider uses its own search method.
  */
 export interface EmbeddingProvider {
 	/**
-	 * Generates an embedding vector for the given text
-	 * @param text The text to embed
-	 * @returns The embedding vector
+	 * Generate embedding for text.
 	 */
 	embed(text: string): Promise<number[]>;
 
 	/**
-	 * Generates embedding vectors for multiple texts
-	 * @param texts The texts to embed
-	 * @returns Array of embedding vectors
+	 * Batch embedding for efficiency (optional).
 	 */
 	embedBatch?(texts: string[]): Promise<number[][]>;
 
 	/**
-	 * The dimension of the embedding vectors
+	 * Embedding vector dimensions.
 	 */
 	readonly dimensions: number;
-}
-
-/**
- * Filter options for vector store queries
- */
-export interface VectorStoreFilter {
-	/**
-	 * Filter by user ID
-	 */
-	userId?: string;
-
-	/**
-	 * Filter by application name
-	 */
-	appName?: string;
-
-	/**
-	 * Filter by session ID
-	 */
-	sessionId?: string;
-
-	/**
-	 * Include only memories after this timestamp (seconds since epoch)
-	 */
-	after?: number;
-
-	/**
-	 * Include only memories before this timestamp (seconds since epoch)
-	 */
-	before?: number;
-}
-
-/**
- * Result of a vector similarity search
- */
-export interface VectorSearchResult {
-	/**
-	 * Unique identifier of the memory
-	 */
-	id: string;
-
-	/**
-	 * Similarity score (higher is more similar)
-	 */
-	score: number;
-
-	/**
-	 * The memory summary data
-	 */
-	memory: MemorySummary;
-}
-
-/**
- * A stored memory summary with metadata
- */
-export interface MemorySummary {
-	/**
-	 * Unique identifier for this memory
-	 */
-	id: string;
-
-	/**
-	 * Session ID this memory was derived from
-	 */
-	sessionId: string;
-
-	/**
-	 * User ID associated with this memory
-	 */
-	userId: string;
-
-	/**
-	 * Application name associated with this memory
-	 */
-	appName: string;
-
-	/**
-	 * The summarized content
-	 */
-	summary: string;
-
-	/**
-	 * Topics discussed
-	 */
-	topics?: string[];
-
-	/**
-	 * Key facts extracted
-	 */
-	keyFacts?: string[];
-
-	/**
-	 * Timestamp when this memory was created (seconds since epoch)
-	 */
-	timestamp: number;
-
-	/**
-	 * Number of events this memory covers
-	 */
-	eventCount?: number;
-}
-
-/**
- * Interface for vector storage backends
- */
-export interface VectorStore {
-	/**
-	 * Stores or updates an embedding with its metadata
-	 * @param id Unique identifier for the embedding
-	 * @param embedding The embedding vector
-	 * @param metadata The memory metadata
-	 */
-	upsert(
-		id: string,
-		embedding: number[],
-		metadata: MemorySummary,
-	): Promise<void>;
-
-	/**
-	 * Searches for similar embeddings
-	 * @param embedding The query embedding vector
-	 * @param topK Number of results to return
-	 * @param filter Optional filter criteria
-	 * @returns Array of search results sorted by similarity (descending)
-	 */
-	search(
-		embedding: number[],
-		topK: number,
-		filter?: VectorStoreFilter,
-	): Promise<VectorSearchResult[]>;
-
-	/**
-	 * Deletes a single embedding by ID
-	 * @param id The ID to delete
-	 */
-	delete?(id: string): Promise<void>;
-
-	/**
-	 * Deletes multiple embeddings matching the filter
-	 * @param filter Filter criteria for deletion
-	 * @returns Number of deleted entries
-	 */
-	deleteMany?(filter: VectorStoreFilter): Promise<number>;
-}
-
-/**
- * Configuration for the MemoryService
- */
-export interface MemoryServiceConfig {
-	/**
-	 * Summarization provider configuration
-	 */
-	summarization?: {
-		provider: SummaryProvider;
-	};
-
-	/**
-	 * Embedding provider configuration
-	 */
-	embedding?: {
-		provider: EmbeddingProvider;
-	};
-
-	/**
-	 * Vector store for semantic search
-	 */
-	vectorStore?: VectorStore;
-
-	/**
-	 * Number of results to return from semantic search (default: 5)
-	 */
-	searchTopK?: number;
 }

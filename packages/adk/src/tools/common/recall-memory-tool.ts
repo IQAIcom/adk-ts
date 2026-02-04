@@ -74,24 +74,26 @@ export class RecallMemoryTool extends BaseTool {
 		this.logger.debug(`Executing recall_memory with query: ${args.query}`);
 
 		try {
-			const searchResult = await context.searchMemory(args.query);
+			const searchResults = await context.searchMemory(args.query);
 
 			// Apply limit if specified
-			let memories = searchResult.memories || [];
+			let results = searchResults;
 			if (args.limit && args.limit > 0) {
-				memories = memories.slice(0, args.limit);
+				results = results.slice(0, args.limit);
 			}
 
 			// Format memories for the response
-			const formattedMemories = memories.map((memory) => {
-				const textParts = memory.content?.parts
-					?.filter((part) => part.text)
-					.map((part) => part.text!)
-					.join(" ");
+			const formattedMemories = results.map((result) => {
+				const memory = result.memory;
+				// Use summary if available, otherwise fall back to rawText or keyFacts
+				const content =
+					memory.content.summary ||
+					memory.content.keyFacts?.join("; ") ||
+					memory.content.rawText ||
+					"";
 
 				return {
-					content: textParts || "",
-					author: memory.author,
+					content,
 					timestamp: memory.timestamp,
 				};
 			});

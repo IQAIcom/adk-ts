@@ -1,318 +1,277 @@
 import { randomUUID } from "node:crypto";
-import { Logger } from "@adk/logger";
-import type { Event } from "../events/event";
 import type { Session } from "../sessions/session";
-import { formatTimestamp } from "./_utils";
-import type {
-	BaseMemoryService,
-	SearchMemoryResponse,
-} from "./base-memory-service";
-import type { MemoryEntry } from "./memory-entry";
 import type {
 	EmbeddingProvider,
+	MemoryContent,
+	MemoryDeleteFilter,
+	MemoryRecord,
+	MemorySearchQuery,
+	MemorySearchResult,
 	MemoryServiceConfig,
-	MemorySummary,
-	SummaryProvider,
-	VectorStore,
+	MemoryStorageProvider,
+	MemorySummaryProvider,
 } from "./types";
-import { InMemoryVectorStore } from "./vector-stores/in-memory-vector-store";
 
 /**
- * Creates a user key from app name and user ID
+ * Default search limit if not specified.
  */
-function userKey(appName: string, userId: string): string {
-	return `${appName}/${userId}`;
-}
+const DEFAULT_SEARCH_LIMIT = 5;
 
 /**
- * Extracts words from a string and converts them to lowercase
- */
-function extractWordsLower(text: string): Set<string> {
-	const words = text.match(/[A-Za-z]+/g) || [];
-	return new Set(words.map((word) => word.toLowerCase()));
-}
-
-/**
- * Enhanced memory service with support for semantic search, configurable triggers,
- * and various summarization strategies.
+ * Main memory service - orchestrates storage, summarization, and search.
  *
- * When no config is provided, falls back to keyword matching for backward compatibility.
+ * This is the primary entry point for memory operations. It coordinates:
+ * - Storage: Where and how memories are persisted
+ * - Summarization: How sessions are transformed into memories
+ * - Embeddings: How semantic search is enabled
+ *
+ * @example
+ * ```typescript
+ * // Simple setup
+ * const memoryService = new MemoryService({
+ *   storage: new InMemoryStorageProvider(),
+ * });
+ *
+ * // Production setup with semantic search
+ * const memoryService = new MemoryService({
+ *   storage: new VectorStorageProvider({ vectorStore: pinecone }),
+ *   summaryProvider: new LlmSummaryProvider({ model: 'gpt-4o-mini' }),
+ *   embeddingProvider: new OpenAIEmbeddingProvider(),
+ * });
+ * ```
  */
-export class MemoryService implements BaseMemoryService {
-	private logger = new Logger({ name: "MemoryService" });
+export class MemoryService {
+	private readonly storage: MemoryStorageProvider;
+	private readonly summaryProvider?: MemorySummaryProvider;
+	private readonly embeddingProvider?: EmbeddingProvider;
+	private readonly searchLimit: number;
 
-	// Configuration
-	private summaryProvider?: SummaryProvider;
-	private embeddingProvider?: EmbeddingProvider;
-	private vectorStore: VectorStore;
-	private searchTopK: number;
-
-	// Keyword-based storage for backward compatibility
-	private sessionEvents: Map<string, Map<string, Event[]>> = new Map();
-
-	// Track whether semantic search is enabled
-	private useSemanticSearch: boolean;
+	constructor(config: MemoryServiceConfig) {
+		this.storage = config.storage;
+		this.summaryProvider = config.summaryProvider;
+		this.embeddingProvider = config.embeddingProvider;
+		this.searchLimit = config.searchLimit ?? DEFAULT_SEARCH_LIMIT;
+	}
 
 	/**
-	 * Creates a new MemoryService
+	 * Add a session to memory.
 	 *
-	 * @param config Optional configuration. If not provided, uses keyword matching (backward compatible).
-	 */
-	constructor(config?: MemoryServiceConfig) {
-		this.summaryProvider = config?.summarization?.provider;
-		this.embeddingProvider = config?.embedding?.provider;
-		this.vectorStore = config?.vectorStore ?? new InMemoryVectorStore();
-		this.searchTopK = config?.searchTopK ?? 5;
-
-		// Validate config
-		if (this.embeddingProvider && !this.summaryProvider) {
-			this.logger.warn(
-				"Embedding provider configured without summarization provider. " +
-					"Sessions will be stored as raw events without summarization.",
-			);
-		}
-
-		// Enable semantic search only if we have both summarization and embedding
-		this.useSemanticSearch = !!(this.summaryProvider && this.embeddingProvider);
-
-		if (config) {
-			this.logger.debug(
-				`MemoryService initialized with semantic search: ${this.useSemanticSearch}`,
-			);
-		} else {
-			this.logger.debug(
-				"MemoryService initialized with keyword matching (no config)",
-			);
-		}
-	}
-
-	/**
-	 * Adds a session to the memory service
+	 * Flow:
+	 * 1. If summaryProvider configured: summarize session into MemoryContent
+	 * 2. If embeddingProvider configured: generate embedding for the content
+	 * 3. Store the memory record via storage provider
 	 *
-	 * Depending on configuration, this will either:
-	 * - Summarize and embed the session for semantic search
-	 * - Store raw events for keyword matching (backward compatible)
+	 * @param session - The session to add to memory
+	 * @param options - Additional options for the memory record
+	 * @returns The created memory record
 	 */
-	async addSessionToMemory(session: Session): Promise<void> {
-		// Always store for keyword matching (backward compatibility)
-		this.storeForKeywordSearch(session);
+	async addSessionToMemory(
+		session: Session,
+		options?: {
+			/** Override the app name (defaults to session.appName) */
+			appName?: string;
+			/** Override the user ID (defaults to session.userId) */
+			userId?: string;
+		},
+	): Promise<MemoryRecord> {
+		const userId = options?.userId ?? session.userId;
+		const appName = options?.appName ?? session.appName;
 
-		// If semantic search is enabled, also store embeddings
-		if (this.useSemanticSearch) {
-			await this.storeForSemanticSearch(session);
-		}
+		// Step 1: Generate memory content
+		const content = await this.generateContent(session);
+
+		// Step 2: Generate embedding if provider configured
+		const embedding = await this.generateEmbedding(content);
+
+		// Step 3: Create and store memory record
+		const record: MemoryRecord = {
+			id: randomUUID(),
+			sessionId: session.id,
+			userId,
+			appName,
+			timestamp: new Date().toISOString(),
+			content,
+			embedding,
+		};
+
+		await this.storage.store(record);
+
+		return record;
 	}
 
 	/**
-	 * Searches memory for relevant information
+	 * Search memories for a user.
 	 *
-	 * Uses semantic search if configured, otherwise falls back to keyword matching.
+	 * Flow:
+	 * 1. If embeddingProvider configured: generate query embedding
+	 * 2. Delegate search to storage provider
+	 *
+	 * @param query - Search query parameters
+	 * @returns Array of matching memories with relevance scores
 	 */
-	async searchMemory(options: {
-		appName: string;
-		userId: string;
-		query: string;
-	}): Promise<SearchMemoryResponse> {
-		if (this.useSemanticSearch && this.embeddingProvider) {
-			return this.semanticSearch(options);
-		}
-		return this.keywordSearch(options);
+	async search(
+		query: Omit<MemorySearchQuery, "queryEmbedding" | "limit"> & {
+			limit?: number;
+		},
+	): Promise<MemorySearchResult[]> {
+		// Generate query embedding if provider configured
+		const queryEmbedding = this.embeddingProvider
+			? await this.embeddingProvider.embed(query.query)
+			: undefined;
+
+		const searchQuery: MemorySearchQuery = {
+			...query,
+			queryEmbedding,
+			limit: query.limit ?? this.searchLimit,
+		};
+
+		return this.storage.search(searchQuery);
 	}
 
 	/**
-	 * Stores session events for keyword-based search
+	 * Delete memories matching the filter.
+	 *
+	 * @param filter - Filter criteria for deletion
+	 * @returns Number of memories deleted
 	 */
-	private storeForKeywordSearch(session: Session): void {
-		const key = userKey(session.appName, session.userId);
-
-		if (!this.sessionEvents.has(key)) {
-			this.sessionEvents.set(key, new Map());
-		}
-
-		const userSessions = this.sessionEvents.get(key)!;
-		const filteredEvents = session.events.filter(
-			(event) => event.content?.parts,
-		);
-
-		userSessions.set(session.id, filteredEvents);
+	async delete(filter: MemoryDeleteFilter): Promise<number> {
+		return this.storage.delete(filter);
 	}
 
 	/**
-	 * Stores session summaries with embeddings for semantic search
+	 * Count memories matching the filter (if supported by storage).
+	 *
+	 * @param filter - Filter criteria for counting
+	 * @returns Number of matching memories, or undefined if not supported
 	 */
-	private async storeForSemanticSearch(session: Session): Promise<void> {
-		if (!this.summaryProvider || !this.embeddingProvider) {
-			return;
+	async count(filter: MemoryDeleteFilter): Promise<number | undefined> {
+		if (!this.storage.count) {
+			return undefined;
 		}
-
-		try {
-			const summaries = await this.summaryProvider.getSummaries(session);
-
-			if (!summaries || summaries.length === 0) {
-				return;
-			}
-
-			for (const summary of summaries) {
-				if (!summary.summary) {
-					continue;
-				}
-				const memoryId = `${session.id}-${randomUUID()}`;
-
-				const memorySummary: MemorySummary = {
-					id: memoryId,
-					sessionId: session.id,
-					userId: session.userId,
-					appName: session.appName,
-					summary: summary.summary,
-					topics: summary.topics,
-					keyFacts: summary.keyFacts,
-					timestamp: summary.endTimestamp ?? Date.now() / 1000,
-					eventCount: summary.eventCount,
-				};
-
-				// Generate embedding for the summary
-				const embedding = await this.embeddingProvider.embed(summary.summary);
-
-				// Store in vector store
-				await this.vectorStore.upsert(memoryId, embedding, memorySummary);
-
-				this.logger.debug(
-					`Stored memory summary for session ${session.id}: ${summary.summary.substring(0, 50)}...`,
-				);
-			}
-		} catch (error) {
-			this.logger.error(
-				`Failed to store session for semantic search: ${error}`,
-			);
-			// Keyword search will still work as fallback
-		}
+		return this.storage.count(filter);
 	}
 
 	/**
-	 * Performs semantic search using embeddings
+	 * Get the configured embedding provider.
+	 * Useful for generating embeddings externally.
 	 */
-	private async semanticSearch(options: {
-		appName: string;
-		userId: string;
-		query: string;
-	}): Promise<SearchMemoryResponse> {
-		const { appName, userId, query } = options;
+	getEmbeddingProvider(): EmbeddingProvider | undefined {
+		return this.embeddingProvider;
+	}
 
+	/**
+	 * Get the configured summary provider.
+	 * Useful for generating summaries externally.
+	 */
+	getSummaryProvider(): MemorySummaryProvider | undefined {
+		return this.summaryProvider;
+	}
+
+	/**
+	 * Get the configured storage provider.
+	 * Useful for direct storage operations.
+	 */
+	getStorageProvider(): MemoryStorageProvider {
+		return this.storage;
+	}
+
+	/**
+	 * Generate memory content from a session.
+	 * Uses summaryProvider if configured, otherwise creates minimal content.
+	 */
+	private async generateContent(session: Session): Promise<MemoryContent> {
+		if (this.summaryProvider) {
+			return this.summaryProvider.summarize(session);
+		}
+
+		// No summary provider - store minimal reference
+		// Agent developers can implement their own summarization
+		return {
+			rawText: this.extractRawText(session),
+		};
+	}
+
+	/**
+	 * Generate embedding for memory content.
+	 * Returns undefined if no embedding provider configured.
+	 */
+	private async generateEmbedding(
+		content: MemoryContent,
+	): Promise<number[] | undefined> {
 		if (!this.embeddingProvider) {
-			return { memories: [] };
+			return undefined;
 		}
 
-		try {
-			// Generate embedding for the query
-			const queryEmbedding = await this.embeddingProvider.embed(query);
-
-			// Search vector store with user filter
-			const results = await this.vectorStore.search(
-				queryEmbedding,
-				this.searchTopK,
-				{ appName, userId },
-			);
-
-			// Convert to MemoryEntry format
-			const memories: MemoryEntry[] = results.map((result) => ({
-				content: {
-					role: "model",
-					parts: [
-						{
-							text: this.formatMemorySummary(result.memory),
-						},
-					],
-				},
-				author: "memory",
-				timestamp: formatTimestamp(result.memory.timestamp),
-			}));
-
-			return { memories };
-		} catch (error) {
-			this.logger.error(`Semantic search failed: ${error}`);
-			// Fall back to keyword search
-			return this.keywordSearch(options);
-		}
+		// Create text representation for embedding
+		const textToEmbed = this.contentToText(content);
+		return this.embeddingProvider.embed(textToEmbed);
 	}
 
 	/**
-	 * Performs keyword-based search (backward compatible)
+	 * Extract raw text from session events.
+	 * Used when no summary provider is configured.
 	 */
-	private keywordSearch(options: {
-		appName: string;
-		userId: string;
-		query: string;
-	}): SearchMemoryResponse {
-		const { appName, userId, query } = options;
-		const key = userKey(appName, userId);
+	private extractRawText(session: Session): string {
+		const parts: string[] = [];
 
-		if (!this.sessionEvents.has(key)) {
-			return { memories: [] };
-		}
+		for (const event of session.events) {
+			// Handle text property directly (from LlmResponse)
+			if (event.text) {
+				parts.push(`${event.author}: ${event.text}`);
+				continue;
+			}
 
-		const wordsInQuery = new Set(query.toLowerCase().split(" "));
-		const memories: MemoryEntry[] = [];
-
-		const userSessions = this.sessionEvents.get(key)!;
-
-		for (const sessionEvents of userSessions.values()) {
-			for (const event of sessionEvents) {
-				if (!event.content || !event.content.parts) {
-					continue;
-				}
-
+			// Handle content with parts (Google GenAI format)
+			if (event.content?.parts && Array.isArray(event.content.parts)) {
 				const textParts = event.content.parts
-					.filter((part) => part.text)
-					.map((part) => part.text!)
-					.join(" ");
+					.filter(
+						(part: { text?: string }) =>
+							typeof part.text === "string" && part.text.length > 0,
+					)
+					.map((part: { text: string }) => part.text);
 
-				const wordsInEvent = extractWordsLower(textParts);
-
-				if (wordsInEvent.size === 0) {
-					continue;
-				}
-
-				const hasMatch = Array.from(wordsInQuery).some((queryWord) =>
-					wordsInEvent.has(queryWord),
-				);
-
-				if (hasMatch) {
-					memories.push({
-						content: event.content,
-						author: event.author,
-						timestamp: formatTimestamp(event.timestamp),
-					});
+				if (textParts.length > 0) {
+					parts.push(`${event.author}: ${textParts.join(" ")}`);
 				}
 			}
-		}
-
-		return { memories };
-	}
-
-	/**
-	 * Formats a memory summary for display
-	 */
-	private formatMemorySummary(memory: MemorySummary): string {
-		const parts: string[] = [memory.summary];
-
-		if (memory.topics && memory.topics.length > 0) {
-			parts.push(`Topics: ${memory.topics.join(", ")}`);
-		}
-
-		if (memory.keyFacts && memory.keyFacts.length > 0) {
-			parts.push(`Key facts: ${memory.keyFacts.join("; ")}`);
 		}
 
 		return parts.join("\n");
 	}
 
 	/**
-	 * Clears all stored memories
+	 * Convert memory content to text for embedding.
 	 */
-	clear(): void {
-		this.sessionEvents.clear();
-		if ("clear" in this.vectorStore) {
-			(this.vectorStore as InMemoryVectorStore).clear();
+	private contentToText(content: MemoryContent): string {
+		const parts: string[] = [];
+
+		if (content.summary) {
+			parts.push(content.summary);
 		}
+
+		if (content.segments) {
+			for (const segment of content.segments) {
+				parts.push(`${segment.topic}: ${segment.summary}`);
+			}
+		}
+
+		if (content.keyFacts) {
+			parts.push(content.keyFacts.join(". "));
+		}
+
+		if (content.entities) {
+			const entityText = content.entities
+				.map(
+					(e) => `${e.name} (${e.type}${e.relation ? `, ${e.relation}` : ""})`,
+				)
+				.join(", ");
+			parts.push(`Entities: ${entityText}`);
+		}
+
+		if (content.rawText && parts.length === 0) {
+			parts.push(content.rawText);
+		}
+
+		return parts.join("\n\n");
 	}
 }

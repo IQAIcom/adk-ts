@@ -50,15 +50,17 @@ export class PreloadMemoryTool extends BaseTool {
 
 		try {
 			// Search for relevant memories
-			const searchResult = await toolContext.searchMemory(userQuery);
+			const searchResults = await toolContext.searchMemory(userQuery);
 
-			if (!searchResult.memories || searchResult.memories.length === 0) {
+			if (!searchResults || searchResults.length === 0) {
 				this.logger.debug("No relevant memories found");
 				return;
 			}
 
-			// Limit the number of memories
-			const memories = searchResult.memories.slice(0, this.maxMemories);
+			// Limit the number of memories and extract MemoryRecords
+			const memories = searchResults
+				.slice(0, this.maxMemories)
+				.map((result) => result.memory);
 
 			// Format memories as context
 			const memoryContext = this.formatMemoriesAsContext(memories);
@@ -103,23 +105,27 @@ export class PreloadMemoryTool extends BaseTool {
 	 */
 	private formatMemoriesAsContext(
 		memories: Array<{
-			content?: { parts?: Array<{ text?: string }> };
-			author?: string;
+			content: {
+				summary?: string;
+				rawText?: string;
+				keyFacts?: string[];
+			};
 			timestamp?: string;
+			sessionId?: string;
 		}>,
 	): string {
 		const lines: string[] = [];
 
 		for (const memory of memories) {
-			const textContent = memory.content?.parts
-				?.filter((part) => part.text)
-				.map((part) => part.text!)
-				.join(" ");
+			// Use summary if available, otherwise fall back to rawText
+			const textContent =
+				memory.content.summary ||
+				memory.content.keyFacts?.join("; ") ||
+				memory.content.rawText;
 
 			if (textContent) {
 				const timestamp = memory.timestamp ? ` (${memory.timestamp})` : "";
-				const author = memory.author || "unknown";
-				lines.push(`- [${author}${timestamp}]: ${textContent}`);
+				lines.push(`- [Memory${timestamp}]: ${textContent}`);
 			}
 		}
 

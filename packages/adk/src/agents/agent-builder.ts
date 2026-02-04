@@ -7,7 +7,7 @@ import type { BaseArtifactService } from "../artifacts/base-artifact-service.js"
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor.js";
 import type { EventsCompactionConfig } from "../events/compaction-config.js";
 import type { Event } from "../events/event.js";
-import type { BaseMemoryService } from "../memory/base-memory-service.js";
+import type { BaseMemoryService } from "../memory/index.js";
 import type { BaseLlm } from "../models/base-llm.js";
 import type { BasePlanner } from "../planners/base-planner.js";
 import { BasePlugin } from "../plugins/base-plugin.js";

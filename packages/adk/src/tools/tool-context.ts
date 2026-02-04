@@ -1,7 +1,7 @@
 import { CallbackContext } from "../agents/callback-context";
 import type { InvocationContext } from "../agents/invocation-context";
 import type { EventActions } from "../events/event-actions";
-import type { SearchMemoryResponse } from "../memory/base-memory-service";
+import type { MemorySearchResult } from "../memory/index";
 
 /**
  * The context of the tool.
@@ -59,15 +59,15 @@ export class ToolContext extends CallbackContext {
 	/**
 	 * Searches the memory of the current user
 	 */
-	async searchMemory(query: string): Promise<SearchMemoryResponse> {
+	async searchMemory(query: string): Promise<MemorySearchResult[]> {
 		if (!this._invocationContext.memoryService) {
 			throw new Error("Memory service is not available.");
 		}
 
-		return await this._invocationContext.memoryService.searchMemory({
+		return await this._invocationContext.memoryService.search({
 			query,
-			appName: this._invocationContext.appName,
 			userId: this._invocationContext.userId,
+			appName: this._invocationContext.appName,
 		});
 	}
 }

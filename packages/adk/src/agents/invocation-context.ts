@@ -1,7 +1,7 @@
 import type { Content } from "@google/genai";
 import type { SpanContext } from "@opentelemetry/api";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
-import type { BaseMemoryService } from "../memory/base-memory-service";
+import type { BaseMemoryService } from "../memory/index";
 import type { PluginManager } from "../plugins/plugin-manager";
 import type { BaseSessionService } from "../sessions/base-session-service";
 import type { Session } from "../sessions/session";

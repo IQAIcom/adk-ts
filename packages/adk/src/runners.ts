@@ -18,8 +18,7 @@ import { EventActions } from "./events/event-actions";
 import type { EventsSummarizer } from "./events/events-summarizer";
 import { LlmEventSummarizer } from "./events/llm-event-summarizer";
 import { Logger } from "./logger";
-import type { BaseMemoryService } from "./memory/base-memory-service";
-import { InMemoryMemoryService } from "./memory/in-memory-memory-service";
+import type { BaseMemoryService } from "./memory/index";
 import type { BasePlugin } from "./plugins/base-plugin";
 import { PluginManager } from "./plugins/plugin-manager";
 import type { BaseSessionService } from "./sessions/base-session-service";
@@ -792,7 +791,7 @@ export class InMemoryRunner<T extends BaseAgent = BaseAgent> extends Runner<T> {
 			agent,
 			artifactService: new InMemoryArtifactService(),
 			sessionService: inMemorySessionService,
-			memoryService: new InMemoryMemoryService(),
+			// Memory service is optional - configure via MemoryService if needed
 			plugins,
 		});
 

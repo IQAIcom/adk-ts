@@ -7,7 +7,7 @@ import type { BaseArtifactService } from "../artifacts/base-artifact-service";
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor";
 import { Event } from "../events/event";
 import { AutoFlow, type BaseLlmFlow, SingleFlow } from "../flows/llm-flows";
-import type { BaseMemoryService } from "../memory/base-memory-service";
+import type { BaseMemoryService } from "../memory/index";
 import { AiSdkLlm } from "../models/ai-sdk";
 import { BaseLlm } from "../models/base-llm";
 import { LLMRegistry } from "../models/llm-registry";
