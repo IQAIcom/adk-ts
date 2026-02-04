@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { QdrantVectorStore } from "../../memory/storage/qdrant-vector-store";
 
 describe("QdrantVectorStore", () => {
@@ -54,7 +54,25 @@ describe("QdrantVectorStore", () => {
 
 	describe("error handling", () => {
 		it("should throw helpful error when @qdrant/js-client-rest is not installed", async () => {
-			const store = new QdrantVectorStore({
+			// Mock the require to simulate package not being installed
+			const originalRequire = Module.prototype.require;
+			const mockRequire = vi.fn().mockImplementation(function (
+				this: NodeModule,
+				id: string,
+			) {
+				if (id === "@qdrant/js-client-rest") {
+					throw new Error("Cannot find module '@qdrant/js-client-rest'");
+				}
+				return originalRequire.call(this, id);
+			});
+			Module.prototype.require = mockRequire;
+
+			// Need to create a fresh instance that hasn't been initialized
+			const { QdrantVectorStore: FreshQdrantVectorStore } = await import(
+				"../../memory/storage/qdrant-vector-store"
+			);
+
+			const store = new FreshQdrantVectorStore({
 				url: "http://localhost:6333",
 				collectionName: "test",
 				dimensions: 1536,
@@ -69,6 +87,12 @@ describe("QdrantVectorStore", () => {
 					metadata: { test: "value" },
 				}),
 			).rejects.toThrow("@qdrant/js-client-rest");
+
+			// Restore original require
+			Module.prototype.require = originalRequire;
 		});
 	});
 });
+
+// Import Module for require mocking
+import Module from "node:module";

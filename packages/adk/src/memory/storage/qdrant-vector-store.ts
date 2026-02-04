@@ -1,5 +1,11 @@
 import type { VectorStore } from "./vector-storage-provider";
 
+// Import types only - these are stripped at compile time
+import type {
+	QdrantClient as QdrantClientType,
+	QdrantClientParams,
+} from "@qdrant/js-client-rest";
+
 /**
  * Configuration for QdrantVectorStore.
  */
@@ -119,7 +125,7 @@ export class QdrantVectorStore implements VectorStore {
 	private readonly createCollectionIfNotExists: boolean;
 	private readonly https: boolean;
 
-	private client: any = null;
+	private client: QdrantClientType | null = null;
 	private initialized = false;
 
 	constructor(config: QdrantVectorStoreConfig = {}) {
@@ -136,24 +142,16 @@ export class QdrantVectorStore implements VectorStore {
 	/**
 	 * Initialize the Qdrant client and ensure collection exists.
 	 */
-	private async ensureInitialized(): Promise<any> {
+	private async ensureInitialized(): Promise<QdrantClientType> {
 		if (this.client && this.initialized) {
 			return this.client;
 		}
 
-		// Dynamic import to make Qdrant optional
-		let QdrantClient: new (config: {
-			host: string;
-			port: number;
-			apiKey?: string;
-			https?: boolean;
-		}) => any;
+		// Dynamic require to make Qdrant optional
+		let QdrantClient: new (config: QdrantClientParams) => QdrantClientType;
 
 		try {
-			// Use string variable to prevent TypeScript from checking the module at compile time
-			const moduleName = "@qdrant/js-client-rest";
-			const qdrantModule = await import(/* webpackIgnore: true */ moduleName);
-			QdrantClient = qdrantModule.QdrantClient;
+			({ QdrantClient } = require("@qdrant/js-client-rest"));
 		} catch {
 			throw new Error(
 				"QdrantVectorStore requires @qdrant/js-client-rest package. Install it with: pnpm add @qdrant/js-client-rest",
