@@ -1,8 +1,9 @@
 {
-	"title": "Plugins",
 	"icon": "Settings",
 	"pages": [
+		"index",
 		"plugins",
+		"tool-output-filter",
 		"model-fallback-plugin",
 		"reflect-and-retry",
 		"langfuse-plugin"
