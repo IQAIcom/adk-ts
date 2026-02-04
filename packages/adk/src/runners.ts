@@ -18,7 +18,7 @@ import { EventActions } from "./events/event-actions";
 import type { EventsSummarizer } from "./events/events-summarizer";
 import { LlmEventSummarizer } from "./events/llm-event-summarizer";
 import { Logger } from "./logger";
-import type { BaseMemoryService } from "./memory/index";
+import type { MemoryService } from "./memory/index";
 import type { BasePlugin } from "./plugins/base-plugin";
 import { PluginManager } from "./plugins/plugin-manager";
 import type { BaseSessionService } from "./sessions/base-session-service";
@@ -97,7 +97,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 	/**
 	 * The memory service for the runner.
 	 */
-	memoryService?: BaseMemoryService;
+	memoryService?: MemoryService;
 
 	/**
 	 * The plugin manager for the runner.
@@ -134,7 +134,7 @@ export class Runner<T extends BaseAgent = BaseAgent> {
 		agent: T;
 		artifactService?: BaseArtifactService;
 		sessionService: BaseSessionService;
-		memoryService?: BaseMemoryService;
+		memoryService?: MemoryService;
 		eventsCompactionConfig?: EventsCompactionConfig;
 		contextCacheConfig?: ContextCacheConfig;
 		plugins?: BasePlugin[];

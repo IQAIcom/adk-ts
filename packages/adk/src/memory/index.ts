@@ -14,10 +14,15 @@ export {
 	OpenRouterEmbeddingProvider,
 } from "./embeddings/index";
 // Core Service
+export { MemoryService } from "./memory-service";
+
+// Legacy exports (deprecated - will be removed in next major version)
 export {
-	MemoryService,
-	MemoryService as BaseMemoryService,
-} from "./memory-service";
+	type BaseMemoryService,
+	InMemoryMemoryService,
+	type MemoryEntry,
+	type SearchMemoryResponse,
+} from "./in-memory-memory-service";
 export type {
 	FileStorageProviderConfig,
 	FileVectorStoreConfig,

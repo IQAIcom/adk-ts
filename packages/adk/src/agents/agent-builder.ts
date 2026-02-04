@@ -7,7 +7,7 @@ import type { BaseArtifactService } from "../artifacts/base-artifact-service.js"
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor.js";
 import type { EventsCompactionConfig } from "../events/compaction-config.js";
 import type { Event } from "../events/event.js";
-import type { BaseMemoryService } from "../memory/index.js";
+import type { MemoryService } from "../memory/index.js";
 import type { BaseLlm } from "../models/base-llm.js";
 import type { BasePlanner } from "../planners/base-planner.js";
 import { BasePlugin } from "../plugins/base-plugin.js";
@@ -132,7 +132,7 @@ export interface BuiltAgent<T = string, M extends boolean = false> {
 	runner: EnhancedRunner<T, M>;
 	session: Session;
 	sessionService: BaseSessionService;
-	memoryService?: BaseMemoryService;
+	memoryService?: MemoryService;
 }
 
 /**
@@ -179,7 +179,7 @@ interface RunnerConfig {
 	appName: string;
 	agent: BaseAgent;
 	sessionService: BaseSessionService;
-	memoryService?: BaseMemoryService;
+	memoryService?: MemoryService;
 	artifactService?: BaseArtifactService;
 	eventsCompactionConfig?: EventsCompactionConfig;
 	plugins?: BasePlugin[];
@@ -218,7 +218,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	private config: AgentBuilderConfig;
 	private sessionService?: BaseSessionService;
 	private sessionOptions?: SessionOptions;
-	private memoryService?: BaseMemoryService;
+	private memoryService?: MemoryService;
 	private artifactService?: BaseArtifactService;
 	private eventsCompactionConfig?: EventsCompactionConfig;
 	private contextCacheConfig?: ContextCacheConfig;
@@ -690,7 +690,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param memoryService Memory service to use for conversation history and context
 	 * @returns This builder instance for chaining
 	 */
-	withMemory(memoryService: BaseMemoryService): this {
+	withMemory(memoryService: MemoryService): this {
 		this.memoryService = memoryService;
 		return this;
 	}

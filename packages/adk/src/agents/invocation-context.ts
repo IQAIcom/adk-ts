@@ -1,7 +1,7 @@
 import type { Content } from "@google/genai";
 import type { SpanContext } from "@opentelemetry/api";
 import type { BaseArtifactService } from "../artifacts/base-artifact-service";
-import type { BaseMemoryService } from "../memory/index";
+import type { MemoryService } from "../memory/index";
 import type { PluginManager } from "../plugins/plugin-manager";
 import type { BaseSessionService } from "../sessions/base-session-service";
 import type { Session } from "../sessions/session";
@@ -124,7 +124,7 @@ export function newInvocationContextId(): string {
 export class InvocationContext {
 	readonly artifactService?: BaseArtifactService;
 	readonly sessionService: BaseSessionService;
-	readonly memoryService?: BaseMemoryService;
+	readonly memoryService?: MemoryService;
 
 	/**
 	 * The plugin manager for this invocation context.
@@ -221,7 +221,7 @@ export class InvocationContext {
 	constructor(options: {
 		artifactService?: BaseArtifactService;
 		sessionService: BaseSessionService;
-		memoryService?: BaseMemoryService;
+		memoryService?: MemoryService;
 		pluginManager: PluginManager;
 		invocationId?: string;
 		branch?: string;

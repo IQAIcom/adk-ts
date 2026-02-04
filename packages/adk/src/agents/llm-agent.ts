@@ -7,7 +7,7 @@ import type { BaseArtifactService } from "../artifacts/base-artifact-service";
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor";
 import { Event } from "../events/event";
 import { AutoFlow, type BaseLlmFlow, SingleFlow } from "../flows/llm-flows";
-import type { BaseMemoryService } from "../memory/index";
+import type { MemoryService } from "../memory/index";
 import { AiSdkLlm } from "../models/ai-sdk";
 import { BaseLlm } from "../models/base-llm";
 import { LLMRegistry } from "../models/llm-registry";
@@ -202,7 +202,7 @@ export interface LlmAgentConfig<T extends BaseLlm = BaseLlm> {
 	/**
 	 * Memory service for long-term storage and retrieval
 	 */
-	memoryService?: BaseMemoryService;
+	memoryService?: MemoryService;
 
 	/**
 	 * Session service for managing conversations
@@ -328,7 +328,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 	/**
 	 * Memory service for long-term storage and retrieval
 	 */
-	private memoryService?: BaseMemoryService;
+	private memoryService?: MemoryService;
 
 	/**
 	 * Session service for managing conversations
