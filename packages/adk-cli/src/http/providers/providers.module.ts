@@ -1,4 +1,4 @@
-import { InMemorySessionService } from "@iqai/adk";
+import { InMemoryArtifactService, InMemorySessionService } from "@iqai/adk";
 import { Module } from "@nestjs/common";
 import { TOKENS } from "../../common/tokens";
 import { AgentGraphService } from "./agent-graph.service";
@@ -12,6 +12,12 @@ import { AgentScanner } from "./agent-scanner.service";
 		{
 			provide: InMemorySessionService,
 			useFactory: () => new InMemorySessionService(),
+		},
+
+		// Core artifact service from @iqai/adk
+		{
+			provide: InMemoryArtifactService,
+			useFactory: () => new InMemoryArtifactService(),
 		},
 
 		// Core services wired through DI, passing quiet flag and session service
@@ -35,6 +41,7 @@ import { AgentScanner } from "./agent-scanner.service";
 	],
 	exports: [
 		InMemorySessionService,
+		InMemoryArtifactService,
 		AgentScanner,
 		AgentLoader,
 		AgentManager,

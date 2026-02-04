@@ -2,6 +2,7 @@ import { Logger } from "@adk/logger";
 import Anthropic from "@anthropic-ai/sdk";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
+import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
@@ -99,35 +100,42 @@ export class AnthropicLlm extends BaseLlm {
 			}${stream ? " (streaming)" : ""}`,
 		);
 
-		if (stream) {
-			yield* this.handleStreaming(
-				model,
-				system,
-				anthropicMessages,
-				tools,
-				maxTokens,
-				temperature,
-				topP,
-			);
-		} else {
-			const message = await this.client.messages.create({
-				model,
-				system,
-				messages: anthropicMessages,
-				tools,
-				tool_choice: tools ? { type: "auto" } : undefined,
-				max_tokens: maxTokens,
-				temperature,
-				top_p: topP,
-			});
+		try {
+			if (stream) {
+				yield* this.handleStreaming(
+					model,
+					system,
+					anthropicMessages,
+					tools,
+					maxTokens,
+					temperature,
+					topP,
+				);
+			} else {
+				const message = await this.client.messages.create({
+					model,
+					system,
+					messages: anthropicMessages,
+					tools,
+					tool_choice: tools ? { type: "auto" } : undefined,
+					max_tokens: maxTokens,
+					temperature,
+					top_p: topP,
+				});
 
-			const response = this.anthropicMessageToLlmResponse(message);
+				const response = this.anthropicMessageToLlmResponse(message);
 
-			if (shouldCache) {
-				this.logCachePerformance(message.usage);
+				if (shouldCache) {
+					this.logCachePerformance(message.usage);
+				}
+
+				yield response;
 			}
-
-			yield response;
+		} catch (error: any) {
+			if (RateLimitError.isRateLimitError(error)) {
+				throw RateLimitError.fromError(error, "anthropic", model);
+			}
+			throw error;
 		}
 	}
 
