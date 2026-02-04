@@ -4,6 +4,8 @@
 	"root": true,
 	"pages": [
 		"index",
+		"external-mcps",
+		"creating-custom-mcps",
 		"abi",
 		"atp",
 		"bamm",
