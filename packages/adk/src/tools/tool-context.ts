@@ -1,7 +1,9 @@
 import { CallbackContext } from "../agents/callback-context";
 import type { InvocationContext } from "../agents/invocation-context";
 import type { EventActions } from "../events/event-actions";
-import type { MemorySearchResult } from "../memory/index";
+import type { MemorySearchResult, MemoryService } from "../memory/index";
+import type { BaseSessionService } from "../sessions/base-session-service";
+import type { Session } from "../sessions/session";
 
 /**
  * The context of the tool.
@@ -69,5 +71,26 @@ export class ToolContext extends CallbackContext {
 			userId: this._invocationContext.userId,
 			appName: this._invocationContext.appName,
 		});
+	}
+
+	/**
+	 * Gets the memory service if configured.
+	 */
+	get memoryService(): MemoryService | undefined {
+		return this._invocationContext.memoryService as MemoryService | undefined;
+	}
+
+	/**
+	 * Gets the session service.
+	 */
+	get sessionService(): BaseSessionService {
+		return this._invocationContext.sessionService;
+	}
+
+	/**
+	 * Gets the current session.
+	 */
+	get session(): Session {
+		return this._invocationContext.session;
 	}
 }
