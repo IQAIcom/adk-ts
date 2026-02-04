@@ -1,5 +1,6 @@
 import { Logger } from "@adk/logger";
 import Anthropic from "@anthropic-ai/sdk";
+import type { Part } from "@google/genai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import { RateLimitError } from "./errors";
@@ -221,7 +222,7 @@ export class AnthropicLlm extends BaseLlm {
 							yield new LlmResponse({
 								content: {
 									role: "model",
-									parts: [{ text: deltaText, thought: true } as any],
+									parts: [{ text: deltaText, thought: true }],
 								},
 								partial: true,
 							});
@@ -261,7 +262,7 @@ export class AnthropicLlm extends BaseLlm {
 					outputTokens = event.usage.output_tokens;
 
 					// Build complete final response with all accumulated data
-					const parts: any[] = [];
+					const parts: Part[] = [];
 					if (thoughtText) {
 						parts.push({ text: thoughtText, thought: true });
 					}
