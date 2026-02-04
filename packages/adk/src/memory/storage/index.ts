@@ -4,6 +4,8 @@ export type { FileVectorStoreConfig } from "./file-vector-store";
 export { FileVectorStore } from "./file-vector-store";
 export { InMemoryStorageProvider } from "./in-memory-storage-provider";
 export { InMemoryVectorStore } from "./in-memory-vector-store";
+export type { QdrantVectorStoreConfig } from "./qdrant-vector-store";
+export { QdrantVectorStore } from "./qdrant-vector-store";
 export type {
 	SearchMode,
 	VectorStorageProviderConfig,

@@ -19,6 +19,7 @@ export {
 export type {
 	FileStorageProviderConfig,
 	FileVectorStoreConfig,
+	QdrantVectorStoreConfig,
 	SearchMode,
 	VectorStore,
 	VectorStorageProviderConfig,
@@ -29,6 +30,7 @@ export {
 	FileVectorStore,
 	InMemoryStorageProvider,
 	InMemoryVectorStore,
+	QdrantVectorStore,
 	VectorStorageProvider,
 } from "./storage/index";
 export type { LlmSummaryProviderConfig } from "./summary/index";
