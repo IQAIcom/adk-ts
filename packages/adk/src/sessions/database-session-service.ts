@@ -486,6 +486,20 @@ export class DatabaseSessionService extends BaseSessionService {
 			.execute();
 	}
 
+	/**
+	 * Ends a session and returns its final state.
+	 */
+	async endSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Promise<Session | undefined> {
+		await this.ensureInitialized();
+
+		// Get the complete session with all events
+		return this.getSession(appName, userId, sessionId);
+	}
+
 	async appendEvent(session: Session, event: Event): Promise<Event> {
 		await this.ensureInitialized();
 

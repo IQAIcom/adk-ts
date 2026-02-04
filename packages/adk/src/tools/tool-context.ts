@@ -1,7 +1,9 @@
 import { CallbackContext } from "../agents/callback-context";
 import type { InvocationContext } from "../agents/invocation-context";
 import type { EventActions } from "../events/event-actions";
-import type { SearchMemoryResponse } from "../memory/base-memory-service";
+import type { MemorySearchResult, MemoryService } from "../memory/index";
+import type { BaseSessionService } from "../sessions/base-session-service";
+import type { Session } from "../sessions/session";
 
 /**
  * The context of the tool.
@@ -59,15 +61,36 @@ export class ToolContext extends CallbackContext {
 	/**
 	 * Searches the memory of the current user
 	 */
-	async searchMemory(query: string): Promise<SearchMemoryResponse> {
+	async searchMemory(query: string): Promise<MemorySearchResult[]> {
 		if (!this._invocationContext.memoryService) {
 			throw new Error("Memory service is not available.");
 		}
 
-		return await this._invocationContext.memoryService.searchMemory({
+		return await this._invocationContext.memoryService.search({
 			query,
-			appName: this._invocationContext.appName,
 			userId: this._invocationContext.userId,
+			appName: this._invocationContext.appName,
 		});
+	}
+
+	/**
+	 * Gets the memory service if configured.
+	 */
+	get memoryService(): MemoryService | undefined {
+		return this._invocationContext.memoryService as MemoryService | undefined;
+	}
+
+	/**
+	 * Gets the session service.
+	 */
+	get sessionService(): BaseSessionService {
+		return this._invocationContext.sessionService;
+	}
+
+	/**
+	 * Gets the current session.
+	 */
+	get session(): Session {
+		return this._invocationContext.session;
 	}
 }

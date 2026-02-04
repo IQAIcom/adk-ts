@@ -1,154 +1,133 @@
+/**
+ * @deprecated Legacy memory service - will be removed in next major version.
+ * Use MemoryService with InMemoryStorageProvider instead.
+ */
+
+import type { Content } from "@google/genai";
 import type { Event } from "../events/event";
 import type { Session } from "../sessions/session";
-import { formatTimestamp } from "./_utils";
-import type {
-	BaseMemoryService,
-	SearchMemoryResponse,
-} from "./base-memory-service";
-import type { MemoryEntry } from "./memory-entry";
 
 /**
- * Creates a user key from app name and user ID
+ * @deprecated Use MemoryRecord instead. Will be removed in next major version.
  */
-function _userKey(appName: string, userId: string): string {
-	return `${appName}/${userId}`;
+export interface MemoryEntry {
+	content: Content;
+	author?: string;
+	timestamp?: string;
 }
 
 /**
- * Extracts words from a string and converts them to lowercase
+ * @deprecated Use MemorySearchResult[] instead. Will be removed in next major version.
  */
-function _extractWordsLower(text: string): Set<string> {
+export interface SearchMemoryResponse {
+	memories: MemoryEntry[];
+}
+
+/**
+ * @deprecated Use MemoryStorageProvider interface instead. Will be removed in next major version.
+ */
+export interface BaseMemoryService {
+	addSessionToMemory(session: Session): Promise<void>;
+	searchMemory(params: {
+		appName: string;
+		userId: string;
+		query: string;
+	}): Promise<SearchMemoryResponse>;
+}
+
+function formatTimestamp(timestamp?: number | Date): string {
+	if (!timestamp) return new Date().toISOString();
+	return typeof timestamp === "number"
+		? new Date(timestamp).toISOString()
+		: timestamp.toISOString();
+}
+
+function userKey(appName: string, userId: string): string {
+	return `${appName}/${userId}`;
+}
+
+function extractWordsLower(text: string): Set<string> {
 	const words = text.match(/[A-Za-z]+/g) || [];
 	return new Set(words.map((word) => word.toLowerCase()));
 }
 
 /**
- * An in-memory memory service for prototyping purpose only.
- * Uses keyword matching instead of semantic search.
+ * @deprecated Use MemoryService with InMemoryStorageProvider instead.
+ * Will be removed in next major version.
+ *
+ * @example
+ * ```typescript
+ * // Migration:
+ * // Old:
+ * const memory = new InMemoryMemoryService();
+ *
+ * // New:
+ * import { MemoryService, InMemoryStorageProvider } from '@iqai/adk';
+ * const memory = new MemoryService({ storage: new InMemoryStorageProvider() });
+ * ```
  */
 export class InMemoryMemoryService implements BaseMemoryService {
-	/**
-	 * Keys are app_name/user_id, session_id. Values are session event lists.
-	 */
 	private _sessionEvents: Map<string, Map<string, Event[]>> = new Map();
 
-	/**
-	 * Constructor for InMemoryMemoryService
-	 */
 	constructor() {
-		this._sessionEvents = new Map();
+		console.warn(
+			"[DEPRECATED] InMemoryMemoryService is deprecated. Use MemoryService with InMemoryStorageProvider instead.",
+		);
 	}
 
-	/**
-	 * Adds a session to the memory service
-	 * @param session The session to add
-	 */
 	async addSessionToMemory(session: Session): Promise<void> {
-		const userKey = _userKey(session.appName, session.userId);
-
-		if (!this._sessionEvents.has(userKey)) {
-			this._sessionEvents.set(userKey, new Map());
+		const key = userKey(session.appName, session.userId);
+		if (!this._sessionEvents.has(key)) {
+			this._sessionEvents.set(key, new Map());
 		}
-
-		const userSessions = this._sessionEvents.get(userKey)!;
-
-		// Filter events that have content and parts
+		const userSessions = this._sessionEvents.get(key)!;
 		const filteredEvents = session.events.filter(
 			(event) => event.content?.parts,
 		);
-
 		userSessions.set(session.id, filteredEvents);
 	}
 
-	/**
-	 * Searches memory for relevant information
-	 * @param options Search options containing app_name, user_id, and query
-	 * @returns Search results
-	 */
 	async searchMemory(options: {
 		appName: string;
 		userId: string;
 		query: string;
 	}): Promise<SearchMemoryResponse> {
-		const { appName, userId, query } = options;
-		const userKey = _userKey(appName, userId);
-
-		if (!this._sessionEvents.has(userKey)) {
+		const key = userKey(options.appName, options.userId);
+		if (!this._sessionEvents.has(key)) {
 			return { memories: [] };
 		}
 
-		const wordsInQuery = new Set(query.toLowerCase().split(" "));
-		const response: SearchMemoryResponse = { memories: [] };
+		const wordsInQuery = new Set(options.query.toLowerCase().split(" "));
+		const memories: MemoryEntry[] = [];
 
-		const userSessions = this._sessionEvents.get(userKey)!;
-
-		for (const sessionEvents of userSessions.values()) {
+		for (const sessionEvents of this._sessionEvents.get(key)!.values()) {
 			for (const event of sessionEvents) {
-				if (!event.content || !event.content.parts) {
-					continue;
-				}
+				if (!event.content?.parts) continue;
 
-				// Extract text from all parts that have text
 				const textParts = event.content.parts
 					.filter((part) => part.text)
 					.map((part) => part.text!)
 					.join(" ");
 
-				const wordsInEvent = _extractWordsLower(textParts);
+				const wordsInEvent = extractWordsLower(textParts);
+				if (wordsInEvent.size === 0) continue;
 
-				if (wordsInEvent.size === 0) {
-					continue;
-				}
-
-				// Check if any query word is in the event words
-				const hasMatch = Array.from(wordsInQuery).some((queryWord) =>
-					wordsInEvent.has(queryWord),
+				const hasMatch = Array.from(wordsInQuery).some((w) =>
+					wordsInEvent.has(w),
 				);
-
 				if (hasMatch) {
-					const memoryEntry: MemoryEntry = {
-						content: event.content,
+					memories.push({
+						content: event.content as Content,
 						author: event.author,
 						timestamp: formatTimestamp(event.timestamp),
-					};
-
-					response.memories.push(memoryEntry);
+					});
 				}
 			}
 		}
 
-		return response;
+		return { memories };
 	}
 
-	/**
-	 * Gets all sessions in the memory service (for backward compatibility)
-	 * @returns All sessions - Note: This method may not be fully compatible with the new structure
-	 */
-	getAllSessions(): Session[] {
-		// This method doesn't exist in Python version, keeping for backward compatibility
-		// but it won't work properly with the new structure
-		console.warn(
-			"getAllSessions() is deprecated and may not work correctly with the new memory structure",
-		);
-		return [];
-	}
-
-	/**
-	 * Gets a session by ID (for backward compatibility)
-	 * @param sessionId The session ID
-	 * @returns The session or undefined if not found
-	 */
-	getSession(sessionId: string): Session | undefined {
-		// This method doesn't exist in Python version, keeping for backward compatibility
-		console.warn(
-			"getSession() is deprecated and may not work correctly with the new memory structure",
-		);
-		return undefined;
-	}
-
-	/**
-	 * Clears all sessions from memory
-	 */
 	clear(): void {
 		this._sessionEvents.clear();
 	}

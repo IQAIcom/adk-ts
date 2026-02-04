@@ -92,6 +92,7 @@
 		"@opentelemetry/instrumentation-express": "^0.58.0",
 		"@opentelemetry/instrumentation-http": "^0.210.0",
 		"@opentelemetry/instrumentation-nestjs-core": "^0.55.0",
+		"@qdrant/js-client-rest": "^1.12.0",
 		"better-sqlite3": "^11.10.0",
 		"langfuse": "^3.38.6",
 		"mysql2": "^3.14.1",
@@ -105,6 +106,9 @@
 			"optional": true
 		},
 		"@opentelemetry/instrumentation-nestjs-core": {
+			"optional": true
+		},
+		"@qdrant/js-client-rest": {
 			"optional": true
 		},
 		"better-sqlite3": {
@@ -122,6 +126,7 @@
 	},
 	"devDependencies": {
 		"@iqai/tsconfig": "workspace:*",
+		"@qdrant/js-client-rest": "^1.16.2",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/dockerode": "^3.3.43",
 		"@types/node": "^24.3.1",
