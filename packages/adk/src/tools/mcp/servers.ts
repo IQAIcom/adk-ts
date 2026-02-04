@@ -429,7 +429,7 @@ export function McpOpinion(config: McpServerConfig = {}): McpToolset {
  * - OPENROUTER_API_KEY: API key for OpenRouter LLM integration.
  * or
  * - GOOGLE_GENERATIVE_AI_API_KEY: Google generativeAI API key.
- * - LLM_MODEL: Model name for LLM integration(default: openai/gpt-4.1-mini).
+ * - LLM_MODEL: Model name for LLM integration (default: openai/gpt-4.1-mini).
  */
 export function McpDefillama(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
