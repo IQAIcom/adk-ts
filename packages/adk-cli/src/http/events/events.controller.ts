@@ -36,4 +36,37 @@ export class EventsController {
 		const agentPath = decodeURIComponent(id);
 		return this.events.getEvents(agentPath, sessionId);
 	}
+
+	@Get("events/:eventId/graph")
+	@ApiOperation({
+		summary: "Get agent graph for a specific event",
+		description:
+			"Returns the agent graph with highlights showing function calls related to the specified event.",
+	})
+	@ApiParam({
+		name: "id",
+		description: "URL-encoded absolute agent path or identifier",
+	})
+	@ApiParam({ name: "sessionId", description: "Session identifier" })
+	@ApiParam({ name: "eventId", description: "Event identifier" })
+	@ApiOkResponse({
+		schema: {
+			properties: {
+				graph: { type: "object", description: "Agent graph structure" },
+				highlights: {
+					type: "array",
+					items: { type: "array", items: { type: "string" } },
+					description: "Highlighted edges in the graph",
+				},
+			},
+		},
+	})
+	async getEventGraph(
+		@Param("id") id: string,
+		@Param("sessionId") sessionId: string,
+		@Param("eventId") eventId: string,
+	) {
+		const agentPath = decodeURIComponent(id);
+		return this.events.getEventGraph(agentPath, sessionId, eventId);
+	}
 }
