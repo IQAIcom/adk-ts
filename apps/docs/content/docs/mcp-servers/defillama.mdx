@@ -1,0 +1,185 @@
+---
+title: MCP DefiLlama
+description: An MCP server for interacting with DefiLlama, a comprehensive DeFi data aggregator
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Package**: [`@iqai/defillama-mcp`](https://www.npmjs.com/package/@iqai/defillama-mcp)
+- **Purpose**: Interacting with DefiLlama, a comprehensive DeFi data aggregator, for protocol analytics and TVL data.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpDefillama} from "@iqai/adk";
+
+    const toolset = McpDefillama()
+
+    const tools = await toolset.getTools()
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Defillama MCP Client",
+      description: "Client for DefiLlama DeFi data aggregator",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/defillama-mcp"],
+        env: {
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "defillama-mcp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/defillama-mcp"]
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Available Tools (16)
+
+### TVL & Protocol Data
+
+| Tool                                 | Description                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| `defillama_get_chains`               | Fetch blockchain chains ranked by Total Value Locked (top 20)            |
+| `defillama_get_protocol_data`        | Fetch TVL data for DeFi protocols with auto-resolution of protocol names |
+| `defillama_get_historical_chain_tvl` | Fetch historical TVL data for blockchain chains over time                |
+
+### Price Data
+
+| Tool                                          | Description                                                                 |
+| --------------------------------------------- | --------------------------------------------------------------------------- |
+| `defillama_get_prices_current_coins`          | Retrieve current token prices                                               |
+| `defillama_get_historical_prices_by_contract` | Get historical token prices at specific timestamps using contract addresses |
+| `defillama_get_prices_first_coins`            | Get the first recorded historical prices for tokens                         |
+| `defillama_get_batch_historical`              | Fetch historical price data for multiple tokens at specific timestamps      |
+| `defillama_get_chart_coins`                   | Get historical price chart data with customizable time ranges               |
+| `defillama_get_percentage_coins`              | Calculate percentage price changes over specified periods                   |
+
+### DEX & Trading
+
+| Tool                             | Description                                                  |
+| -------------------------------- | ------------------------------------------------------------ |
+| `defillama_get_dexs_data`        | Retrieve DEX trading volume data and metrics                 |
+| `defillama_get_fees_and_revenue` | Access fees and revenue metrics for DeFi protocols           |
+| `defillama_get_options_data`     | Retrieve options protocol data including volume and premiums |
+
+### Yields & Pools
+
+| Tool                                 | Description                                                  |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `defillama_get_latest_pool_data`     | Fetch current yield farming pool data including APY rates    |
+| `defillama_get_historical_pool_data` | Retrieve historical APY and TVL data for yield farming pools |
+
+### Stablecoins & Blockchain
+
+| Tool                                 | Description                                                          |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| `defillama_get_stablecoin_chart`     | Access stablecoin historical price and circulation data              |
+| `defillama_get_stablecoin_prices`    | Fetch current stablecoin market data                                 |
+| `defillama_get_blockchain_timestamp` | Retrieve block information for a specific chain at a given timestamp |
+
+## Environment Variables
+
+No required environment variables for basic usage.
+
+**Optional environment variables:**
+
+- `DEFILLAMA_API_KEY`: Your DefiLlama API key for enhanced access.
+- `IQ_GATEWAY_URL`: Custom IQ Gateway URL for enhanced resolution.
+- `IQ_GATEWAY_KEY`: API key for IQ Gateway access.
+- `OPENROUTER_API_KEY`: API key for OpenRouter LLM integration.
+- `GOOGLE_GENERATIVE_AI_API_KEY`: Google generativeAI API key (alternative to OpenRouter).
+- `LLM_MODEL`: Model name for LLM integration (default: `openai/gpt-4.1-mini`).
+
+## Usage Examples
+
+Here's a complete example of using MCP DefiLlama with an ADK agent:
+
+```typescript
+import { McpDefillama, AgentBuilder } from "@iqai/adk";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+async function main() {
+  // Initialize DefiLlama MCP toolset
+  const toolset = McpDefillama({
+    debug: false,
+    retryOptions: {
+      maxRetries: 3,
+      initialDelay: 500,
+    },
+  });
+
+  // Get available tools
+  const defillamaTools = await toolset.getTools();
+
+  // Create agent with DefiLlama tools
+  const { runner } = await AgentBuilder.create("defillama_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("An agent that queries DeFi protocol data from DefiLlama")
+    .withTools(...defillamaTools)
+    .build();
+
+  try {
+    // Example queries
+    const response = await runner.ask(
+      "What are the top DeFi protocols by TVL?",
+    );
+    console.log(response);
+  } finally {
+    // Clean up resources
+    await toolset.close();
+  }
+}
+
+main().catch(console.error);
+```
+
+## Best Practices
+
+- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
+- **Error Handling**: Implement proper error handling for data requests
+- **Rate Limits**: Be aware of API rate limits and implement appropriate retry logic
+- **LLM Integration**: For enhanced resolution, configure an LLM provider via `OPENROUTER_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`
+
+## Error Handling
+
+<Callout type="warn" title="Error Scenarios">
+
+The server handles various error scenarios gracefully.
+
+</Callout>
+
+🔄 **Invalid protocol identifiers**: Verify protocol names or IDs are correct
+🌐 **Network issues**: Check your internet connection and DefiLlama API status
+
+## Resources
+
+- [DefiLlama](https://defillama.com) - DeFi data aggregator platform
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards

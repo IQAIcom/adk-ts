@@ -337,35 +337,6 @@ export function McpDiscord(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
- * MCP CoinGecko - Access cryptocurrency market data and analytics via remote endpoint
- *
- * Uses the public CoinGecko MCP API endpoint. No API key required for basic functionality.
- */
-export function McpCoinGecko(config: McpServerConfig = {}): McpToolset {
-	const mcpConfig = createMcpConfig(
-		"CoinGecko MCP Client",
-		"https://mcp.api.coingecko.com/mcp",
-		config,
-	);
-	return new McpToolset(mcpConfig);
-}
-
-/**
- * MCP CoinGecko Pro - Access premium cryptocurrency market data and analytics via remote endpoint
- *
- * Uses the professional CoinGecko MCP API endpoint with enhanced features and higher rate limits.
- * Requires a CoinGecko Pro API subscription.
- */
-export function McpCoinGeckoPro(config: McpServerConfig = {}): McpToolset {
-	const mcpConfig = createMcpConfig(
-		"CoinGecko Pro MCP Client",
-		"https://mcp.pro-api.coingecko.com/mcp",
-		config,
-	);
-	return new McpToolset(mcpConfig);
-}
-
-/**
  * MCP Upbit - Interact with the Upbit cryptocurrency exchange
  *
  * Public tools require no auth.
@@ -394,6 +365,131 @@ export function McpPolymarket(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Polymarket MCP Client",
 		"@iqai/mcp-polymarket",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Limitless - Interact with the Limitless prediction markets via the MCP protocol.
+ *
+ * No required env vars.
+ */
+export function McpLimitless(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Limitless MCP Client",
+		"@iqai/mcp-limitless",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Kalshi - Interact with Kalshi prediction markets via the MCP protocol.
+ *
+ * Required env vars:
+ * - KALSHI_API_KEY: Your Kalshi API key ID
+ * - KALSHI_PRIVATE_KEY_PATH: Path to your RSA private key PEM file.
+ * or
+ * - KALSHI_PRIVATE_KEY_PEM: RSA private key as PEM string (alternative to path).
+ *
+ * Note: Provide either KALSHI_PRIVATE_KEY_PATH or KALSHI_PRIVATE_KEY_PEM.
+ */
+export function McpKalshi(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Kalshi MCP Client",
+		"@iqai/mcp-kalshi",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Opinion - Interact with opinion.trade prediction market via the MCP protocol.
+ *
+ * Required env vars:
+ * - OPINION_API_KEY: Your Opinion.trade API key.
+ */
+export function McpOpinion(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Opinion MCP Client",
+		"@iqai/mcp-opinion",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Defillama - Interact with the Defillama, a comprehensive DeFi data aggregator, via the MCP protocol.
+ * No required env vars.
+ * Optional env vars:
+ * - DEFILLAMA_API_KEY: Your Defillama API key.
+ * - IQ_GATEWAY_URL: Custom IQ Gateway URL for enhanced resolution.
+ * - IQ_GATEWAY_KEY: API key for IQ Gateway access.
+ * - OPENROUTER_API_KEY: API key for OpenRouter LLM integration.
+ * or
+ * - GOOGLE_GENERATIVE_AI_API_KEY: Google generativeAI API key.
+ * - LLM_MODEL: Model name for LLM integration (default: openai/gpt-4.1-mini).
+ */
+export function McpDefillama(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Defillama MCP Client",
+		"@iqai/defillama-mcp",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP DeBank – Interact with the DeBank platform via the MCP protocol.
+ *
+ * Authentication:
+ * The MCP supports two mutually exclusive access modes:
+ *
+ * 1. Direct DeBank API access
+ *    Required env vars:
+ *    - DEBANK_API_KEY: API key obtained from the DeBank platform.
+ *
+ * 2. Gateway-proxied access
+ *    Required env vars:
+ *    - IQ_GATEWAY_URL: Base URL of the gateway service.
+ *    - IQ_GATEWAY_KEY: Authentication key for the gateway.
+ *
+ * Note: If Both modes are provided, the Gateway-proxied access will be used.
+ */
+export function McpDebank(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Debank MCP Client",
+		"@iqai/mcp-debank",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP CoinGecko - Access cryptocurrency market data and analytics via remote endpoint
+ *
+ * Uses the public CoinGecko MCP API endpoint. No API key required for basic functionality.
+ */
+export function McpCoinGecko(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"CoinGecko MCP Client",
+		"https://mcp.api.coingecko.com/mcp",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP CoinGecko Pro - Access premium cryptocurrency market data and analytics via remote endpoint
+ *
+ * Uses the professional CoinGecko MCP API endpoint with enhanced features and higher rate limits.
+ * Requires a CoinGecko Pro API subscription.
+ */
+export function McpCoinGeckoPro(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"CoinGecko Pro MCP Client",
+		"https://mcp.pro-api.coingecko.com/mcp",
 		config,
 	);
 	return new McpToolset(mcpConfig);
