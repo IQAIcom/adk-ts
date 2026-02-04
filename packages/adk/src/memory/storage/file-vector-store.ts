@@ -353,7 +353,10 @@ export class FileVectorStore implements VectorStore {
 	 */
 	private decodeVector(encoded: string): number[] {
 		const buffer = Buffer.from(encoded, "base64");
-		return Array.from(new Float32Array(buffer.buffer));
+		// Use buffer.byteOffset and buffer.byteLength to handle Node.js Buffer pooling
+		return Array.from(
+			new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4),
+		);
 	}
 
 	/**
