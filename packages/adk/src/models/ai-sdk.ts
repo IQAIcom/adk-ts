@@ -316,7 +316,7 @@ export class AiSdkLlm extends BaseLlm {
 			accumulatedText += delta;
 
 			yield new LlmResponse({
-				content: { role: "model", parts: [{ text: accumulatedText }] },
+				content: { role: "model", parts: [{ text: delta }] },
 				partial: true,
 				cacheMetadata: !cacheMetadataEmitted ? cacheMetadata : undefined,
 			});
