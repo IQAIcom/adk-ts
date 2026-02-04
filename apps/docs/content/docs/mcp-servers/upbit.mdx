@@ -82,57 +82,7 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 ## Available Tools
 
-### `GET_TICKER`
-
-Get the latest ticker information for a specific market:
-
-- Parameters: `market` (string)
-
-### `GET_ORDERBOOK`
-
-Get the current orderbook snapshot for a market:
-
-- Parameters: `market` (string)
-
-### `GET_TRADES`
-
-Get recent trades for a market:
-
-- Parameters: `market` (string)
-
-### `GET_ACCOUNTS`
-
-Get account information and balances:
-
-- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
-
-### `GET_ORDERS`
-
-Get order history with optional filtering:
-
-- Parameters: `market` (string, optional), `state` (string, optional), `page` (number, optional), `limit` (number, optional)
-- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
-
-### `GET_ORDER`
-
-Get specific order details:
-
-- Parameters: `uuid` (string, optional), `identifier` (string, optional)
-- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
-
-### `CREATE_ORDER`
-
-Create a new trading order:
-
-- Parameters: `tokenContract` (string), `side` (string), `ord_type` (string), `volume` (string, optional), `price` (string, optional)
-- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
-
-### `CANCEL_ORDER`
-
-Cancel an existing order:
-
-- Parameters: `uuid` (string)
-- Requires: `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`, `UPBIT_ENABLE_TRADING`
+<McpToolsList serverId="upbit" />
 
 ## Environment Variables
 
