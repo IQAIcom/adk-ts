@@ -25,29 +25,9 @@ const agent = new LlmAgent({
 
 That's it! Your agent can now search the web and make HTTP requests.
 
-### Available Tools
+### Understanding Tool Configuration
 
-| Tool                    | Purpose                                                        | Environment Variables             |
-| ----------------------- | -------------------------------------------------------------- | --------------------------------- |
-| **GoogleSearchTool**    | Search the web for information (uses Google Custom Search API) | `GOOGLE_API_KEY`, `GOOGLE_CSE_ID` |
-| **WebSearchTool**       | Search the web for information (uses Tavily API)               | `TAVILY_API_KEY`                  |
-| **WebFetchTool**        | Fetch and parse web page content                               |                                   |
-| **HttpRequestTool**     | Make HTTP requests to APIs                                     |                                   |
-| **ReadTool**            | Read file contents                                             |                                   |
-| **WriteTool**           | Create new files                                               |                                   |
-| **EditTool**            | Edit existing files                                            |                                   |
-| **GlobTool**            | Find files by pattern                                          |                                   |
-| **GrepTool**            | Search file contents                                           |                                   |
-| **FileOperationsTool**  | Comprehensive file management                                  |                                   |
-| **BashTool**            | Execute terminal commands                                      |                                   |
-| **UserInteractionTool** | Prompt users for input                                         |                                   |
-| **GetUserChoiceTool**   | Present multiple choice options                                |                                   |
-| **LoadMemoryTool**      | Search conversation history                                    |                                   |
-| **LoadArtifactsTool**   | Access uploaded files                                          |                                   |
-| **TransferToAgentTool** | Hand off to another agent                                      |                                   |
-| **ExitLoopTool**        | Exit workflow loops                                            |                                   |
-
-**Understanding Tool Configuration:**
+When using built-in tools, there are three key concepts to understand:
 
 - **Configuration Options**: Optional parameters passed when creating a tool instance (e.g., `new BashTool({ maxTimeout: 60000 })`). These customize the tool behavior but are not required—the default settings work for most use cases.
 - **Tool Parameters**: Arguments that the agent passes to the tool during execution (e.g., `{ query: "search term" }` for GoogleSearchTool). These are specified by the agent based on the task at hand.

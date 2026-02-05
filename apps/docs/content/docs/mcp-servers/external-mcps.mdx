@@ -1,0 +1,405 @@
+---
+title: Using External MCP Servers
+description: Connect ADK-TS agents to any MCP server from the ecosystem
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+ADK-TS fully supports the Model Context Protocol (MCP) standard, which means you can connect to **any MCP server** from the ecosystem—not just IQ AI's built-in servers. This includes Anthropic's official MCP servers, community-built servers, and third-party implementations.
+
+<Callout type="success" title="Universal MCP Compatibility">
+
+The `McpToolset` class can connect to any MCP-compliant server, whether it's from Anthropic, the community, or custom-built. If it follows the MCP specification, ADK-TS can use it.
+
+</Callout>
+
+## What Are External MCP Servers?
+
+External MCP servers are MCP-compliant tools and services created by organizations and developers outside of IQ AI. These include:
+
+- **Anthropic's Official Servers** - Filesystem, database, web search, and more
+- **Community Servers** - Open-source implementations from the MCP community
+- **Third-Party Servers** - Commercial or specialized MCP implementations
+- **Your Own Servers** - Custom MCP servers you've built for specific needs
+
+## Popular External MCP Servers
+
+### Anthropic's Official MCP Servers
+
+Anthropic provides a collection of high-quality, well-maintained MCP servers:
+
+| Server       | Purpose                             | Package                                     |
+| ------------ | ----------------------------------- | ------------------------------------------- |
+| Filesystem   | Read, write, and search local files | `@modelcontextprotocol/server-filesystem`   |
+| Brave Search | Web search via Brave Search API     | `@modelcontextprotocol/server-brave-search` |
+| Google Maps  | Location services and directions    | `@modelcontextprotocol/server-google-maps`  |
+| Slack        | Slack workspace integration         | `@modelcontextprotocol/server-slack`        |
+| GitHub       | GitHub repository operations        | `@modelcontextprotocol/server-github`       |
+| PostgreSQL   | Database queries and operations     | `@modelcontextprotocol/server-postgres`     |
+| Puppeteer    | Browser automation                  | `@modelcontextprotocol/server-puppeteer`    |
+
+See the [complete list of Anthropic's MCP servers](https://github.com/modelcontextprotocol/servers) on GitHub.
+
+### Community MCP Servers
+
+The MCP community has created many useful servers:
+
+- **E2B Code Interpreter** - Execute code in sandboxed environments
+- **Obsidian** - Interact with Obsidian vaults
+- **Linear** - Project management integration
+- **Sentry** - Error tracking and monitoring
+- **And many more** - Browse [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)
+
+## Connecting to External MCP Servers
+
+Use the `McpToolset` class to connect to any external MCP server. The process is the same regardless of the server's source.
+
+### Example: Anthropic's Filesystem Server
+
+```typescript
+import { McpToolset, AgentBuilder } from "@iqai/adk";
+
+// Connect to Anthropic's filesystem server
+const filesystemToolset = new McpToolset({
+  name: "Filesystem MCP",
+  description: "Local file system operations",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"],
+    env: {
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+
+// Get available tools
+const tools = await filesystemToolset.getTools();
+
+// Create agent with filesystem capabilities
+const { runner } = await AgentBuilder.create("file_manager_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent that can read, write, and manage files")
+  .withTools(...tools)
+  .build();
+
+// Use the agent
+const response = await runner.ask(
+  "List all TypeScript files in the src directory",
+);
+
+// Cleanup
+await filesystemToolset.close();
+```
+
+### Example: Brave Search Server
+
+```typescript
+import { McpToolset, AgentBuilder } from "@iqai/adk";
+
+// Connect to Brave Search MCP server
+const braveSearchToolset = new McpToolset({
+  name: "Brave Search",
+  description: "Web search capabilities via Brave Search API",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-brave-search"],
+    env: {
+      BRAVE_API_KEY: process.env.BRAVE_API_KEY!,
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+
+const tools = await braveSearchToolset.getTools();
+
+const { runner } = await AgentBuilder.create("research_assistant_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("A research assistant with web search capabilities")
+  .withTools(...tools)
+  .build();
+
+const response = await runner.ask(
+  "What are the latest developments in quantum computing?",
+);
+
+await braveSearchToolset.close();
+```
+
+### Example: GitHub Server
+
+```typescript
+import { McpToolset, AgentBuilder } from "@iqai/adk";
+
+const githubToolset = new McpToolset({
+  name: "GitHub MCP",
+  description: "GitHub repository operations",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-github"],
+    env: {
+      GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_TOKEN!,
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+
+const tools = await githubToolset.getTools();
+
+const { runner } = await AgentBuilder.create("github_assistant_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent that can interact with GitHub repositories")
+  .withTools(...tools)
+  .build();
+
+await githubToolset.close();
+```
+
+## Combining External and Built-in Servers
+
+You can easily mix external MCP servers with IQ AI's built-in servers:
+
+```typescript
+import { McpAtp, McpToolset, AgentBuilder } from "@iqai/adk";
+
+// IQ AI's built-in ATP server
+const atpToolset = McpAtp({
+  env: {
+    ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    ATP_API_KEY: process.env.ATP_API_KEY,
+  },
+});
+
+// Anthropic's filesystem server
+const filesystemToolset = new McpToolset({
+  name: "Filesystem MCP",
+  description: "File operations",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"],
+    env: { PATH: process.env.PATH || "" },
+  },
+});
+
+// Brave search server
+const braveToolset = new McpToolset({
+  name: "Brave Search",
+  description: "Web search",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-brave-search"],
+    env: {
+      BRAVE_API_KEY: process.env.BRAVE_API_KEY!,
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+
+// Get all tools
+const [atpTools, fileTools, searchTools] = await Promise.all([
+  atpToolset.getTools(),
+  filesystemToolset.getTools(),
+  braveToolset.getTools(),
+]);
+
+// Create comprehensive agent
+const { runner } = await AgentBuilder.create("super_assistant_agent")
+  .withModel("gemini-2.5-flash")
+  .withDescription(
+    "A comprehensive assistant with blockchain, filesystem, and web search",
+  )
+  .withTools(...atpTools, ...fileTools, ...searchTools)
+  .build();
+
+// Cleanup all connections
+await Promise.all([
+  atpToolset.close(),
+  filesystemToolset.close(),
+  braveToolset.close(),
+]);
+```
+
+## Connection Modes
+
+### Stdio Mode (Most Common)
+
+Used for locally installed MCP servers that run as separate processes:
+
+```typescript
+const toolset = new McpToolset({
+  name: "Local Server",
+  description: "A toolset that runs a local server using npx.",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@package/mcp-server"],
+    env: {
+      API_KEY: process.env.API_KEY || "",
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+```
+
+### SSE Mode (Remote Servers)
+
+Used for MCP servers hosted remotely over HTTP:
+
+```typescript
+const toolset = new McpToolset({
+  name: "Remote Server",
+  description: "A toolset that connects to a remote MCP server via SSE.",
+  transport: {
+    mode: "sse",
+    serverUrl: "https://mcp.example.com/api",
+    headers: {
+      Authorization: `Bearer ${process.env.API_TOKEN}`,
+    },
+  },
+});
+```
+
+## Best Practices
+
+For comprehensive best practices on working with MCP servers, including connection management, configuration, error handling, and production considerations, see the [MCP Tools Best Practices](/docs/framework/tools/mcp-tools#mcp-tools-best-practices) guide.
+
+### Key Considerations for External Servers
+
+**Always use environment variables for credentials:**
+
+```typescript
+// ✅ Good - Environment variables
+const toolset = new McpToolset({
+  transport: {
+    env: {
+      API_KEY: process.env.MY_API_KEY!,
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+```
+
+**Test servers independently before integration:**
+
+```bash
+# Test the server standalone
+npx -y @modelcontextprotocol/server-filesystem /test/path
+```
+
+**Always clean up connections:**
+
+```typescript
+const toolset = new McpToolset({
+  /* config */
+});
+
+try {
+  const tools = await toolset.getTools();
+  const { runner } = await AgentBuilder.create("agent")
+    .withTools(...tools)
+    .build();
+
+  await runner.ask("Do something");
+} finally {
+  // Always cleanup, even on error
+  await toolset.close();
+}
+```
+
+## Troubleshooting
+
+### Server Not Found
+
+**Problem**: `command not found` or similar errors
+
+**Solution**: Ensure the package is published to npm and accessible via `npx`:
+
+```bash
+# Test the server independently
+npx -y @modelcontextprotocol/server-filesystem /test/path
+
+# If it works, it should work in McpToolset
+```
+
+### Connection Timeout
+
+**Problem**: Server takes too long to start
+
+**Solution**: Increase timeout and check server logs:
+
+```typescript
+const toolset = new McpToolset({
+  timeout: 30000, // Increase to 30 seconds
+  debug: true, // Enable debug logging
+  transport: {
+    /* ... */
+  },
+});
+```
+
+### Missing Environment Variables
+
+**Problem**: Server required environment variables not set
+
+**Solution**: Check the server's documentation and ensure all required variables are provided:
+
+```typescript
+const toolset = new McpToolset({
+  transport: {
+    env: {
+      REQUIRED_VAR_1: process.env.REQUIRED_VAR_1!,
+      REQUIRED_VAR_2: process.env.REQUIRED_VAR_2!,
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+```
+
+### Tool Schema Mismatch
+
+**Problem**: Tool arguments don't match what the LLM provides
+
+**Solution**: Use `getTools()` to inspect available tools and their schemas:
+
+```typescript
+const tools = await toolset.getTools();
+console.log(
+  "Available tools:",
+  tools.map(t => ({
+    name: t.name,
+    description: t.description,
+  })),
+);
+```
+
+## Finding External MCP Servers
+
+- [Anthropic's MCP Servers](https://github.com/modelcontextprotocol/servers) - Official collection
+- [Model Context Protocol Website](https://modelcontextprotocol.io/) - Specification and resources
+- [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers) - Curated list
+- [npm search for "mcp-server"](https://www.npmjs.com/search?q=mcp-server) - Published packages
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="🛠️ Creating Custom MCPs"
+    description="Build your own MCP servers with FastMCP"
+    href="/docs/mcp-servers/creating-custom-mcps"
+  />
+  <Card
+    title="📦 IQ AI's Built-in Servers"
+    description="Explore IQ AI's pre-built MCP servers with wrapper functions"
+    href="/docs/mcp-servers"
+  />
+  <Card
+    title="🔧 MCP Tools Reference"
+    description="Detailed API reference for MCP integration"
+    href="/docs/framework/tools/mcp-tools"
+  />
+</Cards>

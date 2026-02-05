@@ -1,0 +1,743 @@
+---
+title: Creating Custom MCP Servers
+description: Build and deploy your own MCP servers with FastMCP and ADK-TS
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+You can create your own MCP servers to expose custom functionality to any MCP client, including ADK-TS agents, Claude Desktop, and other MCP-compatible applications. ADK-TS provides a starter template using **FastMCP** to help you build production-ready MCP servers quickly.
+
+<Callout type="success" title="Why Create Custom MCP Servers?">
+
+- **Expose custom business logic** as standardized tools
+- **Share functionality** across multiple agents and applications
+- **Integrate proprietary systems** that don't have existing MCP servers
+- **Build reusable toolsets** for your organization or the community
+
+</Callout>
+
+## Quick Start
+
+The fastest way to create a new MCP server is using the ADK CLI with the MCP starter template.
+
+### Prerequisites
+
+- Node.js 18+ installed
+- `pnpm` package manager (or `npm`/`yarn`)
+- ADK CLI installed globally
+
+### Installation
+
+```bash
+# Install the ADK CLI globally
+npm install -g @iqai/adk-cli
+
+# Or use it directly with npx
+npx @iqai/adk-cli new --template mcp-starter my-mcp-server
+```
+
+### Create Your MCP Server
+
+<Steps>
+<Step>
+
+### Generate the Project
+
+```bash
+# Create a new MCP server project
+adk new --template mcp-starter my-mcp-server
+
+# Navigate to the project
+cd my-mcp-server
+```
+
+</Step>
+
+<Step>
+
+### Install Dependencies
+
+```bash
+pnpm install
+```
+
+</Step>
+
+<Step>
+
+### Start Development
+
+```bash
+# Start the development server
+pnpm dev
+```
+
+This starts the MCP server in watch mode, automatically recompiling when you make changes.
+
+</Step>
+</Steps>
+
+## Project Structure
+
+The MCP starter template creates a well-organized project structure:
+
+```
+my-mcp-server/
+├── src/
+│   ├── index.ts           # Server entry point
+│   ├── tools/             # Tool definitions
+│   │   └── example.ts     # Example tool
+│   └── types/             # TypeScript types
+├── package.json           # Dependencies and scripts
+├── tsconfig.json          # TypeScript configuration
+└── README.md             # Project documentation
+```
+
+## Building Your First Tool
+
+Let's create a simple weather tool as an example.
+
+### Define the Tool
+
+Create a new file `src/tools/weather.ts`:
+
+```typescript
+import { z } from "zod";
+
+export const weatherTool = {
+  name: "get_weather",
+  description: "Get current weather information for a city",
+  parameters: z.object({
+    city: z.string().describe("The city name to get weather for"),
+    units: z
+      .enum(["celsius", "fahrenheit"])
+      .default("celsius")
+      .describe("Temperature units"),
+  }),
+  execute: async ({
+    city,
+    units,
+  }: {
+    city: string;
+    units: "celsius" | "fahrenheit";
+  }) => {
+    // In a real implementation, you would call a weather API
+    // For this example, we'll return mock data
+
+    const temperature = units === "celsius" ? 22 : 72;
+    const condition = "Sunny";
+    const humidity = 45;
+    const windSpeed = 10;
+    const timestamp = new Date().toISOString();
+
+    const data = {
+      city,
+      temperature,
+      units,
+      condition,
+      humidity,
+      windSpeed,
+      timestamp,
+    };
+
+    return { data };
+  },
+};
+```
+
+### Register the Tool
+
+Update `src/index.ts` to register your tool:
+
+```typescript
+import { FastMCP } from "fastmcp";
+import { weatherTool } from "./tools/weather.js";
+
+async function main() {
+  // Initialize FastMCP server
+  const server = new FastMCP({
+    name: "Weather MCP Server",
+    version: "1.0.0",
+  });
+
+  // Register your tools
+  server.addTool(weatherTool);
+
+  // Start the server
+  await server.start({
+    transportType: "stdio",
+  });
+
+  console.log("Weather MCP Server is running");
+}
+
+main().catch(error => {
+  console.error("Failed to start server:", error);
+  process.exit(1);
+});
+```
+
+### Test Your Tool
+
+```bash
+# Build the project
+pnpm build
+
+# The server is now ready to use via stdio
+```
+
+## Using Your Custom MCP Server
+
+Once built, you can connect to your custom MCP server from ADK-TS agents:
+
+```typescript
+import { McpToolset, AgentBuilder } from "@iqai/adk";
+
+// Connect to your custom MCP server
+const weatherToolset = new McpToolset({
+  name: "Weather Server",
+  description: "Custom weather MCP server",
+  transport: {
+    mode: "stdio",
+    command: "node",
+    args: ["./my-mcp-server/dist/index.js"],
+    env: {
+      PATH: process.env.PATH || "",
+    },
+  },
+});
+
+// Get available tools
+const tools = await weatherToolset.getTools();
+
+// Create agent with your custom tools
+const { runner } = await AgentBuilder.create("weather_assistant")
+  .withModel("gemini-2.5-flash")
+  .withDescription("An agent that provides weather information")
+  .withTools(...tools)
+  .build();
+
+// Use the agent
+const response = await runner.ask("What's the weather in London?");
+
+// Cleanup
+await weatherToolset.close();
+```
+
+## Advanced Tool Examples
+
+### Tool with External API Integration
+
+```typescript
+import { z } from "zod";
+import fetch from "node-fetch";
+
+export const githubRepoTool = {
+  name: "get_github_repo",
+  description: "Get information about a GitHub repository",
+  parameters: z.object({
+    owner: z.string().describe("Repository owner/organization"),
+    repo: z.string().describe("Repository name"),
+  }),
+  execute: async ({ owner, repo }: { owner: string; repo: string }) => {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      name: data.name,
+      description: data.description,
+      stars: data.stargazers_count,
+      forks: data.forks_count,
+      language: data.language,
+      url: data.html_url,
+    };
+  },
+};
+```
+
+### Tool with File System Operations
+
+```typescript
+import { z } from "zod";
+import fs from "fs/promises";
+import path from "path";
+
+export const readFileTool = {
+  name: "read_file",
+  description: "Read the contents of a text file",
+  parameters: z.object({
+    filePath: z.string().describe("Path to the file to read"),
+  }),
+  execute: async ({ filePath }: { filePath: string }) => {
+    try {
+      const absolutePath = path.resolve(filePath);
+      const content = await fs.readFile(absolutePath, "utf-8");
+
+      return {
+        filePath: absolutePath,
+        content,
+        size: content.length,
+      };
+    } catch (error) {
+      throw new Error(`Failed to read file: ${error.message}`);
+    }
+  },
+};
+```
+
+### Tool with Database Integration
+
+```typescript
+import { z } from "zod";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+export const getUserTool = {
+  name: "get_user",
+  description: "Get user information from the database",
+  parameters: z.object({
+    userId: z.string().describe("The user's ID"),
+  }),
+  execute: async ({ userId }: { userId: string }) => {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+
+    return user;
+  },
+};
+```
+
+## Environment Variables and Configuration
+
+### Using Environment Variables
+
+Create a `.env` file for your MCP server:
+
+```bash
+# .env
+API_KEY=your-api-key-here
+DATABASE_URL=postgresql://user:password@localhost:5432/db
+MAX_RETRIES=3
+```
+
+Access them in your tools:
+
+```typescript
+import { z } from "zod";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+export const apiTool = {
+  name: "call_api",
+  description: "Call an external API",
+  parameters: z.object({
+    endpoint: z.string(),
+  }),
+  execute: async ({ endpoint }: { endpoint: string }) => {
+    const apiKey = process.env.API_KEY;
+
+    if (!apiKey) {
+      throw new Error("API_KEY environment variable not set");
+    }
+
+    const response = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    return await response.json();
+  },
+};
+```
+
+### Configuration File
+
+For more complex configuration, use a config file:
+
+```typescript
+// src/config.ts
+export const config = {
+  server: {
+    name: "My MCP Server",
+    version: "1.0.0",
+  },
+  api: {
+    baseUrl: process.env.API_BASE_URL || "https://api.example.com",
+    timeout: Number.parseInt(process.env.API_TIMEOUT || "30000"),
+    maxRetries: Number.parseInt(process.env.MAX_RETRIES || "3"),
+  },
+  database: {
+    url: process.env.DATABASE_URL,
+  },
+};
+```
+
+## Error Handling
+
+Implement robust error handling in your tools:
+
+```typescript
+import { z } from "zod";
+
+export const robustTool = {
+  name: "robust_operation",
+  description: "A tool with comprehensive error handling",
+  parameters: z.object({
+    input: z.string(),
+  }),
+  execute: async ({ input }: { input: string }) => {
+    try {
+      // Validate input
+      if (!input || input.trim().length === 0) {
+        throw new Error("Input cannot be empty");
+      }
+
+      // Perform operation
+      const result = await performOperation(input);
+
+      // Return success response
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      // Log the error
+      console.error("Tool execution failed:", error);
+
+      // Return error response
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+};
+
+async function performOperation(input: string) {
+  // Your operation logic here
+  return { processed: input };
+}
+```
+
+## Multiple Tools in One Server
+
+You can register multiple tools in a single MCP server:
+
+```typescript
+import { FastMCP } from "fastmcp";
+import { weatherTool } from "./tools/weather.js";
+import { githubRepoTool } from "./tools/github.js";
+import { readFileTool } from "./tools/filesystem.js";
+import { getUserTool } from "./tools/database.js";
+
+async function main() {
+  const server = new FastMCP({
+    name: "Multi-Tool MCP Server",
+    version: "1.0.0",
+  });
+
+  // Register all your tools
+  server.addTool(weatherTool);
+  server.addTool(githubRepoTool);
+  server.addTool(readFileTool);
+  server.addTool(getUserTool);
+
+  await server.start({
+    transportType: "stdio",
+  });
+}
+
+main().catch(console.error);
+```
+
+## Publishing Your MCP Server
+
+### Prepare for Publishing
+
+1. **Update package.json**:
+
+```json
+{
+  "name": "@your-org/mcp-weather-server",
+  "version": "1.0.0",
+  "description": "MCP server for weather information",
+  "main": "dist/index.js",
+  "bin": {
+    "mcp-weather": "./dist/index.js"
+  },
+  "keywords": ["mcp", "weather", "mcp-server"],
+  "author": "Your Name",
+  "license": "MIT"
+}
+```
+
+2. **Add shebang to index.ts**:
+
+```typescript
+#!/usr/bin/env node
+
+import { FastMCP } from "fastmcp";
+// ... rest of your code
+```
+
+3. **Build the project**:
+
+```bash
+pnpm build
+```
+
+### Publish to npm
+
+```bash
+# Login to npm (first time only)
+npm login
+
+# Publish your package
+npm publish --access public
+```
+
+### Use Your Published Server
+
+Once published, anyone can use your MCP server:
+
+```bash
+# Via npx
+npx -y @your-org/mcp-weather-server
+
+# Via global install
+npm install -g @your-org/mcp-weather-server
+mcp-weather
+```
+
+In ADK-TS:
+
+```typescript
+const toolset = new McpToolset({
+  name: "Weather Server",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@your-org/mcp-weather-server"],
+  },
+});
+```
+
+## Testing Your MCP Server
+
+### Unit Testing Tools
+
+```typescript
+// src/tools/weather.test.ts
+import { describe, it, expect } from "vitest";
+import { weatherTool } from "./weather";
+
+describe("weatherTool", () => {
+  it("should return weather data for a city", async () => {
+    const result = await weatherTool.execute({
+      city: "London",
+      units: "celsius",
+    });
+
+    expect(result).toHaveProperty("city", "London");
+    expect(result).toHaveProperty("temperature");
+    expect(result).toHaveProperty("condition");
+  });
+
+  it("should support fahrenheit units", async () => {
+    const result = await weatherTool.execute({
+      city: "New York",
+      units: "fahrenheit",
+    });
+
+    expect(result.units).toBe("fahrenheit");
+  });
+});
+```
+
+### Integration Testing
+
+Test your MCP server with a real ADK-TS agent:
+
+```typescript
+// tests/integration.test.ts
+import { McpToolset } from "@iqai/adk";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+
+describe("Weather MCP Server Integration", () => {
+  let toolset: McpToolset;
+
+  beforeAll(async () => {
+    toolset = new McpToolset({
+      name: "Test Weather Server",
+      description: "A test MCP server for weather tools",
+      transport: {
+        mode: "stdio",
+        command: "node",
+        args: ["./dist/index.js"],
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await toolset.close();
+  });
+
+  it("should provide weather tools to agents", async () => {
+    const tools = await toolset.getTools();
+    expect(tools.length).toBeGreaterThan(0);
+
+    const weatherTool = tools.find(t => t.name === "get_weather");
+    expect(weatherTool).toBeDefined();
+  });
+});
+```
+
+## Best Practices
+
+For comprehensive best practices on working with MCP servers, see the [MCP Tools Best Practices](/docs/framework/tools/mcp-tools#mcp-tools-best-practices) guide.
+
+### Key Practices for Custom MCP Servers
+
+#### 1. Clear Tool Descriptions
+
+Write detailed, clear descriptions for your tools to help LLMs understand when and how to use them:
+
+```typescript
+export const searchTool = {
+  name: "search_database",
+  description:
+    "Search the user database by name or email. Returns up to 10 matching results.",
+  parameters: z.object({
+    query: z.string().describe("Search query (name or email)"),
+    limit: z.number().max(10).default(10).describe("Maximum results to return"),
+  }),
+  execute: async ({ query, limit }) => {
+    // Implementation
+  },
+};
+```
+
+#### 2. Input Validation with Zod
+
+Always validate and sanitize inputs using Zod schemas:
+
+```typescript
+export const validatedTool = {
+  name: "process_user_data",
+  parameters: z.object({
+    email: z.string().email().describe("User email address"),
+    age: z.number().min(0).max(150).describe("User age"),
+  }),
+  execute: async ({ email, age }) => {
+    // Inputs are guaranteed to be valid
+  },
+};
+```
+
+#### 3. Structured Error Responses
+
+Return helpful, structured error messages:
+
+```typescript
+export const robustTool = {
+  name: "get_data",
+  execute: async ({ id }) => {
+    try {
+      const data = await fetchData(id);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "FETCH_FAILED",
+          message: `Failed to fetch data for ID ${id}`,
+          details: error instanceof Error ? error.message : "Unknown error",
+        },
+      };
+    }
+  },
+};
+```
+
+#### 4. Resource Cleanup
+
+Clean up resources properly, especially for servers with database connections:
+
+```typescript
+import { FastMCP } from "fastmcp";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const server = new FastMCP({
+    /* config */
+  });
+
+  // Register tools
+  server.addTool(/* ... */);
+
+  // Handle shutdown gracefully
+  process.on("SIGINT", async () => {
+    console.log("Shutting down...");
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+
+  await server.start({ transportType: "stdio" });
+}
+```
+
+## Additional Resources
+
+- [MCP Starter Template Source](https://github.com/IQAIcom/adk-ts/tree/main/apps/starter-templates/mcp-starter)
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
+- [FastMCP GitHub Repository](https://github.com/jlowin/fastmcp)
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="🌐 Using External MCPs"
+    description="Learn how to integrate external MCP servers"
+    href="/docs/mcp-servers/external-mcps"
+  />
+  <Card
+    title="📦 IQ AI's Built-in Servers"
+    description="Explore IQ AI's pre-built MCP servers"
+    href="/docs/mcp-servers"
+  />
+  <Card
+    title="🔧 MCP Tools Reference"
+    description="Detailed API reference for MCP integration"
+    href="/docs/framework/tools/mcp-tools"
+  />
+  <Card
+    title="📚 FastMCP Documentation"
+    description="Learn more about FastMCP features"
+    href="https://github.com/jlowin/fastmcp"
+  />
+</Cards>

@@ -6,7 +6,7 @@ description: Deploy ADK-TS Telegram bots using polling mode
 import { Callout } from "fumadocs-ui/components/callout";
 import { Card, Cards } from "fumadocs-ui/components/card";
 
-ADK-TS Telegram bots use the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to connect your agent to Telegram. The [`@iqai/mcp-telegram`](/docs/mcp-servers/telegram) server handles communication with Telegram's Bot API using the [Telegraf library](https://github.com/telegraf/telegraf). **Best for**: Chat-based agents, customer support bots, and interactive assistants. This guide covers deploying polling-based Telegram bots to various platforms.
+ADK-TS Telegram bots use the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to connect your agent to Telegram. The [`@iqai/mcp-telegram`](/docs/mcp-servers/iq-ai-servers/telegram) server handles communication with Telegram's Bot API using the [Telegraf library](https://github.com/telegraf/telegraf). **Best for**: Chat-based agents, customer support bots, and interactive assistants. This guide covers deploying polling-based Telegram bots to various platforms.
 
 <Callout type="warn" title="Important: Background Worker Required">
 
@@ -333,7 +333,10 @@ Deploy from your registry to [Railway](/docs/framework/guides/deployment/railway
   <Card title="🤖 Telegram Bot API" href="https://core.telegram.org/bots/api">
     Official Telegram documentation
   </Card>
-  <Card title="📚 MCP Telegram Documentation" href="/docs/mcp-servers/telegram">
+  <Card
+    title="📚 MCP Telegram Documentation"
+    href="/docs/mcp-servers/iq-ai-servers/telegram"
+  >
     Learn about MCP Telegram features and configuration
   </Card>
   <Card
