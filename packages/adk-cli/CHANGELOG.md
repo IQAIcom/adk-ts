@@ -1,5 +1,24 @@
 # @iqai/adk-cli
 
+## 0.4.2
+
+### Patch Changes
+
+- 094ee58: Fix debug trace session polling to handle missing or empty sessions gracefully.
+
+  Previously, the `/debug/trace/session/:sessionId` endpoint would throw `NotFoundException` errors when the frontend polled for sessions that did not exist, were cleared during hot reload, or had no recorded spans. This change returns empty results instead, preventing repeated 404 errors and reducing noisy logs during normal development workflows.
+
+- d671e06: Add `ToolOutputFilterPlugin` to intelligently reduce large tool outputs before downstream processing.
+
+  The plugin dynamically generates safe `jq` filters using an LLM to extract only relevant data, applying adaptive and iterative filtering until configurable size or key-count targets are met. This improves performance, prevents context window overflows, and supports per-tool enablement, schema-aware filtering, and strict security checks against unsafe filters.
+
+- Updated dependencies [6e3eddc]
+- Updated dependencies [df81392]
+- Updated dependencies [7066213]
+- Updated dependencies [d671e06]
+- Updated dependencies [8bf7a31]
+  - @iqai/adk@0.7.0
+
 ## 0.4.1
 
 ### Patch Changes
