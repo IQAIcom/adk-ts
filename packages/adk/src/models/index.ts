@@ -8,7 +8,7 @@ export * from "../auth/auth-credential";
 export * from "../auth/auth-handler";
 export * from "../auth/auth-schemes";
 // Memory re-exports for backward compatibility
-export * from "../memory/base-memory-service";
+export * from "../memory/index";
 // Session re-exports for backward compatibility
 export * from "../sessions/session";
 export * from "../sessions/state";

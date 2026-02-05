@@ -60,12 +60,18 @@ export class LoadMemoryTool extends BaseTool {
 
 		try {
 			// Search memory using the provided query
-			const searchResult = await context.searchMemory(args.query);
+			const searchResults = await context.searchMemory(args.query);
+
+			// Format memories from search results
+			const memories = searchResults.map((result) => ({
+				...result.memory,
+				score: result.score,
+			}));
 
 			// Return the memories
 			return {
-				memories: searchResult.memories || [],
-				count: searchResult.memories?.length || 0,
+				memories,
+				count: memories.length,
 			};
 		} catch (error) {
 			console.error("Error searching memory:", error);

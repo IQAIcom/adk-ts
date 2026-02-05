@@ -1,5 +1,6 @@
 import { Logger } from "@adk/logger";
 import Anthropic from "@anthropic-ai/sdk";
+import type { Part } from "@google/genai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import { RateLimitError } from "./errors";
@@ -9,6 +10,22 @@ import { LlmResponse } from "./llm-response";
 type AnthropicRole = "user" | "assistant";
 
 const DEFAULT_MAX_OUTPUT_TOKENS = 1024;
+const THOUGHT_OPEN_TAGS = [
+	"<thinking>",
+	"[thinking]",
+	"<thought>",
+	"[thought]",
+];
+const THOUGHT_CLOSE_TAGS = [
+	"</thinking>",
+	"[/thinking]",
+	"</thought>",
+	"[/thought]",
+];
+
+function containsAny(text: string, tags: string[]): boolean {
+	return tags.some((tag) => text.includes(tag));
+}
 const ANTHROPIC_CACHE_LONG_TTL_THRESHOLD = 1800; // 30 minutes
 
 /**
@@ -72,10 +89,6 @@ export class AnthropicLlm extends BaseLlm {
 				: systemInstructionText;
 		}
 
-		if (stream) {
-			throw new Error("Streaming is not yet supported for Anthropic models");
-		}
-
 		// Messages with cache_control at the message level
 		const anthropicMessages: Anthropic.MessageParam[] = messages.map((msg) => {
 			const content = Array.isArray(msg.content)
@@ -93,37 +106,197 @@ export class AnthropicLlm extends BaseLlm {
 			return messageParam;
 		});
 
+		const maxTokens =
+			llmRequest.config?.maxOutputTokens || DEFAULT_MAX_OUTPUT_TOKENS;
+		const temperature = llmRequest.config?.temperature;
+		const topP = llmRequest.config?.topP;
+
 		this.logger.info(
 			`Sending request to Anthropic model: ${model}${
 				shouldCache ? " (with caching)" : ""
-			}`,
+			}${stream ? " (streaming)" : ""}`,
 		);
 
 		try {
-			const message = await this.client.messages.create({
-				model,
-				system,
-				messages: anthropicMessages,
-				tools,
-				tool_choice: tools ? { type: "auto" } : undefined,
-				max_tokens:
-					llmRequest.config?.maxOutputTokens || DEFAULT_MAX_OUTPUT_TOKENS,
-				temperature: llmRequest.config?.temperature,
-				top_p: llmRequest.config?.topP,
-			});
+			if (stream) {
+				yield* this.handleStreaming(
+					model,
+					system,
+					anthropicMessages,
+					tools,
+					maxTokens,
+					temperature,
+					topP,
+				);
+			} else {
+				const message = await this.client.messages.create({
+					model,
+					system,
+					messages: anthropicMessages,
+					tools,
+					tool_choice: tools ? { type: "auto" } : undefined,
+					max_tokens: maxTokens,
+					temperature,
+					top_p: topP,
+				});
 
-			const response = this.anthropicMessageToLlmResponse(message);
+				const response = this.anthropicMessageToLlmResponse(message);
 
-			if (shouldCache) {
-				this.logCachePerformance(message.usage);
+				if (shouldCache) {
+					this.logCachePerformance(message.usage);
+				}
+
+				yield response;
 			}
-
-			yield response;
 		} catch (error: any) {
 			if (RateLimitError.isRateLimitError(error)) {
 				throw RateLimitError.fromError(error, "anthropic", model);
 			}
 			throw error;
+		}
+	}
+
+	/**
+	 * Handle streaming responses from Anthropic API.
+	 *
+	 * Anthropic streams typed events (not simple deltas like OpenAI):
+	 * - message_start: initial message with input token usage
+	 * - content_block_start: new content block (text or tool_use)
+	 * - content_block_delta: incremental text or tool input JSON
+	 * - content_block_stop: content block complete
+	 * - message_delta: final usage stats and stop_reason
+	 * - message_stop: stream ends
+	 */
+	private async *handleStreaming(
+		model: string,
+		system: Anthropic.Messages.MessageCreateParams["system"],
+		messages: Anthropic.MessageParam[],
+		tools: Anthropic.Tool[] | undefined,
+		maxTokens: number,
+		temperature: number | undefined,
+		topP: number | undefined,
+	): AsyncGenerator<LlmResponse, void, unknown> {
+		const streamResponse = await this.client.messages.create({
+			model,
+			system,
+			messages,
+			tools,
+			tool_choice: tools ? { type: "auto" } : undefined,
+			max_tokens: maxTokens,
+			temperature,
+			top_p: topP,
+			stream: true,
+		});
+
+		let thoughtText = "";
+		let text = "";
+		let inThoughtMode = false;
+		let inputTokens = 0;
+		let outputTokens = 0;
+		// Track content blocks by index — Anthropic streams multiple blocks
+		// (e.g., text at index 0, tool_use at index 1)
+		const contentBlocks = new Map<
+			number,
+			{ type: string; id?: string; name?: string; inputJson?: string }
+		>();
+
+		for await (const event of streamResponse) {
+			switch (event.type) {
+				case "message_start":
+					// Input tokens are reported in the initial message
+					inputTokens = event.message.usage.input_tokens;
+					break;
+
+				case "content_block_start":
+					// Register a new content block (text or tool_use)
+					contentBlocks.set(event.index, {
+						type: event.content_block.type,
+						...(event.content_block.type === "tool_use" && {
+							id: event.content_block.id,
+							name: event.content_block.name,
+							inputJson: "",
+						}),
+					});
+					break;
+
+				case "content_block_delta":
+					if (event.delta.type === "text_delta") {
+						const deltaText = event.delta.text;
+
+						if (containsAny(deltaText, THOUGHT_OPEN_TAGS)) {
+							inThoughtMode = true;
+						}
+
+						if (inThoughtMode) {
+							thoughtText += deltaText;
+							yield new LlmResponse({
+								content: {
+									role: "model",
+									parts: [{ text: deltaText, thought: true }],
+								},
+								partial: true,
+							});
+						} else {
+							text += deltaText;
+							// Yield partial text for real-time streaming display
+							yield new LlmResponse({
+								content: {
+									role: "model",
+									parts: [{ text: deltaText }],
+								},
+								partial: true,
+							});
+						}
+
+						if (containsAny(deltaText, THOUGHT_CLOSE_TAGS)) {
+							inThoughtMode = false;
+						}
+					} else if (event.delta.type === "input_json_delta") {
+						// Tool input args are streamed as partial JSON strings
+						const block = contentBlocks.get(event.index);
+						if (block) {
+							block.inputJson =
+								(block.inputJson || "") + event.delta.partial_json;
+						}
+					}
+					break;
+
+				case "message_delta": {
+					// Final event — output tokens and stop_reason arrive here
+					outputTokens = event.usage.output_tokens;
+
+					// Build complete final response with all accumulated data
+					const parts: Part[] = [];
+					if (thoughtText) {
+						parts.push({ text: thoughtText, thought: true });
+					}
+					if (text) {
+						parts.push({ text });
+					}
+					for (const [, block] of contentBlocks) {
+						if (block.type === "tool_use" && block.name) {
+							parts.push({
+								functionCall: {
+									id: block.id,
+									name: block.name,
+									args: JSON.parse(block.inputJson || "{}"),
+								},
+							});
+						}
+					}
+
+					yield new LlmResponse({
+						content: { role: "model", parts },
+						usageMetadata: {
+							promptTokenCount: inputTokens,
+							candidatesTokenCount: outputTokens,
+							totalTokenCount: inputTokens + outputTokens,
+						},
+						finishReason: this.toAdkFinishReason(event.delta.stop_reason),
+					});
+					break;
+				}
+			}
 		}
 	}
 
@@ -294,7 +467,7 @@ export class AnthropicLlm extends BaseLlm {
 	 * Convert Anthropic stop reason to ADK finish reason
 	 */
 	private toAdkFinishReason(
-		anthropicStopReason?: string,
+		anthropicStopReason?: string | null,
 	): "STOP" | "MAX_TOKENS" | "FINISH_REASON_UNSPECIFIED" {
 		if (
 			["end_turn", "stop_sequence", "tool_use"].includes(

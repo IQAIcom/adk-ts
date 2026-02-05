@@ -285,6 +285,18 @@ export class VertexAiSessionService extends BaseSessionService {
 		}
 	}
 
+	/**
+	 * Ends a session and returns its final state.
+	 */
+	async endSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Promise<Session | undefined> {
+		// Get the complete session with all events
+		return this.getSession(appName, userId, sessionId);
+	}
+
 	async appendEvent(session: Session, event: Event): Promise<Event> {
 		// Update the in-memory session
 		await super.appendEvent(session, event);

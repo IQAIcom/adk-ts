@@ -6,6 +6,7 @@
 		"models",
 		"agent-builder",
 		"workflow-agents",
+		"agent-scheduler",
 		"custom-agents",
 		"multi-agents",
 		"best-practices"

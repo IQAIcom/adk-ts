@@ -6,18 +6,20 @@ import { LoopAgent } from "../../agents/loop-agent.js";
 import { ParallelAgent } from "../../agents/parallel-agent.js";
 import { SequentialAgent } from "../../agents/sequential-agent.js";
 import { InMemoryArtifactService } from "../../artifacts/in-memory-artifact-service.js";
-import { InMemoryMemoryService } from "../../memory/in-memory-memory-service.js";
+import { InMemoryStorageProvider, MemoryService } from "../../memory/index.js";
 import { InMemorySessionService } from "../../sessions/in-memory-session-service.js";
 import { createTool } from "../../tools/base/create-tool.js";
 
 describe("AgentBuilder", () => {
 	let sessionService: InMemorySessionService;
-	let memoryService: InMemoryMemoryService;
+	let memoryService: MemoryService;
 	let artifactService: InMemoryArtifactService;
 
 	beforeEach(() => {
 		sessionService = new InMemorySessionService();
-		memoryService = new InMemoryMemoryService();
+		memoryService = new MemoryService({
+			storage: new InMemoryStorageProvider(),
+		});
 		artifactService = new InMemoryArtifactService();
 		vi.clearAllMocks();
 	});
