@@ -6,7 +6,7 @@ description: Schedule recurring agent execution with cron expressions or fixed i
 import { Callout } from "fumadocs-ui/components/callout";
 import { Cards, Card } from "fumadocs-ui/components/card";
 
-The `AgentScheduler` runs ADK agents on a recurring schedule using cron expressions or fixed intervals. It handles execution tracking, overlap prevention, graceful shutdown, and real-time event streaming.
+The `AgentScheduler` runs ADK agents on a recurring schedule using cron expressions or fixed intervals. A single instance manages multiple jobs concurrently, each with its own schedule, callbacks, and execution tracking. It also handles overlap prevention, graceful shutdown, and real-time event streaming.
 
 Use it when agents need to run on a timer: daily reports, periodic health checks, scheduled data processing, or recurring monitoring.
 
