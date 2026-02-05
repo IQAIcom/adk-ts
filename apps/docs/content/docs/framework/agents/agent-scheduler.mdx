@@ -6,7 +6,7 @@ description: Schedule recurring agent execution with cron expressions or fixed i
 import { Callout } from "fumadocs-ui/components/callout";
 import { Cards, Card } from "fumadocs-ui/components/card";
 
-The `AgentScheduler` runs ADK agents on a recurring schedule using cron expressions or fixed intervals. A single instance manages multiple jobs concurrently, each with its own schedule, callbacks, and execution tracking. It also handles overlap prevention, graceful shutdown, and real-time event streaming.
+The `AgentScheduler` runs ADK-TS agents on a recurring schedule using cron expressions or fixed intervals. It handles execution tracking, overlap prevention, graceful shutdown, and real-time event streaming.
 
 Use it when agents need to run on a timer: daily reports, periodic health checks, scheduled data processing, or recurring monitoring.
 
@@ -26,7 +26,7 @@ Build an agent with `AgentBuilder`, then pass its `runner` to the scheduler:
 import { AgentBuilder, AgentScheduler } from "@iqai/adk";
 
 // 1. Build your agent
-const { runner } = await AgentBuilder.create("daily-reporter")
+const { runner } = await AgentBuilder.create("daily_reporter_agent")
   .withModel("gemini-2.5-flash")
   .withInstruction("Generate a daily summary report")
   .build();
@@ -115,6 +115,8 @@ The scheduler provides methods for each lifecycle transition.
 
 ### Scheduling and Removal
 
+Schedule a new job with `schedule()`. Remove it entirely with `unschedule()`:
+
 ```typescript
 // Add a job
 scheduler.schedule({
@@ -157,6 +159,8 @@ for await (const event of scheduler.triggerNowStream("my-job")) {
 ```
 
 ### Monitoring Status
+
+Get the current status of a job, including next run time and last error:
 
 ```typescript
 const status = scheduler.getJobStatus("my-job");
@@ -209,6 +213,8 @@ The scheduler supports both global listeners and per-job callbacks.
 
 ### Per-Job Callbacks
 
+Register callbacks for key job events when scheduling:
+
 ```typescript
 scheduler.schedule({
   id: "report-job",
@@ -220,7 +226,7 @@ scheduler.schedule({
     console.log(`Job ${jobId} starting`);
   },
   onEvent: (jobId, event) => {
-    // Fires for every ADK event during execution
+    // Fires for every ADK-TS event during execution
     console.log(`[${jobId}]`, event);
   },
   onComplete: (jobId, events) => {
@@ -470,22 +476,22 @@ process.on("SIGINT", async () => {
 
 <Cards>
   <Card
-    title="Agent Builder"
+    title="🛠️ Agent Builder"
     description="Fluent API for building agents that can be scheduled"
     href="/docs/framework/agents/agent-builder"
   />
   <Card
-    title="Workflow Agents"
+    title="🗂️ Workflow Agents"
     description="Orchestrate multi-step pipelines to run on a schedule"
     href="/docs/framework/agents/workflow-agents"
   />
   <Card
-    title="Custom Agents"
+    title="🧩 Custom Agents"
     description="Build custom orchestration logic for scheduled execution"
     href="/docs/framework/agents/custom-agents"
   />
   <Card
-    title="Session & Memory"
+    title="💾 Session & Memory"
     description="Persist conversation state across scheduled runs"
     href="/docs/framework/session-state-memory"
   />
