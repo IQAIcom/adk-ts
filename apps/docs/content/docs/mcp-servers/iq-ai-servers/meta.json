@@ -10,21 +10,19 @@
 		"near-agent",
 		"near-intents",
 		"odos",
+		"---Information",
+		"iqwiki",
 		"---Market Data",
-		"coingecko",
-		"coingecko-pro",
 		"debank",
 		"defillama",
 		"upbit",
+		"---Messaging & Social",
+		"discord",
+		"telegram",
 		"---Prediction Markets",
 		"kalshi",
 		"limitless",
 		"opinion",
-		"polymarket",
-		"---Messaging & Social",
-		"discord",
-		"telegram",
-		"---Information",
-		"iqwiki"
+		"polymarket"
 	]
 }

@@ -1,5 +1,12 @@
 {
-	"title": "IQ AI's Third-Party MCP Wrappers",
+	"title": "Third-Party Wrappers",
 	"icon": "Package",
-	"pages": ["---Utilities", "filesystem", "memory"]
+	"pages": [
+		"---Market Data",
+		"coingecko",
+		"coingecko-pro",
+		"---Utilities",
+		"filesystem",
+		"memory"
+	]
 }
