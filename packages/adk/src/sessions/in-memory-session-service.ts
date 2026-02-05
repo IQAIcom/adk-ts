@@ -256,6 +256,44 @@ export class InMemorySessionService extends BaseSessionService {
 	}
 
 	/**
+	 * Ends a session and returns its final state.
+	 */
+	async endSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Promise<Session | undefined> {
+		return this.endSessionImpl(appName, userId, sessionId);
+	}
+
+	/**
+	 * @deprecated Please migrate to the async method.
+	 */
+	endSessionSync(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Session | undefined {
+		console.warn("Deprecated. Please migrate to the async method.");
+		return this.endSessionImpl(appName, userId, sessionId);
+	}
+
+	private endSessionImpl(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Session | undefined {
+		// Get the session with all events
+		const session = this.getSessionImpl(appName, userId, sessionId);
+		if (!session) {
+			return undefined;
+		}
+
+		// Return a copy of the session with its complete state
+		return structuredClone(session);
+	}
+
+	/**
 	 * Appends an event to a session object.
 	 */
 	async appendEvent(session: Session, event: Event): Promise<Event> {

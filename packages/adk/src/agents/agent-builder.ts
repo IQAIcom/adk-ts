@@ -7,7 +7,7 @@ import type { BaseArtifactService } from "../artifacts/base-artifact-service.js"
 import type { BaseCodeExecutor } from "../code-executors/base-code-executor.js";
 import type { EventsCompactionConfig } from "../events/compaction-config.js";
 import type { Event } from "../events/event.js";
-import type { BaseMemoryService } from "../memory/base-memory-service.js";
+import type { MemoryService } from "../memory/index.js";
 import type { BaseLlm } from "../models/base-llm.js";
 import type { BasePlanner } from "../planners/base-planner.js";
 import { BasePlugin } from "../plugins/base-plugin.js";
@@ -117,6 +117,10 @@ export interface EnhancedRunner<T = string, M extends boolean = false> {
 		sessionId: string;
 		rewindBeforeInvocationId: string;
 	});
+	/** Set the session for subsequent ask() calls */
+	setSession(session: Session): void;
+	/** Get the current session */
+	getSession(): Session;
 	__outputSchema?: ZodSchema;
 }
 
@@ -128,6 +132,7 @@ export interface BuiltAgent<T = string, M extends boolean = false> {
 	runner: EnhancedRunner<T, M>;
 	session: Session;
 	sessionService: BaseSessionService;
+	memoryService?: MemoryService;
 }
 
 /**
@@ -174,7 +179,7 @@ interface RunnerConfig {
 	appName: string;
 	agent: BaseAgent;
 	sessionService: BaseSessionService;
-	memoryService?: BaseMemoryService;
+	memoryService?: MemoryService;
 	artifactService?: BaseArtifactService;
 	eventsCompactionConfig?: EventsCompactionConfig;
 	plugins?: BasePlugin[];
@@ -213,7 +218,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	private config: AgentBuilderConfig;
 	private sessionService?: BaseSessionService;
 	private sessionOptions?: SessionOptions;
-	private memoryService?: BaseMemoryService;
+	private memoryService?: MemoryService;
 	private artifactService?: BaseArtifactService;
 	private eventsCompactionConfig?: EventsCompactionConfig;
 	private contextCacheConfig?: ContextCacheConfig;
@@ -685,7 +690,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	 * @param memoryService Memory service to use for conversation history and context
 	 * @returns This builder instance for chaining
 	 */
-	withMemory(memoryService: BaseMemoryService): this {
+	withMemory(memoryService: MemoryService): this {
 		this.memoryService = memoryService;
 		return this;
 	}
@@ -809,6 +814,7 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 			runner: runner! as EnhancedRunner<T, TMulti>,
 			session: session!,
 			sessionService: this.sessionService!,
+			memoryService: this.memoryService,
 		} as BuiltAgent<T, TMulti>;
 	}
 
@@ -973,22 +979,30 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 	/**
 	 * Create enhanced runner with simplified API and proper typing
 	 * @param baseRunner The base runner instance
-	 * @param session The session instance
+	 * @param initialSession The initial session instance
 	 * @returns Enhanced runner with simplified API
 	 */
 	private createEnhancedRunner<T>(
 		baseRunner: Runner,
-		session: Session,
+		initialSession: Session,
 	): EnhancedRunner<T, TMulti> {
-		const sessionOptions = this.sessionOptions;
 		const outputSchema = this.config.outputSchema;
 		const agentType = this.agentType;
 		const isMulti = agentType === "parallel" || agentType === "sequential";
 		const subAgentNames = this.config.subAgents?.map((a) => a.name) || [];
 		const runConfig = this.runConfig;
 
+		// Mutable session - can be updated via setSession()
+		let currentSession = initialSession;
+
 		return {
 			__outputSchema: outputSchema,
+			setSession(session: Session) {
+				currentSession = session;
+			},
+			getSession() {
+				return currentSession;
+			},
 			async ask(message: string | FullMessage | LlmRequest): Promise<any> {
 				const newMessage: FullMessage =
 					typeof message === "string"
@@ -1000,13 +1014,9 @@ export class AgentBuilder<TOut = string, TMulti extends boolean = false> {
 				const perAgentBuffers: Record<string, string> = {};
 				const authors: Set<string> = new Set();
 
-				if (!sessionOptions?.userId) {
-					throw new Error("Session configuration is required");
-				}
-
 				for await (const event of baseRunner.runAsync({
-					userId: sessionOptions.userId,
-					sessionId: session.id,
+					userId: currentSession.userId,
+					sessionId: currentSession.id,
 					newMessage,
 					runConfig,
 				})) {
