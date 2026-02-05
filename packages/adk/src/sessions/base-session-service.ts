@@ -79,6 +79,21 @@ export abstract class BaseSessionService {
 	): Promise<void>;
 
 	/**
+	 * Ends a session and returns its final state.
+	 * This is typically called when a session is complete and should be
+	 * stored in long-term memory before potential cleanup.
+	 * @param appName The name of the app.
+	 * @param userId The id of the user.
+	 * @param sessionId The id of the session.
+	 * @returns The session with its final state, or undefined if not found.
+	 */
+	abstract endSession(
+		appName: string,
+		userId: string,
+		sessionId: string,
+	): Promise<Session | undefined>;
+
+	/**
 	 * Appends an event to a session object.
 	 * @param session The session to append the event to.
 	 * @param event The event to append.
