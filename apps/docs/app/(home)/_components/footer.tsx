@@ -8,13 +8,13 @@ export function Footer() {
 					{/* About */}
 					<div className="space-y-4 col-span-2 lg:col-span-1">
 						<h3 className="text-lg font-semibold text-card-foreground">
-							ADK TypeScript
+							ADK-TS
 						</h3>
 						<p className="text-sm text-muted-foreground">
 							Production-ready framework for building intelligent AI agents with
 							TypeScript and multi-LLM support.
 						</p>
-						<div className="flex space-x-4">
+						<div className="flex flex-wrap gap-3">
 							<Link
 								href="https://github.com/IQAIcom/adk-ts"
 								className="text-muted-foreground hover:text-primary transition-colors"
@@ -45,13 +45,58 @@ export function Footer() {
 									<path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z" />
 								</svg>
 							</Link>
+							<Link
+								href="https://X.com/IQAICOM"
+								className="text-muted-foreground hover:text-primary transition-colors"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg
+									className="w-5 h-5"
+									fill="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<title>X (Twitter) Icon</title>
+									<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+								</svg>
+							</Link>
+							<Link
+								href="https://www.youtube.com/@iqtoken"
+								className="text-muted-foreground hover:text-primary transition-colors"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg
+									className="w-5 h-5"
+									fill="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<title>YouTube Icon</title>
+									<path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+								</svg>
+							</Link>
+							<Link
+								href="https://t.me/+Z37x8uf6DLE3ZTQ8"
+								className="text-muted-foreground hover:text-primary transition-colors"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg
+									className="w-5 h-5"
+									fill="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<title>Telegram Icon</title>
+									<path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+								</svg>
+							</Link>
 						</div>
 					</div>
 
-					{/* Documentation */}
+					{/* Developers */}
 					<div className="space-y-4">
 						<h3 className="text-lg font-semibold text-card-foreground">
-							Documentation
+							Developers
 						</h3>
 						<ul className="space-y-2">
 							<li>
@@ -64,26 +109,28 @@ export function Footer() {
 							</li>
 							<li>
 								<Link
-									href="/docs/framework/agents"
-									className="text-sm text-muted-foreground hover:text-primary transition-colors"
-								>
-									Agent Building
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="/docs/framework/tools"
-									className="text-sm text-muted-foreground hover:text-primary transition-colors"
-								>
-									Tools & Functions
-								</Link>
-							</li>
-							<li>
-								<Link
 									href="/docs/mcp-servers"
 									className="text-sm text-muted-foreground hover:text-primary transition-colors"
 								>
 									MCP Servers
+								</Link>
+							</li>
+							<li>
+								<Link
+									href="/docs/framework/guides"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+								>
+									Guides
+								</Link>
+							</li>
+							<li>
+								<Link
+									href="https://iqaicom.github.io/adk-ts/"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									API Reference
 								</Link>
 							</li>
 							<li>
@@ -103,16 +150,6 @@ export function Footer() {
 							Resources
 						</h3>
 						<ul className="space-y-2">
-							<li>
-								<Link
-									href="https://iqaicom.github.io/adk-ts/"
-									className="text-sm text-muted-foreground hover:text-primary transition-colors"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									API Reference
-								</Link>
-							</li>
 							<li>
 								<Link
 									href="/showcase"
@@ -141,31 +178,23 @@ export function Footer() {
 									Tutorials
 								</Link>
 							</li>
-							<li>
-								<Link
-									href="/docs/framework/guides"
-									className="text-sm text-muted-foreground hover:text-primary transition-colors"
-								>
-									Guides
-								</Link>
-							</li>
 						</ul>
 					</div>
 
-					{/* Learn More */}
+					{/* Support */}
 					<div className="space-y-4">
 						<h3 className="text-lg font-semibold text-card-foreground">
-							Learn More
+							Support
 						</h3>
 						<ul className="space-y-2">
 							<li>
 								<Link
-									href="https://github.com/IQAIcom/adk-ts/blob/main/CHANGELOG.md"
+									href="https://github.com/IQAIcom/adk-ts/issues"
 									className="text-sm text-muted-foreground hover:text-primary transition-colors"
 									target="_blank"
 									rel="noopener noreferrer"
 								>
-									Changelog
+									Issues & Support
 								</Link>
 							</li>
 							<li>
@@ -180,22 +209,12 @@ export function Footer() {
 							</li>
 							<li>
 								<Link
-									href="https://github.com/IQAIcom/adk-ts/issues"
+									href="https://github.com/IQAIcom/adk-ts/blob/main/CHANGELOG.md"
 									className="text-sm text-muted-foreground hover:text-primary transition-colors"
 									target="_blank"
 									rel="noopener noreferrer"
 								>
-									Issues & Support
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="https://github.com/IQAIcom/adk-ts/discussions"
-									className="text-sm text-muted-foreground hover:text-primary transition-colors"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									Discussions
+									Changelog
 								</Link>
 							</li>
 						</ul>
@@ -207,6 +226,16 @@ export function Footer() {
 							Community
 						</h3>
 						<ul className="space-y-2">
+							<li>
+								<Link
+									href="https://github.com/IQAIcom/adk-ts/discussions"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Discussions
+								</Link>
+							</li>
 							<li>
 								<Link
 									href="https://github.com/IQAIcom/adk-ts/releases"
@@ -255,12 +284,20 @@ export function Footer() {
 				<div className="mt-12 pt-8 border-t border-border">
 					<div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
 						<div className="text-sm text-muted-foreground">
-							© 2025 ADK TypeScript. Released under the MIT License.
+							© 2025 ADK-TS. Released under the MIT License.
 						</div>
-						<div className="flex items-center space-x-6 text-sm text-muted-foreground">
+						<div className="flex items-center gap-4 text-sm">
+							<Link
+								href="https://www.getdrip.com/forms/505929689/submissions/new"
+								className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								📧 Newsletter
+							</Link>
 							<Link
 								href="https://iqai.com"
-								className="hover:text-primary transition-colors flex items-center gap-1"
+								className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
 								target="_blank"
 								rel="noopener noreferrer"
 							>

@@ -65,6 +65,12 @@ export function NavbarLinks() {
 				<span>MCP</span>
 			</NavLink>
 
+			{/* API Reference */}
+			<NavLink href="https://iqaicom.github.io/adk-ts/" external>
+				<Code className="w-4 h-4" />
+				<span>API</span>
+			</NavLink>
+
 			{/* Resources Dropdown */}
 			<DropdownMenu>
 				<DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors outline-none">
@@ -75,14 +81,11 @@ export function NavbarLinks() {
 				<DropdownMenuContent align="start" className="w-56">
 					<DropdownMenuItem asChild>
 						<Link
-							href="https://iqaicom.github.io/adk-ts/"
-							target="_blank"
-							rel="noopener noreferrer"
+							href="/docs/framework/guides"
 							className="flex items-center gap-2 cursor-pointer"
 						>
-							<Code className="w-4 h-4" />
-							<span>API Reference</span>
-							<ExternalLink className="w-3 h-3 ml-auto opacity-60" />
+							<GraduationCap className="w-4 h-4" />
+							<span>Guides</span>
 						</Link>
 					</DropdownMenuItem>
 					<DropdownMenuItem asChild>
@@ -121,12 +124,6 @@ export function NavbarLinks() {
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
-
-			{/* Guides */}
-			<NavLink href="/docs/framework/guides">
-				<GraduationCap className="w-4 h-4" />
-				<span>Guides</span>
-			</NavLink>
 		</div>
 	);
 }
