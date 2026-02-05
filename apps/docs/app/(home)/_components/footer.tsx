@@ -152,6 +152,16 @@ export function Footer() {
 						<ul className="space-y-2">
 							<li>
 								<Link
+									href="https://blog.iqai.com/"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Blog
+								</Link>
+							</li>
+							<li>
+								<Link
 									href="/showcase"
 									className="text-sm text-muted-foreground hover:text-primary transition-colors"
 								>

@@ -8,6 +8,7 @@ import {
 	Sparkles,
 	FileCode,
 	Lightbulb,
+	PenTool,
 } from "lucide-react";
 
 export const baseOptions: BaseLayoutProps = {
@@ -40,6 +41,12 @@ export const baseOptions: BaseLayoutProps = {
 			text: "API",
 			url: "https://iqaicom.github.io/adk-ts/",
 			icon: <Code className="w-4 h-4" />,
+			external: true,
+		},
+		{
+			text: "Blog",
+			url: "https://blog.iqai.com/",
+			icon: <PenTool className="w-4 h-4" />,
 			external: true,
 		},
 		{
@@ -129,6 +136,12 @@ export const docsOptions: BaseLayoutProps = {
 					description: "Learn with interactive examples",
 					url: "https://github.com/IQAIcom/adk-ts/tree/main/apps/examples",
 					icon: <GraduationCap className="w-4 h-4" />,
+					external: true,
+				},
+				{
+					text: "Blog",
+					url: "https://blog.iqai.com/",
+					icon: <PenTool className="w-4 h-4" />,
 					external: true,
 				},
 			],
