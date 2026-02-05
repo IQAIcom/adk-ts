@@ -15,6 +15,52 @@ import {
 import Link, { type LinkProps } from "next/link";
 import { useState } from "react";
 
+const featureItems = [
+	{
+		href: "/docs/framework/get-started",
+		icon: Building2,
+		title: "Framework",
+		description:
+			"Build intelligent AI agents with our comprehensive TypeScript framework featuring tools, sessions, and runtime management.",
+	},
+	{
+		href: "/docs/mcp-servers",
+		icon: Server,
+		title: "MCP Servers",
+		description:
+			"Pre-built MCP server integrations for blockchain, social media, and data services to enhance your agents.",
+	},
+	{
+		href: "https://iqaicom.github.io/adk-ts/",
+		icon: Code,
+		title: "API Reference",
+		description:
+			"Complete API documentation with detailed class references, methods, and examples for all ADK components.",
+		external: true,
+	},
+	{
+		href: "/docs/cli",
+		icon: Terminal,
+		title: "CLI",
+		description:
+			"Command-line tooling to scaffold projects, run agents, and launch web/API.",
+	},
+	{
+		href: "/docs/framework/guides",
+		icon: GraduationCap,
+		title: "Guides",
+		description:
+			"Step-by-step tutorials and guides to help you master building AI agents with ADK.",
+	},
+	{
+		href: "/showcase",
+		icon: Sparkles,
+		title: "Showcase",
+		description:
+			"Explore real-world applications and see what others have built with ADK.",
+	},
+];
+
 export default function DocsPage(): React.ReactElement {
 	return (
 		<main className="container flex flex-col items-center py-16 text-center z-2">
@@ -49,66 +95,17 @@ export default function DocsPage(): React.ReactElement {
 			</div>
 			<CodeSnippet />
 			<div className="mt-16 grid grid-cols-1 gap-6 text-left md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
-				<Item href="/docs/framework/get-started">
-					<Icon>
-						<Building2 className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">Framework</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Build intelligent AI agents with our comprehensive TypeScript
-						framework featuring tools, sessions, and runtime management.
-					</p>
-				</Item>
-				<Item href="/docs/mcp-servers">
-					<Icon>
-						<Server className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">MCP Servers</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Pre-built MCP server integrations for blockchain, social media, and
-						data services to enhance your agents.
-					</p>
-				</Item>
-				<Item href="https://iqaicom.github.io/adk-ts/" external>
-					<Icon>
-						<Code className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">API Reference</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Complete API documentation with detailed class references, methods,
-						and examples for all ADK components.
-					</p>
-				</Item>
-				<Item href="/docs/cli">
-					<Icon>
-						<Terminal className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">CLI</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Command-line tooling to scaffold projects, run agents, and launch
-						web/API.
-					</p>
-				</Item>
-				<Item href="/docs/framework/guides">
-					<Icon>
-						<GraduationCap className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">Guides</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Step-by-step tutorials and guides to help you master building AI
-						agents with ADK.
-					</p>
-				</Item>
-				<Item href="/showcase">
-					<Icon>
-						<Sparkles className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">Showcase</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Explore real-world applications and see what others have built with
-						ADK.
-					</p>
-				</Item>
+				{featureItems.map((item) => (
+					<Item key={item.href} href={item.href} external={item.external}>
+						<Icon>
+							<item.icon className="size-full" />
+						</Icon>
+						<h2 className="mb-2 text-lg font-semibold">{item.title}</h2>
+						<p className="text-sm text-fd-muted-foreground">
+							{item.description}
+						</p>
+					</Item>
+				))}
 			</div>
 		</main>
 	);

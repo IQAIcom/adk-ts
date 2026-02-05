@@ -11,6 +11,79 @@ import {
 	PenTool,
 } from "lucide-react";
 
+const baseNavLinks = [
+	{
+		text: "Docs",
+		url: "/docs",
+		icon: <Book className="w-4 h-4" />,
+	},
+	{
+		text: "MCP",
+		url: "/docs/mcp-servers",
+		icon: <Blocks className="w-4 h-4" />,
+	},
+	{
+		text: "API",
+		url: "https://iqaicom.github.io/adk-ts/",
+		icon: <Code className="w-4 h-4" />,
+		external: true,
+	},
+	{
+		text: "Blog",
+		url: "https://blog.iqai.com/",
+		icon: <PenTool className="w-4 h-4" />,
+		external: true,
+	},
+];
+
+const resourceMenuItems = [
+	{
+		text: "Guides",
+		description: "Step-by-step tutorials and guides",
+		url: "/docs/framework/guides",
+		icon: <GraduationCap className="w-4 h-4" />,
+	},
+	{
+		text: "Showcase",
+		description: "See what others have built",
+		url: "/showcase",
+		icon: <Sparkles className="w-4 h-4" />,
+	},
+	{
+		text: "Sample Projects",
+		description: "Ready-to-use project templates",
+		url: "https://github.com/IQAIcom/adk-ts-samples",
+		icon: <FileCode className="w-4 h-4" />,
+		external: true,
+	},
+	{
+		text: "Tutorials",
+		description: "Learn with interactive examples",
+		url: "https://github.com/IQAIcom/adk-ts/tree/main/apps/examples",
+		icon: <GraduationCap className="w-4 h-4" />,
+		external: true,
+	},
+];
+
+const docsNavLinks = [
+	{
+		text: "API Reference",
+		url: "https://iqaicom.github.io/adk-ts/",
+		icon: <Code className="w-4 h-4" />,
+		external: true,
+	},
+];
+
+const docsResourceMenuItems = [
+	...resourceMenuItems,
+	{
+		text: "Blog",
+		url: "https://blog.iqai.com/",
+		icon: <PenTool className="w-4 h-4" />,
+		external: true,
+	},
+];
+
 export const baseOptions: BaseLayoutProps = {
 	nav: {
 		title: (
@@ -27,59 +100,11 @@ export const baseOptions: BaseLayoutProps = {
 		),
 	},
 	links: [
-		{
-			text: "Docs",
-			url: "/docs",
-			icon: <Book className="w-4 h-4" />,
-		},
-		{
-			text: "MCP",
-			url: "/docs/mcp-servers",
-			icon: <Blocks className="w-4 h-4" />,
-		},
-		{
-			text: "API",
-			url: "https://iqaicom.github.io/adk-ts/",
-			icon: <Code className="w-4 h-4" />,
-			external: true,
-		},
-		{
-			text: "Blog",
-			url: "https://blog.iqai.com/",
-			icon: <PenTool className="w-4 h-4" />,
-			external: true,
-		},
+		...baseNavLinks,
 		{
 			type: "menu",
 			text: "Resources",
-			items: [
-				{
-					text: "Guides",
-					description: "Step-by-step tutorials and guides",
-					url: "/docs/framework/guides",
-					icon: <GraduationCap className="w-4 h-4" />,
-				},
-				{
-					text: "Showcase",
-					description: "See what others have built",
-					url: "/showcase",
-					icon: <Sparkles className="w-4 h-4" />,
-				},
-				{
-					text: "Sample Projects",
-					description: "Ready-to-use project templates",
-					url: "https://github.com/IQAIcom/adk-ts-samples",
-					icon: <FileCode className="w-4 h-4" />,
-					external: true,
-				},
-				{
-					text: "Tutorials",
-					description: "Learn with interactive examples",
-					url: "https://github.com/IQAIcom/adk-ts/tree/main/apps/examples",
-					icon: <GraduationCap className="w-4 h-4" />,
-					external: true,
-				},
-			],
+			items: resourceMenuItems,
 		},
 	],
 	githubUrl: "https://github.com/IQAICOM/adk-ts",
@@ -101,50 +126,12 @@ export const docsOptions: BaseLayoutProps = {
 		),
 	},
 	links: [
-		{
-			text: "API Reference",
-			url: "https://iqaicom.github.io/adk-ts/",
-			icon: <Code className="w-4 h-4" />,
-			external: true,
-		},
+		...docsNavLinks,
 		{
 			type: "menu",
 			text: "Resources",
 			icon: <Lightbulb className="w-4 h-4" />,
-			items: [
-				{
-					text: "Guides",
-					description: "Step-by-step tutorials and guides",
-					url: "/docs/framework/guides",
-					icon: <GraduationCap className="w-4 h-4" />,
-				},
-				{
-					text: "Showcase",
-					description: "See what others have built",
-					url: "/showcase",
-					icon: <Sparkles className="w-4 h-4" />,
-				},
-				{
-					text: "Sample Projects",
-					description: "Ready-to-use project templates",
-					url: "https://github.com/IQAIcom/adk-ts-samples",
-					icon: <FileCode className="w-4 h-4" />,
-					external: true,
-				},
-				{
-					text: "Tutorials",
-					description: "Learn with interactive examples",
-					url: "https://github.com/IQAIcom/adk-ts/tree/main/apps/examples",
-					icon: <GraduationCap className="w-4 h-4" />,
-					external: true,
-				},
-				{
-					text: "Blog",
-					url: "https://blog.iqai.com/",
-					icon: <PenTool className="w-4 h-4" />,
-					external: true,
-				},
-			],
+			items: docsResourceMenuItems,
 		},
 	],
 	githubUrl: "https://github.com/IQAICOM/adk-ts",
