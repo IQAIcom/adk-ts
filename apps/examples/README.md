@@ -79,7 +79,7 @@ To explore the examples, you can either browse all available examples or run a s
 
 ## 📚 Explore Example Applications
 
-We have **8 comprehensive examples** that cover the complete ADK feature set, organized in a logical learning progression from basic concepts to advanced implementations:
+We have **9 comprehensive examples** that cover the complete ADK feature set, organized in a logical learning progression from basic concepts to advanced implementations:
 
 ### 🎯 **Foundational Examples (01-03)**
 
@@ -98,11 +98,12 @@ We have **8 comprehensive examples** that cover the complete ADK feature set, or
 
 ### 🚀 **Advanced Examples (06-08)**
 
-| Example                                                               | Description                                             | Key Concepts                                                |
-| --------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------- |
-| **[06-mcp-and-integrations](src/06-mcp-and-integrations/)**           | Model Context Protocol with custom and external servers | MCP servers, sampling handler, Coingecko integration        |
-| **[07-guardrails-and-evaluation](src/07-guardrails-and-evaluation/)** | Safety guardrails and agent evaluation                  | Plugins, lifecycle hooks, content filtering, AgentEvaluator |
-| **[08-observability-and-plugins](src/08-observability-and-plugins/)** | Monitoring, tracing, and metrics                        | OpenTelemetry, Langfuse integration, observability          |
+| Example                                                               | Description                                             | Key Concepts                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| **[06-mcp-and-integrations](src/06-mcp-and-integrations/)**           | Model Context Protocol with custom and external servers | MCP servers, sampling handler, Coingecko integration           |
+| **[07-guardrails-and-evaluation](src/07-guardrails-and-evaluation/)** | Safety guardrails and agent evaluation                  | Plugins, lifecycle hooks, content filtering, AgentEvaluator    |
+| **[08-observability-and-plugins](src/08-observability-and-plugins/)** | Monitoring, tracing, and metrics                        | OpenTelemetry, Langfuse integration, observability             |
+| **[09-scheduling](src/09-scheduling/)**                               | Recurring agent execution on a schedule                 | AgentScheduler, cron/interval jobs, callbacks, event listeners |
 
 ## 🤝 Contributing
 
@@ -110,4 +111,4 @@ If you would like to add examples or improve existing ones, please check out our
 
 ---
 
-💡 **Pro Tip**: Follow the examples in order (01-08) for a structured learning path, or jump to specific examples based on your needs. Start with `01-getting-started` to understand the basics, then explore advanced features like multi-agent systems, MCP integrations, guardrails, and observability!
+💡 **Pro Tip**: Follow the examples in order (01-09) for a structured learning path, or jump to specific examples based on your needs. Start with `01-getting-started` to understand the basics, then explore advanced features like multi-agent systems, MCP integrations, guardrails, observability, and scheduling!
