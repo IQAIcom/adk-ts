@@ -4,9 +4,9 @@ export function Footer() {
 	return (
 		<footer className="bg-card border-t border-border w-screen">
 			<div className="max-w-6xl mx-auto px-4 py-12">
-				<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-8">
+				<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-8">
 					{/* About */}
-					<div className="space-y-4">
+					<div className="space-y-4 col-span-2 lg:col-span-1">
 						<h3 className="text-lg font-semibold text-card-foreground">
 							ADK TypeScript
 						</h3>
@@ -80,10 +80,18 @@ export function Footer() {
 							</li>
 							<li>
 								<Link
-									href="/docs/framework/context"
+									href="/docs/mcp-servers"
 									className="text-sm text-muted-foreground hover:text-primary transition-colors"
 								>
-									Context & Memory
+									MCP Servers
+								</Link>
+							</li>
+							<li>
+								<Link
+									href="/docs/cli"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+								>
+									CLI Reference
 								</Link>
 							</li>
 						</ul>
@@ -97,14 +105,59 @@ export function Footer() {
 						<ul className="space-y-2">
 							<li>
 								<Link
+									href="https://iqaicom.github.io/adk-ts/"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									API Reference
+								</Link>
+							</li>
+							<li>
+								<Link
+									href="/showcase"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+								>
+									Showcase
+								</Link>
+							</li>
+							<li>
+								<Link
+									href="https://github.com/IQAIcom/adk-ts-samples"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Sample Projects
+								</Link>
+							</li>
+							<li>
+								<Link
 									href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples"
 									className="text-sm text-muted-foreground hover:text-primary transition-colors"
 									target="_blank"
 									rel="noopener noreferrer"
 								>
-									Examples
+									Tutorials
 								</Link>
 							</li>
+							<li>
+								<Link
+									href="/docs/framework/guides"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+								>
+									Guides
+								</Link>
+							</li>
+						</ul>
+					</div>
+
+					{/* Learn More */}
+					<div className="space-y-4">
+						<h3 className="text-lg font-semibold text-card-foreground">
+							Learn More
+						</h3>
+						<ul className="space-y-2">
 							<li>
 								<Link
 									href="https://github.com/IQAIcom/adk-ts/blob/main/CHANGELOG.md"
@@ -135,15 +188,6 @@ export function Footer() {
 									Issues & Support
 								</Link>
 							</li>
-						</ul>
-					</div>
-
-					{/* Community */}
-					<div className="space-y-4">
-						<h3 className="text-lg font-semibold text-card-foreground">
-							Community
-						</h3>
-						<ul className="space-y-2">
 							<li>
 								<Link
 									href="https://github.com/IQAIcom/adk-ts/discussions"
@@ -154,6 +198,15 @@ export function Footer() {
 									Discussions
 								</Link>
 							</li>
+						</ul>
+					</div>
+
+					{/* Community */}
+					<div className="space-y-4">
+						<h3 className="text-lg font-semibold text-card-foreground">
+							Community
+						</h3>
+						<ul className="space-y-2">
 							<li>
 								<Link
 									href="https://github.com/IQAIcom/adk-ts/releases"
@@ -182,6 +235,16 @@ export function Footer() {
 									rel="noopener noreferrer"
 								>
 									Code of Conduct
+								</Link>
+							</li>
+							<li>
+								<Link
+									href="https://github.com/IQAIcom/adk-ts/blob/main/SECURITY.md"
+									className="text-sm text-muted-foreground hover:text-primary transition-colors"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Security
 								</Link>
 							</li>
 						</ul>
