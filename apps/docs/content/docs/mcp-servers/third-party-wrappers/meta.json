@@ -1,0 +1,12 @@
+{
+	"title": "Third-Party Wrappers",
+	"icon": "Package",
+	"pages": [
+		"---Market Data",
+		"coingecko",
+		"coingecko-pro",
+		"---Utilities",
+		"filesystem",
+		"memory"
+	]
+}

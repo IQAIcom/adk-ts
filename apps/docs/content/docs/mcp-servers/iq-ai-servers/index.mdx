@@ -1,0 +1,183 @@
+---
+title: IQ AI Built-in MCP Servers
+description: Comprehensive collection of IQ AI's specialized MCP servers for blockchain, DeFi, market data, and more
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+
+IQ AI has developed a comprehensive collection of specialized MCP servers with convenient wrapper functions for quick setup. All servers are organized by category for easy discovery.
+
+<Callout type="success" title="Simple Integration">
+
+All IQ AI MCP servers use the same simple pattern: `const toolset = McpServerName({ env: {...} })`. Configuration is consistent across all servers.
+
+</Callout>
+
+## Blockchain & DeFi
+
+MCP servers for blockchain interactions, DeFi protocols, and smart contract operations.
+
+<Cards>
+  <Card
+    title="MCP ABI"
+    description="Smart contract ABI interactions for Ethereum-compatible blockchains"
+    href="/docs/mcp-servers/iq-ai-servers/abi"
+  />
+  <Card
+    title="MCP ATP"
+    description="Interact with the IQ AI Agent Tokenization Platform"
+    href="/docs/mcp-servers/iq-ai-servers/atp"
+  />
+  <Card
+    title="MCP BAMM"
+    description="Borrow Automated Market Maker operations on Fraxtal"
+    href="/docs/mcp-servers/iq-ai-servers/bamm"
+  />
+  <Card
+    title="MCP Fraxlend"
+    description="Interact with the Fraxlend lending platform"
+    href="/docs/mcp-servers/iq-ai-servers/fraxlend"
+  />
+  <Card
+    title="MCP NEAR Agent"
+    description="NEAR Protocol blockchain integration with AI-driven event processing"
+    href="/docs/mcp-servers/iq-ai-servers/near-agent"
+  />
+  <Card
+    title="MCP NEAR Intents"
+    description="NEAR Intents-based cross-chain swaps using Defuse Protocol"
+    href="/docs/mcp-servers/iq-ai-servers/near-intents"
+  />
+  <Card
+    title="MCP ODOS"
+    description="Interact with decentralized exchanges through ODOS aggregation"
+    href="/docs/mcp-servers/iq-ai-servers/odos"
+  />
+</Cards>
+
+## Information
+
+MCP servers for knowledge bases and information retrieval.
+
+<Cards>
+  <Card
+    title="MCP IQWiki"
+    description="Access and manage IQ.wiki data and user activities"
+    href="/docs/mcp-servers/iq-ai-servers/iqwiki"
+  />
+</Cards>
+
+## Market Data
+
+MCP servers for cryptocurrency market data, DeFi analytics, and portfolio tracking.
+
+<Cards>
+  <Card
+    title="MCP DeBank"
+    description="Track DeFi portfolios and wallet analytics across chains"
+    href="/docs/mcp-servers/iq-ai-servers/debank"
+  />
+  <Card
+    title="MCP DefiLlama"
+    description="Access comprehensive DeFi protocol data and TVL analytics"
+    href="/docs/mcp-servers/iq-ai-servers/defillama"
+  />
+  <Card
+    title="MCP Upbit"
+    description="Interact with the Upbit cryptocurrency exchange for market data and trading"
+    href="/docs/mcp-servers/iq-ai-servers/upbit"
+  />
+</Cards>
+
+## Messaging & Social
+
+MCP servers for messaging platforms and social integrations.
+
+<Cards>
+  <Card
+    title="MCP Discord"
+    description="Interact with Discord bots and channels for messaging automation"
+    href="/docs/mcp-servers/iq-ai-servers/discord"
+  />
+  <Card
+    title="MCP Telegram"
+    description="Interact with Telegram bots and channels for messaging automation"
+    href="/docs/mcp-servers/iq-ai-servers/telegram"
+  />
+</Cards>
+
+## Prediction Markets
+
+MCP servers for prediction market platforms and trading operations.
+
+<Cards>
+  <Card
+    title="MCP Kalshi"
+    description="Interact with Kalshi prediction markets for trading and analysis"
+    href="/docs/mcp-servers/iq-ai-servers/kalshi"
+  />
+  <Card
+    title="MCP Limitless"
+    description="Interact with Limitless prediction markets for market data and analysis"
+    href="/docs/mcp-servers/iq-ai-servers/limitless"
+  />
+  <Card
+    title="MCP Opinion"
+    description="Interact with Opinion.trade prediction market for market data and analysis"
+    href="/docs/mcp-servers/iq-ai-servers/opinion"
+  />
+  <Card
+    title="MCP Polymarket"
+    description="Interact with Polymarket prediction markets for trading and analysis"
+    href="/docs/mcp-servers/iq-ai-servers/polymarket"
+  />
+</Cards>
+
+## Quick Start
+
+All IQ AI MCP servers follow the same simple pattern:
+
+```typescript
+import { McpServerName, LlmAgent } from "@iqai/adk";
+
+// Initialize with environment variables
+const toolset = McpServerName({
+  env: {
+    REQUIRED_VAR: process.env.REQUIRED_VAR,
+  },
+});
+
+// Get tools
+const tools = await toolset.getTools();
+
+// Create agent
+const agent = new LlmAgent({
+  name: "my_agent",
+  description: "Description of my agent",
+  model: "gemini-2.5-flash",
+  tools,
+});
+
+// Always cleanup
+await toolset.close();
+```
+
+## Common Configuration
+
+All servers support these configuration options:
+
+| Option                      | Type            | Description                              |
+| --------------------------- | --------------- | ---------------------------------------- |
+| `env`                       | object          | Environment variables (server-specific)  |
+| `debug`                     | boolean         | Enable debug logging                     |
+| `description`               | string          | Custom description                       |
+| `retryOptions.maxRetries`   | number          | Max retry attempts (default: 2)          |
+| `retryOptions.initialDelay` | number          | Initial retry delay in ms (default: 200) |
+| `samplingHandler`           | SamplingHandler | Handler for MCP sampling requests        |
+
+## Related Resources
+
+- [MCP Tools Framework Documentation](/docs/framework/tools/mcp-tools)
+- [Integrating External MCPs](/docs/mcp-servers/external-mcps)
+- [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps)

@@ -1,7 +1,65 @@
+"use client";
+
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Building2, Server, Terminal } from "lucide-react";
+import {
+	Building2,
+	Server,
+	Terminal,
+	Code,
+	GraduationCap,
+	Sparkles,
+	Copy,
+	Check,
+} from "lucide-react";
 import Link, { type LinkProps } from "next/link";
+import { useState } from "react";
+
+const featureItems = [
+	{
+		href: "/docs/framework/get-started",
+		icon: Building2,
+		title: "Framework",
+		description:
+			"Build intelligent AI agents with our comprehensive TypeScript framework featuring tools, sessions, and runtime management.",
+	},
+	{
+		href: "/docs/mcp-servers",
+		icon: Server,
+		title: "MCP Servers",
+		description:
+			"Pre-built MCP server integrations for blockchain, social media, and data services to enhance your agents.",
+	},
+	{
+		href: "https://iqaicom.github.io/adk-ts/",
+		icon: Code,
+		title: "API Reference",
+		description:
+			"Complete API documentation with detailed class references, methods, and examples for all ADK components.",
+		external: true,
+	},
+	{
+		href: "/docs/cli",
+		icon: Terminal,
+		title: "CLI",
+		description:
+			"Command-line tooling to scaffold projects, run agents, and launch web/API.",
+	},
+	{
+		href: "/docs/framework/guides",
+		icon: GraduationCap,
+		title: "Guides",
+		description:
+			"Step-by-step tutorials and guides to help you master building AI agents with ADK.",
+	},
+	{
+		href: "/showcase",
+		icon: Sparkles,
+		title: "Showcase",
+		description:
+			"Explore real-world applications and see what others have built with ADK.",
+	},
+];
 
 export default function DocsPage(): React.ReactElement {
 	return (
@@ -35,39 +93,52 @@ export default function DocsPage(): React.ReactElement {
 					Quickstart Guide
 				</Link>
 			</div>
-			<div className="mt-16 grid grid-cols-1 gap-6 text-left md:grid-cols-3 max-w-4xl mx-auto">
-				<Item href="/docs/framework/get-started">
-					<Icon>
-						<Building2 className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">Docs</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Build intelligent AI agents with our comprehensive TypeScript
-						framework featuring tools, sessions, and runtime management.
-					</p>
-				</Item>
-				<Item href="/docs/mcp-servers">
-					<Icon>
-						<Server className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">MCP Servers</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Pre-built MCP server integrations for blockchain, social media, and
-						data services to enhance your agents.
-					</p>
-				</Item>
-				<Item href="/docs/cli">
-					<Icon>
-						<Terminal className="size-full" />
-					</Icon>
-					<h2 className="mb-2 text-lg font-semibold">CLI</h2>
-					<p className="text-sm text-fd-muted-foreground">
-						Command-line tooling to scaffold projects, run agents, and launch
-						web/API.
-					</p>
-				</Item>
+			<CodeSnippet />
+			<div className="mt-16 grid grid-cols-1 gap-6 text-left md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+				{featureItems.map((item) => (
+					<Item key={item.href} href={item.href} external={item.external}>
+						<Icon>
+							<item.icon className="size-full" />
+						</Icon>
+						<h2 className="mb-2 text-lg font-semibold">{item.title}</h2>
+						<p className="text-sm text-fd-muted-foreground">
+							{item.description}
+						</p>
+					</Item>
+				))}
 			</div>
 		</main>
+	);
+}
+
+function CodeSnippet(): React.ReactElement {
+	const [copied, setCopied] = useState(false);
+	const code = "npx create-adk-project my-agent";
+
+	const handleCopy = () => {
+		navigator.clipboard.writeText(code);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
+	};
+
+	return (
+		<div className="mt-6 flex items-center justify-center">
+			<div className="flex items-center gap-3 px-4 py-2 rounded-lg border border-fd-border bg-fd-card/50 backdrop-blur-sm shadow-sm">
+				<code className="text-sm font-mono px-3 py-1 rounded">{code}</code>
+				<button
+					type="button"
+					onClick={handleCopy}
+					className="flex items-center justify-center w-8 h-8 rounded-md border border-fd-border bg-fd-background hover:bg-fd-accent hover:border-fd-primary/30 transition-all duration-200 group"
+					aria-label="Copy code"
+				>
+					{copied ? (
+						<Check className="w-4 h-4 text-green-500 group-hover:scale-110 transition-transform" />
+					) : (
+						<Copy className="w-4 h-4 text-fd-muted-foreground group-hover:text-fd-foreground group-hover:scale-110 transition-all" />
+					)}
+				</button>
+			</div>
+		</div>
 	);
 }
 
@@ -80,11 +151,16 @@ function Icon({ children }: { children: React.ReactNode }): React.ReactElement {
 }
 
 function Item(
-	props: LinkProps & { children: React.ReactNode },
+	props: LinkProps & { children: React.ReactNode; external?: boolean },
 ): React.ReactElement {
+	const linkProps = props.external
+		? { target: "_blank", rel: "noopener noreferrer" }
+		: {};
+
 	return (
 		<Link
 			{...props}
+			{...linkProps}
 			className="group relative rounded-xl border border-fd-border bg-fd-card p-6 transition-all duration-200 hover:shadow-lg hover:border-fd-primary/30 hover:-translate-y-1"
 		>
 			<div className="absolute inset-0 rounded-xl bg-gradient-to-br from-fd-primary/5 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />

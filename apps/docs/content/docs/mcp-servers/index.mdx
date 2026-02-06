@@ -1,136 +1,132 @@
 ---
-title: Overview
-description: IQAI-built MCP servers for enhanced ADK TypeScript functionality
+title: MCP Servers
+description: Connect ADK-TS agents to IQ AI's built-in MCP servers and any external MCP server from the ecosystem
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import Link from "fumadocs-core/link";
 
-IQAI has developed a collection of specialized Model Context Protocol (MCP) servers designed to enhance and extend the capabilities of ADK TypeScript agents. These servers provide seamless integration with various external services and data sources.
+ADK-TS provides comprehensive support for the Model Context Protocol (MCP), an open standard for connecting AI agents with external systems, data sources, and services. You can use **IQ AI's pre-built MCP servers** for blockchain, DeFi, and AI operations, **integrate any external MCP server** from the ecosystem (Anthropic's official servers, community servers, etc.), or **create your own custom MCP servers**.
 
-## Available MCP Servers
+<Callout type="info" title="Three Ways to Use MCP with ADK-TS">
+
+1. **IQ AI Built-in Servers** - Use our pre-built MCP servers with convenient wrapper functions
+2. **External MCP Servers** - Connect to any MCP server from the ecosystem using `McpToolset`
+3. **Custom MCP Servers** - Build and deploy your own MCP servers with our FastMCP template
+
+</Callout>
+
+## IQ AI's Built-in MCP Servers
+
+IQ AI has developed a comprehensive collection of specialized MCP servers for blockchain, DeFi, messaging, and AI operations. These servers provide seamless integration with various external services and come with convenient wrapper functions for quick setup.
+
+**Available Categories:**
+
+- **Blockchain & DeFi**: ABI, ATP, BAMM, Fraxlend, NEAR Agent, NEAR Intents, ODOS
+- **Market Data**: CoinGecko, CoinGecko Pro, DeBank, DefiLlama, Upbit
+- **Prediction Markets**: Kalshi, Limitless, Opinion, Polymarket
+- **Messaging & Social**: Discord, Telegram
+- **Information**: IQWiki
+
+[View all IQ AI MCP servers →](/docs/mcp-servers/iq-ai-servers)
+
+## IQ AI's Third-Party MCP Wrappers
+
+ADK-TS also provides convenience wrappers for popular third-party MCP servers:
+
+- **Utilities**: Filesystem, Memory
+
+[View all third-party wrappers →](/docs/mcp-servers/third-party-wrappers)
+
+## Working with MCP Servers
 
 <Cards>
   <Card
-    title="🔗 MCP ABI"
-    description="Smart contract ABI interactions for Ethereum-compatible blockchains"
-    href="/docs/mcp-servers/abi"
+    title="📦 Using IQ AI's Built-in Servers"
+    description="Quick setup with wrapper functions for blockchain, DeFi, and messaging integrations"
+    href="#integration-example"
   />
   <Card
-    title="⚡ MCP ATP"
-    description="Interact with the IQ AI Agent Tokenization Platform"
-    href="/docs/mcp-servers/atp"
+    title="🌐 Integrating External MCP Servers"
+    description="Connect to any MCP server from the ecosystem (Anthropic, community, etc.)"
+    href="/docs/mcp-servers/external-mcps"
   />
   <Card
-    title="💰 MCP BAMM"
-    description="Borrow Automated Market Maker operations on Fraxtal"
-    href="/docs/mcp-servers/bamm"
-  />
-  <Card
-    title="🦎 MCP CoinGecko"
-    description="Access free cryptocurrency market data and analytics via public API"
-    href="/docs/mcp-servers/coingecko"
-  />
-  <Card
-    title="🦎 MCP CoinGecko Pro"
-    description="Access premium cryptocurrency market data and analytics with enhanced features"
-    href="/docs/mcp-servers/coingecko-pro"
-  />
-  <Card
-    title="💬 MCP Discord"
-    description="Interact with Discord bots and channels for messaging automation"
-    href="/docs/mcp-servers/discord"
-  />
-  <Card
-    title="💰 MCP FRAXLEND"
-    description="Interact with the Fraxlend lending platform"
-    href="/docs/mcp-servers/fraxlend"
-  />
-  <Card
-    title="📜 MCP IQWiki"
-    description="Access and manage IQ.wiki data and user activities"
-    href="/docs/mcp-servers/iqwiki"
-  />
-  <Card
-    title="🤖 MCP NEAR Agent"
-    description="NEAR Protocol blockchain integration with AI-driven event processing"
-    href="/docs/mcp-servers/near-agent"
-  />
-  <Card
-    title="🔄 MCP NEAR Intents"
-    description="NEAR Intents-based cross-chain swaps using Defuse Protocol"
-    href="/docs/mcp-servers/near-intents"
-  />
-  <Card
-    title="🔄 MCP ODOS"
-    description="Interact with decentralized exchanges through ODOS aggregation"
-    href="/docs/mcp-servers/odos"
-  />
-  <Card
-    title="📊 MCP Polymarket"
-    description="Interact with Polymarket prediction markets for trading and analysis"
-    href="/docs/mcp-servers/polymarket"
-  />
-  <Card
-    title="📱 MCP Telegram"
-    description="Interact with Telegram bots and channels for messaging automation"
-    href="/docs/mcp-servers/telegram"
-  />
-  <Card
-    title="🇰🇷 MCP Upbit"
-    description="Interact with the Upbit cryptocurrency exchange for market data and trading"
-    href="/docs/mcp-servers/upbit"
-  />
-  <Card
-    title="🎯 MCP Limitless"
-    description="Interact with Limitless prediction markets for market data and analysis"
-    href="/docs/mcp-servers/limitless"
-  />
-  <Card
-    title="📈 MCP Kalshi"
-    description="Interact with Kalshi prediction markets for trading and analysis"
-    href="/docs/mcp-servers/kalshi"
-  />
-  <Card
-    title="💬 MCP Opinion"
-    description="Interact with Opinion.trade prediction market for market data and analysis"
-    href="/docs/mcp-servers/opinion"
-  />
-  <Card
-    title="📊 MCP DefiLlama"
-    description="Access comprehensive DeFi protocol data and TVL analytics"
-    href="/docs/mcp-servers/defillama"
-  />
-  <Card
-    title="💼 MCP DeBank"
-    description="Track DeFi portfolios and wallet analytics across chains"
-    href="/docs/mcp-servers/debank"
+    title="🛠️ Creating Custom MCP Servers"
+    description="Build and deploy your own MCP servers with FastMCP and our starter template"
+    href="/docs/mcp-servers/creating-custom-mcps"
   />
 </Cards>
 
 ## Getting Started
 
-To use these MCP servers with your ADK TypeScript agents, you'll need to:
+ADK-TS makes it easy to work with MCP servers through three approaches:
 
-1. **Install the MCP server** you want to use
-2. **Configure the connection** in your ADK agent
-3. **Add the tools** to your agent's toolset
-4. **Start using** the enhanced functionality
+### 1. Using IQ AI's Built-in MCP Servers
+
+For IQ AI's pre-built servers, use convenient wrapper functions that handle all configuration automatically:
+
+```typescript
+import { McpAtp } from "@iqai/adk";
+
+// Simple wrapper function setup
+const toolset = McpAtp({
+  env: {
+    ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    ATP_API_KEY: process.env.ATP_API_KEY,
+  },
+});
+
+const tools = await toolset.getTools();
+```
+
+### 2. Integrating External MCP Servers
+
+Connect to any MCP server from the ecosystem (Anthropic's official servers, community servers, etc.) using `McpToolset`:
+
+```typescript
+import { McpToolset } from "@iqai/adk";
+
+// Connect to Anthropic's filesystem server
+const toolset = new McpToolset({
+  name: "Filesystem MCP",
+  description: "Local file system operations",
+  transport: {
+    mode: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"],
+    env: { PATH: process.env.PATH || "" },
+  },
+});
+
+const tools = await toolset.getTools();
+```
+
+### 3. Creating Custom MCP Servers
+
+Build your own MCP servers with our FastMCP starter template:
+
+```bash
+# Create new MCP server project
+adk new --template mcp-starter my-weather-server
+cd my-weather-server
+pnpm install
+```
+
+Learn more in the [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps) guide.
 
 <Callout type="info" title="Prerequisites">
 
-Make sure you have the basic MCP integration set up in your ADK TypeScript
-project. See the [MCP Tools](/docs/tools/mcp-tools) section for general MCP
-integration guidance.
+Make sure you have the basic MCP integration set up in your ADK-TS project. See the [MCP Tools](/docs/framework/tools/mcp-tools) section for detailed integration guidance.
 
 </Callout>
 
 ## Integration Example
 
-Here's how to connect to an IQAI MCP server using ADK TypeScript:
+Here's how to connect to IQ AI's MCP servers using ADK-TS:
 
-### Using Wrapper Functions (Recommended)
+### Using Wrapper Functions (Recommended for IQ AI Servers)
 
 For supported MCP servers, use the convenient wrapper functions:
 
@@ -154,7 +150,7 @@ const toolset = McpAtp({
 const mcpTools = await toolset.getTools();
 
 // Create agent with MCP tools using AgentBuilder
-const { runner } = await AgentBuilder.create("mcp_assistant")
+const { runner } = await AgentBuilder.create("mcp_assistant_agent")
   .withModel("gemini-2.5-flash")
   .withDescription("An assistant with MCP server capabilities")
   .withTools(...mcpTools)
@@ -166,17 +162,17 @@ const response = await runner.ask("Get ATP statistics for contract 0x123...");
 
 You can find all the wrapper mcp servers in the framework from <Link href="https://github.com/IQAIcom/adk-ts/blob/main/packages/adk/src/tools/mcp/servers.ts">here</Link>
 
-### Using McpToolset (For Unsupported Servers)
+### Using McpToolset (For External MCP Servers)
 
-When we don't have a wrapper function for a specific MCP server, use the `McpToolset` class:
+When connecting to external MCP servers from the ecosystem (like Anthropic's official servers, community servers, or third-party MCP implementations), use the `McpToolset` class:
 
 ```typescript
 import { McpToolset, AgentBuilder, type McpConfig } from "@iqai/adk";
 
-// Configure MCP connection for unsupported server
+// Configure MCP connection for an external server (e.g., Anthropic's filesystem server)
 const mcpConfig: McpConfig = {
-  name: "Custom MCP Client",
-  description: "Client for a custom MCP server",
+  name: "Filesystem MCP Client",
+  description: "Client for Anthropic's filesystem MCP server",
   debug: false,
   retryOptions: {
     maxRetries: 2,
@@ -184,10 +180,9 @@ const mcpConfig: McpConfig = {
   },
   transport: {
     mode: "stdio",
-    command: "pnpm",
-    args: ["dlx", "@custom/mcp-server"],
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"],
     env: {
-      CUSTOM_API_KEY: process.env.CUSTOM_API_KEY,
       PATH: process.env.PATH || "",
     },
   },
@@ -200,16 +195,18 @@ const toolset = new McpToolset(mcpConfig);
 const mcpTools = await toolset.getTools();
 
 // Create agent with MCP tools
-const { runner } = await AgentBuilder.create("custom_mcp_assistant")
+const { runner } = await AgentBuilder.create("filesystem_assistant_agent")
   .withModel("gemini-2.5-flash")
-  .withDescription("An assistant with custom MCP server capabilities")
+  .withDescription("An assistant with filesystem access via MCP")
   .withTools(...mcpTools)
   .build();
 ```
 
+See the [Integrating External MCPs](/docs/mcp-servers/external-mcps) guide for more examples of connecting to Anthropic's official servers and community MCP servers.
+
 ### Multiple MCP Servers
 
-You can connect to multiple IQAI MCP servers simultaneously:
+You can connect to multiple MCP servers simultaneously, mixing IQ AI's built-in servers with external servers:
 
 ```typescript
 import { McpAtp, McpFraxlend, McpNearAgent, AgentBuilder } from "@iqai/adk";
@@ -243,21 +240,21 @@ const nearTools = await nearToolset.getTools();
 const allTools = [...atpTools, ...fraxlendTools, ...nearTools];
 
 // Create agent with combined tools
-const { runner } = await AgentBuilder.create("multi_mcp_assistant")
+const { runner } = await AgentBuilder.create("multi_mcp_assistant_agent")
   .withModel("gemini-2.5-flash")
   .withDescription("An assistant with multiple MCP server capabilities")
   .withTools(...allTools)
   .build();
 ```
 
-### Mixed Approach (Wrappers + McpToolset)
+### Mixed Approach (Built-in + External Servers)
 
-You can also combine wrapper functions with `McpToolset` for unsupported servers:
+Combine IQ AI's wrapper functions with `McpToolset` for external servers:
 
 ```typescript
 import { McpAtp, McpToolset, AgentBuilder } from "@iqai/adk";
 
-// Use wrapper for supported server
+// Use wrapper for IQ AI's built-in server
 const atpToolset = McpAtp({
   env: {
     ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
@@ -265,28 +262,30 @@ const atpToolset = McpAtp({
   },
 });
 
-// Use McpToolset for unsupported server
-const customToolset = new McpToolset({
-  name: "Custom Client",
+// Use McpToolset for external server (e.g., Anthropic's Brave Search)
+const braveSearchToolset = new McpToolset({
+  name: "Brave Search",
+  description: "Web search via Brave Search MCP server",
   transport: {
     mode: "stdio",
-    command: "pnpm",
-    args: ["dlx", "@custom/mcp-server"],
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-brave-search"],
     env: {
-      CUSTOM_API_KEY: process.env.CUSTOM_API_KEY,
+      BRAVE_API_KEY: process.env.BRAVE_API_KEY || "",
+      PATH: process.env.PATH || "",
     },
   },
 });
 
 // Combine tools from both approaches
 const atpTools = await atpToolset.getTools();
-const customTools = await customToolset.getTools();
-const allTools = [...atpTools, ...customTools];
+const braveTools = await braveSearchToolset.getTools();
+const allTools = [...atpTools, ...braveTools];
 
 // Create agent with combined tools
-const { runner } = await AgentBuilder.create("mixed_mcp_assistant")
+const { runner } = await AgentBuilder.create("mixed_assistant_agent")
   .withModel("gemini-2.5-flash")
-  .withDescription("An assistant with mixed MCP server capabilities")
+  .withDescription("An assistant with blockchain and web search capabilities")
   .withTools(...allTools)
   .build();
 ```
@@ -298,19 +297,19 @@ Always clean up MCP resources when done:
 ```typescript
 try {
   // Use your agent and tools
-  const response = await agent.run("Get ATP statistics for contract 0x123...");
+  const response = await runner.ask("Get ATP statistics for contract 0x123...");
 } finally {
   // Clean up resources
   await toolset.close();
 }
 ```
 
-## Integration with ADK TypeScript
+## Integration with ADK-TS
 
-All IQAI MCP servers are designed to work seamlessly with:
+All MCP servers (both IQ AI's built-in servers and external servers) work seamlessly with ADK-TS through:
 
-- **Wrapper functions** like `McpAtp()`, `McpNearAgent()`, etc. for supported servers
-- **`McpToolset` class** for connecting to any MCP server when no wrapper is available
+- **Wrapper functions** like `McpAtp()`, `McpNearAgent()`, etc. for IQ AI's built-in servers
+- **`McpToolset` class** for connecting to any external MCP server from the ecosystem
 
 Both approaches provide:
 
@@ -321,10 +320,21 @@ Both approaches provide:
 
 ## Support and Documentation
 
-Each MCP server includes comprehensive documentation covering:
+Each IQ AI MCP server includes comprehensive documentation covering:
 
 - Installation and setup instructions
 - Configuration options (both wrapper functions and McpToolset syntax)
 - Available tools and their parameters
 - Usage examples and best practices
 - Troubleshooting and common issues
+
+For external MCP servers, refer to:
+
+- [Integrating External MCPs](/docs/mcp-servers/external-mcps) - Guide for using Anthropic's official and community MCP servers
+- [Model Context Protocol Documentation](https://modelcontextprotocol.io/) - Official MCP specification and resources
+- [Anthropic's MCP Servers](https://github.com/modelcontextprotocol/servers) - Collection of official MCP server implementations
+
+For creating your own MCP servers:
+
+- [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps) - Step-by-step guide for building MCP servers with FastMCP
+- [FastMCP Documentation](https://github.com/jlowin/fastmcp) - Detailed FastMCP usage and API reference

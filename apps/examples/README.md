@@ -96,7 +96,7 @@ We have **9 comprehensive examples** that cover the complete ADK feature set, or
 | **[04-persistence-and-sessions](src/04-persistence-and-sessions/)**       | Database integration, artifacts, and session rewind | Session persistence, artifacts, event compaction, time-travel |
 | **[05-planning-and-code-execution](src/05-planning-and-code-execution/)** | Planning and code execution capabilities            | PlanReActPlanner, BuiltInCodeExecutor, Python sandbox         |
 
-### 🚀 **Advanced Examples (06-08)**
+### 🚀 **Advanced Examples (06-09)**
 
 | Example                                                               | Description                                             | Key Concepts                                                   |
 | --------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
