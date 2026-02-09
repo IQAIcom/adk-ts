@@ -62,6 +62,12 @@ const tools = await toolset.getTools();
 
 This works but hides everything. The rest of this page explains what's happening underneath and how to do more with it.
 
+<Callout type="info" title="Model selection with runner.ask">
+
+When you pass `runner.ask` as the sampling handler, the runner uses its own configured model (e.g. `"gemini-2.5-flash"` above), not the `model` field from the `LlmRequest`. The MCP server's model preference is ignored in this pattern. To honor it, write a [custom handler](#custom-sampling-handlers) that reads `request.model`.
+
+</Callout>
+
 ## How It Works Under the Hood
 
 When an MCP server makes a sampling request, this is what happens:
