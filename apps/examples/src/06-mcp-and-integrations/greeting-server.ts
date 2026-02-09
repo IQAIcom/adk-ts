@@ -50,6 +50,7 @@ async function main() {
 
 				return `Hello ${userName}! (Sampling not available)`;
 			} catch (error) {
+				console.error("[greet_user] Sampling failed:", error);
 				return `Hello ${userName}! Nice to meet you!`;
 			}
 		},
@@ -92,6 +93,7 @@ async function main() {
 
 				return `Fact lookup unavailable for: ${topic}`;
 			} catch (error) {
+				console.error("[lookup_fact] Sampling failed:", error);
 				return `Error looking up fact about: ${topic}`;
 			}
 		},

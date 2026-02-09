@@ -19,18 +19,16 @@ import { ask } from "../utils";
  *
  */
 async function main() {
+	const modelName = process.env.LLM_MODEL || "gemini-2.5-flash";
+
 	// Two specialized agents for routing
-	const { runner: creativeRunner } = await AgentBuilder.withModel(
-		process.env.LLM_MODEL || "gemini-2.5-flash",
-	)
+	const { runner: creativeRunner } = await AgentBuilder.withModel(modelName)
 		.withInstruction(
 			"You are a warm, creative writer. Generate personalized, heartfelt messages.",
 		)
 		.build();
 
-	const { runner: factRunner } = await AgentBuilder.withModel(
-		process.env.LLM_MODEL || "gemini-2.5-flash",
-	)
+	const { runner: factRunner } = await AgentBuilder.withModel(modelName)
 		.withInstruction(
 			"You are a knowledgeable encyclopedia. Answer questions concisely with verified information only.",
 		)
@@ -86,9 +84,7 @@ async function main() {
 
 	const tools = await greetingToolset.getTools();
 
-	const { runner: rootRunner } = await AgentBuilder.withModel(
-		process.env.LLM_MODEL || "gemini-2.5-flash",
-	)
+	const { runner: rootRunner } = await AgentBuilder.withModel(modelName)
 		.withInstruction("Always use your available tools to fulfill requests.")
 		.withTools(...tools)
 		.build();
