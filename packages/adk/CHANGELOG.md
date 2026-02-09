@@ -1,5 +1,131 @@
 # @iqai/adk
 
+## 0.7.0
+
+### Minor Changes
+
+- 6e3eddc: Add `AgentScheduler` for recurring agent execution
+
+  New `AgentScheduler` class that runs ADK agents on cron expressions or fixed intervals. Supports job lifecycle management (schedule, unschedule, pause, resume), manual triggering with `triggerNow` and `triggerNowStream`, overlap prevention, execution limits, per-job callbacks, and global event listeners.
+
+  ```typescript
+  import { AgentBuilder, AgentScheduler } from "@iqai/adk";
+
+  const { runner } = await AgentBuilder.create("reporter")
+    .withModel("gemini-2.5-flash")
+    .withInstruction("Generate a daily report")
+    .build();
+
+  const scheduler = new AgentScheduler();
+
+  scheduler.schedule({
+    id: "daily-report",
+    cron: "0 9 * * *",
+    runner,
+    userId: "system",
+    input: "Generate today's report",
+  });
+
+  scheduler.start();
+  ```
+
+- df81392: feat: add Limitless, Kalshi, Opinion, Defillama, and Debank MCP server wrappers
+
+  Added five new MCP server wrapper functions for integrating with prediction markets, DeFi data, and portfolio tracking platforms:
+  - **McpLimitless** - Interact with Limitless prediction markets via `@iqai/mcp-limitless`
+  - **McpKalshi** - Interact with Kalshi prediction markets via `@iqai/mcp-kalshi`
+  - **McpOpinion** - Interact with opinion.trade prediction market via `@iqai/mcp-opinion`
+  - **McpDefillama** - Access DeFi data from Defillama aggregator via `@iqai/defillama-mcp`
+  - **McpDebank** - Interact with the DeBank portfolio platform via `@iqai/mcp-debank`
+
+- 7066213: feat: add streaming utilities and improve streaming across LLM providers
+
+  **Streaming Utilities**
+  - Add `textStreamFrom()` to extract text-only deltas from an event stream
+  - Add `collectTextFrom()` to accumulate streamed text into a single string
+  - Add `streamTextWithFinalEvent()` to stream text while capturing the final event with metadata
+
+  **Anthropic Streaming**
+  - Implement full streaming support via `handleStreaming()` async generator
+  - Yield partial text deltas, accumulate tool call JSON, and detect thought blocks
+  - Emit final response with complete text, tool calls, and usage metadata
+
+  **AI SDK Streaming Fix**
+  - Fix partial responses yielding accumulated text instead of deltas, which caused duplicated text when consumed via streaming utilities
+
+  **Code Quality**
+  - Extract thought tag detection into `THOUGHT_OPEN_TAGS`/`THOUGHT_CLOSE_TAGS` constants and `containsAny()` helper
+  - Replace `as any` casts with proper `Part` type from `@google/genai`
+  - Use guard clauses in streaming utilities for cleaner control flow
+
+- 8bf7a31: Overhaul memory system with pluggable provider architecture
+
+  This release introduces a completely redesigned memory system with a flexible, pluggable architecture that separates storage, summarization, and embedding concerns.
+
+  ### New Architecture
+
+  **Storage Providers** - Pluggable backends for persisting memories:
+  - `InMemoryStorageProvider` - Simple in-memory storage for development
+  - `FileStorageProvider` - File-based persistence
+  - `VectorStorageProvider` - Base class for vector-enabled storage
+  - `InMemoryVectorStore` - In-memory vector storage with similarity search
+  - `FileVectorStore` - File-based vector storage with persistence
+  - `QdrantVectorStore` - Production-ready vector storage using Qdrant
+
+  **Summary Providers** - Transform sessions into memories:
+  - `LlmSummaryProvider` - LLM-powered summarization with topic segmentation and entity extraction
+  - `PassthroughSummaryProvider` - Store raw session content without transformation
+
+  **Embedding Providers** - Generate vector embeddings for semantic search:
+  - `OpenAIEmbeddingProvider` - OpenAI embeddings API
+  - `CohereEmbeddingProvider` - Cohere embeddings API
+  - `OllamaEmbeddingProvider` - Local embeddings via Ollama
+  - `OpenRouterEmbeddingProvider` - Embeddings via OpenRouter
+
+  ### New Types
+  - `MemoryServiceConfig` - Unified configuration for the memory service
+  - `MemoryStorageProvider` - Interface for storage backends
+  - `MemorySummaryProvider` - Interface for summarization
+  - `EmbeddingProvider` - Interface for embedding generation
+  - `MemoryRecord`, `MemoryContent`, `TopicSegment`, `Entity` - Structured memory types
+  - `MemorySearchQuery`, `MemorySearchResult` - Search types with vector support
+
+  ### Features
+  - Semantic search with configurable similarity thresholds
+  - Hybrid search combining keyword and vector approaches
+  - Topic-based memory segmentation for granular retrieval
+  - Entity extraction and relationship tracking
+  - Session-to-memory transformation pipeline
+  - Debug logging throughout the memory pipeline
+
+  ### Backwards Compatibility
+
+  The following legacy exports are deprecated and will be removed in the next major version:
+  - `InMemoryMemoryService` - Use `MemoryService` with `InMemoryStorageProvider` instead
+  - `BaseMemoryService` - Use `MemoryStorageProvider` interface instead
+  - `MemoryEntry` - Use `MemoryRecord` instead
+  - `SearchMemoryResponse` - Use `MemorySearchResult[]` instead
+
+  Migration example:
+
+  ```typescript
+  // Old (deprecated)
+  import { InMemoryMemoryService } from "@iqai/adk";
+  const memory = new InMemoryMemoryService();
+
+  // New
+  import { MemoryService, InMemoryStorageProvider } from "@iqai/adk";
+  const memory = new MemoryService({
+    storage: new InMemoryStorageProvider(),
+  });
+  ```
+
+### Patch Changes
+
+- d671e06: Add `ToolOutputFilterPlugin` to intelligently reduce large tool outputs before downstream processing.
+
+  The plugin dynamically generates safe `jq` filters using an LLM to extract only relevant data, applying adaptive and iterative filtering until configurable size or key-count targets are met. This improves performance, prevents context window overflows, and supports per-tool enablement, schema-aware filtering, and strict security checks against unsafe filters.
+
 ## 0.6.6
 
 ### Patch Changes
