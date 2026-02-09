@@ -5,13 +5,15 @@ const inputSchema = z.object({
 	inputValue: z.number(),
 });
 
+const resumeSchema = z.object({ approved: z.boolean() });
+
 const validateStep = createStep({
 	id: "validate",
 	description: "Validates the input data",
 	inputSchema: inputSchema,
 	outputSchema: z.object({ isValid: z.boolean(), value: z.number() }),
 	execute: async ({ inputData }) => {
-		const data = inputData as z.infer<typeof inputSchema>;
+		const data = inputSchema.parse(inputData);
 		console.log(`📋 Validating input: ${data.inputValue}`);
 
 		const isValid = data.inputValue > 0;
@@ -23,7 +25,7 @@ const processStep = createStep({
 	id: "process",
 	description: "Processes the data, but suspends for approval if value > 10",
 	suspendSchema: z.object({ requiresApproval: z.boolean(), value: z.number() }),
-	resumeSchema: z.object({ approved: z.boolean() }),
+	resumeSchema,
 	execute: async ({ resumeData, suspend, getStepResult }) => {
 		const validateResult = getStepResult<{ isValid: boolean; value: number }>(
 			"validate",
@@ -41,7 +43,7 @@ const processStep = createStep({
 		}
 
 		if (resumeData) {
-			const resume = resumeData as { approved: boolean };
+			const resume = resumeSchema.parse(resumeData);
 			console.log(`▶️ Resumed with approval: ${resume.approved}`);
 			if (!resume.approved) {
 				throw new Error("Processing not approved");
