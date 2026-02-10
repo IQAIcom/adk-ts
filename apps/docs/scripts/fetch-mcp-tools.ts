@@ -44,6 +44,12 @@ const DUMMY_ENV: Record<string, string> = {
 	FUNDER_ADDRESS: "0x0000000000000000000000000000000000000001",
 	POLYMARKET_PRIVATE_KEY:
 		"0x0000000000000000000000000000000000000000000000000000000000000001",
+	DEBANK_API_KEY: "dummy_debank_api_key",
+	DEFILLAMA_API_KEY: "dummy_defillama_api_key",
+	KALSHI_API_KEY: "dummy_kalshi_api_key",
+	KALSHI_PRIVATE_KEY_PEM:
+		"-----BEGIN RSA PRIVATE KEY-----\nMIIBogIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu\nKUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQJAIJLixBy2qpFoS4DSmoEm\no3qGy0t6z09AIJtH+5OeRV1be+N4cDYJKffGzDa88vQENZiRm0GRq6a+HPGQMd2k\nTQIhAKMSvzIBnni7ot/OSie2TmJLY4SwTQAevXysE2RbFDYdAiEBvHCS1mknvGuV\nIU3IYO/vtXz9Cwvq6gR4SMbQOBW5p0UCIHewg9cLG/u8Rx85cxCZfXcq5/v0gWq3\nAAAAAAAAAAAA\n-----END RSA PRIVATE KEY-----",
+	OPINION_API_KEY: "dummy_opinion_api_key",
 };
 
 const MCP_SERVERS: McpServer[] = [
@@ -105,6 +111,31 @@ const MCP_SERVERS: McpServer[] = [
 		slug: "polymarket",
 		name: "Polymarket MCP Client",
 		package: "@iqai/mcp-polymarket",
+	},
+	{
+		slug: "debank",
+		name: "DeBank MCP Client",
+		package: "@iqai/mcp-debank",
+	},
+	{
+		slug: "defillama",
+		name: "DefiLlama MCP Client",
+		package: "@iqai/mcp-defillama",
+	},
+	{
+		slug: "kalshi",
+		name: "Kalshi MCP Client",
+		package: "@iqai/mcp-kalshi",
+	},
+	{
+		slug: "limitless",
+		name: "Limitless MCP Client",
+		package: "@iqai/mcp-limitless",
+	},
+	{
+		slug: "opinion",
+		name: "Opinion MCP Client",
+		package: "@iqai/mcp-opinion",
 	},
 ];
 

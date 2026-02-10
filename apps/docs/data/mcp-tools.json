@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-02-03T19:40:50.669Z",
+	"generatedAt": "2026-02-10T08:59:16.903Z",
 	"servers": {
 		"abi": {
 			"name": "ABI MCP Client",
@@ -691,6 +691,1958 @@
 			"package": "@iqai/mcp-polymarket",
 			"tools": [],
 			"error": "MCP error -32000: Connection closed"
+		},
+		"debank": {
+			"name": "DeBank MCP Client",
+			"package": "@iqai/mcp-debank",
+			"tools": [
+				{
+					"name": "debank_get_supported_chain_list",
+					"description": "Retrieve a comprehensive list of all blockchain chains supported by the DeBank API. Returns information about each chain including their IDs, names, logo URLs, native token IDs, wrapped token IDs, and pre-execution support status. Use this to discover available chains before calling other chain-specific endpoints.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_chain",
+					"description": "Retrieve detailed information about a specific blockchain chain supported by DeBank. Returns chain details including ID, name, logo URL, native token ID, wrapped token ID, and whether it supports pre-execution of transactions. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_all_protocols_of_supported_chains",
+					"description": "Retrieve a list of all DeFi protocols across specified or all supported blockchain chains. Returns essential information about each protocol including ID, chain ID, name, logo URL, site URL, portfolio support status, and TVL. Returns top 20 protocols by default. Filter by specific chains using chain_ids parameter. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum, BSC, Polygon') - automatically resolved to chain IDs ('eth,bsc,matic').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain_ids": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_protocol_information",
+					"description": "Fetch detailed information about a specific DeFi protocol. Returns protocol details including ID, associated chain, name, logo URL, site URL, portfolio support status, and total value locked (TVL). Useful for analyzing individual protocols across different chains.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_top_holders_of_protocol",
+					"description": "Retrieve a list of top holders within a specified DeFi protocol, ranked by their holdings. Provides insights into the distribution and concentration of holdings among participants. Supports pagination for large result sets.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"start": {
+								"type": "number"
+							},
+							"limit": {
+								"type": "number"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_pool_information",
+					"description": "Retrieve detailed information about a specific liquidity pool. Returns pool details including ID, chain, protocol ID, contract IDs, name, USD value of deposited assets, total user count, and count of valuable users (>$100 USD value). Essential for analyzing specific pools for investment or research. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_token_information",
+					"description": "Fetch comprehensive details about a specific token on a blockchain. Returns token information including contract address, chain, name, symbol, decimals, logo URL, associated protocol ID, USD price, verification status, and deployment timestamp. Essential for token analysis and display. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc'). **WRAPPED TOKEN RESOLUTION:** Keywords like 'WETH', 'wrapped native', or 'native token' automatically resolve to the chain's wrapped token address.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain_id": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["chain_id", "id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_list_token_information",
+					"description": "Retrieve detailed information for multiple tokens at once on a specific chain. Returns an array of token objects with comprehensive details. Useful for bulk token data retrieval, with support for up to 100 token addresses per request. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain_id": {
+								"type": "string"
+							},
+							"ids": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["chain_id", "ids"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_top_holders_of_token",
+					"description": "Fetch the top holders of a specified token, showing the largest token holders ranked by their holdings. Supports both contract addresses and native token IDs. Useful for analyzing token distribution and ownership concentration. Supports pagination for detailed analysis. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc'). **WRAPPED TOKEN RESOLUTION:** Keywords like 'WETH', 'wrapped native', or 'native token' automatically resolve to the chain's wrapped token address.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"start": {
+								"type": "number"
+							},
+							"limit": {
+								"type": "number"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_token_history_price",
+					"description": "Retrieve the historical price of a specified token for a given date. Essential for financial analysis, historical comparison, and tracking price movements over time. Returns price data for the UTC time zone on the specified date. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc'). **WRAPPED TOKEN RESOLUTION:** Keywords like 'WETH', 'wrapped native', or 'native token' automatically resolve to the chain's wrapped token address.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"date_at": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id", "date_at"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_used_chain_list",
+					"description": "Retrieve a list of blockchain chains that a specific user has interacted with. Returns details about each chain including ID, name, logo URL, native token ID, wrapped token ID, and the birth time of the user's address on each chain.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_chain_balance",
+					"description": "Fetch the current balance of a user's account on a specified blockchain chain. Returns the balance in USD value, providing a snapshot of the user's holdings on that chain. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain_id": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["chain_id", "id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_protocol",
+					"description": "Get detailed information about a user's positions within a specified DeFi protocol. Returns protocol details and the user's portfolio items including assets, debts, and rewards in that protocol.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"protocol_id": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["protocol_id", "id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_complex_protocol_list",
+					"description": "Retrieve detailed portfolios of a user on a specific chain across multiple protocols. Returns comprehensive information about the user's engagements including protocol details and portfolio items with assets, debts, and positions. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain_id": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["chain_id", "id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_all_complex_protocol_list",
+					"description": "Retrieve a user's detailed portfolios across all supported chains within multiple protocols. Provides a comprehensive overview of investments and positions across the entire DeFi ecosystem. Can be filtered by specific chains. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum, BSC, Polygon') - automatically resolved to chain IDs ('eth,bsc,matic').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_ids": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_all_simple_protocol_list",
+					"description": "Fetch a user's balances in protocols across all supported chains. Returns simplified protocol information including TVL and basic details. Useful for getting a quick overview of a user's protocol engagements. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum, BSC, Polygon') - automatically resolved to chain IDs ('eth,bsc,matic').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_ids": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_token_balance",
+					"description": "Retrieve a user's balance for a specific token. Returns detailed token information including name, symbol, decimals, USD price, and the user's balance amount. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc'). **WRAPPED TOKEN RESOLUTION:** Keywords like 'WETH', 'wrapped native', or 'native token' automatically resolve to the chain's wrapped token address.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain_id": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"token_id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["chain_id", "id", "token_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_token_list",
+					"description": "Retrieve a list of tokens held by a user on a specific chain. Returns token details including symbol, decimals, USD price, and balance amounts. Can filter for core/verified tokens or include all tokens. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"is_all": {
+								"type": "boolean"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_all_token_list",
+					"description": "Retrieve a user's token balances across all supported chains. Provides a comprehensive list of all tokens held by the user, offering insights into their wider cryptocurrency portfolio.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"is_all": {
+								"type": "boolean"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_nft_list",
+					"description": "Fetch a list of NFTs owned by a user on a specific chain. Returns NFT details including contract ID, name, description, content type, and attributes. Can filter for verified collections only. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"is_all": {
+								"type": "boolean"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_all_nft_list",
+					"description": "Retrieve a user's NFT holdings across all supported chains. Provides an aggregate list of NFTs held by the user with details including contract ID, name, and content type. Can be filtered by specific chains. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum, BSC, Polygon') - automatically resolved to chain IDs ('eth,bsc,matic').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"is_all": {
+								"type": "boolean"
+							},
+							"chain_ids": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_history_list",
+					"description": "Fetch a user's transaction history on a specified chain. Returns a list of past transactions with details including transaction type, tokens involved, values, and timestamps. Supports filtering by token and pagination. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc'). **WRAPPED TOKEN RESOLUTION:** Keywords like 'WETH', 'wrapped native', or 'native token' automatically resolve to the chain's wrapped token address.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"token_id": {
+								"type": "string"
+							},
+							"start_time": {
+								"type": "number"
+							},
+							"page_count": {
+								"type": "number"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_all_history_list",
+					"description": "Retrieve a user's transaction history across all supported chains. Provides a comprehensive overview of DeFi activities across the entire blockchain ecosystem. Supports pagination and chain filtering. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum, BSC, Polygon') - automatically resolved to chain IDs ('eth,bsc,matic').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"start_time": {
+								"type": "number"
+							},
+							"page_count": {
+								"type": "number"
+							},
+							"chain_ids": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_token_authorized_list",
+					"description": "Fetch a list of tokens for which a user has granted spending approvals on a specified chain. Returns details about each approval including amount, spender address, and associated protocol information. Useful for security audits. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_nft_authorized_list",
+					"description": "Retrieve a list of NFTs for which a user has given spending permissions on a specified chain. Returns details including contract IDs, names, symbols, spender addresses, and approved amounts for ERC1155 tokens. Important for security reviews. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_total_balance",
+					"description": "Retrieve a user's total net assets across all supported chains. Calculates and returns the total USD value of assets including both tokens and protocol positions. Provides a complete snapshot of the user's DeFi portfolio.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_chain_net_curve",
+					"description": "Retrieve a user's 24-hour net asset value curve on a single chain. Shows the changes in total USD value of assets over the last 24 hours, providing insights into portfolio fluctuations on that specific chain. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id", "chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_user_total_net_curve",
+					"description": "Retrieve a user's 24-hour net asset value curve across all chains. Provides a comprehensive view of total USD value changes over the last 24 hours, helping track overall portfolio performance. Can be filtered by specific chains. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum, BSC, Polygon') - automatically resolved to chain IDs ('eth,bsc,matic').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"chain_ids": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_get_gas_prices",
+					"description": "Fetch current gas prices for different transaction speed levels on a specified chain. Returns prices for slow, normal, and fast transaction speeds with estimated confirmation times. Crucial for transaction cost estimation. **AUTO-RESOLUTION ENABLED:** Pass chain names as users mention them (e.g., 'Ethereum', 'BSC', 'Binance Smart Chain') - automatically resolved to chain IDs ('eth', 'bsc').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain_id": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["chain_id"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_pre_exec_transaction",
+					"description": "Simulate the execution of a transaction or sequence of transactions before submitting them on-chain. Returns detailed information about balance changes, gas estimates, and success status. Useful for DEX swaps requiring token approvals or complex transaction sequences.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tx": {
+								"type": "string"
+							},
+							"pending_tx_list": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["tx"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "debank_explain_transaction",
+					"description": "Decode and explain a given transaction in human-readable terms. Returns details about function calls, parameters, and actions derived from the transaction data. Supports complex transactions across multiple protocols.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tx": {
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["tx"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				}
+			],
+			"error": null
+		},
+		"defillama": {
+			"name": "DefiLlama MCP Client",
+			"package": "@iqai/mcp-defillama",
+			"tools": [],
+			"error": "MCP error -32000: Connection closed"
+		},
+		"kalshi": {
+			"name": "Kalshi MCP Client",
+			"package": "@iqai/mcp-kalshi",
+			"tools": [
+				{
+					"name": "GET_MARKETS",
+					"description": "List and discover prediction markets on Kalshi. Markets represent binary outcomes users can trade on. Returns paginated results with market details including ticker, title, prices, and volume.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 1000,
+								"description": "Number of results per page (1-1000, default 100)"
+							},
+							"cursor": {
+								"type": "string",
+								"description": "Pagination cursor from previous response"
+							},
+							"eventTicker": {
+								"type": "string",
+								"description": "Filter by event ticker (comma-separated, max 10)"
+							},
+							"seriesTicker": {
+								"type": "string",
+								"description": "Filter by series ticker"
+							},
+							"status": {
+								"type": "string",
+								"enum": ["unopened", "open", "paused", "closed", "settled"],
+								"description": "Filter by market status"
+							},
+							"tickers": {
+								"type": "string",
+								"description": "Filter by specific market tickers (comma-separated)"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_MARKET",
+					"description": "Get detailed information about a specific prediction market by its ticker, including current prices, volume, open interest, and settlement rules.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ticker": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The market ticker (e.g., 'INXD-25JAN20')"
+							}
+						},
+						"required": ["ticker"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_MARKET_ORDERBOOK",
+					"description": "Get the current orderbook for a market showing bid prices and quantities for both Yes and No sides.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ticker": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The market ticker"
+							},
+							"depth": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 100,
+								"description": "Depth of orderbook to retrieve (1-100, default 10)"
+							}
+						},
+						"required": ["ticker"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_TRADES",
+					"description": "Get recent public trades across all markets or for a specific market. Each trade shows price, quantity, and timestamp.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ticker": {
+								"type": "string",
+								"description": "Filter by market ticker"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 1000,
+								"description": "Number of results (1-1000, default 100)"
+							},
+							"cursor": {
+								"type": "string",
+								"description": "Pagination cursor"
+							},
+							"minTs": {
+								"type": "number",
+								"description": "Filter trades after this Unix timestamp"
+							},
+							"maxTs": {
+								"type": "number",
+								"description": "Filter trades before this Unix timestamp"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_SERIES",
+					"description": "Get information about a series, which is a template for recurring events (e.g., monthly jobs reports, daily weather).",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"seriesTicker": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The series ticker (e.g., 'INXD' for S&P 500)"
+							}
+						},
+						"required": ["seriesTicker"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_BALANCE",
+					"description": "Get the current account balance and portfolio value. Values are returned in dollars.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_POSITIONS",
+					"description": "Get your current portfolio positions showing market exposure, cost basis, and P&L for each position.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ticker": {
+								"type": "string",
+								"description": "Filter by market ticker"
+							},
+							"eventTicker": {
+								"type": "string",
+								"description": "Filter by event ticker (comma-separated, max 10)"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 1000,
+								"description": "Number of results (default 100)"
+							},
+							"cursor": {
+								"type": "string",
+								"description": "Pagination cursor"
+							},
+							"countFilter": {
+								"type": "string",
+								"description": "Filter: 'position' for non-zero positions, 'total_traded' for traded"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_FILLS",
+					"description": "Get your trade fill history. A fill occurs when your order is matched with another trader.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ticker": {
+								"type": "string",
+								"description": "Filter by market ticker"
+							},
+							"orderId": {
+								"type": "string",
+								"description": "Filter by order ID"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 200,
+								"description": "Number of results (1-200, default 100)"
+							},
+							"cursor": {
+								"type": "string",
+								"description": "Pagination cursor"
+							},
+							"minTs": {
+								"type": "number",
+								"description": "Filter fills after this Unix timestamp"
+							},
+							"maxTs": {
+								"type": "number",
+								"description": "Filter fills before this Unix timestamp"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_SETTLEMENTS",
+					"description": "Get your settlement history showing resolved markets and their payouts.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ticker": {
+								"type": "string",
+								"description": "Filter by market ticker"
+							},
+							"eventTicker": {
+								"type": "string",
+								"description": "Filter by event ticker (comma-separated, max 10)"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 200,
+								"description": "Number of results (1-200, default 100)"
+							},
+							"cursor": {
+								"type": "string",
+								"description": "Pagination cursor"
+							},
+							"minTs": {
+								"type": "number",
+								"description": "Filter settlements after this Unix timestamp"
+							},
+							"maxTs": {
+								"type": "number",
+								"description": "Filter settlements before this Unix timestamp"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ORDERS",
+					"description": "Get your orders with optional filtering by market, status, or time range.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ticker": {
+								"type": "string",
+								"description": "Filter by market ticker"
+							},
+							"eventTicker": {
+								"type": "string",
+								"description": "Filter by event ticker (comma-separated, max 10)"
+							},
+							"status": {
+								"type": "string",
+								"enum": ["resting", "canceled", "executed"],
+								"description": "Filter by order status"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 200,
+								"description": "Number of results (1-200, default 100)"
+							},
+							"cursor": {
+								"type": "string",
+								"description": "Pagination cursor"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ORDER",
+					"description": "Get detailed information about a specific order by its ID.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"orderId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The order ID"
+							}
+						},
+						"required": ["orderId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CREATE_ORDER",
+					"description": "Create a new order to buy or sell contracts in a prediction market. Use limit orders with a price, or market orders for immediate execution.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ticker": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Market ticker to trade"
+							},
+							"side": {
+								"type": "string",
+								"enum": ["yes", "no"],
+								"description": "Side to trade: 'yes' or 'no'"
+							},
+							"action": {
+								"type": "string",
+								"enum": ["buy", "sell"],
+								"description": "Action: 'buy' or 'sell'"
+							},
+							"count": {
+								"type": "number",
+								"minimum": 1,
+								"description": "Number of contracts"
+							},
+							"type": {
+								"type": "string",
+								"enum": ["limit", "market"],
+								"default": "limit",
+								"description": "Order type (default: limit)"
+							},
+							"yesPrice": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 99,
+								"description": "Yes price in cents (1-99) - required for limit orders on yes side"
+							},
+							"noPrice": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 99,
+								"description": "No price in cents (1-99) - required for limit orders on no side"
+							},
+							"timeInForce": {
+								"type": "string",
+								"enum": [
+									"fill_or_kill",
+									"good_till_canceled",
+									"immediate_or_cancel"
+								],
+								"description": "Time in force (default: good_till_canceled)"
+							},
+							"postOnly": {
+								"type": "boolean",
+								"description": "If true, order will only be placed if it will rest on the book"
+							},
+							"reduceOnly": {
+								"type": "boolean",
+								"description": "If true, order will only reduce existing position"
+							}
+						},
+						"required": ["ticker", "side", "action", "count"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CANCEL_ORDER",
+					"description": "Cancel an existing open order by its ID.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"orderId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The order ID to cancel"
+							}
+						},
+						"required": ["orderId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "BATCH_CANCEL_ORDERS",
+					"description": "Cancel multiple orders at once (up to 20 orders per batch).",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"ids": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"minItems": 1,
+								"maxItems": 20,
+								"description": "Array of order IDs to cancel (max 20)"
+							}
+						},
+						"required": ["ids"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "DECREASE_ORDER",
+					"description": "Decrease the quantity of an existing order. This is the only way to reduce order size without fully canceling.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"orderId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The order ID to decrease"
+							},
+							"reduceBy": {
+								"type": "number",
+								"minimum": 1,
+								"description": "Number of contracts to reduce by"
+							}
+						},
+						"required": ["orderId", "reduceBy"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
+		},
+		"limitless": {
+			"name": "Limitless MCP Client",
+			"package": "@iqai/mcp-limitless",
+			"tools": [
+				{
+					"name": "GET_AUTH_STATUS",
+					"description": "Check the current authentication status for the Limitless API session. Returns whether you're logged in and your Ethereum address. Session persists automatically across all tool calls.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_SIGNING_MESSAGE",
+					"description": "Get a signing message with a randomly generated nonce for authentication purposes. Use this before logging in. Requires a wallet address.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"address": {
+								"type": "string",
+								"description": "The wallet address to get a signing message for"
+							}
+						},
+						"required": ["address"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "VERIFY_AUTH",
+					"description": "Verify if the user is authenticated by checking the session cookie. Returns the authenticated Ethereum address.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "LOGIN",
+					"description": "Authenticate a user with a signed message and create a session. First get a signing message, sign it with your wallet, then call this with the signature.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"account": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The Ethereum address of the user"
+							},
+							"signingMessage": {
+								"type": "string",
+								"description": "The signing message generated by the server"
+							},
+							"signature": {
+								"type": "string",
+								"description": "The signature generated by signing the message with the wallet"
+							},
+							"userData": {
+								"type": "object",
+								"properties": {
+									"client": {
+										"type": "string",
+										"enum": ["eoa", "etherspot", "base"]
+									}
+								},
+								"required": ["client"],
+								"additionalProperties": true,
+								"description": "User data to be stored"
+							}
+						},
+						"required": ["account", "signingMessage", "signature", "userData"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "LOGOUT",
+					"description": "Log out the user by clearing the session cookie. Requires authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "SEARCH_MARKETS",
+					"description": "Search for prediction markets on Limitless based on semantic similarity. Returns markets matching the search query with details like volume, liquidity, and end dates.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The search query for markets"
+							},
+							"limit": {
+								"type": "number",
+								"description": "Maximum number of results (default: 10)"
+							},
+							"page": {
+								"type": "number",
+								"description": "Page number for pagination (default: 1)"
+							},
+							"similarityThreshold": {
+								"type": "number",
+								"description": "Minimum similarity score 0-1 (default: 0.5)"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_MARKET",
+					"description": "Get detailed information about a specific prediction market on Limitless. Provides market question, outcomes, prices, volume, liquidity, and other trading data.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"addressOrSlug": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Market address (0x...) or slug identifier (e.g., crypto-predictions-2025)"
+							}
+						},
+						"required": ["addressOrSlug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ACTIVE_MARKETS",
+					"description": "Browse active (unresolved) prediction markets on Limitless. Returns markets with volume, liquidity, and other trading data. Supports filtering by category and sorting.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"categoryId": {
+								"type": "number",
+								"description": "Filter by category ID (optional)"
+							},
+							"page": {
+								"type": "number",
+								"description": "Page number for pagination (default: 1)"
+							},
+							"limit": {
+								"type": "number",
+								"description": "Number of results per page (default: 10)"
+							},
+							"sortBy": {
+								"type": "string",
+								"description": "Sort order: newest, oldest, volume, liquidity (default: newest)"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ACTIVE_MARKETS_BY_CATEGORY",
+					"description": "Browse active (unresolved) markets filtered by category ID with optional pagination and sorting.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"categoryId": {
+								"type": "number",
+								"description": "Category ID to filter markets by"
+							},
+							"page": {
+								"type": "number",
+								"description": "Page number for pagination"
+							},
+							"limit": {
+								"type": "number",
+								"description": "Number of items per page"
+							},
+							"sortBy": {
+								"type": "string",
+								"description": "Sort order (e.g., newest, volume)"
+							}
+						},
+						"required": ["categoryId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_CATEGORIES",
+					"description": "Get all available categories on Limitless with their IDs, names, priorities, and metadata. Use this to discover available categories for filtering markets.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_CATEGORIES_COUNT",
+					"description": "Get the number of active markets for each category and the total market count.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ACTIVE_SLUGS",
+					"description": "Get slugs, strike prices, tickers, and deadlines for all active markets and groups. Useful for discovering available markets.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_MARKET_ORDERBOOK",
+					"description": "Get the current orderbook for a prediction market on Limitless. Shows all open buy (bids) and sell (asks) orders with prices and sizes.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Market slug identifier (e.g., presidential-election-2024)"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_HISTORICAL_PRICE",
+					"description": "Retrieve historical price data for a specific market with configurable time intervals. Useful for analyzing price trends.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"description": "Market slug identifier"
+							},
+							"from": {
+								"type": "string",
+								"description": "Start date for historical data (ISO 8601 format)"
+							},
+							"to": {
+								"type": "string",
+								"description": "End date for historical data (ISO 8601 format)"
+							},
+							"interval": {
+								"type": "string",
+								"enum": ["1h", "6h", "1d", "1w", "1m", "all"],
+								"description": "Time interval for data points"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_FEED_EVENTS",
+					"description": "Get the latest feed events related to a specific market with pagination support.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"description": "Market slug identifier"
+							},
+							"page": {
+								"type": "number",
+								"description": "Page number for pagination"
+							},
+							"limit": {
+								"type": "number",
+								"description": "Number of events per page"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_MARKET_EVENTS",
+					"description": "Get recent events for a specific market including trades, orders, and liquidity changes.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"description": "Market slug identifier"
+							},
+							"page": {
+								"type": "number",
+								"description": "Page number for pagination"
+							},
+							"limit": {
+								"type": "number",
+								"description": "Number of events per page"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_LOCKED_BALANCE",
+					"description": "Get the amount of funds locked in open orders for the authenticated user in a specific market. Requires authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"description": "Market slug identifier"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_USER_ORDERS",
+					"description": "Get all orders placed by the authenticated user for a specific market. Requires authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"description": "Market slug identifier"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_PORTFOLIO_POSITIONS",
+					"description": "Get your active portfolio positions on Limitless with P&L calculations and market values. Requires authentication via session token.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_PORTFOLIO_TRADES",
+					"description": "Retrieve all trades executed by the authenticated user. Requires authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_PORTFOLIO_HISTORY",
+					"description": "Get paginated history including AMM trades, CLOB trades, splits/merges, and NegRisk conversions. Requires authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"page": {
+								"type": "number",
+								"description": "Page number for pagination"
+							},
+							"limit": {
+								"type": "number",
+								"description": "Number of items per page"
+							},
+							"from": {
+								"type": "string",
+								"description": "Start date for filtering (ISO 8601 format)"
+							},
+							"to": {
+								"type": "string",
+								"description": "End date for filtering (ISO 8601 format)"
+							}
+						},
+						"required": ["page", "limit"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_PORTFOLIO_POINTS",
+					"description": "Get points breakdown for the authenticated user. Requires authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_USER_TRADED_VOLUME",
+					"description": "Get total traded volume and statistics for a specific user. This is a public endpoint that doesn't require authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"account": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "User Ethereum address"
+							}
+						},
+						"required": ["account"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_PUBLIC_USER_POSITIONS",
+					"description": "Get all positions for a specific user address. This is a public endpoint that doesn't require authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"account": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "User Ethereum address"
+							}
+						},
+						"required": ["account"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_USER_PROFILE",
+					"description": "Get detailed profile information for a user by their Ethereum address. Returns comprehensive user data including username, bio, profile picture, rank, points, leaderboard position, referral information, and account status. Requires authentication. Users can view their own profile when authenticated.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"address": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The Ethereum address of the user whose profile to retrieve"
+							}
+						},
+						"required": ["address"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_TRADING_ALLOWANCE",
+					"description": "Check USDC allowance for CLOB or NegRisk trading contracts. Requires authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"type": {
+								"type": "string",
+								"enum": ["clob", "negrisk"],
+								"description": "Trading type: CLOB or NegRisk"
+							}
+						},
+						"required": ["type"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CREATE_ORDER",
+					"description": "Create a buy or sell order for prediction market positions on Limitless. Requires signed order data and authentication. Returns order details and match information if filled immediately.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"order": {
+								"type": "object",
+								"properties": {
+									"salt": {
+										"type": "number",
+										"description": "Unique random value for signature uniqueness"
+									},
+									"maker": {
+										"type": "string",
+										"pattern": "^0x[a-fA-F0-9]{40}$",
+										"description": "Ethereum address of the maker (order creator)"
+									},
+									"signer": {
+										"type": "string",
+										"pattern": "^0x[a-fA-F0-9]{40}$",
+										"description": "Address that signed the order"
+									},
+									"taker": {
+										"type": "string",
+										"description": "Specific taker address (0x0 for open orders)"
+									},
+									"tokenId": {
+										"type": "string",
+										"description": "Token ID being traded (YES or NO position)"
+									},
+									"makerAmount": {
+										"type": "number",
+										"minimum": 0,
+										"description": "Amount maker is offering (in wei)"
+									},
+									"takerAmount": {
+										"type": "number",
+										"minimum": 0,
+										"description": "Amount maker wants in return (in wei)"
+									},
+									"expiration": {
+										"type": "string",
+										"description": "Order expiration timestamp"
+									},
+									"nonce": {
+										"type": "number",
+										"description": "Order nonce for cancellation tracking"
+									},
+									"price": {
+										"type": "number",
+										"minimum": 0.01,
+										"maximum": 0.99,
+										"description": "Order price as decimal (0.01-0.99)"
+									},
+									"feeRateBps": {
+										"type": "number",
+										"description": "Fee rate in basis points"
+									},
+									"side": {
+										"type": "string",
+										"enum": ["BUY", "SELL"],
+										"description": "Order side"
+									},
+									"signatureType": {
+										"type": "number",
+										"description": "Signature type"
+									},
+									"signature": {
+										"type": "string",
+										"description": "Order signature"
+									}
+								},
+								"required": [
+									"salt",
+									"maker",
+									"signer",
+									"taker",
+									"tokenId",
+									"makerAmount",
+									"takerAmount",
+									"expiration",
+									"nonce",
+									"price",
+									"feeRateBps",
+									"side",
+									"signatureType",
+									"signature"
+								],
+								"additionalProperties": false,
+								"description": "Order details including signature and amounts"
+							},
+							"ownerId": {
+								"type": "number",
+								"description": "Profile ID of the order owner"
+							},
+							"orderType": {
+								"type": "string",
+								"enum": ["FOK", "GTC"],
+								"description": "Order type (GTC=Good Till Cancelled, FOK=Fill Or Kill)"
+							},
+							"marketSlug": {
+								"type": "string",
+								"description": "Market identifier slug"
+							}
+						},
+						"required": ["order", "ownerId", "orderType", "marketSlug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CANCEL_ORDER",
+					"description": "Cancel an open order on Limitless and return locked funds. Requires authentication and order ownership.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"orderId": {
+								"type": "string",
+								"description": "Unique identifier of the order to be cancelled"
+							}
+						},
+						"required": ["orderId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CANCEL_ORDER_BATCH",
+					"description": "Cancel multiple orders in a single batch operation on Limitless. All orders must be from the same market. Requires authentication and order ownership.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"orderIds": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Array of order IDs to be cancelled in a single batch operation"
+							}
+						},
+						"required": ["orderIds"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CANCEL_ALL_ORDERS",
+					"description": "Cancel all of a user's open orders in a specific market on Limitless. Requires authentication.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"description": "Market slug to cancel all user orders in"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
+		},
+		"opinion": {
+			"name": "Opinion MCP Client",
+			"package": "@iqai/mcp-opinion",
+			"tools": [
+				{
+					"name": "GET_MARKETS",
+					"description": "Get a list of prediction markets from Opinion.trade with optional filters for status and market type",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 20,
+								"default": 10,
+								"description": "Number of markets to return (max 20)"
+							},
+							"status": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 4,
+								"description": "Filter by status: 1=Created, 2=Active, 3=Resolving, 4=Resolved"
+							},
+							"marketType": {
+								"type": "number",
+								"minimum": 0,
+								"maximum": 2,
+								"description": "Market type: 0=Binary, 1=Categorical, 2=All"
+							},
+							"page": {
+								"type": "number",
+								"minimum": 1,
+								"description": "Page number for pagination"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_MARKET_DETAILS",
+					"description": "Get detailed information about a specific prediction market by its ID",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"marketId": {
+								"type": "number",
+								"description": "The unique identifier of the market"
+							}
+						},
+						"required": ["marketId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "SEARCH_MARKETS",
+					"description": "Search for prediction markets by keyword in the market title",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Search keyword to find in market titles"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 20,
+								"default": 10,
+								"description": "Maximum number of results to return"
+							},
+							"status": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 4,
+								"description": "Filter by status: 1=Created, 2=Active, 3=Resolving, 4=Resolved"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ORDERBOOK",
+					"description": "Get the order book (bids and asks) for a specific prediction market token",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tokenId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The token ID to get the order book for"
+							}
+						},
+						"required": ["tokenId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_PRICE_HISTORY",
+					"description": "Get historical price data for a prediction market token",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tokenId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The token ID to get price history for"
+							},
+							"interval": {
+								"type": "string",
+								"enum": ["1m", "5m", "1h", "1d"],
+								"default": "1h",
+								"description": "Time interval: 1m (1 minute), 5m (5 minutes), 1h (1 hour), 1d (1 day)"
+							}
+						},
+						"required": ["tokenId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_LATEST_PRICE",
+					"description": "Get the current/latest trade price for a prediction market token",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tokenId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The token ID to get the latest price for"
+							}
+						},
+						"required": ["tokenId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_POSITIONS",
+					"description": "Get the current prediction market positions held by a wallet address",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"walletAddress": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The wallet address to get positions for"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 50,
+								"default": 20,
+								"description": "Maximum number of positions to return"
+							},
+							"page": {
+								"type": "number",
+								"minimum": 1,
+								"description": "Page number for pagination"
+							}
+						},
+						"required": ["walletAddress"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_TRADE_HISTORY",
+					"description": "Get the trade history for a wallet address on Opinion.trade",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"walletAddress": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The wallet address to get trade history for"
+							},
+							"limit": {
+								"type": "number",
+								"minimum": 1,
+								"maximum": 50,
+								"default": 20,
+								"description": "Maximum number of trades to return"
+							},
+							"page": {
+								"type": "number",
+								"minimum": 1,
+								"description": "Page number for pagination"
+							}
+						},
+						"required": ["walletAddress"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_QUOTE_TOKENS",
+					"description": "Get the list of available quote tokens (currencies) that can be used for trading on Opinion.trade",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
 		}
 	}
 }
