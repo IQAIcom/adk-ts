@@ -17,6 +17,7 @@ export * from "./memory";
 export * from "./models";
 export * from "./planners";
 export * from "./plugins";
+export * from "./scheduling";
 export * from "./sessions";
 export * from "./tools";
 export * from "./utils";
@@ -34,6 +35,7 @@ export * as Models from "./models";
 export * as Plugins from "./plugins";
 // Re-export runners.ts
 export * from "./runners";
+export * as Scheduling from "./scheduling";
 export * as Sessions from "./sessions";
 // Re-export telemetry.ts
 export * from "./telemetry";

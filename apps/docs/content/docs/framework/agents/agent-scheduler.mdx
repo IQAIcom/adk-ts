@@ -1,0 +1,498 @@
+---
+title: Agent Scheduler
+description: Schedule recurring agent execution with cron expressions or fixed intervals
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+The `AgentScheduler` runs ADK-TS agents on a recurring schedule using cron expressions or fixed intervals. A single instance manages multiple jobs concurrently, each with its own schedule, callbacks, and execution tracking. It also handles overlap prevention, graceful shutdown, and real-time event streaming.
+
+Use it when agents need to run on a timer: daily reports, periodic health checks, scheduled data processing, or recurring monitoring.
+
+<Callout type="info" title="Prerequisites">
+
+`AgentScheduler` works with any agent built through
+[AgentBuilder](/docs/framework/agents/agent-builder). You'll need a built
+`runner` instance to schedule jobs.
+
+</Callout>
+
+## Getting Started
+
+Build an agent with `AgentBuilder`, then pass its `runner` to the scheduler:
+
+```typescript
+import { AgentBuilder, AgentScheduler } from "@iqai/adk";
+
+// 1. Build your agent
+const { runner } = await AgentBuilder.create("daily_reporter_agent")
+  .withModel("gemini-2.5-flash")
+  .withInstruction("Generate a daily summary report")
+  .build();
+
+// 2. Create the scheduler and add a job
+const scheduler = new AgentScheduler();
+
+scheduler.schedule({
+  id: "daily-report",
+  cron: "0 9 * * *", // Every day at 9 AM
+  runner,
+  userId: "system",
+  input: "Generate today's report",
+});
+
+// 3. Start the scheduler
+scheduler.start();
+
+// Later: gracefully stop
+await scheduler.stop();
+```
+
+The scheduler validates your cron expression at registration time and throws immediately if it's invalid. Jobs added while the scheduler is already running start automatically.
+
+## Scheduling Options
+
+Every job requires either a `cron` expression or an `intervalMs` value, not both.
+
+### Cron Expressions
+
+Cron expressions use the standard 5-field format. The scheduler uses [croner](https://github.com/hexagon/croner) under the hood.
+
+```typescript
+scheduler.schedule({
+  id: "weekday-standup",
+  cron: "30 9 * * 1-5", // Mon-Fri at 9:30 AM
+  runner,
+  userId: "system",
+  input: "Summarize yesterday's progress and today's priorities",
+});
+
+scheduler.schedule({
+  id: "weekly-digest",
+  cron: "0 17 * * 5", // Friday at 5 PM
+  runner,
+  userId: "system",
+  input: "Generate the weekly team digest",
+});
+```
+
+Common cron patterns:
+
+| Expression    | Schedule                 |
+| ------------- | ------------------------ |
+| `* * * * *`   | Every minute             |
+| `0 * * * *`   | Every hour               |
+| `0 9 * * *`   | Daily at 9 AM            |
+| `0 9 * * 1-5` | Weekdays at 9 AM         |
+| `0 0 1 * *`   | First day of every month |
+
+### Fixed Intervals
+
+For simple recurring tasks where wall-clock alignment doesn't matter:
+
+```typescript
+scheduler.schedule({
+  id: "health-check",
+  intervalMs: 5 * 60 * 1000, // Every 5 minutes
+  runner,
+  userId: "system",
+  input: "Run a system health check and report any anomalies",
+});
+
+scheduler.schedule({
+  id: "cache-refresh",
+  intervalMs: 30 * 60 * 1000, // Every 30 minutes
+  runner,
+  userId: "system",
+  input: "Refresh the data cache with latest entries",
+});
+```
+
+## Job Configuration
+
+| Property        | Type                      | Required                     | Description                                      |
+| --------------- | ------------------------- | ---------------------------- | ------------------------------------------------ |
+| `id`            | `string`                  | Yes                          | Unique job identifier                            |
+| `cron`          | `string`                  | One of `cron` / `intervalMs` | Cron expression (5-field)                        |
+| `intervalMs`    | `number`                  | One of `cron` / `intervalMs` | Fixed interval in milliseconds                   |
+| `runner`        | `EnhancedRunner`          | Yes                          | Runner from `AgentBuilder.build()`               |
+| `userId`        | `string`                  | Yes                          | User ID for the session                          |
+| `input`         | `string \| Content`       | Yes                          | Message sent on each execution                   |
+| `sessionId`     | `string`                  | No                           | Pin a session across runs                        |
+| `enabled`       | `boolean`                 | No                           | Whether the job starts enabled (default: `true`) |
+| `maxExecutions` | `number`                  | No                           | Auto-pause after N executions                    |
+| `onTrigger`     | `(jobId) => void`         | No                           | Called when execution starts                     |
+| `onComplete`    | `(jobId, events) => void` | No                           | Called on successful completion                  |
+| `onError`       | `(jobId, error) => void`  | No                           | Called on execution failure                      |
+| `onEvent`       | `(jobId, event) => void`  | No                           | Called for each streamed event                   |
+
+## Job Lifecycle
+
+The scheduler provides methods for each lifecycle transition.
+
+### Scheduling and Removal
+
+Schedule a new job with `schedule()`. Remove it entirely with `unschedule()`:
+
+```typescript
+// Add a job
+scheduler.schedule({
+  id: "my-job",
+  cron: "0 */2 * * *",
+  runner,
+  userId: "system",
+  input: "Do the thing",
+});
+
+// Remove a job entirely
+scheduler.unschedule("my-job");
+```
+
+### Pausing and Resuming
+
+Pause a job to temporarily stop its timer without removing it. Resume picks up where it left off:
+
+```typescript
+// Pause - stops the timer, keeps config
+scheduler.pause("my-job");
+
+// Resume - restarts the timer
+scheduler.resume("my-job");
+```
+
+### Manual Triggering
+
+Execute a job immediately, outside its normal schedule:
+
+```typescript
+// Collect all events after execution completes
+const events = await scheduler.triggerNow("my-job");
+console.log(`Got ${events.length} events`);
+
+// Or stream events as they arrive
+for await (const event of scheduler.triggerNowStream("my-job")) {
+  console.log(event);
+}
+```
+
+### Monitoring Status
+
+Get the current status of a job, including next run time and last error:
+
+```typescript
+const status = scheduler.getJobStatus("my-job");
+// {
+//   enabled: true,
+//   isRunning: false,
+//   executionCount: 42,
+//   lastRunTime: 1706000000000,
+//   nextRunTime: 1706007200000,
+//   lastError: undefined
+// }
+
+// List all registered job IDs
+const jobIds = scheduler.getJobIds();
+```
+
+### Execution Limits
+
+Automatically pause a job after a fixed number of runs:
+
+```typescript
+scheduler.schedule({
+  id: "one-time-migration",
+  intervalMs: 60_000,
+  runner,
+  userId: "system",
+  input: "Run the data migration step",
+  maxExecutions: 1, // Runs once, then auto-pauses
+});
+```
+
+### Sessions
+
+By default, each execution creates a new session ID (`scheduled-{jobId}-{timestamp}`). Pin a session to persist conversation history across runs:
+
+```typescript
+scheduler.schedule({
+  id: "ongoing-monitor",
+  cron: "*/30 * * * *",
+  runner,
+  userId: "system",
+  sessionId: "monitor-persistent-session", // Same session every run
+  input: "Check for new alerts since your last check",
+});
+```
+
+## Event Handling
+
+The scheduler supports both global listeners and per-job callbacks.
+
+### Per-Job Callbacks
+
+Register callbacks for key job events when scheduling:
+
+```typescript
+scheduler.schedule({
+  id: "report-job",
+  cron: "0 9 * * *",
+  runner,
+  userId: "system",
+  input: "Generate the report",
+  onTrigger: jobId => {
+    console.log(`Job ${jobId} starting`);
+  },
+  onEvent: (jobId, event) => {
+    // Fires for every ADK-TS event during execution
+    console.log(`[${jobId}]`, event);
+  },
+  onComplete: (jobId, events) => {
+    console.log(`Job ${jobId} finished with ${events.length} events`);
+  },
+  onError: (jobId, error) => {
+    console.error(`Job ${jobId} failed:`, error.message);
+  },
+});
+```
+
+### Global Event Listeners
+
+Listen to lifecycle events across all jobs:
+
+```typescript
+scheduler.addEventListener(event => {
+  // event.type: "schedule:triggered" | "schedule:completed"
+  //           | "schedule:failed" | "schedule:paused" | "schedule:resumed"
+  console.log(`[${event.type}] ${event.scheduleId} at ${event.timestamp}`);
+
+  if (event.type === "schedule:failed") {
+    alertOpsTeam(event.scheduleId, event.data?.error);
+  }
+});
+```
+
+| Event Type           | Fired When                      |
+| -------------------- | ------------------------------- |
+| `schedule:triggered` | Execution begins                |
+| `schedule:completed` | Execution finishes successfully |
+| `schedule:failed`    | Execution throws an error       |
+| `schedule:paused`    | Job is paused                   |
+| `schedule:resumed`   | Job is resumed                  |
+
+### Streaming Execution Events
+
+`triggerNowStream` returns an `AsyncGenerator<Event>`, same pattern as `runner.runAsync()`:
+
+```typescript
+for await (const event of scheduler.triggerNowStream("my-job")) {
+  if (event.content?.parts) {
+    for (const part of event.content.parts) {
+      if ("text" in part) {
+        process.stdout.write(part.text);
+      }
+    }
+  }
+}
+```
+
+## Available Methods
+
+### `schedule(config: ScheduledJob): void`
+
+Register a new job. Throws if the ID already exists or if no `cron`/`intervalMs` is provided. Cron expressions are validated immediately.
+
+### `unschedule(jobId: string): boolean`
+
+Remove a job and stop its timer. Returns `false` if the job doesn't exist.
+
+### `pause(jobId: string): boolean`
+
+Pause a job's timer. The job stays registered. Emits `schedule:paused`.
+
+### `resume(jobId: string): boolean`
+
+Resume a paused job. Emits `schedule:resumed`. Restarts the timer if the scheduler is running.
+
+### `triggerNow(jobId: string): Promise<Event[]>`
+
+Execute a job immediately. Returns all events after completion.
+
+### `triggerNowStream(jobId: string): AsyncGenerator<Event>`
+
+Execute a job immediately and yield events as they stream in.
+
+### `getJobStatus(jobId: string): JobStatus | undefined`
+
+Return the current status of a job:
+
+```typescript
+interface JobStatus {
+  enabled: boolean;
+  isRunning: boolean;
+  executionCount: number;
+  lastRunTime?: number;
+  nextRunTime?: number;
+  lastError?: string;
+}
+```
+
+### `getJobIds(): string[]`
+
+Return all registered job IDs.
+
+### `start(): void`
+
+Start the scheduler. All enabled jobs begin their timers.
+
+### `stop(): Promise<void>`
+
+Stop the scheduler. Waits up to 30 seconds for running jobs to finish before resolving.
+
+### `addEventListener(listener): void`
+
+Add a global event listener.
+
+### `removeEventListener(listener): void`
+
+Remove a previously added listener.
+
+## Advanced Patterns
+
+### Error Handling with Retry Notifications
+
+Combine `onError` with an external alerting system to handle failures:
+
+```typescript
+scheduler.schedule({
+  id: "critical-job",
+  cron: "0 */1 * * *",
+  runner,
+  userId: "system",
+  input: "Run the critical pipeline",
+  onError: async (jobId, error) => {
+    await sendSlackAlert(`Scheduled job ${jobId} failed: ${error.message}`);
+  },
+});
+
+// Global listener for centralized logging
+scheduler.addEventListener(event => {
+  if (event.type === "schedule:failed") {
+    metrics.increment("scheduler.failures", {
+      job: event.scheduleId,
+    });
+  }
+});
+```
+
+### Overlap Prevention
+
+The scheduler automatically skips an execution if the previous run is still in progress. This is built-in and requires no configuration:
+
+```typescript
+// If this job takes 10 minutes but is scheduled every 5 minutes,
+// overlapping runs are silently skipped with a warning log.
+scheduler.schedule({
+  id: "slow-job",
+  intervalMs: 5 * 60 * 1000,
+  runner,
+  userId: "system",
+  input: "Process the full dataset",
+});
+```
+
+### Multiple Agent Types
+
+`AgentScheduler` works with any agent type since it operates on the `runner` returned by `AgentBuilder.build()`:
+
+```typescript
+import { AgentBuilder, AgentScheduler, LlmAgent } from "@iqai/adk";
+
+// Schedule an LLM agent
+const { runner: llmRunner } = await AgentBuilder.create("summarizer")
+  .withModel("gemini-2.5-flash")
+  .withInstruction("Summarize recent activity")
+  .build();
+
+// Schedule a sequential pipeline
+const writer = new LlmAgent({
+  name: "writer",
+  model: "gemini-2.5-flash",
+  instruction: "Draft the weekly report",
+  outputKey: "draft",
+});
+
+const editor = new LlmAgent({
+  name: "editor",
+  model: "gemini-2.5-flash",
+  instruction: "Edit the draft for clarity: {draft}",
+  outputKey: "final_report",
+});
+
+const { runner: pipelineRunner } = await AgentBuilder.create(
+  "scheduled-pipeline",
+)
+  .asSequential([writer, editor])
+  .build();
+
+const scheduler = new AgentScheduler();
+
+scheduler.schedule({
+  id: "quick-summary",
+  intervalMs: 60 * 60 * 1000,
+  runner: llmRunner,
+  userId: "system",
+  input: "Summarize the last hour",
+});
+
+scheduler.schedule({
+  id: "weekly-report",
+  cron: "0 17 * * 5",
+  runner: pipelineRunner,
+  userId: "system",
+  input: "Generate the weekly report",
+});
+
+scheduler.start();
+```
+
+### Graceful Shutdown
+
+`stop()` waits for in-flight executions to complete before resolving, with a 30-second timeout:
+
+```typescript
+const scheduler = new AgentScheduler();
+// ... schedule jobs, start ...
+
+// Handle process signals
+process.on("SIGINT", async () => {
+  console.log("Shutting down scheduler...");
+  await scheduler.stop(); // Waits for running jobs
+  process.exit(0);
+});
+```
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🛠️ Agent Builder"
+    description="Fluent API for building agents that can be scheduled"
+    href="/docs/framework/agents/agent-builder"
+  />
+  <Card
+    title="🗂️ Workflow Agents"
+    description="Orchestrate multi-step pipelines to run on a schedule"
+    href="/docs/framework/agents/workflow-agents"
+  />
+  <Card
+    title="🧩 Custom Agents"
+    description="Build custom orchestration logic for scheduled execution"
+    href="/docs/framework/agents/custom-agents"
+  />
+  <Card
+    title="💾 Session & Memory"
+    description="Persist conversation state across scheduled runs"
+    href="/docs/framework/session-state-memory"
+  />
+</Cards>

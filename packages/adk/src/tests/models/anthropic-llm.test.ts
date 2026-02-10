@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicLlm, type LlmRequest, LlmResponse } from "@adk/models";
+import { textStreamFrom } from "@adk/utils/streaming-utils";
+import type { Event } from "@adk/events/event";
 
 vi.mock("@anthropic-ai/sdk");
 vi.mock("@adk/helpers/logger", () => ({
@@ -122,6 +124,446 @@ describe("AnthropicLlm", () => {
 					system: "Be helpful",
 				}),
 			);
+		});
+	});
+
+	describe("streaming", () => {
+		let mockMessagesCreate: ReturnType<typeof vi.fn>;
+
+		const mockLlmRequest: LlmRequest = {
+			contents: [
+				{
+					role: "user",
+					parts: [{ text: "Hello" }],
+				},
+			],
+			config: {
+				maxOutputTokens: 500,
+			},
+			getSystemInstructionText: vi.fn().mockReturnValue(""),
+		} as unknown as LlmRequest;
+
+		// Helper to create a mock async iterable from stream events
+		function createMockStream(events: any[]) {
+			return {
+				[Symbol.asyncIterator]: async function* () {
+					for (const event of events) {
+						yield event;
+					}
+				},
+			};
+		}
+
+		beforeEach(() => {
+			mockMessagesCreate = vi.fn();
+			(Anthropic as any).mockImplementation(() => ({
+				messages: {
+					create: mockMessagesCreate,
+				},
+			}));
+		});
+
+		it("should yield partial text responses during streaming", async () => {
+			const streamEvents = [
+				{
+					type: "message_start",
+					message: { usage: { input_tokens: 10 } },
+				},
+				{
+					type: "content_block_start",
+					index: 0,
+					content_block: { type: "text" },
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: { type: "text_delta", text: "Hello" },
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: { type: "text_delta", text: " world" },
+				},
+				{ type: "content_block_stop", index: 0 },
+				{
+					type: "message_delta",
+					usage: { output_tokens: 5 },
+					delta: { stop_reason: "end_turn" },
+				},
+				{ type: "message_stop" },
+			];
+
+			mockMessagesCreate.mockResolvedValue(createMockStream(streamEvents));
+
+			const anthropicLlm = new AnthropicLlm();
+			const generator = anthropicLlm["generateContentAsyncImpl"](
+				mockLlmRequest,
+				true,
+			);
+
+			const responses: LlmResponse[] = [];
+			for await (const response of generator) {
+				responses.push(response);
+			}
+
+			// Use streaming-utils to verify text-only deltas from collected responses
+			const textChunks: string[] = [];
+			const asyncResponses = (async function* () {
+				for (const r of responses) yield r as unknown as Event;
+			})();
+			for await (const text of textStreamFrom(asyncResponses)) {
+				textChunks.push(text);
+			}
+
+			expect(textChunks).toEqual(["Hello", " world"]);
+
+			// Should have 2 partial text chunks + 1 final response
+			expect(responses).toHaveLength(3);
+
+			// First two are partial text chunks
+			expect(responses[0].partial).toBe(true);
+
+			// Final response has complete text, usage, and finish reason
+			expect(responses[2].partial).toBeUndefined();
+			expect(responses[2].content?.parts?.[0]?.text).toBe("Hello world");
+			expect(responses[2].usageMetadata).toEqual({
+				promptTokenCount: 10,
+				candidatesTokenCount: 5,
+				totalTokenCount: 15,
+			});
+			expect(responses[2].finishReason).toBe("STOP");
+		});
+
+		it("should handle streaming with tool calls", async () => {
+			const streamEvents = [
+				{
+					type: "message_start",
+					message: { usage: { input_tokens: 20 } },
+				},
+				{
+					type: "content_block_start",
+					index: 0,
+					content_block: {
+						type: "tool_use",
+						id: "tool_123",
+						name: "get_weather",
+					},
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: {
+						type: "input_json_delta",
+						partial_json: '{"loc',
+					},
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: {
+						type: "input_json_delta",
+						partial_json: 'ation": "Tokyo"}',
+					},
+				},
+				{ type: "content_block_stop", index: 0 },
+				{
+					type: "message_delta",
+					usage: { output_tokens: 15 },
+					delta: { stop_reason: "tool_use" },
+				},
+				{ type: "message_stop" },
+			];
+
+			mockMessagesCreate.mockResolvedValue(createMockStream(streamEvents));
+
+			const anthropicLlm = new AnthropicLlm();
+			const generator = anthropicLlm["generateContentAsyncImpl"](
+				mockLlmRequest,
+				true,
+			);
+
+			const responses: LlmResponse[] = [];
+			for await (const response of generator) {
+				responses.push(response);
+			}
+
+			// Only 1 response — no partial text, just the final with tool call
+			expect(responses).toHaveLength(1);
+
+			const final = responses[0];
+			expect(final.finishReason).toBe("STOP");
+			expect(final.content?.parts).toHaveLength(1);
+			expect(final.content?.parts?.[0]).toEqual({
+				functionCall: {
+					id: "tool_123",
+					name: "get_weather",
+					args: { location: "Tokyo" },
+				},
+			});
+			expect(final.usageMetadata).toEqual({
+				promptTokenCount: 20,
+				candidatesTokenCount: 15,
+				totalTokenCount: 35,
+			});
+		});
+
+		it("should handle streaming with text and tool calls", async () => {
+			const streamEvents = [
+				{
+					type: "message_start",
+					message: { usage: { input_tokens: 15 } },
+				},
+				// Text block
+				{
+					type: "content_block_start",
+					index: 0,
+					content_block: { type: "text" },
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: { type: "text_delta", text: "Let me check." },
+				},
+				{ type: "content_block_stop", index: 0 },
+				// Tool call block
+				{
+					type: "content_block_start",
+					index: 1,
+					content_block: {
+						type: "tool_use",
+						id: "tool_456",
+						name: "search",
+					},
+				},
+				{
+					type: "content_block_delta",
+					index: 1,
+					delta: {
+						type: "input_json_delta",
+						partial_json: '{"query": "test"}',
+					},
+				},
+				{ type: "content_block_stop", index: 1 },
+				{
+					type: "message_delta",
+					usage: { output_tokens: 25 },
+					delta: { stop_reason: "tool_use" },
+				},
+				{ type: "message_stop" },
+			];
+
+			mockMessagesCreate.mockResolvedValue(createMockStream(streamEvents));
+
+			const anthropicLlm = new AnthropicLlm();
+			const generator = anthropicLlm["generateContentAsyncImpl"](
+				mockLlmRequest,
+				true,
+			);
+
+			const responses: LlmResponse[] = [];
+			for await (const response of generator) {
+				responses.push(response);
+			}
+
+			// 1 partial text + 1 final
+			expect(responses).toHaveLength(2);
+
+			// Partial text
+			expect(responses[0].partial).toBe(true);
+			expect(responses[0].content?.parts?.[0]?.text).toBe("Let me check.");
+
+			// Final has both text and tool call
+			const final = responses[1];
+			expect(final.content?.parts).toHaveLength(2);
+			expect(final.content?.parts?.[0]).toEqual({ text: "Let me check." });
+			expect(final.content?.parts?.[1]).toEqual({
+				functionCall: {
+					id: "tool_456",
+					name: "search",
+					args: { query: "test" },
+				},
+			});
+		});
+
+		it("should pass stream: true to the API", async () => {
+			const streamEvents = [
+				{
+					type: "message_start",
+					message: { usage: { input_tokens: 5 } },
+				},
+				{
+					type: "message_delta",
+					usage: { output_tokens: 0 },
+					delta: { stop_reason: "end_turn" },
+				},
+				{ type: "message_stop" },
+			];
+
+			mockMessagesCreate.mockResolvedValue(createMockStream(streamEvents));
+
+			const anthropicLlm = new AnthropicLlm();
+			const generator = anthropicLlm["generateContentAsyncImpl"](
+				mockLlmRequest,
+				true,
+			);
+
+			for await (const _ of generator) {
+				// consume
+			}
+
+			expect(mockMessagesCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					stream: true,
+				}),
+			);
+		});
+
+		it("should handle max_tokens stop reason", async () => {
+			const streamEvents = [
+				{
+					type: "message_start",
+					message: { usage: { input_tokens: 10 } },
+				},
+				{
+					type: "content_block_start",
+					index: 0,
+					content_block: { type: "text" },
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: { type: "text_delta", text: "Truncated response" },
+				},
+				{ type: "content_block_stop", index: 0 },
+				{
+					type: "message_delta",
+					usage: { output_tokens: 100 },
+					delta: { stop_reason: "max_tokens" },
+				},
+				{ type: "message_stop" },
+			];
+
+			mockMessagesCreate.mockResolvedValue(createMockStream(streamEvents));
+
+			const anthropicLlm = new AnthropicLlm();
+			const generator = anthropicLlm["generateContentAsyncImpl"](
+				mockLlmRequest,
+				true,
+			);
+
+			const responses: LlmResponse[] = [];
+			for await (const response of generator) {
+				responses.push(response);
+			}
+
+			const final = responses[responses.length - 1];
+			expect(final.finishReason).toBe("MAX_TOKENS");
+		});
+
+		it("should handle streaming with thought blocks", async () => {
+			const streamEvents = [
+				{
+					type: "message_start",
+					message: { usage: { input_tokens: 10 } },
+				},
+				{
+					type: "content_block_start",
+					index: 0,
+					content_block: { type: "text" },
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: { type: "text_delta", text: "<thinking>" },
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: { type: "text_delta", text: "I am thinking." },
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: { type: "text_delta", text: "</thinking>" },
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: { type: "text_delta", text: "Hello!" },
+				},
+				{ type: "content_block_stop", index: 0 },
+				{
+					type: "message_delta",
+					usage: { output_tokens: 20 },
+					delta: { stop_reason: "end_turn" },
+				},
+				{ type: "message_stop" },
+			];
+
+			mockMessagesCreate.mockResolvedValue(createMockStream(streamEvents));
+
+			const anthropicLlm = new AnthropicLlm();
+			const generator = anthropicLlm["generateContentAsyncImpl"](
+				mockLlmRequest,
+				true,
+			);
+
+			const responses: LlmResponse[] = [];
+			for await (const response of generator) {
+				responses.push(response);
+			}
+
+			// Use streaming-utils to verify text-only deltas (including thought blocks)
+			const textChunks: string[] = [];
+			const asyncResponses = (async function* () {
+				for (const r of responses) yield r as unknown as Event;
+			})();
+			for await (const text of textStreamFrom(asyncResponses)) {
+				textChunks.push(text);
+			}
+
+			expect(textChunks).toEqual([
+				"<thinking>",
+				"I am thinking.",
+				"</thinking>",
+				"Hello!",
+			]);
+
+			// 4 partial text chunks + 1 final response
+			expect(responses).toHaveLength(5);
+
+			// First 3 are thinking partials
+			expect(responses[0].partial).toBe(true);
+			expect(responses[0].content?.parts?.[0]).toMatchObject({
+				text: "<thinking>",
+				thought: true,
+			});
+
+			expect(responses[1].partial).toBe(true);
+			expect(responses[1].content?.parts?.[0]).toMatchObject({
+				text: "I am thinking.",
+				thought: true,
+			});
+
+			expect(responses[2].partial).toBe(true);
+			expect(responses[2].content?.parts?.[0]).toMatchObject({
+				text: "</thinking>",
+				thought: true,
+			});
+
+			// 4th is regular text
+			expect(responses[3].partial).toBe(true);
+			expect(responses[3].content?.parts?.[0]?.text).toBe("Hello!");
+			expect((responses[3].content?.parts?.[0] as any).thought).toBeUndefined();
+
+			// Final response has accumulated both thought and text
+			const final = responses[4];
+			expect(final.content?.parts).toHaveLength(2);
+			expect(final.content?.parts?.[0]).toMatchObject({
+				text: "<thinking>I am thinking.</thinking>",
+				thought: true,
+			});
+			expect(final.content?.parts?.[1]).toMatchObject({ text: "Hello!" });
 		});
 	});
 

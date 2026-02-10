@@ -1,5 +1,5 @@
 {
-	"title": "CLI",
+	"title": "CLI Reference",
 	"icon": "Terminal",
 	"root": true,
 	"pages": ["index", "commands", "configuration"]

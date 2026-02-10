@@ -461,6 +461,9 @@ importers:
       cors:
         specifier: ^2.8.5
         version: 2.8.5
+      croner:
+        specifier: ^10.0.1
+        version: 10.0.1
       dedent:
         specifier: ^1.7.0
         version: 1.7.1
@@ -501,6 +504,9 @@ importers:
       '@iqai/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@qdrant/js-client-rest':
+        specifier: ^1.16.2
+        version: 1.16.2(typescript@5.9.3)
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -620,8 +626,8 @@ importers:
   packages/mcp-docs:
     dependencies:
       '@iqai/adk':
-        specifier: 0.6.2
-        version: 0.6.2(@opentelemetry/core@2.5.0(@opentelemetry/api@1.9.0))(@types/better-sqlite3@7.6.13)(@types/node@25.1.0)(@types/pg@8.16.0)(better-sqlite3@12.5.0)(hono@4.11.3)(langfuse@3.38.6)(mysql2@3.16.0)(pg@8.16.3)(typescript@5.9.3)(ws@8.19.0)
+        specifier: 0.7.0
+        version: 0.7.0(@opentelemetry/instrumentation-express@0.58.0(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation-http@0.210.0(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation-nestjs-core@0.55.0(@opentelemetry/api@1.9.0))(@qdrant/js-client-rest@1.16.2(typescript@5.9.3))(@types/better-sqlite3@7.6.13)(@types/node@25.1.0)(@types/pg@8.16.0)(better-sqlite3@12.5.0)(hono@4.11.3)(langfuse@3.38.6)(mysql2@3.16.0)(pg@8.16.3)(typescript@5.9.3)(ws@8.19.0)
       '@modelcontextprotocol/sdk':
         specifier: ^1.25.3
         version: 1.25.3(hono@4.11.3)(zod@3.25.76)
@@ -1563,16 +1569,28 @@ packages:
       '@types/node':
         optional: true
 
-  '@iqai/adk@0.6.2':
-    resolution: {integrity: sha512-9kPpsxHCKnR1KQBCpWqpBUqYl0tuhZL09kEI9orgNKjco/Xmfow3+Fc+XFtyl/0EslbkPdSpdJskO3+ISAXzng==}
+  '@iqai/adk@0.7.0':
+    resolution: {integrity: sha512-uH2L8MxXv39Umx8N0KPw+xh1ECCMeJkeqGv/I80XHWBUQ4oeHQmfAyH5uEEnOH9ZahsewSTFwQc5Bc5D7o0i4A==}
     engines: {node: '>=22.0'}
     hasBin: true
     peerDependencies:
+      '@opentelemetry/instrumentation-express': ^0.58.0
+      '@opentelemetry/instrumentation-http': ^0.210.0
+      '@opentelemetry/instrumentation-nestjs-core': ^0.55.0
+      '@qdrant/js-client-rest': ^1.12.0
       better-sqlite3: ^11.10.0
       langfuse: ^3.38.6
       mysql2: ^3.14.1
       pg: ^8.16.0
     peerDependenciesMeta:
+      '@opentelemetry/instrumentation-express':
+        optional: true
+      '@opentelemetry/instrumentation-http':
+        optional: true
+      '@opentelemetry/instrumentation-nestjs-core':
+        optional: true
+      '@qdrant/js-client-rest':
+        optional: true
       better-sqlite3:
         optional: true
       langfuse:
@@ -2392,6 +2410,16 @@ packages:
 
   '@protobufjs/utf8@1.1.0':
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
+
+  '@qdrant/js-client-rest@1.16.2':
+    resolution: {integrity: sha512-Zm4wEZURrZ24a+Hmm4l1QQYjiz975Ep3vF0yzWR7ICGcxittNz47YK2iBOk8kb8qseCu8pg7WmO1HOIsO8alvw==}
+    engines: {node: '>=18.17.0', pnpm: '>=8'}
+    peerDependencies:
+      typescript: '>=4.7'
+
+  '@qdrant/openapi-typescript-fetch@1.2.6':
+    resolution: {integrity: sha512-oQG/FejNpItrxRHoyctYvT3rwGZOnK4jr3JdppO/c78ktDvkWiPXPHNsrDf33K9sZdRb6PR7gi4noIapu5q4HA==}
+    engines: {node: '>=18.0.0', pnpm: '>=8'}
 
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
@@ -4434,6 +4462,10 @@ packages:
 
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
+
+  croner@10.0.1:
+    resolution: {integrity: sha512-ixNtAJndqh173VQ4KodSdJEI6nuioBWI0V1ITNKhZZsO0pEMoDxz539T4FTTbSZ/xIOSuDnzxLVRqBVSvPNE2g==}
+    engines: {node: '>=18.0'}
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -8335,6 +8367,10 @@ packages:
   undici-types@7.8.0:
     resolution: {integrity: sha512-9UJ2xGDvQ43tYyVMpuHlsgApydB8ZKfVYTsLDhXkFL/6gfkp+U8xTGdh8pMJv1SpZna0zxG1DwsKZsreLbXBxw==}
 
+  undici@6.23.0:
+    resolution: {integrity: sha512-VfQPToRA5FZs/qJxLIinmU59u0r7LXqoJkCzinq3ckNJp3vKEh7jTWN589YQ5+aoAC/TGRLyJLCPKcLQbM8r9g==}
+    engines: {node: '>=18.17'}
+
   undici@7.16.0:
     resolution: {integrity: sha512-QEg3HPMll0o3t2ourKwOeUAZ159Kn9mx5pnzHRQO8+Wixmh88YdZRiIwat0iNzNNXn0yoEtXJqFpyW7eM8BV7g==}
     engines: {node: '>=20.18.1'}
@@ -9717,7 +9753,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.10.4
 
-  '@iqai/adk@0.6.2(@opentelemetry/core@2.5.0(@opentelemetry/api@1.9.0))(@types/better-sqlite3@7.6.13)(@types/node@25.1.0)(@types/pg@8.16.0)(better-sqlite3@12.5.0)(hono@4.11.3)(langfuse@3.38.6)(mysql2@3.16.0)(pg@8.16.3)(typescript@5.9.3)(ws@8.19.0)':
+  '@iqai/adk@0.7.0(@opentelemetry/instrumentation-express@0.58.0(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation-http@0.210.0(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation-nestjs-core@0.55.0(@opentelemetry/api@1.9.0))(@qdrant/js-client-rest@1.16.2(typescript@5.9.3))(@types/better-sqlite3@7.6.13)(@types/node@25.1.0)(@types/pg@8.16.0)(better-sqlite3@12.5.0)(hono@4.11.3)(langfuse@3.38.6)(mysql2@3.16.0)(pg@8.16.3)(typescript@5.9.3)(ws@8.19.0)':
     dependencies:
       '@anthropic-ai/sdk': 0.61.0
       '@clack/prompts': 0.11.0
@@ -9728,8 +9764,11 @@ snapshots:
       '@modelcontextprotocol/sdk': 1.25.1(hono@4.11.3)(zod@4.3.5)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/auto-instrumentations-node': 0.67.3(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.5.0(@opentelemetry/api@1.9.0))
+      '@opentelemetry/core': 2.5.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-metrics-otlp-http': 0.208.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-trace-otlp-http': 0.208.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation': 0.209.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-openai': 0.7.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-metrics': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-node': 0.208.0(@opentelemetry/api@1.9.0)
@@ -9741,6 +9780,7 @@ snapshots:
       axios: 1.13.2(debug@4.4.3)
       chalk: 5.6.2
       cors: 2.8.5
+      croner: 10.0.1
       dedent: 1.7.1
       dockerode: 4.0.9
       dotenv: 17.2.3
@@ -9753,6 +9793,10 @@ snapshots:
       uuid: 13.0.0
       zod: 4.3.5
     optionalDependencies:
+      '@opentelemetry/instrumentation-express': 0.58.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-http': 0.210.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-nestjs-core': 0.55.0(@opentelemetry/api@1.9.0)
+      '@qdrant/js-client-rest': 1.16.2(typescript@5.9.3)
       better-sqlite3: 12.5.0
       langfuse: 3.38.6
       mysql2: 3.16.0
@@ -9765,7 +9809,6 @@ snapshots:
       - '@libsql/client-wasm'
       - '@neondatabase/serverless'
       - '@op-engineering/op-sqlite'
-      - '@opentelemetry/core'
       - '@planetscale/database'
       - '@prisma/client'
       - '@swc/core'
@@ -9909,7 +9952,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.25.1(hono@4.11.3)(zod@4.3.5)':
     dependencies:
-      '@hono/node-server': 1.19.7(hono@4.11.3)
+      '@hono/node-server': 1.19.9(hono@4.11.3)
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
       content-type: 1.0.5
@@ -10887,6 +10930,14 @@ snapshots:
   '@protobufjs/pool@1.1.0': {}
 
   '@protobufjs/utf8@1.1.0': {}
+
+  '@qdrant/js-client-rest@1.16.2(typescript@5.9.3)':
+    dependencies:
+      '@qdrant/openapi-typescript-fetch': 1.2.6
+      typescript: 5.9.3
+      undici: 6.23.0
+
+  '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
   '@radix-ui/number@1.1.1': {}
 
@@ -13268,6 +13319,8 @@ snapshots:
     optional: true
 
   create-require@1.1.1: {}
+
+  croner@10.0.1: {}
 
   cross-spawn@7.0.6:
     dependencies:
@@ -18226,6 +18279,8 @@ snapshots:
   undici-types@7.16.0: {}
 
   undici-types@7.8.0: {}
+
+  undici@6.23.0: {}
 
   undici@7.16.0: {}
 

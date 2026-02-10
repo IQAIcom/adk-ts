@@ -4,19 +4,9 @@
 	"root": true,
 	"pages": [
 		"index",
-		"abi",
-		"atp",
-		"bamm",
-		"coingecko",
-		"coingecko-pro",
-		"discord",
-		"fraxlend",
-		"iqwiki",
-		"near-agent",
-		"near-intents",
-		"odos",
-		"polymarket",
-		"telegram",
-		"upbit"
+		"external-mcps",
+		"creating-custom-mcps",
+		"iq-ai-servers",
+		"third-party-wrappers"
 	]
 }

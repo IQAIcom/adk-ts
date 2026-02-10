@@ -1,0 +1,185 @@
+---
+title: MCP Limitless
+description: An MCP server for interacting with Limitless prediction markets
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Package**: [`@iqai/mcp-limitless`](https://www.npmjs.com/package/@iqai/mcp-limitless)
+- **Purpose**: Interacting with the Limitless prediction markets for market data and analysis.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpLimitless} from "@iqai/adk";
+
+    const toolset = McpLimitless()
+
+    const tools = await toolset.getTools()
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Limitless MCP Client",
+      description: "Client for Limitless prediction markets",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-limitless"],
+        env: {
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "limitless-mcp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-limitless"]
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Available Tools (30)
+
+### Authentication (5)
+
+| Tool                  | Description                                 |
+| --------------------- | ------------------------------------------- |
+| `GET_AUTH_STATUS`     | Check current authentication status         |
+| `GET_SIGNING_MESSAGE` | Get a message to sign for authentication    |
+| `VERIFY_AUTH`         | Verify authentication with a signed message |
+| `LOGIN`               | Log in to the platform                      |
+| `LOGOUT`              | Log out of the current session              |
+
+### Markets (13)
+
+| Tool                             | Description                              |
+| -------------------------------- | ---------------------------------------- |
+| `SEARCH_MARKETS`                 | Search for prediction markets            |
+| `GET_MARKET`                     | Get details for a specific market        |
+| `GET_ACTIVE_MARKETS`             | List currently active markets            |
+| `GET_ACTIVE_MARKETS_BY_CATEGORY` | List active markets filtered by category |
+| `GET_CATEGORIES`                 | Get available market categories          |
+| `GET_CATEGORIES_COUNT`           | Get count of markets per category        |
+| `GET_ACTIVE_SLUGS`               | Get slugs of all active markets          |
+| `GET_MARKET_ORDERBOOK`           | View order book for a market             |
+| `GET_HISTORICAL_PRICE`           | Get historical price data                |
+| `GET_FEED_EVENTS`                | Get feed events                          |
+| `GET_MARKET_EVENTS`              | Get events for a specific market         |
+| `GET_LOCKED_BALANCE`             | Get locked balance information           |
+| `GET_USER_ORDERS`                | Get user's orders                        |
+
+### Portfolio (8)
+
+| Tool                        | Description                      |
+| --------------------------- | -------------------------------- |
+| `GET_PORTFOLIO_POSITIONS`   | View current portfolio positions |
+| `GET_PORTFOLIO_TRADES`      | View portfolio trade history     |
+| `GET_PORTFOLIO_HISTORY`     | View portfolio value history     |
+| `GET_PORTFOLIO_POINTS`      | View portfolio points            |
+| `GET_USER_TRADED_VOLUME`    | Get user's total traded volume   |
+| `GET_PUBLIC_USER_POSITIONS` | View public positions of a user  |
+| `GET_USER_PROFILE`          | Get user profile information     |
+| `GET_TRADING_ALLOWANCE`     | Check trading allowance          |
+
+### Trading (4)
+
+| Tool                 | Description                    |
+| -------------------- | ------------------------------ |
+| `CREATE_ORDER`       | Create a new order             |
+| `CANCEL_ORDER`       | Cancel an existing order       |
+| `CANCEL_ORDER_BATCH` | Cancel multiple orders at once |
+| `CANCEL_ALL_ORDERS`  | Cancel all open orders         |
+
+## Environment Variables
+
+No required environment variables. This MCP server works out of the box.
+
+## Usage Examples
+
+Here's a complete example of using MCP Limitless with an ADK agent:
+
+```typescript
+import { McpLimitless, AgentBuilder } from "@iqai/adk";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+async function main() {
+  // Initialize Limitless MCP toolset
+  const toolset = McpLimitless({
+    debug: false,
+    retryOptions: {
+      maxRetries: 3,
+      initialDelay: 500,
+    },
+  });
+
+  // Get available tools
+  const limitlessTools = await toolset.getTools();
+
+  // Create agent with Limitless tools
+  const { runner } = await AgentBuilder.create("limitless_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "An agent that interacts with Limitless prediction markets",
+    )
+    .withTools(...limitlessTools)
+    .build();
+
+  try {
+    // Example queries
+    const response = await runner.ask(
+      "Show me trending prediction markets on Limitless",
+    );
+    console.log(response);
+  } finally {
+    // Clean up resources
+    await toolset.close();
+  }
+}
+
+main().catch(console.error);
+```
+
+## Best Practices
+
+- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
+- **Error Handling**: Implement proper error handling for market data requests
+- **Rate Limits**: Be aware of API rate limits and implement appropriate retry logic
+
+## Error Handling
+
+<Callout type="warn" title="Error Scenarios">
+
+The server handles various error scenarios gracefully.
+
+</Callout>
+
+🔄 **Invalid market identifiers**: Verify market IDs are correct
+🌐 **Network issues**: Check your internet connection and API status
+
+## Resources
+
+- [Limitless](https://limitless.exchange) - Limitless prediction market platform
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards

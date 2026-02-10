@@ -1,0 +1,166 @@
+---
+title: MCP Opinion
+description: An MCP server for interacting with Opinion.trade prediction market
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Package**: [`@iqai/mcp-opinion`](https://www.npmjs.com/package/@iqai/mcp-opinion)
+- **Purpose**: Interacting with the Opinion.trade prediction market for market data and analysis.
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import {McpOpinion} from "@iqai/adk";
+
+    const toolset = McpOpinion({
+      env: {
+        OPINION_API_KEY: process.env.OPINION_API_KEY,
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import {McpToolset} from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Opinion MCP Client",
+      description: "Client for Opinion.trade prediction market",
+      transport: {
+        mode: "stdio",
+        command: "pnpm",
+        args: ["dlx", "@iqai/mcp-opinion"],
+        env: {
+          OPINION_API_KEY: process.env.OPINION_API_KEY,
+          PATH: process.env.PATH || "",
+        },
+      },
+    })
+
+    const tools = await toolset.getTools()
+    ```
+
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    ```json
+    {
+      "mcpServers": {
+        "opinion-mcp-server": {
+          "command": "pnpm",
+          "args": ["dlx", "@iqai/mcp-opinion"],
+          "env": {
+            "OPINION_API_KEY": "your_opinion_api_key"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Available Tools (9)
+
+| Tool                 | Description                                   |
+| -------------------- | --------------------------------------------- |
+| `GET_MARKETS`        | List prediction markets                       |
+| `GET_MARKET_DETAILS` | Get detailed information about a market by ID |
+| `SEARCH_MARKETS`     | Search markets by keyword                     |
+| `GET_ORDERBOOK`      | View order book for a token                   |
+| `GET_PRICE_HISTORY`  | Get historical price data                     |
+| `GET_LATEST_PRICE`   | Get current token price                       |
+| `GET_POSITIONS`      | Get user positions by wallet address          |
+| `GET_TRADE_HISTORY`  | Get user trade history                        |
+| `GET_QUOTE_TOKENS`   | List available quote currencies               |
+
+## Environment Variables
+
+- `OPINION_API_KEY`: Required. Your Opinion.trade API key.
+
+## Usage Examples
+
+Here's a complete example of using MCP Opinion with an ADK agent:
+
+```typescript
+import { McpOpinion, AgentBuilder } from "@iqai/adk";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+async function main() {
+  // Initialize Opinion MCP toolset
+  const toolset = McpOpinion({
+    env: {
+      OPINION_API_KEY: process.env.OPINION_API_KEY,
+    },
+    debug: false,
+    retryOptions: {
+      maxRetries: 3,
+      initialDelay: 500,
+    },
+  });
+
+  // Get available tools
+  const opinionTools = await toolset.getTools();
+
+  // Create agent with Opinion tools
+  const { runner } = await AgentBuilder.create("opinion_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "An agent that interacts with Opinion.trade prediction markets",
+    )
+    .withTools(...opinionTools)
+    .build();
+
+  try {
+    // Example queries
+    const response = await runner.ask(
+      "Show me trending markets on Opinion.trade",
+    );
+    console.log(response);
+  } finally {
+    // Clean up resources
+    await toolset.close();
+  }
+}
+
+main().catch(console.error);
+```
+
+## Getting Your Credentials
+
+1. Sign up at [Opinion.trade](https://opinion.trade)
+2. Navigate to your account settings
+3. Generate an API key
+
+## Best Practices
+
+- **Security**: Store API keys in environment variables, never hardcode them
+- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
+- **Error Handling**: Implement proper error handling for market data requests
+- **Rate Limits**: Be aware of API rate limits and implement appropriate retry logic
+
+## Error Handling
+
+<Callout type="warn" title="Error Scenarios">
+
+The server handles various error scenarios gracefully.
+
+</Callout>
+
+🚨 **Missing credentials**: Ensure `OPINION_API_KEY` is set
+🔄 **Invalid market identifiers**: Verify market IDs are correct
+🌐 **Network issues**: Check your internet connection and API status
+
+## Resources
+
+- [Opinion.trade](https://opinion.trade) - Opinion.trade prediction market platform
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards

@@ -1,0 +1,28 @@
+{
+	"title": "IQ AI Built-in Servers",
+	"icon": "Blocks",
+	"pages": [
+		"---Blockchain & DeFi",
+		"abi",
+		"atp",
+		"bamm",
+		"fraxlend",
+		"near-agent",
+		"near-intents",
+		"odos",
+		"---Information",
+		"iqwiki",
+		"---Market Data",
+		"debank",
+		"defillama",
+		"upbit",
+		"---Messaging & Social",
+		"discord",
+		"telegram",
+		"---Prediction Markets",
+		"kalshi",
+		"limitless",
+		"opinion",
+		"polymarket"
+	]
+}
