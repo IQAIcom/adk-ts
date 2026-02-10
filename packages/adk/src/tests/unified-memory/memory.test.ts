@@ -238,6 +238,45 @@ describe("Unified Memory", () => {
 				const result = await noHistoryMemory.recall({ threadId: "thread-1" });
 				expect(result.messages).toHaveLength(0);
 			});
+
+			it("should deep merge nested workingMemory config", () => {
+				const partialConfigMemory = createMemory({
+					config: { workingMemory: { enabled: true } },
+				});
+
+				const config = partialConfigMemory.getConfig();
+
+				expect(config.workingMemory?.enabled).toBe(true);
+				expect(config.workingMemory?.scope).toBe("resource");
+				expect(config.workingMemory?.template).toContain("# User Information");
+			});
+
+			it("should deep merge nested semanticRecall config", () => {
+				const partialConfigMemory = createMemory({
+					config: { semanticRecall: { topK: 5, messageRange: 2 } },
+				});
+
+				const config = partialConfigMemory.getConfig();
+
+				expect(config.semanticRecall).toEqual({ topK: 5, messageRange: 2 });
+			});
+
+			it("should allow overriding specific nested properties", () => {
+				const customMemory = createMemory({
+					config: {
+						workingMemory: {
+							enabled: true,
+							scope: "thread",
+						},
+					},
+				});
+
+				const config = customMemory.getConfig();
+
+				expect(config.workingMemory?.enabled).toBe(true);
+				expect(config.workingMemory?.scope).toBe("thread");
+				expect(config.workingMemory?.template).toContain("# User Information");
+			});
 		});
 	});
 
@@ -309,6 +348,127 @@ describe("Unified Memory", () => {
 
 			const thread = await store.getThread("thread-1");
 			expect(thread).toBeNull();
+		});
+
+		it("should clean up embeddings when thread is deleted", async () => {
+			const mockEmbedder = {
+				embed: async (_text: string) => [1, 0, 0],
+				dimensions: 3,
+			};
+
+			const storeWithEmbedder = new InMemoryStore({
+				embeddingProvider: mockEmbedder,
+			});
+
+			await storeWithEmbedder.saveThread({
+				id: "thread-to-delete",
+				resourceId: "user-1",
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			await storeWithEmbedder.saveMessages([
+				{
+					id: "msg-1",
+					threadId: "thread-to-delete",
+					role: "user",
+					content: "Hello world",
+					type: "text",
+					createdAt: new Date(),
+				},
+				{
+					id: "msg-2",
+					threadId: "thread-to-delete",
+					role: "assistant",
+					content: "Hi there",
+					type: "text",
+					createdAt: new Date(),
+				},
+			]);
+
+			const resultsBefore = await storeWithEmbedder.vectorSearch("test", {
+				topK: 10,
+			});
+			expect(resultsBefore).toHaveLength(2);
+
+			await storeWithEmbedder.deleteThread("thread-to-delete");
+
+			const resultsAfter = await storeWithEmbedder.vectorSearch("test", {
+				topK: 10,
+			});
+			expect(resultsAfter).toHaveLength(0);
+		});
+
+		it("should scope vectorSearch by resourceId", async () => {
+			const mockEmbedder = {
+				embed: async (text: string) => {
+					if (text.includes("apple")) return [1, 0, 0];
+					if (text.includes("banana")) return [0, 1, 0];
+					if (text.includes("query")) return [0.9, 0.1, 0];
+					return [0, 0, 1];
+				},
+				dimensions: 3,
+			};
+
+			const storeWithEmbedder = new InMemoryStore({
+				embeddingProvider: mockEmbedder,
+			});
+
+			await storeWithEmbedder.saveThread({
+				id: "thread-user1",
+				resourceId: "user-1",
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+			await storeWithEmbedder.saveThread({
+				id: "thread-user2",
+				resourceId: "user-2",
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			await storeWithEmbedder.saveMessages([
+				{
+					id: "msg-1",
+					threadId: "thread-user1",
+					role: "user",
+					content: "I like apple pie",
+					type: "text",
+					createdAt: new Date(),
+				},
+			]);
+			await storeWithEmbedder.saveMessages([
+				{
+					id: "msg-2",
+					threadId: "thread-user2",
+					role: "user",
+					content: "I prefer banana smoothie",
+					type: "text",
+					createdAt: new Date(),
+				},
+			]);
+
+			const resultsUser1 = await storeWithEmbedder.vectorSearch("query apple", {
+				resourceId: "user-1",
+				topK: 10,
+			});
+
+			expect(resultsUser1).toHaveLength(1);
+			expect(resultsUser1[0].messageId).toBe("msg-1");
+
+			const resultsUser2 = await storeWithEmbedder.vectorSearch("query apple", {
+				resourceId: "user-2",
+				topK: 10,
+			});
+
+			expect(resultsUser2).toHaveLength(1);
+			expect(resultsUser2[0].messageId).toBe("msg-2");
+
+			const resultsAll = await storeWithEmbedder.vectorSearch("query apple", {
+				topK: 10,
+			});
+
+			expect(resultsAll).toHaveLength(2);
 		});
 	});
 });

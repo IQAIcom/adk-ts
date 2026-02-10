@@ -5,6 +5,7 @@ import type {
 	ThreadListResult,
 	MessageListOptions,
 	MemoryEmbeddingProvider,
+	MemoryStoreConfig,
 	VectorSearchResult,
 } from "./types";
 
@@ -34,7 +35,7 @@ export class InMemoryStore implements MemoryStore {
 	private embeddings: Map<string, number[]> = new Map();
 	private embeddingProvider?: MemoryEmbeddingProvider;
 
-	constructor(config?: { embeddingProvider?: MemoryEmbeddingProvider }) {
+	constructor(config?: MemoryStoreConfig) {
 		this.embeddingProvider = config?.embeddingProvider;
 	}
 
@@ -73,13 +74,14 @@ export class InMemoryStore implements MemoryStore {
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
+		const threadMessages = this.messages.get(threadId) ?? [];
+		for (const message of threadMessages) {
+			this.embeddings.delete(message.id);
+		}
+
 		this.threads.delete(threadId);
 		this.messages.delete(threadId);
-		for (const [key] of this.workingMemory) {
-			if (key.startsWith(`thread:${threadId}`)) {
-				this.workingMemory.delete(key);
-			}
-		}
+		this.workingMemory.delete(`thread:${threadId}:working_memory`);
 	}
 
 	async saveMessages(messages: Message[]): Promise<Message[]> {
@@ -161,8 +163,11 @@ export class InMemoryStore implements MemoryStore {
 		if (options.threadId) {
 			candidateMessages = this.messages.get(options.threadId) ?? [];
 		} else if (options.resourceId) {
-			for (const [, msgs] of this.messages) {
-				candidateMessages.push(...msgs);
+			const resourceThreads = Array.from(this.threads.values()).filter(
+				(t) => t.resourceId === options.resourceId,
+			);
+			for (const thread of resourceThreads) {
+				candidateMessages.push(...(this.messages.get(thread.id) ?? []));
 			}
 		} else {
 			for (const [, msgs] of this.messages) {

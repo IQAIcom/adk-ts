@@ -17,6 +17,40 @@ function generateId(): string {
 	return `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
+function mergeConfig(
+	defaultConfig: MemoryConfig,
+	userConfig?: MemoryConfig,
+): MemoryConfig {
+	if (!userConfig) return { ...defaultConfig };
+
+	const merged: MemoryConfig = {
+		...defaultConfig,
+		...userConfig,
+	};
+
+	if (
+		typeof defaultConfig.workingMemory === "object" &&
+		typeof userConfig.workingMemory === "object"
+	) {
+		merged.workingMemory = {
+			...defaultConfig.workingMemory,
+			...userConfig.workingMemory,
+		};
+	}
+
+	if (
+		typeof defaultConfig.semanticRecall === "object" &&
+		typeof userConfig.semanticRecall === "object"
+	) {
+		merged.semanticRecall = {
+			...defaultConfig.semanticRecall,
+			...userConfig.semanticRecall,
+		};
+	}
+
+	return merged;
+}
+
 export interface MemoryOptions {
 	store?: MemoryStore;
 	config?: MemoryConfig;
@@ -29,7 +63,7 @@ export class Memory {
 	private embeddingProvider?: MemoryEmbeddingProvider;
 
 	constructor(options?: MemoryOptions) {
-		this.config = { ...defaultMemoryConfig, ...options?.config };
+		this.config = mergeConfig(defaultMemoryConfig, options?.config);
 		this.embeddingProvider = options?.embeddingProvider;
 
 		if (options?.store) {
@@ -149,6 +183,7 @@ export class Memory {
 				const allThreadMessages = await this.store.getMessages({
 					threadId: options.threadId,
 				});
+				const messageMap = new Map(allThreadMessages.map((m) => [m.id, m]));
 
 				for (const result of searchResults) {
 					if (
@@ -159,9 +194,7 @@ export class Memory {
 					}
 
 					if (!existingIds.has(result.messageId)) {
-						const semanticMessage = allThreadMessages.find(
-							(m) => m.id === result.messageId,
-						);
+						const semanticMessage = messageMap.get(result.messageId);
 						if (semanticMessage) {
 							messages.unshift(semanticMessage);
 							existingIds.add(result.messageId);
@@ -176,6 +209,11 @@ export class Memory {
 		let workingMemory: string | null = null;
 		if (config.workingMemory?.enabled) {
 			const scope = config.workingMemory.scope ?? "resource";
+			if (scope === "resource" && !options.resourceId) {
+				throw new Error(
+					"resourceId is required for resource-scoped working memory",
+				);
+			}
 			const key =
 				scope === "thread"
 					? `thread:${options.threadId}:working_memory`
@@ -196,12 +234,27 @@ export class Memory {
 		resourceId?: string;
 	}): Promise<string | null> {
 		const scope = this.config.workingMemory?.scope ?? "resource";
+		if (scope === "resource" && !options.resourceId) {
+			throw new Error(
+				"resourceId is required for resource-scoped working memory",
+			);
+		}
 		const key =
 			scope === "thread"
 				? `thread:${options.threadId}:working_memory`
 				: `resource:${options.resourceId}:working_memory`;
 
-		return this.store.getWorkingMemory(key);
+		let workingMemory = await this.store.getWorkingMemory(key);
+
+		if (
+			!workingMemory &&
+			this.config.workingMemory?.enabled &&
+			this.config.workingMemory.template
+		) {
+			workingMemory = this.config.workingMemory.template;
+		}
+
+		return workingMemory;
 	}
 
 	async updateWorkingMemory(options: {
@@ -210,6 +263,11 @@ export class Memory {
 		content: string;
 	}): Promise<void> {
 		const scope = this.config.workingMemory?.scope ?? "resource";
+		if (scope === "resource" && !options.resourceId) {
+			throw new Error(
+				"resourceId is required for resource-scoped working memory",
+			);
+		}
 		const key =
 			scope === "thread"
 				? `thread:${options.threadId}:working_memory`
