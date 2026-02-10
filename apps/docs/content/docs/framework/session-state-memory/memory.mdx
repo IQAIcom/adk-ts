@@ -1,305 +1,149 @@
 ---
 title: Memory
-description: Long-term knowledge storage for recalling past conversations
+description: Pluggable long-term memory for recalling past conversations
 ---
 
 import { Card, Cards } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Memory services let your agents remember information from past conversations, even across different sessions or days. This turns agents from stateless responders into systems that learn from history.
+Memory turns past sessions into searchable knowledge. Where **Session** tracks the current thread and **State** holds working data, **Memory** persists what matters across days or devices.
 
-**Key difference:**
+## Architecture
 
-- **Session State**: Current conversation data (today's booking details, current step)
-- **Memory**: Past conversation knowledge (preferences from last month, previous solutions)
-
-ADK-TS provides two memory implementations: keyword search for development and semantic vector search for production.
-
-## Memory Service Interface
-
-All memory services implement the `BaseMemoryService` interface:
+- **MemoryService** orchestrates storage, summarization, and embeddings. (`packages/adk/src/memory/memory-service.ts`)
+- **Storage Provider** decides how memories are persisted and searched.
+- **Summary Provider** turns a session into structured memory content.
+- **Embedding Provider** enables semantic search (optional).
 
 ```typescript
-interface BaseMemoryService {
-  addSessionToMemory(session: Session): Promise<void>;
-  searchMemory(params: {
-    appName: string;
-    userId: string;
-    query: string;
-  }): Promise<SearchMemoryResponse>;
-}
+import {
+  MemoryService,
+  InMemoryStorageProvider,
+  LlmSummaryProvider,
+  OpenAIEmbeddingProvider,
+  VectorStorageProvider,
+  FileVectorStore,
+} from "@iqai/adk";
+
+// Development: keyword search, no vectors
+const devMemory = new MemoryService({
+  storage: new InMemoryStorageProvider(),
+});
+
+// Production: vector search with summaries + embeddings
+const prodMemory = new MemoryService({
+  storage: new VectorStorageProvider({
+    vectorStore: new FileVectorStore({
+      basePath: "./data/memories",
+      writeSummaries: true,
+      format: "json",
+    }),
+    searchMode: "vector",
+  }),
+  summaryProvider: new LlmSummaryProvider({ model: "gpt-4o-mini" }),
+  embeddingProvider: new OpenAIEmbeddingProvider({
+    model: "text-embedding-3-small",
+  }),
+});
 ```
 
-- **`addSessionToMemory`**: Store a completed conversation in long-term memory
-- **`searchMemory`**: Find relevant past information using natural language queries
+## Storage Providers
 
-## Memory Service Options
-
-ADK-TS provides two memory implementations:
-
-### InMemoryMemoryService
-
-Simple keyword-based memory for development and testing.
-
-```typescript
-import { InMemoryMemoryService } from "@iqai/adk";
-
-const memoryService = new InMemoryMemoryService();
-```
-
-**How it works:**
-
-- Stores conversations in RAM (lost on restart)
-- Searches using exact word matching
-- Case-insensitive but doesn't understand synonyms
-
-**Example searches:**
-
-```typescript
-// ✅ Will match
-"TypeScript projects" → matches "I prefer TypeScript for projects"
-"prefer typescript"   → matches "I prefer TypeScript"
-
-// ❌ Won't match
-"TS"                  → won't find "TypeScript"
-"coding language"     → won't find "programming language"
-```
-
-**When to use:** Local development, testing, quick prototypes
-
-### VertexAiRagMemoryService
-
-Production-grade semantic search using Google Cloud Vertex AI.
-
-```typescript
-import { VertexAiRagMemoryService } from "@iqai/adk";
-
-const memoryService = new VertexAiRagMemoryService(
-  "projects/my-project/locations/us-central1/ragCorpora/my-corpus-id",
-  10, // Return top 10 results
-  0.5, // Similarity threshold (0.0 strict - 1.0 loose)
-);
-```
-
-**How it works:**
-
-- Stores conversations in Google Cloud
-- Uses vector embeddings for semantic search
-- Understands synonyms and context
-
-**Example searches:**
-
-```typescript
-// ✅ Understands meaning
-"luxury beachfront resorts" ≈ "high-end oceanfront accommodations"
-"vacation home"             ≈ "holiday rental property"
-"budget friendly"           ≈ "affordable", "economical"
-```
-
-**Prerequisites:**
-
-- **Google Cloud project** with billing enabled
-- **Vertex AI API** enabled in your project
-- **RAG Corpus** created in Vertex AI (stores your embeddings)
-- **Authentication** configured (Application Default Credentials or service account)
-
-**When to use:** Production apps requiring intelligent search
+- `InMemoryStorageProvider` – keyword search, fastest for local dev.
+- `FileStorageProvider` – keyword search persisted to disk (`json` or `markdown`).
+- `VectorStorageProvider` – uses a vector store adapter; supports `vector`, `keyword`, or `hybrid` search modes.
+  - Vector store adapters: `InMemoryVectorStore` (dev), `FileVectorStore` (persisted), `QdrantVectorStore` (production database).
 
 <Callout type="info">
-
-See [Vertex AI Sessions](/docs/framework/session-state-memory/vertex-ai) for
-detailed Vertex AI setup instructions.
-
+  Vector search requires an embedding provider. `QdrantVectorStore` needs the
+  `@qdrant/js-client-rest` dependency and a configured collection (supply
+  `dimensions` to auto-create).
 </Callout>
 
-## Using Memory
+## Summary Providers
 
-ADK-TS offers two approaches for integrating memory into your agents:
+- `LlmSummaryProvider` – LLM-generated summary, topic segments, entities, key facts. Configurable model and prompt.
+- `PassthroughSummaryProvider` – stores raw conversation text without calling an LLM.
 
-### With AgentBuilder (Recommended)
+If you omit `summaryProvider`, MemoryService stores minimal raw text from the session.
 
-The simplest way to add memory to your agent:
+## Embedding Providers
+
+Optional; required for vector search.
+
+- `OpenAIEmbeddingProvider`
+- `CohereEmbeddingProvider`
+- `OllamaEmbeddingProvider`
+- `OpenRouterEmbeddingProvider`
+
+## Attach Memory to an Agent
 
 ```typescript
 import {
   AgentBuilder,
   InMemorySessionService,
-  InMemoryMemoryService,
+  RecallMemoryTool,
+  MemoryService,
+  InMemoryStorageProvider,
 } from "@iqai/adk";
 
-async function main() {
-  const sessionService = new InMemorySessionService();
-  const memoryService = new InMemoryMemoryService();
-
-  const { runner } = await AgentBuilder.create("assistant_agent")
-    .withModel("gpt-4o")
-    .withInstruction("You are a helpful programming assistant.")
-    .withSessionService(sessionService, {
-      userId: "alice",
-      appName: "my-app",
-    })
-    .withMemory(memoryService)
-    .build();
-
-  const response = await runner.ask("What's my favorite programming language?");
-  console.log(response);
-}
-
-main().catch(console.error);
-```
-
-### With LLMAgent Directly
-
-For more control, configure memory directly:
-
-```typescript
-import { LlmAgent, InMemoryMemoryService } from "@iqai/adk";
-
-const memoryService = new InMemoryMemoryService();
-
-const agent = new LlmAgent({
-  name: "assistant",
-  description: "Helpful assistant with memory",
-  model: "gemini-2.0-flash",
-  memoryService,
-});
-```
-
-## Storing Conversations in Memory
-
-Memory services don't automatically save conversations—you control when to store them:
-
-```typescript
-// Initialize session and memory services
 const sessionService = new InMemorySessionService();
+const memoryService = new MemoryService({
+  storage: new InMemoryStorageProvider(),
+});
 
-// After a session completes
-const session = await sessionService.getSession(
-  "my-app",
-  "alice",
-  "session-123",
-);
+const { runner } = await AgentBuilder.withModel("gemini-2.5-flash")
+  .withInstruction("Use recall_memory to answer from prior chats.")
+  .withTools(new RecallMemoryTool())
+  .withSessionService(sessionService, { userId: "alice", appName: "demo" })
+  .withMemory(memoryService)
+  .build();
+```
 
-// Store in memory
+## Storing Sessions
+
+Memory is not saved automatically; call `addSessionToMemory` when you decide a session is worth keeping.
+
+```typescript
+const session = await sessionService.getSession("demo", "alice", sessionId);
 if (session) {
   await memoryService.addSessionToMemory(session);
-  console.log("Session stored in memory");
 }
 ```
 
-## Memory Search Tools
-
-When you configure an agent with a memory service, the framework can automatically handle memory searches through the context. However, you can also use explicit memory search tools for more control or specialized search logic.
-
-**When to use memory tools:**
-
-- Using `LlmAgent` directly (not AgentBuilder)
-- Need explicit control over memory search timing
-- Building custom memory search with specialized logic
-- Debugging or tracking when memory is accessed
-
-**When NOT needed:**
-
-- Using `AgentBuilder` with `withMemory()` (automatic memory access)
-
-### Built-in LoadMemoryTool
-
-The framework provides `LoadMemoryTool` for explicit memory search:
+## Searching Memory
 
 ```typescript
-import { LlmAgent, LoadMemoryTool } from "@iqai/adk";
-
-const agent = new LlmAgent({
-  name: "memory_agent",
-  description: "Agent with memory capabilities",
-  model: "gemini-2.0-flash",
-  tools: [new LoadMemoryTool()],
-});
-```
-
-The agent calls `load_memory` automatically when it needs past context.
-
-### Custom Memory Tools
-
-Create specialized memory search with custom logic:
-
-```typescript
-import {
-  BaseTool,
-  type FunctionDeclaration,
-  type ToolContext,
-} from "@iqai/adk";
-
-class PastPurchasesTool extends BaseTool {
-  constructor() {
-    super({
-      name: "search_purchase_history",
-      description: "Searches the user's past purchases and orders.",
-    });
-  }
-
-  getDeclaration(): FunctionDeclaration {
-    return {
-      name: this.name,
-      description: this.description,
-      parameters: {
-        properties: {
-          category: {
-            description: "Product category to search",
-          },
-        },
-        required: ["category"],
-      },
-    };
-  }
-
-  async runAsync(args: { category: string }, context: ToolContext) {
-    const results = await context.searchMemory(`${args.category} purchases`);
-
-    return {
-      purchases: results.memories.map(m => ({
-        item: m.content?.parts?.[0]?.text || "",
-        timestamp: m.timestamp,
-      })),
-    };
-  }
-}
-```
-
-### Direct Memory Search
-
-Search memory directly in your code:
-
-```typescript
-// Initialize memory service
-const memoryService = new InMemoryMemoryService();
-
-// Perform a search
-const { memories } = await memoryService.searchMemory({
-  appName: "my-app",
+const results = await memoryService.search({
   userId: "alice",
-  query: "favorite restaurants",
+  appName: "demo",
+  query: "favorite programming language",
+  filters: { after: "2026-01-01T00:00:00.000Z" },
+  limit: 5,
 });
-
-console.log(`Found ${memories.length} relevant memories`);
 ```
 
-## What Gets Stored in Memory
+With embeddings configured, MemoryService will embed the query and pass it to the storage provider for semantic search.
 
-Memory services automatically filter and store relevant conversation content:
+## Memory Tools
 
-**Stored:**
+- `RecallMemoryTool` / `LoadMemoryTool` / `PreloadMemoryTool` – search and load memories for the current user.
+- `WriteMemoryTool` – explicitly write a fact to memory.
+- `ForgetMemoryTool` – delete memories by ID or query.
+- `GetSessionDetailsTool` – fetch full session content for a memory hit.
 
-- ✅ User messages
-- ✅ Agent responses
-- ✅ Tool results with content
-- ✅ Metadata (author, timestamp)
+These tools use the configured `memoryService` and require `withMemory(...)` in your agent setup.
 
-**Not stored:**
+## What Gets Stored
 
-- ❌ Events without content
-- ❌ Empty messages
-- ❌ Binary data (use [artifacts](/docs/framework/artifacts))
+Stored: user messages, agent responses, tool outputs with text, timestamps, and structured summary fields (summary, segments, keyFacts, entities) when a summary provider is used.
+
+Not stored: empty events or binary data (use [Artifacts](/docs/framework/artifacts) for files/blobs).
+
+## Migration Notes
+
+- `InMemoryMemoryService` is deprecated; use `MemoryService` with `InMemoryStorageProvider`.
+- `VertexAiRagMemoryService` has been removed; use `MemoryService` plus `VectorStorageProvider` with your vector DB (e.g., Qdrant) or `FileVectorStore` for persistent local vectors.
 
 ## Next Steps
 
@@ -321,7 +165,7 @@ Memory services automatically filter and store relevant conversation content:
   />
   <Card
     title="Vertex AI"
-    description="Scale with Vertex AI enterprise features"
+    description="Scale sessions in the cloud"
     href="/docs/framework/session-state-memory/vertex-ai"
   />
 </Cards>
