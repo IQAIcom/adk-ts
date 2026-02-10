@@ -120,7 +120,7 @@ const MCP_SERVERS: McpServer[] = [
 	{
 		slug: "defillama",
 		name: "DefiLlama MCP Client",
-		package: "@iqai/mcp-defillama",
+		package: "@iqai/defillama-mcp",
 	},
 	{
 		slug: "kalshi",
