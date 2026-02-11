@@ -30,6 +30,69 @@ interface McpToolsListProps {
 	serverId: string;
 }
 
+function ToolTile({ tool }: { tool: McpTool }) {
+	const properties = tool.inputSchema?.properties;
+	const required = tool.inputSchema?.required || [];
+
+	return (
+		<details className="not-prose group rounded-lg border border-fd-border bg-fd-card transition-colors hover:border-fd-primary/30 [&[open]]:border-fd-primary/40 [&[open]]:bg-fd-card">
+			<summary className="flex cursor-pointer items-start gap-3 px-4 py-3 select-none list-none [&::-webkit-details-marker]:hidden">
+				<svg
+					className="mt-1 size-4 shrink-0 text-fd-muted-foreground transition-transform group-open:rotate-90"
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+					aria-hidden="true"
+				>
+					<title>Toggle</title>
+					<path
+						fillRule="evenodd"
+						d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+						clipRule="evenodd"
+					/>
+				</svg>
+				<div className="flex-1 min-w-0">
+					<div className="flex flex-wrap items-center gap-2">
+						<code className="rounded-md bg-fd-primary/10 px-2 py-0.5 text-sm font-semibold text-fd-primary">
+							{tool.name}
+						</code>
+					</div>
+					{properties && Object.keys(properties).length > 0 && (
+						<div className="mt-2 flex flex-wrap gap-1.5">
+							{Object.entries(properties).map(([name, param]) => {
+								const isRequired = required.includes(name);
+								return (
+									<span
+										key={name}
+										className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ${
+											isRequired
+												? "bg-fd-primary/10 text-fd-primary"
+												: "bg-fd-secondary text-fd-secondary-foreground"
+										}`}
+									>
+										{name}
+										<span className="opacity-50">:{param.type || "any"}</span>
+									</span>
+								);
+							})}
+						</div>
+					)}
+					{(!properties || Object.keys(properties).length === 0) && (
+						<p className="mt-1 text-xs text-fd-muted-foreground italic">
+							No parameters
+						</p>
+					)}
+				</div>
+			</summary>
+			<div className="border-t border-fd-border px-4 py-3 pl-11">
+				<p className="text-sm leading-relaxed text-fd-muted-foreground">
+					{tool.description}
+				</p>
+			</div>
+		</details>
+	);
+}
+
 export function McpToolsList({ serverId }: McpToolsListProps) {
 	const serverData = (
 		mcpToolsData.servers as unknown as Record<string, ServerData | undefined>
@@ -61,58 +124,10 @@ export function McpToolsList({ serverId }: McpToolsListProps) {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="not-prose space-y-2">
 			{serverData.tools.map((tool) => (
-				<ToolCard key={tool.name} tool={tool} />
+				<ToolTile key={tool.name} tool={tool} />
 			))}
-		</div>
-	);
-}
-
-function ToolCard({ tool }: { tool: McpTool }) {
-	const properties = tool.inputSchema?.properties;
-	const required = tool.inputSchema?.required;
-
-	return (
-		<div>
-			<h3>
-				<code>{tool.name}</code>
-			</h3>
-			<p>{tool.description}</p>
-			{properties && Object.keys(properties).length > 0 && (
-				<div>
-					<strong>Parameters:</strong>
-					<table>
-						<thead>
-							<tr>
-								<th>Name</th>
-								<th>Type</th>
-								<th>Required</th>
-								<th>Description</th>
-							</tr>
-						</thead>
-						<tbody>
-							{Object.entries(properties).map(([name, param]) => (
-								<tr key={name}>
-									<td>
-										<code>{name}</code>
-									</td>
-									<td>
-										<code>{param.type || "any"}</code>
-									</td>
-									<td>{required?.includes(name) ? "Yes" : "No"}</td>
-									<td>{param.description || "-"}</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
-			)}
-			{(!properties || Object.keys(properties).length === 0) && (
-				<p>
-					<em>No parameters required.</em>
-				</p>
-			)}
 		</div>
 	);
 }
