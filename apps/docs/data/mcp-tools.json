@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-02-11T12:36:59.534Z",
+	"generatedAt": "2026-02-11T18:05:44.363Z",
 	"servers": {
 		"abi": {
 			"name": "ABI MCP Client",
@@ -840,7 +840,7 @@
 							},
 							"deadline": {
 								"type": "string",
-								"default": "2026-02-11T13:36:54.075Z",
+								"default": "2026-02-11T19:05:18.686Z",
 								"description": "(Optional, defaults to 1 hour from now) Timestamp in ISO format, that identifies when user refund will begin if the swap isn't completed by then. It needs to exceed the time required for the deposit tx to be minted, e.g. for Bitcoin it might require ~1h depending on the gas fees paid."
 							},
 							"referral": {
