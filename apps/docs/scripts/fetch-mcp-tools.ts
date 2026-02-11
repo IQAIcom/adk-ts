@@ -77,7 +77,7 @@ const MCP_SERVERS: McpServer[] = [
 	{
 		slug: "near-intents",
 		name: "Near Intents Swaps MCP Client",
-		package: "@iqai/mcp-near-intents",
+		package: "@iqai/mcp-near-intent-swaps",
 	},
 	{ slug: "odos", name: "ODOS MCP Client", package: "@iqai/mcp-odos" },
 	{
@@ -163,13 +163,14 @@ async function fetchToolsForServer(
 	}
 
 	const args = isUrl(server.package)
-		? ["-y", "mcp-remote@latest", server.package]
-		: ["-y", server.package];
+		? ["mcp-remote@latest", server.package]
+		: [server.package];
 
 	const transport = new StdioClientTransport({
-		command: "npx",
-		args,
+		command: "pnpm",
+		args: ["dlx", ...args],
 		env: DUMMY_ENV,
+		stderr: "ignore",
 	});
 
 	const client = new Client(
@@ -178,19 +179,29 @@ async function fetchToolsForServer(
 	);
 
 	try {
+		const ac1 = new AbortController();
+		const connectTimer = setTimeout(() => ac1.abort(), TIMEOUT_MS);
 		await Promise.race([
 			client.connect(transport),
-			new Promise<never>((_, reject) =>
-				setTimeout(() => reject(new Error("Connection timeout")), TIMEOUT_MS),
-			),
+			new Promise<never>((_, reject) => {
+				ac1.signal.addEventListener("abort", () =>
+					reject(new Error("Connection timeout")),
+				);
+			}),
 		]);
+		clearTimeout(connectTimer);
 
+		const ac2 = new AbortController();
+		const listTimer = setTimeout(() => ac2.abort(), TIMEOUT_MS);
 		const result = await Promise.race([
 			client.listTools(),
-			new Promise<never>((_, reject) =>
-				setTimeout(() => reject(new Error("listTools timeout")), TIMEOUT_MS),
-			),
+			new Promise<never>((_, reject) => {
+				ac2.signal.addEventListener("abort", () =>
+					reject(new Error("listTools timeout")),
+				);
+			}),
 		]);
+		clearTimeout(listTimer);
 
 		const tools: McpToolData[] = (result.tools || []).map((tool) => ({
 			name: tool.name,
@@ -223,16 +234,27 @@ async function fetchToolsForServer(
 	}
 }
 
+const CONCURRENCY = 5;
+
 async function main() {
 	const servers: Record<string, McpServerResult> = {};
 
-	for (const server of MCP_SERVERS) {
-		console.log(`Fetching tools for ${server.slug}...`);
-		const result = await fetchToolsForServer(server);
-		servers[server.slug] = result;
-		console.log(
-			`  -> ${result.tools.length} tools${result.error ? ` (${result.error})` : ""}`,
+	for (let i = 0; i < MCP_SERVERS.length; i += CONCURRENCY) {
+		const batch = MCP_SERVERS.slice(i, i + CONCURRENCY);
+		const results = await Promise.all(
+			batch.map(async (server) => {
+				console.log(`Fetching tools for ${server.slug}...`);
+				const result = await fetchToolsForServer(server);
+				console.log(
+					`  -> ${server.slug}: ${result.tools.length} tools${result.error ? ` (${result.error})` : ""}`,
+				);
+				return { slug: server.slug, result };
+			}),
 		);
+
+		for (const { slug, result } of results) {
+			servers[slug] = result;
+		}
 	}
 
 	const output = {
