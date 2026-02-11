@@ -151,6 +151,20 @@ const MCP_SERVERS: McpServer[] = [
 
 const TIMEOUT_MS = 60_000;
 
+function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
+	const ac = new AbortController();
+	const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+	return Promise.race([
+		promise.then((result) => {
+			clearTimeout(timer);
+			return result;
+		}),
+		new Promise<never>((_, reject) => {
+			ac.signal.addEventListener("abort", () => reject(new Error(message)));
+		}),
+	]);
+}
+
 function isUrl(value: string): boolean {
 	try {
 		const url = new URL(value);
@@ -176,11 +190,16 @@ async function fetchToolsForServer(
 		? ["mcp-remote@latest", server.package]
 		: [server.package];
 
+	const stderrChunks: Buffer[] = [];
 	const transport = new StdioClientTransport({
 		command: "pnpm",
 		args: ["dlx", ...args],
 		env: DUMMY_ENV,
-		stderr: "ignore",
+		stderr: "pipe",
+	});
+
+	transport.stderr?.on("data", (chunk: Buffer) => {
+		stderrChunks.push(chunk);
 	});
 
 	const client = new Client(
@@ -189,29 +208,8 @@ async function fetchToolsForServer(
 	);
 
 	try {
-		const ac1 = new AbortController();
-		const connectTimer = setTimeout(() => ac1.abort(), TIMEOUT_MS);
-		await Promise.race([
-			client.connect(transport),
-			new Promise<never>((_, reject) => {
-				ac1.signal.addEventListener("abort", () =>
-					reject(new Error("Connection timeout")),
-				);
-			}),
-		]);
-		clearTimeout(connectTimer);
-
-		const ac2 = new AbortController();
-		const listTimer = setTimeout(() => ac2.abort(), TIMEOUT_MS);
-		const result = await Promise.race([
-			client.listTools(),
-			new Promise<never>((_, reject) => {
-				ac2.signal.addEventListener("abort", () =>
-					reject(new Error("listTools timeout")),
-				);
-			}),
-		]);
-		clearTimeout(listTimer);
+		await withTimeout(client.connect(transport), "Connection timeout");
+		const result = await withTimeout(client.listTools(), "listTools timeout");
 
 		const tools: McpToolData[] = (result.tools || []).map((tool) => ({
 			name: tool.name,
@@ -227,7 +225,12 @@ async function fetchToolsForServer(
 		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		console.error(`  Failed: ${message}`);
+		const stderrOutput = Buffer.concat(stderrChunks).toString().trim();
+		if (stderrOutput) {
+			console.error(`  Failed: ${message}\n  stderr: ${stderrOutput}`);
+		} else {
+			console.error(`  Failed: ${message}`);
+		}
 		return {
 			name: server.name,
 			package: server.package,
