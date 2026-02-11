@@ -20,9 +20,11 @@ jobs:
           node-version: 22.0.0
           cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Rebuild native dependencies
-        run: pnpm rebuild
+        run: pnpm install --frozen-lockfile
+      - name: Ensure Rollup native dependencies are installed
+        run: |
+          cd packages/adk
+          pnpm add @rollup/rollup-linux-x64-gnu --save-optional || true
       - name: Code Quality Check
         run: pnpm lint-staged --allow-empty
       - name: ADK tests
