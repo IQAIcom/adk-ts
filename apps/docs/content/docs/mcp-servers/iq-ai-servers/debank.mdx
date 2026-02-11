@@ -67,45 +67,9 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Available Tools (18)
+## Available Tools
 
-### Chain & Protocol Data
-
-| Tool                                           | Description                                                 |
-| ---------------------------------------------- | ----------------------------------------------------------- |
-| `debank_get_supported_chain_list`              | List all blockchain networks supported by DeBank            |
-| `debank_get_chain`                             | Fetch detailed information about a specific blockchain      |
-| `debank_get_gas_prices`                        | Get current gas pricing at different transaction speeds     |
-| `debank_get_all_protocols_of_supported_chains` | Retrieve DeFi protocols across specified chains             |
-| `debank_get_protocol_information`              | Get comprehensive protocol details                          |
-| `debank_get_pool_information`                  | Fetch liquidity pool details including TVL and user metrics |
-
-### Token Data
-
-| Tool                                 | Description                                                       |
-| ------------------------------------ | ----------------------------------------------------------------- |
-| `debank_get_token_information`       | Get comprehensive token details (supports wrapped token keywords) |
-| `debank_get_list_token_information`  | Retrieve data for multiple tokens at once (up to 100)             |
-| `debank_get_token_history_price`     | Get historical token pricing for specified dates                  |
-| `debank_get_top_holders_of_token`    | Identify major token holders ranked by holdings                   |
-| `debank_get_top_holders_of_protocol` | List largest stakeholders within a protocol                       |
-
-### User Portfolio
-
-| Tool                                        | Description                                           |
-| ------------------------------------------- | ----------------------------------------------------- |
-| `debank_get_user_all_token_list`            | Fetch comprehensive token balances across chains      |
-| `debank_get_user_chain_balance`             | Get USD-valued account balance on a specified chain   |
-| `debank_get_user_all_simple_protocol_list`  | Show simplified protocol balances overview            |
-| `debank_get_user_all_complex_protocol_list` | Display detailed portfolio positions across protocols |
-| `debank_get_user_all_nft_list`              | List NFT holdings across all chains                   |
-| `debank_get_user_all_history_list`          | Retrieve transaction history across chains            |
-
-### Transactions
-
-| Tool                         | Description                                              |
-| ---------------------------- | -------------------------------------------------------- |
-| `debank_explain_transaction` | Decode and explain transactions in human-readable format |
+<McpToolsList serverId="debank" />
 
 ## Environment Variables
 
