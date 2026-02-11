@@ -1,0 +1,59 @@
+name: Sync MCP Tools
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'
+  push:
+    paths:
+      - 'apps/docs/scripts/fetch-mcp-tools.ts'
+      - '.github/workflows/sync-mcp-tools.yml'
+
+jobs:
+  sync-mcp-tools:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fetch MCP tools
+        run: pnpm run fetch-tools
+        working-directory: apps/docs
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [[ -n $(git status -s apps/docs/data/mcp-tools.json) ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add apps/docs/data/mcp-tools.json
+          git commit -m "chore(docs): auto-sync MCP tools data
+
+          Automatically fetched and updated MCP server tool definitions.
+
+          Generated at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          git push

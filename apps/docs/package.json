@@ -3,7 +3,7 @@
 	"private": true,
 	"version": "0.0.0",
 	"scripts": {
-		"build": "tsx scripts/fetch-mcp-tools.ts && next build",
+		"build": "next build",
 		"dev": "next dev --turbo",
 		"start": "next start",
 		"postinstall": "fumadocs-mdx",
