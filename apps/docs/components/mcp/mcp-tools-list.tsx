@@ -1,4 +1,4 @@
-import mcpToolsData from "@/data/mcp-tools.json";
+import clsx from "clsx";
 import { Callout } from "fumadocs-ui/components/callout";
 
 interface ToolParameter {
@@ -26,9 +26,18 @@ interface ServerData {
 	error: string | null;
 }
 
+interface McpToolsData {
+	generatedAt: string;
+	servers: Record<string, ServerData>;
+}
+
 interface McpToolsListProps {
 	serverId: string;
 }
+
+import rawMcpToolsData from "@/data/mcp-tools.json";
+
+const mcpToolsData = rawMcpToolsData as unknown as McpToolsData;
 
 function ToolTile({ tool }: { tool: McpTool }) {
 	const properties = tool.inputSchema?.properties;
@@ -64,11 +73,12 @@ function ToolTile({ tool }: { tool: McpTool }) {
 								return (
 									<span
 										key={name}
-										className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium ${
+										className={clsx(
+											"inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium",
 											isRequired
 												? "border-fd-primary/30 bg-fd-primary/5 text-fd-primary"
-												: "border-fd-border bg-fd-card text-fd-muted-foreground"
-										}`}
+												: "border-fd-border bg-fd-card text-fd-muted-foreground",
+										)}
 									>
 										{name}
 										<span className="opacity-50">:{param.type || "any"}</span>
@@ -97,9 +107,7 @@ function ToolTile({ tool }: { tool: McpTool }) {
 }
 
 export function McpToolsList({ serverId }: McpToolsListProps) {
-	const serverData = (
-		mcpToolsData.servers as unknown as Record<string, ServerData | undefined>
-	)[serverId];
+	const serverData = mcpToolsData.servers[serverId];
 
 	if (!serverData) {
 		return (
