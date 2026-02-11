@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-02-10T08:59:16.903Z",
+	"generatedAt": "2026-02-11T11:23:30.405Z",
 	"servers": {
 		"abi": {
 			"name": "ABI MCP Client",
@@ -10,26 +10,645 @@
 		"atp": {
 			"name": "ATP MCP Client",
 			"package": "@iqai/mcp-atp",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"tools": [
+				{
+					"name": "ATP_AGENT_STATS",
+					"description": "Get statistics and details of a given AI agent on the ATP platform.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tokenContract": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the agent token (e.g., 0x123...abc)."
+							}
+						},
+						"required": ["tokenContract"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "ATP_GET_AGENTS",
+					"description": "Retrieve a list of AI agents from the ATP platform with optional sorting and limiting.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"sort": {
+								"type": "string",
+								"enum": ["mcap", "holders", "inferences"],
+								"description": "\n        Sort agents by market cap, holders count, or inference count.\n        Available options are:\n        - mcap: Sort by market cap\n        - holders: Sort by holders count\n        - inferences: Sort by inference count\n        Defaults to market cap if not specified.\n      "
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"default": 100
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "ATP_GET_AGENT_LOGS",
+					"description": "Retrieve logs for a specific AI agent, with pagination.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"agentTokenContract": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the agent token."
+							},
+							"page": {
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"description": "Page number for pagination. Defaults to 1."
+							},
+							"limit": {
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"description": "Number of logs per page. Defaults to 10."
+							}
+						},
+						"required": ["agentTokenContract"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "ATP_ADD_AGENT_LOG",
+					"description": "Add a new log entry for a specific AI agent. Requires API key as a parameter.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"agentTokenContract": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the agent token."
+							},
+							"content": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The content of the log message."
+							},
+							"txHash": {
+								"type": "string",
+								"description": "Optional transaction hash associated with this log entry."
+							},
+							"chainId": {
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"description": "Optional chain ID associated with this log entry."
+							}
+						},
+						"required": ["agentTokenContract", "content"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "ATP_BUY_AGENT",
+					"description": "Buy AI agent tokens using IQ as the base currency.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tokenContract": {
+								"type": "string",
+								"pattern": "^0x",
+								"minLength": 42,
+								"maxLength": 42,
+								"description": "The contract address of the agent token to buy."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+$",
+								"description": "The amount of base currency (IQ) to spend for buying the agent token, specified in wei units (e.g., '1000000000000000000' for 1 IQ)."
+							}
+						},
+						"required": ["tokenContract", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "ATP_SELL_AGENT",
+					"description": "Sell AI agent tokens back to the protocol.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tokenContract": {
+								"type": "string",
+								"pattern": "^0x",
+								"minLength": 42,
+								"maxLength": 42,
+								"description": "The contract address of the agent token to sell."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+$",
+								"description": "The amount of agent tokens to sell, specified in wei units (e.g., '1000000000000000000' for 1 token)."
+							}
+						},
+						"required": ["tokenContract", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "ATP_GET_AGENT_POSITIONS",
+					"description": "Retrieve the positions of the user's agent tokens.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false
+					}
+				}
+			],
+			"error": null
 		},
 		"bamm": {
 			"name": "BAMM MCP Client",
 			"package": "@iqai/mcp-bamm",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"tools": [
+				{
+					"name": "ADD_COLLATERAL",
+					"description": "Add collateral to your BAMM position",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"bammAddress": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the BAMM contract"
+							},
+							"amount": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The amount of collateral to add"
+							},
+							"collateralToken": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the collateral token"
+							},
+							"collateralTokenSymbol": {
+								"type": "string",
+								"description": "The symbol of the collateral token (e.g., 'IQT')"
+							}
+						},
+						"required": ["bammAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "BORROW",
+					"description": "Borrow tokens from a BAMM position",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"bammAddress": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the BAMM contract"
+							},
+							"amount": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The amount to borrow"
+							},
+							"borrowToken": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the token to borrow"
+							},
+							"borrowTokenSymbol": {
+								"type": "string",
+								"description": "The symbol of the token to borrow (e.g., 'IQT')"
+							}
+						},
+						"required": ["bammAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_POSITIONS",
+					"description": "Get all your active BAMM positions",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "LEND",
+					"description": "Lend Fraxswap LP tokens to a BAMM contract",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"bammAddress": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the BAMM contract"
+							},
+							"amount": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The amount of LP tokens to lend"
+							}
+						},
+						"required": ["bammAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "POOL_STATS",
+					"description": "Get statistics for all BAMM pools",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "REMOVE_COLLATERAL",
+					"description": "Remove collateral from your BAMM position",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"bammAddress": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the BAMM contract"
+							},
+							"amount": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The amount of collateral to remove"
+							},
+							"collateralToken": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the collateral token"
+							},
+							"collateralTokenSymbol": {
+								"type": "string",
+								"description": "The symbol of the collateral token (e.g., 'IQT')"
+							}
+						},
+						"required": ["bammAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "REPAY",
+					"description": "Repay borrowed tokens to a BAMM position",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"bammAddress": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the BAMM contract"
+							},
+							"amount": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The amount to repay"
+							},
+							"borrowToken": {
+								"type": "string",
+								"pattern": "^0x[a-fA-F0-9]{40}$",
+								"description": "The address of the token to repay"
+							},
+							"borrowTokenSymbol": {
+								"type": "string",
+								"description": "The symbol of the token to repay (e.g., 'IQT')"
+							}
+						},
+						"required": ["bammAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
 		},
 		"fraxlend": {
 			"name": "Fraxlend MCP Client",
 			"package": "@iqai/mcp-fraxlend",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"tools": [
+				{
+					"name": "FRAXLEND_ADD_COLLATERAL",
+					"description": "Add collateral to a FraxLend position",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"pairAddress": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the asset to add as collateral."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+(\\.\\d+)?$",
+								"description": "The amount for the asset to add as collateral in the FraxLend pool."
+							}
+						},
+						"required": ["pairAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "FRAXLEND_GET_POSITIONS",
+					"description": "Get your positions in FraxLend pools",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"address": {
+								"type": "string",
+								"description": "The address of the user to get the positions for"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "FRAXLEND_BORROW",
+					"description": "Borrow assets from a FraxLend pool",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"pairAddress": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the agent token to sell."
+							},
+							"receiver": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The address to receive the borrowed assets."
+							},
+							"collateralAmount": {
+								"type": "string",
+								"pattern": "^\\d+(\\.\\d+)?$",
+								"description": "The amount for the collateral asset to deposit in the FraxLend pool."
+							},
+							"borrowAmount": {
+								"type": "string",
+								"pattern": "^\\d+(\\.\\d+)?$",
+								"description": "The amount for the asset to borrow from the FraxLend pool."
+							}
+						},
+						"required": [
+							"pairAddress",
+							"receiver",
+							"collateralAmount",
+							"borrowAmount"
+						],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "FRAXLEND_GET_STATS",
+					"description": "Get lending statistics from FraxLend pools",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "FRAXLEND_LEND",
+					"description": "Lend assets to a FraxLend pool",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"pairAddress": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the asset to lend."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+(\\.\\d+)?$",
+								"description": "The amount for the asset to lend in the FraxLend pool."
+							}
+						},
+						"required": ["pairAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "FRAXLEND_GET_PAIR_ADDRESS",
+					"description": "Get FraxLend pair addresses and pool information",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"assetSymbol": {
+								"type": "string",
+								"description": "The symbol of the asset token."
+							},
+							"collateralSymbol": {
+								"type": "string",
+								"description": "The symbol of the collateral token."
+							},
+							"sortByApr": {
+								"type": "string",
+								"enum": ["highest", "lowest"],
+								"description": "Sort the results by APR, either highest or lowest."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "FRAXLEND_REMOVE_COLLATERAL",
+					"description": "Remove collateral from a FraxLend position",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"pairAddress": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the asset to remove as collateral."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+(\\.\\d+)?$",
+								"description": "The amount for the asset to remove collateral from the FraxLend pool."
+							}
+						},
+						"required": ["pairAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "FRAXLEND_REPAY",
+					"description": "Repay borrowed assets to a FraxLend pool",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"pairAddress": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the asset to repay."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+(\\.\\d+)?$",
+								"description": "The amount for the asset to repay in the FraxLend pool."
+							}
+						},
+						"required": ["pairAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "FRAXLEND_WITHDRAW",
+					"description": "Withdraw assets from a FraxLend pool",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"pairAddress": {
+								"type": "string",
+								"pattern": "^0x",
+								"description": "The contract address of the asset to withdraw."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+(\\.\\d+)?$",
+								"description": "The amount for the asset to withdraw from the FraxLend pool."
+							}
+						},
+						"required": ["pairAddress", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
 		},
 		"iqwiki": {
 			"name": "IQWiki MCP Client",
 			"package": "@iqai/mcp-iqwiki",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"tools": [
+				{
+					"name": "GET_WIKI",
+					"description": "Get details about a specific wiki from IQ.wiki by ID",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The ID of the wiki to retrieve"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_USER_CREATED_WIKIS",
+					"description": "Get wikis created by a specific user on IQ.wiki",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The Ethereum address of the user"
+							},
+							"timeFrameSeconds": {
+								"type": "number",
+								"description": "Optional time frame in seconds to filter results"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_USER_EDITED_WIKIS",
+					"description": "Get wikis edited by a specific user on IQ.wiki",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The Ethereum address of the user"
+							},
+							"timeFrameSeconds": {
+								"type": "number",
+								"description": "Optional time frame in seconds to filter results"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_USER_WIKI_ACTIVITIES",
+					"description": "Get wiki activities (creations or edits) for a specific user on IQ.wiki",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The Ethereum address of the user"
+							},
+							"activityType": {
+								"type": "string",
+								"enum": ["CREATED", "UPDATED"],
+								"description": "Type of activity: CREATED or UPDATED"
+							},
+							"timeFrameSeconds": {
+								"type": "number",
+								"description": "Optional time frame in seconds to filter results"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "SEARCH_WIKI",
+					"description": "Search for a wiki from IQ.wiki by query",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The query to search for"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
 		},
 		"near-agent": {
 			"name": "NEAR Agent MCP Client",
@@ -110,15 +729,284 @@
 		},
 		"near-intents": {
 			"name": "Near Intents Swaps MCP Client",
-			"package": "@iqai/mcp-near-intents",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"package": "@iqai/mcp-near-intent-swaps",
+			"tools": [
+				{
+					"name": "GET_NEAR_SWAP_SIMPLE_QUOTE",
+					"description": "[STEP 1] Get a simple quote for a NEAR intent swap between different chains and assets. This is a dry run that doesn't require any addresses - perfect for users who want to check swap rates and fees before committing to a swap. Use this when users want to explore swap options without providing recipient addresses. NOTE: If users provide simple token names (e.g., 'ETH', 'USDC'), first use GET_NEAR_SWAP_TOKENS to discover the exact token IDs required for this API.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"originAsset": {
+								"type": "string",
+								"minLength": 1,
+								"description": "ID of the origin asset (e.g. 'nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near')"
+							},
+							"destinationAsset": {
+								"type": "string",
+								"minLength": 1,
+								"description": "ID of the destination asset (e.g. 'nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near')"
+							},
+							"amount": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Amount to swap as the base amount, denoted in the smallest unit of the specified currency (e.g., wei for ETH)"
+							},
+							"swapType": {
+								"type": "string",
+								"enum": ["EXACT_INPUT", "EXACT_OUTPUT"],
+								"default": "EXACT_INPUT",
+								"description": "(Optional, defaults to EXACT_INPUT) Whether to use the amount as input or output for the swap calculation"
+							},
+							"slippageTolerance": {
+								"type": "number",
+								"default": 100,
+								"description": "(Optional, defaults to 100) Slippage tolerance in basis points (100 = 1%)"
+							},
+							"quoteWaitingTimeMs": {
+								"type": "number",
+								"default": 3000,
+								"description": "(Optional, defaults to 3000) Time in milliseconds to wait for quote from relay"
+							}
+						},
+						"required": ["originAsset", "destinationAsset", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_NEAR_SWAP_FULL_QUOTE",
+					"description": "[STEP 2] Get a full quote with deposit address for a NEAR intent swap. This requires recipient and refund addresses and returns a unique deposit address where users can send their funds to initiate the swap. Use this when users are ready to proceed with the swap after checking the simple quote. NOTE: If users provide simple token names (e.g., 'ETH', 'USDC'), first use GET_NEAR_SWAP_TOKENS to discover the exact token IDs required for this API.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"swapType": {
+								"type": "string",
+								"enum": ["EXACT_INPUT", "EXACT_OUTPUT"],
+								"default": "EXACT_INPUT",
+								"description": "(Optional, defaults to EXACT_INPUT) Whether to use the amount as the output or the input for the basis of the swap: EXACT_INPUT - request output amount for exact input, EXACT_OUTPUT - request output amount for exact output. The refundTo address will always receive excess tokens back even after the swap is complete."
+							},
+							"originAsset": {
+								"type": "string",
+								"minLength": 1,
+								"description": "ID of the origin asset (e.g. 'nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near')"
+							},
+							"destinationAsset": {
+								"type": "string",
+								"minLength": 1,
+								"description": "ID of the destination asset (e.g. 'nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near')"
+							},
+							"amount": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Amount to swap as the base amount (can be switched to exact input/output using the dedicated flag), denoted in the smallest unit of the specified currency (e.g., wei for ETH)"
+							},
+							"recipient": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Recipient address. The format should match recipientType."
+							},
+							"recipientType": {
+								"type": "string",
+								"enum": ["DESTINATION_CHAIN", "INTENTS"],
+								"default": "DESTINATION_CHAIN",
+								"description": "(Optional, defaults to DESTINATION_CHAIN) Type of recipient address: DESTINATION_CHAIN - assets will be transferred to chain of destinationAsset, INTENTS - assets will be transferred to account inside intents"
+							},
+							"refundTo": {
+								"type": "string",
+								"description": "(Optional) Address for user refund"
+							},
+							"refundType": {
+								"type": "string",
+								"enum": ["ORIGIN_CHAIN", "INTENTS"],
+								"default": "ORIGIN_CHAIN",
+								"description": "(Optional, defaults to ORIGIN_CHAIN) Type of refund address: ORIGIN_CHAIN - assets will be refunded to refundTo address on the origin chain, INTENTS - assets will be refunded to refundTo intents account"
+							},
+							"slippageTolerance": {
+								"type": "number",
+								"default": 100,
+								"description": "(Optional, defaults to 100) Slippage tolerance for the swap. This value is in basis points (1/100th of a percent), e.g. 100 for 1% slippage."
+							},
+							"dry": {
+								"type": "boolean",
+								"default": false,
+								"description": "(Optional, defaults to false) Flag indicating whether this is a dry run request. If true, the response will NOT contain the following fields: depositAddress, timeWhenInactive, deadline."
+							},
+							"depositType": {
+								"type": "string",
+								"enum": ["ORIGIN_CHAIN", "INTENTS"],
+								"default": "ORIGIN_CHAIN",
+								"description": "(Optional, defaults to ORIGIN_CHAIN) Type of the deposit address: ORIGIN_CHAIN - deposit address on the origin chain, INTENTS - account ID inside near intents to which you should transfer assets inside intents"
+							},
+							"deadline": {
+								"type": "string",
+								"default": "2026-02-11T12:22:57.403Z",
+								"description": "(Optional, defaults to 1 hour from now) Timestamp in ISO format, that identifies when user refund will begin if the swap isn't completed by then. It needs to exceed the time required for the deposit tx to be minted, e.g. for Bitcoin it might require ~1h depending on the gas fees paid."
+							},
+							"referral": {
+								"type": "string",
+								"description": "(Optional) Referral identifier (lower case only). It will be reflected in the on-chain data and displayed on public analytics platforms."
+							},
+							"quoteWaitingTimeMs": {
+								"type": "number",
+								"default": 3000,
+								"description": "(Optional, defaults to 3000) Time in milliseconds user is willing to wait for quote from relay"
+							}
+						},
+						"required": [
+							"originAsset",
+							"destinationAsset",
+							"amount",
+							"recipient"
+						],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "EXECUTE_NEAR_SWAP",
+					"description": "[STEP 4] Submit a deposit transaction hash to initiate the swap after sending funds to the deposit address. This notifies the 1Click service that funds have been sent and triggers the swap execution process. Use this after users have sent their funds to the deposit address from the full quote response.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"txHash": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Transaction hash of your deposit transaction that was sent to the deposit address from the quote"
+							},
+							"depositAddress": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The deposit address that was provided in the quote response and to which the deposit transaction was sent"
+							}
+						},
+						"required": ["txHash", "depositAddress"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CHECK_NEAR_SWAP_STATUS",
+					"description": "[STEP 5] Check the current execution status of a NEAR intent swap. Returns the swap state (PENDING_DEPOSIT, PROCESSING, SUCCESS, REFUNDED, FAILED, etc.) along with detailed transaction information. Use this to monitor swap progress after initiating the swap, and continue polling until the swap is complete.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"depositAddress": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The unique deposit address from the quote response - used to track and retrieve the current status of the swap"
+							}
+						},
+						"required": ["depositAddress"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_NEAR_SWAP_TOKENS",
+					"description": "[DISCOVERY] Get a list of tokens currently supported by the 1Click API for NEAR Intents. Returns token metadata including blockchain, contract address, current USD price, symbol, decimals, and price update timestamp. Use this to help users discover available tokens before requesting quotes.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
 		},
 		"odos": {
 			"name": "ODOS MCP Client",
 			"package": "@iqai/mcp-odos",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"tools": [
+				{
+					"name": "ODOS_GET_QUOTE",
+					"description": "Get a quote for a swap or exchange operation",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain": {
+								"type": "string",
+								"description": "The blockchain network to execute the transaction on. uses fraxtal as default",
+								"default": "fraxtal"
+							},
+							"fromToken": {
+								"type": "string",
+								"description": "The token to swap from (address)."
+							},
+							"toToken": {
+								"type": "string",
+								"description": "The token to swap to (address)."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+$",
+								"description": "The amount of tokens to swap, in wei."
+							},
+							"prettyFormat": {
+								"type": "boolean",
+								"description": "Whether to pretty format the quote.",
+								"default": true
+							}
+						},
+						"required": ["fromToken", "toToken", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "ODOS_SWAP",
+					"description": "Execute a swap transaction",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain": {
+								"type": "string",
+								"description": "The blockchain network to execute the transaction on. uses fraxtal as default",
+								"default": "fraxtal"
+							},
+							"fromToken": {
+								"type": "string",
+								"description": "The token to swap from (address)."
+							},
+							"toToken": {
+								"type": "string",
+								"description": "The token to swap to (address)."
+							},
+							"amount": {
+								"type": "string",
+								"pattern": "^\\d+$",
+								"description": "The amount of tokens to swap, in wei."
+							},
+							"prettyFormat": {
+								"type": "boolean",
+								"description": "Whether to pretty format the quote.",
+								"default": true
+							}
+						},
+						"required": ["fromToken", "toToken", "amount"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "ODOS_GET_CHAIN_ID",
+					"description": "Get the chain ID for a given chain name",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain": {
+								"type": "string",
+								"description": "The chain name to get the ID for"
+							}
+						},
+						"required": ["chain"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
 		},
 		"telegram": {
 			"name": "Telegram MCP Client",
@@ -683,14 +1571,763 @@
 		"upbit": {
 			"name": "Upbit MCP Client",
 			"package": "@iqai/mcp-upbit",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"tools": [
+				{
+					"name": "GET_TICKER",
+					"description": "Get the latest ticker data from Upbit for a single market",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"market": {
+								"type": "string",
+								"minLength": 3,
+								"description": "Upbit market code, e.g., KRW-BTC"
+							}
+						},
+						"required": ["market"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ORDERBOOK",
+					"description": "Get orderbook snapshot for a given market",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"market": {
+								"type": "string",
+								"minLength": 3,
+								"description": "Upbit market code, e.g., KRW-BTC"
+							}
+						},
+						"required": ["market"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_TRADES",
+					"description": "Get recent trades for a market",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"market": {
+								"type": "string",
+								"minLength": 3,
+								"description": "Upbit market code, e.g., KRW-BTC"
+							}
+						},
+						"required": ["market"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ACCOUNTS",
+					"description": "Get Upbit account balances (requires private API enabled)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CREATE_ORDER",
+					"description": "Create an Upbit order (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"market": {
+								"type": "string"
+							},
+							"side": {
+								"type": "string",
+								"enum": ["bid", "ask"]
+							},
+							"ord_type": {
+								"type": "string",
+								"enum": ["limit", "price", "market"]
+							},
+							"volume": {
+								"type": "string"
+							},
+							"price": {
+								"type": "string"
+							},
+							"time_in_force": {
+								"type": "string",
+								"enum": ["ioc", "fok", "post_only"]
+							},
+							"smp_type": {
+								"type": "string",
+								"enum": ["cancel_maker", "cancel_taker", "reduce"]
+							},
+							"identifier": {
+								"type": "string"
+							}
+						},
+						"required": ["market", "side", "ord_type"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ORDERS",
+					"description": "List Upbit orders (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"market": {
+								"type": "string"
+							},
+							"state": {
+								"type": "string",
+								"enum": ["wait", "done", "cancel"],
+								"default": "wait"
+							},
+							"page": {
+								"type": "integer",
+								"minimum": 1,
+								"default": 1
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"default": 100
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_ORDER",
+					"description": "Get a single Upbit order (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"uuid": {
+								"type": "string"
+							},
+							"identifier": {
+								"type": "string"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CANCEL_ORDER",
+					"description": "Cancel an existing Upbit order (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"uuid": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": ["uuid"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "LIST_WITHDRAWAL_ADDRESSES",
+					"description": "List registered withdrawal-allowed addresses (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CREATE_WITHDRAWAL",
+					"description": "Request a digital asset withdrawal (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"currency": {
+								"type": "string"
+							},
+							"amount": {
+								"type": "string"
+							},
+							"address": {
+								"type": "string"
+							},
+							"net_type": {
+								"type": "string"
+							},
+							"secondary_address": {
+								"type": "string"
+							},
+							"transaction_type": {
+								"type": "string",
+								"enum": ["default", "internal"]
+							}
+						},
+						"required": ["currency", "amount", "address", "net_type"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_WITHDRAWAL",
+					"description": "Get a single withdrawal by UUID (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"uuid": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": ["uuid"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "LIST_WITHDRAWALS",
+					"description": "List withdrawals (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"currency": {
+								"type": "string"
+							},
+							"state": {
+								"type": "string"
+							},
+							"page": {
+								"type": "integer",
+								"minimum": 1,
+								"default": 1
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"default": 50
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CANCEL_WITHDRAWAL",
+					"description": "Cancel a digital asset withdrawal by UUID (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"uuid": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": ["uuid"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_DEPOSIT_CHANCE",
+					"description": "Get deposit availability information for a currency (private)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"currency": {
+								"type": "string"
+							},
+							"net_type": {
+								"type": "string"
+							}
+						},
+						"required": ["currency"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "CREATE_DEPOSIT_ADDRESS",
+					"description": "Request creation of a deposit address (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"currency": {
+								"type": "string"
+							},
+							"net_type": {
+								"type": "string"
+							}
+						},
+						"required": ["currency", "net_type"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_DEPOSIT_ADDRESS",
+					"description": "Get a single deposit address for a currency and net_type (private)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"currency": {
+								"type": "string"
+							},
+							"net_type": {
+								"type": "string"
+							}
+						},
+						"required": ["currency", "net_type"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "LIST_DEPOSIT_ADDRESSES",
+					"description": "List deposit addresses for all currencies (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "GET_DEPOSIT",
+					"description": "Get a single deposit by UUID (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"uuid": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": ["uuid"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "LIST_DEPOSITS",
+					"description": "List deposits (requires private API)",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"currency": {
+								"type": "string"
+							},
+							"state": {
+								"type": "string"
+							},
+							"page": {
+								"type": "integer",
+								"minimum": 1,
+								"default": 1
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"default": 50
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
 		},
 		"polymarket": {
 			"name": "Polymarket MCP Client",
 			"package": "@iqai/mcp-polymarket",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"tools": [
+				{
+					"name": "get_market_by_slug",
+					"description": "Get detailed information about a specific market by its slug identifier. The slug can be extracted from the Polymarket URL.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"description": "The market slug identifier (e.g., 'will-trump-win-2024')"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_event_by_slug",
+					"description": "Get detailed information about a specific event by its slug identifier. Events group multiple related markets.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"slug": {
+								"type": "string",
+								"description": "The event slug identifier"
+							}
+						},
+						"required": ["slug"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "list_active_markets",
+					"description": "List all currently active markets with pagination. Returns markets that are not yet closed.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"limit": {
+								"type": "number",
+								"default": 20,
+								"description": "Number of markets to return (default: 20, max: 100)"
+							},
+							"offset": {
+								"type": "number",
+								"default": 0,
+								"description": "Number of markets to skip for pagination (default: 0)"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "search_markets",
+					"description": "Search for markets, events, and profiles using text search.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Search query text"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_markets_by_tag",
+					"description": "Get markets filtered by a specific tag ID. Useful for finding markets in specific categories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tag_id": {
+								"type": "string",
+								"description": "The tag ID to filter by"
+							},
+							"limit": {
+								"type": "number",
+								"default": 20,
+								"description": "Number of markets to return (default: 20)"
+							},
+							"closed": {
+								"type": "boolean",
+								"default": false,
+								"description": "Include closed markets (default: false)"
+							}
+						},
+						"required": ["tag_id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_all_tags",
+					"description": "Get a list of all available tags for categorizing markets.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_order_book",
+					"description": "Get the current order book for a specific market token. Shows all active buy and sell orders.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"token_id": {
+								"type": "string",
+								"description": "The token ID for the market outcome"
+							}
+						},
+						"required": ["token_id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "approve_allowances",
+					"description": "Grant the USDC and Conditional Tokens approvals required to trade on Polymarket. Automatically approves only the contracts that don't already have approvals set. Includes both regular and NegRisk markets. These approvals are standard ERC20/ERC1155 approvals, revocable at any time in your wallet.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"waitForConfirmations": {
+								"type": "integer",
+								"minimum": 0,
+								"maximum": 5,
+								"description": "How many confirmations to wait before returning (0 = return immediately after broadcasting). Default: 0"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "place_order",
+					"description": "Place a limit order on Polymarket at a specific price. Specify the number of shares (size) and price (0-1). For both BUY and SELL, you specify the number of shares you want to trade. Example: size=10, price=0.6 means buy/sell 10 shares at $0.60 per share (total: $6).",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tokenId": {
+								"type": "string",
+								"description": "The token ID of the market outcome to trade"
+							},
+							"price": {
+								"type": "number",
+								"minimum": 0,
+								"maximum": 1,
+								"description": "The limit price for the order (between 0 and 1). This is the probability/price per share."
+							},
+							"size": {
+								"type": "number",
+								"exclusiveMinimum": 0,
+								"description": "Number of shares to trade. For both BUY and SELL orders, this is always the number of outcome tokens/shares."
+							},
+							"side": {
+								"type": "string",
+								"enum": ["BUY", "SELL"],
+								"description": "The side of the order: BUY or SELL"
+							},
+							"orderType": {
+								"type": "string",
+								"enum": ["GTC", "GTD"],
+								"description": "Order type: GTC (Good Till Cancelled) or GTD (Good Till Date). Default: GTC"
+							}
+						},
+						"required": ["tokenId", "price", "size", "side"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "place_market_order",
+					"description": "Place a market order that executes immediately at current market price. IMPORTANT: For BUY orders, amount is the dollar amount ($USD) you want to spend. For SELL orders, amount is the number of shares to sell. Example: amount=5, side=BUY means 'spend $5 to buy shares at market price'. Minimum $1 for BUY orders.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"tokenId": {
+								"type": "string",
+								"description": "The token ID of the market outcome to trade"
+							},
+							"amount": {
+								"type": "number",
+								"exclusiveMinimum": 0,
+								"description": "BUY orders: Dollar amount ($) to spend. SELL orders: Number of shares to sell. Minimum $1 for BUY orders."
+							},
+							"side": {
+								"type": "string",
+								"enum": ["BUY", "SELL"],
+								"description": "The side of the order: BUY or SELL"
+							},
+							"orderType": {
+								"type": "string",
+								"enum": ["FOK", "FAK"],
+								"description": "Order type: FOK (Fill or Kill) or FAK (Fill and Kill). Default: FOK"
+							}
+						},
+						"required": ["tokenId", "amount", "side"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_open_orders",
+					"description": "Get all open orders for the authenticated account. Can optionally filter by market.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"market": {
+								"type": "string",
+								"description": "Optional market address to filter orders by"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_order",
+					"description": "Get details of a specific order by its ID.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"orderId": {
+								"type": "string",
+								"description": "The unique identifier of the order"
+							}
+						},
+						"required": ["orderId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "cancel_order",
+					"description": "Cancel a specific order by its ID.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"orderId": {
+								"type": "string",
+								"description": "The unique identifier of the order to cancel"
+							}
+						},
+						"required": ["orderId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "cancel_all_orders",
+					"description": "Cancel all open orders for the authenticated account.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_trade_history",
+					"description": "Get trade history for the authenticated account. Can optionally filter by market or maker address.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"market": {
+								"type": "string",
+								"description": "Optional market address to filter trades by"
+							},
+							"maker_address": {
+								"type": "string",
+								"description": "Optional maker address to filter trades by"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_balance_allowance",
+					"description": "Get balance and allowance information for the authenticated account. Can check COLLATERAL or CONDITIONAL tokens.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"assetType": {
+								"type": "string",
+								"enum": ["COLLATERAL", "CONDITIONAL"],
+								"description": "Asset type to check balance for: COLLATERAL or CONDITIONAL"
+							},
+							"tokenID": {
+								"type": "string",
+								"description": "Optional token ID for conditional token balance"
+							}
+						},
+						"required": ["assetType"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "update_balance_allowance",
+					"description": "Update balance and allowance for the authenticated account. Required before trading.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"assetType": {
+								"type": "string",
+								"enum": ["COLLATERAL", "CONDITIONAL"],
+								"description": "Asset type to update allowance for: COLLATERAL or CONDITIONAL"
+							},
+							"tokenID": {
+								"type": "string",
+								"description": "Optional token ID for conditional token"
+							}
+						},
+						"required": ["assetType"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "redeem_positions",
+					"description": "Redeem (claim) winnings from a resolved Polymarket prediction market. Use this to collect USDC from positions in markets that have been settled. For regular markets, you need the conditionId. For negative risk markets, you also need the tokenId and should set negRisk=true. The market must be resolved before redemption is possible.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"conditionId": {
+								"type": "string",
+								"description": "The condition ID (market ID) for the resolved market. This is typically a 32-byte hex string."
+							},
+							"tokenId": {
+								"type": "string",
+								"description": "The token ID of the position to redeem. Required for negRisk markets, optional for regular markets."
+							},
+							"outcomeIndex": {
+								"type": "number",
+								"enum": [0, 1],
+								"description": "The outcome index: 0 for Yes/first outcome, 1 for No/second outcome. Used for negRisk markets to determine which tokens to redeem."
+							},
+							"negRisk": {
+								"type": "boolean",
+								"default": false,
+								"description": "Whether this is a negative risk market. Negative risk markets use the NegRiskAdapter contract for redemption. Default: false"
+							}
+						},
+						"required": ["conditionId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_positions",
+					"description": "Get all positions for a wallet address with current values. Returns position details including size, current price, current value, and P&L. Uses the Polymarket Data API for accurate position valuation.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"user": {
+								"type": "string",
+								"description": "Wallet address to fetch positions for. If not provided, uses POLYMARKET_FUNDER env var."
+							},
+							"limit": {
+								"type": "number",
+								"default": 100,
+								"description": "Maximum number of positions to return (default: 100)"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
 		},
 		"debank": {
 			"name": "DeBank MCP Client",
@@ -717,7 +2354,8 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -735,6 +2373,7 @@
 						"type": "object",
 						"properties": {
 							"chain_ids": {
+								"description": "Comma-separated chain names or IDs - auto-resolved (e.g., 'Ethereum, BSC'→'eth,bsc', 'Polygon'→'matic'). If omitted, returns protocols across all supported chains. Existing chain IDs like 'eth,bsc,matic' also work.",
 								"type": "string"
 							},
 							"_userQuery": {
@@ -752,7 +2391,8 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The unique identifier of the protocol (e.g., 'bsc_pancakeswap' for PancakeSwap on BSC, 'uniswap', 'aave', 'curve'). Use debank_get_all_protocols_of_supported_chains to discover protocol IDs."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -770,13 +2410,20 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The unique identifier of the protocol (e.g., 'uniswap', 'aave', 'compound'). Use debank_get_all_protocols_of_supported_chains to find protocol IDs."
 							},
 							"start": {
-								"type": "number"
+								"description": "Pagination offset to specify where to start in the list. Default is 0, maximum is 1000.",
+								"type": "integer",
+								"minimum": 0,
+								"maximum": 1000
 							},
 							"limit": {
-								"type": "number"
+								"description": "Maximum number of top holders to retrieve. Default and maximum is 100.",
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"maximum": 100
 							},
 							"_userQuery": {
 								"type": "string"
@@ -794,10 +2441,12 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The unique identifier of the pool (typically a contract address, e.g., '0x00000000219ab540356cbb839cbe05303d7705fa')."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -815,10 +2464,12 @@
 						"type": "object",
 						"properties": {
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "Token contract address, native token ID, or wrapped token keyword. Auto-resolves: 'WETH'→WETH address, 'wrapped native'→chain's wrapped token, 'native token'→chain's wrapped token. Examples: 'WETH', 'wrapped ETH', 'native token', '0xdac17f958d2ee523a2206206994597c13d831ec7' (USDT)."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -836,10 +2487,12 @@
 						"type": "object",
 						"properties": {
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"ids": {
-								"type": "string"
+								"type": "string",
+								"description": "Comma-separated list of token addresses (up to 100). Example: '0xdac17f958d2ee523a2206206994597c13d831ec7,0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'"
 							},
 							"_userQuery": {
 								"type": "string"
@@ -857,16 +2510,24 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "Token contract address, native token ID, or wrapped token keyword. Auto-resolves: 'WETH'→WETH address, 'wrapped native'→chain's wrapped token, 'native token'→chain's wrapped token. Examples: 'WETH', 'wrapped BNB', '0xdac17f958d2ee523a2206206994597c13d831ec7'."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"start": {
-								"type": "number"
+								"description": "Pagination offset. Default is 0, maximum is 10000.",
+								"type": "integer",
+								"minimum": 0,
+								"maximum": 10000
 							},
 							"limit": {
-								"type": "number"
+								"description": "Maximum number of holders to return. Default is 100.",
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"maximum": 100
 							},
 							"_userQuery": {
 								"type": "string"
@@ -884,13 +2545,16 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "Token contract address, native token ID, or wrapped token keyword. Auto-resolves: 'WETH'→WETH address, 'wrapped native'→chain's wrapped token, 'native token'→chain's wrapped token. Examples: 'WETH', 'wrapped MATIC', '0xdac17f958d2ee523a2206206994597c13d831ec7'."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"date_at": {
-								"type": "string"
+								"type": "string",
+								"description": "The date for historical price data in UTC time zone. Format: YYYY-MM-DD (e.g., '2023-05-18')."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -908,7 +2572,8 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -926,10 +2591,12 @@
 						"type": "object",
 						"properties": {
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -947,10 +2614,12 @@
 						"type": "object",
 						"properties": {
 							"protocol_id": {
-								"type": "string"
+								"type": "string",
+								"description": "The protocol ID (e.g., 'bsc_pancakeswap', 'uniswap', 'aave')Use debank_get_all_protocols_of_supported_chains to discover protocol IDs.."
 							},
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -968,10 +2637,12 @@
 						"type": "object",
 						"properties": {
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -989,9 +2660,11 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_ids": {
+								"description": "Comma-separated chain names or IDs - auto-resolved (e.g., 'Ethereum, BSC'→'eth,bsc', 'Polygon'→'matic'). If omitted, includes all supported chains. Existing chain IDs like 'eth,bsc,matic' also work.",
 								"type": "string"
 							},
 							"_userQuery": {
@@ -1010,9 +2683,11 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_ids": {
+								"description": "Comma-separated chain names or IDs - auto-resolved (e.g., 'Ethereum, BSC, Polygon'→'eth,bsc,matic', 'Arbitrum'→'arb'). If omitted, includes all supported chains. Existing chain IDs like 'eth,bsc,polygon' also work.",
 								"type": "string"
 							},
 							"_userQuery": {
@@ -1031,13 +2706,16 @@
 						"type": "object",
 						"properties": {
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"token_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Token contract address, native token ID, or wrapped token keyword. Auto-resolves: 'WETH'→WETH address, 'wrapped native'→chain's wrapped token, 'native token'→chain's wrapped token. Examples: 'WETH', 'wrapped token', '0xdac17f958d2ee523a2206206994597c13d831ec7'."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -1055,12 +2733,15 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"is_all": {
+								"description": "If true, returns all tokens including non-core tokens. Default is true.",
 								"type": "boolean"
 							},
 							"_userQuery": {
@@ -1079,9 +2760,11 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"is_all": {
+								"description": "If true, includes all tokens in the response. Default is true.",
 								"type": "boolean"
 							},
 							"_userQuery": {
@@ -1100,12 +2783,15 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"is_all": {
+								"description": "If false, only returns NFTs from verified collections. Default is true.",
 								"type": "boolean"
 							},
 							"_userQuery": {
@@ -1124,12 +2810,15 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"is_all": {
+								"description": "If true, includes all NFTs. Default is true.",
 								"type": "boolean"
 							},
 							"chain_ids": {
+								"description": "Comma-separated chain names or IDs - auto-resolved (e.g., 'Ethereum, BSC, Polygon'→'eth,bsc,matic', 'Arbitrum'→'arb'). If omitted, includes all supported chains. Existing chain IDs like 'eth,bsc,polygon' also work.",
 								"type": "string"
 							},
 							"_userQuery": {
@@ -1148,19 +2837,28 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"token_id": {
+								"description": "Optional token contract address, native token ID, or wrapped token keyword to filter history. Auto-resolves: 'WETH'→WETH address, 'wrapped native'→chain's wrapped token, 'native token'→chain's wrapped token.",
 								"type": "string"
 							},
 							"start_time": {
-								"type": "number"
+								"description": "Optional timestamp to return history earlier than this time (Unix timestamp).",
+								"type": "integer",
+								"minimum": -9007199254740991,
+								"maximum": 9007199254740991
 							},
 							"page_count": {
-								"type": "number"
+								"description": "Number of entries to return. Maximum is 20.",
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"maximum": 20
 							},
 							"_userQuery": {
 								"type": "string"
@@ -1178,15 +2876,23 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"start_time": {
-								"type": "number"
+								"description": "Optional timestamp to return history earlier than this time.",
+								"type": "integer",
+								"minimum": -9007199254740991,
+								"maximum": 9007199254740991
 							},
 							"page_count": {
-								"type": "number"
+								"description": "Number of entries to return. Maximum is 20.",
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"maximum": 20
 							},
 							"chain_ids": {
+								"description": "Comma-separated chain names or IDs - auto-resolved (e.g., 'Ethereum, BSC, Polygon'→'eth,bsc,matic', 'Arbitrum'→'arb'). If omitted, includes all supported chains. Existing chain IDs like 'eth,bsc,polygon' also work.",
 								"type": "string"
 							},
 							"_userQuery": {
@@ -1205,10 +2911,12 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -1226,10 +2934,12 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -1247,7 +2957,8 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -1265,10 +2976,12 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -1286,9 +2999,11 @@
 						"type": "object",
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The user's wallet address."
 							},
 							"chain_ids": {
+								"description": "Comma-separated chain names or IDs - auto-resolved (e.g., 'Ethereum, BSC, Polygon'→'eth,bsc,matic', 'Arbitrum'→'arb'). If omitted, includes all supported chains. Existing chain IDs like 'eth,bsc,polygon' also work.",
 								"type": "string"
 							},
 							"_userQuery": {
@@ -1307,7 +3022,8 @@
 						"type": "object",
 						"properties": {
 							"chain_id": {
-								"type": "string"
+								"type": "string",
+								"description": "Chain name or ID - auto-resolved (e.g., 'Ethereum'→'eth', 'BSC'→'bsc', 'Polygon'→'matic', 'Arbitrum'→'arb'). Existing chain IDs like 'eth', 'bsc' also work."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -1325,9 +3041,11 @@
 						"type": "object",
 						"properties": {
 							"tx": {
-								"type": "string"
+								"type": "string",
+								"description": "The main transaction object as a JSON string. Must include fields like from, to, data, value, etc."
 							},
 							"pending_tx_list": {
+								"description": "Optional JSON string array of transactions to execute before the main transaction (e.g., approval transactions).",
 								"type": "string"
 							},
 							"_userQuery": {
@@ -1346,7 +3064,8 @@
 						"type": "object",
 						"properties": {
 							"tx": {
-								"type": "string"
+								"type": "string",
+								"description": "The transaction object as a JSON string to be explained. Must include transaction data field."
 							},
 							"_userQuery": {
 								"type": "string"
@@ -1362,9 +3081,711 @@
 		},
 		"defillama": {
 			"name": "DefiLlama MCP Client",
-			"package": "@iqai/mcp-defillama",
-			"tools": [],
-			"error": "MCP error -32000: Connection closed"
+			"package": "@iqai/defillama-mcp",
+			"tools": [
+				{
+					"name": "defillama_get_chains",
+					"description": "Fetches blockchain chains ranked by Total Value Locked (TVL), returning the top 20. Use this tool to: (1) answer user queries about leading DeFi blockchains, or (2) discover valid chain name formats before calling other tools. The returned chain names (e.g., 'Ethereum', 'Arbitrum', 'Polygon') can be used directly in the 'chain' parameter of defillama_get_dexs_data, defillama_get_fees_and_revenue, and defillama_get_historical_chain_tvl",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"order": {
+								"default": "desc",
+								"description": "Sort order by TVL. Use 'desc' (default) for highest TVL first (e.g., Ethereum, BSC, Tron), or 'asc' for lowest TVL first",
+								"type": "string",
+								"enum": ["asc", "desc"]
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["order"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_protocol_data",
+					"description": "Fetches TVL (Total Value Locked) data for DeFi protocols. **AUTO-RESOLUTION ENABLED:** Pass protocol names as users mention them (e.g., 'Lido', 'Uniswap', 'Aave', 'MakerDAO') - they're automatically resolved to correct slugs via AI. For multiple versions, specify the version (e.g., 'Aave V3') or the most common version is matched. If protocol parameter is omitted, returns top 10 protocols sorted by your chosen criteria.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"protocol": {
+								"description": "Protocol name as mentioned by the user - auto-resolved via AI (e.g., 'Lido', 'Uniswap', 'Aave V3', 'Curve', 'MakerDAO'). Exact slugs also work. Flexible matching handles name variations. If omitted, returns top 10 protocols sorted by the specified condition.",
+								"type": "string"
+							},
+							"sortCondition": {
+								"default": "tvl",
+								"description": "Field to sort results by. Only used when protocol parameter is omitted.",
+								"type": "string",
+								"enum": ["change_1h", "change_1d", "change_7d", "tvl"]
+							},
+							"order": {
+								"default": "desc",
+								"description": "Sort order. Only used when protocol parameter is omitted.",
+								"type": "string",
+								"enum": ["asc", "desc"]
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["sortCondition", "order"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_historical_chain_tvl",
+					"description": "Fetches historical TVL (Total Value Locked) data for blockchain chains over time. Returns the last 10 data points showing TVL evolution. Can return data for a specific chain or aggregated data across all chains. **AUTO-RESOLUTION ENABLED:** Chain names are automatically matched (e.g., 'Ethereum', 'BSC', 'Polygon', 'Avalanche').",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain": {
+								"description": "Blockchain name - auto-resolved (e.g., 'Ethereum', 'Arbitrum', 'Polygon', 'BSC', 'Avalanche'). Common variations are handled automatically. If omitted, returns aggregated historical TVL across all chains combined",
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_dexs_data",
+					"description": "Fetches DEX (decentralized exchange) trading volume data and metrics. Returns different levels of data based on parameters: specific protocol data (most detailed), chain-specific overview, or global overview (all DEXs). **AUTO-RESOLUTION ENABLED:** Protocol and chain names are automatically matched.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"excludeTotalDataChart": {
+								"default": true,
+								"description": "Whether to exclude total data chart from response",
+								"type": "boolean"
+							},
+							"excludeTotalDataChartBreakdown": {
+								"default": true,
+								"description": "Whether to exclude chart breakdown from response",
+								"type": "boolean"
+							},
+							"protocol": {
+								"description": "DEX protocol name - auto-resolved (e.g., 'Uniswap', 'PancakeSwap', 'Curve'). When provided, returns detailed data for that protocol only. Takes priority over chain parameter",
+								"type": "string"
+							},
+							"chain": {
+								"description": "Blockchain name - auto-resolved (e.g., 'Ethereum', 'BSC', 'Polygon', 'Arbitrum'). Returns overview of all DEXs operating on that chain. Only used when protocol is not specified. If both protocol and chain are omitted, returns global overview of all DEXs",
+								"type": "string"
+							},
+							"sortCondition": {
+								"default": "total24h",
+								"description": "Field to sort results by",
+								"type": "string",
+								"enum": [
+									"total24h",
+									"total7d",
+									"total30d",
+									"change_1d",
+									"change_7d",
+									"change_1m"
+								]
+							},
+							"order": {
+								"default": "desc",
+								"description": "Sort order (ascending or descending)",
+								"type": "string",
+								"enum": ["asc", "desc"]
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"excludeTotalDataChart",
+							"excludeTotalDataChartBreakdown",
+							"sortCondition",
+							"order"
+						],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_fees_and_revenue",
+					"description": "Fetches fees and revenue metrics for DeFi protocols. Can filter by specific protocol and/or chain. **AUTO-RESOLUTION ENABLED:** Protocol and chain names are automatically matched.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"excludeTotalDataChart": {
+								"default": true,
+								"description": "Whether to exclude total data chart",
+								"type": "boolean"
+							},
+							"excludeTotalDataChartBreakdown": {
+								"default": true,
+								"description": "Whether to exclude chart breakdown",
+								"type": "boolean"
+							},
+							"dataType": {
+								"default": "dailyFees",
+								"description": "Type of metric to retrieve",
+								"type": "string",
+								"enum": ["dailyFees", "dailyRevenue", "dailyHoldersRevenue"]
+							},
+							"chain": {
+								"description": "Chain name - auto-resolved (e.g., 'Ethereum', 'Polygon', 'BSC'). If omitted, includes all chains",
+								"type": "string"
+							},
+							"protocol": {
+								"description": "Protocol name - auto-resolved (e.g., 'Uniswap', 'Aave'). If omitted, includes all protocols",
+								"type": "string"
+							},
+							"sortCondition": {
+								"default": "total24h",
+								"description": "Field to sort results by",
+								"type": "string",
+								"enum": [
+									"change_1d",
+									"change_7d",
+									"change_1m",
+									"total24h",
+									"total7d",
+									"total30d",
+									"dailyUserFees",
+									"dailyHoldersRevenue",
+									"dailySupplySideRevenue",
+									"holdersRevenue30d"
+								]
+							},
+							"order": {
+								"default": "desc",
+								"description": "Sort order",
+								"type": "string",
+								"enum": ["asc", "desc"]
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"excludeTotalDataChart",
+							"excludeTotalDataChartBreakdown",
+							"dataType",
+							"sortCondition",
+							"order"
+						],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_stablecoin",
+					"description": "Fetches stablecoin data including circulation and price information. Returns top 20 stablecoins",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"includePrices": {
+								"description": "Whether to include price data",
+								"type": "boolean"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_stablecoin_chains",
+					"description": "Fetches stablecoin data by chains. Returns last 3 chains with market cap data",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_stablecoin_charts",
+					"description": "Fetches historical market cap charts for stablecoins over time. Returns the last 10 data points showing circulation, USD values, and bridged amounts. Can filter by blockchain or specific stablecoin, or show global aggregated data",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"stablecoin": {
+								"description": "Stablecoin ID or name (e.g., 1 for USDT, 2 for USDC, or 'USDC', 'Tether', 'DAI'). **AUTO-RESOLUTION ENABLED:** You can now pass stablecoin names directly (like 'USDC', 'Tether', 'DAI') and they will be automatically resolved to their numeric IDs. Numeric IDs are also still accepted. Can be combined with chain parameter to show that stablecoin's data on a specific chain",
+								"anyOf": [
+									{
+										"type": "integer",
+										"minimum": -9007199254740991,
+										"maximum": 9007199254740991
+									},
+									{
+										"type": "string"
+									}
+								]
+							},
+							"chain": {
+								"description": "Blockchain name to filter stablecoin data by (e.g., 'Ethereum', 'Polygon', 'Arbitrum'). Returns stablecoin market cap data for that specific chain. **If the user mentions a blockchain but you're unsure of the exact name format, call defillama_get_chains first to discover valid chain names**. If omitted, returns global aggregated data across all chains",
+								"type": "string"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_stablecoin_prices",
+					"description": "Fetches historical stablecoin price data. Returns last 3 data points",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_prices_current_coins",
+					"description": "Fetches current token prices from DefiLlama. Requires token addresses in the format chain:address (e.g., 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7' for USDT). Can fetch multiple tokens at once by comma-separating them",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"coins": {
+								"type": "string",
+								"description": "Comma-separated list of tokens in the format {chain}:{contractAddress}. Examples: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7' (single token), 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7,bsc:0x55d398326f99059ff775485246999027b3197955' (multiple tokens). If the user mentions a token but you don't know its contract address, you may need to search for it first or ask the user. If unsure about the exact chain name format, call defillama_get_chains to see available chains (e.g., 'ethereum', 'bsc', 'polygon', 'arbitrum')"
+							},
+							"searchWidth": {
+								"default": "4h",
+								"description": "Time window to search for price data. Accepts duration strings (e.g., '4h', '1d', '30m') or seconds as a number (e.g., 600 for 10 minutes). Defaults to 4 hours. Use larger values if recent price data might not be available",
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "number"
+									}
+								]
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["coins", "searchWidth"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_prices_first_coins",
+					"description": "Fetches the first recorded historical prices for specified cryptocurrency tokens. Useful for finding when a token was first listed/tracked or its initial price point",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"coins": {
+								"type": "string",
+								"description": "Comma-separated list of tokens in the format '{chain}:{tokenAddress}'. Each token must specify its blockchain and contract address. Examples: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7' (USDT), 'bsc:0x55d398326f99059ff775485246999027b3197955' (USDT on BSC), or multiple tokens: 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7,ethereum:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'. Chain names must match exactly - if unsure about the correct chain name format, call defillama_get_chains first to discover valid chain names (e.g., 'ethereum' not 'Ethereum', 'bsc' not 'BSC'). Token addresses are checksummed contract addresses on the specified chain"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["coins"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_batch_historical",
+					"description": "Fetches historical price data for multiple cryptocurrencies at specific timestamps. Useful for getting prices of multiple coins at the same or different points in time",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"coins": {
+								"anyOf": [
+									{
+										"type": "string",
+										"minLength": 1
+									},
+									{
+										"type": "object",
+										"propertyNames": {
+											"type": "string"
+										},
+										"additionalProperties": {
+											"minItems": 1,
+											"type": "array",
+											"items": {
+												"anyOf": [
+													{
+														"type": "integer",
+														"minimum": 0,
+														"maximum": 9007199254740991
+													},
+													{
+														"type": "string",
+														"minLength": 1
+													}
+												]
+											}
+										}
+									}
+								],
+								"description": "Coin identifiers with timestamps. Use object format: { 'chain:address': [timestamp1, timestamp2, ...] }. Examples: { 'ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7': [1648680149] } for USDT on Ethereum, or { 'coingecko:bitcoin': [1648680149, 1648766549] } for Bitcoin at multiple times. Chain names should match format from defillama_get_chains (e.g., 'ethereum', 'bsc', 'polygon'). For well-known coins, use 'coingecko:' prefix with coin ID. Timestamps are Unix timestamps in seconds. If you're unsure about the correct chain:address format for a token, you may need to search for the token's contract address first"
+							},
+							"searchWidth": {
+								"default": "6h",
+								"description": "Time range around each timestamp to search for price data. Accepts duration strings (e.g., '4h', '1d', '30m') or seconds as a number (e.g., 600 for 10 minutes). Defaults to '6h' (6 hours). Wider ranges increase chances of finding data but may be less precise",
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "number"
+									}
+								]
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["coins", "searchWidth"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_historical_prices_by_contract",
+					"description": "Fetches historical prices for tokens at a specific point in time using their contract addresses. Useful for getting price data at exact timestamps for analysis or backtesting",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"coins": {
+								"type": "string",
+								"description": "Comma-separated list of tokens in format '{chain}:{contractAddress}'. Each token must specify its blockchain and contract address. Examples: 'ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1' (single token) or 'ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1,bsc:0x762539b45a1dcce3d36d080f74d1aed37844b878' (multiple tokens). **IMPORTANT: If user mentions a chain name, call defillama_get_chains first to get the correct chain identifier. For contract addresses, ensure you have the exact address for the token on that specific chain**"
+							},
+							"timestamp": {
+								"anyOf": [
+									{
+										"type": "integer",
+										"minimum": 0,
+										"maximum": 9007199254740991
+									},
+									{
+										"type": "string",
+										"minLength": 1
+									}
+								],
+								"description": "Point in time to query prices for. Accepts Unix timestamp (seconds) or ISO 8601 format (e.g., '2024-01-15T12:00:00Z'). Example: 1705320000 or '2024-01-15T12:00:00Z'"
+							},
+							"searchWidth": {
+								"default": "6h",
+								"description": "Time window to search for price data around the timestamp if exact data unavailable. Accepts duration string (e.g., '4h', '1d') or seconds (e.g., 600). Defaults to 6 hours. Larger windows increase chances of finding data but may be less accurate",
+								"anyOf": [
+									{
+										"type": "string",
+										"minLength": 1
+									},
+									{
+										"type": "number",
+										"exclusiveMinimum": 0
+									}
+								]
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["coins", "timestamp", "searchWidth"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_percentage_coins",
+					"description": "Fetches percentage price change for tokens over a specified time period. Calculates how much token prices changed from a starting point, either looking backward (default) or forward in time",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"coins": {
+								"type": "string",
+								"description": "Comma-separated list of tokens in format '{chain}:{contractAddress}'. Each token must specify its blockchain and contract address. Examples: 'ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1' (single token) or 'ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1,bsc:0x762539b45a1dcce3d36d080f74d1aed37844b878,ethereum:0xdB25f211AB05b1c97D595516F45794528a807ad8' (multiple tokens). **IMPORTANT: If user mentions a chain name, call defillama_get_chains first to get the correct chain identifier. For contract addresses, ensure you have the exact address for the token on that specific chain**"
+							},
+							"timestamp": {
+								"description": "Starting point in time for percentage calculation. Accepts Unix timestamp (seconds) or ISO 8601 format. If omitted, uses current time. Examples: 1705320000 or '2024-01-15T12:00:00Z'",
+								"anyOf": [
+									{
+										"type": "integer",
+										"minimum": 0,
+										"maximum": 9007199254740991
+									},
+									{
+										"type": "string",
+										"minLength": 1
+									}
+								]
+							},
+							"period": {
+								"default": "1d",
+								"description": "Time period over which to calculate percentage change. Format: number + unit (h=hours, d=days). Examples: '1h' (1 hour), '8h' (8 hours), '2d' (2 days), '7d' (7 days). Defaults to '1d' (24 hours)",
+								"type": "string"
+							},
+							"lookForward": {
+								"default": false,
+								"description": "Direction to calculate change. If false (default), calculates change from [timestamp - period] to [timestamp] (looking backward). If true, calculates change from [timestamp] to [timestamp + period] (looking forward). Use true for historical predictions/projections",
+								"type": "boolean"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["coins", "period", "lookForward"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_chart_coins",
+					"description": "Fetches historical price chart data for one or more cryptocurrency tokens across different blockchains. Returns time-series price data with customizable time range and data point frequency",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"coins": {
+								"type": "string",
+								"description": "Comma-separated list of tokens in the format '{chain}:{contractAddress}'. Each token must be specified with its blockchain and contract address. Examples: 'ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1' (single token), 'ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1,bsc:0x762539b45a1dcce3d36d080f74d1aed37844b878' (multiple tokens). You can also use CoinGecko IDs like 'coingecko:ethereum'. If you don't know the contract address for a token, search for it first using other available tools or use the CoinGecko ID format"
+							},
+							"start": {
+								"description": "Unix timestamp (in seconds) for the earliest data point. If omitted, defaults to earliest available data. Example: 1640995200 (Jan 1, 2022)",
+								"anyOf": [
+									{
+										"type": "integer",
+										"minimum": 0,
+										"maximum": 9007199254740991
+									},
+									{
+										"type": "string",
+										"minLength": 1
+									}
+								]
+							},
+							"end": {
+								"description": "Unix timestamp (in seconds) for the latest data point. If omitted, defaults to current time. Example: 1672531200 (Jan 1, 2023)",
+								"anyOf": [
+									{
+										"type": "integer",
+										"minimum": 0,
+										"maximum": 9007199254740991
+									},
+									{
+										"type": "string",
+										"minLength": 1
+									}
+								]
+							},
+							"span": {
+								"description": "Number of data points to return in the chart. Higher values provide more granular data. If omitted, returns all available points within the time range. Example: 10 returns 10 evenly-spaced data points",
+								"type": "integer",
+								"minimum": 0,
+								"maximum": 9007199254740991
+							},
+							"period": {
+								"description": "Time interval between data points. Determines chart granularity. Format: number + unit (h for hours, d for days). Examples: '1h' (hourly data), '8h' (every 8 hours), '1d' (daily data), '7d' (weekly data). If omitted, defaults to 24 hours (daily)",
+								"type": "string"
+							},
+							"searchWidth": {
+								"default": "6h",
+								"description": "Time window for finding price data around each period point. Can be specified as seconds (number) or duration string. Wider search windows are more forgiving but may be less precise. Examples: '600' (10 minutes), '6h' (6 hours). Defaults to 6 hours",
+								"anyOf": [
+									{
+										"type": "string",
+										"minLength": 1
+									},
+									{
+										"type": "number",
+										"exclusiveMinimum": 0
+									}
+								]
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["coins", "searchWidth"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_latest_pool_data",
+					"description": "Fetches current yield farming pool data including APY rates, TVL, and rewards. Returns a list of pools that can be filtered and sorted by various metrics",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"sortCondition": {
+								"default": "tvlUsd",
+								"description": "Field to sort results by (e.g., tvlUsd for total value locked, apy for annual percentage yield)",
+								"type": "string",
+								"enum": [
+									"tvlUsd",
+									"apy",
+									"apyBase",
+									"apyReward",
+									"apyPct1D",
+									"apyPct7D",
+									"apyPct30D",
+									"apyMean30d"
+								]
+							},
+							"order": {
+								"default": "desc",
+								"description": "Sort order (ascending or descending)",
+								"type": "string",
+								"enum": ["asc", "desc"]
+							},
+							"limit": {
+								"default": 10,
+								"description": "Number of pools to return (between 1-100)",
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["sortCondition", "order", "limit"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_historical_pool_data",
+					"description": "Fetches historical APY and TVL data for a specific yield farming pool over time. Returns the last 10 data points showing how the pool's metrics have changed",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"pool": {
+								"type": "string",
+								"description": "Unique pool identifier (UUID format). **IMPORTANT: Always call defillama_get_latest_pool_data first** to discover available pools and their IDs. The pool ID is returned in the 'pool' property of each result (e.g., '742c4e8f-1f3d-4c3e-9c1e-2a3b4c5d6e7f')"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["pool"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_options_data",
+					"description": "Fetches options protocol data including trading volume and premium metrics. Returns different levels of data: specific protocol data (most detailed), chain-specific overview, or global overview (all options protocols). **AUTO-RESOLUTION ENABLED:** Protocol and chain names are automatically matched.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"dataType": {
+								"default": "dailyNotionalVolume",
+								"description": "Type of volume data to retrieve: premium volume (actual premiums paid) or notional volume (value of underlying assets)",
+								"type": "string",
+								"enum": ["dailyPremiumVolume", "dailyNotionalVolume"]
+							},
+							"protocol": {
+								"description": "Options protocol name - auto-resolved (e.g., 'Lyra', 'Hegic', 'Aevo'). When provided, returns detailed data for that protocol only. Takes priority over chain parameter",
+								"type": "string"
+							},
+							"chain": {
+								"description": "Blockchain name - auto-resolved (e.g., 'Ethereum', 'Arbitrum', 'Optimism'). Returns overview of all options protocols operating on that chain. Only used when protocol is not specified. If both protocol and chain are omitted, returns global overview of all options protocols",
+								"type": "string"
+							},
+							"sortCondition": {
+								"default": "total24h",
+								"description": "Field to sort results by",
+								"type": "string",
+								"enum": [
+									"total24h",
+									"total7d",
+									"total30d",
+									"change_1d",
+									"change_7d",
+									"change_1m"
+								]
+							},
+							"order": {
+								"default": "desc",
+								"description": "Sort order (ascending or descending)",
+								"type": "string",
+								"enum": ["asc", "desc"]
+							},
+							"excludeTotalDataChart": {
+								"default": true,
+								"description": "Whether to exclude aggregated chart data from response",
+								"type": "boolean"
+							},
+							"excludeTotalDataChartBreakdown": {
+								"default": true,
+								"description": "Whether to exclude broken down chart data from response",
+								"type": "boolean"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"dataType",
+							"sortCondition",
+							"order",
+							"excludeTotalDataChart",
+							"excludeTotalDataChartBreakdown"
+						],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				},
+				{
+					"name": "defillama_get_blockchain_timestamp",
+					"description": "Fetches blockchain block information for a specific chain at a given timestamp. Returns the block number, timestamp, and height that existed at that point in time. This is essential for historical DeFi queries - many blockchain APIs require a specific block number to retrieve historical state (e.g., 'What was the TVL on date X?' requires knowing which block number corresponded to date X). Use this tool to convert human-readable dates into block numbers. **AUTO-RESOLUTION ENABLED:** Chain names are automatically matched.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"chain": {
+								"type": "string",
+								"description": "Blockchain name - auto-resolved (e.g., 'Ethereum', 'Polygon', 'Arbitrum', 'Avalanche', 'BSC'). Common variations are handled automatically"
+							},
+							"timestamp": {
+								"anyOf": [
+									{
+										"type": "integer",
+										"minimum": 0,
+										"maximum": 9007199254740991
+									},
+									{
+										"type": "string",
+										"minLength": 1
+									}
+								],
+								"description": "Time to query block data for. Accepts both Unix timestamp in seconds (e.g., 1640000000) or ISO 8601 date string (e.g., '2024-01-15T10:30:00Z', '2024-01-15'). Relative dates work too - the converter will handle them. Will be automatically converted to Unix timestamp for the API call"
+							},
+							"_userQuery": {
+								"type": "string"
+							}
+						},
+						"required": ["chain", "timestamp"],
+						"$schema": "http://json-schema.org/draft-07/schema#",
+						"additionalProperties": false
+					}
+				}
+			],
+			"error": null
 		},
 		"kalshi": {
 			"name": "Kalshi MCP Client",
