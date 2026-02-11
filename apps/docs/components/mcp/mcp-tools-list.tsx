@@ -53,7 +53,7 @@ function ToolTile({ tool }: { tool: McpTool }) {
 				</svg>
 				<div className="flex-1 min-w-0">
 					<div className="flex flex-wrap items-center gap-2">
-						<code className="rounded-md bg-fd-primary/10 px-2 py-0.5 text-sm font-semibold text-fd-primary">
+						<code className="rounded-md bg-fd-muted px-2 py-0.5 text-sm font-semibold text-fd-foreground">
 							{tool.name}
 						</code>
 					</div>
@@ -64,10 +64,10 @@ function ToolTile({ tool }: { tool: McpTool }) {
 								return (
 									<span
 										key={name}
-										className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ${
+										className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium ${
 											isRequired
-												? "bg-fd-primary/10 text-fd-primary"
-												: "bg-fd-secondary text-fd-secondary-foreground"
+												? "border-fd-primary/30 bg-fd-primary/5 text-fd-primary"
+												: "border-fd-border bg-fd-card text-fd-muted-foreground"
 										}`}
 									>
 										{name}
@@ -84,8 +84,11 @@ function ToolTile({ tool }: { tool: McpTool }) {
 					)}
 				</div>
 			</summary>
-			<div className="border-t border-fd-border px-4 py-3 pl-11">
-				<p className="text-sm leading-relaxed text-fd-muted-foreground">
+			<div className="border-t border-fd-border bg-fd-muted/30 px-4 py-3 pl-11">
+				<p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-fd-muted-foreground/60">
+					Description
+				</p>
+				<p className="text-sm leading-relaxed text-fd-foreground/80">
 					{tool.description}
 				</p>
 			</div>
