@@ -82,6 +82,9 @@ apps/examples/src/pglite-runner-example/data/*
 # API Documentation generated files
 apps/adk-api-docs/api/
 
+# MCP tools data (generated at build time)
+apps/docs/data/mcp-tools.json
+
 # To ignore all lock files that are not pnpm
 # This is useful if you want to ensure that only pnpm lock files are present in the repository
 package-lock.json
