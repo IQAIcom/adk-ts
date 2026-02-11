@@ -2,8 +2,6 @@ name: Sync MCP Tools
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * 1'
   push:
     paths:
       - 'apps/docs/scripts/fetch-mcp-tools.ts'

@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-02-11T18:05:44.363Z",
+	"generatedAt": "2026-02-11T18:14:49.372Z",
 	"servers": {
 		"abi": {
 			"name": "ABI MCP Client",
@@ -840,7 +840,7 @@
 							},
 							"deadline": {
 								"type": "string",
-								"default": "2026-02-11T19:05:18.686Z",
+								"default": "2026-02-11T19:14:44.127Z",
 								"description": "(Optional, defaults to 1 hour from now) Timestamp in ISO format, that identifies when user refund will begin if the swap isn't completed by then. It needs to exceed the time required for the deposit tx to be minted, e.g. for Bitcoin it might require ~1h depending on the gas fees paid."
 							},
 							"referral": {
@@ -5059,6 +5059,505 @@
 						"type": "object",
 						"properties": {},
 						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
+		},
+		"filesystem": {
+			"name": "Filesystem MCP Client",
+			"package": "@modelcontextprotocol/server-filesystem",
+			"tools": [
+				{
+					"name": "read_file",
+					"description": "Read the complete contents of a file as text. DEPRECATED: Use read_text_file instead.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							},
+							"tail": {
+								"description": "If provided, returns only the last N lines of the file",
+								"type": "number"
+							},
+							"head": {
+								"description": "If provided, returns only the first N lines of the file",
+								"type": "number"
+							}
+						},
+						"required": ["path"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "read_text_file",
+					"description": "Read the complete contents of a file from the file system as text. Handles various text encodings and provides detailed error messages if the file cannot be read. Use this tool when you need to examine the contents of a single file. Use the 'head' parameter to read only the first N lines of a file, or the 'tail' parameter to read only the last N lines of a file. Operates on the file as text regardless of extension. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							},
+							"tail": {
+								"description": "If provided, returns only the last N lines of the file",
+								"type": "number"
+							},
+							"head": {
+								"description": "If provided, returns only the first N lines of the file",
+								"type": "number"
+							}
+						},
+						"required": ["path"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "read_media_file",
+					"description": "Read an image or audio file. Returns the base64 encoded data and MIME type. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "read_multiple_files",
+					"description": "Read the contents of multiple files simultaneously. This is more efficient than reading files one by one when you need to analyze or compare multiple files. Each file's content is returned with its path as a reference. Failed reads for individual files won't stop the entire operation. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"paths": {
+								"minItems": 1,
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Array of file paths to read. Each path must be a string pointing to a valid file within allowed directories."
+							}
+						},
+						"required": ["paths"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "write_file",
+					"description": "Create a new file or completely overwrite an existing file with new content. Use with caution as it will overwrite existing files without warning. Handles text content with proper encoding. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							},
+							"content": {
+								"type": "string"
+							}
+						},
+						"required": ["path", "content"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "edit_file",
+					"description": "Make line-based edits to a text file. Each edit replaces exact line sequences with new content. Returns a git-style diff showing the changes made. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							},
+							"edits": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"oldText": {
+											"type": "string",
+											"description": "Text to search for - must match exactly"
+										},
+										"newText": {
+											"type": "string",
+											"description": "Text to replace with"
+										}
+									},
+									"required": ["oldText", "newText"]
+								}
+							},
+							"dryRun": {
+								"default": false,
+								"description": "Preview changes using git-style diff format",
+								"type": "boolean"
+							}
+						},
+						"required": ["path", "edits"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "create_directory",
+					"description": "Create a new directory or ensure a directory exists. Can create multiple nested directories in one operation. If the directory already exists, this operation will succeed silently. Perfect for setting up directory structures for projects or ensuring required paths exist. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "list_directory",
+					"description": "Get a detailed listing of all files and directories in a specified path. Results clearly distinguish between files and directories with [FILE] and [DIR] prefixes. This tool is essential for understanding directory structure and finding specific files within a directory. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "list_directory_with_sizes",
+					"description": "Get a detailed listing of all files and directories in a specified path, including sizes. Results clearly distinguish between files and directories with [FILE] and [DIR] prefixes. This tool is useful for understanding directory structure and finding specific files within a directory. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							},
+							"sortBy": {
+								"default": "name",
+								"description": "Sort entries by name or size",
+								"type": "string",
+								"enum": ["name", "size"]
+							}
+						},
+						"required": ["path"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "directory_tree",
+					"description": "Get a recursive tree view of files and directories as a JSON structure. Each entry includes 'name', 'type' (file/directory), and 'children' for directories. Files have no children array, while directories always have a children array (which may be empty). The output is formatted with 2-space indentation for readability. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							},
+							"excludePatterns": {
+								"default": [],
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							}
+						},
+						"required": ["path"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "move_file",
+					"description": "Move or rename files and directories. Can move files between directories and rename them in a single operation. If the destination exists, the operation will fail. Works across different directories and can be used for simple renaming within the same directory. Both source and destination must be within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"source": {
+								"type": "string"
+							},
+							"destination": {
+								"type": "string"
+							}
+						},
+						"required": ["source", "destination"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "search_files",
+					"description": "Recursively search for files and directories matching a pattern. The patterns should be glob-style patterns that match paths relative to the working directory. Use pattern like '*.ext' to match files in current directory, and '**/*.ext' to match files in all subdirectories. Returns full paths to all matching items. Great for finding files when you don't know their exact location. Only searches within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							},
+							"pattern": {
+								"type": "string"
+							},
+							"excludePatterns": {
+								"default": [],
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							}
+						},
+						"required": ["path", "pattern"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "get_file_info",
+					"description": "Retrieve detailed metadata about a file or directory. Returns comprehensive information including size, creation time, last modified time, permissions, and type. This tool is perfect for understanding file characteristics without reading the actual content. Only works within allowed directories.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "list_allowed_directories",
+					"description": "Returns the list of directories that this server is allowed to access. Subdirectories within these allowed directories are also accessible. Use this to understand which directories and their nested paths are available before trying to access files.",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"error": null
+		},
+		"memory": {
+			"name": "Memory MCP Client",
+			"package": "@modelcontextprotocol/server-memory",
+			"tools": [
+				{
+					"name": "create_entities",
+					"description": "Create multiple new entities in the knowledge graph",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"entities": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "The name of the entity"
+										},
+										"entityType": {
+											"type": "string",
+											"description": "The type of the entity"
+										},
+										"observations": {
+											"type": "array",
+											"items": {
+												"type": "string"
+											},
+											"description": "An array of observation contents associated with the entity"
+										}
+									},
+									"required": ["name", "entityType", "observations"]
+								}
+							}
+						},
+						"required": ["entities"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "create_relations",
+					"description": "Create multiple new relations between entities in the knowledge graph. Relations should be in active voice",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"relations": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"from": {
+											"type": "string",
+											"description": "The name of the entity where the relation starts"
+										},
+										"to": {
+											"type": "string",
+											"description": "The name of the entity where the relation ends"
+										},
+										"relationType": {
+											"type": "string",
+											"description": "The type of the relation"
+										}
+									},
+									"required": ["from", "to", "relationType"]
+								}
+							}
+						},
+						"required": ["relations"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "add_observations",
+					"description": "Add new observations to existing entities in the knowledge graph",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"observations": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"entityName": {
+											"type": "string",
+											"description": "The name of the entity to add the observations to"
+										},
+										"contents": {
+											"type": "array",
+											"items": {
+												"type": "string"
+											},
+											"description": "An array of observation contents to add"
+										}
+									},
+									"required": ["entityName", "contents"]
+								}
+							}
+						},
+						"required": ["observations"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "delete_entities",
+					"description": "Delete multiple entities and their associated relations from the knowledge graph",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"entityNames": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "An array of entity names to delete"
+							}
+						},
+						"required": ["entityNames"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "delete_observations",
+					"description": "Delete specific observations from entities in the knowledge graph",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"deletions": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"entityName": {
+											"type": "string",
+											"description": "The name of the entity containing the observations"
+										},
+										"observations": {
+											"type": "array",
+											"items": {
+												"type": "string"
+											},
+											"description": "An array of observations to delete"
+										}
+									},
+									"required": ["entityName", "observations"]
+								}
+							}
+						},
+						"required": ["deletions"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "delete_relations",
+					"description": "Delete multiple relations from the knowledge graph",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"relations": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"from": {
+											"type": "string",
+											"description": "The name of the entity where the relation starts"
+										},
+										"to": {
+											"type": "string",
+											"description": "The name of the entity where the relation ends"
+										},
+										"relationType": {
+											"type": "string",
+											"description": "The type of the relation"
+										}
+									},
+									"required": ["from", "to", "relationType"]
+								},
+								"description": "An array of relations to delete"
+							}
+						},
+						"required": ["relations"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "read_graph",
+					"description": "Read the entire knowledge graph",
+					"inputSchema": {
+						"type": "object",
+						"properties": {},
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "search_nodes",
+					"description": "Search for nodes in the knowledge graph based on a query",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "The search query to match against entity names, types, and observation content"
+							}
+						},
+						"required": ["query"],
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "open_nodes",
+					"description": "Open specific nodes in the knowledge graph by their names",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"names": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "An array of entity names to retrieve"
+							}
+						},
+						"required": ["names"],
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}

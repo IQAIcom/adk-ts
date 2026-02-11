@@ -137,6 +137,16 @@ const MCP_SERVERS: McpServer[] = [
 		name: "Opinion MCP Client",
 		package: "@iqai/mcp-opinion",
 	},
+	{
+		slug: "filesystem",
+		name: "Filesystem MCP Client",
+		package: "@modelcontextprotocol/server-filesystem",
+	},
+	{
+		slug: "memory",
+		name: "Memory MCP Client",
+		package: "@modelcontextprotocol/server-memory",
+	},
 ];
 
 const TIMEOUT_MS = 60_000;
