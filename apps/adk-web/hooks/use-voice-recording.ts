@@ -3,8 +3,33 @@ import {
 	isSpeechRecognitionSupported,
 	startTranscription,
 } from "@/lib/transcribe-audio";
+import { supportsAudioInput } from "@/lib/model-capabilities";
 
-const useVoiceRecording = () => {
+interface UseVoiceRecordingOptions {
+	modelName?: string | null;
+}
+
+/**
+ * Validates if transcribed text has meaningful content
+ * Checks for minimum length and non-placeholder text
+ */
+function isValidTranscript(text: string): boolean {
+	const trimmed = text.trim();
+	// Minimum 3 characters to be considered valid
+	if (trimmed.length < 3) return false;
+	// Check if it's not just placeholder text
+	const placeholders = [
+		"voice message",
+		"transcription unavailable",
+		"listening",
+		"recording",
+	];
+	const lower = trimmed.toLowerCase();
+	return !placeholders.some((placeholder) => lower.includes(placeholder));
+}
+
+const useVoiceRecording = (options?: UseVoiceRecordingOptions) => {
+	const { modelName } = options || {};
 	const [recording, setRecording] = useState(false);
 	const [audioFile, setAudioFile] = useState<File | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -16,7 +41,18 @@ const useVoiceRecording = () => {
 	const stopTranscriptionRef = useRef<(() => void) | null>(null);
 	const accumulatedTranscriptRef = useRef<string>("");
 
+	// Check if model supports audio
+	const audioSupported = supportsAudioInput(modelName);
+
 	const startRecording = useCallback(async () => {
+		// Check if model supports audio
+		if (!audioSupported) {
+			setError(
+				"Voice input is not supported for this model. Please use GPT-4o or Gemini models.",
+			);
+			return;
+		}
+
 		try {
 			setError(null);
 			setAudioFile(null);
@@ -96,11 +132,12 @@ const useVoiceRecording = () => {
 			setError(errorMessage);
 			console.error("Error starting recording:", err);
 		}
-	}, []);
+	}, [audioSupported]);
 
 	const stopRecording = useCallback(async (): Promise<{
 		file: File | null;
 		transcript: string;
+		hasValidTranscript: boolean;
 	}> => {
 		return new Promise((resolve) => {
 			// Step 1: Stop transcription first
@@ -113,10 +150,15 @@ const useVoiceRecording = () => {
 
 			// Step 2: Get the final transcribed text
 			const finalTranscript = accumulatedTranscriptRef.current.trim();
+			const hasValidTranscript = isValidTranscript(finalTranscript);
 
 			if (!mediaRecorderRef.current) {
 				setRecording(false);
-				resolve({ file: null, transcript: finalTranscript });
+				resolve({
+					file: null,
+					transcript: finalTranscript,
+					hasValidTranscript,
+				});
 				return;
 			}
 
@@ -143,20 +185,30 @@ const useVoiceRecording = () => {
 
 				// Clean up microphone stream
 				if (streamRef.current) {
-					streamRef.current.getTracks().forEach((track) => track.stop());
+					streamRef.current.getTracks().forEach((track) => {
+						track.stop();
+					});
 					streamRef.current = null;
 				}
 				mediaRecorderRef.current = null;
 
 				// Return both the file and the transcript
-				resolve({ file, transcript: finalTranscript });
+				resolve({
+					file,
+					transcript: finalTranscript,
+					hasValidTranscript: isValidTranscript(finalTranscript),
+				});
 			};
 
 			if (mediaRecorderRef.current.state !== "inactive") {
 				mediaRecorderRef.current.stop();
 			} else {
 				setRecording(false);
-				resolve({ file: null, transcript: finalTranscript });
+				resolve({
+					file: null,
+					transcript: finalTranscript,
+					hasValidTranscript,
+				});
 			}
 		});
 	}, []);
@@ -177,6 +229,7 @@ const useVoiceRecording = () => {
 		startRecording,
 		stopRecording,
 		clearAudio,
+		audioSupported,
 	};
 };
 
