@@ -44,7 +44,7 @@ function ToolTile({ tool }: { tool: McpTool }) {
 	const required = tool.inputSchema?.required || [];
 
 	return (
-		<details className="not-prose group rounded-lg border border-fd-border bg-fd-card transition-colors hover:border-fd-primary/30 [&[open]]:border-fd-primary/40 [&[open]]:bg-fd-card">
+		<details className="not-prose group rounded-lg border border-fd-border bg-fd-card transition-colors hover:bg-fd-muted dark:hover:bg-fd-muted/50 [&[open]]:bg-fd-muted dark:[&[open]]:bg-fd-muted/50">
 			<summary className="flex cursor-pointer items-start gap-3 px-4 py-3 select-none list-none [&::-webkit-details-marker]:hidden">
 				<svg
 					className="mt-1 size-4 shrink-0 text-fd-muted-foreground transition-transform group-open:rotate-90"
