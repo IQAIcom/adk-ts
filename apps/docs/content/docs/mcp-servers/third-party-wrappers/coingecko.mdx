@@ -4,6 +4,7 @@ description: Access cryptocurrency market data and analytics using the free Coin
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { McpToolsList } from "@/components/mcp/mcp-tools-list";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 - **Name**: MCP CoinGecko
@@ -84,11 +85,7 @@ Pricing](https://www.coingecko.com/en/api/pricing).
 
 ## Available Tools
 
-<Callout type="info" title="Remote MCP Endpoint">
-
-CoinGecko's MCP server is hosted remotely and tools are discovered dynamically at runtime. For the full list of available tools and endpoints, see the [official CoinGecko MCP documentation](https://docs.coingecko.com/docs/mcp-server).
-
-</Callout>
+<McpToolsList serverId="coingecko" />
 
 ## Environment Variables
 

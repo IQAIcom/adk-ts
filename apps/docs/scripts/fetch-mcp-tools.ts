@@ -94,9 +94,6 @@ const MCP_SERVERS: McpServer[] = [
 		slug: "coingecko",
 		name: "CoinGecko MCP Client",
 		package: "https://mcp.api.coingecko.com/mcp",
-		skip: true,
-		skipReason:
-			"Remote MCP endpoint requires browser-based authorization via mcp-remote",
 	},
 	{
 		slug: "coingecko-pro",
