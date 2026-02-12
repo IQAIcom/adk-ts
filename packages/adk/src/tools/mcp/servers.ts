@@ -528,6 +528,15 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 	return new McpToolset(mcpConfig);
 }
 
+export function McpPlaywright(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Playwright MCP Client",
+		"@playwright/mcp",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
 /**
  * Generic MCP server function for any package
  *
