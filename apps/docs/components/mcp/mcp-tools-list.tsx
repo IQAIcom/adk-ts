@@ -120,8 +120,17 @@ export function McpToolsList({ serverId }: McpToolsListProps) {
 
 	if (serverData.error) {
 		return (
-			<Callout type="info" title="Dynamic Tools">
-				{serverData.error}
+			<Callout type="info" title="Remote MCP Endpoint">
+				This MCP server is hosted remotely and tools are discovered dynamically
+				at runtime. For the full list of available tools and endpoints, see the{" "}
+				<a
+					href="https://docs.coingecko.com/docs/mcp-server"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					official CoinGecko MCP documentation
+				</a>
+				.
 			</Callout>
 		);
 	}
