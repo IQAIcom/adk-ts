@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-02-12T15:35:56.097Z",
+	"generatedAt": "2026-02-13T09:49:58.420Z",
 	"servers": {
 		"abi": {
 			"name": "ABI MCP Client",
@@ -840,7 +840,7 @@
 							},
 							"deadline": {
 								"type": "string",
-								"default": "2026-02-12T16:34:42.932Z",
+								"default": "2026-02-13T10:49:31.372Z",
 								"description": "(Optional, defaults to 1 hour from now) Timestamp in ISO format, that identifies when user refund will begin if the swap isn't completed by then. It needs to exceed the time required for the deposit tx to be minted, e.g. for Bitcoin it might require ~1h depending on the gas fees paid."
 							},
 							"referral": {
@@ -1560,7 +1560,7 @@
 			"name": "CoinGecko MCP Client",
 			"package": "https://mcp.api.coingecko.com/mcp",
 			"tools": [],
-			"error": "Connection timeout"
+			"error": "MCP error -32000: Connection closed"
 		},
 		"coingecko-pro": {
 			"name": "CoinGecko Pro MCP Client",
