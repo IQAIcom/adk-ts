@@ -249,8 +249,25 @@ const CONCURRENCY = 5;
 async function main() {
 	const servers: Record<string, McpServerResult> = {};
 
-	for (let i = 0; i < MCP_SERVERS.length; i += CONCURRENCY) {
-		const batch = MCP_SERVERS.slice(i, i + CONCURRENCY);
+	// Fetch remote endpoints (CoinGecko) sequentially to avoid mcp-remote connection issues
+	const remoteServers = MCP_SERVERS.filter((s) => isUrl(s.package));
+	const localServers = MCP_SERVERS.filter((s) => !isUrl(s.package));
+
+	// Process remote servers one at a time
+	for (const server of remoteServers) {
+		console.log(`Fetching tools for ${server.slug}...`);
+		const result = await fetchToolsForServer(server);
+		console.log(
+			`  -> ${server.slug}: ${result.tools.length} tools${result.error ? ` (${result.error})` : ""}`,
+		);
+		servers[server.slug] = result;
+		// Small delay between remote fetches to avoid connection state issues
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+	}
+
+	// Process local servers in batches
+	for (let i = 0; i < localServers.length; i += CONCURRENCY) {
+		const batch = localServers.slice(i, i + CONCURRENCY);
 		const results = await Promise.all(
 			batch.map(async (server) => {
 				console.log(`Fetching tools for ${server.slug}...`);
