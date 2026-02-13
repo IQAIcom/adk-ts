@@ -1,474 +1,433 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { Memory, createMemory, InMemoryStore } from "../../unified-memory";
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { MemoryBuilder } from "../../unified-memory";
+import { InMemorySessionService } from "../../sessions/in-memory-session-service";
+import { MemoryService } from "../../memory/memory-service";
+import { InMemoryStorageProvider } from "../../memory/storage/in-memory-storage-provider";
+import { Event } from "../../events/event";
 
-describe("Unified Memory", () => {
-	describe("Memory", () => {
-		let memory: Memory;
+describe("MemoryBuilder", () => {
+	let builder: MemoryBuilder;
 
-		beforeEach(() => {
-			memory = createMemory();
-		});
-
-		describe("Thread Management", () => {
-			it("should create a thread", async () => {
-				const thread = await memory.createThread({
-					resourceId: "user-123",
-					title: "Test Thread",
-				});
-
-				expect(thread.id).toBeDefined();
-				expect(thread.resourceId).toBe("user-123");
-				expect(thread.title).toBe("Test Thread");
-				expect(thread.createdAt).toBeInstanceOf(Date);
-			});
-
-			it("should create a thread with custom ID", async () => {
-				const thread = await memory.createThread({
-					resourceId: "user-123",
-					threadId: "custom-thread-id",
-				});
-
-				expect(thread.id).toBe("custom-thread-id");
-			});
-
-			it("should get a thread by ID", async () => {
-				const created = await memory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-1",
-				});
-
-				const retrieved = await memory.getThread("thread-1");
-				expect(retrieved).not.toBeNull();
-				expect(retrieved?.id).toBe(created.id);
-			});
-
-			it("should return null for non-existent thread", async () => {
-				const thread = await memory.getThread("non-existent");
-				expect(thread).toBeNull();
-			});
-
-			it("should list threads for a resource", async () => {
-				await memory.createThread({ resourceId: "user-1" });
-				await memory.createThread({ resourceId: "user-1" });
-				await memory.createThread({ resourceId: "user-2" });
-
-				const result = await memory.listThreads({ resourceId: "user-1" });
-				expect(result.threads).toHaveLength(2);
-				expect(result.total).toBe(2);
-			});
-
-			it("should update a thread", async () => {
-				await memory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-1",
-					title: "Original Title",
-				});
-
-				const updated = await memory.updateThread("thread-1", {
-					title: "Updated Title",
-				});
-
-				expect(updated?.title).toBe("Updated Title");
-			});
-
-			it("should delete a thread", async () => {
-				await memory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-to-delete",
-				});
-
-				await memory.deleteThread("thread-to-delete");
-
-				const thread = await memory.getThread("thread-to-delete");
-				expect(thread).toBeNull();
-			});
-		});
-
-		describe("Message Management", () => {
-			it("should add messages to a thread", async () => {
-				await memory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-1",
-				});
-
-				const messages = await memory.addMessages("thread-1", [
-					{ role: "user", content: "Hello", type: "text" },
-					{ role: "assistant", content: "Hi there!", type: "text" },
-				]);
-
-				expect(messages).toHaveLength(2);
-				expect(messages[0].role).toBe("user");
-				expect(messages[1].role).toBe("assistant");
-			});
-
-			it("should throw when adding messages to non-existent thread", async () => {
-				await expect(
-					memory.addMessages("non-existent", [
-						{ role: "user", content: "Hello", type: "text" },
-					]),
-				).rejects.toThrow("Thread not found");
-			});
-
-			it("should recall messages from a thread", async () => {
-				await memory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-1",
-				});
-
-				await memory.addMessages("thread-1", [
-					{ role: "user", content: "First message", type: "text" },
-					{ role: "assistant", content: "Response", type: "text" },
-					{ role: "user", content: "Second message", type: "text" },
-				]);
-
-				const result = await memory.recall({ threadId: "thread-1" });
-
-				expect(result.messages).toHaveLength(3);
-				expect(result.messages[0].content).toBe("First message");
-				expect(result.messages[2].content).toBe("Second message");
-			});
-
-			it("should respect lastMessages config in recall", async () => {
-				const limitedMemory = createMemory({
-					config: { lastMessages: 2 },
-				});
-
-				await limitedMemory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-1",
-				});
-
-				await limitedMemory.addMessages("thread-1", [
-					{ role: "user", content: "Message 1", type: "text" },
-					{ role: "assistant", content: "Message 2", type: "text" },
-					{ role: "user", content: "Message 3", type: "text" },
-					{ role: "assistant", content: "Message 4", type: "text" },
-				]);
-
-				const result = await limitedMemory.recall({ threadId: "thread-1" });
-
-				expect(result.messages).toHaveLength(2);
-				expect(result.messages[0].content).toBe("Message 3");
-				expect(result.messages[1].content).toBe("Message 4");
-			});
-		});
-
-		describe("Working Memory", () => {
-			it("should get and update working memory", async () => {
-				const memoryWithWorkingMemory = createMemory({
-					config: {
-						workingMemory: {
-							enabled: true,
-							scope: "thread",
-						},
-					},
-				});
-
-				await memoryWithWorkingMemory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-1",
-				});
-
-				await memoryWithWorkingMemory.updateWorkingMemory({
-					threadId: "thread-1",
-					content: "User prefers formal communication",
-				});
-
-				const workingMemory = await memoryWithWorkingMemory.getWorkingMemory({
-					threadId: "thread-1",
-				});
-
-				expect(workingMemory).toBe("User prefers formal communication");
-			});
-
-			it("should include working memory in recall when enabled", async () => {
-				const memoryWithWorkingMemory = createMemory({
-					config: {
-						workingMemory: {
-							enabled: true,
-							scope: "thread",
-							template: "# User Info\n- Name: Unknown",
-						},
-					},
-				});
-
-				await memoryWithWorkingMemory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-1",
-				});
-
-				const result = await memoryWithWorkingMemory.recall({
-					threadId: "thread-1",
-				});
-
-				expect(result.workingMemory).toBe("# User Info\n- Name: Unknown");
-			});
-		});
-
-		describe("Configuration", () => {
-			it("should use default config when none provided", () => {
-				const config = memory.getConfig();
-				expect(config.lastMessages).toBe(40);
-				expect(config.semanticRecall).toBe(false);
-			});
-
-			it("should merge custom config with defaults", () => {
-				const customMemory = createMemory({
-					config: { lastMessages: 20 },
-				});
-
-				const config = customMemory.getConfig();
-				expect(config.lastMessages).toBe(20);
-			});
-
-			it("should disable message history when lastMessages is false", async () => {
-				const noHistoryMemory = createMemory({
-					config: { lastMessages: false },
-				});
-
-				await noHistoryMemory.createThread({
-					resourceId: "user-123",
-					threadId: "thread-1",
-				});
-
-				await noHistoryMemory.addMessages("thread-1", [
-					{ role: "user", content: "Hello", type: "text" },
-				]);
-
-				const result = await noHistoryMemory.recall({ threadId: "thread-1" });
-				expect(result.messages).toHaveLength(0);
-			});
-
-			it("should deep merge nested workingMemory config", () => {
-				const partialConfigMemory = createMemory({
-					config: { workingMemory: { enabled: true } },
-				});
-
-				const config = partialConfigMemory.getConfig();
-
-				expect(config.workingMemory?.enabled).toBe(true);
-				expect(config.workingMemory?.scope).toBe("resource");
-				expect(config.workingMemory?.template).toContain("# User Information");
-			});
-
-			it("should deep merge nested semanticRecall config", () => {
-				const partialConfigMemory = createMemory({
-					config: { semanticRecall: { topK: 5, messageRange: 2 } },
-				});
-
-				const config = partialConfigMemory.getConfig();
-
-				expect(config.semanticRecall).toEqual({ topK: 5, messageRange: 2 });
-			});
-
-			it("should allow overriding specific nested properties", () => {
-				const customMemory = createMemory({
-					config: {
-						workingMemory: {
-							enabled: true,
-							scope: "thread",
-						},
-					},
-				});
-
-				const config = customMemory.getConfig();
-
-				expect(config.workingMemory?.enabled).toBe(true);
-				expect(config.workingMemory?.scope).toBe("thread");
-				expect(config.workingMemory?.template).toContain("# User Information");
-			});
+	beforeEach(() => {
+		builder = MemoryBuilder.create({
+			appName: "test-app",
+			userId: "user-123",
 		});
 	});
 
-	describe("InMemoryStore", () => {
-		let store: InMemoryStore;
+	describe("Session Management", () => {
+		it("should create a session", async () => {
+			const session = await builder.createSession();
 
-		beforeEach(() => {
-			store = new InMemoryStore();
+			expect(session.id).toBeDefined();
+			expect(session.appName).toBe("test-app");
+			expect(session.userId).toBe("user-123");
+			expect(session.events).toEqual([]);
 		});
 
-		it("should store and retrieve threads", async () => {
-			const thread = {
-				id: "thread-1",
-				resourceId: "user-1",
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			};
+		it("should create a session with custom ID", async () => {
+			const session = await builder.createSession(undefined, "my-session");
 
-			await store.saveThread(thread);
-			const retrieved = await store.getThread("thread-1");
-
-			expect(retrieved).not.toBeNull();
-			expect(retrieved?.id).toBe("thread-1");
+			expect(session.id).toBe("my-session");
 		});
 
-		it("should list threads with pagination", async () => {
+		it("should create a session with initial state", async () => {
+			const session = await builder.createSession({ counter: 0 });
+
+			expect(session.state.counter).toBe(0);
+		});
+
+		it("should get a session by ID", async () => {
+			const created = await builder.createSession(undefined, "session-1");
+			const retrieved = await builder.getSession("session-1");
+
+			expect(retrieved).toBeDefined();
+			expect(retrieved?.id).toBe(created.id);
+		});
+
+		it("should return undefined for non-existent session", async () => {
+			const session = await builder.getSession("non-existent");
+			expect(session).toBeUndefined();
+		});
+
+		it("should list sessions", async () => {
+			await builder.createSession(undefined, "s1");
+			await builder.createSession(undefined, "s2");
+
+			const result = await builder.listSessions();
+			expect(result.sessions).toHaveLength(2);
+		});
+
+		it("should delete a session", async () => {
+			await builder.createSession(undefined, "to-delete");
+			await builder.deleteSession("to-delete");
+
+			const session = await builder.getSession("to-delete");
+			expect(session).toBeUndefined();
+		});
+	});
+
+	describe("Message Management (SimpleMessage)", () => {
+		it("should add a simple user message", async () => {
+			const session = await builder.createSession(undefined, "session-1");
+
+			const event = await builder.addMessage(session, {
+				role: "user",
+				content: "Hello there!",
+			});
+
+			expect(event).toBeDefined();
+			expect(event.author).toBe("user");
+			expect(session.events).toHaveLength(1);
+		});
+
+		it("should add an assistant message", async () => {
+			const session = await builder.createSession(undefined, "session-1");
+
+			await builder.addMessage(session, {
+				role: "assistant",
+				content: "Hi! How can I help?",
+			});
+
+			expect(session.events).toHaveLength(1);
+			expect(session.events[0].author).toBe("model");
+		});
+
+		it("should add a system message", async () => {
+			const session = await builder.createSession(undefined, "session-1");
+
+			await builder.addMessage(session, {
+				role: "system",
+				content: "You are a helpful assistant.",
+			});
+
+			expect(session.events).toHaveLength(1);
+			expect(session.events[0].author).toBe("system");
+		});
+	});
+
+	describe("Raw Event Management", () => {
+		it("should add a raw Event object", async () => {
+			const session = await builder.createSession(undefined, "session-1");
+
+			const event = new Event({
+				author: "user",
+				content: { role: "user", parts: [{ text: "Hello" }] },
+			});
+
+			const appended = await builder.addEvent(session, event);
+			expect(appended).toBeDefined();
+			expect(session.events).toHaveLength(1);
+		});
+	});
+
+	describe("Recall", () => {
+		it("should recall messages as SimpleMessage format", async () => {
+			const session = await builder.createSession(undefined, "session-1");
+
+			await builder.addMessage(session, {
+				role: "user",
+				content: "Hello",
+			});
+			await builder.addMessage(session, {
+				role: "assistant",
+				content: "Hi there!",
+			});
+
+			const messages = await builder.recall("session-1");
+
+			expect(messages).toHaveLength(2);
+			expect(messages[0]).toEqual({ role: "user", content: "Hello" });
+			expect(messages[1]).toEqual({ role: "assistant", content: "Hi there!" });
+		});
+
+		it("should recall raw events via recallEvents", async () => {
+			const session = await builder.createSession(undefined, "session-1");
+
+			await builder.addMessage(session, {
+				role: "user",
+				content: "Hello",
+			});
+
+			const events = await builder.recallEvents("session-1");
+
+			expect(events).toHaveLength(1);
+			expect(events[0].author).toBe("user");
+			expect(events[0].content).toBeDefined();
+		});
+
+		it("should respect lastMessages limit", async () => {
+			const limitedBuilder = MemoryBuilder.create({
+				appName: "test-app",
+				userId: "user-123",
+				lastMessages: 2,
+			});
+
+			const session = await limitedBuilder.createSession(
+				undefined,
+				"session-1",
+			);
+
 			for (let i = 0; i < 5; i++) {
-				await store.saveThread({
-					id: `thread-${i}`,
-					resourceId: "user-1",
-					createdAt: new Date(Date.now() + i * 1000),
-					updatedAt: new Date(Date.now() + i * 1000),
+				await limitedBuilder.addMessage(session, {
+					role: "user",
+					content: `Message ${i}`,
 				});
 			}
 
-			const result = await store.listThreads({ limit: 2, offset: 1 });
-			expect(result.threads).toHaveLength(2);
-			expect(result.total).toBe(5);
+			const messages = await limitedBuilder.recall("session-1");
+			expect(messages).toHaveLength(2);
 		});
 
-		it("should store and retrieve messages", async () => {
-			const messages = [
-				{
-					id: "msg-1",
-					threadId: "thread-1",
-					role: "user" as const,
-					content: "Hello",
-					type: "text" as const,
-					createdAt: new Date(),
-				},
-			];
-
-			await store.saveMessages(messages);
-			const retrieved = await store.getMessages({ threadId: "thread-1" });
-
-			expect(retrieved).toHaveLength(1);
-			expect(retrieved[0].content).toBe("Hello");
+		it("should throw when recalling non-existent session", async () => {
+			await expect(builder.recall("non-existent")).rejects.toThrow(
+				"Session not found",
+			);
 		});
 
-		it("should clear all data", async () => {
-			await store.saveThread({
-				id: "thread-1",
-				resourceId: "user-1",
-				createdAt: new Date(),
-				updatedAt: new Date(),
+		it("should return all messages when lastMessages is false", async () => {
+			const unlimitedBuilder = MemoryBuilder.create({
+				appName: "test-app",
+				userId: "user-123",
+				lastMessages: false,
 			});
 
-			store.clear();
+			const session = await unlimitedBuilder.createSession(
+				undefined,
+				"session-1",
+			);
 
-			const thread = await store.getThread("thread-1");
-			expect(thread).toBeNull();
-		});
-
-		it("should clean up embeddings when thread is deleted", async () => {
-			const mockEmbedder = {
-				embed: async (_text: string) => [1, 0, 0],
-				dimensions: 3,
-			};
-
-			const storeWithEmbedder = new InMemoryStore({
-				embeddingProvider: mockEmbedder,
-			});
-
-			await storeWithEmbedder.saveThread({
-				id: "thread-to-delete",
-				resourceId: "user-1",
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
-
-			await storeWithEmbedder.saveMessages([
-				{
-					id: "msg-1",
-					threadId: "thread-to-delete",
+			for (let i = 0; i < 5; i++) {
+				await unlimitedBuilder.addMessage(session, {
 					role: "user",
-					content: "Hello world",
-					type: "text",
-					createdAt: new Date(),
+					content: `Message ${i}`,
+				});
+			}
+
+			const messages = await unlimitedBuilder.recall("session-1");
+			expect(messages).toHaveLength(5);
+		});
+	});
+
+	describe("Working Memory", () => {
+		it("should initialize working memory from template on session create", async () => {
+			const wmBuilder = MemoryBuilder.create({
+				appName: "test-app",
+				userId: "user-123",
+				workingMemory: {
+					enabled: true,
+					template: "# User Info\n- Name: Unknown",
 				},
-				{
-					id: "msg-2",
-					threadId: "thread-to-delete",
-					role: "assistant",
-					content: "Hi there",
-					type: "text",
-					createdAt: new Date(),
-				},
-			]);
-
-			const resultsBefore = await storeWithEmbedder.vectorSearch("test", {
-				topK: 10,
 			});
-			expect(resultsBefore).toHaveLength(2);
 
-			await storeWithEmbedder.deleteThread("thread-to-delete");
+			const session = await wmBuilder.createSession(undefined, "session-1");
 
-			const resultsAfter = await storeWithEmbedder.vectorSearch("test", {
-				topK: 10,
-			});
-			expect(resultsAfter).toHaveLength(0);
+			expect(session.state.__working_memory__).toBe(
+				"# User Info\n- Name: Unknown",
+			);
 		});
 
-		it("should scope vectorSearch by resourceId", async () => {
-			const mockEmbedder = {
-				embed: async (text: string) => {
-					if (text.includes("apple")) return [1, 0, 0];
-					if (text.includes("banana")) return [0, 1, 0];
-					if (text.includes("query")) return [0.9, 0.1, 0];
-					return [0, 0, 1];
+		it("should get working memory from session state", async () => {
+			const wmBuilder = MemoryBuilder.create({
+				appName: "test-app",
+				userId: "user-123",
+				workingMemory: {
+					enabled: true,
+					template: "# User Info\n- Name: Unknown",
 				},
-				dimensions: 3,
-			};
-
-			const storeWithEmbedder = new InMemoryStore({
-				embeddingProvider: mockEmbedder,
 			});
 
-			await storeWithEmbedder.saveThread({
-				id: "thread-user1",
-				resourceId: "user-1",
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
-			await storeWithEmbedder.saveThread({
-				id: "thread-user2",
-				resourceId: "user-2",
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
+			await wmBuilder.createSession(undefined, "session-1");
 
-			await storeWithEmbedder.saveMessages([
-				{
-					id: "msg-1",
-					threadId: "thread-user1",
-					role: "user",
-					content: "I like apple pie",
-					type: "text",
-					createdAt: new Date(),
-				},
-			]);
-			await storeWithEmbedder.saveMessages([
-				{
-					id: "msg-2",
-					threadId: "thread-user2",
-					role: "user",
-					content: "I prefer banana smoothie",
-					type: "text",
-					createdAt: new Date(),
-				},
-			]);
+			const wm = await wmBuilder.getWorkingMemory("session-1");
+			expect(wm).toBe("# User Info\n- Name: Unknown");
+		});
 
-			const resultsUser1 = await storeWithEmbedder.vectorSearch("query apple", {
-				resourceId: "user-1",
-				topK: 10,
+		it("should update working memory via session state", async () => {
+			const wmBuilder = MemoryBuilder.create({
+				appName: "test-app",
+				userId: "user-123",
+				workingMemory: { enabled: true },
 			});
 
-			expect(resultsUser1).toHaveLength(1);
-			expect(resultsUser1[0].messageId).toBe("msg-1");
+			const session = await wmBuilder.createSession(undefined, "session-1");
 
-			const resultsUser2 = await storeWithEmbedder.vectorSearch("query apple", {
-				resourceId: "user-2",
-				topK: 10,
+			await wmBuilder.updateWorkingMemory(
+				session,
+				"# User Info\n- Name: Alice",
+			);
+
+			const wm = await wmBuilder.getWorkingMemory("session-1");
+			expect(wm).toBe("# User Info\n- Name: Alice");
+		});
+
+		it("should return null when working memory is not configured", async () => {
+			const session = await builder.createSession(undefined, "session-1");
+
+			const wm = await builder.getWorkingMemory("session-1");
+			expect(wm).toBeNull();
+		});
+	});
+
+	describe("Search", () => {
+		it("should throw when searching without MemoryService", async () => {
+			await expect(builder.search("query")).rejects.toThrow(
+				"MemoryService is required for search",
+			);
+		});
+
+		it("should search using MemoryService when configured", async () => {
+			const memoryService = new MemoryService({
+				storage: new InMemoryStorageProvider(),
 			});
 
-			expect(resultsUser2).toHaveLength(1);
-			expect(resultsUser2[0].messageId).toBe("msg-2");
+			builder.withMemoryService(memoryService);
 
-			const resultsAll = await storeWithEmbedder.vectorSearch("query apple", {
-				topK: 10,
+			const session = await builder.createSession(undefined, "session-1");
+
+			await builder.addMessage(session, {
+				role: "user",
+				content: "I like TypeScript",
 			});
 
-			expect(resultsAll).toHaveLength(2);
+			const results = await builder.search("TypeScript");
+			expect(results).toBeDefined();
+			expect(Array.isArray(results)).toBe(true);
+		});
+	});
+
+	describe("End Session", () => {
+		it("should end a session and return its final state", async () => {
+			const session = await builder.createSession({ status: "active" });
+
+			await builder.addMessage(session, {
+				role: "user",
+				content: "Hello",
+			});
+
+			const ended = await builder.endSession(session.id);
+
+			expect(ended).toBeDefined();
+			expect(ended?.events).toHaveLength(1);
+		});
+
+		it("should add to memory on end if MemoryService is configured", async () => {
+			const memoryService = new MemoryService({
+				storage: new InMemoryStorageProvider(),
+			});
+
+			const addSpy = vi.spyOn(memoryService, "addSessionToMemory");
+
+			builder.withMemoryService(memoryService);
+
+			const session = await builder.createSession(undefined, "session-1");
+
+			await builder.addMessage(session, {
+				role: "user",
+				content: "Hello",
+			});
+
+			await builder.endSession("session-1");
+
+			expect(addSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe("Builder Pattern", () => {
+		it("should use InMemorySessionService by default", () => {
+			const service = builder.getSessionService();
+			expect(service).toBeInstanceOf(InMemorySessionService);
+		});
+
+		it("should allow swapping session service", async () => {
+			const customService = new InMemorySessionService();
+			builder.withSessionService(customService);
+
+			expect(builder.getSessionService()).toBe(customService);
+
+			const session = await builder.createSession(undefined, "test");
+			expect(session.appName).toBe("test-app");
+		});
+
+		it("should support method chaining", () => {
+			const customSession = new InMemorySessionService();
+			const customMemory = new MemoryService({
+				storage: new InMemoryStorageProvider(),
+			});
+
+			const result = builder
+				.withSessionService(customSession)
+				.withMemoryService(customMemory)
+				.withAppName("new-app")
+				.withUserId("new-user");
+
+			expect(result).toBe(builder);
+		});
+
+		it("should return undefined for memoryService when not configured", () => {
+			expect(builder.getMemoryService()).toBeUndefined();
+		});
+
+		it("should return memoryService when configured", () => {
+			const memoryService = new MemoryService({
+				storage: new InMemoryStorageProvider(),
+			});
+
+			builder.withMemoryService(memoryService);
+
+			expect(builder.getMemoryService()).toBe(memoryService);
+		});
+	});
+
+	describe("Delegation", () => {
+		it("should delegate to the underlying session service", async () => {
+			const customService = new InMemorySessionService();
+			const createSpy = vi.spyOn(customService, "createSession");
+
+			builder.withSessionService(customService);
+			await builder.createSession({ key: "value" }, "custom-id");
+
+			expect(createSpy).toHaveBeenCalledWith(
+				"test-app",
+				"user-123",
+				{ key: "value" },
+				"custom-id",
+			);
+		});
+
+		it("should delegate addMessage to session service appendEvent", async () => {
+			const customService = new InMemorySessionService();
+			const appendSpy = vi.spyOn(customService, "appendEvent");
+
+			builder.withSessionService(customService);
+			const session = await builder.createSession(undefined, "session-1");
+
+			await builder.addMessage(session, {
+				role: "user",
+				content: "Hello",
+			});
+
+			expect(appendSpy).toHaveBeenCalled();
+			const calledEvent = appendSpy.mock.calls[0][1];
+			expect(calledEvent.author).toBe("user");
+		});
+
+		it("should trigger memory ingestion on addMessage when memory service exists", async () => {
+			const memoryService = new MemoryService({
+				storage: new InMemoryStorageProvider(),
+			});
+
+			const addSpy = vi.spyOn(memoryService, "addSessionToMemory");
+
+			builder.withMemoryService(memoryService);
+			const session = await builder.createSession(undefined, "session-1");
+
+			await builder.addMessage(session, {
+				role: "user",
+				content: "Hello",
+			});
+
+			expect(addSpy).toHaveBeenCalledWith(session);
 		});
 	});
 });
