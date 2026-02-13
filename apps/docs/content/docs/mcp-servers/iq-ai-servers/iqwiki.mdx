@@ -65,35 +65,7 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 ## Available Tools
 
-The server exposes the following tools that MCP clients can utilize:
-
-### `GET_WIKI`
-
-Get details about a specific wiki from the IQ.wiki platform.
-
-- Parameters: `id` (string) - The ID of the wiki to retrieve.
-
-### `GET_USER_CREATED_WIKIS`
-
-List wikis created by a specific user on IQ.wiki.
-
-- Parameters: `id` (string) - The Ethereum address of the user.
-- Parameters: `timeFrameSeconds` (number, optional) - Time frame in seconds to filter results.
-
-### `GET_USER_EDITED_WIKIS`
-
-List wikis edited by a specific user on IQ.wiki.
-
-- Parameters: `id` (string) - The Ethereum address of the user.
-- Parameters: `timeFrameSeconds` (number, optional) - Time frame in seconds to filter results.
-
-### `GET_USER_WIKI_ACTIVITIES`
-
-Get detailed wiki activities (creations or edits) for a user on IQ.wiki.
-
-- Parameters: `id` (string) - The Ethereum address of the user.
-- Parameters: `activityType` (enum: "CREATED" | "UPDATED", optional) - Type of activity to filter by.
-- Parameters: `timeFrameSeconds` (number, optional) - Time frame in seconds to filter results.
+<McpToolsList serverId="iqwiki" />
 
 ## Environment Variables
 

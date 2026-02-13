@@ -59,57 +59,9 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Available Tools (30)
+## Available Tools
 
-### Authentication (5)
-
-| Tool                  | Description                                 |
-| --------------------- | ------------------------------------------- |
-| `GET_AUTH_STATUS`     | Check current authentication status         |
-| `GET_SIGNING_MESSAGE` | Get a message to sign for authentication    |
-| `VERIFY_AUTH`         | Verify authentication with a signed message |
-| `LOGIN`               | Log in to the platform                      |
-| `LOGOUT`              | Log out of the current session              |
-
-### Markets (13)
-
-| Tool                             | Description                              |
-| -------------------------------- | ---------------------------------------- |
-| `SEARCH_MARKETS`                 | Search for prediction markets            |
-| `GET_MARKET`                     | Get details for a specific market        |
-| `GET_ACTIVE_MARKETS`             | List currently active markets            |
-| `GET_ACTIVE_MARKETS_BY_CATEGORY` | List active markets filtered by category |
-| `GET_CATEGORIES`                 | Get available market categories          |
-| `GET_CATEGORIES_COUNT`           | Get count of markets per category        |
-| `GET_ACTIVE_SLUGS`               | Get slugs of all active markets          |
-| `GET_MARKET_ORDERBOOK`           | View order book for a market             |
-| `GET_HISTORICAL_PRICE`           | Get historical price data                |
-| `GET_FEED_EVENTS`                | Get feed events                          |
-| `GET_MARKET_EVENTS`              | Get events for a specific market         |
-| `GET_LOCKED_BALANCE`             | Get locked balance information           |
-| `GET_USER_ORDERS`                | Get user's orders                        |
-
-### Portfolio (8)
-
-| Tool                        | Description                      |
-| --------------------------- | -------------------------------- |
-| `GET_PORTFOLIO_POSITIONS`   | View current portfolio positions |
-| `GET_PORTFOLIO_TRADES`      | View portfolio trade history     |
-| `GET_PORTFOLIO_HISTORY`     | View portfolio value history     |
-| `GET_PORTFOLIO_POINTS`      | View portfolio points            |
-| `GET_USER_TRADED_VOLUME`    | Get user's total traded volume   |
-| `GET_PUBLIC_USER_POSITIONS` | View public positions of a user  |
-| `GET_USER_PROFILE`          | Get user profile information     |
-| `GET_TRADING_ALLOWANCE`     | Check trading allowance          |
-
-### Trading (4)
-
-| Tool                 | Description                    |
-| -------------------- | ------------------------------ |
-| `CREATE_ORDER`       | Create a new order             |
-| `CANCEL_ORDER`       | Cancel an existing order       |
-| `CANCEL_ORDER_BATCH` | Cancel multiple orders at once |
-| `CANCEL_ALL_ORDERS`  | Cancel all open orders         |
+<McpToolsList serverId="limitless" />
 
 ## Environment Variables
 

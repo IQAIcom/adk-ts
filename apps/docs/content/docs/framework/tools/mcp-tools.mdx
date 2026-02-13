@@ -270,7 +270,7 @@ All wrapper functions accept a configuration object. Only `env` is typically req
 | `description`               | string          | No       | Custom description for the MCP client                                                                                                                 |
 | `retryOptions.maxRetries`   | number          | No       | Maximum retry attempts (default: 2)                                                                                                                   |
 | `retryOptions.initialDelay` | number          | No       | Initial retry delay in ms (default: 200)                                                                                                              |
-| `samplingHandler`           | SamplingHandler | No       | Handler for MCP sampling requests (advanced use)                                                                                                      |
+| `samplingHandler`           | SamplingHandler | No       | Handler for MCP sampling requests. See [MCP Sampling](/docs/framework/tools/mcp-sampling) for detailed usage                                          |
 
 ## McpToolset Methods
 
@@ -305,21 +305,21 @@ For external MCP servers (Anthropic's official servers, community servers, custo
 
 #### McpConfig Parameters
 
-| Parameter                   | Type             | Required | Description                                                       |
-| --------------------------- | ---------------- | -------- | ----------------------------------------------------------------- |
-| `name`                      | string           | Yes      | Display name for the MCP client                                   |
-| `description`               | string           | Yes      | Description of the client's purpose                               |
-| `transport`                 | McpTransportType | Yes      | Connection configuration (stdio or SSE)                           |
-| `timeout`                   | number           | No       | Request timeout in milliseconds                                   |
-| `retryOptions.maxRetries`   | number           | No       | Maximum number of retries for failed requests                     |
-| `retryOptions.initialDelay` | number           | No       | Initial delay before retry in milliseconds                        |
-| `retryOptions.maxDelay`     | number           | No       | Maximum delay between retries in milliseconds                     |
-| `headers`                   | Record           | No       | Custom headers for requests                                       |
-| `cacheConfig.enabled`       | boolean          | No       | Whether to cache tools (default: true)                            |
-| `cacheConfig.maxAge`        | number           | No       | Maximum age of cached tools in milliseconds                       |
-| `cacheConfig.maxSize`       | number           | No       | Maximum number of tools to cache                                  |
-| `debug`                     | boolean          | No       | Enable debug logging                                              |
-| `samplingHandler`           | SamplingHandler  | No       | Handler for MCP sampling requests (allows MCP servers to use LLM) |
+| Parameter                   | Type             | Required | Description                                                                                                  |
+| --------------------------- | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
+| `name`                      | string           | Yes      | Display name for the MCP client                                                                              |
+| `description`               | string           | Yes      | Description of the client's purpose                                                                          |
+| `transport`                 | McpTransportType | Yes      | Connection configuration (stdio or SSE)                                                                      |
+| `timeout`                   | number           | No       | Request timeout in milliseconds                                                                              |
+| `retryOptions.maxRetries`   | number           | No       | Maximum number of retries for failed requests                                                                |
+| `retryOptions.initialDelay` | number           | No       | Initial delay before retry in milliseconds                                                                   |
+| `retryOptions.maxDelay`     | number           | No       | Maximum delay between retries in milliseconds                                                                |
+| `headers`                   | Record           | No       | Custom headers for requests                                                                                  |
+| `cacheConfig.enabled`       | boolean          | No       | Whether to cache tools (default: true)                                                                       |
+| `cacheConfig.maxAge`        | number           | No       | Maximum age of cached tools in milliseconds                                                                  |
+| `cacheConfig.maxSize`       | number           | No       | Maximum number of tools to cache                                                                             |
+| `debug`                     | boolean          | No       | Enable debug logging                                                                                         |
+| `samplingHandler`           | SamplingHandler  | No       | Handler for MCP sampling requests. See [MCP Sampling](/docs/framework/tools/mcp-sampling) for detailed usage |
 
 #### McpToolset Constructor
 

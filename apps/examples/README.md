@@ -98,12 +98,12 @@ We have **9 comprehensive examples** that cover the complete ADK feature set, or
 
 ### 🚀 **Advanced Examples (06-09)**
 
-| Example                                                               | Description                                             | Key Concepts                                                   |
-| --------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
-| **[06-mcp-and-integrations](src/06-mcp-and-integrations/)**           | Model Context Protocol with custom and external servers | MCP servers, sampling handler, Coingecko integration           |
-| **[07-guardrails-and-evaluation](src/07-guardrails-and-evaluation/)** | Safety guardrails and agent evaluation                  | Plugins, lifecycle hooks, content filtering, AgentEvaluator    |
-| **[08-observability-and-plugins](src/08-observability-and-plugins/)** | Monitoring, tracing, and metrics                        | OpenTelemetry, Langfuse integration, observability             |
-| **[09-scheduling](src/09-scheduling/)**                               | Recurring agent execution on a schedule                 | AgentScheduler, cron/interval jobs, callbacks, event listeners |
+| Example                                                               | Description                                             | Key Concepts                                                                       |
+| --------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **[06-mcp-and-integrations](src/06-mcp-and-integrations/)**           | Model Context Protocol with custom and external servers | MCP servers, sampling, custom sampling handler with routing, Coingecko integration |
+| **[07-guardrails-and-evaluation](src/07-guardrails-and-evaluation/)** | Safety guardrails and agent evaluation                  | Plugins, lifecycle hooks, content filtering, AgentEvaluator                        |
+| **[08-observability-and-plugins](src/08-observability-and-plugins/)** | Monitoring, tracing, and metrics                        | OpenTelemetry, Langfuse integration, observability                                 |
+| **[09-scheduling](src/09-scheduling/)**                               | Recurring agent execution on a schedule                 | AgentScheduler, cron/interval jobs, callbacks, event listeners                     |
 
 ## 🤝 Contributing
 
