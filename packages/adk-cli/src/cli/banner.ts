@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import chalk from "chalk";
 
 // Brand color: hsl(331.29 100% 68.04%) ≈ rgb(255, 92, 170)
@@ -17,7 +18,7 @@ ${brand("  ╚═╝  ╚═╝ ╚═════╝  ╚═╝  ╚═╝")}
 export function printWelcome(): void {
 	let version = "unknown";
 	try {
-		const pkg = require("../../package.json");
+		const pkg = require(join(__dirname, "../../package.json"));
 		version = pkg.version ?? version;
 	} catch {
 		// ignore
@@ -31,6 +32,7 @@ export function printWelcome(): void {
 	console.log(`  ${dim(`v${version}`)}`);
 	console.log();
 
+	// NOTE: This list must be manually kept in sync with the commands in `cli.module.ts`
 	const commands = [
 		["new", "Create a new ADK project"],
 		["run", "Start an interactive chat with an agent"],

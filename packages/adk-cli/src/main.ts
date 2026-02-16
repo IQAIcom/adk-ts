@@ -22,8 +22,7 @@ try {
 // Show branded welcome banner when running bare `adk` (no subcommand).
 // Executed before Nest bootstraps to keep it instantaneous.
 try {
-	const args = process.argv.slice(2).filter((a) => !a.startsWith("-"));
-	if (args.length === 0) {
+	if (process.argv.length === 2) {
 		const { printWelcome } = require("./cli/banner");
 		printWelcome();
 		process.exit(0);
