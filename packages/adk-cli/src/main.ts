@@ -19,6 +19,19 @@ try {
 	// Silently ignore and continue to normal bootstrap if something unexpected happens.
 }
 
+// Show branded welcome banner when running bare `adk` (no subcommand).
+// Executed before Nest bootstraps to keep it instantaneous.
+try {
+	const args = process.argv.slice(2).filter((a) => !a.startsWith("-"));
+	if (args.length === 0) {
+		const { printWelcome } = require("./cli/banner");
+		printWelcome();
+		process.exit(0);
+	}
+} catch {
+	// Fall through to normal bootstrap if banner fails.
+}
+
 // Decide how noisy Nest should be based on the invoked command.
 // We only want framework bootstrap logs when actually starting a server
 // (serve / run / web). Plain `adk` (help) should be clean.
