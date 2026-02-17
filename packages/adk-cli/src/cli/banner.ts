@@ -33,7 +33,7 @@ export function printWelcome(): void {
 
 	// NOTE: This list must be manually kept in sync with the commands in `cli.module.ts`
 	const commands = [
-		["new", "Create a new ADK project"],
+		["new", "Create a new ADK-TS project"],
 		["run", "Start an interactive chat with an agent"],
 		["serve", "Start an API server for agent management"],
 		["web", "Start a web interface for testing agents"],
