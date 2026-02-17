@@ -7,12 +7,12 @@ const dim = chalk.dim;
 const bold = chalk.bold;
 
 const ADK_BANNER = `
-${brand("   █████╗  ██████╗  ██╗  ██╗")}
-${brand("  ██╔══██╗ ██╔══██╗ ██║ ██╔╝")}
-${brand("  ███████║ ██║  ██║ █████╔╝")}
-${brand("  ██╔══██║ ██║  ██║ ██╔═██╗")}
-${brand("  ██║  ██║ ██████╔╝ ██║  ██╗")}
-${brand("  ╚═╝  ╚═╝ ╚═════╝  ╚═╝  ╚═╝")}
+${brand("   █████╗  ██████╗  ██╗  ██╗      ████████╗ ███████╗")}
+${brand("  ██╔══██╗ ██╔══██╗ ██║ ██╔╝      ╚══██╔══╝ ██╔════╝")}
+${brand("  ███████║ ██║  ██║ █████╔╝  █████╗  ██║    ███████╗")}
+${brand("  ██╔══██║ ██║  ██║ ██╔═██╗  ╚════╝  ██║    ╚════██║")}
+${brand("  ██║  ██║ ██████╔╝ ██║  ██╗         ██║    ███████║")}
+${brand("  ╚═╝  ╚═╝ ╚═════╝  ╚═╝  ╚═╝         ╚═╝    ╚══════╝")}
 `;
 
 export function printWelcome(): void {
@@ -25,9 +25,8 @@ export function printWelcome(): void {
 	}
 
 	console.log(ADK_BANNER);
-	console.log(
-		`  ${brand("Agent Development Kit")} ${dim("—")} Build, test, and deploy AI agents with TypeScript.`,
-	);
+	console.log(`  ${brand("The TypeScript-native AI agent framework")}`);
+	console.log(`  ${dim("Build and test AI agents in TypeScript.")}`);
 	console.log();
 	console.log(`  ${dim(`v${version}`)}`);
 	console.log();
