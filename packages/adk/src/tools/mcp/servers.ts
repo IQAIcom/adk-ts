@@ -529,6 +529,20 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP Notion - Interact with Notion pages, databases, and workspaces (third-party)
+ *
+ * Required env vars: NOTION_TOKEN
+ */
+export function McpNotion(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Notion MCP Client",
+		"@notionhq/notion-mcp-server",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * MCP Sequential Thinking - Structured step-by-step reasoning for complex problem solving (third-party)
  *
  * Optional env vars: DISABLE_THOUGHT_LOGGING
