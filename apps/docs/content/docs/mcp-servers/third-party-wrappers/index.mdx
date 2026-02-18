@@ -47,6 +47,16 @@ MCP servers for file operations, memory management, and utility functions.
     description="Memory and note-taking capabilities for persistent agent knowledge"
     href="/docs/mcp-servers/third-party-wrappers/memory"
   />
+  <Card
+    title="MCP Playwright"
+    description="Browser automation and web scraping using Microsoft's Playwright server"
+    href="/docs/mcp-servers/third-party-wrappers/playwright"
+  />
+  <Card
+    title="MCP Sequential Thinking"
+    description="Structured step-by-step reasoning for complex problem solving"
+    href="/docs/mcp-servers/third-party-wrappers/sequential-thinking"
+  />
 </Cards>
 
 ## Quick Start
@@ -99,12 +109,36 @@ All IQ AI's Third-Party MCP Wrappers support these configuration options:
 
 ## Using Other External MCPs
 
-Don't see a wrapper for the MCP server you want to use? You can connect to any MCP-compliant server using `McpToolset` directly:
+No wrapper for the MCP server you need? Use `McpGeneric` to connect to any npm-based MCP server with the same config pattern as the built-in wrappers:
+
+```typescript
+import { McpGeneric } from "@iqai/adk";
+
+// Connect to any npm-based MCP server
+const toolset = McpGeneric("@some-org/mcp-server-package", {
+  env: {
+    API_KEY: process.env.API_KEY || "",
+  },
+});
+
+const tools = await toolset.getTools();
+```
+
+You can also pass a custom display name as a third argument:
+
+```typescript
+const toolset = McpGeneric(
+  "@modelcontextprotocol/server-brave-search",
+  { env: { BRAVE_API_KEY: process.env.BRAVE_API_KEY || "" } },
+  "Brave Search MCP",
+);
+```
+
+For more control (SSE transport, custom retry logic, etc.), use `McpToolset` directly:
 
 ```typescript
 import { McpToolset } from "@iqai/adk";
 
-// Connect to any MCP server
 const toolset = new McpToolset({
   name: "Custom MCP Server",
   description: "Any MCP-compliant server",
