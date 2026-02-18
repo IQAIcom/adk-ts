@@ -7,6 +7,8 @@
 		"coingecko-pro",
 		"---Utilities",
 		"filesystem",
-		"memory"
+		"memory",
+		"playwright",
+		"sequential-thinking"
 	]
 }

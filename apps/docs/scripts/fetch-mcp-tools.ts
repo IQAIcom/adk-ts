@@ -144,6 +144,16 @@ const MCP_SERVERS: McpServer[] = [
 		name: "Memory MCP Client",
 		package: "@modelcontextprotocol/server-memory",
 	},
+	{
+		slug: "playwright",
+		name: "Playwright MCP Client",
+		package: "@playwright/mcp",
+	},
+	{
+		slug: "sequential-thinking",
+		name: "Sequential Thinking MCP Client",
+		package: "@modelcontextprotocol/server-sequential-thinking",
+	},
 ];
 
 const TIMEOUT_MS = 60_000;
