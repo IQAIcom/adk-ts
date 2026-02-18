@@ -154,6 +154,11 @@ const MCP_SERVERS: McpServer[] = [
 		name: "Sequential Thinking MCP Client",
 		package: "@modelcontextprotocol/server-sequential-thinking",
 	},
+	{
+		slug: "notion",
+		name: "Notion MCP Client",
+		package: "@notionhq/notion-mcp-server",
+	},
 ];
 
 const TIMEOUT_MS = 60_000;
