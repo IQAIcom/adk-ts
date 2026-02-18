@@ -529,6 +529,22 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP Sequential Thinking - Structured step-by-step reasoning for complex problem solving (third-party)
+ *
+ * Optional env vars: DISABLE_THOUGHT_LOGGING
+ */
+export function McpSequentialThinking(
+	config: McpServerConfig = {},
+): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Sequential Thinking MCP Client",
+		"@modelcontextprotocol/server-sequential-thinking",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * MCP Playwright - Browser automation capabilities (third-party)
  *
  * No required env vars
