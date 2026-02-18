@@ -528,6 +528,11 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 	return new McpToolset(mcpConfig);
 }
 
+/**
+ * MCP Playwright - Browser automation capabilities (third-party)
+ *
+ * No required env vars
+ */
 export function McpPlaywright(config: McpServerConfig = {}): McpToolset {
 	const mcpConfig = createMcpConfig(
 		"Playwright MCP Client",
