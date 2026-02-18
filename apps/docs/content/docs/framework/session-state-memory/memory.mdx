@@ -6,14 +6,17 @@ description: Pluggable long-term memory for recalling past conversations
 import { Card, Cards } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Memory turns past sessions into searchable knowledge. Where **Session** tracks the current thread and **State** holds working data, **Memory** persists what matters across days or devices.
+Memory turns past sessions into searchable knowledge. Where **Session** tracks the current conversation thread and **State** holds temporary working data, **Memory** persists what matters across separate conversations, days, or devices.
 
-## Architecture
+When a session ends, you can save it to memory. Later, when the user returns, the agent can search that memory to recall relevant context — what the user prefers, what was discussed, what decisions were made.
 
-- **MemoryService** orchestrates storage, summarization, and embeddings.
-- **Storage Provider** decides how memories are persisted and searched.
-- **Summary Provider** turns a session into structured memory content.
-- **Embedding Provider** enables semantic search (optional).
+## How It Works
+
+Everything goes through a single class: `MemoryService`. You configure it with three optional building blocks:
+
+- **Storage Provider** — decides where memories live and how they are searched (in-memory, files, or a vector database).
+- **Summary Provider** — controls how a session is transformed into a memory before it is stored. Without one, raw conversation text is stored directly.
+- **Embedding Provider** — generates vector embeddings so the storage provider can do semantic (meaning-based) search instead of keyword matching.
 
 ```typescript
 import {
@@ -25,12 +28,12 @@ import {
   FileVectorStore,
 } from "@iqai/adk";
 
-// Development: keyword search, no vectors
+// Development: keyword search, no vectors, nothing persisted
 const devMemory = new MemoryService({
   storage: new InMemoryStorageProvider(),
 });
 
-// Production: vector search with summaries + embeddings
+// Production: semantic search with LLM summaries + OpenAI embeddings
 const prodMemory = new MemoryService({
   storage: new VectorStorageProvider({
     vectorStore: new FileVectorStore({
@@ -49,34 +52,63 @@ const prodMemory = new MemoryService({
 
 ## Storage Providers
 
-- `InMemoryStorageProvider` – keyword search, fastest for local dev.
-- `FileStorageProvider` – keyword search persisted to disk (`json` or `markdown`).
-- `VectorStorageProvider` – uses a vector store adapter; supports `vector`, `keyword`, or `hybrid` search modes.
-  - Vector store adapters: `InMemoryVectorStore` (dev), `FileVectorStore` (persisted), `QdrantVectorStore` (production database).
+Storage providers determine where memories are kept and how search works. Pick the one that fits your environment.
+
+| Provider                  | Search                     | Persistence                 | Best for                   |
+| ------------------------- | -------------------------- | --------------------------- | -------------------------- |
+| `InMemoryStorageProvider` | Keyword                    | None (lost on restart)      | Local dev and testing      |
+| `FileStorageProvider`     | Keyword                    | Disk (`json` or `markdown`) | Lightweight production use |
+| `VectorStorageProvider`   | Vector, keyword, or hybrid | Depends on vector store     | Semantic search at scale   |
+
+`VectorStorageProvider` is a wrapper around a **vector store adapter** — the actual database. Three adapters are included:
+
+- `InMemoryVectorStore` — fast, ephemeral, good for development.
+- `FileVectorStore` — persists vectors to disk as JSON files.
+- `QdrantVectorStore` — connects to a [Qdrant](https://qdrant.tech/) database for production use.
 
 <Callout type="info">
   Vector search requires an embedding provider. `QdrantVectorStore` needs the
   `@qdrant/js-client-rest` dependency and a configured collection (supply
-  `dimensions` to auto-create).
+  `dimensions` to auto-create it automatically).
 </Callout>
 
 ## Summary Providers
 
-- `LlmSummaryProvider` – LLM-generated summary, topic segments, entities, key facts. Configurable model and prompt.
-- `PassthroughSummaryProvider` – stores raw conversation text without calling an LLM.
+When you call `addSessionToMemory`, a summary provider transforms the raw session into structured memory content before it is stored. This makes retrieval more meaningful.
 
-If you omit `summaryProvider`, MemoryService stores minimal raw text from the session.
+- **`LlmSummaryProvider`** — calls an LLM to extract a summary, topic segments, named entities, and key facts. You can configure the model, the prompt, and which fields to extract.
+- **`PassthroughSummaryProvider`** — stores the raw conversation text as-is, without calling an LLM.
+
+If you omit `summaryProvider` entirely, `MemoryService` falls back to storing minimal raw text from the session.
+
+```typescript
+import { LlmSummaryProvider } from "@iqai/adk";
+
+const summaryProvider = new LlmSummaryProvider({
+  model: "gpt-4o-mini",
+  extract: {
+    summary: true, // concise overview
+    segments: true, // topic-by-topic breakdown
+    entities: true, // named people, places, things
+    keyFacts: true, // bullet-point facts to recall later
+  },
+});
+```
 
 ## Embedding Providers
 
-Optional; required for vector search.
+Embedding providers convert text into vectors so the storage layer can find memories by meaning rather than exact words. They are only required when using `VectorStorageProvider` with `searchMode: "vector"` or `"hybrid"`.
 
-- `OpenAIEmbeddingProvider`
-- `CohereEmbeddingProvider`
-- `OllamaEmbeddingProvider`
-- `OpenRouterEmbeddingProvider`
+The following providers are available out of the box:
+
+- `OpenAIEmbeddingProvider` — uses OpenAI's `text-embedding-*` models.
+- `CohereEmbeddingProvider` — uses Cohere's embedding API.
+- `OllamaEmbeddingProvider` — uses a locally running Ollama instance.
+- `OpenRouterEmbeddingProvider` — routes through OpenRouter.
 
 ## Attach Memory to an Agent
+
+Pass a configured `MemoryService` to your agent via `withMemory`, then give the agent a memory tool so it knows how to search it.
 
 ```typescript
 import {
@@ -93,16 +125,16 @@ const memoryService = new MemoryService({
 });
 
 const { runner } = await AgentBuilder.withModel("gemini-2.5-flash")
-  .withInstruction("Use recall_memory to answer from prior chats.")
+  .withInstruction("Use recall_memory to answer questions from prior chats.")
   .withTools(new RecallMemoryTool())
   .withSessionService(sessionService, { userId: "alice", appName: "demo" })
   .withMemory(memoryService)
   .build();
 ```
 
-## Storing Sessions
+## Saving a Session to Memory
 
-Memory is not saved automatically; call `addSessionToMemory` when you decide a session is worth keeping.
+Memory is not saved automatically. You decide when a session is worth keeping by calling `addSessionToMemory`. A good place to do this is right after a conversation ends.
 
 ```typescript
 const session = await sessionService.getSession("demo", "alice", sessionId);
@@ -111,7 +143,9 @@ if (session) {
 }
 ```
 
-## Searching Memory
+## Searching Memory Directly
+
+You can also query memory programmatically — useful for building retrieval pipelines or inspecting what the agent would recall.
 
 ```typescript
 const results = await memoryService.search({
@@ -123,48 +157,79 @@ const results = await memoryService.search({
 });
 ```
 
-With embeddings configured, MemoryService will embed the query and pass it to the storage provider for semantic search.
+When an embedding provider is configured, `MemoryService` automatically embeds the query before passing it to the storage provider for semantic search.
 
 ## Memory Tools
 
-- `RecallMemoryTool` / `LoadMemoryTool` / `PreloadMemoryTool` – search and load memories for the current user.
-- `WriteMemoryTool` – explicitly write a fact to memory.
-- `ForgetMemoryTool` – delete memories by ID or query.
-- `GetSessionDetailsTool` – fetch full session content for a memory hit.
+Memory tools are how agents interact with memory during a conversation. Add them via `withTools` in your agent setup — they all require `withMemory(...)` to be configured.
 
-These tools use the configured `memoryService` and require `withMemory(...)` in your agent setup.
+| Tool                    | What it does                                                                                                          |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `RecallMemoryTool`      | The agent explicitly calls this when it needs to look something up. It runs a search and returns matching memories.   |
+| `PreloadMemoryTool`     | Automatically injects relevant memories into the system prompt before each LLM call, without the agent having to ask. |
+| `LoadMemoryTool`        | Deprecated alias for `RecallMemoryTool`. Use `RecallMemoryTool` instead.                                              |
+| `WriteMemoryTool`       | Lets the agent write a specific fact directly to memory without going through `addSessionToMemory`.                   |
+| `ForgetMemoryTool`      | Lets the agent delete memories by ID or by query.                                                                     |
+| `GetSessionDetailsTool` | Fetches the full session transcript for a given memory hit — useful when a summary is not enough.                     |
 
-## What Gets Stored
+## What Gets Stored?
 
-Stored: user messages, agent responses, tool outputs with text, timestamps, and structured summary fields (summary, segments, keyFacts, entities) when a summary provider is used.
+Not everything from a session ends up in memory. Here is what is included and what is intentionally left out.
 
-Not stored: empty events or binary data (use [Artifacts](/docs/framework/artifacts) for files/blobs).
+**Stored:** user messages, agent responses, tool outputs that contain text, timestamps, and structured summary fields (`summary`, `segments`, `keyFacts`, `entities`) when a summary provider is configured.
+
+**Not stored:** empty events or binary data. Use [Artifacts](/docs/framework/artifacts) for files and blobs.
 
 ## Migration Notes
 
-- `InMemoryMemoryService` is deprecated; use `MemoryService` with `InMemoryStorageProvider`.
-- `VertexAiRagMemoryService` has been removed; use `MemoryService` plus `VectorStorageProvider` with your vector DB (e.g., Qdrant) or `FileVectorStore` for persistent local vectors.
+v0.7 replaced the old single-class memory services with a pluggable provider architecture. If you are upgrading, here is what changed:
+
+### `InMemoryMemoryService` → `MemoryService` + `InMemoryStorageProvider`
+
+`InMemoryMemoryService` is deprecated and will be removed in the next major version.
+
+```typescript
+// Before (deprecated)
+import { InMemoryMemoryService } from "@iqai/adk";
+const memory = new InMemoryMemoryService();
+
+// After
+import { MemoryService, InMemoryStorageProvider } from "@iqai/adk";
+const memory = new MemoryService({ storage: new InMemoryStorageProvider() });
+```
+
+### `VertexAiRagMemoryService` has been removed
+
+Use `MemoryService` with `VectorStorageProvider` backed by `QdrantVectorStore` or `FileVectorStore` for persistent local vectors instead.
+
+### `LoadMemoryTool` is deprecated
+
+Use `RecallMemoryTool` instead. `LoadMemoryTool` still works but will be removed in a future version.
+
+### `BaseMemoryService` and `MemoryEntry` are deprecated
+
+Use the `MemoryStorageProvider` interface and `MemoryRecord` type respectively.
 
 ## Next Steps
 
 <Cards>
   <Card
-    title="Session"
+    title="💬 Session"
     description="Manage conversation threads"
     href="/docs/framework/session-state-memory/session"
   />
   <Card
-    title="State"
+    title="📦 State"
     description="Store conversation data"
     href="/docs/framework/session-state-memory/state"
   />
   <Card
-    title="Tools"
+    title="🔧 Tools"
     description="Build custom memory tools"
     href="/docs/framework/tools"
   />
   <Card
-    title="Vertex AI"
+    title="☁️ Vertex AI"
     description="Scale sessions in the cloud"
     href="/docs/framework/session-state-memory/vertex-ai"
   />
