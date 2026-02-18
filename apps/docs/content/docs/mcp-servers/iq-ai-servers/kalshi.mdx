@@ -70,37 +70,9 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Available Tools (15)
+## Available Tools
 
-### Markets (5)
-
-| Tool                   | Description                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------- |
-| `GET_MARKETS`          | List and discover prediction markets with paginated results including ticker, title, prices, and volume |
-| `GET_MARKET`           | Get detailed information about a specific market by its ticker                                          |
-| `GET_MARKET_ORDERBOOK` | Get the current orderbook showing bid prices and quantities for Yes and No sides                        |
-| `GET_TRADES`           | Get recent public trades across all markets or for a specific market                                    |
-| `GET_SERIES`           | Get information about a series (template for recurring events)                                          |
-
-### Portfolio (4)
-
-| Tool              | Description                                                               |
-| ----------------- | ------------------------------------------------------------------------- |
-| `GET_BALANCE`     | Get current account balance and portfolio value in dollars                |
-| `GET_POSITIONS`   | Get current portfolio positions with market exposure, cost basis, and P&L |
-| `GET_FILLS`       | Get trade fill history (when orders are matched with other traders)       |
-| `GET_SETTLEMENTS` | Get settlement history showing resolved markets and payouts               |
-
-### Orders (6)
-
-| Tool                  | Description                                                              |
-| --------------------- | ------------------------------------------------------------------------ |
-| `GET_ORDERS`          | Get your orders with optional filtering by market, status, or time range |
-| `GET_ORDER`           | Get detailed information about a specific order by ID                    |
-| `CREATE_ORDER`        | Create a new order to buy or sell contracts (limit or market order)      |
-| `CANCEL_ORDER`        | Cancel an existing open order by ID                                      |
-| `BATCH_CANCEL_ORDERS` | Cancel multiple orders at once (up to 20 per batch)                      |
-| `DECREASE_ORDER`      | Decrease the quantity of an existing order                               |
+<McpToolsList serverId="kalshi" />
 
 ## Environment Variables
 

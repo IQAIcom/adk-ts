@@ -1,6 +1,7 @@
 import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Mermaid } from "@/components/mdx/mermaid";
+import { McpToolsList } from "@/components/mcp/mcp-tools-list";
 import type { MDXComponents } from "mdx/types";
 
 // use this function to get MDX components, you will need it for rendering MDX
@@ -9,6 +10,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
 		...defaultMdxComponents,
 		img: (props) => <ImageZoom {...(props as any)} />,
 		Mermaid,
+		McpToolsList,
 		...components,
 	};
 }

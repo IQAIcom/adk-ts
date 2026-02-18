@@ -74,37 +74,7 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 ## Available Tools
 
-The server exposes the following tools that MCP clients can utilize:
-
-### `SEND_MESSAGE`
-
-Send a message to a Telegram chat or channel.
-
-- Parameters: `chatId` (string), `text` (string), `parseMode` (string, optional), `disableWebPagePreview` (boolean, optional), `disableNotification` (boolean, optional)
-
-### `GET_CHANNEL_INFO`
-
-Get information about a channel or chat.
-
-- Parameters: `channelId` (string)
-
-### `FORWARD_MESSAGE`
-
-Forward a message from one chat to another.
-
-- Parameters: `fromChatId` (string), `toChatId` (string), `messageId` (string), `disableNotification` (boolean, optional)
-
-### `PIN_MESSAGE`
-
-Pin a message in a chat or channel.
-
-- Parameters: `chatId` (string), `messageId` (string), `disableNotification` (boolean, optional)
-
-### `GET_CHANNEL_MEMBERS`
-
-Get channel administrators (limited by Telegram API).
-
-- Parameters: `channelId` (string), `limit` (number, optional)
+<McpToolsList serverId="telegram" />
 
 ## Sampling
 

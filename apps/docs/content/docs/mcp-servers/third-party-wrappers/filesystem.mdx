@@ -110,20 +110,7 @@ All MCP servers support these configuration options:
 
 ## Available Tools
 
-The filesystem MCP server provides tools for:
-
-- **read_file** - Read file contents
-- **write_file** - Write content to files
-- **list_directory** - List directory contents
-- **create_directory** - Create new directories
-- **move_file** - Move or rename files
-- **search_files** - Search for files matching patterns
-
-<Callout type="info" title="Tool Discovery">
-
-Use `await toolset.getTools()` to retrieve the full list of available tools with their schemas and descriptions.
-
-</Callout>
+<McpToolsList serverId="filesystem" />
 
 ## Complete Example
 

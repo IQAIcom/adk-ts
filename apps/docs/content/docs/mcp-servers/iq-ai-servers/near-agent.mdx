@@ -179,39 +179,7 @@ const client = new MCPClient({
 
 ## Available Tools
 
-### `watch_near_event`
-
-Start watching for specific events on a NEAR contract:
-
-```typescript
-{
-  eventName: "run_agent",           // Event to watch for
-  contractId: "contract.testnet",   // Contract to monitor
-  responseMethodName: "agent_response", // Method to call with AI response
-  cronExpression: "*/10 * * * * *"  // Optional: polling frequency
-}
-```
-
-### `stop_watching_near_event`
-
-Stop watching for specific events:
-
-```typescript
-{
-  contractId: "contract.testnet",
-  eventName: "run_agent"
-}
-```
-
-### `list_watched_near_events`
-
-List all currently watched events and statistics:
-
-```typescript
-{
-  includeStats: true; // Optional: include performance statistics
-}
-```
+<McpToolsList serverId="near-agent" />
 
 ## 🌜 Event Processing Flow
 

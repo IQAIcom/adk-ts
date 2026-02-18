@@ -75,27 +75,7 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 ## Available Tools
 
-### `ODOS_GET_QUOTE`
-
-Fetch a quote for a swap:
-
-- Parameters:
-  - `chainId` (number): The chain ID of the DEX
-  - `sellToken` (string): The token you want to sell
-  - `buyToken` (string): The token you want to buy
-  - `sellAmount` (string): The amount of tokens you want to sell
-
-### `ODOS_EXECUTE_SWAP`
-
-Execute a swap:
-
-- Parameters:
-  - `chainId` (number): The chain ID of the DEX
-  - `sellToken` (string): The token you want to sell
-  - `buyToken` (string): The token you want to buy
-  - `sellAmount` (string): The amount of tokens you want to sell
-  - `quote` (string): The quote from the get-quote service
-  - `walletProvider` (string): The wallet provider to use
+<McpToolsList serverId="odos" />
 
 ## Environment Variables
 

@@ -59,49 +59,9 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Available Tools (16)
+## Available Tools
 
-### TVL & Protocol Data
-
-| Tool                                 | Description                                                              |
-| ------------------------------------ | ------------------------------------------------------------------------ |
-| `defillama_get_chains`               | Fetch blockchain chains ranked by Total Value Locked (top 20)            |
-| `defillama_get_protocol_data`        | Fetch TVL data for DeFi protocols with auto-resolution of protocol names |
-| `defillama_get_historical_chain_tvl` | Fetch historical TVL data for blockchain chains over time                |
-
-### Price Data
-
-| Tool                                          | Description                                                                 |
-| --------------------------------------------- | --------------------------------------------------------------------------- |
-| `defillama_get_prices_current_coins`          | Retrieve current token prices                                               |
-| `defillama_get_historical_prices_by_contract` | Get historical token prices at specific timestamps using contract addresses |
-| `defillama_get_prices_first_coins`            | Get the first recorded historical prices for tokens                         |
-| `defillama_get_batch_historical`              | Fetch historical price data for multiple tokens at specific timestamps      |
-| `defillama_get_chart_coins`                   | Get historical price chart data with customizable time ranges               |
-| `defillama_get_percentage_coins`              | Calculate percentage price changes over specified periods                   |
-
-### DEX & Trading
-
-| Tool                             | Description                                                  |
-| -------------------------------- | ------------------------------------------------------------ |
-| `defillama_get_dexs_data`        | Retrieve DEX trading volume data and metrics                 |
-| `defillama_get_fees_and_revenue` | Access fees and revenue metrics for DeFi protocols           |
-| `defillama_get_options_data`     | Retrieve options protocol data including volume and premiums |
-
-### Yields & Pools
-
-| Tool                                 | Description                                                  |
-| ------------------------------------ | ------------------------------------------------------------ |
-| `defillama_get_latest_pool_data`     | Fetch current yield farming pool data including APY rates    |
-| `defillama_get_historical_pool_data` | Retrieve historical APY and TVL data for yield farming pools |
-
-### Stablecoins & Blockchain
-
-| Tool                                 | Description                                                          |
-| ------------------------------------ | -------------------------------------------------------------------- |
-| `defillama_get_stablecoin_chart`     | Access stablecoin historical price and circulation data              |
-| `defillama_get_stablecoin_prices`    | Fetch current stablecoin market data                                 |
-| `defillama_get_blockchain_timestamp` | Retrieve block information for a specific chain at a given timestamp |
+<McpToolsList serverId="defillama" />
 
 ## Environment Variables
 
