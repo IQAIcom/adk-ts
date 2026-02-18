@@ -40,11 +40,29 @@ import rawMcpToolsData from "@/data/mcp-tools.json";
 
 const mcpToolsData = rawMcpToolsData as unknown as McpToolsData;
 
+/** Renders **bold** and *italic* inline markdown in a string. */
+function renderInline(text: string): React.ReactNode {
+	const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+	if (parts.length === 1) return text;
+	return parts.map((part, idx) => {
+		if (part.startsWith("**") && part.endsWith("**")) {
+			// biome-ignore lint/suspicious/noArrayIndexKey: stable split
+			return <strong key={idx}>{part.slice(2, -2)}</strong>;
+		}
+		if (part.startsWith("*") && part.endsWith("*")) {
+			// biome-ignore lint/suspicious/noArrayIndexKey: stable split
+			return <em key={idx}>{part.slice(1, -1)}</em>;
+		}
+		// biome-ignore lint/suspicious/noArrayIndexKey: stable split
+		return <span key={idx}>{part}</span>;
+	});
+}
+
 function renderDescription(description: string) {
 	if (!description.includes("\n")) {
 		return (
 			<p className="text-sm leading-relaxed text-fd-foreground/80">
-				{description}
+				{renderInline(description)}
 			</p>
 		);
 	}
@@ -63,6 +81,44 @@ function renderDescription(description: string) {
 			continue;
 		}
 
+		// Fenced code block (``` or ```lang)
+		if (trimmed.startsWith("```")) {
+			const codeLines: string[] = [];
+			i++; // skip opening fence
+			while (i < lines.length && !lines[i].trim().startsWith("```")) {
+				codeLines.push(lines[i]);
+				i++;
+			}
+			i++; // skip closing fence
+			nodes.push(
+				<pre
+					key={key++}
+					className="overflow-x-auto rounded-md bg-fd-muted p-3 text-xs leading-relaxed text-fd-foreground/90 font-mono"
+				>
+					<code>{codeLines.join("\n")}</code>
+				</pre>,
+			);
+			continue;
+		}
+
+		// Markdown headings (# H1, ## H2, ### H3)
+		const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)/);
+		if (headingMatch) {
+			const level = headingMatch[1].length;
+			const text = headingMatch[2];
+			const className =
+				level === 1
+					? "text-sm font-semibold text-fd-foreground mt-3 first:mt-0"
+					: "text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground mt-3 first:mt-0";
+			nodes.push(
+				<p key={key++} className={className}>
+					{text}
+				</p>,
+			);
+			i++;
+			continue;
+		}
+
 		// Numbered list
 		if (/^\d+\.\s/.test(trimmed)) {
 			const items: string[] = [];
@@ -77,7 +133,7 @@ function renderDescription(description: string) {
 				>
 					{items.map((item, idx) => (
 						// biome-ignore lint/suspicious/noArrayIndexKey: stable list
-						<li key={idx}>{item}</li>
+						<li key={idx}>{renderInline(item)}</li>
 					))}
 				</ol>,
 			);
@@ -110,12 +166,12 @@ function renderDescription(description: string) {
 					{items.map(({ text, subs }, idx) => (
 						// biome-ignore lint/suspicious/noArrayIndexKey: stable list
 						<li key={idx}>
-							{text}
+							{renderInline(text)}
 							{subs.length > 0 && (
 								<ul className="mt-0.5 list-[circle] pl-4 space-y-0.5">
 									{subs.map((sub, subIdx) => (
 										// biome-ignore lint/suspicious/noArrayIndexKey: stable list
-										<li key={subIdx}>{sub}</li>
+										<li key={subIdx}>{renderInline(sub)}</li>
 									))}
 								</ul>
 							)}
@@ -126,8 +182,8 @@ function renderDescription(description: string) {
 			continue;
 		}
 
-		// Section header (line ends with ":")
-		if (trimmed.endsWith(":")) {
+		// Section header (plain line ending with ":" — not inside a code block)
+		if (trimmed.endsWith(":") && !trimmed.includes("{")) {
 			nodes.push(
 				<p
 					key={key++}
@@ -143,7 +199,7 @@ function renderDescription(description: string) {
 		// Regular paragraph
 		nodes.push(
 			<p key={key++} className="text-sm leading-relaxed text-fd-foreground/80">
-				{trimmed}
+				{renderInline(trimmed)}
 			</p>,
 		);
 		i++;
