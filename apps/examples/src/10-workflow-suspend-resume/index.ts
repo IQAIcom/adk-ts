@@ -26,10 +26,17 @@ const processStep = createStep({
 	description: "Processes the data, but suspends for approval if value > 10",
 	suspendSchema: z.object({ requiresApproval: z.boolean(), value: z.number() }),
 	resumeSchema,
-	execute: async ({ resumeData, suspend, getStepResult }) => {
-		const validateResult = getStepResult<{ isValid: boolean; value: number }>(
-			"validate",
-		);
+	execute: async ({
+		resumeData,
+		suspend,
+		getStepResult,
+	}: Parameters<typeof processStep.execute>[0]) => {
+		const validateResult = getStepResult("validate") as
+			| {
+					isValid: boolean;
+					value: number;
+			  }
+			| undefined;
 		if (!validateResult?.isValid) {
 			throw new Error("Validation failed");
 		}
@@ -60,10 +67,12 @@ const finalizeStep = createStep({
 	id: "finalize",
 	description: "Finalizes the workflow result",
 	execute: async ({ getStepResult }) => {
-		const processResult = getStepResult<{
-			processed: number;
-			originalValue: number;
-		}>("process");
+		const processResult = getStepResult("process") as
+			| {
+					processed: number;
+					originalValue: number;
+			  }
+			| undefined;
 		if (!processResult) {
 			throw new Error("Process step result not found");
 		}

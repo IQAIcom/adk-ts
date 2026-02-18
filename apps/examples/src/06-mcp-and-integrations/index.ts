@@ -24,7 +24,7 @@ async function main() {
 	const { runner: rootRunner } = await getRootAgent(samplingHandler);
 
 	// Test question related to sampling
-	await ask(rootRunner, "Great the user");
+	await ask(rootRunner, "Greet the user");
 
 	// Test question related to coingecko MCP server
 	await ask(rootRunner, "What is the price of bitcoin?");
