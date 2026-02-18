@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { Callout } from "fumadocs-ui/components/callout";
+import React from "react";
 
 interface ToolParameter {
 	type?: string;
@@ -38,6 +39,118 @@ interface McpToolsListProps {
 import rawMcpToolsData from "@/data/mcp-tools.json";
 
 const mcpToolsData = rawMcpToolsData as unknown as McpToolsData;
+
+function renderDescription(description: string) {
+	if (!description.includes("\n")) {
+		return (
+			<p className="text-sm leading-relaxed text-fd-foreground/80">
+				{description}
+			</p>
+		);
+	}
+
+	const lines = description.split("\n");
+	const nodes: React.ReactNode[] = [];
+	let key = 0;
+	let i = 0;
+
+	while (i < lines.length) {
+		const line = lines[i];
+		const trimmed = line.trim();
+
+		if (!trimmed) {
+			i++;
+			continue;
+		}
+
+		// Numbered list
+		if (/^\d+\.\s/.test(trimmed)) {
+			const items: string[] = [];
+			while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+				items.push(lines[i].trim().replace(/^\d+\.\s+/, ""));
+				i++;
+			}
+			nodes.push(
+				<ol
+					key={key++}
+					className="list-decimal pl-5 space-y-1 text-sm leading-relaxed text-fd-foreground/80"
+				>
+					{items.map((item, idx) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: stable list
+						<li key={idx}>{item}</li>
+					))}
+				</ol>,
+			);
+			continue;
+		}
+
+		// Bullet list (top-level "- ")
+		if (/^-\s/.test(trimmed)) {
+			const items: Array<{ text: string; subs: string[] }> = [];
+			while (i < lines.length) {
+				const currTrimmed = lines[i].trim();
+				if (/^-\s/.test(currTrimmed)) {
+					const text = currTrimmed.replace(/^-\s+/, "");
+					const subs: string[] = [];
+					i++;
+					while (i < lines.length && /^\s{2,}\*\s/.test(lines[i])) {
+						subs.push(lines[i].trim().replace(/^\*\s+/, ""));
+						i++;
+					}
+					items.push({ text, subs });
+				} else {
+					break;
+				}
+			}
+			nodes.push(
+				<ul
+					key={key++}
+					className="list-disc pl-5 space-y-1 text-sm leading-relaxed text-fd-foreground/80"
+				>
+					{items.map(({ text, subs }, idx) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: stable list
+						<li key={idx}>
+							{text}
+							{subs.length > 0 && (
+								<ul className="mt-0.5 list-[circle] pl-4 space-y-0.5">
+									{subs.map((sub, subIdx) => (
+										// biome-ignore lint/suspicious/noArrayIndexKey: stable list
+										<li key={subIdx}>{sub}</li>
+									))}
+								</ul>
+							)}
+						</li>
+					))}
+				</ul>,
+			);
+			continue;
+		}
+
+		// Section header (line ends with ":")
+		if (trimmed.endsWith(":")) {
+			nodes.push(
+				<p
+					key={key++}
+					className="mt-3 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground first:mt-0"
+				>
+					{trimmed.slice(0, -1)}
+				</p>,
+			);
+			i++;
+			continue;
+		}
+
+		// Regular paragraph
+		nodes.push(
+			<p key={key++} className="text-sm leading-relaxed text-fd-foreground/80">
+				{trimmed}
+			</p>,
+		);
+		i++;
+	}
+
+	return <div className="space-y-2">{nodes}</div>;
+}
 
 function ToolTile({ tool }: { tool: McpTool }) {
 	const properties = tool.inputSchema?.properties;
@@ -98,9 +211,7 @@ function ToolTile({ tool }: { tool: McpTool }) {
 				<p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-fd-muted-foreground/60">
 					Description
 				</p>
-				<p className="text-sm leading-relaxed text-fd-foreground/80">
-					{tool.description}
-				</p>
+				{renderDescription(tool.description)}
 			</div>
 		</details>
 	);
