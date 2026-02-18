@@ -21,6 +21,7 @@ export * from "./scheduling";
 export * from "./sessions";
 export * from "./tools";
 export * from "./utils";
+export * from "./unified-memory";
 export * from "./workflows";
 
 // Initialize providers - Automatically registers all LLMs
@@ -42,5 +43,6 @@ export * as Sessions from "./sessions";
 export * from "./telemetry";
 export * as Workflows from "./workflows";
 export * as Tools from "./tools";
+export * as UnifiedMemory from "./unified-memory";
 // Re-export version.ts
 export * from "./version";
