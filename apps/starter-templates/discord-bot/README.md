@@ -100,6 +100,24 @@ src/
 └── index.ts                  # Discord bot bootstrap
 ```
 
+## 🧪 Test with ADK-TS CLI
+
+From your project directory, you can test agents without writing custom test scripts.
+
+```bash
+# Option 1: Install ADK-TS CLI globally, then run
+pnpm install -g @iqai/adk-cli
+adk run
+adk web
+
+# Option 2: Use npx without global install
+npx @iqai/adk-cli run
+npx @iqai/adk-cli web
+```
+
+- `adk run`: interactive terminal chat with your agent(s).
+- `adk web`: launches a local server and opens the ADK-TS web interface.
+
 ## 📚 Learn More
 
 - [ADK-TS Documentation](https://adk.iqai.com/)
