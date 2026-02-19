@@ -18,7 +18,7 @@ const baseNavLinks = [
 		icon: <Book className="w-4 h-4" />,
 	},
 	{
-		text: "MCP",
+		text: "MCPs",
 		url: "/docs/mcp-servers",
 		icon: <Blocks className="w-4 h-4" />,
 	},
