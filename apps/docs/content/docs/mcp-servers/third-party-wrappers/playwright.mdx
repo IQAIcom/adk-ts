@@ -1,0 +1,170 @@
+---
+title: MCP Playwright
+description: Browser automation using Microsoft's Playwright MCP server
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Name**: MCP Playwright
+- **Package**: `@playwright/mcp`
+- **Provider**: Microsoft
+
+## Overview
+
+MCP Playwright is a third-party MCP server from Microsoft. It lets agents control a browser to navigate pages, interact with elements, take screenshots, and extract content.
+
+<Callout type="info" title="Headless by Default">
+
+Playwright MCP runs in headless mode by default. Pass `--headed` via args if you need a visible browser for debugging.
+
+</Callout>
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import { McpPlaywright } from "@iqai/adk";
+
+    const toolset = McpPlaywright();
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import { McpToolset } from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Playwright MCP Client",
+      description: "Client for browser automation",
+      transport: {
+        mode: "stdio",
+        command: "npx",
+        args: ["-y", "@playwright/mcp"],
+        env: {
+          PATH: process.env.PATH || "",
+        },
+      },
+    });
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    If you want to use this MCP with Claude Desktop, add this to your Claude Desktop configuration file:
+
+    **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+    ```json
+    {
+      "mcpServers": {
+        "playwright": {
+          "command": "npx",
+          "args": ["-y", "@playwright/mcp"]
+        }
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>
+
+## Environment Variables
+
+No environment variables are required for the Playwright MCP server.
+
+## Configuration Options
+
+All MCP servers support these configuration options:
+
+| Option                      | Type            | Description                              |
+| --------------------------- | --------------- | ---------------------------------------- |
+| `env`                       | object          | Environment variables (see table above)  |
+| `debug`                     | boolean         | Enable debug logging                     |
+| `description`               | string          | Custom description                       |
+| `retryOptions.maxRetries`   | number          | Max retry attempts (default: 2)          |
+| `retryOptions.initialDelay` | number          | Initial retry delay in ms (default: 200) |
+| `samplingHandler`           | SamplingHandler | Handler for MCP sampling requests        |
+
+## Available Tools
+
+<McpToolsList serverId="playwright" />
+
+## Complete Example
+
+```typescript
+import { McpPlaywright, LlmAgent } from "@iqai/adk";
+
+async function main() {
+  // Initialize Playwright toolset
+  const playwrightToolset = McpPlaywright({
+    debug: true,
+  });
+
+  try {
+    const tools = await playwrightToolset.getTools();
+
+    const agent = new LlmAgent({
+      name: "browser_agent",
+      model: "gemini-2.5-flash",
+      description: "An agent that can browse the web and extract information",
+      instruction: `You have access to a browser.
+        Navigate to pages, extract data, and interact with elements as needed.
+        Take a screenshot after navigating to confirm the page loaded.`,
+      tools,
+    });
+
+    const response = await agent.ask(
+      "Go to example.com and tell me what you see on the page",
+    );
+    console.log(response);
+  } finally {
+    await playwrightToolset.close();
+  }
+}
+
+main();
+```
+
+## Use Cases
+
+- **Web Scraping**: Extract structured data from websites
+- **UI Testing**: Automate browser-based testing workflows
+- **Form Automation**: Fill and submit web forms programmatically
+- **Screenshot Capture**: Take screenshots of web pages for analysis
+- **Navigation Monitoring**: Track redirects and page behavior
+- **Content Extraction**: Read and parse page content and metadata
+
+## Best Practices
+
+- **Cleanup**: Always call `toolset.close()` when done to free browser resources
+- **Rate Limiting**: Add delays between requests to avoid overloading servers
+- **Error Handling**: Handle navigation errors and timeouts gracefully
+- **Respect robots.txt**: Ensure you have permission to scrape target sites
+- **Headless Mode**: Use headless mode in production for better performance
+
+## Troubleshooting
+
+| Issue                 | Solution                                                           |
+| --------------------- | ------------------------------------------------------------------ |
+| Browser not launching | Ensure Playwright browsers are installed: `npx playwright install` |
+| Navigation timeout    | Increase timeout or check network connectivity                     |
+| Element not found     | Verify selectors and wait for page to fully load                   |
+| Connection timeout    | Check if npm/npx is installed and in PATH                          |
+| Permission denied     | Ensure the process has appropriate system permissions              |
+
+## Related Resources
+
+- [Official Playwright MCP Server](https://github.com/microsoft/playwright-mcp)
+- [Playwright Documentation](https://playwright.dev)
+- [MCP Tools Documentation](/docs/framework/tools/mcp-tools)
+- [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps)
+- [Integrating External MCPs](/docs/mcp-servers/external-mcps)

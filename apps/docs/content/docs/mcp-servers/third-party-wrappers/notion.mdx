@@ -1,0 +1,191 @@
+---
+title: MCP Notion
+description: Interact with Notion pages, databases, and workspaces using Notion's official MCP server
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Name**: MCP Notion
+- **Package**: `@notionhq/notion-mcp-server`
+- **Provider**: Notion
+
+## Overview
+
+MCP Notion is the official MCP server from Notion. It lets agents read and write pages, query databases, search content, and manage comments and blocks across a Notion workspace.
+
+<Callout type="warning" title="Integration Token Required">
+
+You need a Notion internal integration token (`NOTION_TOKEN`) to use this server. Create one at [notion.so/my-integrations](https://www.notion.so/my-integrations) and share the relevant pages with it.
+
+</Callout>
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import { McpNotion } from "@iqai/adk";
+
+    const toolset = McpNotion({
+      env: {
+        NOTION_TOKEN: process.env.NOTION_TOKEN,
+      },
+    });
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import { McpToolset } from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Notion MCP Client",
+      description: "Client for Notion workspace operations",
+      transport: {
+        mode: "stdio",
+        command: "npx",
+        args: ["-y", "@notionhq/notion-mcp-server"],
+        env: {
+          NOTION_TOKEN: process.env.NOTION_TOKEN || "",
+          PATH: process.env.PATH || "",
+        },
+      },
+    });
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    Add this to your Claude Desktop configuration file:
+
+    **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+    ```json
+    {
+      "mcpServers": {
+        "notionApi": {
+          "command": "npx",
+          "args": ["-y", "@notionhq/notion-mcp-server"],
+          "env": {
+            "NOTION_TOKEN": "ntn_your_token_here"
+          }
+        }
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>
+
+## Environment Variables
+
+| Variable       | Type     | Description                                         |
+| -------------- | -------- | --------------------------------------------------- |
+| `NOTION_TOKEN` | Required | Your Notion integration secret (starts with `ntn_`) |
+
+## Configuration Options
+
+All MCP servers support these configuration options:
+
+| Option                      | Type            | Description                              |
+| --------------------------- | --------------- | ---------------------------------------- |
+| `env`                       | object          | Environment variables (see table above)  |
+| `debug`                     | boolean         | Enable debug logging                     |
+| `description`               | string          | Custom description                       |
+| `retryOptions.maxRetries`   | number          | Max retry attempts (default: 2)          |
+| `retryOptions.initialDelay` | number          | Initial retry delay in ms (default: 200) |
+| `samplingHandler`           | SamplingHandler | Handler for MCP sampling requests        |
+
+## Available Tools
+
+<Callout type="info" title="Hyphenated Tool Names">
+
+Notion's tool names use hyphens (e.g. `retrieve-a-page`). ADK-TS automatically maps these to underscore equivalents (`retrieve_a_page`) for the LLM, and maps them back when calling the server.
+
+</Callout>
+
+<McpToolsList serverId="notion" />
+
+## Complete Example
+
+```typescript
+import { McpNotion, LlmAgent } from "@iqai/adk";
+
+async function main() {
+  const notionToolset = McpNotion({
+    env: {
+      NOTION_TOKEN: process.env.NOTION_TOKEN,
+    },
+  });
+
+  try {
+    const tools = await notionToolset.getTools();
+
+    const agent = new LlmAgent({
+      name: "notion_agent",
+      model: "gemini-2.5-flash",
+      description: "An agent that reads and writes Notion content",
+      instruction: `You have access to a Notion workspace.
+        Use the available tools to search pages, read content, and create or update pages.
+        Always confirm before making destructive changes.`,
+      tools,
+    });
+
+    const response = await agent.ask(
+      "Search for pages about project planning and summarize what you find",
+    );
+    console.log(response);
+  } finally {
+    await notionToolset.close();
+  }
+}
+
+main();
+```
+
+## Setting Up a Notion Integration
+
+1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations) and create a new integration
+2. Copy the integration secret (starts with `ntn_`) and set it as `NOTION_TOKEN`
+3. Open the Notion pages or databases you want the agent to access
+4. Click **...** > **Connect to** > select your integration to grant access
+
+The integration can only access pages it has been explicitly connected to.
+
+## Use Cases
+
+- **Search and summarize**: Find pages across a workspace and extract key information
+- **Page creation**: Create structured notes, meeting summaries, or documentation pages
+- **Database queries**: Read rows from Notion databases and filter by properties
+- **Content updates**: Edit existing pages or append blocks to them
+- **Comment threads**: Post and retrieve comments on pages
+
+## Best Practices
+
+- Only share the specific pages and databases the integration needs access to
+- Use read-only integrations where write access is not needed
+- Always call `toolset.close()` when done
+
+## Troubleshooting
+
+| Issue                | Solution                                                         |
+| -------------------- | ---------------------------------------------------------------- |
+| `Unauthorized` error | Check that `NOTION_TOKEN` is correct and starts with `ntn_`      |
+| Page not found       | Ensure the integration has been connected to that page in Notion |
+| Tools not loading    | Verify `@notionhq/notion-mcp-server` can be resolved via `npx`   |
+| Connection timeout   | Check if npm/npx is installed and in PATH                        |
+
+## Related Resources
+
+- [Official Notion MCP Server](https://github.com/makenotion/notion-mcp-server)
+- [Notion Integration Setup](https://developers.notion.com/docs/create-a-notion-integration)
+- [MCP Tools Documentation](/docs/framework/tools/mcp-tools)
+- [Integrating External MCPs](/docs/mcp-servers/external-mcps)

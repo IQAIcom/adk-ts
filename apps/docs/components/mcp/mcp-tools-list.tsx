@@ -1,5 +1,7 @@
 import clsx from "clsx";
 import { Callout } from "fumadocs-ui/components/callout";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ToolParameter {
 	type?: string;
@@ -38,6 +40,75 @@ interface McpToolsListProps {
 import rawMcpToolsData from "@/data/mcp-tools.json";
 
 const mcpToolsData = rawMcpToolsData as unknown as McpToolsData;
+
+function ToolDescription({ description }: { description: string }) {
+	return (
+		<ReactMarkdown
+			remarkPlugins={[remarkGfm]}
+			components={{
+				p: ({ children }) => (
+					<p className="text-sm leading-relaxed text-fd-foreground/80">
+						{children}
+					</p>
+				),
+				h1: ({ children }) => (
+					<p className="text-sm font-semibold text-fd-foreground mt-3 first:mt-0">
+						{children}
+					</p>
+				),
+				h2: ({ children }) => (
+					<p className="text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground mt-3 first:mt-0">
+						{children}
+					</p>
+				),
+				h3: ({ children }) => (
+					<p className="text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground mt-2 first:mt-0">
+						{children}
+					</p>
+				),
+				ul: ({ children }) => (
+					<ul className="list-disc pl-5 space-y-1 text-sm leading-relaxed text-fd-foreground/80">
+						{children}
+					</ul>
+				),
+				ol: ({ children }) => (
+					<ol className="list-decimal pl-5 space-y-1 text-sm leading-relaxed text-fd-foreground/80">
+						{children}
+					</ol>
+				),
+				li: ({ children }) => <li>{children}</li>,
+				pre: ({ children }) => (
+					<pre className="overflow-x-auto rounded-md bg-fd-muted p-3 text-xs leading-relaxed text-fd-foreground/90 font-mono">
+						{children}
+					</pre>
+				),
+				code: ({ children, className }) =>
+					className ? (
+						<code>{children}</code>
+					) : (
+						<code className="rounded bg-fd-muted px-1 py-0.5 text-xs font-mono">
+							{children}
+						</code>
+					),
+				strong: ({ children }) => (
+					<strong className="font-semibold">{children}</strong>
+				),
+				a: ({ href, children }) => (
+					<a
+						href={href}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-fd-primary underline"
+					>
+						{children}
+					</a>
+				),
+			}}
+		>
+			{description}
+		</ReactMarkdown>
+	);
+}
 
 function ToolTile({ tool }: { tool: McpTool }) {
 	const properties = tool.inputSchema?.properties;
@@ -98,9 +169,7 @@ function ToolTile({ tool }: { tool: McpTool }) {
 				<p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-fd-muted-foreground/60">
 					Description
 				</p>
-				<p className="text-sm leading-relaxed text-fd-foreground/80">
-					{tool.description}
-				</p>
+				<ToolDescription description={tool.description} />
 			</div>
 		</details>
 	);

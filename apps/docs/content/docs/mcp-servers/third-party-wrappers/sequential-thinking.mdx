@@ -1,0 +1,166 @@
+---
+title: MCP Sequential Thinking
+description: Step-by-step reasoning for complex problem solving using Anthropic's sequential thinking MCP server
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+- **Name**: MCP Sequential Thinking
+- **Package**: `@modelcontextprotocol/server-sequential-thinking`
+- **Provider**: Anthropic
+
+## Overview
+
+MCP Sequential Thinking is a third-party MCP server from Anthropic. It exposes a single tool that lets agents work through problems step by step, revise earlier thoughts, and branch into alternative reasoning paths before settling on an answer.
+
+<Callout type="info" title="When to use it">
+
+Works well for multi-step problems: math, logic, code debugging, planning. Less useful for simple lookups or single-step tasks.
+
+</Callout>
+
+## Usage with ADK TypeScript
+
+<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+  <Tab value="Simple">
+    ```typescript
+    import { McpSequentialThinking } from "@iqai/adk";
+
+    const toolset = McpSequentialThinking();
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Verbose">
+    ```typescript
+    import { McpToolset } from "@iqai/adk";
+
+    const toolset = new McpToolset({
+      name: "Sequential Thinking MCP Client",
+      description: "Client for structured step-by-step reasoning",
+      transport: {
+        mode: "stdio",
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+        env: {
+          PATH: process.env.PATH || "",
+        },
+      },
+    });
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Claude Desktop">
+    If you want to use this MCP with Claude Desktop, add this to your Claude Desktop configuration file:
+
+    **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+    ```json
+    {
+      "mcpServers": {
+        "sequential-thinking": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+        }
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>
+
+## Environment Variables
+
+| Variable                  | Type     | Description                                    |
+| ------------------------- | -------- | ---------------------------------------------- |
+| `DISABLE_THOUGHT_LOGGING` | Optional | Set to `true` to suppress thought step logging |
+
+## Configuration Options
+
+All MCP servers support these configuration options:
+
+| Option                      | Type            | Description                              |
+| --------------------------- | --------------- | ---------------------------------------- |
+| `env`                       | object          | Environment variables (see table above)  |
+| `debug`                     | boolean         | Enable debug logging                     |
+| `description`               | string          | Custom description                       |
+| `retryOptions.maxRetries`   | number          | Max retry attempts (default: 2)          |
+| `retryOptions.initialDelay` | number          | Initial retry delay in ms (default: 200) |
+| `samplingHandler`           | SamplingHandler | Handler for MCP sampling requests        |
+
+## Available Tools
+
+<McpToolsList serverId="sequential-thinking" />
+
+## Complete Example
+
+```typescript
+import { McpSequentialThinking, LlmAgent } from "@iqai/adk";
+
+async function main() {
+  // Initialize sequential thinking toolset
+  const thinkingToolset = McpSequentialThinking({
+    debug: true,
+  });
+
+  try {
+    const tools = await thinkingToolset.getTools();
+
+    const agent = new LlmAgent({
+      name: "reasoning_agent",
+      model: "gemini-2.5-flash",
+      description: "An agent that reasons through problems step by step",
+      instruction: `For complex problems, use sequential thinking to work through
+        each step before giving an answer. Revise your thinking if you find errors.`,
+      tools,
+    });
+
+    const response = await agent.ask(
+      "A farmer has 17 sheep. All but 9 die. How many sheep are left?",
+    );
+    console.log(response);
+  } finally {
+    await thinkingToolset.close();
+  }
+}
+
+main();
+```
+
+## Use Cases
+
+- **Math problems**: Work through calculations with explicit intermediate steps
+- **Code debugging**: Trace through logic step by step to find bugs
+- **Planning**: Think through constraints and dependencies before committing to a plan
+- **Decision making**: Weigh options and revise as new information comes in
+- **Logic problems**: Catch and fix errors mid-reasoning before giving a final answer
+
+## Best Practices
+
+- **Pick the right tasks**: Simple queries don't need sequential thinking; the extra round-trips add latency for no gain
+- **Pair with other tools**: Sequential thinking works well alongside domain-specific MCP tools
+- **Cleanup**: Always call `toolset.close()` when done
+
+## Troubleshooting
+
+| Issue                | Solution                                                 |
+| -------------------- | -------------------------------------------------------- |
+| Reasoning loops      | Add instructions to limit maximum thought steps          |
+| Verbose thought logs | Set `DISABLE_THOUGHT_LOGGING=true` in env vars           |
+| Connection timeout   | Check if npm/npx is installed and in PATH                |
+| Slow responses       | Expected for complex reasoning; increase request timeout |
+
+## Related Resources
+
+- [Official Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)
+- [MCP Tools Documentation](/docs/framework/tools/mcp-tools)
+- [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps)
+- [Integrating External MCPs](/docs/mcp-servers/external-mcps)
