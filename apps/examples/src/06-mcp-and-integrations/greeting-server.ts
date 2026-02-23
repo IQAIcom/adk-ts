@@ -5,7 +5,7 @@ import { z } from "zod";
 
 async function main() {
 	const server = new FastMCP({
-		name: "greeting-calculator-server",
+		name: "greeting-facts-calculator-server",
 		version: "1.0.0",
 	});
 

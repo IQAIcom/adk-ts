@@ -25,7 +25,7 @@ export function printWelcome(): void {
 	}
 
 	console.log(ADK_BANNER);
-	console.log(`  ${brand("The TypeScript-native AI agent framework")}`);
+	console.log(`  ${brand("The TypeScript-native AI Agent Framework")}`);
 	console.log(`  ${dim("Build and test AI agents in TypeScript.")}`);
 	console.log();
 	console.log(`  ${dim(`v${version}`)}`);
