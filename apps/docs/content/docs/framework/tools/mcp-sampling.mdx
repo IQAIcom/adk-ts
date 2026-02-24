@@ -1,38 +1,37 @@
 ---
 title: MCP Sampling
-description: Enable MCP servers to request LLM completions through your ADK agent
+description: Enable MCP servers to request LLM completions through your ADK-TS agent
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-MCP Sampling is a bidirectional communication mechanism in the Model Context Protocol. While your agent uses tools provided by an MCP server, **sampling** allows that MCP server to call back into your agent and request LLM completions.
+**MCP Sampling** is a bidirectional communication mechanism in the Model Context Protocol. Normally your agent calls _out_ to an MCP server to use its tools. With sampling, the MCP server can call _back_ into your agent and request an LLM completion mid-execution.
 
-This is useful for MCP servers that need AI reasoning as part of their tool execution, for example an MCP server that generates creative content by asking your LLM, or a messaging bot that routes incoming messages through your agent.
+This enables MCP servers that need AI reasoning as part of their tool execution — for example, a server that generates personalised content, a messaging bot that routes incoming messages through your agent, or a multi-turn orchestration workflow.
 
 <Mermaid
 chart='
 sequenceDiagram
     participant A as Your Agent
     participant M as MCP Server
-    participant S as Sampling Handler
+    participant S as Your Sampling Handler
     participant L as LLM
 
     A->>M: 1. Calls MCP tool
     Note over M: Tool needs LLM reasoning<br/>during execution
     M->>S: 2. requestSampling(messages, systemPrompt, maxTokens)
-    Note over S: Inspects request, routes,<br/>enriches context
+    Note over S: Inspects, routes,<br/>or enriches the request
     S->>L: 3. Forwards to LLM
     L-->>S: 4. LLM response
-    S-->>M: 5. Returns response
-    M-->>A: 6. Tool result (with LLM-generated content)
+    S-->>M: 5. Returns response to server
+    M-->>A: 6. Tool result (containing LLM-generated content)
 
 '
-
 />
 
 ## Quick Start
 
-The simplest way to enable sampling is to pass an agent's `ask` method:
+The fastest way to enable sampling is to pass a runner's `ask` method directly as the handler:
 
 ```typescript
 import { AgentBuilder, createSamplingHandler, McpToolset } from "@iqai/adk";
@@ -60,34 +59,31 @@ const toolset = new McpToolset({
 const tools = await toolset.getTools();
 ```
 
-This works but hides everything. The rest of this page explains what's happening underneath and how to do more with it.
-
 <Callout type="info" title="Model selection with runner.ask">
 
-When you pass `runner.ask` as the sampling handler, the runner uses its own configured model (e.g. `"gemini-2.5-flash"` above), not the `model` field from the `LlmRequest`. The MCP server's model preference is ignored in this pattern. To honor it, write a [custom handler](#custom-sampling-handlers) that reads `request.model`.
-
-</Callout>
-
-## How It Works Under the Hood
-
-When an MCP server makes a sampling request, this is what happens:
-
-1. **MCP server calls `session.requestSampling()`** with messages, systemPrompt, maxTokens, etc.
-2. **ADK's `McpSamplingHandler` receives the raw MCP request** and validates it against the MCP schema.
-3. **Converts MCP messages to ADK format.** MCP's `{ role, content: { type, text } }` becomes ADK's `Content[]` with `{ role, parts: [{ text }] }`. Roles map directly: `"user"` stays `"user"`, `"assistant"` becomes `"model"`.
-4. **Creates an `LlmRequest`** with the converted contents, model preference, temperature, and maxTokens.
-5. **Calls your sampling handler function** with this `LlmRequest`.
-6. **Converts your response back to MCP format** and returns it to the MCP server.
-
-<Callout type="info" title="Supported content types">
-
-`text`, `image` (inline base64), and `audio` (inline base64) are fully converted between MCP and ADK formats. `tool_use` and `tool_result` are converted to text placeholders only.
+When you pass `runner.ask` as the handler, the runner uses its own configured model (e.g. `"gemini-2.5-flash"` above). The model preference sent by the MCP server is ignored. To honour it, write a [custom handler](#custom-sampling-handlers) that reads `request.model`.
 
 </Callout>
 
 <Callout type="info" title="createSamplingHandler is a type helper">
 
-`createSamplingHandler(handler)` is an identity function that returns the handler you pass in. Its purpose is TypeScript type inference, ensuring your function matches the `SamplingHandler` signature. You can skip it and pass the function directly if you prefer.
+`createSamplingHandler(handler)` is an identity function — it returns the function you pass in unchanged. Its only purpose is TypeScript type inference, ensuring your function matches the `SamplingHandler` signature. You can omit it and pass the function directly if you prefer.
+
+</Callout>
+
+## How It Works
+
+When an MCP server calls `session.requestSampling()`, ADK-TS handles the entire protocol conversion for you:
+
+1. **Receives the raw MCP request** — the `McpSamplingHandler` validates it against the MCP schema.
+2. **Converts MCP messages to ADK-TS format** — `{ role, content: { type, text } }` becomes `Content[]` with `{ role, parts: [{ text }] }`. Roles map directly: `"user"` stays `"user"`, `"assistant"` becomes `"model"`.
+3. **Creates an `LlmRequest`** with the converted contents, model preference, temperature, and `maxTokens`.
+4. **Calls your sampling handler** with this `LlmRequest`.
+5. **Converts your response back to MCP format** and returns it to the MCP server.
+
+<Callout type="info" title="Supported content types">
+
+`text`, `image` (inline base64), and `audio` (inline base64) are fully converted between MCP and ADK-TS formats. `tool_use` and `tool_result` content types are converted to text placeholders.
 
 </Callout>
 
@@ -95,118 +91,165 @@ When an MCP server makes a sampling request, this is what happens:
 
 Your sampling handler receives an `LlmRequest` with these fields:
 
-| Field                    | Type        | What it contains                                                                                                                                                                                                  |
-| ------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `model`                  | `string`    | Model the MCP server prefers, or `"gemini-2.0-flash"` by default                                                                                                                                                  |
-| `contents`               | `Content[]` | Conversation messages converted from MCP format. Each `Content` has `role` (`"user"` or `"model"`) and `parts` (array of `{ text }`, `{ inlineData }`, etc.). See the callout below about system prompt placement |
-| `config.temperature`     | `number`    | From the MCP request's `temperature`                                                                                                                                                                              |
-| `config.maxOutputTokens` | `number`    | From the MCP request's `maxTokens`                                                                                                                                                                                |
+| Field                    | Type        | Description                                                                                                                                              |
+| ------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`                  | `string`    | Model the MCP server prefers, or `"gemini-2.0-flash"` by default                                                                                         |
+| `contents`               | `Content[]` | Conversation messages converted from MCP format. Each entry has `role` (`"user"` or `"model"`) and `parts` (array of `{ text }`, `{ inlineData }`, etc.) |
+| `config.temperature`     | `number`    | From the MCP request's `temperature` field                                                                                                               |
+| `config.maxOutputTokens` | `number`    | From the MCP request's `maxTokens` field                                                                                                                 |
+
+### System Prompt Placement
+
+<Callout type="warn" title="The system prompt is contents[0], not config.systemInstruction">
+
+If the MCP server sends a `systemPrompt`, `McpSamplingHandler` prepends it to the conversation as `contents[0]` (a `"user"` role message). It is **not** placed in `config.systemInstruction`. This means:
+
+- `contents[0]` — system prompt (if present)
+- `contents[1]` (or `contents[0]` if no system prompt) — the first user message
+
+</Callout>
 
 ### Extracting Text
 
-Use `LlmRequest.extractTextFromContent()` to pull text out of a `Content` object:
+Use the static `LlmRequest.extractTextFromContent()` helper to pull text out of a `Content` object:
 
 ```typescript
-import { createSamplingHandler, LlmRequest } from "@iqai/adk";
+import { AgentBuilder, createSamplingHandler, LlmRequest } from "@iqai/adk";
 
-const samplingHandler = createSamplingHandler(async (request: LlmRequest) => {
-  // Get the last message text
+const { runner } = await AgentBuilder.withModel("gemini-2.5-flash")
+  .withInstruction("You are a helpful assistant.")
+  .build();
+
+const samplingHandler = createSamplingHandler(async request => {
+  // The last entry is the actual user message
   const lastContent = request.contents[request.contents.length - 1];
-  const text = LlmRequest.extractTextFromContent(lastContent);
+  const messageText = LlmRequest.extractTextFromContent(lastContent);
 
-  // If the MCP server sent a systemPrompt, it's in contents[0]
-  const systemPrompt =
+  // If the MCP server provided a systemPrompt, it is prepended as contents[0]
+  const systemText =
     request.contents.length > 1
       ? LlmRequest.extractTextFromContent(request.contents[0])
       : "";
 
-  console.log("System prompt:", systemPrompt);
-  console.log("Message:", text);
+  console.log("System prompt:", systemText);
+  console.log("Message:", messageText);
 
-  return runner.ask(text);
+  return runner.ask(messageText);
 });
 ```
 
-<Callout type="warn" title="System prompt location">
-
-The MCP server's `systemPrompt` is prepended as `contents[0]` (a user message) by `McpSamplingHandler`. It is **not** placed in `config.systemInstruction`. If your sampling request has a system prompt, the actual user message will be in `contents[1]`, not `contents[0]`.
-
-</Callout>
-
 ## Custom Sampling Handlers
 
-Instead of forwarding to `runner.ask`, you can write handlers that inspect, transform, or route requests. For a complete runnable example, see the [Custom Sampling Handler example](https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/06-mcp-and-integrations/custom-sampling-handler.ts).
+Instead of forwarding straight to `runner.ask`, you can write handlers that inspect, transform, or route requests before calling any LLM.
+
+For a complete runnable example, see the [MCP integrations example](https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/06-mcp-and-integrations/index.ts).
+
+### Routing to Different Agents
+
+A common pattern is to inspect the system prompt and route the request to a specialised agent:
+
+```typescript
+import { AgentBuilder, createSamplingHandler, LlmRequest } from "@iqai/adk";
+
+// Two specialised agents
+const { runner: creativeRunner } = await AgentBuilder.withModel(
+  "gemini-2.5-flash",
+)
+  .withInstruction("You are a warm, creative writer.")
+  .build();
+
+const { runner: factRunner } = await AgentBuilder.withModel("gemini-2.5-flash")
+  .withInstruction("You are a concise, factual encyclopedia.")
+  .build();
+
+const samplingHandler = createSamplingHandler(async request => {
+  const lastContent = request.contents[request.contents.length - 1];
+  const messageText = LlmRequest.extractTextFromContent(lastContent);
+
+  const systemText =
+    request.contents.length > 1
+      ? LlmRequest.extractTextFromContent(request.contents[0])
+      : "";
+
+  // Route based on keywords in the system prompt
+  if (systemText.toLowerCase().includes("creative")) {
+    return creativeRunner.ask(messageText);
+  }
+  if (systemText.toLowerCase().includes("encyclopedia")) {
+    return factRunner.ask(messageText);
+  }
+
+  return creativeRunner.ask(messageText); // default
+});
+```
 
 ### Adding Context Before Forwarding
 
+Enrich the prompt with extra information before forwarding to the LLM:
+
 ```typescript
 const samplingHandler = createSamplingHandler(async request => {
-  const text = LlmRequest.extractTextFromContent(
-    request.contents[request.contents.length - 1],
-  );
+  const lastContent = request.contents[request.contents.length - 1];
+  const messageText = LlmRequest.extractTextFromContent(lastContent);
 
-  // Enrich the request with additional context
   const enrichedPrompt = `
 Context: The current user is Alice, timezone UTC+5.
 Active reminders: ${JSON.stringify(await getActiveReminders())}
 
-MCP server request: ${text}
+MCP server request: ${messageText}
   `.trim();
 
   return runner.ask(enrichedPrompt);
 });
 ```
 
-### Routing to Different Agents
-
-```typescript
-const samplingHandler = createSamplingHandler(async request => {
-  const text = LlmRequest.extractTextFromContent(
-    request.contents[request.contents.length - 1],
-  );
-
-  // Route based on content
-  if (text.includes("reminder") || text.includes("schedule")) {
-    return reminderRunner.ask(text);
-  }
-  if (text.includes("weather")) {
-    return weatherRunner.ask(text);
-  }
-
-  return generalRunner.ask(text);
-});
-```
-
 ### Returning String vs LlmResponse
 
-Your handler can return either a plain `string` or a full `LlmResponse`. Returning a string is simpler and works for most cases. The framework wraps it in the proper MCP response format automatically.
+Your handler can return either a plain `string` or a full `LlmResponse`. Returning a string is simpler and covers most cases — the framework wraps it in the correct MCP response format automatically.
 
 ```typescript
 import { createSamplingHandler, LlmResponse } from "@iqai/adk";
 
-// Simple: return a string (most common)
-const handler = createSamplingHandler(async request => {
-  return "Hello!";
+// Simple — return a string (recommended for most cases)
+const simpleHandler = createSamplingHandler(async _request => {
+  return "Hello from the handler!";
 });
 
-// Full control: return an LlmResponse
-const advancedHandler = createSamplingHandler(async request => {
+// Advanced — return a full LlmResponse for explicit control
+const advancedHandler = createSamplingHandler(async _request => {
   return new LlmResponse({
     content: {
       role: "model",
-      parts: [{ text: "Hello!" }],
+      parts: [{ text: "Hello from the handler!" }],
     },
   });
 });
 ```
 
+### Honouring the MCP Server's Model Preference
+
+When you need to use whichever model the MCP server requested:
+
+```typescript
+import { AgentBuilder, createSamplingHandler, LlmRequest } from "@iqai/adk";
+
+const samplingHandler = createSamplingHandler(async request => {
+  const lastContent = request.contents[request.contents.length - 1];
+  const messageText = LlmRequest.extractTextFromContent(lastContent);
+
+  // request.model contains the server's preference (or the default "gemini-2.0-flash")
+  const { runner } = await AgentBuilder.withModel(request.model).build();
+  return runner.ask(messageText);
+});
+```
+
 ## Writing an MCP Server That Uses Sampling
 
-On the server side, your MCP tool requests LLM completions from the connected client using `session.requestSampling()`.
+On the server side, use `session.requestSampling()` to request an LLM completion from the connected ADK-TS client.
 
 <Callout type="warn" title="FastMCP session access">
 
-In FastMCP, the `context.session` passed to tool execute is the **auth object**, not the `FastMCPSession`. To access `requestSampling()`, use `server.sessions[0]` instead (for stdio transport there is exactly one session).
+In FastMCP, the `context.session` passed to a tool's `execute` function is the **auth object**, not the `FastMCPSession`. To call `requestSampling()`, use `server.sessions[0]` instead (for stdio transport there is always exactly one session).
 
 </Callout>
 
@@ -247,11 +290,9 @@ server.addTool({
       maxTokens: 200,
     });
 
-    if (response?.content?.type === "text") {
-      return response.content.text;
-    }
-
-    return "No response received.";
+    return response?.content?.type === "text"
+      ? response.content.text
+      : "No response received.";
   },
 });
 
@@ -260,14 +301,14 @@ await server.start({ transportType: "stdio" });
 
 ### Sampling Request Options
 
-| Parameter          | Type   | Description                                                            |
-| ------------------ | ------ | ---------------------------------------------------------------------- |
-| `messages`         | Array  | Required. Conversation messages with `role` and `content`              |
-| `systemPrompt`     | string | Optional. Prepended to the conversation on the client side             |
-| `maxTokens`        | number | Required. Maximum tokens in the response                               |
-| `temperature`      | number | Optional. Controls randomness (0-1)                                    |
-| `modelPreferences` | object | Optional. Hint which model to use via `hints[].name`                   |
-| `includeContext`   | string | Optional. Context inclusion directive (`"thisServer"`, `"allServers"`) |
+| Parameter          | Type   | Required | Description                                                              |
+| ------------------ | ------ | -------- | ------------------------------------------------------------------------ |
+| `messages`         | Array  | Yes      | Conversation messages with `role` and `content`                          |
+| `maxTokens`        | number | Yes      | Maximum tokens in the response                                           |
+| `systemPrompt`     | string | No       | Prepended to the conversation on the ADK-TS client side as `contents[0]` |
+| `temperature`      | number | No       | Controls randomness (0–1)                                                |
+| `modelPreferences` | object | No       | Hint which model to use via `hints[].name`                               |
+| `includeContext`   | string | No       | Context inclusion directive (`"thisServer"`, `"allServers"`)             |
 
 ### Multi-Turn Conversations
 
@@ -310,23 +351,68 @@ const response = await session.requestSampling({
 });
 ```
 
-<Callout type="info" title="Model preferences are hints">
+<Callout type="info" title="Model preferences are hints, not guarantees">
 
-`modelPreferences.hints` is a suggestion, not a guarantee. The sampling handler decides which model to actually use. If no hint is provided, ADK defaults to `"gemini-2.0-flash"`.
+`modelPreferences.hints` is a suggestion. The sampling handler on the ADK-TS side decides which model is actually used. If no hint is provided, ADK-TS defaults to `"gemini-2.0-flash"`.
 
 </Callout>
+
+## Managing the Sampling Handler at Runtime
+
+You can swap or remove the sampling handler after the toolset is created, without re-initialising the connection:
+
+```typescript
+import {
+  AgentBuilder,
+  createSamplingHandler,
+  LlmRequest,
+  McpToolset,
+} from "@iqai/adk";
+
+const toolset = new McpToolset({
+  name: "Dynamic Server",
+  description: "Server with a swappable sampling handler",
+  transport: { mode: "stdio", command: "node", args: ["./server.js"] },
+});
+
+const tools = await toolset.getTools();
+
+const { runner: basicRunner } =
+  await AgentBuilder.withModel("gemini-2.0-flash").build();
+const { runner: advancedRunner } =
+  await AgentBuilder.withModel("gemini-2.5-flash").build();
+
+// Set initial handler
+toolset.setSamplingHandler(async request => {
+  const text = LlmRequest.extractTextFromContent(
+    request.contents[request.contents.length - 1],
+  );
+  return basicRunner.ask(text);
+});
+
+// Upgrade to a better model later
+toolset.setSamplingHandler(async request => {
+  const text = LlmRequest.extractTextFromContent(
+    request.contents[request.contents.length - 1],
+  );
+  return advancedRunner.ask(text);
+});
+
+// Disable sampling entirely
+toolset.removeSamplingHandler();
+```
 
 ## Real-World Architecture Patterns
 
 ### Coordinator Agent with Sub-Agents
 
-For complex applications like a Telegram bot, a common pattern is to use sampling as the entry point into a multi-agent system with persistent sessions:
+For complex applications such as a Telegram bot, a common pattern is to use sampling as the entry point into a multi-agent system with persistent sessions:
 
 <Mermaid
 chart='
 graph TD
     T[Telegram MCP Server] -->|sampling request| S[Sampling Handler]
-    S -->|createSamplingHandler\nrunner.ask| C[Coordinator Agent]
+    S -->|createSamplingHandler / runner.ask| C[Coordinator Agent]
     C -->|routes by intent| R[Reminder Agent]
     C -->|routes by intent| SH[Shopping List Agent]
     C -->|handles directly| G[General Responses]
@@ -338,72 +424,12 @@ graph TD
     style DB fill:#f3e5f5
 
 '
-
 />
 
-The **[Telegram Personal Assistant](https://github.com/IQAIcom/adk-ts-samples/tree/main/apps/telegram-personal-assistant)** example demonstrates this pattern in a production-ready application. It shows:
+The **[Telegram Personal Assistant](https://github.com/IQAIcom/adk-ts-samples/tree/main/apps/telegram-personal-assistant)** example demonstrates this pattern in a production-ready application. It uses:
 
-- **Sampling as the entry point** using `McpTelegram` with `createSamplingHandler(runner.ask)` to route messages into the agent system
-- **Hierarchical multi-agent architecture** where a coordinator delegates to specialized sub-agents (reminders, shopping lists) based on user intent
-- **Database-backed sessions** with PostgreSQL persistence using `createDatabaseSessionService`
-- **Background services** that poll state and send scheduled reminders back through the Telegram runner
-- **Shared state across agents** where all agents read/write to the same session via `context.state`
-
-### Dynamic Sampling Handler
-
-You can change the sampling handler at runtime, for example to switch between agents or disable sampling:
-
-```typescript
-const toolset = new McpToolset({
-  name: "Dynamic Server",
-  description: "Server with dynamic sampling",
-  transport: { mode: "stdio", command: "node", args: ["./server.js"] },
-});
-
-const tools = await toolset.getTools();
-
-// Start with one handler
-toolset.setSamplingHandler(async request => {
-  const text = LlmRequest.extractTextFromContent(
-    request.contents[request.contents.length - 1],
-  );
-  return basicRunner.ask(text);
-});
-
-// Swap it out later
-toolset.setSamplingHandler(async request => {
-  const text = LlmRequest.extractTextFromContent(
-    request.contents[request.contents.length - 1],
-  );
-  return advancedRunner.ask(text);
-});
-
-// Or remove sampling entirely
-toolset.removeSamplingHandler();
-```
-
-## API Reference
-
-### SamplingHandler
-
-```typescript
-type SamplingHandler = (request: LlmRequest) => Promise<string | LlmResponse>;
-```
-
-Your handler function. Takes an `LlmRequest`, returns a `string` or `LlmResponse`.
-
-### createSamplingHandler(handler)
-
-```typescript
-function createSamplingHandler(handler: SamplingHandler): SamplingHandler;
-```
-
-Type helper that ensures your function matches the `SamplingHandler` signature. Returns the handler as-is.
-
-### McpToolset Sampling Methods
-
-| Method                                     | Description                                           |
-| ------------------------------------------ | ----------------------------------------------------- |
-| `new McpToolset({ samplingHandler, ... })` | Set sampling handler at construction time             |
-| `toolset.setSamplingHandler(handler)`      | Set or update the sampling handler after construction |
-| `toolset.removeSamplingHandler()`          | Remove the sampling handler, disabling sampling       |
+- **Sampling as the entry point** — `McpTelegram` with `createSamplingHandler(runner.ask)` routes incoming messages into the agent system
+- **Hierarchical multi-agent architecture** — a coordinator delegates to specialised sub-agents (reminders, shopping lists) based on user intent
+- **Database-backed sessions** — PostgreSQL persistence via `createDatabaseSessionService`
+- **Background services** — poll state and send scheduled reminders back through the Telegram runner
+- **Shared state across agents** — all agents read/write to the same session via `context.state`
