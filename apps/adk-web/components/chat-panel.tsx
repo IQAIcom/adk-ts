@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Message as ChatMessage } from "@/app/(dashboard)/_schema";
 import { ConversationAutoScroll } from "@/components/ai-elements/conversation-auto-scroll";
@@ -21,8 +21,14 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Response } from "@/components/ai-elements/response";
 import { Button } from "@/components/ui/button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useChatAttachments } from "@/hooks/use-chat-attachments";
 import useVoiceRecording from "@/hooks/use-voice-recording";
+import { getAudioUnsupportedMessage } from "@/lib/model-capabilities";
 import { cn } from "@/lib/utils";
 import type { AgentListItemDto as Agent } from "../Api";
 
@@ -57,6 +63,51 @@ export function ChatPanel({
 		isDragOver,
 	} = useChatAttachments();
 
+	// Infer model name from agent name or path
+	// This is a best-effort approach; we can enhance this later with actual model info from backend
+	// Handles:
+	// - Direct model names in agent name: "gpt-4o-agent", "gemini-agent"
+	// - OpenRouter format in path: "agents/openai-gpt-4o-agent"
+	// - Common patterns: "gpt4o", "gemini-2.5", etc.
+	const inferredModelName = useMemo(() => {
+		if (!selectedAgent) return null;
+
+		const name = selectedAgent.name.toLowerCase();
+		const path = selectedAgent.relativePath?.toLowerCase() || "";
+		const combined = `${name} ${path}`;
+
+		// Check for OpenRouter format patterns (provider/model)
+		if (
+			combined.includes("openai/gpt-4o") ||
+			combined.includes("openai/gpt4o")
+		) {
+			return "openai/gpt-4o";
+		}
+		if (combined.includes("google/gemini")) {
+			return "google/gemini-2.5-flash";
+		}
+
+		// Check for direct model patterns in agent name
+		if (name.includes("gpt-4o") || name.includes("gpt4o")) return "gpt-4o";
+		if (name.includes("gemini")) {
+			// Try to extract specific version if present
+			const geminiMatch = name.match(/gemini[-\s]?([\d.]+)?/);
+			if (geminiMatch?.[1]) {
+				return `gemini-${geminiMatch[1]}`;
+			}
+			return "gemini-2.5-flash";
+		}
+		if (name.includes("gpt-4") || name.includes("gpt4")) return "gpt-4";
+		if (name.includes("gpt-3.5")) return "gpt-3.5-turbo";
+		if (name.includes("claude")) return "claude-3-5-sonnet";
+
+		// Check path for model indicators
+		if (path.includes("gpt-4o") || path.includes("gpt4o")) return "gpt-4o";
+		if (path.includes("gemini")) return "gemini-2.5-flash";
+
+		return null;
+	}, [selectedAgent]);
+
 	const {
 		recording,
 		error,
@@ -65,7 +116,8 @@ export function ChatPanel({
 		startRecording,
 		stopRecording,
 		clearAudio,
-	} = useVoiceRecording();
+		audioSupported,
+	} = useVoiceRecording({ modelName: inferredModelName });
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -84,13 +136,26 @@ export function ChatPanel({
 	const handleVoiceRecording = async () => {
 		if (recording) {
 			// Stop recording and get both the audio file and transcript
-			const { file, transcript } = await stopRecording();
+			const { file, transcript, hasValidTranscript } = await stopRecording();
 
 			if (file) {
+				// Check if we have valid transcription
+				if (!hasValidTranscript) {
+					toast.error(
+						"Transcription failed or is too short. Please try speaking more clearly or use text input.",
+					);
+					clearAudio();
+					return;
+				}
+
 				// Use the transcribed text as the message
-				// If transcription failed or is empty, use a fallback message
-				const messageText =
-					transcript?.trim() || "Voice message (transcription unavailable)";
+				const messageText = transcript?.trim() || "";
+
+				if (!messageText) {
+					toast.error("No transcription available. Please try again.");
+					clearAudio();
+					return;
+				}
 
 				// Send the transcribed text along with the audio file
 				// The agent receives the text message, and optionally the audio file as attachment
@@ -320,12 +385,36 @@ export function ChatPanel({
 									</PromptInputButton>
 								</PromptInputTools>
 								<div>
-									<PromptInputMicButton
-										variant={"secondary"}
-										status={{ recording }}
-										onClick={handleVoiceRecording}
-										disabled={isLoading || isSendingMessage}
-									/>
+									{audioSupported ? (
+										<PromptInputMicButton
+											variant={"secondary"}
+											status={{ recording }}
+											onClick={handleVoiceRecording}
+											disabled={isLoading || isSendingMessage}
+										/>
+									) : (
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<div>
+													<PromptInputMicButton
+														variant={"secondary"}
+														onClick={() => {
+															// Show tooltip message
+															toast.error(
+																getAudioUnsupportedMessage(inferredModelName),
+															);
+														}}
+														disabled={true}
+													/>
+												</div>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p className="max-w-xs">
+													{getAudioUnsupportedMessage(inferredModelName)}
+												</p>
+											</TooltipContent>
+										</Tooltip>
+									)}
 									<PromptInputSubmit
 										status={isSendingMessage ? "streaming" : "ready"}
 										disabled={
