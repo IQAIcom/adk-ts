@@ -121,8 +121,7 @@ export function McpToolsList({ serverId }: McpToolsListProps) {
 	if (serverData.error) {
 		// Show a remote endpoint message only for known remote servers (e.g., CoinGecko)
 		if (
-			serverId === "coingecko" ||
-			serverId === "coingecko-pro" ||
+			serverId.startsWith("coingecko") ||
 			(serverData.package && serverData.package.includes("coingecko"))
 		) {
 			return (
