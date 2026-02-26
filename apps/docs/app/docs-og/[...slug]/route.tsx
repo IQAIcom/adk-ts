@@ -97,16 +97,15 @@ export async function GET(
 							lineHeight: 1.1,
 						}}
 					>
-						<span>Agent Development Kit</span>
+						<span>ADK-TS</span>
 						<span
 							style={{
-								background: "#3b82f6",
-								padding: "6px 12px",
-								width: "256px",
-								transform: "rotate(-6deg) translateY(-65px) translateX(80px)",
+								fontSize: "22px",
+								color: "#FF5BAA",
+								fontWeight: "500",
 							}}
 						>
-							TypeScript
+							The TypeScript-Native AI Agent Framework
 						</span>
 					</div>
 				</div>

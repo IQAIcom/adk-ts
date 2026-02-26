@@ -1,8 +1,8 @@
 <div align="center">
   <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
   <br/>
-  <h1>ADK Starter Templates</h1>
-  <b>Ready-to-use project templates for building AI agents with the Agent Development Kit (ADK) for TypeScript</b>
+  <h1>ADK-TS Starter Templates</h1>
+  <b>Ready-to-use project templates for building AI agents in TypeScript with ADK-TS</b>
   <br/>
   <i>Quick Start • Multiple Frameworks • Production Ready</i>
 </div>
@@ -23,7 +23,7 @@ This directory contains starter templates for ADK projects. These templates are 
 
 ## Usage
 
-Each starter template includes an `agents/` folder with `agent.ts` files containing agent definitions, making them compatible with the ADK CLI for easy testing and interaction.
+Each starter template includes an `agents/` folder with `agent.ts` files containing agent definitions, making them compatible with the ADK-TS CLI for easy testing and interaction.
 
 ### Option 1: Direct Development
 
@@ -32,9 +32,9 @@ Each starter template includes an `agents/` folder with `agent.ts` files contain
 3. Build: `pnpm build`
 4. Run: `pnpm dev` or `pnpm start`
 
-### Option 2: ADK CLI (Recommended for Testing)
+### Option 2: ADK-TS CLI (Recommended for Testing)
 
-First, install the ADK CLI globally:
+First, install the ADK-TS CLI globally:
 
 ```bash
 npm install -g @iqai/adk-cli

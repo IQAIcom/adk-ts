@@ -1,7 +1,7 @@
 {
 	"name": "@iqai/adk-cli",
 	"version": "0.4.2",
-	"description": "CLI tool for creating, running, and testing ADK agents",
+	"description": "CLI tool for creating, running, and testing ADK-TS agents",
 	"main": "dist/main.js",
 	"types": "dist/main.d.ts",
 	"bin": {
@@ -27,7 +27,7 @@
 		"adk",
 		"typescript"
 	],
-	"author": "IQAI",
+	"author": "IQ AI",
 	"license": "MIT",
 	"dependencies": {
 		"@clack/prompts": "^0.11.0",

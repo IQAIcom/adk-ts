@@ -1,6 +1,6 @@
 # @iqai/mcp-docs
 
-A Model Context Protocol (MCP) server that provides AI assistants with direct access to ADK-TS (Agent Development Kit for TypeScript) complete knowledge base. Documentation is fetched directly from the live site at [adk.iqai.com](https://adk.iqai.com) and includes:
+A Model Context Protocol (MCP) server that provides AI assistants with direct access to the complete ADK-TS knowledge base. Documentation is fetched directly from the live site at [adk.iqai.com](https://adk.iqai.com) and includes:
 
 - 📚 **Comprehensive documentation** with MDX support
 - 💻 **Code examples** for common patterns

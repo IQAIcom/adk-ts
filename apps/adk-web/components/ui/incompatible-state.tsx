@@ -50,7 +50,7 @@ export function IncompatibleState({
 				<Alert className="max-w-xl mx-auto text-left">
 					<AlertTriangle className="h-4 w-4" />
 					<AlertDescription>
-						Your installed ADK CLI version {cliVersion ?? "unknown"} is not
+						Your installed ADK-TS CLI version {cliVersion ?? "unknown"} is not
 						compatible with this web app. Please update to at least version{" "}
 						{minCliVersion ?? "(see docs)"}.
 					</AlertDescription>

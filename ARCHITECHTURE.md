@@ -1,6 +1,6 @@
 # ADK-TS Framework Architecture
 
-Welcome to the Agent Development Kit (ADK) TypeScript implementation! This guide will help you understand the framework architecture to contribute effectively to the project.
+Welcome to ADK-TS — the TypeScript-native AI agent framework! This guide will help you understand the framework architecture to contribute effectively to the project.
 
 ```mermaid
 graph TB

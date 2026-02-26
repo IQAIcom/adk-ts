@@ -1,4 +1,4 @@
-# 🤝 Contributing Guide for Agent Development Kit (ADK) for TypeScript
+# 🤝 Contributing Guide for ADK-TS — The TypeScript-Native AI Agent Framework
 
 First of all, thank you for taking the time to contribute! 🎉
 

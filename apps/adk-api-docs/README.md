@@ -1,8 +1,8 @@
 <div align="center">
   <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
   <br/>
-  <h1>ADK API Documentation</h1>
-  <b>Complete documentation for ADK TypeScript, built using TypeDoc with comprehensive API references and guides</b>
+  <h1>ADK-TS API Documentation</h1>
+  <b>Complete API reference for ADK-TS, built using TypeDoc with comprehensive API references and guides</b>
   <br/>
   <i>Auto-generated • Type-safe • Developer-friendly</i>
   
@@ -26,7 +26,7 @@
 
 ## 📖 About
 
-This directory contains the complete documentation for ADK TypeScript, built using TypeDoc for automatic API reference generation. The documentation provides comprehensive coverage of all ADK features, including API references, guides, and examples.
+This directory contains the complete API reference for ADK-TS, built using TypeDoc for automatic API reference generation. The documentation provides comprehensive coverage of all ADK-TS features, including API references, guides, and examples.
 
 ## 📁 Structure
 
@@ -182,5 +182,5 @@ TypeDoc provides several built-in themes and supports custom styling:
 ## 📚 Resources
 
 - [TypeDoc Documentation](https://typedoc.org/) - Complete TypeDoc reference
-- [ADK Live Documentation](https://adk.iqai.com/docs) - Published documentation site
+- [ADK-TS Documentation](https://adk.iqai.com/docs) - Published documentation site
 - [TSDoc Reference](https://tsdoc.org/) - Documentation comment standards

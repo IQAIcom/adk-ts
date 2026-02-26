@@ -20,11 +20,11 @@
 		"agent",
 		"mcp",
 		"adk-ts",
-		"IQAI",
+		"IQ AI",
 		"hono",
 		"web-server"
 	],
-	"author": "IQAI",
+	"author": "IQ AI",
 	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/IQAICOM/adk-hono-server/issues"

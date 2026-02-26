@@ -1,7 +1,7 @@
 {
 	"name": "adk-api-docs",
 	"version": "0.1.0",
-	"description": "API documentation for ADK TypeScript package",
+	"description": "API documentation for the ADK-TS TypeScript AI agent framework",
 	"private": true,
 	"scripts": {
 		"build": "typedoc --options typedoc.json",

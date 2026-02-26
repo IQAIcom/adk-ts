@@ -1,10 +1,10 @@
 <div align="center">
   <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
   <br/>
-  <h1>ADK-TS: Agent Development Kit (ADK) for TypeScript</h1>
-  <b>A comprehensive TypeScript framework for building sophisticated AI agents with multi-LLM support, advanced tools, and flexible conversation flows.</b>
+  <h1>ADK-TS: The TypeScript-Native AI Agent Framework</h1>
+  <b>An open-source framework for building production-ready AI agents in TypeScript with multi-LLM support, advanced tools, and flexible conversation flows.</b>
   <br/>
-  <i>Production-ready • Multi-Agent Systems • Extensible Architecture</i>
+  <i>TypeScript-Native • Multi-Agent Systems • Production-Ready</i>
 
   <p align="center">
     <a href="https://www.npmjs.com/package/@iqai/adk">
@@ -26,7 +26,7 @@
 
 ## 🌟 Overview
 
-The Agent Development Kit (ADK) for TypeScript provides a comprehensive framework for building sophisticated AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible conversation flows. Built from the ground up for production use, ADK-TS enables developers to create intelligent, autonomous systems that can handle complex multi-step tasks.
+ADK-TS is the TypeScript-native framework for building production-ready AI agents. It provides multi-LLM support, advanced tool integration, memory systems, and flexible conversation flows — built from the ground up for TypeScript developers who want to ship intelligent, autonomous systems that handle complex multi-step tasks.
 
 ## 🚀 Quick Start
 

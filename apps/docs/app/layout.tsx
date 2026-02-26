@@ -10,11 +10,20 @@ const inter = Inter({
 
 export const metadata: Metadata = {
 	title: {
-		default: "ADK-TS - Agent Development Kit (ADK) for TypeScript",
+		default: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		template: "%s | ADK-TS",
 	},
 	description:
-		"Comprehensive framework for building sophisticated AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible conversation flows.",
+		"ADK-TS is the TypeScript-native AI agent framework for building production-ready AI agents. Multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
+	keywords: [
+		"TypeScript AI agents",
+		"TypeScript agent framework",
+		"build AI agents TypeScript",
+		"AI agent orchestration TypeScript",
+		"ADK-TS",
+		"multi-agent systems",
+		"LLM framework TypeScript",
+	],
 	metadataBase: new URL("https://adk.iqai.com"),
 	icons: {
 		icon: "/adk.png",
@@ -23,23 +32,23 @@ export const metadata: Metadata = {
 	},
 	openGraph: {
 		type: "website",
-		title: "ADK-TS - Agent Development Kit (ADK) for TypeScript",
+		title: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		description:
-			"Comprehensive framework for building sophisticated AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible conversation flows.",
+			"ADK-TS is the TypeScript-native AI agent framework for building production-ready AI agents. Multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
 		images: [
 			{
 				url: "/og-image.png",
 				width: 1200,
 				height: 630,
-				alt: "ADK-TS - Agent Development Kit (ADK) for TypeScript",
+				alt: "ADK-TS - The TypeScript-Native AI Agent Framework",
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "ADK-TS - Agent Development Kit (ADK) for TypeScript",
+		title: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		description:
-			"Comprehensive framework for building sophisticated AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible conversation flows.",
+			"ADK-TS is the TypeScript-native AI agent framework for building production-ready AI agents. Multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
 		images: ["/og-image.png"],
 	},
 };

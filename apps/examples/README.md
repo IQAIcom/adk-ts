@@ -2,7 +2,7 @@
   <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
   <br/>
   <h1>ADK-TS Examples</h1>
-  <b>A collection of comprehensive examples that demonstrate how to utilize the Agent Development Kit (ADK) for TypeScript in real-world scenarios</b>
+  <b>A collection of comprehensive examples that demonstrate how to build AI agents in TypeScript with ADK-TS</b>
   <br/>
   <i>Agent Building • Tool Integration • Memory Systems • Advanced Feature</i>
 </div>
@@ -11,7 +11,7 @@
 
 ## 🌟 Overview
 
-This directory contains a collection of comprehensive examples that demonstrate how to utilize the Agent Development Kit (ADK) for TypeScript in real-world scenarios. You can use these examples to learn how to build AI agents, integrate tools, manage memory, and implement advanced features.
+This directory contains a collection of comprehensive examples that demonstrate how to build AI agents in TypeScript with ADK-TS. You can use these examples to learn how to build AI agents, integrate tools, manage memory, and implement advanced features.
 
 ## 🚀 Quick Start
 

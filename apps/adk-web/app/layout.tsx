@@ -18,24 +18,24 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
 	title: {
-		default: "ADK Web - Visual Interface for ADK CLI",
-		template: "%s | ADK Web",
+		default: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
+		template: "%s | ADK-TS Web",
 	},
 	description:
-		"Visual web interface for @iqai/adk-cli to discover agents, chat, and monitor your ADK server.",
+		"Visual web interface for @iqai/adk-cli to discover, chat with, and monitor your ADK-TS AI agents.",
 	metadataBase: new URL("https://adk-web.iqai.com"),
-	applicationName: "ADK Web",
+	applicationName: "ADK-TS Web",
 	keywords: [
-		"ADK",
-		"Agent Development Kit",
-		"AI agents",
-		"CLI web interface",
+		"ADK-TS",
+		"TypeScript AI agents",
+		"AI agent web interface",
+		"AI agent testing",
 		"LLM",
-		"TypeScript",
+		"TypeScript agent framework",
 	],
-	authors: [{ name: "IQAI" }],
-	creator: "IQAI",
-	publisher: "IQAI",
+	authors: [{ name: "IQ AI" }],
+	creator: "IQ AI",
+	publisher: "IQ AI",
 	category: "technology",
 	icons: {
 		icon: "/adk.png",
@@ -44,24 +44,24 @@ export const metadata: Metadata = {
 	},
 	openGraph: {
 		type: "website",
-		title: "ADK Web - Visual Interface for ADK CLI",
+		title: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
 		description:
-			"Visual web interface for @iqai/adk-cli to discover agents, chat, and monitor your ADK server.",
+			"Visual web interface for @iqai/adk-cli to discover, chat with, and monitor your ADK-TS AI agents.",
 		url: "https://adk-web.iqai.com",
 		images: [
 			{
 				url: "/og-image.png",
 				width: 1200,
 				height: 630,
-				alt: "ADK Web - Visual Interface for ADK CLI",
+				alt: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "ADK Web - Visual Interface for ADK CLI",
+		title: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
 		description:
-			"Visual web interface for @iqai/adk-cli to discover agents, chat, and monitor your ADK server.",
+			"Visual web interface for @iqai/adk-cli to discover, chat with, and monitor your ADK-TS AI agents.",
 		images: ["/og-image.png"],
 	},
 };
