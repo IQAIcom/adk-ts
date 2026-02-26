@@ -1,46 +1,72 @@
 ---
-title: MCP Near Intents
-description: MCP server for Near Intents-based cross-chain swaps
+title: MCP NEAR Intents
+description: Execute cross-chain token swaps and bridge operations using NEAR Protocol intent swaps.
 ---
 
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-near-intents`](https://www.npmjs.com/package/@iqai/mcp-near-intents)
-- **Purpose**: An MCP server for Near Intents swaps using the [Defuse Protocol one-click SDK](https://github.com/defuse-protocol/one-click-sdk-typescript). This server provides tools for cross-chain token swaps through NEAR's intent-based architecture.
-- **Example**: 🚀 [Near Intents Swaps Example](https://github.com/IQAIcom/near-intent-swap-agent)
+- **Provider**: [NEAR Protocol](https://near.org)
 
-## Usage with ADK TypeScript
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The NEAR Intents MCP server enables your agent to perform cross-chain token swaps and bridging operations via NEAR's intent-based architecture. It abstracts the complexity of multi-chain routing, letting your agent swap tokens across chains by expressing intent rather than specifying exact routes.
+
+<Callout type="warn" title="Private Key Security">
+  This server uses your NEAR account private key to sign and submit intents
+  on-chain. Keep your private key secure and never commit it to source control.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-near-intents
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    McpNearIntents({
+    import { McpNearIntents } from "@iqai/adk";
+
+    const toolset = McpNearIntents({
       env: {
-        NEAR_SWAP_JWT_TOKEN: process.env.NEAR_SWAP_JWT_TOKEN,
+        ACCOUNT_ID: process.env.NEAR_ACCOUNT_ID,
+        ACCOUNT_KEY: process.env.NEAR_ACCOUNT_KEY,
       },
-    })
+    });
+
+    const tools = await toolset.getTools();
     ```
+
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Near Intents Swaps MCP Client",
-      description: "Client for Near Intents cross-chain swaps",
+      description: "Client for cross-chain swaps via NEAR Intents",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-near-intents"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-near-intents"],
         env: {
-          NEAR_SWAP_JWT_TOKEN: process.env.NEAR_SWAP_JWT_TOKEN,
+          ACCOUNT_ID: process.env.NEAR_ACCOUNT_ID,
+          ACCOUNT_KEY: process.env.NEAR_ACCOUNT_KEY,
+          NEAR_NETWORK_ID: process.env.NEAR_NETWORK_ID,
+          NEAR_NODE_URL: process.env.NEAR_NODE_URL,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -49,11 +75,12 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     ```json
     {
       "mcpServers": {
-        "near-intents-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-near-intents"],
+        "near-intents-mcp-server": {
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-near-intents"],
           "env": {
-            "NEAR_SWAP_JWT_TOKEN": "your-jwt-token-here"
+            "ACCOUNT_ID": "youraccount.near",
+            "ACCOUNT_KEY": "your_near_account_private_key"
           }
         }
       }
@@ -61,133 +88,73 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     ```
   </Tab>
 </Tabs>
-:
 
-## Features
+## Environment Variables
 
-- **GET_NEAR_SWAP_TOKENS**: Discover available tokens for swaps
-- **GET_NEAR_SWAP_SIMPLE_QUOTE**: Get basic swap quotes without addresses
-- **GET_NEAR_SWAP_FULL_QUOTE**: Get complete quotes with deposit addresses
-- **EXECUTE_NEAR_SWAP**: Execute swaps by submitting deposit transactions
-- **CHECK_NEAR_SWAP_STATUS**: Check the status of swap executions
+| Variable          | Required | Description                                          |
+| ----------------- | -------- | ---------------------------------------------------- |
+| `ACCOUNT_ID`      | Yes      | Your NEAR account ID (e.g. `yourname.near`)          |
+| `ACCOUNT_KEY`     | Yes      | Your NEAR account private key                        |
+| `NEAR_NETWORK_ID` | No       | Network to connect to (default: `mainnet`)           |
+| `NEAR_NODE_URL`   | No       | Custom NEAR RPC node URL                             |
+| `NEAR_GAS_LIMIT`  | No       | Gas limit for transactions (default: protocol limit) |
 
-## User Flow
+## Credentials
 
-This server supports a complete 5-step user flow:
+To get your NEAR credentials:
 
-1. **[DISCOVERY]** Use `GET_NEAR_SWAP_TOKENS` to discover available tokens
-2. **[STEP 1]** Use `GET_NEAR_SWAP_SIMPLE_QUOTE` to check swap rates without addresses
-3. **[STEP 2]** Use `GET_NEAR_SWAP_FULL_QUOTE` to get deposit address when ready to swap
-4. **[STEP 3]** User sends funds to the deposit address (external action)
-5. **[STEP 4]** Use `EXECUTE_NEAR_SWAP` to submit deposit transaction hash
-6. **[STEP 5]** Use `CHECK_NEAR_SWAP_STATUS` to monitor swap progress until completion
+1. Create a NEAR account at [wallet.near.org](https://wallet.near.org) or via the [NEAR CLI](https://docs.near.org/tools/near-cli)
+2. Export your private key using the NEAR CLI:
+   ```bash
+   near generate-key yourname.near
+   cat ~/.near-credentials/mainnet/yourname.near.json
+   ```
+3. Use the `private_key` value as `ACCOUNT_KEY`
 
-## Prerequisites
-
-- Node.js >= 16
-- pnpm >= 8
-- A JWT token from the Defuse Protocol (for authentication)
-
-## Configuration
-
-Set the following environment variables:
-
-```bash
-# Optional: Custom API endpoint (defaults to https://1click.chaindefuser.com)
-export NEAR_SWAP_API_URL="https://1click.chaindefuser.com"
-
-# Required: JWT token for authentication
-export NEAR_SWAP_JWT_TOKEN="your-jwt-token-here"
-```
-
-## Usage
-
-### Running the Server
-
-```bash
-# Start the MCP server
-pnpm start
-
-# Or run directly
-node dist/index.js
-```
-
-### Available Tools
+## Available Tools
 
 <McpToolsList serverId="near-intents" />
 
-## Example Usage
+## Integration Example
 
-### 1. Discovering Available Tokens
+```typescript
+import { AgentBuilder, McpNearIntents } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-```json
-{}
-```
+dotenv.config();
 
-### 2. Getting a Simple Quote
+async function main() {
+  // Initialize McpNearIntents toolset
+  const toolset = McpNearIntents({
+    env: {
+      ACCOUNT_ID: process.env.NEAR_ACCOUNT_ID,
+      ACCOUNT_KEY: process.env.NEAR_ACCOUNT_KEY,
+    },
+  });
 
-```json
-{
-  "originAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
-  "destinationAsset": "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
-  "amount": "1000000000000000000",
-  "swapType": "EXACT_INPUT",
-  "slippageTolerance": 100
+  // Get available McpNearIntents tools
+  const nearIntentsTools = await toolset.getTools();
+
+  // Create agent with McpNearIntents tools
+  const { runner } = await AgentBuilder.create("near_intents_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("A cross-chain swap agent powered by NEAR Intents")
+    .withTools(...nearIntentsTools)
+    .build();
+
+  const response = await runner.ask(
+    "Swap 10 USDC on Ethereum for NEAR tokens using the best available route",
+  );
+
+  console.log(response);
 }
+
+main().catch(console.error);
 ```
 
-### 3. Getting a Full Quote with Deposit Address
+## Further Resources
 
-```json
-{
-  "originAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
-  "destinationAsset": "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
-  "amount": "1000000000000000000",
-  "recipient": "13QkxhNMrTPxoCkRdYdJ65tFuwXPhL5gLS2Z5Nr6gjRK",
-  "recipientType": "DESTINATION_CHAIN",
-  "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
-  "refundType": "ORIGIN_CHAIN",
-  "slippageTolerance": 100,
-  "dry": false
-}
-```
-
-### 4. Executing a Swap
-
-```json
-{
-  "txHash": "0x1234567890abcdef...",
-  "depositAddress": "0xabcdef1234567890..."
-}
-```
-
-### 5. Checking Status
-
-```json
-{
-  "depositAddress": "0xabcdef1234567890..."
-}
-```
-
-## Token Names vs Token IDs
-
-When users provide simple token names (e.g., 'ETH', 'USDC'), use `GET_NEAR_SWAP_TOKENS` first to discover the exact token IDs required by the API. The API expects full token identifiers like `'nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near'`.
-
-## Authentication
-
-This server requires a JWT token for authentication with the Defuse Protocol API. Make sure to set the `NEAR_SWAP_JWT_TOKEN` environment variable before running the server.
-
-## Error Handling
-
-The server provides detailed error messages for common issues:
-
-- Missing JWT token
-- Invalid request parameters
-- API connection errors
-- Invalid asset identifiers
-
-## Related Resources
-
-- [Defuse Protocol one-click SDK](https://github.com/defuse-protocol/one-click-sdk-typescript)
-- [MCP Specification](https://modelcontextprotocol.io)
-- [FastMCP Documentation](https://github.com/jlowin/fastmcp)
+- [`@iqai/mcp-near-intents` on npm](https://www.npmjs.com/package/@iqai/mcp-near-intents)
+- [NEAR Intents Docs](https://docs.near.org/chain-abstraction/intents/overview)
+- [NEAR Protocol](https://near.org)
+- [NEAR Wallet](https://wallet.near.org)

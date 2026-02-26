@@ -1,51 +1,62 @@
 ---
-title: MCP Opinion
-description: An MCP server for interacting with Opinion.trade prediction market
+title: MCP Opinion Markets
+description: Interact with opinion.trade prediction markets via the MCP protocol.
 ---
 
-import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-opinion`](https://www.npmjs.com/package/@iqai/mcp-opinion)
-- **Purpose**: Interacting with the Opinion.trade prediction market for market data and analysis.
+- **Provider**: [opinion.trade](https://opinion.trade)
 
-## Usage with ADK TypeScript
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The Opinion MCP server lets your agent interact with opinion.trade, a prediction market platform. It supports querying open markets, fetching current odds, and placing trades using your Opinion API key.
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-opinion
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpOpinion} from "@iqai/adk";
+    import { McpOpinion } from "@iqai/adk";
 
     const toolset = McpOpinion({
       env: {
         OPINION_API_KEY: process.env.OPINION_API_KEY,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Opinion MCP Client",
-      description: "Client for Opinion.trade prediction market",
+      description: "Client for opinion.trade prediction markets",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-opinion"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-opinion"],
         env: {
           OPINION_API_KEY: process.env.OPINION_API_KEY,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -55,8 +66,8 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "opinion-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-opinion"],
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-opinion"],
           "env": {
             "OPINION_API_KEY": "your_opinion_api_key"
           }
@@ -67,90 +78,63 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
+## Environment Variables
+
+| Variable          | Required | Description                |
+| ----------------- | -------- | -------------------------- |
+| `OPINION_API_KEY` | Yes      | Your opinion.trade API key |
+
+## Credentials
+
+To get your Opinion API key:
+
+1. Sign up at [opinion.trade](https://opinion.trade)
+2. Navigate to your account settings or API section
+3. Generate and copy your API key
+
 ## Available Tools
 
 <McpToolsList serverId="opinion" />
 
-## Environment Variables
-
-- `OPINION_API_KEY`: Required. Your Opinion.trade API key.
-
-## Usage Examples
-
-Here's a complete example of using MCP Opinion with an ADK agent:
+## Integration Example
 
 ```typescript
-import { McpOpinion, AgentBuilder } from "@iqai/adk";
-import dotenv from "dotenv";
+import { AgentBuilder, McpOpinion } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
 async function main() {
-  // Initialize Opinion MCP toolset
+  // Initialize McpOpinion toolset
   const toolset = McpOpinion({
     env: {
       OPINION_API_KEY: process.env.OPINION_API_KEY,
     },
-    debug: false,
-    retryOptions: {
-      maxRetries: 3,
-      initialDelay: 500,
-    },
   });
 
-  // Get available tools
+  // Get available McpOpinion tools
   const opinionTools = await toolset.getTools();
 
-  // Create agent with Opinion tools
+  // Create agent with McpOpinion tools
   const { runner } = await AgentBuilder.create("opinion_agent")
     .withModel("gemini-2.5-flash")
     .withDescription(
-      "An agent that interacts with Opinion.trade prediction markets",
+      "A prediction market agent that monitors opinion.trade markets",
     )
     .withTools(...opinionTools)
     .build();
 
-  try {
-    // Example queries
-    const response = await runner.ask(
-      "Show me trending markets on Opinion.trade",
-    );
-    console.log(response);
-  } finally {
-    // Clean up resources
-    await toolset.close();
-  }
+  const response = await runner.ask(
+    "Show me the most popular open markets right now and their current odds",
+  );
+
+  console.log(response);
 }
 
 main().catch(console.error);
 ```
 
-## Getting Your Credentials
+## Further Resources
 
-1. Sign up at [Opinion.trade](https://opinion.trade)
-2. Navigate to your account settings
-3. Generate an API key
-
-## Best Practices
-
-- **Security**: Store API keys in environment variables, never hardcode them
-- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
-- **Error Handling**: Implement proper error handling for market data requests
-- **Rate Limits**: Be aware of API rate limits and implement appropriate retry logic
-
-## Error Handling
-
-<Callout type="warn" title="Error Scenarios">
-
-The server handles various error scenarios gracefully.
-
-</Callout>
-
-🚨 **Missing credentials**: Ensure `OPINION_API_KEY` is set
-🔄 **Invalid market identifiers**: Verify market IDs are correct
-🌐 **Network issues**: Check your internet connection and API status
-
-## Resources
-
-- [Opinion.trade](https://opinion.trade) - Opinion.trade prediction market platform
-- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
+- [`@iqai/mcp-opinion` on npm](https://www.npmjs.com/package/@iqai/mcp-opinion)
+- [opinion.trade](https://opinion.trade)

@@ -1,53 +1,70 @@
 ---
 title: MCP Polymarket
-description: An MCP server for interacting with the Polymarket prediction market
+description: Access and trade on Polymarket prediction markets using your wallet.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-polymarket`](https://www.npmjs.com/package/@iqai/mcp-polymarket)
-- **Purpose**: Interacting with the Polymarket prediction market for trading and market analysis.
+- **Provider**: [Polymarket](https://polymarket.com)
 
-## Usage with ADK TypeScript
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The Polymarket MCP server gives your agent access to Polymarket, a leading decentralized prediction market. It can fetch active markets, retrieve current prices and liquidity, query positions, and place or cancel orders — enabling agents to interact with prediction markets programmatically.
+
+<Callout type="warn" title="Wallet Required">
+  Trading on Polymarket requires a funded wallet and your funder address. Keep
+  your private key secure and never commit it to source control.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-polymarket
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpPolymarket} from "@iqai/adk";
+    import { McpPolymarket } from "@iqai/adk";
 
     const toolset = McpPolymarket({
       env: {
-        FUNDER_ADDRESS: process.env.FUNDER_ADDRESS,
+        FUNDER_ADDRESS: process.env.POLYMARKET_FUNDER_ADDRESS,
         POLYMARKET_PRIVATE_KEY: process.env.POLYMARKET_PRIVATE_KEY,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Polymarket MCP Client",
-      description: "Client for Polymarket prediction market operations",
+      description: "Client for Polymarket prediction markets",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-polymarket"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-polymarket"],
         env: {
-          FUNDER_ADDRESS: process.env.FUNDER_ADDRESS,
+          FUNDER_ADDRESS: process.env.POLYMARKET_FUNDER_ADDRESS,
           POLYMARKET_PRIVATE_KEY: process.env.POLYMARKET_PRIVATE_KEY,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -57,11 +74,11 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "polymarket-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-polymarket"],
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-polymarket"],
           "env": {
-            "FUNDER_ADDRESS": "your_funder_address_here",
-            "POLYMARKET_PRIVATE_KEY": "your_private_key_here"
+            "FUNDER_ADDRESS": "your_polymarket_funder_address",
+            "POLYMARKET_PRIVATE_KEY": "your_wallet_private_key"
           }
         }
       }
@@ -70,121 +87,66 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Interact with Polymarket prediction markets
-- Trade prediction market positions
-- Access market data and analytics
-- Manage positions and orders
+| Variable                 | Required | Description                                                                           |
+| ------------------------ | -------- | ------------------------------------------------------------------------------------- |
+| `FUNDER_ADDRESS`         | Yes      | Available from the user menu dropdown on polymarket.com (different from login wallet) |
+| `POLYMARKET_PRIVATE_KEY` | Yes      | Private key of the wallet that interacts with Polymarket                              |
+
+## Credentials
+
+To get your Polymarket credentials:
+
+1. Create an account at [polymarket.com](https://polymarket.com) and connect a wallet
+2. Click on your user menu — your **Funder Address** is shown in the dropdown (it differs from your login wallet address)
+3. Use the private key of the wallet you want to use for trades as `POLYMARKET_PRIVATE_KEY`
 
 ## Available Tools
 
 <McpToolsList serverId="polymarket" />
 
-## Environment Variables
-
-<Callout type="warn" title="Security">
-
-Private keys are used for trading operations. Handle with care and never
-commit them to version control.
-
-</Callout>
-
-- `FUNDER_ADDRESS`: Required. Available to copy from the user menu dropdown on the Polymarket website (different from the wallet address used to log in).
-- `POLYMARKET_PRIVATE_KEY`: Required. Private key of the wallet that interacts with Polymarket.
-
-## Usage Examples
-
-Here's a complete example of using MCP Polymarket with an ADK agent:
+## Integration Example
 
 ```typescript
-import { McpPolymarket, AgentBuilder } from "@iqai/adk";
-import dotenv from "dotenv";
+import { AgentBuilder, McpPolymarket } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
 async function main() {
-  // Initialize Polymarket MCP toolset
+  // Initialize McpPolymarket toolset
   const toolset = McpPolymarket({
     env: {
-      FUNDER_ADDRESS: process.env.FUNDER_ADDRESS,
+      FUNDER_ADDRESS: process.env.POLYMARKET_FUNDER_ADDRESS,
       POLYMARKET_PRIVATE_KEY: process.env.POLYMARKET_PRIVATE_KEY,
-    },
-    debug: false,
-    retryOptions: {
-      maxRetries: 3,
-      initialDelay: 500,
     },
   });
 
-  // Get available tools
+  // Get available McpPolymarket tools
   const polymarketTools = await toolset.getTools();
 
-  // Create agent with Polymarket tools
+  // Create agent with McpPolymarket tools
   const { runner } = await AgentBuilder.create("polymarket_agent")
     .withModel("gemini-2.5-flash")
     .withDescription(
-      "An agent that interacts with Polymarket prediction markets",
+      "A prediction market agent that monitors and trades on Polymarket",
     )
     .withTools(...polymarketTools)
     .build();
 
-  try {
-    // Example queries
-    const response = await runner.ask(
-      "Show me available markets on Polymarket",
-    );
-    console.log(response);
-  } finally {
-    // Clean up resources
-    await toolset.close();
-  }
+  const response = await runner.ask(
+    "What are the top 5 markets by volume on Polymarket today, and what are their current prices?",
+  );
+
+  console.log(response);
 }
 
 main().catch(console.error);
 ```
 
-## Getting Your Credentials
+## Further Resources
 
-### Funder Address
-
-1. Log in to [Polymarket](https://polymarket.com)
-2. Click on your user menu (dropdown)
-3. Copy the **Funder Address** (this is different from your wallet address)
-
-### Private Key
-
-The `POLYMARKET_PRIVATE_KEY` is the private key of the wallet you use to interact with Polymarket. Ensure this wallet has sufficient funds for trading operations.
-
-<Callout type="warn" title="Important">
-
-Never share your private key or commit it to version control. Always use
-environment variables or secure secret management systems.
-
-</Callout>
-
-## Best Practices
-
-- **Security**: Store private keys in environment variables, never hardcode them
-- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
-- **Error Handling**: Implement proper error handling for trading operations
-- **Rate Limits**: Be aware of Polymarket API rate limits and implement appropriate retry logic
-
-## Error Handling
-
-<Callout type="warn" title="Error Scenarios">
-
-The server handles various error scenarios gracefully.
-
-</Callout>
-
-🚨 **Missing credentials**: Ensure both `FUNDER_ADDRESS` and `POLYMARKET_PRIVATE_KEY` are set
-💸 **Insufficient balance**: Ensure your wallet has sufficient funds for trading operations
-🔄 **Invalid market identifiers**: Verify market IDs are correct
-🌐 **Network issues**: Check your internet connection and Polymarket API status
-🛑 **Transaction failures**: Review transaction details and ensure proper gas settings
-
-## Resources
-
-- [Polymarket](https://polymarket.com) - Polymarket prediction market platform
-- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
+- [`@iqai/mcp-polymarket` on npm](https://www.npmjs.com/package/@iqai/mcp-polymarket)
+- [Polymarket](https://polymarket.com)
+- [Polymarket CLOB API Docs](https://docs.polymarket.com/)

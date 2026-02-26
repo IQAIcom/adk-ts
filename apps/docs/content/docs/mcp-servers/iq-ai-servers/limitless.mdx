@@ -1,46 +1,54 @@
 ---
 title: MCP Limitless
-description: An MCP server for interacting with Limitless prediction markets
+description: Query prediction markets and position data from the Limitless protocol on Base.
 ---
 
-import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-limitless`](https://www.npmjs.com/package/@iqai/mcp-limitless)
-- **Purpose**: Interacting with the Limitless prediction markets for market data and analysis.
+- **Provider**: [Limitless](https://limitless.exchange)
 
-## Usage with ADK TypeScript
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The Limitless MCP server connects your agent to Limitless, a decentralized prediction market protocol on the Base network. It enables querying active markets, fetching resolution criteria, and retrieving market positions and prices — giving your agent access to on-chain prediction data without needing a wallet.
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-limitless
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpLimitless} from "@iqai/adk";
+    import { McpLimitless } from "@iqai/adk";
 
-    const toolset = McpLimitless()
+    const toolset = McpLimitless();
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Limitless MCP Client",
-      description: "Client for Limitless prediction markets",
+      description: "Client for Limitless prediction markets on Base",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-limitless"],
-        env: {
-          PATH: process.env.PATH || "",
-        },
+        command: "npx",
+        args: ["-y", "@iqai/mcp-limitless"],
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -50,8 +58,8 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "limitless-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-limitless"]
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-limitless"]
         }
       }
     }
@@ -59,79 +67,48 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
+## Environment Variables
+
+No environment variables are required. The server reads publicly available on-chain data from Base.
+
 ## Available Tools
 
 <McpToolsList serverId="limitless" />
 
-## Environment Variables
-
-No required environment variables. This MCP server works out of the box.
-
-## Usage Examples
-
-Here's a complete example of using MCP Limitless with an ADK agent:
+## Integration Example
 
 ```typescript
-import { McpLimitless, AgentBuilder } from "@iqai/adk";
-import dotenv from "dotenv";
+import { AgentBuilder, McpLimitless } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
 async function main() {
-  // Initialize Limitless MCP toolset
-  const toolset = McpLimitless({
-    debug: false,
-    retryOptions: {
-      maxRetries: 3,
-      initialDelay: 500,
-    },
-  });
+  // Initialize McpLimitless toolset
+  const toolset = McpLimitless();
 
-  // Get available tools
+  // Get available McpLimitless tools
   const limitlessTools = await toolset.getTools();
 
-  // Create agent with Limitless tools
+  // Create agent with McpLimitless tools
   const { runner } = await AgentBuilder.create("limitless_agent")
     .withModel("gemini-2.5-flash")
-    .withDescription(
-      "An agent that interacts with Limitless prediction markets",
-    )
+    .withDescription("A prediction market research agent using Limitless data")
     .withTools(...limitlessTools)
     .build();
 
-  try {
-    // Example queries
-    const response = await runner.ask(
-      "Show me trending prediction markets on Limitless",
-    );
-    console.log(response);
-  } finally {
-    // Clean up resources
-    await toolset.close();
-  }
+  const response = await runner.ask(
+    "What are the current open prediction markets on Limitless and what are their probabilities?",
+  );
+
+  console.log(response);
 }
 
 main().catch(console.error);
 ```
 
-## Best Practices
+## Further Resources
 
-- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
-- **Error Handling**: Implement proper error handling for market data requests
-- **Rate Limits**: Be aware of API rate limits and implement appropriate retry logic
-
-## Error Handling
-
-<Callout type="warn" title="Error Scenarios">
-
-The server handles various error scenarios gracefully.
-
-</Callout>
-
-🔄 **Invalid market identifiers**: Verify market IDs are correct
-🌐 **Network issues**: Check your internet connection and API status
-
-## Resources
-
-- [Limitless](https://limitless.exchange) - Limitless prediction market platform
-- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
+- [`@iqai/mcp-limitless` on npm](https://www.npmjs.com/package/@iqai/mcp-limitless)
+- [Limitless Exchange](https://limitless.exchange)
+- [Base Network](https://base.org)

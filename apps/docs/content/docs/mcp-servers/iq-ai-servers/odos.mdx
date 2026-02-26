@@ -1,51 +1,69 @@
 ---
-title: MCP ODOS
-description: Interact with decentralized exchanges through ODOS aggregation
+title: MCP Odos
+description: Find optimal token swap routes and execute trades across DeFi protocols using Odos.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-odos`](https://www.npmjs.com/package/@iqai/mcp-odos)
-- **Purpose**: Interact with decentralized exchanges through ODOS aggregation
+- **Provider**: [Odos](https://odos.xyz)
 
-## Usage with ADK TypeScript
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The Odos MCP server gives your agent access to Odos's smart order routing for DeFi swaps. It can quote multi-path token swaps across dozens of protocols, assemble optimized swap transactions, and submit them on-chain — all across multiple EVM-compatible networks.
+
+<Callout type="warn" title="Private Key Security">
+  This server signs and submits swap transactions using your wallet private key.
+  Never commit your private key to source control. Always load it from a secure
+  environment variable.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-odos
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpOdos} from "@iqai/adk";
+    import { McpOdos } from "@iqai/adk";
 
     const toolset = McpOdos({
       env: {
         WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "ODOS MCP Client",
-      description: "Client for ODOS DEX aggregation",
+      description: "Client for Odos smart order routing and swaps",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-odos"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-odos"],
         env: {
           WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -54,9 +72,9 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     ```json
     {
       "mcpServers": {
-        "odos-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-odos"],
+        "odos-mcp-server": {
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-odos"],
           "env": {
             "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
           }
@@ -67,68 +85,56 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Interact with decentralized exchanges through ODOS aggregation
-- Fetch a quote for a swap
-- Execute a swap
+| Variable             | Required | Description                                                         |
+| -------------------- | -------- | ------------------------------------------------------------------- |
+| `WALLET_PRIVATE_KEY` | Yes      | Private key of the wallet used to sign and submit swap transactions |
 
 ## Available Tools
 
 <McpToolsList serverId="odos" />
 
-## Environment Variables
+## Integration Example
 
-<Callout type="warn" title="Security">
+```typescript
+import { AgentBuilder, McpOdos } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-The private key is used for signing transactions. Handle with care.
+dotenv.config();
 
-</Callout>
+async function main() {
+  // Initialize McpOdos toolset
+  const toolset = McpOdos({
+    env: {
+      WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    },
+  });
 
-- `WALLET_PRIVATE_KEY`: Required for executing swaps
-- The private key of the wallet to be used for interacting with DEX platforms
+  // Get available McpOdos tools
+  const odosTools = await toolset.getTools();
 
-## Usage Examples
+  // Create agent with McpOdos tools
+  const { runner } = await AgentBuilder.create("odos_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "A DeFi agent that finds and executes optimal token swaps via Odos",
+    )
+    .withTools(...odosTools)
+    .build();
 
-### `GET_SWAP_QUOTE`
+  const response = await runner.ask(
+    "Find the best route to swap 1 ETH for USDC on Ethereum and show me the expected output",
+  );
 
-- "Get me a quote for swapping 1 wfrxEth to FRAX on Fraxtal"
-- "What rate would I get for trading 0.5 ETH to USDC?"
-- "Check current exchange rate between DAI and FXS"
-
-### `EXECUTE_TOKEN_SWAP`
-
-- "Swap 100 DAI to FXS"
-- "Exchange 0.1 ETH for USDT"
-- "Trade my wfrxEth for FRAX"
-
-## Response Examples
-
-```json
-💱 Quote Details
-{
-  "inTokens": ["0x..."],
-  "outTokens": ["0x..."],
-  "inAmounts": ["1000000000000000000"],
-  "outAmounts": ["990000000000000000"],
-  "pathId": "0x...",
-  "gasEstimate": 200000,
-  "gasEstimateValue": 0.1,
-  "netOutValue": 100,
-  "priceImpact": 0.01
+  console.log(response);
 }
+
+main().catch(console.error);
 ```
 
-## Error Handling
+## Further Resources
 
-The server provides detailed error messages to help diagnose issues. Errors typically include a `detail` message, a `traceId` for debugging, and an `errorCode`.
-
-Example Error Response:
-
-```json
-{
-  "detail": "Failed to fetch quote: invalid fromToken address",
-  "traceId": "...",
-  "errorCode": "INVALID_ADDRESS"
-}
-```
+- [`@iqai/mcp-odos` on npm](https://www.npmjs.com/package/@iqai/mcp-odos)
+- [Odos API Docs](https://docs.odos.xyz/)
+- [Odos](https://odos.xyz)

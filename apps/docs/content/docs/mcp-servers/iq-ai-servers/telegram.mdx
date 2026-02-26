@@ -1,51 +1,68 @@
 ---
 title: MCP Telegram
-description: An MCP server for interacting with Telegram bots and channels
+description: Enable AI agents to send and receive messages through Telegram bots.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-telegram`](https://www.npmjs.com/package/@iqai/mcp-telegram)
-- **Purpose**: Interacting with Telegram bots and channels using the Telegraf library.
+- **Provider**: [Telegram](https://telegram.org)
 
-## Usage with ADK TypeScript
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The Telegram MCP server lets your agent interact with Telegram via a bot. It can send messages to users or groups, read incoming messages, and respond to commands — making it straightforward to build agents that communicate through Telegram as their primary interface.
+
+<Callout type="warn" title="Bot Token Security">
+  Your Telegram bot token gives full control over your bot. Never expose it in
+  client-side code or commit it to source control.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-telegram
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpTelegram} from "@iqai/adk";
+    import { McpTelegram } from "@iqai/adk";
 
     const toolset = McpTelegram({
       env: {
         TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Telegram MCP Client",
-      description: "Client for Telegram bot operations",
+      description: "Client for Telegram bot messaging",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-telegram"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-telegram"],
         env: {
           TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -55,10 +72,10 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "telegram-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-telegram"],
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-telegram"],
           "env": {
-            "TELEGRAM_BOT_TOKEN": "your_bot_token_here"
+            "TELEGRAM_BOT_TOKEN": "your_telegram_bot_token"
           }
         }
       }
@@ -67,115 +84,62 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Provides tools to send messages, get channel information, forward messages, pin messages, and get channel members.
-- Uses the Telegraf library, a modern and feature-rich Telegram bot framework for Node.js.
+| Variable             | Required | Description                                |
+| -------------------- | -------- | ------------------------------------------ |
+| `TELEGRAM_BOT_TOKEN` | Yes      | Token from BotFather for your Telegram bot |
+
+## Credentials
+
+To create a bot and get your bot token:
+
+1. Open Telegram and search for **@BotFather**
+2. Send `/newbot` and follow the prompts to name your bot
+3. Copy the **bot token** BotFather gives you
 
 ## Available Tools
 
 <McpToolsList serverId="telegram" />
 
-## Sampling
+## Integration Example
 
-Sampling enables an mcp server to request llm sampling (generations or completions) from the client.
-The mcp-telegram server listens to new messages and uses sampling to get llm responses and responds to them, basically in a nutshell allowing for bi-directional communication.
+```typescript
+import { AgentBuilder, McpTelegram } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-This is useful when you want agentic capabilities ie building a telegram bot that can respond to messages and also send messages to other users.
+dotenv.config();
 
-### Resources
+async function main() {
+  // Initialize McpTelegram toolset
+  const toolset = McpTelegram({
+    env: {
+      TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    },
+  });
 
-- An example telegram bot written with adk-ts that makes use of sampling: <a href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/mcp-telegram-agent/index.ts" target="_blank" rel="noopener noreferrer">Telegram bot example</a>
-- For more info on sampling please refer to: [MCP Sampling](https://modelcontextprotocol.io/specification/2025-06-18/client/sampling)
+  // Get available McpTelegram tools
+  const telegramTools = await toolset.getTools();
 
-## Environment Variables
+  // Create agent with McpTelegram tools
+  const { runner } = await AgentBuilder.create("telegram_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("An agent that communicates with users through Telegram")
+    .withTools(...telegramTools)
+    .build();
 
-- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token (required)
+  const response = await runner.ask(
+    "Send a message to chat ID 123456789 saying the daily report is ready",
+  );
 
-## Usage Examples
-
-### SEND_MESSAGE
-
-Send a message to a Telegram channel:
-
-```json
-{
-  "tool_name": "SEND_MESSAGE",
-  "arguments": {
-    "chatId": "@mychannel",
-    "text": "Hello from the Telegram MCP Server!"
-  }
+  console.log(response);
 }
+
+main().catch(console.error);
 ```
 
-### GET_CHANNEL_INFO
+## Further Resources
 
-Get information about a Telegram channel:
-
-```json
-{
-  "tool_name": "GET_CHANNEL_INFO",
-  "arguments": {
-    "channelId": "@mychannel"
-  }
-}
-```
-
-## Response Examples
-
-### SEND_MESSAGE
-
-Successful response:
-
-```json
-{
-  "success": true,
-  "result": "Message sent successfully!\n\nMessage ID: 123\nChat ID: @mychannel\nSent at: 2024-03-15T12:34:56.789Z\nText: Hello from the Telegram MCP Server!"
-}
-```
-
-### GET_CHANNEL_INFO
-
-Successful response:
-
-```json
-{
-  "success": true,
-  "result": "Channel Information:\n\nTitle: My Channel\nID: -1001234567890\nType: channel\nUsername: mychannel\nDescription: This is my Telegram channel.\nMember Count: 1234"
-}
-```
-
-## Error Handling
-
-The tools will return an error message in the `result` field if an error occurs. Common errors include:
-
-- **Missing bot token:** Ensure the `TELEGRAM_BOT_TOKEN` environment variable is set.
-- **Invalid chat ID:** Double-check the chat ID or username.
-- **Bot not in channel:** Add the bot to the channel with appropriate permissions.
-
-### Deployment Issues
-
-**Render Deployment Failure with Telegram Polling**
-
-When deploying Telegram polling-based agents to Render using Docker, the deployment may fail because:
-
-- Render Web Services require binding to `$PORT` environment variable
-- Telegram polling agents don't bind to an HTTP port (they use Telegram's polling API)
-- The service appears unhealthy without a bound port and may be restarted or terminated
-
-**Solution:** Switch the service type to "Background Worker" on Render instead of "Web Service". Background Workers are designed for long-running processes that don't need to expose HTTP endpoints, which matches Telegram polling behavior.
-
-For more details, see [GitHub Issue #345](https://github.com/IQAIcom/adk-ts/issues/345).
-
-## Bot Setup
-
-<Callout type="info" title="Bot Setup Required">
-
-You'll need to create and configure a Telegram bot before using this server.
-
-</Callout>
-
-1. Create a bot with [@BotFather](https://t.me/botfather)
-2. Get your bot token
-3. Add your bot to channels with appropriate permissions
-4. Use channel usernames (e.g., @mychannel) or chat IDs for interactions
+- [`@iqai/mcp-telegram` on npm](https://www.npmjs.com/package/@iqai/mcp-telegram)
+- [Telegram Bot API Docs](https://core.telegram.org/bots/api)
+- [BotFather](https://t.me/botfather)

@@ -1,20 +1,49 @@
 ---
 title: MCP Upbit
-description: An MCP server for interacting with the Upbit cryptocurrency exchange
+description: Access real-time and historical market data from the Upbit cryptocurrency exchange.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-upbit`](https://www.npmjs.com/package/@iqai/mcp-upbit)
-- **Purpose**: Interacting with the Upbit cryptocurrency exchange for market data and trading operations.
+- **Provider**: [Upbit](https://upbit.com)
 
-## Usage with ADK TypeScript
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
-  <Tab value="Simple">
+The Upbit MCP server connects your agent to the Upbit exchange API. It can retrieve ticker data, order books, trade history, and OHLCV candles for KRW, BTC, and USDT markets. Trading operations require API credentials; market data queries are available without authentication.
+
+<Callout type="info" title="Trading vs. Read-Only">
+  Market data (tickers, order books, candles) is publicly accessible without API
+  credentials. Placing orders or accessing account data requires an Access Key,
+  Secret Key, and `UPBIT_ENABLE_TRADING=true`.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-upbit
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple (read-only)", "Simple (trading)", "Verbose", "Claude Desktop"]}>
+  <Tab value="Simple (read-only)">
     ```typescript
-    import {McpUpbit} from "@iqai/adk";
+    import { McpUpbit } from "@iqai/adk";
+
+    const toolset = McpUpbit();
+
+    const tools = await toolset.getTools();
+    ```
+
+  </Tab>
+
+  <Tab value="Simple (trading)">
+    ```typescript
+    import { McpUpbit } from "@iqai/adk";
 
     const toolset = McpUpbit({
       env: {
@@ -22,20 +51,20 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
         UPBIT_SECRET_KEY: process.env.UPBIT_SECRET_KEY,
         UPBIT_ENABLE_TRADING: "true",
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Upbit MCP Client",
-      description: "Client for Upbit exchange operations",
+      description: "Client for Upbit exchange market data and trading",
       transport: {
         mode: "stdio",
         command: "npx",
@@ -47,9 +76,9 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -62,8 +91,8 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
           "command": "npx",
           "args": ["-y", "@iqai/mcp-upbit"],
           "env": {
-            "UPBIT_ACCESS_KEY": "your_access_key_here",
-            "UPBIT_SECRET_KEY": "your_secret_key_here",
+            "UPBIT_ACCESS_KEY": "your_upbit_access_key",
+            "UPBIT_SECRET_KEY": "your_upbit_secret_key",
             "UPBIT_ENABLE_TRADING": "true"
           }
         }
@@ -73,64 +102,67 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Access Upbit market data and trading operations
-- Public market data tools (no authentication required)
-- Private trading tools with API key authentication
-- Real-time ticker, orderbook, and trade data
+| Variable               | Required         | Description                                                                 |
+| ---------------------- | ---------------- | --------------------------------------------------------------------------- |
+| `UPBIT_ACCESS_KEY`     | For trading only | Upbit Open API access key                                                   |
+| `UPBIT_SECRET_KEY`     | For trading only | Upbit Open API secret key                                                   |
+| `UPBIT_ENABLE_TRADING` | For trading only | Set to `"true"` to enable trading operations (default: disabled for safety) |
+
+## Credentials
+
+To get your Upbit API credentials:
+
+1. Log into [upbit.com](https://upbit.com) and go to **My Page → Open API**
+2. Click **Issue API Key**
+3. Set the permissions your agent needs (e.g., asset inquiry, order placement)
+4. Copy the **Access Key** and **Secret Key** — the secret key is only shown once
 
 ## Available Tools
 
 <McpToolsList serverId="upbit" />
 
-## Environment Variables
+## Integration Example
 
-<Callout type="warn" title="Security">
+```typescript
+import { AgentBuilder, McpUpbit } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-Private keys are used for trading operations. Handle with care.
+dotenv.config();
 
-</Callout>
+async function main() {
+  // Initialize McpUpbit toolset
+  const toolset = McpUpbit({
+    env: {
+      UPBIT_ACCESS_KEY: process.env.UPBIT_ACCESS_KEY,
+      UPBIT_SECRET_KEY: process.env.UPBIT_SECRET_KEY,
+      UPBIT_ENABLE_TRADING: "true",
+    },
+  });
 
-- `UPBIT_ACCESS_KEY`: Required for private trading operations
-- `UPBIT_SECRET_KEY`: Required for private trading operations
-- `UPBIT_ENABLE_TRADING`: Set to "true" to enable trading functionality
-- `UPBIT_SERVER_URL`: Optional API server URL (defaults to https://api.upbit.com)
+  // Get available McpUpbit tools
+  const upbitTools = await toolset.getTools();
 
-## Usage Examples
+  // Create agent with McpUpbit tools
+  const { runner } = await AgentBuilder.create("upbit_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("A crypto trading agent that monitors and trades on Upbit")
+    .withTools(...upbitTools)
+    .build();
 
-### Public Market Data
+  const response = await runner.ask(
+    "What is the current price of Bitcoin on Upbit and how has it moved in the last 24 hours?",
+  );
 
-- "Get ticker for KRW-BTC market"
-- "Show me the orderbook for KRW-ETH"
-- "What are the recent trades for KRW-ADA?"
+  console.log(response);
+}
 
-### Private Trading Operations
+main().catch(console.error);
+```
 
-- "Show my Upbit account balances"
-- "Get my order history for KRW-BTC"
-- "Create a buy order for 0.001 BTC at 50,000,000 KRW"
-- "Cancel order with UUID abc123..."
+## Further Resources
 
-## Response Format
-
-Actions return **structured responses** including:
-
-✔ **Market data with prices and volumes** 💹
-✔ **Account balances and positions** 💰
-✔ **Order status and transaction details** 📋
-✔ **Error messages when applicable** ⚠️
-
-## Error Handling
-
-<Callout type="warn" title="Error Scenarios">
-
-The server handles various error scenarios gracefully.
-
-</Callout>
-
-🚨 **Missing API credentials**
-💸 **Invalid market identifiers**
-🔄 **Trading disabled**
-🌐 **API rate limits**
-🛑 **Insufficient balances**
+- [`@iqai/mcp-upbit` on npm](https://www.npmjs.com/package/@iqai/mcp-upbit)
+- [Upbit Open API Docs](https://docs.upbit.com/)
+- [Upbit](https://upbit.com)

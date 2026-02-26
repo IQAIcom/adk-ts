@@ -1,35 +1,41 @@
 ---
 title: MCP Filesystem
-description: File system operations (read/write/list) using Anthropic's filesystem MCP server
+description: Give your agent secure, sandboxed read and write access to the local filesystem.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-- **Name**: MCP Filesystem
-- **Package**: `@modelcontextprotocol/server-filesystem`
-- **Provider**: Anthropic
+- **Package**: [`@modelcontextprotocol/server-filesystem`](https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem)
+- **Provider**: [Anthropic / MCP](https://modelcontextprotocol.io)
 
 ## Overview
 
-MCP Filesystem is a third-party Model Context Protocol server from Anthropic that provides file system operations. It allows agents to read, write, and list files in designated directories with secure path restrictions.
+The Filesystem MCP server gives your agent controlled access to read, write, list, and search files on the local filesystem. Access is scoped to one or more directories you specify — the agent cannot access paths outside the configured roots, making it safe to use in automated workflows.
 
-<Callout type="warning" title="Security">
-
-Always specify `ALLOWED_DIRECTORIES` to restrict file access to specific paths. Without this, the server may have broad file system access.
-
+<Callout type="warn" title="Scope Your Directories Carefully">
+  Only grant access to directories your agent genuinely needs. Avoid pointing it
+  at sensitive locations like your home directory or system paths.
 </Callout>
 
-## Usage with ADK TypeScript
+## Getting Started
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+Install the package:
+
+```bash
+pnpm add @modelcontextprotocol/server-filesystem
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
     import { McpFilesystem } from "@iqai/adk";
 
     const toolset = McpFilesystem({
       env: {
-        ALLOWED_DIRECTORIES: "/workspace,/project/data",
+        ALLOWED_DIRECTORIES: "/path/to/your/project",
       },
     });
 
@@ -44,18 +50,11 @@ Always specify `ALLOWED_DIRECTORIES` to restrict file access to specific paths. 
 
     const toolset = new McpToolset({
       name: "Filesystem MCP Client",
-      description: "Client for filesystem operations",
+      description: "Client for sandboxed local filesystem access",
       transport: {
         mode: "stdio",
         command: "npx",
-        args: [
-          "-y",
-          "@modelcontextprotocol/server-filesystem",
-          "/workspace",
-        ],
-        env: {
-          PATH: process.env.PATH || "",
-        },
+        args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/your/project"],
       },
     });
 
@@ -65,12 +64,6 @@ Always specify `ALLOWED_DIRECTORIES` to restrict file access to specific paths. 
   </Tab>
 
   <Tab value="Claude Desktop">
-    If you want to use this MCP with Claude Desktop, add this to your Claude Desktop configuration file:
-
-    **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
     ```json
     {
       "mcpServers": {
@@ -79,99 +72,76 @@ Always specify `ALLOWED_DIRECTORIES` to restrict file access to specific paths. 
           "args": [
             "-y",
             "@modelcontextprotocol/server-filesystem",
-            "/workspace"
+            "/path/to/your/project"
           ]
         }
       }
     }
     ```
-
   </Tab>
 </Tabs>
 
 ## Environment Variables
 
-| Variable              | Type     | Description                                     |
-| --------------------- | -------- | ----------------------------------------------- |
-| `ALLOWED_DIRECTORIES` | Optional | Comma-separated list of allowed directory paths |
+| Variable              | Required | Description                                                        |
+| --------------------- | -------- | ------------------------------------------------------------------ |
+| `ALLOWED_DIRECTORIES` | No       | Comma-separated list of directories the agent is allowed to access |
 
-## Configuration Options
+## Configuration
 
-All MCP servers support these configuration options:
+You can configure allowed directories via the `ALLOWED_DIRECTORIES` env var (comma-separated) or pass them directly as arguments in the Verbose/Claude Desktop configs:
 
-| Option                      | Type            | Description                              |
-| --------------------------- | --------------- | ---------------------------------------- |
-| `env`                       | object          | Environment variables (see table above)  |
-| `debug`                     | boolean         | Enable debug logging                     |
-| `description`               | string          | Custom description                       |
-| `retryOptions.maxRetries`   | number          | Max retry attempts (default: 2)          |
-| `retryOptions.initialDelay` | number          | Initial retry delay in ms (default: 200) |
-| `samplingHandler`           | SamplingHandler | Handler for MCP sampling requests        |
+```bash
+# Single directory
+npx -y @modelcontextprotocol/server-filesystem /home/user/projects
+
+# Multiple directories
+npx -y @modelcontextprotocol/server-filesystem /home/user/projects /tmp/workspace
+```
 
 ## Available Tools
 
 <McpToolsList serverId="filesystem" />
 
-## Complete Example
+## Integration Example
 
 ```typescript
-import { McpFilesystem, LlmAgent } from "@iqai/adk";
+import { AgentBuilder, McpFilesystem } from "@iqai/adk";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 async function main() {
-  // Initialize filesystem toolset with restricted access
-  const filesystemToolset = McpFilesystem({
+  // Initialize McpFilesystem toolset
+  const toolset = McpFilesystem({
     env: {
-      ALLOWED_DIRECTORIES: "/workspace,/project/data",
+      ALLOWED_DIRECTORIES: process.cwd(),
     },
-    debug: true,
   });
 
-  try {
-    // Get available tools
-    const tools = await filesystemToolset.getTools();
+  // Get available McpFilesystem tools
+  const filesystemTools = await toolset.getTools();
 
-    // Create agent with filesystem tools
-    const agent = new LlmAgent({
-      name: "file_manager",
-      model: "gemini-2.5-flash",
-      description: "An agent that manages files and directories",
-      instruction: `You can read, write, and manage files in the allowed directories.
-        Always ask before modifying files. Be careful with destructive operations.`,
-      tools,
-    });
+  // Create agent with McpFilesystem tools
+  const { runner } = await AgentBuilder.create("filesystem_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "An agent that can read and write files in the current project directory",
+    )
+    .withTools(...filesystemTools)
+    .build();
 
-    // Use the agent
-    const response = await agent.ask("List all markdown files in /workspace");
-    console.log(response);
-  } finally {
-    // Always cleanup
-    await filesystemToolset.close();
-  }
+  const response = await runner.ask(
+    "List all TypeScript files in the src directory and show me the contents of index.ts",
+  );
+
+  console.log(response);
 }
 
-main();
+main().catch(console.error);
 ```
 
-## Best Practices
+## Further Resources
 
-- **Restrict Access**: Always specify `ALLOWED_DIRECTORIES` to limit file system access
-- **Validate Paths**: Ensure paths are absolute and within allowed directories
-- **Error Handling**: Implement proper error handling for file operations
-- **Cleanup**: Always call `toolset.close()` when done to free resources
-- **Permissions**: Ensure the process has appropriate file system permissions
-
-## Troubleshooting
-
-| Issue              | Solution                                               |
-| ------------------ | ------------------------------------------------------ |
-| Permission denied  | Check file system permissions and allowed directories  |
-| Path not allowed   | Add path to `ALLOWED_DIRECTORIES` environment variable |
-| File not found     | Verify the file path is correct and accessible         |
-| Connection timeout | Check if npm/npx is installed and in PATH              |
-
-## Related Resources
-
-- [Official Filesystem MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem)
-- [MCP Tools Documentation](/docs/framework/tools/mcp-tools)
-- [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps)
-- [Integrating External MCPs](/docs/mcp-servers/external-mcps)
+- [MCP Filesystem Server on npm](https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem)
+- [Model Context Protocol](https://modelcontextprotocol.io)
