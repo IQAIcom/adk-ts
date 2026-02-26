@@ -50,10 +50,14 @@ export async function generateMetadata(props: {
 	return {
 		title: page.data.title,
 		description: page.data.description,
+		alternates: {
+			canonical: `https://adk.iqai.com${page.url}`,
+		},
 		openGraph: {
 			title: page.data.title,
 			description: page.data.description,
 			type: "article",
+			url: `https://adk.iqai.com${page.url}`,
 			images: [
 				{
 					url: image,
