@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
 	title: {
 		default: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
-		template: "%s | ADK-TS Web",
+		template: "ADK-TS | %s",
 	},
 	description:
 		"Visual web interface for @iqai/adk-cli to discover, chat with, and monitor your ADK-TS AI agents.",

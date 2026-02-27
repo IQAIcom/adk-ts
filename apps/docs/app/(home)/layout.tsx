@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 		absolute: "ADK-TS - The TypeScript-Native AI Agent Framework",
 	},
 	description:
-		"Build production-ready AI agents in TypeScript. ADK-TS provides multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
+		"Build production-ready AI agents in TypeScript with ADK-TS. Multi-LLM support, tool integration, memory systems, and multi-agent orchestration.",
 	alternates: {
 		canonical: "https://adk.iqai.com",
 	},

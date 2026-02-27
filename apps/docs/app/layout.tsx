@@ -11,10 +11,10 @@ const inter = Inter({
 export const metadata: Metadata = {
 	title: {
 		default: "ADK-TS - The TypeScript-Native AI Agent Framework",
-		template: "%s | ADK-TS",
+		template: "ADK-TS | %s",
 	},
 	description:
-		"ADK-TS is the TypeScript-native AI agent framework for building production-ready AI agents. Multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
+		"ADK-TS is the TypeScript-native AI agent framework. Build production-ready AI agents with multi-LLM support, tool integration, and multi-agent orchestration.",
 	keywords: [
 		"TypeScript AI agents",
 		"TypeScript agent framework",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 		siteName: "ADK-TS",
 		title: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		description:
-			"ADK-TS is the TypeScript-native AI agent framework for building production-ready AI agents. Multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
+			"ADK-TS is the TypeScript-native AI agent framework. Build production-ready AI agents with multi-LLM support, tool integration, and multi-agent orchestration.",
 		url: "https://adk.iqai.com",
 		images: [
 			{
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
 		creator: "@iqaicom",
 		title: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		description:
-			"ADK-TS is the TypeScript-native AI agent framework for building production-ready AI agents. Multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
+			"ADK-TS is the TypeScript-native AI agent framework. Build production-ready AI agents with multi-LLM support, tool integration, and multi-agent orchestration.",
 		images: ["/og-image.png"],
 	},
 	alternates: {
