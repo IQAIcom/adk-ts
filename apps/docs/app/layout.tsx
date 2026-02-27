@@ -39,7 +39,10 @@ export const metadata: Metadata = {
 	openGraph: {
 		type: "website",
 		siteName: "ADK-TS",
-		title: "ADK-TS - The TypeScript-Native AI Agent Framework",
+		title: {
+			default: "ADK-TS - The TypeScript-Native AI Agent Framework",
+			template: "ADK-TS | %s",
+		},
 		description:
 			"An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.",
 		url: "https://adk.iqai.com",
@@ -56,7 +59,10 @@ export const metadata: Metadata = {
 		card: "summary_large_image",
 		site: "@iqaicom",
 		creator: "@iqaicom",
-		title: "ADK-TS - The TypeScript-Native AI Agent Framework",
+		title: {
+			default: "ADK-TS - The TypeScript-Native AI Agent Framework",
+			template: "ADK-TS | %s",
+		},
 		description:
 			"An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.",
 		images: ["/og-image.png"],
