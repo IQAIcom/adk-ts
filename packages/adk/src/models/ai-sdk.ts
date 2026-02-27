@@ -84,7 +84,7 @@ export class AiSdkLlm extends BaseLlm {
 	}
 
 	/**
-	 * Returns empty array - following Python ADK-TS pattern
+	 * Returns empty array - following Python ADK pattern
 	 */
 	static override supportedModels(): string[] {
 		return [];

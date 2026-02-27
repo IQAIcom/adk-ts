@@ -70,7 +70,7 @@ export class TelemetryService {
 			traceExporter,
 			instrumentations: [
 				getNodeAutoInstrumentations({
-					// Follow Python ADK-TS approach: let all HTTP instrumentation through.
+					// Follow Python ADK approach: let all HTTP instrumentation through.
 					// This provides transparency and aligns with standard OpenTelemetry behavior.
 					// High-level LLM tracing is provided through dedicated ADK-TS spans.
 					"@opentelemetry/instrumentation-http": {
