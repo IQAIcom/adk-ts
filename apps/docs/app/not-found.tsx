@@ -30,7 +30,7 @@ const popularSections = [
 	{
 		title: "Guides & Tutorials",
 		description: "In-depth guides for common use cases",
-		href: "/docs/framework/guides/agent-instructions",
+		href: "/docs/framework/guides",
 	},
 ];
 
