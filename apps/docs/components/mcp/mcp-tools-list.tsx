@@ -44,7 +44,7 @@ function ToolTile({ tool }: { tool: McpTool }) {
 	const required = tool.inputSchema?.required || [];
 
 	return (
-		<details className="not-prose group rounded-lg border border-fd-border bg-fd-card transition-colors hover:bg-fd-muted dark:hover:bg-fd-muted/50 [&[open]]:bg-fd-muted dark:[&[open]]:bg-fd-muted/50">
+		<details className="not-prose group rounded-lg border border-fd-border bg-fd-card transition-colors hover:bg-fd-muted dark:hover:bg-fd-muted/50 [[open]]:bg-fd-muted dark:[[open]]:bg-fd-muted/50">
 			<summary className="flex cursor-pointer items-start gap-3 px-4 py-3 select-none list-none [&::-webkit-details-marker]:hidden">
 				<svg
 					className="mt-1 size-4 shrink-0 text-fd-muted-foreground transition-transform group-open:rotate-90"
@@ -119,18 +119,32 @@ export function McpToolsList({ serverId }: McpToolsListProps) {
 	}
 
 	if (serverData.error) {
+		// Show a remote endpoint message only for known remote servers (e.g., CoinGecko)
+		if (
+			serverId.startsWith("coingecko") ||
+			(serverData.package && serverData.package.includes("coingecko"))
+		) {
+			return (
+				<Callout type="info" title="Remote MCP Endpoint">
+					This MCP server is hosted remotely and tools are discovered
+					dynamically at runtime. For the full list of available tools and
+					endpoints, see the{" "}
+					<a
+						href="https://docs.coingecko.com/docs/mcp-server"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						official CoinGecko MCP documentation
+					</a>
+					.
+				</Callout>
+			);
+		}
 		return (
-			<Callout type="info" title="Remote MCP Endpoint">
-				This MCP server is hosted remotely and tools are discovered dynamically
-				at runtime. For the full list of available tools and endpoints, see the{" "}
-				<a
-					href="https://docs.coingecko.com/docs/mcp-server"
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					official CoinGecko MCP documentation
-				</a>
-				.
+			<Callout type="info" title="Tools Unavailable">
+				Tool data for this MCP server could not be loaded. This may be a local
+				or custom server. Please check your configuration or try regenerating
+				tool data.
 			</Callout>
 		);
 	}

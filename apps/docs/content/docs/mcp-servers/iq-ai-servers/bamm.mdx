@@ -1,51 +1,69 @@
 ---
 title: MCP BAMM
-description: Model Context Protocol Server for Borrow Automated Market Maker
+description: Interact with Borrow Automated Market Maker (BAMM) contracts on the Fraxtal blockchain.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-bamm`](https://www.npmjs.com/package/@iqai/mcp-bamm)
-- **Purpose**: Interacting with Borrow Automated Market Maker (BAMM) contracts on the Fraxtal blockchain.
+- **Provider**: IQ AI
 
-## Usage with ADK-TS
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The BAMM MCP server enables your agent to interact with Borrow Automated Market Maker contracts on the Fraxtal blockchain. It supports managing BAMM positions, adding or removing collateral, borrowing against LP tokens, and querying pool data — all through natural language.
+
+<Callout type="warn" title="Private Key Security">
+  This server signs on-chain transactions using your wallet private key. Never
+  commit your private key to source control. Always load it from a secure
+  environment variable.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-bamm
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpBamm} from "@iqai/adk";
+    import { McpBamm } from "@iqai/adk";
 
     const toolset = McpBamm({
       env: {
         WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
       },
-      })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "BAMM MCP Client",
-      description: "Client for BAMM DeFi operations",
+      description: "Client for BAMM DeFi operations on Fraxtal",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-bamm"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-bamm"],
         env: {
           WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -55,8 +73,8 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "bamm-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-bamm"],
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-bamm"],
           "env": {
             "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
           }
@@ -67,65 +85,54 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Allows MCP-compatible clients to manage BAMM positions, borrow against LP tokens, and perform other operations related to the BAMM protocol.
-- Built using TypeScript and `fastmcp`.
+| Variable             | Required | Description                                              |
+| -------------------- | -------- | -------------------------------------------------------- |
+| `WALLET_PRIVATE_KEY` | Yes      | Private key of the wallet used to sign BAMM transactions |
 
 ## Available Tools
 
 <McpToolsList serverId="bamm" />
 
-## Environment Variables
+## Integration Example
 
-<Callout type="warn" title="Security Note">
+```typescript
+import { AgentBuilder, McpBamm } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-Handle the private key with extreme care. Ensure it is stored securely and
-only provided to trusted MCP client configurations.
+dotenv.config();
 
-</Callout>
+async function main() {
+  // Initialize McpBamm toolset
+  const toolset = McpBamm({
+    env: {
+      WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    },
+  });
 
-- `WALLET_PRIVATE_KEY`: (Required for all blockchain operations)
-  - The private key of the wallet to be used for interacting with BAMM contracts (signing transactions for lending, borrowing, etc.).
+  // Get available McpBamm tools
+  const bammTools = await toolset.getTools();
 
-## Usage Examples
+  // Create agent with McpBamm tools
+  const { runner } = await AgentBuilder.create("bamm_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("A DeFi agent that manages BAMM positions on Fraxtal")
+    .withTools(...bammTools)
+    .build();
 
-```javascript
-// First, ensure the WALLET_PRIVATE_KEY environment variable is set on the server
+  const response = await runner.ask(
+    "Add 100 FRAX as collateral to BAMM position at 0xC5B225cF058915BF28D7d9DFA3043BD53C63Ea84",
+  );
 
-// Add collateral to a BAMM position
-await client.runTool("ADD_COLLATERAL", {
-  bammAddress: "0xC5B225cF058915BF28D7d9DFA3043BD53C63Ea84",
-  amount: "100",
-  collateralTokenSymbol: "FRAX",
-});
+  console.log(response);
+}
 
-// Get all your positions
-await client.runTool("GET_POSITIONS", {});
+main().catch(console.error);
 ```
 
-## Response Examples
+## Further Resources
 
-```json
-{ "txHash": "0x..." }
-```
-
-```
-📊 *Your Active BAMM Positions*
-
-**💰 BAMM Position**
-- bamm: 0x...
-- Pair: 0x...
-- FRAX: 100
-- USDC: 200
-- rented: 0
-```
-
-## Error Handling
-
-```
-❌ Failed to retrieve positions: Failed to fetch pool details: Not Found
-Error: Pool stats not available
-Error: Remove collateral amount must be greater than 0
-Error: Withdraw amount must be greater than 0
-```
+- [`@iqai/mcp-bamm` on npm](https://www.npmjs.com/package/@iqai/mcp-bamm)
+- [BAMM Protocol](https://www.frax.finance/)
+- [Fraxtal Blockchain](https://fraxtal.io/)

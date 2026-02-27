@@ -1,28 +1,28 @@
 ---
 title: MCP Memory
-description: Memory and note-taking capabilities for persistent agent knowledge using Anthropic's memory MCP server
+description: Give your agent persistent memory across sessions using a local knowledge graph.
 ---
 
-import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-- **Name**: MCP Memory
-- **Package**: `@modelcontextprotocol/server-memory`
-- **Provider**: Anthropic
+- **Package**: [`@modelcontextprotocol/server-memory`](https://www.npmjs.com/package/@modelcontextprotocol/server-memory)
+- **Provider**: [Anthropic / MCP](https://modelcontextprotocol.io)
 
 ## Overview
 
-MCP Memory is a third-party Model Context Protocol server from Anthropic that provides persistent memory and note-taking capabilities for AI agents. It enables agents to store, retrieve, and manage information across conversations, creating a knowledge base that persists beyond individual sessions.
+The Memory MCP server gives your agent a persistent knowledge graph stored locally. It can create entities, define relationships between them, and recall stored facts in future sessions — enabling stateful agents that remember users, context, and prior interactions across conversations.
 
-<Callout type="info" title="Persistent Knowledge">
+## Getting Started
 
-The memory MCP server allows agents to remember information from previous interactions, making them more contextually aware and helpful over time.
+Install the package:
 
-</Callout>
+```bash
+pnpm add @modelcontextprotocol/server-memory
+```
 
-## Usage with ADK-TS
+Use the server in your agent:
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
     import { McpMemory } from "@iqai/adk";
@@ -40,14 +40,11 @@ The memory MCP server allows agents to remember information from previous intera
 
     const toolset = new McpToolset({
       name: "Memory MCP Client",
-      description: "Client for memory and note-taking",
+      description: "Client for persistent agent memory via knowledge graph",
       transport: {
         mode: "stdio",
         command: "npx",
         args: ["-y", "@modelcontextprotocol/server-memory"],
-        env: {
-          PATH: process.env.PATH || "",
-        },
       },
     });
 
@@ -57,12 +54,6 @@ The memory MCP server allows agents to remember information from previous intera
   </Tab>
 
   <Tab value="Claude Desktop">
-    If you want to use this MCP with Claude Desktop, add this to your Claude Desktop configuration file:
-
-    **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
     ```json
     {
       "mcpServers": {
@@ -73,133 +64,56 @@ The memory MCP server allows agents to remember information from previous intera
       }
     }
     ```
-
   </Tab>
 </Tabs>
 
 ## Environment Variables
 
-No environment variables are required for the memory MCP server.
-
-## Configuration Options
-
-All MCP servers support these configuration options:
-
-| Option                      | Type            | Description                              |
-| --------------------------- | --------------- | ---------------------------------------- |
-| `env`                       | object          | Environment variables (see table above)  |
-| `debug`                     | boolean         | Enable debug logging                     |
-| `description`               | string          | Custom description                       |
-| `retryOptions.maxRetries`   | number          | Max retry attempts (default: 2)          |
-| `retryOptions.initialDelay` | number          | Initial retry delay in ms (default: 200) |
-| `samplingHandler`           | SamplingHandler | Handler for MCP sampling requests        |
+No environment variables are required. The knowledge graph is stored locally in the server's working directory.
 
 ## Available Tools
 
 <McpToolsList serverId="memory" />
 
-## Complete Example
+## Integration Example
 
 ```typescript
-import { McpMemory, LlmAgent } from "@iqai/adk";
+import { AgentBuilder, McpMemory } from "@iqai/adk";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 async function main() {
-  // Initialize memory toolset
-  const memoryToolset = McpMemory({
-    debug: true,
-  });
+  // Initialize McpMemory toolset
+  const toolset = McpMemory();
 
-  try {
-    // Get available tools
-    const tools = await memoryToolset.getTools();
+  // Get available McpMemory tools
+  const memoryTools = await toolset.getTools();
 
-    // Create agent with memory capabilities
-    const agent = new LlmAgent({
-      name: "knowledge_assistant",
-      model: "gemini-2.5-flash",
-      description: "An agent with persistent memory capabilities",
-      instruction: `You have access to a persistent memory system.
-        Store important information that users share with you.
-        Retrieve relevant memories to provide contextual responses.
-        Always check your memory before answering questions.`,
-      tools,
-    });
+  // Create agent with McpMemory tools
+  const { runner } = await AgentBuilder.create("memory_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "A personal assistant that remembers your preferences and past interactions",
+    )
+    .withTools(...memoryTools)
+    .build();
 
-    // Use the agent
-    const response1 = await agent.ask(
-      "Remember that my favorite color is blue",
-    );
-    console.log(response1);
+  // First session — store a fact
+  await runner.ask(
+    "Remember that my name is Alex and I prefer concise answers",
+  );
 
-    // Later conversation - agent can recall
-    const response2 = await agent.ask("What is my favorite color?");
-    console.log(response2);
-  } finally {
-    // Always cleanup
-    await memoryToolset.close();
-  }
+  // Later session — recall it
+  const response = await runner.ask("What do you know about me?");
+
+  console.log(response);
 }
 
-main();
+main().catch(console.error);
 ```
 
-## Use Cases
+## Further Resources
 
-- **Personalized Assistants**: Remember user preferences and context
-- **Knowledge Management**: Build a persistent knowledge base
-- **Conversation History**: Track important details across sessions
-- **Task Tracking**: Remember ongoing tasks and their status
-- **Learning Agents**: Accumulate knowledge over time
-
-## Best Practices
-
-- **Structured Storage**: Use clear keys and organization for memories
-- **Regular Cleanup**: Periodically review and remove outdated memories
-- **Privacy Consideration**: Be mindful of sensitive information storage
-- **Search Optimization**: Use descriptive keys for easier retrieval
-- **Error Handling**: Handle cases where memories don't exist gracefully
-
-## Combining with Other MCPs
-
-Memory works great when combined with other MCP servers:
-
-```typescript
-import { McpMemory, McpFilesystem, LlmAgent } from "@iqai/adk";
-
-// Combine memory with filesystem for persistent file knowledge
-const memoryToolset = McpMemory();
-const filesystemToolset = McpFilesystem({
-  env: { ALLOWED_DIRECTORIES: "/workspace" },
-});
-
-const [memoryTools, fileTools] = await Promise.all([
-  memoryToolset.getTools(),
-  filesystemToolset.getTools(),
-]);
-
-const agent = new LlmAgent({
-  name: "smart_file_manager",
-  model: "gemini-2.5-flash",
-  description: "File manager with memory of previous operations",
-  tools: [...memoryTools, ...fileTools],
-});
-
-// Cleanup
-await Promise.all([memoryToolset.close(), filesystemToolset.close()]);
-```
-
-## Troubleshooting
-
-| Issue                     | Solution                                   |
-| ------------------------- | ------------------------------------------ |
-| Memory not persisting     | Check if server is properly initialized    |
-| Search returns no results | Verify search query and memory key names   |
-| Connection timeout        | Ensure npm/npx is installed and in PATH    |
-| Duplicate memories        | Use unique keys or update existing entries |
-
-## Related Resources
-
-- [Official Memory MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/memory)
-- [MCP Tools Documentation](/docs/framework/tools/mcp-tools)
-- [Creating Custom MCPs](/docs/mcp-servers/creating-custom-mcps)
-- [Integrating External MCPs](/docs/mcp-servers/external-mcps)
+- [MCP Memory Server on npm](https://www.npmjs.com/package/@modelcontextprotocol/server-memory)
+- [Model Context Protocol](https://modelcontextprotocol.io)

@@ -1,45 +1,53 @@
 ---
 title: MCP IQ Wiki
-description: Model Context Protocol Server for IQ.wiki
+description: Search and retrieve crypto and blockchain knowledge articles from IQ Wiki.
 ---
 
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-iqwiki`](https://www.npmjs.com/package/@iqai/mcp-iqwiki)
-- **Purpose**: Interacting with IQ.wiki data using the Model Context Protocol.
+- **Provider**: [IQ Wiki](https://iq.wiki)
 
-## Usage with ADK-TS
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The IQ Wiki MCP server gives your agent access to the world's largest blockchain and crypto encyclopedia. It can search for articles by topic, retrieve full wiki entries, and look up entities like protocols, tokens, and people — making it ideal for agents that need accurate, community-sourced crypto knowledge.
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-iqwiki
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpIqWiki} from "@iqai/adk";
+    import { McpIqWiki } from "@iqai/adk";
 
-    const toolset = McpIqWiki()
-
-    const tools = await toolset.getTools()
+    const toolset = McpIqWiki();
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "IQWiki MCP Client",
-      description: "Client for IQ.wiki data access",
+      description: "Client for IQ Wiki blockchain knowledge base",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-iqwiki"],
-        env: {
-          PATH: process.env.PATH || "",
-        },
+        command: "npx",
+        args: ["-y", "@iqai/mcp-iqwiki"],
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -48,9 +56,9 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     ```json
     {
       "mcpServers": {
-        "iq-wiki-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-iqwiki"]
+        "iqwiki-mcp-server": {
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-iqwiki"]
         }
       }
     }
@@ -58,82 +66,49 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Exposes tools to access wiki information such as specific wikis by ID, user-created wikis, user-edited wikis, and detailed wiki activities.
-- Allows MCP-compatible clients (like AI assistants, IDE extensions, or custom applications) to access IQ.wiki data.
+No environment variables are required. IQ Wiki's public API is used directly.
 
 ## Available Tools
 
 <McpToolsList serverId="iqwiki" />
 
-## Environment Variables
+## Integration Example
 
-N/A - This server does not require environment variables.
+```typescript
+import { AgentBuilder, McpIqWiki } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-## Usage Examples
+dotenv.config();
 
-### GET_WIKI
+async function main() {
+  // Initialize McpIqWiki toolset
+  const toolset = McpIqWiki();
 
-```json
-{
-  "id": "bitcoin"
+  // Get available McpIqWiki tools
+  const iqWikiTools = await toolset.getTools();
+
+  // Create agent with McpIqWiki tools
+
+  const { runner } = await AgentBuilder.create("iqwiki_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("A crypto research agent backed by IQ Wiki knowledge")
+    .withTools(...iqWikiTools)
+    .build();
+
+  const response = await runner.ask(
+    "Give me a summary of Uniswap and how its automated market maker works",
+  );
+
+  console.log(response);
 }
+
+main().catch(console.error);
 ```
 
-### GET_USER_CREATED_WIKIS
+## Further Resources
 
-```json
-{
-  "id": "0x8AF7a19a26d8FBC48dEfB35AEfb15Ec8c407f889",
-  "timeFrameSeconds": 3600
-}
-```
-
-### GET_USER_EDITED_WIKIS
-
-```json
-{
-  "id": "0x8AF7a19a26d8FBC48dEfB35AEfb15Ec8c407f889"
-}
-```
-
-### GET_USER_WIKI_ACTIVITIES
-
-```json
-{
-  "id": "0x8AF7a19a26d8FBC48dEfB35AEfb15Ec8c407f889",
-  "activityType": "CREATED",
-  "timeFrameSeconds": 86400
-}
-```
-
-## Response Examples
-
-```
-📜 Wiki Edited
-- Title: Bitcoin
-- Summary: Bitcoin is a decentralized digital currency...
-- Edited: 5/6/2023, 1:26:58 AM
-- Changes: 52 words (21.36%)
-- Modified sections: content, tags
-
-🔗 Source: https://iq.wiki/revision/0f9ed751-f46a-40f7-af56-a54cc8951754
-🔗 Transaction: https://polygonscan.com/tx/0xabc...
-
-📜 Wiki Created
-- Title: Ethereum
-- Summary: Ethereum is a decentralized platform...
-- Created: 5/5/2023, 11:03:26 PM
-
-🔗 Source: https://iq.wiki/ethereum
-🔗 Transaction: https://polygonscan.com/tx/0x456...
-```
-
-## Error Handling
-
-```
-Error retrieving user wiki activities: User has no wiki activities
-Error retrieving user edited wikis: user does not exist
-Error retrieving wiki: Wiki Not found
-```
+- [`@iqai/mcp-iqwiki` on npm](https://www.npmjs.com/package/@iqai/mcp-iqwiki)
+- [IQ Wiki](https://iq.wiki)
+- [IQAI](https://iqai.com)

@@ -1,46 +1,53 @@
 ---
 title: MCP DefiLlama
-description: An MCP server for interacting with DefiLlama, a comprehensive DeFi data aggregator
+description: Access DeFi protocol TVL, yields, stablecoin data, and market analytics from DefiLlama.
 ---
 
-import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/defillama-mcp`](https://www.npmjs.com/package/@iqai/defillama-mcp)
-- **Purpose**: Interacting with DefiLlama, a comprehensive DeFi data aggregator, for protocol analytics and TVL data.
+- **Provider**: [DefiLlama](https://defillama.com)
 
-## Usage with ADK-TS
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The DefiLlama MCP server gives your agent access to DeFi market data aggregated by DefiLlama. It covers protocol TVL, yield farming opportunities, stablecoin metrics, token prices, and bridge volumes. No API key is required for basic usage.
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/defillama-mcp
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpDefillama} from "@iqai/adk";
+    import { McpDefillama } from "@iqai/adk";
 
-    const toolset = McpDefillama()
-
-    const tools = await toolset.getTools()
+    const toolset = McpDefillama();
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Defillama MCP Client",
-      description: "Client for DefiLlama DeFi data aggregator",
+      description: "Client for DeFi analytics via DefiLlama",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/defillama-mcp"],
-        env: {
-          PATH: process.env.PATH || "",
-        },
+        command: "npx",
+        args: ["-y", "@iqai/defillama-mcp"],
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -50,8 +57,8 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "defillama-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/defillama-mcp"]
+          "command": "npx",
+          "args": ["-y", "@iqai/defillama-mcp"]
         }
       }
     }
@@ -59,87 +66,57 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
+## Environment Variables
+
+No environment variables are required. The following optional variables enable enhanced functionality:
+
+| Variable                       | Required | Description                                                             |
+| ------------------------------ | -------- | ----------------------------------------------------------------------- |
+| `DEFILLAMA_API_KEY`            | No       | DefiLlama API key for higher rate limits                                |
+| `IQ_GATEWAY_URL`               | No       | Custom IQ Gateway URL for enhanced data resolution                      |
+| `IQ_GATEWAY_KEY`               | No       | Authentication key for the IQ Gateway                                   |
+| `OPENROUTER_API_KEY`           | No       | OpenRouter API key for LLM integration                                  |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | No       | Google Generative AI key (alternative to OpenRouter)                    |
+| `LLM_MODEL`                    | No       | LLM model name for AI-enhanced queries (default: `openai/gpt-4.1-mini`) |
+
 ## Available Tools
 
 <McpToolsList serverId="defillama" />
 
-## Environment Variables
-
-No required environment variables for basic usage.
-
-**Optional environment variables:**
-
-- `DEFILLAMA_API_KEY`: Your DefiLlama API key for enhanced access.
-- `IQ_GATEWAY_URL`: Custom IQ Gateway URL for enhanced resolution.
-- `IQ_GATEWAY_KEY`: API key for IQ Gateway access.
-- `OPENROUTER_API_KEY`: API key for OpenRouter LLM integration.
-- `GOOGLE_GENERATIVE_AI_API_KEY`: Google generativeAI API key (alternative to OpenRouter).
-- `LLM_MODEL`: Model name for LLM integration (default: `openai/gpt-4.1-mini`).
-
-## Usage Examples
-
-Here's a complete example of using MCP DefiLlama with an ADK-TS agent:
+## Integration Example
 
 ```typescript
-import { McpDefillama, AgentBuilder } from "@iqai/adk";
-import dotenv from "dotenv";
+import { AgentBuilder, McpDefillama } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
 async function main() {
-  // Initialize DefiLlama MCP toolset
-  const toolset = McpDefillama({
-    debug: false,
-    retryOptions: {
-      maxRetries: 3,
-      initialDelay: 500,
-    },
-  });
+  // Initialize McpDefillama toolset
+  const toolset = McpDefillama();
 
-  // Get available tools
+  // Get available McpDefillama tools
   const defillamaTools = await toolset.getTools();
 
-  // Create agent with DefiLlama tools
+  // Create agent with McpDefillama tools
   const { runner } = await AgentBuilder.create("defillama_agent")
     .withModel("gemini-2.5-flash")
-    .withDescription("An agent that queries DeFi protocol data from DefiLlama")
+    .withDescription("A DeFi research agent powered by DefiLlama data")
     .withTools(...defillamaTools)
     .build();
 
-  try {
-    // Example queries
-    const response = await runner.ask(
-      "What are the top DeFi protocols by TVL?",
-    );
-    console.log(response);
-  } finally {
-    // Clean up resources
-    await toolset.close();
-  }
+  const response = await runner.ask(
+    "What are the top 5 DeFi protocols by TVL right now?",
+  );
+
+  console.log(response);
 }
 
 main().catch(console.error);
 ```
 
-## Best Practices
+## Further Resources
 
-- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
-- **Error Handling**: Implement proper error handling for data requests
-- **Rate Limits**: Be aware of API rate limits and implement appropriate retry logic
-- **LLM Integration**: For enhanced resolution, configure an LLM provider via `OPENROUTER_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`
-
-## Error Handling
-
-<Callout type="warn" title="Error Scenarios">
-
-The server handles various error scenarios gracefully.
-
-</Callout>
-
-🔄 **Invalid protocol identifiers**: Verify protocol names or IDs are correct
-🌐 **Network issues**: Check your internet connection and DefiLlama API status
-
-## Resources
-
-- [DefiLlama](https://defillama.com) - DeFi data aggregator platform
-- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
+- [`@iqai/defillama-mcp` on npm](https://www.npmjs.com/package/@iqai/defillama-mcp)
+- [DefiLlama](https://defillama.com)
+- [DefiLlama API Docs](https://defillama.com/docs/api)

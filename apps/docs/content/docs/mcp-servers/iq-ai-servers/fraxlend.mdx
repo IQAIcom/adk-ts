@@ -1,51 +1,69 @@
 ---
 title: MCP Fraxlend
-description: Interact with the Fraxlend lending platform
+description: Interact with Fraxlend lending pairs — supply, borrow, repay, and query positions on the Frax ecosystem.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-fraxlend`](https://www.npmjs.com/package/@iqai/mcp-fraxlend)
-- **Purpose**: Interact with the Fraxlend lending platform
+- **Provider**: IQ AI
 
-## Usage with ADK-TS
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The Fraxlend MCP server lets your agent interact with Fraxlend lending pairs on the Frax protocol. It supports supplying assets, borrowing, repaying loans, managing collateral, and querying current lending pair data — all requiring a wallet private key for on-chain execution.
+
+<Callout type="warn" title="Private Key Security">
+  This server signs on-chain transactions using your wallet private key. Never
+  commit your private key to source control. Always load it from a secure
+  environment variable.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-fraxlend
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpFraxlend} from "@iqai/adk";
+    import { McpFraxlend } from "@iqai/adk";
 
     const toolset = McpFraxlend({
       env: {
         WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Fraxlend MCP Client",
       description: "Client for Fraxlend lending operations",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-fraxlend"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-fraxlend"],
         env: {
           WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -54,9 +72,9 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     ```json
     {
       "mcpServers": {
-        "fraxlend-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-fraxlend"],
+        "fraxlend-mcp-server": {
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-fraxlend"],
           "env": {
             "WALLET_PRIVATE_KEY": "your_wallet_private_key_here"
           }
@@ -67,55 +85,54 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Interact with the Fraxlend lending platform
-- Fetch statistics for a specific Fraxlend pair
-- Lend assets to a specific Fraxlend pair
-- Borrow assets from a specific Fraxlend pair
-- Add collateral to a specific Fraxlend pair
-- Remove collateral from a specific Fraxlend pair
-- Repay borrowed assets to a specific Fraxlend pair
-- Withdraw lent assets from a specific Fraxlend pair
-- Get the pair address for a specific Fraxlend pair
+| Variable             | Required | Description                                                  |
+| -------------------- | -------- | ------------------------------------------------------------ |
+| `WALLET_PRIVATE_KEY` | Yes      | Private key of the wallet used to sign Fraxlend transactions |
 
 ## Available Tools
 
 <McpToolsList serverId="fraxlend" />
 
-## Environment Variables
+## Integration Example
 
-<Callout type="warn" title="Security">
+```typescript
+import { AgentBuilder, McpFraxlend } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-The private key is used for signing transactions for lending, borrowing, etc.
-Handle with care.
+dotenv.config();
 
-</Callout>
+async function main() {
+  // Initialize McpFraxlend toolset
+  const toolset = McpFraxlend({
+    env: {
+      WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    },
+  });
 
-- `WALLET_PRIVATE_KEY`: Required for `LEND`, `BORROW`, `ADD_COLLATERAL`, `REMOVE_COLLATERAL`, `REPAY`, `WITHDRAW`
+  // Get available McpFraxlend tools
+  const fraxlendTools = await toolset.getTools();
 
-## Usage Examples
+  // Create agent with McpFraxlend tools
+  const { runner } = await AgentBuilder.create("fraxlend_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("A DeFi agent that manages Fraxlend lending positions")
+    .withTools(...fraxlendTools)
+    .build();
 
-- "Show my current FraxLend positions"
-- "I want to lend 100 FRAX to the FRAX-ETH pool at 0x123...abc"
-- "Borrow 1000 FRAX using 2 ETH as collateral from the pool at 0x123...abc"
-- "What's the pair address for FRAX-ETH pool with the highest APR?"
+  const response = await runner.ask(
+    "Show me all available Fraxlend lending pairs and their current interest rates",
+  );
 
-## Response Format
+  console.log(response);
+}
 
-Actions return **structured responses**, including:
+main().catch(console.error);
+```
 
-✔ **Transaction status & hash** (for lending/borrowing) 🔗
-✔ **Formatted asset amounts** 💲
-✔ **Error messages when applicable** ⚠
-✔ **Lending market details** 📈
+## Further Resources
 
-## Error Handling
-
-The plugin **handles various error scenarios**:
-
-🚨 **Invalid market addresses**
-💸 **Insufficient collateral or liquidity**
-🔄 **Transaction failures**
-🌐 **Network issues**
-🛑 **Input validation errors**
+- [`@iqai/mcp-fraxlend` on npm](https://www.npmjs.com/package/@iqai/mcp-fraxlend)
+- [Fraxlend Docs](https://docs.frax.finance/fraxlend/fraxlend-overview)
+- [Frax Finance](https://frax.finance/)

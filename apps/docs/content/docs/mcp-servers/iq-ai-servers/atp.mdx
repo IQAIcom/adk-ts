@@ -1,53 +1,64 @@
 ---
 title: MCP ATP
-description: Interact with the IQ AI Agent Tokenization Platform
+description: Interact with the IQ AI Agent Tokenization Platform to manage AI agent tokens and positions.
 ---
 
-import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-atp`](https://www.npmjs.com/package/@iqai/mcp-atp)
-- **Purpose**: Interact with the IQ AI Agent Tokenization Platform
-- **Example**: 🚀 <a href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/mcp-atp-agent" target="_blank" rel="noopener noreferrer">MCP-ATP Agent Example</a>
+- **Provider**: IQ AI
 
-## Usage with ADK-TS
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The ATP MCP server connects your agent to the IQ AI Agent Tokenization Platform (ATP). It provides tools to query agent rankings, manage token positions, and interact with the ATP ecosystem programmatically using an API key and a funded wallet.
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-atp
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpAtp} from "@iqai/adk";
+    import { McpAtp } from "@iqai/adk";
 
     const toolset = McpAtp({
       env: {
-        ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+        ATP_WALLET_PRIVATE_KEY: process.env.ATP_WALLET_PRIVATE_KEY,
         ATP_API_KEY: process.env.ATP_API_KEY,
       },
-    })
-    const tools = await toolset.getTools()
+    });
+
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "ATP MCP Client",
-      description: "Client for the @iqai/mcp-atp server",
+      description: "Client for IQ AI Agent Tokenization Platform",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-atp"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-atp"],
         env: {
-          ATP_WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+          ATP_WALLET_PRIVATE_KEY: process.env.ATP_WALLET_PRIVATE_KEY,
           ATP_API_KEY: process.env.ATP_API_KEY,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -56,12 +67,12 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     ```json
     {
       "mcpServers": {
-        "atp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-atp"],
+        "atp-mcp-server": {
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-atp"],
           "env": {
-            "ATP_WALLET_PRIVATE_KEY": "your_wallet_private_key_here",
-            "ATP_API_KEY": "your_iq_atp_api_key_here"
+            "ATP_WALLET_PRIVATE_KEY": "your_wallet_private_key",
+            "ATP_API_KEY": "your_atp_api_key"
           }
         }
       }
@@ -70,52 +81,66 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Interact with the IQ AI Agent Tokenization Platform
-- Fetch statistics and details for a specific AI agent
-- Retrieve the user's current holdings in ATP AI tokens
-- Purchase AI agent tokens using IQ as the base currency
-- Sell AI agent tokens back to the protocol
-- Retrieve logs for a specific AI agent, with pagination
-- Add a new log entry for a specific AI agent
+| Variable                 | Required | Description                                         |
+| ------------------------ | -------- | --------------------------------------------------- |
+| `ATP_WALLET_PRIVATE_KEY` | Yes      | Private key of the wallet used for ATP transactions |
+| `ATP_API_KEY`            | Yes      | Your IQ AI ATP API key                              |
+
+## Credentials
+
+To get your ATP credentials:
+
+1. Sign up at [IQ AI](https://app.iqai.com/)
+2. Navigate to your profile page to generate an **API Key**
+3. Use the private key of the EVM wallet you want to use for ATP transactions
 
 ## Available Tools
 
 <McpToolsList serverId="atp" />
 
-## Environment Variables
+## Integration Example
 
-- `ATP_WALLET_PRIVATE_KEY`: Required for position and trading operations
-- `ATP_API_KEY`: Required for certain backend API calls
+```typescript
+import { AgentBuilder, McpAtp } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-## Usage Examples
+dotenv.config();
 
-- "Add log for agent `0x1234...5678`: Just executed weekly yield distribution"
-- "Create log entry for Frax God: Updated pricing model" _(Works only if token contract found in previous messages)_
-- "Log for agent `0x1234...5678` with transaction hash `0xabc...def`: Distribution complete"
+async function main() {
+  // Initialize McpAtp toolset
+  const toolset = McpAtp({
+    env: {
+      ATP_WALLET_PRIVATE_KEY: process.env.ATP_WALLET_PRIVATE_KEY,
+      ATP_API_KEY: process.env.ATP_API_KEY,
+    },
+  });
 
-## Response Format
+  // Get available McpAtp tools
+  const atpTools = await toolset.getTools();
 
-Actions return **structured responses** including:
+  // Create agent with McpAtp tools
+  const { runner } = await AgentBuilder.create("atp_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "An agent that interacts with the IQ AI Agent Tokenization Platform",
+    )
+    .withTools(...atpTools)
+    .build();
 
-✔ **Transaction status & hash** (for trades) 🔗
-✔ **Formatted token amounts** 💲
-✔ **Error messages when applicable** ⚠
-✔ **Agent addresses and statistics** 🏷
-✔ **Formatted agent logs** 📄
+  const response = await runner.ask(
+    "Show me the top 10 ranked agents on ATP and their recent performance",
+  );
 
-## Error Handling
+  console.log(response);
+}
 
-<Callout type="warn" title="Error Scenarios">
+main().catch(console.error);
+```
 
-The plugin handles various error scenarios gracefully.
+## Further Resources
 
-</Callout>
-
-🚨 **Invalid token contracts**
-💸 **Insufficient balances**
-🔄 **Transaction failures**
-🌐 **Network issues**
-🛑 **Input validation errors**
-🔑 **Missing API key for log creation**
+- [`@iqai/mcp-atp` on npm](https://www.npmjs.com/package/@iqai/mcp-atp)
+- [IQ AI Platform](https://iq.ai)
+- [IQ AI Docs](https://docs.iq.ai)

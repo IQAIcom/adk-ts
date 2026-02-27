@@ -1,51 +1,69 @@
 ---
 title: MCP DeBank
-description: An MCP server for interacting with the DeBank portfolio tracking platform
+description: Query cross-chain DeFi portfolio data, token balances, and protocol positions via the DeBank API.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-debank`](https://www.npmjs.com/package/@iqai/mcp-debank)
-- **Purpose**: Interacting with the DeBank platform for DeFi portfolio tracking and wallet analytics.
+- **Provider**: [DeBank](https://debank.com)
 
-## Usage with ADK-TS
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The DeBank MCP server gives your agent access to DeBank's cross-chain portfolio data. It can retrieve wallet token balances, protocol positions, transaction history, and total portfolio value across all major EVM chains.
+
+<Callout type="info" title="Authentication Modes">
+  DeBank supports two mutually exclusive access modes: a **DeBank API Key** for
+  direct access, or an **IQ Gateway** for proxied access. If both are provided,
+  the gateway takes priority.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-debank
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpDebank} from "@iqai/adk";
+    import { McpDebank } from "@iqai/adk";
 
     const toolset = McpDebank({
       env: {
         DEBANK_API_KEY: process.env.DEBANK_API_KEY,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Debank MCP Client",
-      description: "Client for DeBank portfolio tracking",
+      description: "Client for DeBank cross-chain portfolio data",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-debank"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-debank"],
         env: {
           DEBANK_API_KEY: process.env.DEBANK_API_KEY,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -55,8 +73,8 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "debank-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-debank"],
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-debank"],
           "env": {
             "DEBANK_API_KEY": "your_debank_api_key"
           }
@@ -67,117 +85,64 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
+## Environment Variables
+
+| Variable         | Required                  | Description                               |
+| ---------------- | ------------------------- | ----------------------------------------- |
+| `DEBANK_API_KEY` | Required for API key mode | API key obtained from the DeBank platform |
+| `IQ_GATEWAY_URL` | Required for gateway mode | Base URL of the IQ Gateway service        |
+| `IQ_GATEWAY_KEY` | Required for gateway mode | Authentication key for the IQ Gateway     |
+
+## Credentials
+
+To get a DeBank API Key:
+
+1. Visit [DeBank Open API](https://cloud.debank.com/)
+2. Sign up and create a project
+3. Copy your **API Key** from the dashboard
+
 ## Available Tools
 
 <McpToolsList serverId="debank" />
 
-## Environment Variables
-
-The MCP supports two mutually exclusive access modes:
-
-### Option 1: Direct DeBank API access
-
-- `DEBANK_API_KEY`: Required. API key obtained from the DeBank platform.
-
-### Option 2: Gateway-proxied access
-
-- `IQ_GATEWAY_URL`: Required. Base URL of the gateway service.
-- `IQ_GATEWAY_KEY`: Required. Authentication key for the gateway.
-
-<Callout type="info" title="Access Modes">
-
-If both modes are configured, the gateway-proxied access will be used.
-
-</Callout>
-
-## Usage Examples
-
-Here's a complete example of using MCP DeBank with an ADK-TS agent:
+## Integration Example
 
 ```typescript
-import { McpDebank, AgentBuilder } from "@iqai/adk";
-import dotenv from "dotenv";
+import { AgentBuilder, McpDebank } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
 async function main() {
-  // Initialize DeBank MCP toolset
+  // Initialize McpDebank toolset
   const toolset = McpDebank({
     env: {
       DEBANK_API_KEY: process.env.DEBANK_API_KEY,
     },
-    debug: false,
-    retryOptions: {
-      maxRetries: 3,
-      initialDelay: 500,
-    },
   });
 
-  // Get available tools
+  // Get available McpDebank tools
   const debankTools = await toolset.getTools();
 
-  // Create agent with DeBank tools
+  // Create agent with McpDebank tools
   const { runner } = await AgentBuilder.create("debank_agent")
     .withModel("gemini-2.5-flash")
-    .withDescription("An agent that tracks DeFi portfolios using DeBank")
+    .withDescription("A DeFi portfolio agent that tracks cross-chain positions")
     .withTools(...debankTools)
     .build();
 
-  try {
-    // Example queries
-    const response = await runner.ask(
-      "Show me the DeFi portfolio for wallet 0x1234...",
-    );
-    console.log(response);
-  } finally {
-    // Clean up resources
-    await toolset.close();
-  }
+  const response = await runner.ask(
+    "What is the total portfolio value of 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 across all chains?",
+  );
+
+  console.log(response);
 }
 
 main().catch(console.error);
 ```
 
-## Getting Your Credentials
+## Further Resources
 
-### DeBank API Key
-
-1. Visit [DeBank Cloud](https://cloud.debank.com)
-2. Sign up for an account
-3. Generate an API key from the dashboard
-
-### Gateway Access (Alternative)
-
-If using gateway-proxied access, obtain your `IQ_GATEWAY_URL` and `IQ_GATEWAY_KEY` from the IQ Gateway service.
-
-<Callout type="warn" title="Important">
-
-Never share your API keys or commit them to version control. Always use
-environment variables or secure secret management systems.
-
-</Callout>
-
-## Best Practices
-
-- **Security**: Store API keys in environment variables, never hardcode them
-- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
-- **Error Handling**: Implement proper error handling for portfolio data requests
-- **Rate Limits**: Be aware of DeBank API rate limits and implement appropriate retry logic
-
-## Error Handling
-
-<Callout type="warn" title="Error Scenarios">
-
-The server handles various error scenarios gracefully.
-
-</Callout>
-
-🚨 **Missing credentials**: Ensure either `DEBANK_API_KEY` or gateway credentials are set
-🔄 **Invalid wallet addresses**: Verify wallet addresses are correct
-🌐 **Network issues**: Check your internet connection and DeBank API status
-
-## Resources
-
-- [DeBank](https://debank.com) - DeFi portfolio tracker
-- [DeBank Cloud](https://cloud.debank.com) - DeBank API platform
-- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
+- [`@iqai/mcp-debank` on npm](https://www.npmjs.com/package/@iqai/mcp-debank)
+- [DeBank Open API Docs](https://cloud.debank.com/open-api)
+- [DeBank](https://debank.com)

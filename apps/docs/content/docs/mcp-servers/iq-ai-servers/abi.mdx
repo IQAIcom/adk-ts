@@ -1,61 +1,76 @@
 ---
 title: MCP ABI
-description: Smart contract ABI interactions for Ethereum-compatible blockchains
+description: Interact with deployed smart contracts on Ethereum-compatible blockchains using their ABI.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-abi`](https://www.npmjs.com/package/@iqai/mcp-abi)
-- **Purpose**: Smart contract ABI interactions for Ethereum-compatible blockchains
+- **Provider**: IQ AI
 
-## Usage with ADK-TS
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The ABI MCP server lets your agent read from and write to deployed smart contracts on any EVM-compatible blockchain. You supply the contract ABI and address, and the server exposes tools to call contract functions, query state, and submit transactions.
+
+<Callout type="warn" title="Private Key Security">
+  Only set `WALLET_PRIVATE_KEY` when write operations are needed. Never commit
+  private keys to source control — use `.env` files that are excluded from
+  version control.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-abi
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpAbi} from "@iqai/adk";
+    import { McpAbi } from "@iqai/adk";
 
     const toolset = McpAbi({
       env: {
-        WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
         CONTRACT_ABI: process.env.CONTRACT_ABI,
         CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
-        CONTRACT_NAME: "ERC20",
-        CHAIN_ID: "252",
-        RPC_URL: "https://rpc.frax.com"
+        WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "ABI MCP Client",
       description: "Client for smart contract ABI interactions",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-abi"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-abi"],
         env: {
-          WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
           CONTRACT_ABI: process.env.CONTRACT_ABI,
           CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
-          CONTRACT_NAME: "ERC20",
-          CHAIN_ID: "252",
-          RPC_URL: "https://rpc.frax.com",
+          CONTRACT_NAME: process.env.CONTRACT_NAME,
+          CHAIN_ID: process.env.CHAIN_ID,
+          RPC_URL: process.env.RPC_URL,
+          WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -64,16 +79,13 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     ```json
     {
       "mcpServers": {
-        "smart-contract-abi": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-abi"],
+        "abi-mcp-server": {
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-abi"],
           "env": {
-            "WALLET_PRIVATE_KEY": "your_wallet_private_key_here",
-            "CONTRACT_ABI": "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-            "CONTRACT_ADDRESS": "0xaB195B090Cc60C1EFd4d1cEE94Bf441F5931C01b",
-            "CONTRACT_NAME": "ERC20",
-            "CHAIN_ID": "252",
-            "RPC_URL": "https://rpc.frax.com"
+            "CONTRACT_ABI": "your_contract_abi_json",
+            "CONTRACT_ADDRESS": "your_contract_address",
+            "WALLET_PRIVATE_KEY": "your_wallet_private_key"
           }
         }
       }
@@ -82,74 +94,61 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Dynamically generates MCP tools based on contract ABI
-- Supports both read (view/pure) and write functions
-- Automatic tool naming with contract prefixes
-- Compatible with any Ethereum-compatible blockchain
-- Comprehensive error handling and transaction management
+| Variable             | Required | Description                                                        |
+| -------------------- | -------- | ------------------------------------------------------------------ |
+| `CONTRACT_ABI`       | Yes      | JSON ABI of the smart contract                                     |
+| `CONTRACT_ADDRESS`   | Yes      | Deployed contract address                                          |
+| `CONTRACT_NAME`      | No       | Human-readable name for the contract                               |
+| `CHAIN_ID`           | No       | Chain ID of the target network (default: `1` for Ethereum mainnet) |
+| `RPC_URL`            | No       | Custom RPC endpoint URL                                            |
+| `WALLET_PRIVATE_KEY` | No       | Private key for signing transactions (required for write calls)    |
 
 ## Available Tools
 
 <McpToolsList serverId="abi" />
 
-## Environment Variables
+## Integration Example
 
-| Variable             | Description                         | Required                             |
-| -------------------- | ----------------------------------- | ------------------------------------ |
-| `WALLET_PRIVATE_KEY` | Private key for transaction signing | For write functions                  |
-| `CONTRACT_ABI`       | JSON string of the contract's ABI   | Yes                                  |
-| `CONTRACT_ADDRESS`   | Deployed contract address           | Yes                                  |
-| `CONTRACT_NAME`      | Friendly name for tool prefixes     | Optional (defaults to "CONTRACT")    |
-| `CHAIN_ID`           | Blockchain network chain ID         | Optional (defaults to Fraxtal - 252) |
-| `RPC_URL`            | Custom RPC endpoint URL             | Optional                             |
+```typescript
+import { AgentBuilder, McpAbi } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-## Usage Examples
+dotenv.config();
 
-### ERC20 Token Contract
+async function main() {
+  // Initialize McpAbi toolset
+  const toolset = McpAbi({
+    env: {
+      CONTRACT_ABI: process.env.CONTRACT_ABI,
+      CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
+      WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+    },
+  });
 
-- **Check balance**: `ERC20_BALANCE_OF` with address parameter
-- **Transfer tokens**: `ERC20_TRANSFER` with recipient and amount
-- **Check allowances**: `ERC20_ALLOWANCE` with owner and spender
-- **Approve spending**: `ERC20_APPROVE` with spender and amount
+  // Get available McpAbi tools
+  const abiTools = await toolset.getTools();
 
-### NFT Contract (ERC721)
+  // Create agent with McpAbi tools
+  const { runner } = await AgentBuilder.create("abi_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription("An agent that interacts with EVM smart contracts")
+    .withTools(...abiTools)
+    .build();
 
-- **Check ownership**: `NFT_OWNER_OF` with token ID
-- **Transfer NFT**: `NFT_TRANSFER_FROM` with from, to, and token ID
-- **Mint token**: `NFT_MINT` with recipient and metadata
+  const response = await runner.ask(
+    "Read the token balance for address 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+  );
 
-## Response Examples
+  console.log(response);
+}
 
-**Read Function Response**:
-
-```
-✅ Successfully called balanceOf
-Result: "1000000000000000000"
-```
-
-**Write Function Response**:
-
-```
-✅ Successfully executed transfer
-Transaction hash: 0x123abc...
-You can view this transaction on the blockchain explorer.
+main().catch(console.error);
 ```
 
-## Error Handling
+## Further Resources
 
-<Callout type="warn" title="Common Errors">
-
-The server provides comprehensive error handling for various blockchain
-interaction scenarios.
-
-</Callout>
-
-- 🚨 **Invalid function arguments** - "❌ Error parsing arguments: [specific error]"
-- 🔄 **Transaction failures** - "❌ Error with [function]: [error message]"
-- 🔒 **Access control errors** - "❌ Error with [function]: execution reverted"
-- 🌐 **Network errors** - "❌ Error with [function]: network connection failed"
-- 💲 **Insufficient funds** - "❌ Error with [function]: insufficient funds for gas"
-- 📄 **ABI parsing errors** - "❌ Invalid ABI format: [specific error]"
-- 🏠 **Contract address errors** - "❌ Invalid contract address: [address]"
+- [`@iqai/mcp-abi` on npm](https://www.npmjs.com/package/@iqai/mcp-abi)
+- [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/)
+- [EVM-compatible chains list](https://chainlist.org/)

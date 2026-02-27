@@ -1,53 +1,70 @@
 ---
 title: MCP Kalshi
-description: An MCP server for interacting with Kalshi prediction markets
+description: Access and trade on prediction markets via the Kalshi platform API.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-kalshi`](https://www.npmjs.com/package/@iqai/mcp-kalshi)
-- **Purpose**: Interacting with Kalshi prediction markets for trading and market analysis.
+- **Provider**: [Kalshi](https://kalshi.com)
 
-## Usage with ADK-TS
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The Kalshi MCP server connects your agent to Kalshi's regulated prediction markets. It can fetch active markets, retrieve market prices and probabilities, place trades, and query your open positions — enabling agents to reason about real-world outcomes using financial prediction data.
+
+<Callout type="warn" title="API Credentials Required">
+  Trading on Kalshi requires a funded account and valid API credentials. Paper
+  trading is not available via the API.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-kalshi
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpKalshi} from "@iqai/adk";
+    import { McpKalshi } from "@iqai/adk";
 
     const toolset = McpKalshi({
       env: {
         KALSHI_API_KEY: process.env.KALSHI_API_KEY,
         KALSHI_PRIVATE_KEY_PATH: process.env.KALSHI_PRIVATE_KEY_PATH,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Kalshi MCP Client",
       description: "Client for Kalshi prediction markets",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-kalshi"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-kalshi"],
         env: {
           KALSHI_API_KEY: process.env.KALSHI_API_KEY,
           KALSHI_PRIVATE_KEY_PATH: process.env.KALSHI_PRIVATE_KEY_PATH,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -57,8 +74,8 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "kalshi-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-kalshi"],
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-kalshi"],
           "env": {
             "KALSHI_API_KEY": "your_kalshi_api_key",
             "KALSHI_PRIVATE_KEY_PATH": "/path/to/your/private_key.pem"
@@ -70,116 +87,74 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
+## Environment Variables
+
+| Variable                  | Required                            | Description                                                      |
+| ------------------------- | ----------------------------------- | ---------------------------------------------------------------- |
+| `KALSHI_API_KEY`          | Yes                                 | Your Kalshi API key ID                                           |
+| `KALSHI_PRIVATE_KEY_PATH` | One of the two key options required | Path to your RSA private key `.pem` file for request signing     |
+| `KALSHI_PRIVATE_KEY_PEM`  | One of the two key options required | RSA private key as a PEM string (alternative to the path option) |
+
+## Credentials
+
+To get your Kalshi API credentials:
+
+1. Create an account at [kalshi.com](https://kalshi.com) and complete identity verification
+2. Go to **Account Settings → API**
+3. Generate a new API key and note your **API Key ID**
+4. Generate an RSA key pair (Kalshi uses RSA-PS256 for request signing):
+   ```bash
+   openssl genrsa -out kalshi_private.pem 2048
+   openssl rsa -in kalshi_private.pem -pubout -out kalshi_public.pem
+   ```
+5. Upload `kalshi_public.pem` in your Kalshi API settings
+6. Set `KALSHI_PRIVATE_KEY_PATH` to the path of your `kalshi_private.pem`
+
 ## Available Tools
 
 <McpToolsList serverId="kalshi" />
 
-## Environment Variables
-
-<Callout type="warn" title="Security">
-
-Private keys are used for trading operations. Handle with care and never
-commit them to version control.
-
-</Callout>
-
-- `KALSHI_API_KEY`: Required. Your Kalshi API key ID.
-- `KALSHI_PRIVATE_KEY_PATH`: Path to your RSA private key PEM file.
-- `KALSHI_PRIVATE_KEY_PEM`: RSA private key as PEM string (alternative to path).
-
-<Callout type="info" title="Authentication">
-
-Provide either `KALSHI_PRIVATE_KEY_PATH` or `KALSHI_PRIVATE_KEY_PEM`, not both.
-
-</Callout>
-
-## Usage Examples
-
-Here's a complete example of using MCP Kalshi with an ADK-TS agent:
+## Integration Example
 
 ```typescript
-import { McpKalshi, AgentBuilder } from "@iqai/adk";
-import dotenv from "dotenv";
+import { AgentBuilder, McpKalshi } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 
 async function main() {
-  // Initialize Kalshi MCP toolset
+  // Initialize McpKalshi toolset
   const toolset = McpKalshi({
     env: {
       KALSHI_API_KEY: process.env.KALSHI_API_KEY,
       KALSHI_PRIVATE_KEY_PATH: process.env.KALSHI_PRIVATE_KEY_PATH,
     },
-    debug: false,
-    retryOptions: {
-      maxRetries: 3,
-      initialDelay: 500,
-    },
   });
 
-  // Get available tools
+  // Get available McpKalshi tools
   const kalshiTools = await toolset.getTools();
 
-  // Create agent with Kalshi tools
+  // Create agent with McpKalshi tools
   const { runner } = await AgentBuilder.create("kalshi_agent")
     .withModel("gemini-2.5-flash")
-    .withDescription("An agent that interacts with Kalshi prediction markets")
+    .withDescription(
+      "A prediction market agent that monitors and trades on Kalshi",
+    )
     .withTools(...kalshiTools)
     .build();
 
-  try {
-    // Example queries
-    const response = await runner.ask("Show me available markets on Kalshi");
-    console.log(response);
-  } finally {
-    // Clean up resources
-    await toolset.close();
-  }
+  const response = await runner.ask(
+    "What are the most active prediction markets on Kalshi right now, and what are their current odds",
+  );
+
+  console.log(response);
 }
 
 main().catch(console.error);
 ```
 
-## Getting Your Credentials
+## Further Resources
 
-### API Key
-
-1. Sign up at [Kalshi](https://kalshi.com)
-2. Navigate to your account settings
-3. Generate an API key
-
-### Private Key
-
-Generate an RSA private key for API authentication. You can provide it either as a file path (`KALSHI_PRIVATE_KEY_PATH`) or as a PEM string (`KALSHI_PRIVATE_KEY_PEM`).
-
-<Callout type="warn" title="Important">
-
-Never share your private key or commit it to version control. Always use
-environment variables or secure secret management systems.
-
-</Callout>
-
-## Best Practices
-
-- **Security**: Store API keys and private keys in environment variables, never hardcode them
-- **Resource Cleanup**: Always call `await toolset.close()` when done to properly close connections
-- **Error Handling**: Implement proper error handling for trading operations
-- **Rate Limits**: Be aware of Kalshi API rate limits and implement appropriate retry logic
-
-## Error Handling
-
-<Callout type="warn" title="Error Scenarios">
-
-The server handles various error scenarios gracefully.
-
-</Callout>
-
-🚨 **Missing credentials**: Ensure `KALSHI_API_KEY` and a private key are set
-💸 **Insufficient balance**: Ensure your account has sufficient funds for trading
-🔄 **Invalid market identifiers**: Verify market IDs are correct
-🌐 **Network issues**: Check your internet connection and Kalshi API status
-
-## Resources
-
-- [Kalshi](https://kalshi.com) - Kalshi prediction market platform
-- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification and standards
+- [`@iqai/mcp-kalshi` on npm](https://www.npmjs.com/package/@iqai/mcp-kalshi)
+- [Kalshi API Docs](https://docs.kalshi.com/welcome)
+- [Kalshi](https://kalshi.com)
