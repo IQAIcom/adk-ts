@@ -63,7 +63,7 @@ graph TB
 
 ## Framework Overview
 
-ADK is a powerful framework for building AI agents with TypeScript. It provides a structured approach to creating conversational AI applications with support for multiple LLM providers, tool integration, memory management, and session handling.
+ADK-TS is a powerful framework for building AI agents with TypeScript. It provides a structured approach to creating conversational AI applications with support for multiple LLM providers, tool integration, memory management, and session handling.
 
 ### Key Features
 
@@ -77,11 +77,11 @@ ADK is a powerful framework for building AI agents with TypeScript. It provides 
 
 ## Core Architecture
 
-The ADK framework is built on several core components that work together to provide a flexible and extensible agent system.
+The ADK-TS framework is built on several core components that work together to provide a flexible and extensible agent system.
 
 ### 1. Agents Layer
 
-The agent layer forms the foundation of ADK's architecture, providing the core abstraction for AI agents. **BaseAgent** serves as the abstract foundation, defining the essential lifecycle methods, sub-agent hierarchy management, and callback system that all agents must implement. This design enables complex multi-agent scenarios where agents can delegate work to specialized sub-agents.
+The agent layer forms the foundation of the ADK-TS architecture, providing the core abstraction for AI agents. **BaseAgent** serves as the abstract foundation, defining the essential lifecycle methods, sub-agent hierarchy management, and callback system that all agents must implement. This design enables complex multi-agent scenarios where agents can delegate work to specialized sub-agents.
 
 **LlmAgent** is the primary implementation that most developers will use. It extends BaseAgent with LLM-specific capabilities, integrating directly with language models while supporting tool calling, memory services, and session management. The agent handles the complete conversation lifecycle - from processing user input through LLM flows to generating responses and managing state changes.
 
@@ -111,13 +111,13 @@ The hierarchical design allows for sophisticated agent architectures where a roo
 
 ### 2. LLM Flows & Processors
 
-The flow system is the heart of ADK's request processing pipeline, orchestrating the complex dance between user input, LLM providers, and agent responses. **BaseLlmFlow** defines the core lifecycle with distinct preprocessing, LLM call, and postprocessing phases, enabling a modular and extensible architecture.
+The flow system is the heart of the ADK-TS request processing pipeline, orchestrating the complex dance between user input, LLM providers, and agent responses. **BaseLlmFlow** defines the core lifecycle with distinct preprocessing, LLM call, and postprocessing phases, enabling a modular and extensible architecture.
 
 **SingleFlow** handles scenarios where only the current agent needs to respond, while **AutoFlow** manages complex multi-agent interactions including agent transfers and sub-agent coordination. The flow system automatically determines which approach to use based on the agent configuration and conversation context.
 
 The **processor system** provides fine-grained control over request and response handling. Request processors run sequentially to build up the LLM request - injecting system instructions, conversation history, tool declarations, and planning prompts. Response processors handle the LLM output, managing tool calls, agent transfers, and specialized response formatting.
 
-This modular design allows contributors to easily extend ADK's capabilities by adding new processors for specific use cases without modifying core flow logic.
+This modular design allows contributors to easily extend the ADK-TS capabilities by adding new processors for specific use cases without modifying core flow logic.
 
 ```
 ┌─────────────────────────────────────┐
@@ -165,7 +165,7 @@ This modular design allows contributors to easily extend ADK's capabilities by a
 
 ### 3. Models & Context
 
-The models and context system provides the fundamental data structures that flow through ADK's processing pipeline. These models serve as the universal language between different components, ensuring type safety and consistent data handling across the entire framework.
+The models and context system provides the fundamental data structures that flow through the ADK-TS processing pipeline. These models serve as the universal language between different components, ensuring type safety and consistent data handling across the entire framework.
 
 **LlmRequest** and **LlmResponse** define the standardized interface between agents and LLM providers, abstracting away provider-specific formats. **InvocationContext** carries essential metadata about the current conversation, including session information, state changes, and agent hierarchy context.
 
@@ -248,7 +248,7 @@ This model-driven architecture ensures that data flows consistently through the 
 
 The LLM provider system abstracts away the complexities of different language model APIs, enabling agents to work seamlessly with any supported provider. **BaseLlm** defines a unified interface that all providers must implement, handling request transformation, response parsing, streaming, and telemetry collection.
 
-Each provider implementation (like **OpenAiLlm** and **GoogleLlm**) translates between ADK's standardized `LlmRequest`/`LlmResponse` format and the provider's specific API requirements. This includes handling different parameter names, response structures, function calling formats, and streaming protocols.
+Each provider implementation (like **OpenAiLlm** and **GoogleLlm**) translates between the ADK-TS standardized `LlmRequest`/`LlmResponse` format and the provider's specific API requirements. This includes handling different parameter names, response structures, function calling formats, and streaming protocols.
 
 The **LLMRegistry** system enables dynamic model resolution using pattern matching. Agents can specify models using simple strings like `"gpt-4.1"` or `"gemini-pro"`, and the registry automatically instantiates the appropriate provider with the correct configuration. This makes it easy to switch models without changing agent code.
 
@@ -293,7 +293,7 @@ The runtime and services layer provides the execution environment and infrastruc
 
 The runtime system handles complex scenarios like session management across agent transfers, state synchronization between multiple agents, and proper cleanup of resources after conversations complete. It provides the foundation that allows agents to focus on their core logic while the runtime handles infrastructure concerns.
 
-This separation of concerns enables ADK to scale from simple single-conversation scenarios to complex multi-user, multi-agent systems with persistent state and conversation history.
+This separation of concerns enables ADK-TS to scale from simple single-conversation scenarios to complex multi-user, multi-agent systems with persistent state and conversation history.
 
 ```
 ┌─────────────────────────────────────┐
@@ -323,7 +323,7 @@ This separation of concerns enables ADK to scale from simple single-conversation
 
 ### 6. Extensions
 
-The extension system is where ADK's true power emerges, enabling agents to interact with external systems, maintain long-term knowledge, and employ sophisticated reasoning patterns. These extensions transform basic LLM interactions into capable AI agents that can perform real-world tasks.
+The extension system is where the true power of ADK-TS emerges, enabling agents to interact with external systems, maintain long-term knowledge, and employ sophisticated reasoning patterns. These extensions transform basic LLM interactions into capable AI agents that can perform real-world tasks.
 
 **BaseTool** provides the foundation for agent capabilities, defining how functions and external integrations are exposed to LLMs. Tools handle everything from simple calculations to complex API interactions, file operations, and system integrations. The tool system includes automatic schema generation, validation, error handling, and seamless integration with LLM function calling capabilities.
 
@@ -628,11 +628,11 @@ export class YourProviderLlm extends BaseLlm {
   }
 
   private transformRequest(llmRequest: LlmRequest): any {
-    // Convert ADK format to provider format
+    // Convert ADK-TS format to provider format
   }
 
   private transformResponse(providerResponse: any): LlmResponse {
-    // Convert provider format to ADK format
+    // Convert provider format to ADK-TS format
   }
 }
 ```
@@ -1136,8 +1136,8 @@ async *safeGenerator(): AsyncGenerator<Event, void, unknown> {
 
 ## License
 
-By contributing to ADK, you agree that your contributions will be licensed under the same license as the project.
+By contributing to ADK-TS, you agree that your contributions will be licensed under the same license as the project.
 
 ---
 
-Thank you for contributing to ADK! Your efforts help make AI agent development more accessible and powerful for everyone.
+Thank you for contributing to ADK-TS! Your efforts help make AI agent development more accessible and powerful for everyone.

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-	title: "ADK-TS | Documentation",
+	title: "ADK-TS | Guides, API Reference & CLI Documentation",
 	description:
-		"Explore ADK-TS documentation — guides, API references, MCP server integrations, CLI tooling, and everything you need to build TypeScript AI agents.",
+		"Comprehensive ADK-TS documentation with get-started guides, API references, CLI tools, and MCP server integrations. Build AI agents in TypeScript step by step.",
 	alternates: {
 		canonical: "https://adk.iqai.com/docs",
 	},

@@ -1,5 +1,5 @@
 /**
- * Agent Development Kit (ADK) for TypeScript
+ * ADK-TS
  * A framework for building AI agents with multi-provider LLM support
  */
 

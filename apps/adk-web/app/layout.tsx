@@ -18,11 +18,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
 	title: {
-		default: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
+		default: "ADK-TS Web | Visual Web Interface for AI Agent Testing",
 		template: "ADK-TS | %s",
 	},
 	description:
-		"Visual web interface for @iqai/adk-cli to discover, chat with, and monitor your ADK-TS AI agents.",
+		"Test and monitor your ADK-TS AI agents with a visual web interface. Browse agents, chat in real-time, inspect sessions, and debug agent behavior interactively.",
 	metadataBase: new URL("https://adk-web.iqai.com"),
 	applicationName: "ADK-TS Web",
 	keywords: [
@@ -48,24 +48,24 @@ export const metadata: Metadata = {
 	},
 	openGraph: {
 		type: "website",
-		title: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
+		title: "ADK-TS Web | Visual Web Interface for AI Agent Testing",
 		description:
-			"Visual web interface for @iqai/adk-cli to discover, chat with, and monitor your ADK-TS AI agents.",
+			"Test and monitor your ADK-TS AI agents with a visual web interface. Browse agents, chat in real-time, inspect sessions, and debug agent behavior interactively.",
 		url: "https://adk-web.iqai.com",
 		images: [
 			{
 				url: "/og-image.png",
 				width: 1200,
 				height: 630,
-				alt: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
+				alt: "ADK-TS Web | Visual Web Interface for AI Agent Testing",
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "ADK-TS Web - Visual Interface for the ADK-TS CLI",
+		title: "ADK-TS Web | Visual Web Interface for AI Agent Testing",
 		description:
-			"Visual web interface for @iqai/adk-cli to discover, chat with, and monitor your ADK-TS AI agents.",
+			"Test and monitor your ADK-TS AI agents with a visual web interface. Browse agents, chat in real-time, inspect sessions, and debug agent behavior interactively.",
 		images: ["/og-image.png"],
 	},
 };

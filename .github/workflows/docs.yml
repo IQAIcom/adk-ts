@@ -1,4 +1,4 @@
-name: Build and Deploy ADK API Documentation
+name: Build and Deploy ADK-TS API Documentation
 
 on:
   push:
@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build ADK package
+      - name: Build ADK-TS package
         run: pnpm --filter @iqai/adk build
 
       - name: Generate TypeDoc API documentation

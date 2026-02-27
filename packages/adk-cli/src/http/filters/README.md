@@ -1,6 +1,6 @@
 # Pretty Error Filter
 
-A global exception filter that provides user-friendly error formatting for ADK agent errors, internal errors, and validation errors.
+A global exception filter that provides user-friendly error formatting for ADK-TS agent errors, internal errors, and validation errors.
 
 ## Features
 

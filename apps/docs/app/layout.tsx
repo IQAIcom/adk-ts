@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 		template: "ADK-TS | %s",
 	},
 	description:
-		"ADK-TS is the TypeScript-native AI agent framework. Build production-ready AI agents with multi-LLM support, tool integration, and multi-agent orchestration.",
+		"An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.",
 	keywords: [
 		"TypeScript AI agents",
 		"TypeScript agent framework",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 		siteName: "ADK-TS",
 		title: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		description:
-			"ADK-TS is the TypeScript-native AI agent framework. Build production-ready AI agents with multi-LLM support, tool integration, and multi-agent orchestration.",
+			"An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.",
 		url: "https://adk.iqai.com",
 		images: [
 			{
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
 		creator: "@iqaicom",
 		title: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		description:
-			"ADK-TS is the TypeScript-native AI agent framework. Build production-ready AI agents with multi-LLM support, tool integration, and multi-agent orchestration.",
+			"An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.",
 		images: ["/og-image.png"],
 	},
 	alternates: {
@@ -73,7 +73,7 @@ const jsonLd = [
 		name: "ADK-TS",
 		url: "https://adk.iqai.com",
 		description:
-			"The TypeScript-native AI agent framework for building production-ready AI agents.",
+			"An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.",
 		publisher: {
 			"@type": "Organization",
 			name: "IQ AI",
@@ -94,7 +94,7 @@ const jsonLd = [
 		name: "ADK-TS",
 		alternateName: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		description:
-			"An open-source TypeScript framework for building production-ready AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
+			"An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.",
 		url: "https://adk.iqai.com",
 		applicationCategory: "DeveloperApplication",
 		operatingSystem: "Node.js >=22",

@@ -9,7 +9,7 @@ const DEFAULT_API_URL = `http://localhost:${DEFAULT_API_PORT}`;
 /**
  * useApiUrl
  *
- * Resolves the ADK API base URL based on how the web app is being served.
+ * Resolves the ADK-TS API base URL based on how the web app is being served.
  *
  * Priority:
  * 1. Explicit query params:

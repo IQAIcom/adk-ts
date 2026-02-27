@@ -5,20 +5,20 @@ import { ProjectCard } from "./_components/project-card";
 import { projects } from "./_schema";
 
 export const metadata: Metadata = {
-	title: "ADK-TS | Showcase - Projects Built with ADK-TS",
+	title: "ADK-TS | Showcase - AI Agent Projects and Examples",
 	description:
-		"Discover projects built with ADK-TS — the TypeScript-native AI agent framework. See how developers are building production-ready AI agents.",
+		"Discover AI agent projects built with ADK-TS. Browse community examples, real-world implementations, and starter templates for TypeScript AI agent development.",
 	openGraph: {
-		title: "ADK-TS | Showcase - Projects Built with ADK-TS",
+		title: "ADK-TS | Showcase - AI Agent Projects and Examples",
 		description:
-			"Discover projects built with ADK-TS — the TypeScript-native AI agent framework. See how developers are building production-ready AI agents.",
+			"Discover AI agent projects built with ADK-TS. Browse community examples, real-world implementations, and starter templates for TypeScript AI agent development.",
 		type: "website",
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "ADK-TS | Showcase - Projects Built with ADK-TS",
+		title: "ADK-TS | Showcase - AI Agent Projects and Examples",
 		description:
-			"Discover projects built with ADK-TS — the TypeScript-native AI agent framework. See how developers are building production-ready AI agents.",
+			"Discover AI agent projects built with ADK-TS. Browse community examples, real-world implementations, and starter templates for TypeScript AI agent development.",
 	},
 };
 

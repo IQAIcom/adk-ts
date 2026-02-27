@@ -1,7 +1,7 @@
 {
 	"name": "adk-hono-server",
 	"version": "0.7.0",
-	"description": "ADK Hono Server - A starter project for creating AI agents with Hono web framework",
+	"description": "ADK-TS Hono Server - A starter project for creating AI agents with Hono web framework",
 	"main": "dist/index.js",
 	"private": true,
 	"scripts": {

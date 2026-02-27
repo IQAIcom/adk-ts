@@ -310,7 +310,7 @@ Tests are organized alongside source files:
 
 ## 📚 Resources for Contributors
 
-### ADK Framework Resources
+### ADK-TS Framework Resources
 
 - **[ADK-TS Repository](https://github.com/IQAIcom/adk-ts)** - Main framework repository
 - **[Live Documentation](https://adk.iqai.com)** - Published documentation site

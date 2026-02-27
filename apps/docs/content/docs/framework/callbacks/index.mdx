@@ -6,9 +6,9 @@ description: Observe, customize, and control agent behavior with powerful callba
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Callbacks are a cornerstone feature of ADK, providing a powerful mechanism to hook into an agent's execution process. They allow you to observe, customize, and even control the agent's behavior at specific, predefined points without modifying the core ADK framework code.
+Callbacks are a cornerstone feature of ADK-TS, providing a powerful mechanism to hook into an agent's execution process. They allow you to observe, customize, and even control the agent's behavior at specific, predefined points without modifying the core ADK-TS framework code.
 
-**What are they?** In essence, callbacks are standard functions that you define. You then associate these functions with an agent when you create it. The ADK framework automatically calls your functions at key stages, letting you observe or intervene. Think of it like checkpoints during the agent's process:
+**What are they?** In essence, callbacks are standard functions that you define. You then associate these functions with an agent when you create it. The ADK-TS framework automatically calls your functions at key stages, letting you observe or intervene. Think of it like checkpoints during the agent's process:
 
 - **Before the agent starts its main work on a request, and after it finishes:** When you ask an agent to do something (e.g., answer a question), it runs its internal logic to figure out the response.
 - The `Before Agent` callback executes _right before_ this main work begins for that specific request.
@@ -84,7 +84,7 @@ const agent = new LlmAgent({
 
 ## The Callback Mechanism: Interception and Control
 
-When the ADK framework reaches a callback point (for example, just before calling the LLM), it checks whether the agent was configured with a corresponding callback and, if so, executes it.
+When the ADK-TS framework reaches a callback point (for example, just before calling the LLM), it checks whether the agent was configured with a corresponding callback and, if so, executes it.
 
 **Context is key:** Your callback receives a context object to understand and affect the current run:
 
@@ -93,7 +93,7 @@ When the ADK framework reaches a callback point (for example, just before callin
 
 These include invocation/session info, a delta-aware `state`, and helper methods like `saveArtifact`, `loadArtifact`, `listArtifacts`, and `searchMemory`.
 
-**Controlling the flow:** In TypeScript, the value you return determines whether ADK proceeds or overrides behavior. The exact “continue vs override” sentinel differs by callback kind:
+**Controlling the flow:** In TypeScript, the value you return determines whether ADK-TS proceeds or overrides behavior. The exact “continue vs override” sentinel differs by callback kind:
 
 1. Continue with default behavior
 

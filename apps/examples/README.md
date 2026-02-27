@@ -79,7 +79,7 @@ To explore the examples, you can either browse all available examples or run a s
 
 ## 📚 Explore Example Applications
 
-We have **9 comprehensive examples** that cover the complete ADK feature set, organized in a logical learning progression from basic concepts to advanced implementations:
+We have **9 comprehensive examples** that cover the complete ADK-TS feature set, organized in a logical learning progression from basic concepts to advanced implementations:
 
 ### 🎯 **Foundational Examples (01-03)**
 

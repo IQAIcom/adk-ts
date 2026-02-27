@@ -8,7 +8,7 @@ import { getWeatherAgent } from "./sub-agents/weather-agent/agent";
  *
  * This agent serves as the main orchestrator that routes user requests to
  * specialized sub-agents based on the request type. It demonstrates the
- * basic ADK pattern of using a root agent to coordinate multiple specialized
+ * basic ADK-TS pattern of using a root agent to coordinate multiple specialized
  * agents for different domains (jokes and weather).
  *
  * @returns The fully constructed root agent instance ready to process requests

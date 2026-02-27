@@ -29,7 +29,7 @@ export function registerInfoTool(server: FastMCP) {
 
 			return JSON.stringify(
 				{
-					name: "ADK-TS (Agent Development Kit for TypeScript)",
+					name: "ADK-TS",
 					version: packageJson.version,
 					description:
 						"A comprehensive framework for building AI agents with multi-LLM support, memory, and tools.",

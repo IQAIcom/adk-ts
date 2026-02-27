@@ -74,7 +74,7 @@ export async function GET(
 						{/* biome-ignore lint/performance/noImgElement: ImageResponse requires plain img tags */}
 						<img
 							src={`${baseUrl}/adk.png`}
-							alt="ADK Logo"
+							alt="ADK-TS Logo"
 							width={210}
 							height={180}
 							style={{

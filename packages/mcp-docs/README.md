@@ -68,9 +68,9 @@ claude mcp add adk-docs -- npx -y @iqai/mcp-docs
 ```typescript
 import { AgentBuilder, McpToolset } from "@iqai/adk";
 
-// Create MCP toolset for ADK docs
+// Create MCP toolset for ADK-TS docs
 const toolset = new McpToolset({
-  name: "ADK Documentation",
+  name: "ADK-TS Documentation",
   description: "Access ADK-TS documentation and examples",
   transport: {
     mode: "stdio",

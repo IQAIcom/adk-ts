@@ -169,7 +169,7 @@ async function createWorkflowAgent() {
 - **Automatic Management**: Handles session and runner creation automatically
 - **Quick Execution**: Built-in `ask()` method for immediate responses
 - **Flexible**: Supports all agent types (LLM, Sequential, Parallel, Loop, LangGraph)
-- **Backward Compatible**: Works alongside existing ADK patterns
+- **Backward Compatible**: Works alongside existing ADK-TS patterns
 
 ## 🛠️ Using Tools with an Agent
 

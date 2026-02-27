@@ -27,6 +27,6 @@ jobs:
           pnpm add @rollup/rollup-linux-x64-gnu --save-optional || true
       - name: Code Quality Check
         run: pnpm lint-staged --allow-empty
-      - name: ADK tests
+      - name: ADK-TS tests
         run: pnpm test
         working-directory: ./packages

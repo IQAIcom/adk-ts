@@ -9,7 +9,7 @@ import { ReadonlyContext } from "./readonly-context";
  */
 export class CallbackContext extends ReadonlyContext {
 	/**
-	 * TODO: make this public for Agent Development Kit, but private for users.
+	 * TODO: make this public for ADK-TS, but private for users.
 	 */
 	readonly _eventActions: EventActions;
 

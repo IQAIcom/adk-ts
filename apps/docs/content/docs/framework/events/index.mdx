@@ -27,7 +27,7 @@ Events serve as the standard message format between the user interface, the
 
 ## Event Structure
 
-Events build upon the basic `LlmResponse` structure by adding essential ADK-specific metadata:
+Events build upon the basic `LlmResponse` structure by adding essential ADK-TS-specific metadata:
 
 ```typescript
 import { Event, EventActions } from "@iqai/adk";
@@ -44,7 +44,7 @@ class Event extends LlmResponse {
   partial?: boolean; // True for streaming chunks
   turnComplete?: boolean; // True when agent's turn is finished
 
-  // ADK-specific features
+  // ADK-TS-specific features
   actions: EventActions; // Side-effects & control signals
   longRunningToolIds?: Set<string>; // Background tool execution
   branch?: string; // Hierarchy path for multi-agent scenarios
@@ -134,9 +134,9 @@ for await (const event of runner.runAsync(query, session)) {
 }
 ```
 
-## Event Flow in ADK
+## Event Flow in ADK-TS
 
-Events enable communication throughout the ADK system:
+Events enable communication throughout the ADK-TS system:
 
 1. **User Input** → Creates user event
 2. **Agent Processing** → Generates agent events with text or tool calls
@@ -174,4 +174,4 @@ Events support real-time streaming with `partial` flags for progressive content 
 
 Events inherit error properties (`errorCode`, `errorMessage`) for comprehensive error tracking.
 
-Events are the backbone of ADK's communication system, enabling powerful features like state management, tool orchestration, and complex agent workflows. Explore the detailed guides above to learn how to leverage events effectively in your applications.
+Events are the backbone of the ADK-TS communication system, enabling powerful features like state management, tool orchestration, and complex agent workflows. Explore the detailed guides above to learn how to leverage events effectively in your applications.

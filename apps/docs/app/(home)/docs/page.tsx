@@ -35,7 +35,7 @@ const featureItems = [
 		icon: Code,
 		title: "API Reference",
 		description:
-			"Complete API documentation with detailed class references, methods, and examples for all ADK components.",
+			"Complete API documentation with detailed class references, methods, and examples for all ADK-TS components.",
 		external: true,
 	},
 	{
@@ -50,14 +50,14 @@ const featureItems = [
 		icon: GraduationCap,
 		title: "Guides",
 		description:
-			"Step-by-step tutorials and guides to help you master building AI agents with ADK.",
+			"Step-by-step tutorials and guides to help you master building AI agents with ADK-TS.",
 	},
 	{
 		href: "/showcase",
 		icon: Sparkles,
 		title: "Showcase",
 		description:
-			"Explore real-world applications and see what others have built with ADK.",
+			"Explore real-world applications and see what others have built with ADK-TS.",
 	},
 ];
 
@@ -74,7 +74,7 @@ export default function DocsPage(): React.ReactElement {
 					}}
 				/>
 			</div>
-			<h1 className="mb-4 text-4xl font-semibold md:text-5xl">ADK TS</h1>
+			<h1 className="mb-4 text-4xl font-semibold md:text-5xl">ADK-TS</h1>
 			<p className="text-fd-muted-foreground">
 				Build powerful AI agents with our comprehensive framework and MCP server
 				integrations.

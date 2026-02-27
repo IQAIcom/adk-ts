@@ -89,7 +89,7 @@ ADK-TS uses a [monorepo](https://monorepo.tools/) structure organized as follows
   - `examples/` — Comprehensive usage examples
   - `starter-templates/` — Official starter templates
 - `packages/` — Core libraries and tools
-  - `adk/` — Main ADK TypeScript framework
+  - `adk/` — Main ADK-TS framework
   - `adk-cli/` — CLI for scaffolding new projects (install globally and use `adk`)
   - `tsconfig/` — Shared TypeScript configurations
 

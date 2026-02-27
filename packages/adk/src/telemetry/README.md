@@ -1,6 +1,6 @@
-# ADK Telemetry System
+# ADK-TS Telemetry System
 
-Comprehensive OpenTelemetry integration for the Agent Development Kit (ADK), providing distributed tracing, metrics, and observability for AI agents, tools, and LLM interactions.
+Comprehensive OpenTelemetry integration for ADK-TS, providing distributed tracing, metrics, and observability for AI agents, tools, and LLM interactions.
 
 ## Features
 
@@ -80,7 +80,7 @@ docker run -d \
   -p 16686:16686 \
   jaegertracing/all-in-one:latest
 
-# Your ADK app will send traces to http://localhost:4318/v1/traces
+# Your ADK-TS app will send traces to http://localhost:4318/v1/traces
 # View traces at http://localhost:16686
 ```
 

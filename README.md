@@ -86,7 +86,7 @@ git clone https://github.com/IQAIcom/adk-ts.git
 cd adk-ts
 pnpm install
 
-# 2. Build the ADK package (required for examples to work)
+# 2. Build the ADK-TS package (required for examples to work)
 pnpm build
 
 # 3. Setup API keys

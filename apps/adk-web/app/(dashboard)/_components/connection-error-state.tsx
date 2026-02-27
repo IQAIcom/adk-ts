@@ -19,8 +19,8 @@ export function ConnectionErrorState({
 				<Alert>
 					<AlertCircle className="h-4 w-4" />
 					<AlertDescription>
-						Failed to connect to ADK server at {apiUrl}. Make sure the server is
-						running.
+						Failed to connect to ADK-TS server at {apiUrl}. Make sure the server
+						is running.
 					</AlertDescription>
 				</Alert>
 				<Button onClick={onRetry} className="mt-4">

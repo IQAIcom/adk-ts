@@ -1,7 +1,7 @@
 {
 	"name": "adk-discord-bot",
 	"version": "0.7.0",
-	"description": "ADK Discord Bot - A starter project for creating AI-powered Discord bots with ADK",
+	"description": "ADK-TS Discord Bot - A starter project for creating AI-powered Discord bots with ADK-TS",
 	"main": "dist/index.js",
 	"private": true,
 	"scripts": {

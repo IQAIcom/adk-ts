@@ -116,7 +116,7 @@ Key settings:
 - **`entryPoints`**: Main TypeScript files to document
 - **`out`**: Output directory (`./api`)
 - **`name`**: Documentation site title
-- **`readme`**: Uses ADK package README as main page
+- **`readme`**: Uses ADK-TS package README as main page
 - **`excludePrivate/excludeExternals`**: Controls visibility of APIs
 - **`githubPages`**: Optimized for GitHub Pages deployment
 - **`excludeReferences`**: Hides "Re-exports" to reduce clutter from barrel exports
@@ -136,7 +136,7 @@ Documentation is automatically built and deployed to GitHub Pages via GitHub Act
 
 The deployment workflow (`.github/workflows/docs.yml`):
 
-1. Triggers on changes to ADK source code or documentation files
+1. Triggers on changes to ADK-TS source code or documentation files
 2. Installs Node.js 20 and pnpm dependencies
 3. Builds the `@iqai/adk` package
 4. Generates TypeDoc documentation in `apps/adk-api-docs/api`

@@ -97,7 +97,7 @@ class CustomSummarizer implements EventsSummarizer {
 
 ## Default Behavior
 
-If no summarizer is provided, ADK will create a default `LlmEventSummarizer` using the agent's canonical model. This summarizer:
+If no summarizer is provided, ADK-TS will create a default `LlmEventSummarizer` using the agent's canonical model. This summarizer:
 
 - Formats events with timestamps and authors
 - Uses a prompt to request a concise summary

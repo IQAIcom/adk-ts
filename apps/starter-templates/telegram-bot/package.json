@@ -1,7 +1,7 @@
 {
 	"name": "adk-telegram-bot",
 	"version": "0.7.0",
-	"description": "ADK Telegram Bot - A starter project for creating AI-powered Telegram bots with ADK",
+	"description": "ADK-TS Telegram Bot - A starter project for creating AI-powered Telegram bots with ADK-TS",
 	"main": "dist/index.js",
 	"private": true,
 	"scripts": {

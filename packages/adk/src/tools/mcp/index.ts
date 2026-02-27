@@ -92,9 +92,9 @@ export class McpToolset {
 
 	/**
 	 * Set a sampling handler for this MCP toolset.
-	 * This allows MCP servers to request LLM completions through your ADK agent.
+	 * This allows MCP servers to request LLM completions through your ADK-TS agent.
 	 *
-	 * @param handler - ADK sampling handler that receives ADK-formatted messages
+	 * @param handler - ADK-TS sampling handler that receives ADK-TS-formatted messages
 	 */
 	setSamplingHandler(handler: SamplingHandler): void {
 		if (!this.clientService) {
@@ -191,7 +191,7 @@ export class McpToolset {
 	}
 
 	/**
-	 * Converts ADK tools to MCP tool format for bidirectional support
+	 * Converts ADK-TS tools to MCP tool format for bidirectional support
 	 */
 	convertADKToolsToMCP(tools: BaseTool[]): any[] {
 		return tools.map((tool) => adkToMcpToolType(tool));

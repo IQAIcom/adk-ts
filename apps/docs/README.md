@@ -87,7 +87,7 @@ The documentation site uses:
 
 All documentation content is written in [MDX format](https://mdxjs.com/) and organized in the `content/docs/` directory:
 
-- **`framework/`** - Core ADK framework documentation
+- **`framework/`** - Core ADK-TS framework documentation
 - **`cli/`** - ADK-TS CLI documentation
 - **`mcp-servers/`** - Model Context Protocol server documentation
 
@@ -145,7 +145,7 @@ For more detailed contribution guidelines, see the main project's [Contributing 
 - **[MDX](https://mdxjs.com)** - Markdown with JSX components
 - **[Next.js](https://nextjs.org)** - React framework for the documentation site
 
-### ADK Framework Resources
+### ADK-TS Framework Resources
 
 - **[ADK-TS Repository](https://github.com/IQAIcom/adk-ts)** - Main framework repository
 - **[Live Documentation](https://adk.iqai.com)** - Published documentation site

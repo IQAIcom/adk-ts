@@ -9,7 +9,7 @@ const logger = new Logger({ name: "EventCompaction" });
 
 /**
  * Runs compaction for a sliding window of invocations.
- * This function implements the core sliding window logic from ADK Python.
+ * This function implements the core sliding window logic from ADK-TS Python.
  */
 export async function runCompactionForSlidingWindow(
 	config: EventsCompactionConfig,

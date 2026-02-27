@@ -32,14 +32,14 @@ export function IncompatibleState({
 					<div className="relative">
 						<Image
 							src="/adk.png"
-							alt="ADK Logo"
+							alt="ADK-TS Logo"
 							width={80}
 							height={80}
 							className="dark:hidden"
 						/>
 						<Image
 							src="/dark-adk.png"
-							alt="ADK Logo"
+							alt="ADK-TS Logo"
 							width={80}
 							height={80}
 							className="hidden dark:block"

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ADK-TS is the Agent Development Kit for TypeScript - a comprehensive framework for building sophisticated AI agents with multi-LLM support, advanced tools, and flexible conversation flows. This is a monorepo containing the core framework package, documentation site, examples, and CLI tools.
+ADK-TS is the TypeScript-native AI agent framework — a comprehensive toolkit for building sophisticated AI agents with multi-LLM support, advanced tools, and flexible conversation flows. This is a monorepo containing the core framework package, documentation site, examples, and CLI tools.
 
 ## Development Commands
 
@@ -34,12 +34,12 @@ ADK-TS is the Agent Development Kit for TypeScript - a comprehensive framework f
 
 ### Monorepo Structure
 
-- `packages/adk/` - Core ADK framework package (`@iqai/adk`)
+- `packages/adk/` - Core ADK-TS framework package (`@iqai/adk`)
   // ...existing code...
 - `packages/tsconfig/` - Shared TypeScript configurations
 - `apps/docs/` - Documentation website (Next.js + Fumadocs)
 - `apps/examples/` - Comprehensive example implementations
-- `packages/adk-cli/` - Official CLI for creating and managing ADK projects.
+- `packages/adk-cli/` - Official CLI for creating and managing ADK-TS projects.
 
 ### Core Framework Components
 

@@ -27,7 +27,7 @@ export type McpConfig = {
 
 	/**
 	 * Sampling handler for processing MCP sampling requests.
-	 * This allows MCP servers to request LLM completions through your ADK agent.
+	 * This allows MCP servers to request LLM completions through your ADK-TS agent.
 	 */
 	samplingHandler?: SamplingHandler;
 };

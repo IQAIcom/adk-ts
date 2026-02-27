@@ -9,7 +9,7 @@
 
 ---
 
-This directory contains starter templates for ADK projects. These templates are **not published to npm** and are excluded from the main workspace to prevent build issues during the release process.
+This directory contains starter templates for ADK-TS projects. These templates are **not published to npm** and are excluded from the main workspace to prevent build issues during the release process.
 
 ## Available Templates
 

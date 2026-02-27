@@ -18,7 +18,7 @@ import {
  * 4. How to integrate `MemoryService` for semantic search capabilities.
  * 5. Lifecycle management of sessions (creation, listing, ending, and deletion).
  *
- * The `MemoryBuilder` is the recommended way to handle agent state and memory in ADK applications.
+ * The `MemoryBuilder` is the recommended way to handle agent state and memory in ADK-TS applications.
  */
 async function main() {
 	console.log(dedent`
