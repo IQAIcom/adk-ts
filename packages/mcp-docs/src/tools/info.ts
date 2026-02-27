@@ -29,10 +29,10 @@ export function registerInfoTool(server: FastMCP) {
 
 			return JSON.stringify(
 				{
-					name: "ADK-TS",
+					name: "ADK-TS - The TypeScript-Native AI Agent Framework",
 					version: packageJson.version,
 					description:
-						"A comprehensive framework for building AI agents with multi-LLM support, memory, and tools.",
+						"An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.",
 					homepage: "https://adk.iqai.com",
 					docs: "https://adk.iqai.com/docs",
 					github: "https://github.com/IQAIcom/adk-ts",

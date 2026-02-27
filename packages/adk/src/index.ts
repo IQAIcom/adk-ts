@@ -1,6 +1,7 @@
 /**
  * ADK-TS
- * A framework for building AI agents with multi-provider LLM support
+ *
+ * A TypeScript-native framework for building production-ready AI agents. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.
  */
 
 // Re-export all exports from each module

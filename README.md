@@ -2,7 +2,7 @@
   <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
   <br/>
   <h1>ADK-TS: The TypeScript-Native AI Agent Framework</h1>
-  <b>An open-source framework for building production-ready AI agents in TypeScript with multi-LLM support, advanced tools, and flexible conversation flows.</b>
+  <b>An open-source framework for building production-ready AI agents in TypeScript. Type-safe, multi-LLM, with built-in tools, sessions, and agent orchestration.</b>
   <br/>
   <i>TypeScript-Native • Multi-Agent Systems • Production-Ready</i>
 

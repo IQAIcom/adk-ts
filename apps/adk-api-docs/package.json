@@ -1,7 +1,7 @@
 {
 	"name": "adk-api-docs",
 	"version": "0.1.0",
-	"description": "API documentation for the ADK-TS TypeScript AI agent framework",
+	"description": "API documentation for ADK-TS, the TypeScript-native AI agent framework. Browse detailed docs on agent configuration, tools, sessions, and more.",
 	"private": true,
 	"scripts": {
 		"build": "typedoc --options typedoc.json && cp -r static/* api/",

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- ImageResponse requires plain img tags, not next/image */
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 import { source } from "@/lib/source";
@@ -71,7 +72,6 @@ export async function GET(
 							gap: "24px",
 						}}
 					>
-						{/* biome-ignore lint/performance/noImgElement: ImageResponse requires plain img tags */}
 						<img
 							src={`${baseUrl}/adk.png`}
 							alt="ADK-TS Logo"
@@ -170,7 +170,6 @@ export async function GET(
 				}}
 			>
 				<span>Powered by</span>
-				{/** biome-ignore lint/performance/noImgElement: ImageResponse requires plain img tags */}
 				<img
 					src={`${baseUrl}/iqai.png`}
 					alt="IQ Logo"
