@@ -92,7 +92,7 @@ const jsonLd = [
 		"@context": "https://schema.org",
 		"@type": "SoftwareApplication",
 		name: "ADK-TS",
-		alternateName: "Agent Development Kit for TypeScript",
+		alternateName: "ADK-TS - The TypeScript-Native AI Agent Framework",
 		description:
 			"An open-source TypeScript framework for building production-ready AI agents with multi-LLM support, advanced tool integration, memory systems, and flexible multi-agent orchestration.",
 		url: "https://adk.iqai.com",
