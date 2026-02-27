@@ -1,0 +1,117 @@
+---
+title: Best Practices & Troubleshooting
+description: General guidance for using MCP servers with ADK-TS, including security, resource management, and common troubleshooting tips.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+## Best Practices
+
+### Security
+
+<Callout type="warn" title="Never Hardcode Secrets">
+
+Always store API keys, private keys, and other sensitive credentials in
+environment variables. Never hardcode them directly in your source code or
+commit them to version control.
+
+</Callout>
+
+Use a `.env` file for local development (and add it to `.gitignore`):
+
+```bash
+# .env
+API_KEY=your_api_key_here
+WALLET_PRIVATE_KEY=your_private_key_here
+```
+
+```typescript
+import * as dotenv from "dotenv";
+dotenv.config();
+
+const toolset = McpSomeServer({
+  env: {
+    API_KEY: process.env.API_KEY,
+  },
+});
+```
+
+For production environments, use a dedicated secrets management service rather
+than `.env` files.
+
+### Resource Cleanup
+
+Always call `await toolset.close()` when you're done to properly release
+connections. Use a `try/finally` block to ensure cleanup even when errors occur:
+
+```typescript
+const toolset = McpSomeServer({ env: { ... } });
+const tools = await toolset.getTools();
+
+try {
+  // Use the tools
+} finally {
+  await toolset.close();
+}
+```
+
+### Retry Configuration
+
+All MCP servers support retry options to handle transient failures:
+
+```typescript
+const toolset = McpSomeServer({
+  env: { ... },
+  retryOptions: {
+    maxRetries: 3,       // Number of retry attempts (default: 2)
+  },
+});
+```
+
+Use higher values for servers with strict rate limits or unstable connections.
+
+### Rate Limiting
+
+For servers with rate-limited APIs, implement caching to avoid hitting limits:
+
+- Cache frequently requested data (e.g., token prices, market data) locally
+- Stagger requests when making multiple calls in sequence
+- Configure `retryOptions.initialDelay` to use exponential backoff
+
+---
+
+## Troubleshooting
+
+### API Key Not Working
+
+- Verify the environment variable name is correct and the value is set
+- Check that the key is active and has not expired or been revoked
+- Ensure you are using the correct key for the environment (e.g., testnet vs mainnet)
+
+### Connection Timeout
+
+- Check your internet connection
+- Verify the service's status page (most platforms have one)
+- Increase `retryOptions.initialDelay` to give the server more time to respond
+
+### Rate Limit Errors
+
+- Add caching for data that does not change frequently
+- Reduce the frequency of requests
+- Set `retryOptions` to automatically retry with a delay
+
+### Tool Not Found or Schema Error
+
+- Call `await toolset.getTools()` again to refresh the tool list
+- Check the upstream package's changelog for breaking changes
+- Ensure the MCP server package is up to date (`pnpm dlx @iqai/mcp-xxx@latest`)
+
+### MCP Server Process Fails to Start
+
+- Confirm `pnpm` (or `npx`) is installed and available in your `PATH`
+- Pass `PATH: process.env.PATH || ""` in the `env` config so the subprocess can
+  find executables
+- Enable `debug: true` on the toolset to see detailed startup logs:
+  ```typescript
+  const toolset = McpSomeServer({ env: { ... }, debug: true });
+  ```

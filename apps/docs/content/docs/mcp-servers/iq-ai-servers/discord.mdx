@@ -1,51 +1,68 @@
 ---
 title: MCP Discord
-description: An MCP server for interacting with Discord bots and channels
+description: Enable AI agents to read and send messages in Discord channels via a bot integration.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 - **Package**: [`@iqai/mcp-discord`](https://www.npmjs.com/package/@iqai/mcp-discord)
-- **Purpose**: Interacting with Discord bots and channels using the Discord.js library.
+- **Provider**: [Discord](https://discord.com)
 
-## Usage with ADK TypeScript
+## Overview
 
-<Tabs items={['Simple', 'Verbose', 'Claude Desktop']}>
+The Discord MCP server lets your agent interact with Discord — reading messages from channels, sending responses, and monitoring server activity. It is useful for building agents that moderate communities, answer questions, or summarize discussions on Discord.
+
+<Callout type="warn" title="Bot Token Security">
+  Your Discord bot token grants full access to your bot account. Never expose it
+  in client-side code or commit it to source control.
+</Callout>
+
+## Getting Started
+
+Install the package:
+
+```bash
+pnpm add @iqai/mcp-discord
+```
+
+Use the server in your agent:
+
+<Tabs items={["Simple", "Verbose", "Claude Desktop"]}>
   <Tab value="Simple">
     ```typescript
-    import {McpDiscord} from "@iqai/adk";
+    import { McpDiscord } from "@iqai/adk";
 
     const toolset = McpDiscord({
       env: {
         DISCORD_TOKEN: process.env.DISCORD_TOKEN,
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
 
   <Tab value="Verbose">
     ```typescript
-    import {McpToolset} from "@iqai/adk";
+    import { McpToolset } from "@iqai/adk";
 
     const toolset = new McpToolset({
       name: "Discord MCP Client",
-      description: "Client for Discord bot operations",
+      description: "Client for Discord bot interactions",
       transport: {
         mode: "stdio",
-        command: "pnpm",
-        args: ["dlx", "@iqai/mcp-discord"],
+        command: "npx",
+        args: ["-y", "@iqai/mcp-discord"],
         env: {
           DISCORD_TOKEN: process.env.DISCORD_TOKEN,
           PATH: process.env.PATH || "",
         },
       },
-    })
+    });
 
-    const tools = await toolset.getTools()
+    const tools = await toolset.getTools();
     ```
 
   </Tab>
@@ -55,10 +72,10 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
     {
       "mcpServers": {
         "discord-mcp-server": {
-          "command": "pnpm",
-          "args": ["dlx", "@iqai/mcp-discord"],
+          "command": "npx",
+          "args": ["-y", "@iqai/mcp-discord"],
           "env": {
-            "DISCORD_TOKEN": "your_bot_token_here"
+            "DISCORD_TOKEN": "your_discord_bot_token"
           }
         }
       }
@@ -67,139 +84,66 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
   </Tab>
 </Tabs>
 
-## Features
+## Environment Variables
 
-- Provides tools to send messages, get server information, manage channels, create forum posts, handle reactions, and manage webhooks.
-- Uses the Discord.js library, a powerful Discord bot framework for Node.js.
-- Supports both channel IDs and channel names for flexible interaction.
+| Variable        | Required | Description            |
+| --------------- | -------- | ---------------------- |
+| `DISCORD_TOKEN` | Yes      | Your Discord bot token |
+
+## Credentials
+
+To create a Discord bot and get your token:
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application**, name it, and go to the **Bot** tab
+3. Click **Reset Token** and copy your bot token
+4. Under **OAuth2 → URL Generator**, select the `bot` scope and the permissions your agent needs
+5. Use the generated URL to invite the bot to your server
 
 ## Available Tools
 
 <McpToolsList serverId="discord" />
 
-## Sampling
+## Integration Example
 
-Sampling enables an mcp server to request llm sampling (generations or completions) from the client.
-The mcp-discord server listens to new messages and bot mentions and uses sampling to get llm responses and responds to them, basically in a nutshell allowing for bi-directional communication.
+```typescript
+import { AgentBuilder, McpDiscord } from "@iqai/adk";
+import * as dotenv from "dotenv";
 
-This is useful when you want agentic capabilities ie building a discord bot that can respond to messages and also send messages to other users.
+dotenv.config();
 
-### Resources
+async function main() {
+  // Initialize McpDiscord toolset
+  const toolset = McpDiscord({
+    env: {
+      DISCORD_TOKEN: process.env.DISCORD_TOKEN,
+    },
+  });
 
-- An example discord bot written with adk-ts that makes use of sampling: <a href="https://github.com/IQAIcom/adk-ts/tree/main/apps/examples/src/mcp-discord-agent/index.ts" target="_blank" rel="noopener noreferrer">Discord bot example</a>
-- For more info on sampling please refer to: [MCP Sampling](https://modelcontextprotocol.io/specification/2025-06-18/client/sampling)
+  // Get available McpDiscord tools
+  const discordTools = await toolset.getTools();
 
-## Environment Variables
+  // Create agent with McpDiscord tools
+  const { runner } = await AgentBuilder.create("discord_agent")
+    .withModel("gemini-2.5-flash")
+    .withDescription(
+      "A Discord community agent that summarizes and responds to messages",
+    )
+    .withTools(...discordTools)
+    .build();
 
-- `DISCORD_TOKEN`: Your Discord bot token (required)
-- `SAMPLING_ENABLED`: Enable bi-directional message sampling (default: true)
-- `DEFAULT_RATE_LIMIT_SECONDS`: Rate limit for sampling requests per user (default: 2)
-- `DEFAULT_MESSAGE_CHUNK_SIZE`: Max message chunk size for sampling responses (default: 2000)
+  const response = await runner.ask(
+    "Read the last 20 messages in channel 123456789 and summarize what the community is discussing",
+  );
 
-## Usage Examples
-
-### discord_send
-
-Send a message to a Discord channel:
-
-```json
-{
-  "tool_name": "discord_send",
-  "arguments": {
-    "channelId": "123456789012345678",
-    "message": "Hello from the Discord MCP Server!"
-  }
+  console.log(response);
 }
+
+main().catch(console.error);
 ```
 
-### discord_get_server_info
+## Further Resources
 
-Get information about a Discord server:
-
-```json
-{
-  "tool_name": "discord_get_server_info",
-  "arguments": {
-    "serverId": "123456789012345678"
-  }
-}
-```
-
-### discord_create_forum_post
-
-Create a forum post:
-
-```json
-{
-  "tool_name": "discord_create_forum_post",
-  "arguments": {
-    "channelId": "123456789012345678",
-    "title": "New Discussion Topic",
-    "message": "Let's discuss this important topic!"
-  }
-}
-```
-
-## Response Examples
-
-### discord_send
-
-Successful response:
-
-```json
-{
-  "success": true,
-  "result": "Message sent successfully!\n\nMessage ID: 123456789012345678\nChannel ID: 123456789012345678\nSent at: 2024-03-15T12:34:56.789Z\nContent: Hello from the Discord MCP Server!"
-}
-```
-
-### discord_get_server_info
-
-Successful response:
-
-```json
-{
-  "success": true,
-  "result": "Server Information:\n\nName: My Discord Server\nID: 123456789012345678\nOwner: ServerOwner#1234\nMember Count: 1500\nCreated: 2020-01-15T10:30:00.000Z\nDescription: Welcome to our community server!"
-}
-```
-
-## Error Handling
-
-The tools will return an error message in the `result` field if an error occurs. Common errors include:
-
-- **Missing bot token:** Ensure the `DISCORD_TOKEN` environment variable is set.
-- **Invalid channel ID:** Double-check the channel ID or name.
-- **Bot not in server:** Add the bot to the server with appropriate permissions.
-- **Insufficient permissions:** Ensure the bot has the required permissions for the action.
-
-## Bot Setup
-
-<Callout type="info" title="Bot Setup Required">
-
-You'll need to create and configure a Discord bot before using this server.
-
-</Callout>
-
-1. Create a bot application in the [Discord Developer Portal](https://discord.com/developers/applications)
-2. Get your bot token from the Bot section
-3. Enable the following Privileged Gateway Intents:
-   - Message Content Intent
-   - Server Members Intent
-   - Presence Intent
-4. Add your bot to servers with appropriate permissions:
-   - **Administrator** (recommended for full functionality)
-   - Or select specific permissions:
-     - Send Messages
-     - Create Public Threads
-     - Send Messages in Threads
-     - Manage Messages
-     - Manage Threads
-     - Manage Channels
-     - Manage Webhooks
-     - Add Reactions
-     - View Channel
-
-5. Use the following invite link (replace `INSERT_CLIENT_ID_HERE` with your bot's client ID):
-   - **Administrator:** `https://discord.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=8`
-   - **Minimum required:** `https://discord.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=52076489808`
+- [`@iqai/mcp-discord` on npm](https://www.npmjs.com/package/@iqai/mcp-discord)
+- [Discord Developer Portal](https://discord.com/developers/applications)
+- [Discord Bot Docs](https://discord.com/developers/docs/topics/oauth2)
