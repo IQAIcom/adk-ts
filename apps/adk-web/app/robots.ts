@@ -5,10 +5,8 @@ export default function robots(): MetadataRoute.Robots {
 		rules: [
 			{
 				userAgent: "*",
-				allow: "/",
+				disallow: "/",
 			},
 		],
-		sitemap: "https://adk-web.iqai.com/sitemap.xml",
-		host: "https://adk-web.iqai.com",
 	};
 }

@@ -37,6 +37,10 @@ export const metadata: Metadata = {
 	creator: "IQ AI",
 	publisher: "IQ AI",
 	category: "technology",
+	robots: {
+		index: false,
+		follow: false,
+	},
 	icons: {
 		icon: "/adk.png",
 		shortcut: "/adk.png",
