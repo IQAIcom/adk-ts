@@ -1,5 +1,13 @@
 # @iqai/adk
 
+## 0.8.0
+
+### Minor Changes
+
+- d7d8b78: Add popular third-party MCP server wrappers and fix tool name handling
+  - Add `McpNotion`, `McpSequentialThinking`, and `McpPlaywright` server wrapper functions
+  - Fix MCP tool name sanitization: hyphens in tool names (e.g. `notion-search`) are now replaced with underscores to pass BaseTool validation, while preserving the original name for MCP server calls
+
 ## 0.7.0
 
 ### Minor Changes
