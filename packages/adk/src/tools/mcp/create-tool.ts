@@ -50,6 +50,15 @@ export async function convertMcpToolToBaseTool(
 }
 
 /**
+ * Sanitizes an MCP tool name so it passes BaseTool validation.
+ * MCP tool names may contain hyphens (e.g. "notion-search"), which are not
+ * valid in ADK tool names. Hyphens are replaced with underscores.
+ */
+function sanitizeMcpToolName(name: string): string {
+	return name.replace(/-/g, "_");
+}
+
+/**
  * Adapter class that wraps an MCP tool definition as a BaseTool
  */
 class McpToolAdapter extends BaseTool {
@@ -60,6 +69,8 @@ class McpToolAdapter extends BaseTool {
 		name: string,
 		args: unknown,
 	) => Promise<CallToolResult>;
+	/** The original MCP tool name, preserved for calls back to the MCP server. */
+	private originalMcpName: string;
 
 	protected logger = new Logger({ name: "McpToolAdapter" });
 
@@ -76,13 +87,16 @@ class McpToolAdapter extends BaseTool {
 			metadata = mcpTool._meta as McpToolMetadata;
 		}
 
+		const rawName = mcpTool.name || `mcp_${Date.now()}`;
+
 		super({
-			name: mcpTool.name || `mcp_${Date.now()}`,
+			name: sanitizeMcpToolName(rawName),
 			description: mcpTool.description || "MCP Tool",
 			isLongRunning: metadata.isLongRunning ?? false,
 			shouldRetryOnFailure: metadata.shouldRetryOnFailure ?? false,
 			maxRetryAttempts: metadata.maxRetryAttempts ?? 3,
 		});
+		this.originalMcpName = rawName;
 		this.mcpTool = mcpTool;
 		this.client = client;
 		this.toolHandler = handler;
@@ -118,7 +132,10 @@ class McpToolAdapter extends BaseTool {
 		args: Record<string, any>,
 		_context: ToolContext,
 	): Promise<any> {
-		this.logger.debug(`Executing MCP tool ${this.name} with args:`, args);
+		this.logger.debug(
+			`Executing MCP tool ${this.originalMcpName} with args:`,
+			args,
+		);
 
 		try {
 			if (
@@ -129,7 +146,7 @@ class McpToolAdapter extends BaseTool {
 			}
 
 			if (this.clientService) {
-				return await this.clientService.callTool(this.name, args);
+				return await this.clientService.callTool(this.originalMcpName, args);
 			}
 
 			if (this.client && typeof (this.client as any).callTool === "function") {
@@ -137,14 +154,14 @@ class McpToolAdapter extends BaseTool {
 					const executeWithRetry = withRetry(
 						async () => {
 							return await (this.client as any).callTool({
-								name: this.name,
+								name: this.originalMcpName,
 								arguments: args,
 							});
 						},
 						this,
 						async () => {
 							console.warn(
-								`MCP tool ${this.name} encountered a closed resource, but cannot reinitialize client.`,
+								`MCP tool ${this.originalMcpName} encountered a closed resource, but cannot reinitialize client.`,
 							);
 						},
 						this.maxRetryAttempts,
@@ -153,25 +170,28 @@ class McpToolAdapter extends BaseTool {
 				}
 
 				const result = await (this.client as any).callTool({
-					name: this.name,
+					name: this.originalMcpName,
 					arguments: args,
 				});
 				return result;
 			}
 
 			if (this.toolHandler) {
-				return await this.toolHandler(this.name, args);
+				return await this.toolHandler(this.originalMcpName, args);
 			}
 
 			throw new McpError(
-				`Cannot execute MCP tool ${this.name}: No execution method found`,
+				`Cannot execute MCP tool ${this.originalMcpName}: No execution method found`,
 				McpErrorType.TOOL_EXECUTION_ERROR,
 			);
 		} catch (error) {
 			if (!(error instanceof McpError)) {
-				console.error(`Error executing MCP tool ${this.name}:`, error);
+				console.error(
+					`Error executing MCP tool ${this.originalMcpName}:`,
+					error,
+				);
 				throw new McpError(
-					`Error executing MCP tool ${this.name}: ${error instanceof Error ? error.message : String(error)}`,
+					`Error executing MCP tool ${this.originalMcpName}: ${error instanceof Error ? error.message : String(error)}`,
 					McpErrorType.TOOL_EXECUTION_ERROR,
 					error instanceof Error ? error : undefined,
 				);

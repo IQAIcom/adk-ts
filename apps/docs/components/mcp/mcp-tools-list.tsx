@@ -1,5 +1,10 @@
+"use client";
+
 import clsx from "clsx";
 import { Callout } from "fumadocs-ui/components/callout";
+import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ToolParameter {
 	type?: string;
@@ -38,6 +43,137 @@ interface McpToolsListProps {
 import rawMcpToolsData from "@/data/mcp-tools.json";
 
 const mcpToolsData = rawMcpToolsData as unknown as McpToolsData;
+
+const DESCRIPTION_TRUNCATE_LENGTH = 300;
+
+const markdownComponents = {
+	p: ({ children }: { children?: React.ReactNode }) => (
+		<p className="text-sm leading-relaxed text-fd-foreground/80">{children}</p>
+	),
+	h1: ({ children }: { children?: React.ReactNode }) => (
+		<p className="text-sm font-semibold text-fd-foreground mt-3 first:mt-0">
+			{children}
+		</p>
+	),
+	h2: ({ children }: { children?: React.ReactNode }) => (
+		<p className="text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground mt-3 first:mt-0">
+			{children}
+		</p>
+	),
+	h3: ({ children }: { children?: React.ReactNode }) => (
+		<p className="text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground mt-2 first:mt-0">
+			{children}
+		</p>
+	),
+	ul: ({ children }: { children?: React.ReactNode }) => (
+		<ul className="list-disc pl-5 space-y-1 text-sm leading-relaxed text-fd-foreground/80">
+			{children}
+		</ul>
+	),
+	ol: ({ children }: { children?: React.ReactNode }) => (
+		<ol className="list-decimal pl-5 space-y-1 text-sm leading-relaxed text-fd-foreground/80">
+			{children}
+		</ol>
+	),
+	li: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
+	pre: ({ children }: { children?: React.ReactNode }) => (
+		<pre className="overflow-x-auto rounded-md bg-fd-muted p-3 text-xs leading-relaxed text-fd-foreground/90 font-mono">
+			{children}
+		</pre>
+	),
+	code: ({
+		children,
+		className,
+	}: {
+		children?: React.ReactNode;
+		className?: string;
+	}) =>
+		className ? (
+			<code>{children}</code>
+		) : (
+			<code className="rounded bg-fd-muted px-1 py-0.5 text-xs font-mono">
+				{children}
+			</code>
+		),
+	strong: ({ children }: { children?: React.ReactNode }) => (
+		<strong className="font-semibold">{children}</strong>
+	),
+	a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+		<a
+			href={href}
+			target="_blank"
+			rel="noopener noreferrer"
+			className="text-fd-primary underline"
+		>
+			{children}
+		</a>
+	),
+};
+
+function splitDescription(description: string): {
+	summary: string;
+	rest: string | null;
+} {
+	const trimmed = description.trim();
+	if (trimmed.length <= DESCRIPTION_TRUNCATE_LENGTH) {
+		return { summary: trimmed, rest: null };
+	}
+
+	// Split on double newline (paragraph break) to find a natural cut point
+	const firstBreak = trimmed.indexOf("\n\n");
+	if (firstBreak !== -1 && firstBreak <= DESCRIPTION_TRUNCATE_LENGTH) {
+		return {
+			summary: trimmed.slice(0, firstBreak).trim(),
+			rest: trimmed.slice(firstBreak).trim(),
+		};
+	}
+
+	// Fallback: split at the first sentence boundary within the limit
+	const sentenceEnd = trimmed
+		.slice(0, DESCRIPTION_TRUNCATE_LENGTH)
+		.lastIndexOf(". ");
+	if (sentenceEnd > 50) {
+		return {
+			summary: trimmed.slice(0, sentenceEnd + 1).trim(),
+			rest: trimmed.slice(sentenceEnd + 1).trim(),
+		};
+	}
+
+	// Last resort: split at paragraph break regardless of position
+	if (firstBreak !== -1) {
+		return {
+			summary: trimmed.slice(0, firstBreak).trim(),
+			rest: trimmed.slice(firstBreak).trim(),
+		};
+	}
+
+	return { summary: trimmed, rest: null };
+}
+
+function ToolDescription({ description }: { description: string }) {
+	const [expanded, setExpanded] = useState(false);
+	const { summary, rest } = splitDescription(description);
+
+	return (
+		<div>
+			<ReactMarkdown
+				remarkPlugins={[remarkGfm]}
+				components={markdownComponents}
+			>
+				{expanded || !rest ? description : summary}
+			</ReactMarkdown>
+			{rest && (
+				<button
+					type="button"
+					onClick={() => setExpanded(!expanded)}
+					className="mt-2 text-xs font-medium text-fd-primary hover:text-fd-primary/80 transition-colors cursor-pointer"
+				>
+					{expanded ? "Show less" : "Show more"}
+				</button>
+			)}
+		</div>
+	);
+}
 
 function ToolTile({ tool }: { tool: McpTool }) {
 	const properties = tool.inputSchema?.properties;
@@ -98,9 +234,7 @@ function ToolTile({ tool }: { tool: McpTool }) {
 				<p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-fd-muted-foreground/60">
 					Description
 				</p>
-				<p className="text-sm leading-relaxed text-fd-foreground/80">
-					{tool.description}
-				</p>
+				<ToolDescription description={tool.description} />
 			</div>
 		</details>
 	);

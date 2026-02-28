@@ -529,6 +529,50 @@ export function McpMemory(config: McpServerConfig = {}): McpToolset {
 }
 
 /**
+ * MCP Notion - Interact with Notion pages, databases, and workspaces (third-party)
+ *
+ * Required env vars: NOTION_TOKEN
+ */
+export function McpNotion(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Notion MCP Client",
+		"@notionhq/notion-mcp-server",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Sequential Thinking - Structured step-by-step reasoning for complex problem solving (third-party)
+ *
+ * Optional env vars: DISABLE_THOUGHT_LOGGING
+ */
+export function McpSequentialThinking(
+	config: McpServerConfig = {},
+): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Sequential Thinking MCP Client",
+		"@modelcontextprotocol/server-sequential-thinking",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
+ * MCP Playwright - Browser automation capabilities (third-party)
+ *
+ * No required env vars
+ */
+export function McpPlaywright(config: McpServerConfig = {}): McpToolset {
+	const mcpConfig = createMcpConfig(
+		"Playwright MCP Client",
+		"@playwright/mcp",
+		config,
+	);
+	return new McpToolset(mcpConfig);
+}
+
+/**
  * Generic MCP server function for any package
  *
  * @param packageName The npm package name of the MCP server
