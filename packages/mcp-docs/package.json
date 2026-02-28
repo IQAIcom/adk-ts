@@ -1,6 +1,6 @@
 {
 	"name": "@iqai/mcp-docs",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "MCP server for accessing ADK-TS documentation, examples, API reference, and MCP server integrations.",
 	"type": "module",
 	"main": "dist/index.js",
@@ -41,7 +41,7 @@
 	"license": "Apache-2.0",
 	"packageManager": "pnpm@9.0.0",
 	"dependencies": {
-		"@iqai/adk": "0.7.0",
+		"@iqai/adk": "0.8.0",
 		"@modelcontextprotocol/sdk": "^1.25.3",
 		"fastmcp": "^3.30.1",
 		"gray-matter": "^4.0.3",
