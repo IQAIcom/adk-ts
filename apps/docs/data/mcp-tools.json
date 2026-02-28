@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-02-28T21:58:38.701Z",
+	"generatedAt": "2026-02-28T22:13:50.776Z",
 	"servers": {
 		"coingecko": {
 			"name": "CoinGecko MCP Client",
@@ -2673,7 +2673,7 @@
 							},
 							"deadline": {
 								"type": "string",
-								"default": "2026-02-28T22:57:55.153Z",
+								"default": "2026-02-28T23:13:23.969Z",
 								"description": "(Optional, defaults to 1 hour from now) Timestamp in ISO format, that identifies when user refund will begin if the swap isn't completed by then. It needs to exceed the time required for the deposit tx to be minted, e.g. for Bitcoin it might require ~1h depending on the gas fees paid."
 							},
 							"referral": {
