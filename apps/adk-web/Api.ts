@@ -386,11 +386,11 @@ export class HttpClient<SecurityDataType = unknown> {
 }
 
 /**
- * @title ADK HTTP API
+ * @title ADK-TS HTTP API
  * @version 1.0.0
  * @contact
  *
- * REST endpoints for managing and interacting with ADK agents
+ * REST endpoints for managing and interacting with ADK-TS agents
  */
 export class Api<
   SecurityDataType extends unknown,

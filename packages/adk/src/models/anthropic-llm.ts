@@ -349,7 +349,7 @@ export class AnthropicLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert Anthropic Message to ADK LlmResponse
+	 * Convert Anthropic Message to ADK-TS LlmResponse
 	 */
 	private anthropicMessageToLlmResponse(
 		message: Anthropic.Message,
@@ -384,7 +384,7 @@ export class AnthropicLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK Content to Anthropic MessageParam
+	 * Convert ADK-TS Content to Anthropic MessageParam
 	 */
 	private contentToAnthropicMessage(content: any): Anthropic.MessageParam {
 		return {
@@ -396,7 +396,7 @@ export class AnthropicLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK Part to Anthropic content block
+	 * Convert ADK-TS Part to Anthropic content block
 	 */
 	private partToAnthropicBlock(
 		part: any,
@@ -420,7 +420,7 @@ export class AnthropicLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert Anthropic content block to ADK Part
+	 * Convert Anthropic content block to ADK-TS Part
 	 */
 	private anthropicBlockToPart(block: any): any {
 		if (block.type === "text") return { text: block.text };
@@ -432,7 +432,7 @@ export class AnthropicLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK function declaration to Anthropic tool param
+	 * Convert ADK-TS function declaration to Anthropic tool param
 	 */
 	private functionDeclarationToAnthropicTool(
 		functionDeclaration: any,
@@ -456,7 +456,7 @@ export class AnthropicLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK role to Anthropic role format
+	 * Convert ADK-TS role to Anthropic role format
 	 */
 	private toAnthropicRole(role?: string): AnthropicRole {
 		if (role === "model" || role === "assistant") return "assistant";
@@ -464,7 +464,7 @@ export class AnthropicLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert Anthropic stop reason to ADK finish reason
+	 * Convert Anthropic stop reason to ADK-TS finish reason
 	 */
 	private toAdkFinishReason(
 		anthropicStopReason?: string | null,

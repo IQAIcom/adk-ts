@@ -1,7 +1,7 @@
 {
 	"name": "adk-discord-bot",
 	"version": "0.7.0",
-	"description": "ADK Discord Bot - A starter project for creating AI-powered Discord bots with ADK",
+	"description": "ADK-TS Discord Bot - A starter project for creating AI-powered Discord bots with ADK-TS",
 	"main": "dist/index.js",
 	"private": true,
 	"scripts": {
@@ -20,11 +20,11 @@
 		"agent",
 		"mcp",
 		"adk-ts",
-		"IQAI",
+		"IQ AI",
 		"discord",
 		"bot"
 	],
-	"author": "IQAI",
+	"author": "IQ AI",
 	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/IQAICOM/adk-discord-bot/issues"

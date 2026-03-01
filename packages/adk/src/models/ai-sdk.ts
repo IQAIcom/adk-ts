@@ -54,7 +54,7 @@ interface AiSdkRequestParams {
 
 /**
  * AI SDK integration that accepts a pre-configured LanguageModel.
- * Enables ADK to work with any provider supported by Vercel's AI SDK.
+ * Enables ADK-TS to work with any provider supported by Vercel's AI SDK.
  */
 export class AiSdkLlm extends BaseLlm {
 	private modelInstance: LanguageModel;
@@ -418,7 +418,7 @@ export class AiSdkLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK LlmRequest to AI SDK CoreMessage format
+	 * Convert ADK-TS LlmRequest to AI SDK CoreMessage format
 	 */
 	private convertToAiSdkMessages(llmRequest: LlmRequest): ModelMessage[] {
 		const messages: ModelMessage[] = [];
@@ -483,7 +483,7 @@ export class AiSdkLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK tools to AI SDK tools format
+	 * Convert ADK-TS tools to AI SDK tools format
 	 */
 	private convertToAiSdkTools(llmRequest: LlmRequest): Record<string, Tool> {
 		const tools: Record<string, Tool> = {};
@@ -506,7 +506,7 @@ export class AiSdkLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK Content to AI SDK CoreMessage
+	 * Convert ADK-TS Content to AI SDK CoreMessage
 	 */
 	private contentToAiSdkMessage(content: Content): ModelMessage | null {
 		const role = this.mapRole(content.role);
@@ -631,7 +631,7 @@ export class AiSdkLlm extends BaseLlm {
 	}
 
 	/**
-	 * Map ADK role to AI SDK role
+	 * Map ADK-TS role to AI SDK role
 	 */
 	private mapRole(role?: string): "user" | "assistant" | "system" {
 		switch (role) {
@@ -646,7 +646,7 @@ export class AiSdkLlm extends BaseLlm {
 	}
 
 	/**
-	 * Map AI SDK finish reason to ADK finish reason
+	 * Map AI SDK finish reason to ADK-TS finish reason
 	 */
 	private mapFinishReason(
 		finishReason?: string,

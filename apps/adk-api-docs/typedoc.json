@@ -3,7 +3,7 @@
 	"entryPoints": ["../../packages/adk/src/index.ts"],
 	"out": "./api",
 	"theme": "default",
-	"name": "@iqai/adk API Documentation",
+	"name": "ADK-TS API Reference",
 	"readme": "../../packages/adk/README.md",
 	"tsconfig": "../../packages/adk/tsconfig.json",
 	"excludePrivate": true,

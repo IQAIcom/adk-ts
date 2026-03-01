@@ -1,6 +1,6 @@
 /**
  * Telemetry Types and Interfaces
- * Comprehensive type definitions for the ADK telemetry system
+ * Comprehensive type definitions for the ADK-TS telemetry system
  */
 
 import type { InvocationContext } from "../agents/invocation-context";

@@ -1,7 +1,7 @@
 {
 	"name": "@iqai/adk",
 	"version": "0.7.0",
-	"description": "Agent Development Kit for TypeScript with multi-provider LLM support",
+	"description": "The TypeScript-native AI agent framework with multi-provider LLM support",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"exports": {
@@ -43,12 +43,17 @@
 		"ai",
 		"llm",
 		"agent",
+		"typescript",
+		"typescript-ai-agents",
+		"typescript-agent-framework",
+		"ai-agent-orchestration",
+		"build-ai-agents-typescript",
 		"openai",
 		"anthropic",
 		"gemini",
-		"typescript"
+		"multi-agent"
 	],
-	"author": "IQAI",
+	"author": "IQ AI",
 	"license": "MIT",
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.61.0",

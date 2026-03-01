@@ -322,7 +322,7 @@ export class OpenAiLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert OpenAI message to ADK LlmResponse
+	 * Convert OpenAI message to ADK-TS LlmResponse
 	 */
 	private openAiMessageToLlmResponse(
 		choice: OpenAI.ChatCompletion.Choice,
@@ -369,7 +369,7 @@ export class OpenAiLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK Content to OpenAI ChatCompletionMessage
+	 * Convert ADK-TS Content to OpenAI ChatCompletionMessage
 	 */
 	private contentToOpenAiMessage(
 		content: any,
@@ -437,7 +437,7 @@ export class OpenAiLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK Part to OpenAI message content
+	 * Convert ADK-TS Part to OpenAI message content
 	 */
 	private partToOpenAiContent(part: any): OpenAI.ChatCompletionContentPart {
 		if (part.text) {
@@ -509,7 +509,7 @@ export class OpenAiLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK function declaration to OpenAI tool
+	 * Convert ADK-TS function declaration to OpenAI tool
 	 */
 	private functionDeclarationToOpenAiTool(
 		functionDeclaration: any,
@@ -527,7 +527,7 @@ export class OpenAiLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert ADK role to OpenAI role format
+	 * Convert ADK-TS role to OpenAI role format
 	 */
 	private toOpenAiRole(role?: string): OpenAIRole {
 		if (role === "model") {
@@ -540,7 +540,7 @@ export class OpenAiLlm extends BaseLlm {
 	}
 
 	/**
-	 * Convert OpenAI finish reason to ADK finish reason
+	 * Convert OpenAI finish reason to ADK-TS finish reason
 	 */
 	private toAdkFinishReason(
 		openaiFinishReason?: string,

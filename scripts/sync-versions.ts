@@ -24,7 +24,7 @@ function getAdkVersion(): string {
 	const content = fs.readFileSync(ADK_PACKAGE, "utf-8");
 	const pkg: PackageJson = JSON.parse(content);
 	if (!pkg.version) {
-		throw new Error("Could not find version in ADK package.json");
+		throw new Error("Could not find version in ADK-TS package.json");
 	}
 	return pkg.version;
 }
@@ -73,7 +73,7 @@ function updatePackageJson(filePath: string, adkVersion: string): void {
 	let updated = false;
 
 	if (filePath.includes("starter-templates")) {
-		// Extract major.minor from ADK version and set patch to 0
+		// Extract major.minor from ADK-TS version and set patch to 0
 		const adkMatch = adkVersion.match(/^(\d+\.\d+)/);
 		if (adkMatch && pkg.version) {
 			const targetVersion = `${adkMatch[1]}.0`;
@@ -81,7 +81,7 @@ function updatePackageJson(filePath: string, adkVersion: string): void {
 				pkg.version = targetVersion;
 				updated = true;
 				console.log(
-					`Updated ${filePath} version to ${pkg.version} (aligned with ADK)`,
+					`Updated ${filePath} version to ${pkg.version} (aligned with ADK-TS)`,
 				);
 			}
 		}
@@ -111,7 +111,7 @@ function updatePackageJson(filePath: string, adkVersion: string): void {
 function main(): void {
 	try {
 		const adkVersion = getAdkVersion();
-		console.log(`🔄 Syncing ADK version: ${adkVersion}\n`);
+		console.log(`🔄 Syncing ADK-TS version: ${adkVersion}\n`);
 
 		const packageFiles = findPackageJsonFiles();
 

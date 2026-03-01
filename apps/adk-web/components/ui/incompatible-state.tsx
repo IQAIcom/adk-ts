@@ -32,14 +32,14 @@ export function IncompatibleState({
 					<div className="relative">
 						<Image
 							src="/adk.png"
-							alt="ADK Logo"
+							alt="ADK-TS Logo"
 							width={80}
 							height={80}
 							className="dark:hidden"
 						/>
 						<Image
 							src="/dark-adk.png"
-							alt="ADK Logo"
+							alt="ADK-TS Logo"
 							width={80}
 							height={80}
 							className="hidden dark:block"
@@ -50,7 +50,7 @@ export function IncompatibleState({
 				<Alert className="max-w-xl mx-auto text-left">
 					<AlertTriangle className="h-4 w-4" />
 					<AlertDescription>
-						Your installed ADK CLI version {cliVersion ?? "unknown"} is not
+						Your installed ADK-TS CLI version {cliVersion ?? "unknown"} is not
 						compatible with this web app. Please update to at least version{" "}
 						{minCliVersion ?? "(see docs)"}.
 					</AlertDescription>

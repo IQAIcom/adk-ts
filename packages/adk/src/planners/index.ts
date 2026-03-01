@@ -1,4 +1,4 @@
-// Planners module for ADK
+// Planners module for ADK-TS
 // Port from Python's planners/ module
 
 export { BasePlanner } from "./base-planner";

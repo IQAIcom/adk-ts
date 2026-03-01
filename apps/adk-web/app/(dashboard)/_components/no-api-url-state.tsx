@@ -10,7 +10,7 @@ export function NoApiUrlState() {
 				<Alert>
 					<AlertCircle className="h-4 w-4" />
 					<AlertDescription>
-						This interface needs to be launched from the ADK CLI. Run{" "}
+						This interface needs to be launched from the ADK-TS CLI. Run{" "}
 						<code className="bg-muted px-1 py-0.5 rounded">adk web</code> to
 						start.
 					</AlertDescription>

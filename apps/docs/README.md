@@ -11,9 +11,9 @@
 
 ## 📖 About
 
-This README is specifically for contributors to the ADK-TS documentation. The documentation site is built with [Next.js](https://nextjs.org) and [Fumadocs](https://fumadocs.dev), providing comprehensive guides, API references, tutorials, and examples for building sophisticated AI agents with the ADK framework.
+This README is specifically for contributors to the ADK-TS documentation. The documentation site is built with [Next.js](https://nextjs.org) and [Fumadocs](https://fumadocs.dev), providing comprehensive guides, API references, tutorials, and examples for building AI agents in TypeScript with ADK-TS.
 
-If you're looking to **use** the ADK framework, visit the [live documentation](https://adk.iqai.com). This guide is for those who want to **contribute** to improving the documentation.
+If you're looking to **use** ADK-TS, visit the [live documentation](https://adk.iqai.com). This guide is for those who want to **contribute** to improving the documentation.
 
 ## 🚀 Getting Started
 
@@ -87,8 +87,8 @@ The documentation site uses:
 
 All documentation content is written in [MDX format](https://mdxjs.com/) and organized in the `content/docs/` directory:
 
-- **`framework/`** - Core ADK framework documentation
-- **`cli/`** - ADK CLI documentation
+- **`framework/`** - Core ADK-TS framework documentation
+- **`cli/`** - ADK-TS CLI documentation
 - **`mcp-servers/`** - Model Context Protocol server documentation
 
 ### Types of Documentation Contributions
@@ -145,7 +145,7 @@ For more detailed contribution guidelines, see the main project's [Contributing 
 - **[MDX](https://mdxjs.com)** - Markdown with JSX components
 - **[Next.js](https://nextjs.org)** - React framework for the documentation site
 
-### ADK Framework Resources
+### ADK-TS Framework Resources
 
 - **[ADK-TS Repository](https://github.com/IQAIcom/adk-ts)** - Main framework repository
 - **[Live Documentation](https://adk.iqai.com)** - Published documentation site

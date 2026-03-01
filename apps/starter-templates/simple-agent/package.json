@@ -1,7 +1,7 @@
 {
 	"name": "adk-simple-agent",
 	"version": "0.7.0",
-	"description": "adk-simple-agent is a starter project for creating simple adk agent",
+	"description": "A starter project for building AI agents in TypeScript with ADK-TS",
 	"main": "dist/index.js",
 	"private": true,
 	"scripts": {
@@ -20,9 +20,9 @@
 		"agent",
 		"mcp",
 		"adk-ts",
-		"IQAI"
+		"IQ AI"
 	],
-	"author": "IQAI",
+	"author": "IQ AI",
 	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/IQAICOM/adk-agent-starter/issues"

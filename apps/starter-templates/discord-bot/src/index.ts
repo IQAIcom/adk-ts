@@ -8,7 +8,7 @@ dotenv.config();
 /**
  * Discord Bot with AI Agent
  *
- * A Discord bot powered by ADK that can engage with users in servers and direct messages.
+ * A Discord bot powered by ADK-TS that can engage with users in servers and direct messages.
  * Customize the persona and instructions below to create your own unique bot.
  */
 

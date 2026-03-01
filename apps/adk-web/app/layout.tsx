@@ -18,25 +18,29 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
 	title: {
-		default: "ADK Web - Visual Interface for ADK CLI",
-		template: "%s | ADK Web",
+		default: "ADK-TS Web | Visual Web Interface for AI Agent Testing",
+		template: "ADK-TS | %s",
 	},
 	description:
-		"Visual web interface for @iqai/adk-cli to discover agents, chat, and monitor your ADK server.",
+		"Test and monitor your ADK-TS AI agents with a visual web interface. Browse agents, chat in real-time, inspect sessions, and debug agent behavior interactively.",
 	metadataBase: new URL("https://adk-web.iqai.com"),
-	applicationName: "ADK Web",
+	applicationName: "ADK-TS Web",
 	keywords: [
-		"ADK",
-		"Agent Development Kit",
-		"AI agents",
-		"CLI web interface",
+		"ADK-TS",
+		"TypeScript AI agents",
+		"AI agent web interface",
+		"AI agent testing",
 		"LLM",
-		"TypeScript",
+		"TypeScript agent framework",
 	],
-	authors: [{ name: "IQAI" }],
-	creator: "IQAI",
-	publisher: "IQAI",
+	authors: [{ name: "IQ AI" }],
+	creator: "IQ AI",
+	publisher: "IQ AI",
 	category: "technology",
+	robots: {
+		index: false,
+		follow: false,
+	},
 	icons: {
 		icon: "/adk.png",
 		shortcut: "/adk.png",
@@ -44,24 +48,24 @@ export const metadata: Metadata = {
 	},
 	openGraph: {
 		type: "website",
-		title: "ADK Web - Visual Interface for ADK CLI",
+		title: "ADK-TS Web | Visual Web Interface for AI Agent Testing",
 		description:
-			"Visual web interface for @iqai/adk-cli to discover agents, chat, and monitor your ADK server.",
+			"Test and monitor your ADK-TS AI agents with a visual web interface. Browse agents, chat in real-time, inspect sessions, and debug agent behavior interactively.",
 		url: "https://adk-web.iqai.com",
 		images: [
 			{
 				url: "/og-image.png",
 				width: 1200,
 				height: 630,
-				alt: "ADK Web - Visual Interface for ADK CLI",
+				alt: "ADK-TS Web | Visual Web Interface for AI Agent Testing",
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "ADK Web - Visual Interface for ADK CLI",
+		title: "ADK-TS Web | Visual Web Interface for AI Agent Testing",
 		description:
-			"Visual web interface for @iqai/adk-cli to discover agents, chat, and monitor your ADK server.",
+			"Test and monitor your ADK-TS AI agents with a visual web interface. Browse agents, chat in real-time, inspect sessions, and debug agent behavior interactively.",
 		images: ["/og-image.png"],
 	},
 };

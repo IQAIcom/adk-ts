@@ -14,7 +14,7 @@ export default function Home() {
 						<div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-accent border border-border mb-6 sm:mb-8">
 							<Sparkles className="w-4 h-4 text-primary" />
 							<span className="text-xs sm:text-sm font-medium text-muted-foreground">
-								Agent Development Kit for TypeScript
+								The TypeScript-Native AI Agent Framework
 							</span>
 						</div>
 						<h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 tracking-tight leading-tight">

@@ -249,7 +249,7 @@ We welcome various types of contributions:
 
 ### Documentation
 
-- **[ADK Documentation](https://adk.iqai.com)** - Official ADK documentation
+- **[ADK-TS Documentation](https://adk.iqai.com)** - Official ADK-TS documentation
 - **[ADK-TS CLI Web Command](https://adk.iqai.com/docs/cli/commands#adk-web)** - Learn how to launch the web UI with `adk web`
 - **[Next.js Docs](https://nextjs.org/docs)** - Next.js framework documentation
 - **[React Query Docs](https://tanstack.com/query/latest)** - React Query documentation

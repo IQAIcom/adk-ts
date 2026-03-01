@@ -14,6 +14,6 @@ export const USER_ID_PREFIX = "user_";
 export const DEFAULT_APP_NAME = "adk-server";
 
 /**
- * Default port for the ADK API server
+ * Default port for the ADK-TS API server
  */
 export const DEFAULT_API_PORT = 8042;

@@ -142,7 +142,7 @@ function HomeContent() {
 	};
 
 	if (loading || compatLoading) {
-		return <LoadingState message="Connecting to ADK server..." />;
+		return <LoadingState message="Connecting to ADK-TS server..." />;
 	}
 
 	if (!connected || error || compatError) {
@@ -165,7 +165,7 @@ function HomeContent() {
 
 		const errorMessage = compatError
 			? `Failed to check CLI compatibility: ${describeError(compatError)}`
-			: `Failed to connect to ADK server at ${displayUrl}. Make sure the server is running.`;
+			: `Failed to connect to ADK-TS server at ${displayUrl}. Make sure the server is running.`;
 
 		return (
 			<ErrorState

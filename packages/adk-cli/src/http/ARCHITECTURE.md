@@ -1,6 +1,6 @@
-# ADK CLI HTTP Layer Architecture
+# ADK-TS CLI HTTP Layer Architecture
 
-**This document is for contributors working on the ADK CLI HTTP layer.** If you're looking to use the CLI, visit the [live documentation](https://adk.iqai.com/docs/cli).
+**This document is for contributors working on the ADK-TS CLI HTTP layer.** If you're looking to use the CLI, visit the [live documentation](https://adk.iqai.com/docs/cli).
 
 This document maps the responsibilities and interactions of the HTTP layer located at `packages/adk-cli/src/http/`.
 
@@ -330,4 +330,4 @@ graph LR
 
 ---
 
-**For more information about contributing to the ADK CLI, see the [main README](../README.md#contributing).**
+**For more information about contributing to the ADK-TS CLI, see the [main README](../README.md#contributing).**

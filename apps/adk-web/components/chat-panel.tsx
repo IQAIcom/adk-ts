@@ -381,7 +381,7 @@ function EmptyChat() {
 					</div>
 
 					<h3 className="text-xl font-semibold text-foreground mb-3">
-						Welcome to ADK Chat
+						Welcome to ADK-TS Chat
 					</h3>
 					<p className="text-muted-foreground mb-6 leading-relaxed">
 						Choose an AI agent from the dropdown above to start an intelligent

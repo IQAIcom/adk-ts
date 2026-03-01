@@ -22,7 +22,7 @@ export type BeforeAgentCallback = SingleAgentCallback | SingleAgentCallback[];
 export type AfterAgentCallback = SingleAgentCallback | SingleAgentCallback[];
 
 /**
- * Base class for all agents in Agent Development Kit.
+ * Base class for all agents in ADK-TS.
  */
 export abstract class BaseAgent {
 	/**
@@ -367,7 +367,7 @@ export abstract class BaseAgent {
 
 	/**
 	 * The resolved beforeAgentCallback field as a list of SingleAgentCallback.
-	 * This method is only for use by Agent Development Kit.
+	 * This method is only for use by ADK-TS.
 	 */
 	get canonicalBeforeAgentCallbacks(): SingleAgentCallback[] {
 		if (!this.beforeAgentCallback) {
@@ -381,7 +381,7 @@ export abstract class BaseAgent {
 
 	/**
 	 * The resolved afterAgentCallback field as a list of SingleAgentCallback.
-	 * This method is only for use by Agent Development Kit.
+	 * This method is only for use by ADK-TS.
 	 */
 	get canonicalAfterAgentCallbacks(): SingleAgentCallback[] {
 		if (!this.afterAgentCallback) {

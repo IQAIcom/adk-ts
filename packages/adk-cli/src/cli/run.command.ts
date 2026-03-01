@@ -552,7 +552,7 @@ export class RunCommand extends CommandRunner {
 			const host = options.host || "localhost";
 
 			if (isVerbose) {
-				console.log(chalk.blue("🚀 Starting ADK Server..."));
+				console.log(chalk.blue("🚀 Starting ADK-TS Server..."));
 			}
 
 			const server = await startHttpServer({
@@ -582,7 +582,7 @@ export class RunCommand extends CommandRunner {
 		const apiUrl = `http://${options?.host || "localhost"}:${DEFAULT_API_PORT}`;
 
 		await consoleManager.withAllowedOutput(async () => {
-			p.intro("🤖 ADK Agent Chat");
+			p.intro("🤖 ADK-TS Agent Chat");
 		});
 
 		// Start server if not running
@@ -650,7 +650,7 @@ export class RunCommand extends CommandRunner {
 
 	@Option({
 		flags: "-s, --server",
-		description: "Start ADK server only (without chat interface)",
+		description: "Start ADK-TS server only (without chat interface)",
 	})
 	parseServer(): boolean {
 		return true;

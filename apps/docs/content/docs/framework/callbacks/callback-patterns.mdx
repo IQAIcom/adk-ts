@@ -1,11 +1,11 @@
 ---
 title: Callback Patterns
-description: Design patterns and best practices for agent, model, and tool callbacks in the TypeScript ADK
+description: Design patterns and best practices for agent, model, and tool callbacks in ADK-TS
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Callbacks give you precise control over the agent lifecycle, LLM requests/responses, and tool execution. This guide presents callback-centric patterns using the TypeScript ADK, with examples built around `AgentBuilder` and references to `CallbackContext` and `ToolContext`.
+Callbacks give you precise control over the agent lifecycle, LLM requests/responses, and tool execution. This guide presents callback-centric patterns using ADK-TS, with examples built around `AgentBuilder` and references to `CallbackContext` and `ToolContext`.
 
 ## Callback & Context Overview
 
@@ -18,7 +18,7 @@ State writes inside callbacks are tracked and persisted by the `SessionService`.
 
 <Callout>
 
-These examples use the TypeScript ADK API. Configure callbacks via
+These examples use the ADK-TS API. Configure callbacks via
 `AgentBuilder` chain methods and rely on canonicalization to support single
 callbacks or arrays.
 

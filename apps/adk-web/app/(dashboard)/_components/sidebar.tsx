@@ -76,14 +76,14 @@ export function Sidebar({
 					<div className="relative">
 						<Image
 							src="/adk.png"
-							alt="ADK Logo"
+							alt="ADK-TS Logo"
 							width={24}
 							height={24}
 							className="dark:hidden"
 						/>
 						<Image
 							src="/dark-adk.png"
-							alt="ADK Logo"
+							alt="ADK-TS Logo"
 							width={24}
 							height={24}
 							className="hidden dark:block"
