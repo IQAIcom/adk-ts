@@ -5,8 +5,12 @@
 		"---Market Data",
 		"coingecko",
 		"coingecko-pro",
+		"---Productivity",
+		"notion",
 		"---Utilities",
 		"filesystem",
-		"memory"
+		"memory",
+		"playwright",
+		"sequential-thinking"
 	]
 }

@@ -1,6 +1,6 @@
 {
 	"name": "adk-telegram-bot",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"description": "ADK-TS Telegram Bot - A starter project for creating AI-powered Telegram bots with ADK-TS",
 	"main": "dist/index.js",
 	"private": true,
@@ -31,7 +31,7 @@
 	},
 	"homepage": "https://github.com/IQAICOM/adk-telegram-bot#readme",
 	"dependencies": {
-		"@iqai/adk": "0.7.0",
+		"@iqai/adk": "0.8.1",
 		"dotenv": "^17.2.2",
 		"zod": "^4.1.5"
 	},

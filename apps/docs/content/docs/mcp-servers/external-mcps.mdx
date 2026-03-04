@@ -6,7 +6,7 @@ description: Connect ADK-TS agents to any MCP server from the ecosystem
 import { Callout } from "fumadocs-ui/components/callout";
 import { Cards, Card } from "fumadocs-ui/components/card";
 
-ADK-TS fully supports the Model Context Protocol (MCP) standard, which means you can connect to **any MCP server** from the ecosystem—not just IQ AI's built-in servers. This includes Anthropic's official MCP servers, community-built servers, and third-party implementations.
+ADK-TS fully supports the Model Context Protocol (MCP) standard, which means you can connect to **any MCP server** from the ecosystem, not just IQ AI's built-in servers. This includes Anthropic's official MCP servers, community-built servers, and third-party implementations.
 
 <Callout type="success" title="Universal MCP Compatibility">
 
@@ -50,6 +50,43 @@ The MCP community has created many useful servers:
 - **Linear** - Project management integration
 - **Sentry** - Error tracking and monitoring
 - **And many more** - Browse [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)
+
+## Quick Connection with McpGeneric
+
+For any npm-based MCP server, `McpGeneric` uses the same config pattern as the built-in wrappers, without the full `McpToolset` setup:
+
+```typescript
+import { McpGeneric, LlmAgent } from "@iqai/adk";
+
+// Connect to any npm MCP package in one line
+const toolset = McpGeneric("@modelcontextprotocol/server-brave-search", {
+  env: {
+    BRAVE_API_KEY: process.env.BRAVE_API_KEY || "",
+  },
+});
+
+const tools = await toolset.getTools();
+
+const agent = new LlmAgent({
+  name: "search_agent",
+  model: "gemini-2.5-flash",
+  tools,
+});
+
+await toolset.close();
+```
+
+You can also pass a custom display name as a third argument:
+
+```typescript
+const toolset = McpGeneric(
+  "@modelcontextprotocol/server-github",
+  { env: { GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_TOKEN || "" } },
+  "GitHub MCP",
+);
+```
+
+`McpGeneric` handles `PATH` injection, env value coercion, and retry defaults automatically, the same as every other wrapper function. Use `McpToolset` directly when you need SSE transport, custom timeouts, or other options not exposed by the wrappers.
 
 ## Connecting to External MCP Servers
 
