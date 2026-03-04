@@ -1,5 +1,13 @@
 # @iqai/adk
 
+## 0.8.1
+
+### Patch Changes
+
+- 58eeac4: fix: handle null `answer` from Tavily API in WebSearchTool
+
+  Tavily returns `"answer": null` by default when `include_answer` is not set, but the Zod schema typed `answer` as `z.string().optional()` which rejects `null`. Changed to `z.string().nullish()` to accept both `null` and `undefined`.
+
 ## 0.8.0
 
 ### Minor Changes
