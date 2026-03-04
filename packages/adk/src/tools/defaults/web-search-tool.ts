@@ -229,7 +229,7 @@ const tavilySearchResultSchema = z.object({
 const tavilySearchResponseSchema = z.object({
 	query: z.string(),
 	results: z.array(tavilySearchResultSchema),
-	answer: z.string().optional(),
+answer: z.string().nullable().optional(),
 	images: z
 		.array(z.object({ url: z.string(), description: z.string().optional() }))
 		.optional(),
