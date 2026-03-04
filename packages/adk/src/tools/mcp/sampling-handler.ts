@@ -15,7 +15,7 @@ import {
 
 /**
  * MCP Sampling Handler class that handles message format conversion
- * between MCP format and ADK format
+ * between MCP format and ADK-TS format
  */
 export class McpSamplingHandler {
 	protected logger = new Logger({ name: "McpSamplingHandler" });
@@ -74,9 +74,9 @@ export class McpSamplingHandler {
 				);
 			}
 
-			this.logger.debug("Converting MCP request to ADK format");
+			this.logger.debug("Converting MCP request to ADK-TS format");
 
-			// Convert MCP messages to ADK format
+			// Convert MCP messages to ADK-TS format
 			const adkContents = this.convertMcpMessagesToADK(
 				mcpParams.messages,
 				mcpParams.systemPrompt,
@@ -86,7 +86,7 @@ export class McpSamplingHandler {
 				mcpParams.modelPreferences?.hints?.find((h) => h?.name)?.name ||
 				"gemini-2.0-flash";
 
-			// Prepare ADK request - create a proper LlmRequest instance
+			// Prepare ADK-TS request - create a proper LlmRequest instance
 			const adkRequest = new LlmRequest({
 				model: requestModel,
 				contents: adkContents,
@@ -96,14 +96,14 @@ export class McpSamplingHandler {
 				},
 			});
 
-			this.logger.debug("Calling ADK sampling handler");
+			this.logger.debug("Calling ADK-TS sampling handler");
 
-			// Call the ADK handler
+			// Call the ADK-TS handler
 			const adkResponse = await this.samplingHandler(adkRequest);
 
-			this.logger.debug("Converting ADK response to MCP format");
+			this.logger.debug("Converting ADK-TS response to MCP format");
 
-			// Convert ADK response to MCP format - pass model information
+			// Convert ADK-TS response to MCP format - pass model information
 			const mcpResponse = this.convertADKResponseToMcp(
 				adkResponse,
 				requestModel,
@@ -141,7 +141,7 @@ export class McpSamplingHandler {
 	}
 
 	/**
-	 * Convert MCP messages to ADK Content format
+	 * Convert MCP messages to ADK-TS Content format
 	 */
 	private convertMcpMessagesToADK(
 		mcpMessages: McpSamplingRequest["params"]["messages"],
@@ -157,7 +157,7 @@ export class McpSamplingHandler {
 			});
 		}
 
-		// Convert each MCP message to ADK Content format
+		// Convert each MCP message to ADK-TS Content format
 		const transformedMessages = mcpMessages.map((mcpMessage) =>
 			this.convertSingleMcpMessageToADK(mcpMessage),
 		);
@@ -168,12 +168,12 @@ export class McpSamplingHandler {
 	}
 
 	/**
-	 * Convert a single MCP message to ADK Content format
+	 * Convert a single MCP message to ADK-TS Content format
 	 */
 	private convertSingleMcpMessageToADK(
 		mcpMessage: McpSamplingRequest["params"]["messages"][0],
 	): Content {
-		// Map MCP role to ADK role - MCP only supports "user" and "assistant"
+		// Map MCP role to ADK-TS role - MCP only supports "user" and "assistant"
 		const adkRole = mcpMessage.role === "assistant" ? "model" : "user";
 
 		// Convert content based on type
@@ -192,7 +192,7 @@ export class McpSamplingHandler {
 	}
 
 	/**
-	 * Convert MCP message content to ADK parts format
+	 * Convert MCP message content to ADK-TS parts format
 	 */
 	private convertMcpContentToADKParts(
 		mcpContent: McpSamplingRequest["params"]["messages"][0]["content"],
@@ -270,7 +270,7 @@ export class McpSamplingHandler {
 	}
 
 	/**
-	 * Convert ADK response to MCP response format
+	 * Convert ADK-TS response to MCP response format
 	 */
 	private convertADKResponseToMcp(
 		adkResponse: string | LlmResponse,
@@ -300,7 +300,7 @@ export class McpSamplingHandler {
 		// Create MCP response - include required model field
 		const mcpResponse: McpSamplingResponse = {
 			model: model, // Use the model from the request
-			role: "assistant", // ADK responses are always from assistant
+			role: "assistant", // ADK-TS responses are always from assistant
 			content: {
 				type: "text",
 				text: responseText,
@@ -313,11 +313,11 @@ export class McpSamplingHandler {
 	}
 
 	/**
-	 * Update the ADK handler
+	 * Update the ADK-TS handler
 	 */
 	updateHandler(handler: SamplingHandler): void {
 		this.samplingHandler = handler;
-		this.logger.debug("ADK sampling handler updated");
+		this.logger.debug("ADK-TS sampling handler updated");
 	}
 }
 
@@ -325,7 +325,7 @@ export class McpSamplingHandler {
  * Helper function to create a sampling handler with proper TypeScript types.
  *
  * @param handler - Function that handles sampling requests
- * @returns Properly typed ADK sampling handler
+ * @returns Properly typed ADK-TS sampling handler
  *
  * @example
  * ```typescript

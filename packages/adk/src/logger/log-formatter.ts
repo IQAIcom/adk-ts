@@ -2,7 +2,7 @@ import type { Content, Part, FunctionCall } from "@google/genai";
 import type { LlmResponse } from "../models/llm-response";
 
 /**
- * LogFormatter provides utility methods for formatting ADK objects for logging.
+ * LogFormatter provides utility methods for formatting ADK-TS objects for logging.
  * This class encapsulates all log formatting logic for consistent and type-safe
  * representation of LLM-related data structures.
  */

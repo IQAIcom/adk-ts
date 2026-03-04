@@ -1,4 +1,4 @@
-# ADK Telemetry: GenAI Semantic Conventions Alignment
+# ADK-TS Telemetry: GenAI Semantic Conventions Alignment
 
 This document captures how our tracing currently maps to OpenTelemetry GenAI semantic conventions (v1.38.0, development status) and what to change to stay aligned. It is intentionally concise and actionable.
 
@@ -33,7 +33,7 @@ Reference files:
 | `SEMCONV.GEN_AI_CONTENT_COMPLETION` | `gen_ai.content.completion` | **Non-standard**. Spec uses `gen_ai.output.messages`.                                        |
 | `OPERATIONS.CALL_LLM`               | `call_llm`                  | **Unused**. Tracing uses `chat`; spec uses `chat`, `text_completion`, or `generate_content`. |
 
-Custom ADK operations (`transfer_agent`, `execute_callback`, `search_memory`, `insert_memory`, `execute_plugin`) are fine as framework-specific extensions, but should be documented as non-standard.
+Custom ADK-TS operations (`transfer_agent`, `execute_callback`, `search_memory`, `insert_memory`, `execute_plugin`) are fine as framework-specific extensions, but should be documented as non-standard.
 
 ---
 

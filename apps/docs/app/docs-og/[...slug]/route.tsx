@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- ImageResponse requires plain img tags, not next/image */
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 import { source } from "@/lib/source";
@@ -71,10 +72,9 @@ export async function GET(
 							gap: "24px",
 						}}
 					>
-						{/* biome-ignore lint/performance/noImgElement: ImageResponse requires plain img tags */}
 						<img
 							src={`${baseUrl}/adk.png`}
-							alt="ADK Logo"
+							alt="ADK-TS Logo"
 							width={210}
 							height={180}
 							style={{
@@ -97,16 +97,15 @@ export async function GET(
 							lineHeight: 1.1,
 						}}
 					>
-						<span>Agent Development Kit</span>
+						<span>ADK-TS</span>
 						<span
 							style={{
-								background: "#3b82f6",
-								padding: "6px 12px",
-								width: "256px",
-								transform: "rotate(-6deg) translateY(-65px) translateX(80px)",
+								fontSize: "22px",
+								color: "#FF5BAA",
+								fontWeight: "500",
 							}}
 						>
-							TypeScript
+							The TypeScript-Native AI Agent Framework
 						</span>
 					</div>
 				</div>
@@ -171,7 +170,6 @@ export async function GET(
 				}}
 			>
 				<span>Powered by</span>
-				{/** biome-ignore lint/performance/noImgElement: ImageResponse requires plain img tags */}
 				<img
 					src={`${baseUrl}/iqai.png`}
 					alt="IQ Logo"

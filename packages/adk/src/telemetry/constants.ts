@@ -1,6 +1,6 @@
 /**
  * Semantic Conventions and Constants
- * OpenTelemetry semantic conventions for ADK telemetry
+ * OpenTelemetry semantic conventions for ADK-TS telemetry
  */
 
 /**
@@ -98,7 +98,7 @@ export const SEMCONV = {
 
 /**
  * ADK-specific attribute namespace
- * Custom attributes for IQAI ADK framework
+ * Custom attributes for IQAI ADK-TS framework
  */
 export const ADK_ATTRS = {
 	// ============================================
@@ -196,7 +196,7 @@ export const OPERATIONS = {
 
 	// ============================================
 	// ADK-specific operations (framework extensions)
-	// These are non-standard but useful for the ADK framework
+	// These are non-standard but useful for the ADK-TS framework
 	// ============================================
 	TRANSFER_AGENT: "transfer_agent", // Multi-agent transfer
 	EXECUTE_CALLBACK: "execute_callback", // Callback execution

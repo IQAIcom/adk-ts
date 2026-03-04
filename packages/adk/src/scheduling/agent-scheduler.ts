@@ -68,7 +68,7 @@ interface JobState {
 }
 
 /**
- * AgentScheduler - Manages scheduled execution of ADK agents.
+ * AgentScheduler - Manages scheduled execution of ADK-TS agents.
  *
  * Provides cron-based and interval-based scheduling for agent runs with
  * support for multiple concurrent schedules, execution tracking, and

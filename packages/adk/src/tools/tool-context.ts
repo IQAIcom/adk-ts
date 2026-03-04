@@ -17,7 +17,7 @@ export class ToolContext extends CallbackContext {
 	/**
 	 * The function call id of the current tool call. This id was
 	 * returned in the function call event from LLM to identify a function call.
-	 * If LLM didn't return this id, ADK will assign one to it. This id is used
+	 * If LLM didn't return this id, ADK-TS will assign one to it. This id is used
 	 * to map function call response to the original function call.
 	 */
 	functionCallId?: string;

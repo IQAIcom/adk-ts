@@ -1,13 +1,13 @@
 {
 	"name": "@iqai/adk-examples",
 	"version": "0.5.0",
-	"description": "Examples for using the ADK-TS(Agent Development Kit for Typescript) by IQAI",
+	"description": "Examples for building AI agents in TypeScript with ADK-TS by IQ AI",
 	"scripts": {
 		"start": "tsx ./src/index.ts",
 		"dev": "tsx ./src/index.ts"
 	},
 	"private": true,
-	"author": "IQAI",
+	"author": "IQ AI",
 	"license": "MIT",
 	"dependencies": {
 		"@ai-sdk/google": "^2.0.13",

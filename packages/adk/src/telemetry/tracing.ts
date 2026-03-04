@@ -1,6 +1,6 @@
 /**
  * Tracing Module
- * OpenTelemetry tracing utilities for ADK operations
+ * OpenTelemetry tracing utilities for ADK-TS operations
  */
 
 import { context, type Span, type Tracer, trace } from "@opentelemetry/api";
@@ -22,7 +22,7 @@ import {
 } from "./utils";
 
 /**
- * Tracing service for ADK operations
+ * Tracing service for ADK-TS operations
  */
 export class TracingService {
 	private tracer: Tracer | null = null;
@@ -312,7 +312,7 @@ export class TracingService {
 			[ADK_ATTRS.EVENT_ID]: eventId,
 			[ADK_ATTRS.ENVIRONMENT]: getEnvironment() || "",
 
-			// Content attributes (only if capture is enabled) - ADK namespace for backward compat
+			// Content attributes (only if capture is enabled) - ADK-TS namespace for backward compat
 			[ADK_ATTRS.LLM_REQUEST]: captureContent
 				? safeJsonStringify(llmRequestData)
 				: "{}",

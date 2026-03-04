@@ -25,9 +25,9 @@
 		"agent",
 		"mcp",
 		"adk-ts",
-		"IQAI"
+		"IQ AI"
 	],
-	"author": "IQAI",
+	"author": "IQ AI",
 	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/IQAICOM/adk-agent-starter/issues"

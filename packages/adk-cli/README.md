@@ -2,7 +2,7 @@
    <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
    <br/>
    <h1>@iqai/adk-cli</h1>
-   <b>Contributing guide for the ADK CLI package</b>
+   <b>Contributing guide for the ADK-TS CLI package</b>
   <br/>
    <i>Setup • Development • Contributing • Architecture</i>
 
@@ -26,15 +26,15 @@
 
 ## 📖 About
 
-This README is specifically for contributors to the ADK CLI package. The CLI provides a complete toolkit for developing, testing, and deploying AI agents with features like project scaffolding, interactive testing interfaces, and intelligent agent discovery.
+This README is specifically for contributors to the ADK-TS CLI package. The CLI provides a complete toolkit for developing, testing, and deploying AI agents with features like project scaffolding, interactive testing interfaces, and intelligent agent discovery.
 
-If you're looking to **use** the ADK CLI, visit the [live documentation](https://adk.iqai.com/docs/cli). This guide is for those who want to **contribute** to improving the CLI itself.
+If you're looking to **use** the ADK-TS CLI, visit the [live documentation](https://adk.iqai.com/docs/cli). This guide is for those who want to **contribute** to improving the CLI itself.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-Before contributing to the ADK CLI, ensure you have:
+Before contributing to the ADK-TS CLI, ensure you have:
 
 - [Node.js](https://nodejs.org) (version 22 or later)
 - [pnpm](https://pnpm.io) (recommended package manager)
@@ -101,7 +101,7 @@ pnpm build
 
 ## ⚙️ Architecture Overview
 
-The ADK CLI is built with:
+The ADK-TS CLI is built with:
 
 - **[NestJS](https://nestjs.com)** - Modular framework for building scalable applications
 - **[Commander.js](https://github.com/tj/commander.js)** - Command-line interface framework (via NestJS CLI)
@@ -310,7 +310,7 @@ Tests are organized alongside source files:
 
 ## 📚 Resources for Contributors
 
-### ADK Framework Resources
+### ADK-TS Framework Resources
 
 - **[ADK-TS Repository](https://github.com/IQAIcom/adk-ts)** - Main framework repository
 - **[Live Documentation](https://adk.iqai.com)** - Published documentation site
@@ -355,4 +355,4 @@ adk serve --verbose
 
 ---
 
-**Ready to contribute?** Start by exploring the codebase, running the tests, and trying out the existing commands. Your contributions help make the ADK CLI more powerful and user-friendly for developers worldwide!
+**Ready to contribute?** Start by exploring the codebase, running the tests, and trying out the existing commands. Your contributions help make the ADK-TS CLI more powerful and user-friendly for developers worldwide!

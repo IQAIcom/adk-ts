@@ -117,7 +117,7 @@ async function main() {
 	}
 
 	// Interactive mode
-	p.intro("ADK Examples Runner");
+	p.intro("ADK-TS Examples Runner");
 	console.log("Select an example to run:\n");
 
 	const selectedExample = await p.select({

@@ -4,7 +4,7 @@ import { getRootAgent } from "./agents/agent";
 dotenv.config();
 
 /**
- * Main function demonstrating basic ADK agent usage.
+ * Main function demonstrating basic ADK-TS agent usage.
  *
  * Creates a root agent with sub-agents for weather and jokes,
  * then processes a series of sample questions to showcase

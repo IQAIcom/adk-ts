@@ -1,6 +1,6 @@
 /**
  * Metrics Module
- * OpenTelemetry metrics for ADK operations
+ * OpenTelemetry metrics for ADK-TS operations
  */
 
 import type { Counter, Histogram, MetricOptions } from "@opentelemetry/api";
@@ -13,7 +13,7 @@ import type {
 } from "./types";
 
 /**
- * Metrics service for recording ADK operations
+ * Metrics service for recording ADK-TS operations
  */
 export class MetricsService {
 	private meter: Meter | null = null;

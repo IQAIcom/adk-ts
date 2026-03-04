@@ -1,8 +1,8 @@
 <div align="center">
   <img src="https://files.catbox.moe/vumztw.png" alt="ADK-TS Logo" width="80" />
   <br/>
-  <h1>ADK API Documentation</h1>
-  <b>Complete documentation for ADK TypeScript, built using TypeDoc with comprehensive API references and guides</b>
+  <h1>ADK-TS API Documentation</h1>
+  <b>Complete API reference for ADK-TS, built using TypeDoc with comprehensive API references and guides</b>
   <br/>
   <i>Auto-generated • Type-safe • Developer-friendly</i>
   
@@ -26,7 +26,7 @@
 
 ## 📖 About
 
-This directory contains the complete documentation for ADK TypeScript, built using TypeDoc for automatic API reference generation. The documentation provides comprehensive coverage of all ADK features, including API references, guides, and examples.
+This directory contains the complete API reference for ADK-TS, built using TypeDoc for automatic API reference generation. The documentation provides comprehensive coverage of all ADK-TS features, including API references, guides, and examples.
 
 ## 📁 Structure
 
@@ -116,7 +116,7 @@ Key settings:
 - **`entryPoints`**: Main TypeScript files to document
 - **`out`**: Output directory (`./api`)
 - **`name`**: Documentation site title
-- **`readme`**: Uses ADK package README as main page
+- **`readme`**: Uses ADK-TS package README as main page
 - **`excludePrivate/excludeExternals`**: Controls visibility of APIs
 - **`githubPages`**: Optimized for GitHub Pages deployment
 - **`excludeReferences`**: Hides "Re-exports" to reduce clutter from barrel exports
@@ -136,7 +136,7 @@ Documentation is automatically built and deployed to GitHub Pages via GitHub Act
 
 The deployment workflow (`.github/workflows/docs.yml`):
 
-1. Triggers on changes to ADK source code or documentation files
+1. Triggers on changes to ADK-TS source code or documentation files
 2. Installs Node.js 20 and pnpm dependencies
 3. Builds the `@iqai/adk` package
 4. Generates TypeDoc documentation in `apps/adk-api-docs/api`
@@ -182,5 +182,5 @@ TypeDoc provides several built-in themes and supports custom styling:
 ## 📚 Resources
 
 - [TypeDoc Documentation](https://typedoc.org/) - Complete TypeDoc reference
-- [ADK Live Documentation](https://adk.iqai.com/docs) - Published documentation site
+- [ADK-TS Documentation](https://adk.iqai.com/docs) - Published documentation site
 - [TSDoc Reference](https://tsdoc.org/) - Documentation comment standards

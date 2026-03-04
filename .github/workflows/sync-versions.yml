@@ -1,4 +1,4 @@
-name: Sync ADK Versions
+name: Sync ADK-TS Versions
 
 on:
   workflow_dispatch:
@@ -48,5 +48,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add -A
-          git commit -m "chore: sync ADK versions across examples and starters"
+          git commit -m "chore: sync ADK-TS versions across examples and starters"
           git push

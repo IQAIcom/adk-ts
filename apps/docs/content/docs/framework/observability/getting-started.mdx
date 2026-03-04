@@ -93,7 +93,7 @@ Initialize the telemetry service before any agent operations:
     ```
 
     <Callout type="tip" title="Using .env Files">
-      For local development, you can also set these variables in a `.env` file in your project root. The ADK automatically loads `.env` files using `dotenv`.
+      For local development, you can also set these variables in a `.env` file in your project root. ADK-TS automatically loads `.env` files using `dotenv`.
     </Callout>
 
   </Tab>
@@ -149,7 +149,7 @@ docker run -d \
   jaegertracing/all-in-one:latest
 ```
 
-Your ADK app will send traces to `http://localhost:4318/v1/traces`, and you can view them at `http://localhost:16686`.
+Your ADK-TS app will send traces to `http://localhost:4318/v1/traces`, and you can view them at `http://localhost:16686`.
 
 ### Running with OpenTelemetry Collector
 

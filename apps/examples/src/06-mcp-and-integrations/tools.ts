@@ -21,7 +21,7 @@ export async function getGreetingTools(samplingHandler: SamplingHandler) {
 export async function getCoingeckoTools() {
 	/**
 	 * McpCoinGecko() is a built-in convenience wrapper around McpToolset.
-	 * ADK ships similar wrappers for many popular services so you don't have to
+	 * ADK-TS ships similar wrappers for many popular services so you don't have to
 	 * write the verbose transport config by hand. See all available wrappers at
 	 * https://adk.iqai.com/docs/mcp-servers
 	 * */

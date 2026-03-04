@@ -8,7 +8,7 @@ dotenv.config();
 /**
  * Telegram Bot with AI Agent
  *
- * A Telegram bot powered by ADK that can engage with users in servers and direct messages.
+ * A Telegram bot powered by ADK-TS that can engage with users in servers and direct messages.
  * Customize the persona and instructions below to create your own unique bot.
  */
 

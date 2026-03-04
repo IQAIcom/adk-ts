@@ -155,8 +155,8 @@ export function ConnectionStatus({ apiUrl }: ConnectionStatusProps) {
 											/>
 										</FormControl>
 										<FormDescription>
-											URL of the running ADK server this Web UI connects to.
-											Usually http://localhost:8042 when launched via the ADK
+											URL of the running ADK-TS server this Web UI connects to.
+											Usually http://localhost:8042 when launched via the ADK-TS
 											CLI.
 										</FormDescription>
 										<FormMessage />

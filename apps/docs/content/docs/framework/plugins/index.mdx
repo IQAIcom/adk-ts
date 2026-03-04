@@ -19,13 +19,13 @@ ADK-TS plugins extend your agent's capabilities with specialized functionality t
 
 ## How do Plugins work?
 
-An ADK Plugin extends the `BasePlugin` class and contains one or more callback methods, indicating where in the agent lifecycle the Plugin should be executed. You integrate Plugins into an agent by registering them in your agent's Runner class. For more information on how and where you can trigger Plugins in your agent application, see Plugin callback hooks.
+An ADK-TS Plugin extends the `BasePlugin` class and contains one or more callback methods, indicating where in the agent lifecycle the Plugin should be executed. You integrate Plugins into an agent by registering them in your agent's Runner class. For more information on how and where you can trigger Plugins in your agent application, see Plugin callback hooks.
 
-Plugin functionality builds on [Callbacks](/docs/framework/callbacks), which is a key design element of the ADK's extensible architecture. While a typical Agent Callback is configured on a single agent, a single tool for a specific task, a Plugin is registered once on the `Runner` and its callbacks apply globally to every agent, tool, and LLM call managed by that runner. Plugins let you package related callback functions together to be used across a workflow. This makes Plugins an ideal solution for implementing features that cut across your entire agent application.
+Plugin functionality builds on [Callbacks](/docs/framework/callbacks), which is a key design element of the ADK-TS extensible architecture. While a typical Agent Callback is configured on a single agent, a single tool for a specific task, a Plugin is registered once on the `Runner` and its callbacks apply globally to every agent, tool, and LLM call managed by that runner. Plugins let you package related callback functions together to be used across a workflow. This makes Plugins an ideal solution for implementing features that cut across your entire agent application.
 
 ## Prebuilt Plugins
 
-ADK includes several plugins that you can add to your agent workflows immediately:
+ADK-TS includes several plugins that you can add to your agent workflows immediately:
 
 ### Core Plugins
 

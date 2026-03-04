@@ -31,7 +31,7 @@ export class WebCommand extends CommandRunner {
 		const useHostedMode = !!options?.webUrl;
 		const webUrl = options?.webUrl ?? HOSTED_WEB_URL;
 
-		console.log(chalk.blue("🌐 Starting ADK Web Interface..."));
+		console.log(chalk.blue("🌐 Starting ADK-TS Web Interface..."));
 
 		// Start the server with web serving enabled in bundled mode
 		const server = await startHttpServer({

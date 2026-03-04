@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 By using AgentKit's MCP extension, you can unlock blockchain capabilities for your ADK-TS agents. This integration allows you to leverage Coinbase's on-chain tools and services seamlessly within your agent architecture.
 
-**How it works:** AgentKit exposes its action providers as MCP tools, which are then converted into ADK `BaseTool` instances that your agents can use directly.
+**How it works:** AgentKit exposes its action providers as MCP tools, which are then converted into ADK-TS `BaseTool` instances that your agents can use directly.
 
 <Callout type="success" title="Demo Project Available">
 
@@ -98,7 +98,7 @@ for more options.
 The conversion process has two steps:
 
 1. Get MCP tools from AgentKit using `getMcpTools()`
-2. Convert each MCP tool to an ADK `BaseTool` using `convertMcpToolToBaseTool()`
+2. Convert each MCP tool to an ADK-TS `BaseTool` using `convertMcpToolToBaseTool()`
 
 Create a helper function to handle this conversion:
 
@@ -115,7 +115,7 @@ export async function getAgentKitTools(): Promise<BaseTool[]> {
   // Get MCP tools and their handler from AgentKit
   const { tools, toolHandler } = await getMcpTools(agentKit);
 
-  // Convert each MCP tool to an ADK BaseTool
+  // Convert each MCP tool to an ADK-TS BaseTool
   const baseTools = await Promise.all(
     tools.map(async mcpTool =>
       convertMcpToolToBaseTool({

@@ -26,7 +26,7 @@
 
 ## 🌟 Overview
 
-`@iqai/adk` is the core TypeScript library for the Agent Development Kit, providing the foundational tools and abstractions to build sophisticated AI agents. It enables seamless integration with multiple Large Language Models (LLMs), advanced tool usage, and persistent memory capabilities.
+`@iqai/adk` is the core library for ADK-TS — the TypeScript-native AI agent framework. It provides the foundational tools and abstractions to build sophisticated AI agents in TypeScript, with seamless integration across multiple Large Language Models (LLMs), advanced tool usage, and persistent memory capabilities.
 
 ## 🚀 Key Features
 
@@ -169,7 +169,7 @@ async function createWorkflowAgent() {
 - **Automatic Management**: Handles session and runner creation automatically
 - **Quick Execution**: Built-in `ask()` method for immediate responses
 - **Flexible**: Supports all agent types (LLM, Sequential, Parallel, Loop, LangGraph)
-- **Backward Compatible**: Works alongside existing ADK patterns
+- **Backward Compatible**: Works alongside existing ADK-TS patterns
 
 ## 🛠️ Using Tools with an Agent
 

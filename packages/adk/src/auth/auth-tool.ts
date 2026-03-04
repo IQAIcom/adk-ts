@@ -20,7 +20,7 @@ export class EnhancedAuthConfig {
 
 	/**
 	 * Exchanged auth credential after processing
-	 * Filled by ADK and client working together
+	 * Filled by ADK-TS and client working together
 	 */
 	exchangedAuthCredential?: AuthCredential;
 

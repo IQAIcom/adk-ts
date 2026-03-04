@@ -3,7 +3,7 @@ import type { Context } from "hono";
 /**
  * Root endpoint handler providing API information.
  *
- * Returns basic information about the ADK Hono server including
+ * Returns basic information about the ADK-TS Hono server including
  * available endpoints and their descriptions for API discovery.
  *
  * @param c - Hono context object
@@ -11,7 +11,7 @@ import type { Context } from "hono";
  */
 export const indexHandler = (c: Context) => {
 	return c.json({
-		message: "🤖 ADK Hono Server is running!",
+		message: "🤖 ADK-TS Hono Server is running!",
 		endpoints: {
 			ask: "POST /ask - Ask the AI agent a question",
 			health: "GET /health - Health check",

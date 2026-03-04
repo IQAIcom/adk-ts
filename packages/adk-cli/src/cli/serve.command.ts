@@ -32,7 +32,7 @@ export class ServeCommand extends CommandRunner {
 
 		if (!quiet) {
 			console.log(
-				chalk.blue(`🚀 ADK Server starting on http://${host}:${port}`),
+				chalk.blue(`🚀 ADK-TS Server starting on http://${host}:${port}`),
 			);
 		}
 

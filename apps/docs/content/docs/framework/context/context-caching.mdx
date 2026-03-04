@@ -1,13 +1,13 @@
 ---
 title: Context Caching
-description: A guide explaining how to configure and use context caching in ADK with Gemini and Anthropic models to reuse large prompts efficiently, reducing latency and token costs.
+description: A guide explaining how to configure and use context caching in ADK-TS with Gemini and Anthropic models to reuse large prompts efficiently, reducing latency and token costs.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
 When working with agents to complete tasks, you may want to reuse extended instructions or large sets of data across multiple agent requests to a generative AI model. Resending this data for each agent request is slow, inefficient, and can be expensive. Using context caching features in generative AI models can significantly speed up responses and lower the number of tokens sent to the model for each request.
 
-The ADK Context Caching feature allows you to cache request data with generative AI models that support it, including Gemini 2.0+ and Anthropic Claude models. This document explains how to configure and use this feature.
+The ADK-TS Context Caching feature allows you to cache request data with generative AI models that support it, including Gemini 2.0+ and Anthropic Claude models. This document explains how to configure and use this feature.
 
 <Callout type="info">
   Context caching is supported for Gemini 2.0+ and Anthropic models. Ensure the
@@ -16,7 +16,7 @@ The ADK Context Caching feature allows you to cache request data with generative
 
 ## Configure context caching
 
-You configure the context caching feature at the ADK App root level, which wraps your agent. Use the `ContextCacheConfig` class to configure these settings, as shown in the following code sample:
+You configure the context caching feature at the ADK-TS App root level, which wraps your agent. Use the `ContextCacheConfig` class to configure these settings, as shown in the following code sample:
 
 ```ts
 import { ContextCacheConfig } from "@iqai/adk";
@@ -94,12 +94,12 @@ The `ContextCacheConfig` class exposes the following options. These settings app
 
 ## Anthropic caching behavior
 
-Anthropic models currently support two specific cache durations: 5 minutes and 1 hour. ADK maps your `ttlSeconds` configuration to these supported values to ensure predictable behavior:
+Anthropic models currently support two specific cache durations: 5 minutes and 1 hour. ADK-TS maps your `ttlSeconds` configuration to these supported values to ensure predictable behavior:
 
 - **Short-term cache:** usage with `ttlSeconds` up to 30 minutes (1800s) maps to a **5-minute** ephemeral cache.
 - **Long-term cache:** usage with `ttlSeconds` greater than 30 minutes maps to a **1-hour** ephemeral cache.
 
-This mapping aligns with Anthropic's ephemeral cache design, ensuring your requests are compliant with provider constraints while maintaining a simple configuration interface in ADK.
+This mapping aligns with Anthropic's ephemeral cache design, ensuring your requests are compliant with provider constraints while maintaining a simple configuration interface in ADK-TS.
 
 ### Example: Anthropic caching
 

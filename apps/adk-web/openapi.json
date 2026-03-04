@@ -479,8 +479,8 @@
 		}
 	},
 	"info": {
-		"title": "ADK HTTP API",
-		"description": "REST endpoints for managing and interacting with ADK agents",
+		"title": "ADK-TS HTTP API",
+		"description": "REST endpoints for managing and interacting with ADK-TS agents",
 		"version": "1.0.0",
 		"contact": {}
 	},

@@ -99,7 +99,7 @@ async function detectAvailablePackageManagers(): Promise<PackageManager[]> {
 
 @Command({
 	name: "new",
-	description: "Create a new ADK project",
+	description: "Create a new ADK-TS project",
 	arguments: "[project-name]",
 })
 export class NewCommand extends CommandRunner {
@@ -245,7 +245,7 @@ export class NewCommand extends CommandRunner {
 		}
 
 		const shouldSetupMcpDocs = await confirm({
-			message: "Set up ADK docs MCP server for your IDE?",
+			message: "Set up ADK-TS docs MCP server for your IDE?",
 			initialValue: true,
 		});
 		if (typeof shouldSetupMcpDocs === "symbol") {

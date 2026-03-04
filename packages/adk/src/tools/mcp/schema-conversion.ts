@@ -7,7 +7,7 @@ import type {
 import type { BaseTool } from "../base/base-tool";
 
 /**
- * Converts an ADK-style BaseTool to an MCP tool format
+ * Converts an ADK-TS-style BaseTool to an MCP tool format
  * Similar to Python's adk_to_mcp_tool_type function
  */
 export function adkToMcpToolType(tool: BaseTool): McpTool {
@@ -43,7 +43,7 @@ export function declarationToJsonSchema(
 }
 
 /**
- * Converts MCP JSONSchema to ADK's FunctionDeclaration format
+ * Converts MCP JSONSchema to ADK-TS FunctionDeclaration format
  * Similar to handling in McpToolAdapter's getDeclaration
  */
 export function jsonSchemaToDeclaration(

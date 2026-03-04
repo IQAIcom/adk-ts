@@ -213,7 +213,7 @@ export interface StartedHttpServer {
 }
 
 /**
- * Start a Nest Express HTTP server with the ADK controllers and providers.
+ * Start a Nest Express HTTP server with the ADK-TS controllers and providers.
  * Mirrors previous Hono server endpoints:
  * - GET /health
  * - /api/agents ...
@@ -258,9 +258,9 @@ export async function startHttpServer(
 		config.swagger ?? env.NODE_ENV !== environmentEnum.enum.production;
 	if (enableSwagger) {
 		const builder = new DocumentBuilder()
-			.setTitle("ADK HTTP API")
+			.setTitle("ADK-TS HTTP API")
 			.setDescription(
-				"REST endpoints for managing and interacting with ADK agents",
+				"REST endpoints for managing and interacting with ADK-TS agents",
 			)
 			.setVersion("1.0.0")
 			.addTag("agents")
@@ -275,7 +275,7 @@ export async function startHttpServer(
 			deepScanRoutes: true,
 		});
 		SwaggerModule.setup("docs", app, document, {
-			customSiteTitle: "ADK API Docs",
+			customSiteTitle: "ADK-TS API Docs",
 			jsonDocumentUrl: "/openapi.json",
 		});
 		if (!config.quiet && debug)

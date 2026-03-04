@@ -1,12 +1,12 @@
 {
 	"name": "adk-api-docs",
 	"version": "0.1.0",
-	"description": "API documentation for ADK TypeScript package",
+	"description": "API documentation for ADK-TS, the TypeScript-native AI agent framework. Browse detailed docs on agent configuration, tools, sessions, and more.",
 	"private": true,
 	"scripts": {
-		"build": "typedoc --options typedoc.json",
+		"build": "typedoc --options typedoc.json && cp -r static/* api/ && node scripts/inject-meta.mjs",
 		"dev": "pnpm run docs:build && pnpm run docs:serve",
-		"docs:build": "typedoc --options typedoc.json",
+		"docs:build": "typedoc --options typedoc.json && cp -r static/* api/ && node scripts/inject-meta.mjs",
 		"docs:serve": "npx http-server api -p 4000 -o",
 		"docs:clean": "rimraf ./api"
 	},

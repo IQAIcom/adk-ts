@@ -191,7 +191,7 @@ export abstract class BaseLlm {
 				true, // retry may be recommended for transient model errors
 			);
 
-			this.logger.error("❌ ADK LLM Error:", {
+			this.logger.error("❌ ADK-TS LLM Error:", {
 				model: this.model,
 				error: (error as Error).message,
 			});

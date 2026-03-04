@@ -1,6 +1,6 @@
 # @iqai/mcp-docs
 
-A Model Context Protocol (MCP) server that provides AI assistants with direct access to ADK-TS (Agent Development Kit for TypeScript) complete knowledge base. Documentation is fetched directly from the live site at [adk.iqai.com](https://adk.iqai.com) and includes:
+A Model Context Protocol (MCP) server that provides AI assistants with direct access to the complete ADK-TS knowledge base. Documentation is fetched directly from the live site at [adk.iqai.com](https://adk.iqai.com) and includes:
 
 - 📚 **Comprehensive documentation** with MDX support
 - 💻 **Code examples** for common patterns
@@ -68,9 +68,9 @@ claude mcp add adk-docs -- npx -y @iqai/mcp-docs
 ```typescript
 import { AgentBuilder, McpToolset } from "@iqai/adk";
 
-// Create MCP toolset for ADK docs
+// Create MCP toolset for ADK-TS docs
 const toolset = new McpToolset({
-  name: "ADK Documentation",
+  name: "ADK-TS Documentation",
   description: "Access ADK-TS documentation and examples",
   transport: {
     mode: "stdio",

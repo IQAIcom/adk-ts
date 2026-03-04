@@ -302,14 +302,14 @@ export class McpClientService {
 	}
 
 	/**
-	 * Set a new ADK sampling handler
+	 * Set a new ADK-TS sampling handler
 	 */
 	setSamplingHandler(handler: SamplingHandler): void {
 		this.mcpSamplingHandler = new McpSamplingHandler(handler);
 
 		if (this.client) {
 			this.setupSamplingHandler(this.client).catch((error) => {
-				this.logger.error("Failed to update ADK sampling handler:", error);
+				this.logger.error("Failed to update ADK-TS sampling handler:", error);
 			});
 		}
 	}

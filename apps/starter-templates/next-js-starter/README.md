@@ -90,7 +90,7 @@ pnpm start
 ```text
 src/
 ├── app/                    # Next.js routes, layouts, and pages
-├── agents/                 # ADK agent orchestration layer
+├── agents/                 # ADK-TS agent orchestration layer
 │   ├── index.ts            # Root agent entry
 │   └── sub-agents/
 │       ├── weather-agent/  # Weather specialist

@@ -123,7 +123,7 @@ npx @iqai/adk-cli web
 - [ADK-TS CLI Documentation](https://adk.iqai.com/docs/cli)
 - [GitHub Repository](https://github.com/IQAICOM/adk-ts)
 - [ADK-TS Sample Projects](https://github.com/IQAIcom/adk-ts-samples)
-- [MCP Tools Docs](https://adk.iqai.com/docs/framework/tools/mcp-tools) - integration patterns for MCP with ADK.
+- [MCP Tools Docs](https://adk.iqai.com/docs/framework/tools/mcp-tools) - integration patterns for MCP with ADK-TS.
 
 ## 🤝 Contributing
 

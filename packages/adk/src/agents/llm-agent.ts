@@ -429,7 +429,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 
 	/**
 	 * The resolved model field as BaseLLM
-	 * This method is only for use by Agent Development Kit
+	 * This method is only for use by ADK-TS
 	 */
 	get canonicalModel(): BaseLlm {
 		// For string model name
@@ -461,7 +461,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 
 	/**
 	 * The resolved instruction field to construct instruction for this agent
-	 * This method is only for use by Agent Development Kit
+	 * This method is only for use by ADK-TS
 	 */
 	async canonicalInstruction(ctx: ReadonlyContext): Promise<[string, boolean]> {
 		if (typeof this.instruction === "string") {
@@ -474,7 +474,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 
 	/**
 	 * The resolved global_instruction field to construct global instruction
-	 * This method is only for use by Agent Development Kit
+	 * This method is only for use by ADK-TS
 	 */
 	async canonicalGlobalInstruction(
 		ctx: ReadonlyContext,
@@ -489,7 +489,7 @@ export class LlmAgent<T extends BaseLlm = BaseLlm> extends BaseAgent {
 
 	/**
 	 * The resolved tools field as a list of BaseTool based on the context
-	 * This method is only for use by Agent Development Kit
+	 * This method is only for use by ADK-TS
 	 */
 	async canonicalTools(_ctx?: ReadonlyContext): Promise<BaseTool[]> {
 		const resolvedTools: BaseTool[] = [];
