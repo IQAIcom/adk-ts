@@ -174,3 +174,7 @@ Provide a summary of:
 2. Sections that were in sync (no changes needed)
 3. Sections that were updated (with before/after diff)
 4. Any template-specific anomalies found
+
+## Output File
+
+After completing the sync, write the full summary report to `starter-sync-report.md` in the repository root. This file should contain the complete sync results, so it can be reviewed and shared.

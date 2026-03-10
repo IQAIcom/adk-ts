@@ -93,3 +93,7 @@ Organize findings as:
 ```
 
 Be thorough but avoid false positives. When in doubt about whether something is an issue, list it as a suggestion rather than an error.
+
+## Output File
+
+After compiling all findings, write the full report to `docs-audit-report.md` in the repository root. This file should contain the complete structured report with all findings, so it can be reviewed and shared.

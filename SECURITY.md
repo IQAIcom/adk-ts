@@ -6,7 +6,7 @@ We take the security seriously. If you believe you've found a security vulnerabi
 
 ### How to Report
 
-1. Go to the [Issues](https://github.com/IQAIcom/ADK-TS/issues) section of the repository
+1. Go to the [Issues](https://github.com/IQAIcom/adk-ts/issues) section of the repository
 2. Click "New Issue"
 3. Select "Security Vulnerability" (if available) or create a regular issue
 4. Add the label "security" to your issue
