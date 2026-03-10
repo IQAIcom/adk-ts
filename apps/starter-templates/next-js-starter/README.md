@@ -45,7 +45,7 @@ Use either approach:
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js >=22.0
 - pnpm
 - Google AI API key from [Google AI Studio](https://aistudio.google.com/api-keys)
 
@@ -68,7 +68,7 @@ pnpm install
 cp .env.example .env.local
 ```
 
-The `.env.example` file includes required and optional values, plus key URLs.
+Required and optional values are documented in `.env.example`.
 
 ### Step 4: Run in development
 
@@ -121,8 +121,10 @@ npx @iqai/adk-cli web
 
 - [ADK-TS Documentation](https://adk.iqai.com/)
 - [ADK-TS CLI Documentation](https://adk.iqai.com/docs/cli)
-- [GitHub Repository](https://github.com/IQAICOM/adk-ts)
+- [GitHub Repository](https://github.com/IQAIcom/adk-ts)
 - [ADK-TS Sample Projects](https://github.com/IQAIcom/adk-ts-samples)
+- [GitHub Discussions](https://github.com/IQAIcom/adk-ts/discussions)
+- [Telegram Community](https://t.me/+Z37x8uf6DLE3ZTQ8)
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 
 ## 🤝 Contributing
@@ -136,4 +138,4 @@ This [template](https://github.com/IQAIcom/adk-ts/tree/main/apps/starter-templat
 
 ---
 
-**🎉 Ready to build?** This template gives you everything you need to start building AI-powered web applications with Next.js and ADK-TS!
+**🎉 Ready to build?** This template gives you everything you need to start building AI-powered web applications with Next.js and ADK-TS.
