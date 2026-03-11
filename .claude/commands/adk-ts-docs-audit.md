@@ -68,7 +68,7 @@ Compare all starter template READMEs in `apps/starter-templates/*/README.md` for
 
 Search for potentially stale content in code examples:
 
-- Deprecated model names (e.g., `gpt-4-turbo`, `gpt-4o`, `gpt-3.5-turbo`, `gemini-pro`, `gemini-1.5-flash`)
+- Deprecated model names (e.g., `gpt-4-turbo`, `gpt-4o`, `gpt-3.5-turbo`, `gemini-pro`, `gemini-1.5-flash`, `gemini-1.5-pro`)
 - Old import patterns that may have changed
 - References to removed or renamed APIs
 
