@@ -48,7 +48,7 @@ Use either approach:
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js >=22.0
 - pnpm
 - Docker Desktop running locally
 - Google AI API key from [Google AI Studio](https://aistudio.google.com/api-keys)
@@ -74,7 +74,7 @@ pnpm install
 cp .env.example .env.development.local
 ```
 
-The `.env.example` file includes required and optional values, grouped by usage.
+Required and optional values are documented in `.env.example`.
 
 ### Step 4: Run locally
 
@@ -151,8 +151,10 @@ npx @iqai/adk-cli web
 
 - [ADK-TS Documentation](https://adk.iqai.com/)
 - [ADK-TS CLI Documentation](https://adk.iqai.com/docs/cli)
-- [GitHub Repository](https://github.com/IQAICOM/adk-ts)
+- [GitHub Repository](https://github.com/IQAIcom/adk-ts)
 - [ADK-TS Sample Projects](https://github.com/IQAIcom/adk-ts-samples)
+- [GitHub Discussions](https://github.com/IQAIcom/adk-ts/discussions)
+- [Telegram Community](https://t.me/+Z37x8uf6DLE3ZTQ8)
 - [NEAR Chain Signatures Docs](https://docs.near.org/abstraction/chain-signatures) - how cross-chain signing works.
 
 ## 🤝 Contributing

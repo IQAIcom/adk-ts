@@ -123,7 +123,7 @@ export function Hero() {
 									code={dedent`
                     const workflow = AgentBuilder
                       .asSequential([researchAgent, analysisAgent])
-                      .withTools([GoogleSearch, DataProcessor])
+                      .withTools([GoogleSearchTool, DataProcessor])
                       .withMemory(vectorMemoryService);
 
                     const result = await workflow.ask(

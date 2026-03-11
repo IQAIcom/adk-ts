@@ -441,7 +441,7 @@ This flexible design enables use cases from simple file generation to complex mu
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js >=22.0
 - pnpm package manager
 - TypeScript knowledge
 - Understanding of async/await and generators

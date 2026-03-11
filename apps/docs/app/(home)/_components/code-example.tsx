@@ -10,8 +10,8 @@ export function CodeExample() {
 						Build Agents in One Line
 					</h2>
 					<p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-						AgentBuilder's fluent interface eliminates boilerplate and lets you
-						focus on building intelligent agents.
+						AgentBuilder&apos;s fluent interface eliminates boilerplate and lets
+						you focus on building intelligent agents.
 					</p>
 				</div>
 
@@ -78,7 +78,7 @@ export function CodeExample() {
                     .withModel("gpt-4.1")
                     .withDescription("A helpful AI assistant")
                     .withInstruction("Provide concise responses.")
-                    .withTools(new GoogleSearch(), new HttpRequestTool())
+                    .withTools(new GoogleSearchTool(), new HttpRequestTool())
                     .build();
 
                   // Multi-agent workflow

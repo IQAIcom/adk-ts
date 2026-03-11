@@ -42,7 +42,7 @@ Use either approach:
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js >=22.0
 - pnpm
 - Google AI API key from [Google AI Studio](https://aistudio.google.com/api-keys)
 
@@ -111,8 +111,10 @@ npx @iqai/adk-cli web
 
 - [ADK-TS Documentation](https://adk.iqai.com/)
 - [ADK-TS CLI Documentation](https://adk.iqai.com/docs/cli)
-- [GitHub Repository](https://github.com/IQAICOM/adk-ts)
+- [GitHub Repository](https://github.com/IQAIcom/adk-ts)
 - [ADK-TS Sample Projects](https://github.com/IQAIcom/adk-ts-samples)
+- [GitHub Discussions](https://github.com/IQAIcom/adk-ts/discussions)
+- [Telegram Community](https://t.me/+Z37x8uf6DLE3ZTQ8)
 
 ## 🤝 Contributing
 
