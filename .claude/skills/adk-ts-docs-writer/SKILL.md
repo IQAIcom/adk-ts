@@ -139,7 +139,11 @@ Two patterns are supported:
 import { Steps } from "fumadocs-ui/components/steps";
 
 <Steps>
-  ### 1. First Step Content for step 1. ### 2. Second Step Content for step 2.
+  ### 1. First Step
+  Content for step 1.
+
+  ### 2. Second Step
+  Content for step 2.
 </Steps>;
 ```
 
