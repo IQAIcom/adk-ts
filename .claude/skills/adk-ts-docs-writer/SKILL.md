@@ -167,8 +167,16 @@ Used for: Tutorials, quickstarts, setup guides. Use Pattern A for simple linear 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 <Tabs items={["pnpm", "npm", "yarn"]}>
-  <Tab value="pnpm">```bash pnpm add @iqai/adk ```</Tab>
-  <Tab value="npm">```bash npm install @iqai/adk ```</Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @iqai/adk
+    ```
+  </Tab>
+  <Tab value="npm">
+    ```bash
+    npm install @iqai/adk
+    ```
+  </Tab>
 </Tabs>;
 ````
 
