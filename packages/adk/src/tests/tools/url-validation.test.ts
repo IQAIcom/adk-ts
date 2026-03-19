@@ -106,6 +106,27 @@ describe("validateUrlForFetch", () => {
 		expect(url.hostname).toBe("169.255.0.1");
 	});
 
+	it("blocks dword IP format (Node URL normalizes to dotted decimal)", () => {
+		// 2130706433 = 127.0.0.1, Node's URL parser normalizes it
+		expect(() => validateUrlForFetch("http://2130706433")).toThrow(
+			"private/internal IP",
+		);
+	});
+
+	it("blocks octal IP format", () => {
+		// 0177.0.0.1 = 127.0.0.1
+		expect(() => validateUrlForFetch("http://0177.0.0.1")).toThrow(
+			"private/internal IP",
+		);
+	});
+
+	it("blocks hex IP format", () => {
+		// 0x7f000001 = 127.0.0.1
+		expect(() => validateUrlForFetch("http://0x7f000001")).toThrow(
+			"private/internal IP",
+		);
+	});
+
 	it("throws on invalid URL", () => {
 		expect(() => validateUrlForFetch("not-a-url")).toThrow();
 	});
