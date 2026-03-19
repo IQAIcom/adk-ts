@@ -184,6 +184,12 @@ export class VertexAiEvalFacade {
 		const auth = new GoogleAuth({ scopes: VERTEX_AI_EVAL_SCOPES });
 		const accessToken = await auth.getAccessToken();
 
+		if (!accessToken) {
+			throw new Error(
+				"Failed to obtain Google Cloud access token. Ensure Application Default Credentials are configured (e.g. run 'gcloud auth application-default login').",
+			);
+		}
+
 		const url = `https://${location}-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/${location}:evaluateInstances`;
 
 		const inputKey = getMetricInputKey(metric);
