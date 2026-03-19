@@ -133,7 +133,7 @@ describe("VectorStorageProvider", () => {
 		it("should fall back to cache when vector store has no count", async () => {
 			const mockStore = createMockVectorStore();
 			// count is not defined by default in createMockVectorStore
-			delete (mockStore as Record<string, unknown>).count;
+			delete (mockStore as unknown as Record<string, unknown>).count;
 
 			const provider = new VectorStorageProvider({
 				vectorStore: mockStore,
