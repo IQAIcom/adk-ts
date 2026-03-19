@@ -25,7 +25,7 @@ function isValidTranscript(text: string): boolean {
 		"recording",
 	];
 	const lower = trimmed.toLowerCase();
-	return !placeholders.some((placeholder) => lower.includes(placeholder));
+	return !placeholders.some((placeholder) => lower === placeholder);
 }
 
 const useVoiceRecording = (options?: UseVoiceRecordingOptions) => {

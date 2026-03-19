@@ -452,14 +452,23 @@ export class OpenAiLlm extends BaseLlm {
 
 			// Handle audio input
 			if (mimeType.startsWith("audio/")) {
-				// OpenAI supports audio via input_audio type
-				// Format: data URI with base64 encoded audio
+				const formatMap: Record<string, string> = {
+					"audio/wav": "wav",
+					"audio/mp3": "mp3",
+					"audio/mpeg": "mp3",
+					"audio/webm": "webm",
+					"audio/ogg": "ogg",
+					"audio/mp4": "mp4",
+				};
+				const format = formatMap[mimeType] || mimeType.split("/")[1];
+
 				return {
-					type: "input_audio",
+					type: "input_audio" as const,
 					input_audio: {
-						data: `data:${mimeType};base64,${part.inline_data.data}`,
+						data: part.inline_data.data,
+						format,
 					},
-				} as any; // Type assertion needed as OpenAI types may not be fully updated
+				};
 			}
 
 			// Handle image input (existing behavior)

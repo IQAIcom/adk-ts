@@ -67,7 +67,9 @@ function extractBaseModelName(modelName: string): string {
 export function supportsAudioInput(
 	modelName: string | null | undefined,
 ): boolean {
-	if (!modelName) return false;
+	// When we can't determine the model, default to enabled
+	// (don't break voice for agents whose model we can't infer)
+	if (!modelName) return true;
 
 	// Extract base model name (handles OpenRouter, Vercel AI SDK, Vertex AI formats)
 	const baseModel = extractBaseModelName(modelName);
