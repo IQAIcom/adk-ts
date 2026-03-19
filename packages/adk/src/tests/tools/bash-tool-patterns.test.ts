@@ -21,8 +21,22 @@ describe("BashTool dangerous pattern detection", () => {
 			await expectBlocked('python -c "import os"');
 		});
 
+		it("blocks python3.11 -c (versioned binary)", async () => {
+			await expectBlocked('python3.11 -c "import os"');
+		});
+
+		it("blocks python3.12 -c (versioned binary)", async () => {
+			await expectBlocked('python3.12 -c "import os"');
+		});
+
 		it("blocks node -e", async () => {
 			await expectBlocked("node -e \"require('child_process').exec('...')\"");
+		});
+
+		it("blocks node --eval (long form)", async () => {
+			await expectBlocked(
+				"node --eval \"require('child_process').exec('...')\"",
+			);
 		});
 
 		it("blocks perl -e", async () => {

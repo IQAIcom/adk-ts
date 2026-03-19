@@ -85,8 +85,8 @@ export class BashTool extends BaseTool {
 		/chown\s+root/, // ownership changes
 		/sudo/, // privilege escalation
 		/su\s+/, // user switching
-		/python[23]?\s+-c\s/, // python interpreter execution
-		/node\s+-e\s/, // node interpreter execution
+		/python[23]?(\.\d+)?\s+-c\s/, // python interpreter execution (python, python3, python3.11, etc.)
+		/node\s+(-e|--eval)[\s=]/, // node interpreter execution (-e and --eval)
 		/perl\s+-e\s/, // perl interpreter execution
 		/ruby\s+-e\s/, // ruby interpreter execution
 		/php\s+-r\s/, // php interpreter execution
