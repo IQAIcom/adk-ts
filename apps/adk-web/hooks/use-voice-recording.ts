@@ -196,7 +196,7 @@ const useVoiceRecording = (options?: UseVoiceRecordingOptions) => {
 				resolve({
 					file,
 					transcript: finalTranscript,
-					hasValidTranscript: isValidTranscript(finalTranscript),
+					hasValidTranscript,
 				});
 			};
 

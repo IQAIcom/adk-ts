@@ -2,6 +2,8 @@
  * Utility functions to check model capabilities
  */
 
+import type { AgentListItemDto as Agent } from "../Api";
+
 /**
  * Extracts the base model name from various formats:
  *
@@ -146,4 +148,43 @@ export function getAudioUnsupportedMessage(
 
 	// Generic message for unknown models
 	return "Voice input is not supported for this model. Please use GPT-4o or Gemini models for voice input.";
+}
+
+/**
+ * Infers a model name from an agent's name and path.
+ * Best-effort approach — returns null if no model pattern is found.
+ */
+export function inferModelNameFromAgent(agent: Agent | null): string | null {
+	if (!agent) return null;
+
+	const name = agent.name.toLowerCase();
+	const path = agent.relativePath?.toLowerCase() || "";
+	const combined = `${name} ${path}`;
+
+	// Check for OpenRouter format patterns (provider/model)
+	if (combined.includes("openai/gpt-4o") || combined.includes("openai/gpt4o")) {
+		return "openai/gpt-4o";
+	}
+	if (combined.includes("google/gemini")) {
+		return "google/gemini-2.5-flash";
+	}
+
+	// Check for direct model patterns in agent name
+	if (name.includes("gpt-4o") || name.includes("gpt4o")) return "gpt-4o";
+	if (name.includes("gemini")) {
+		const geminiMatch = name.match(/gemini[-\s]?([\d.]+)?/);
+		if (geminiMatch?.[1]) {
+			return `gemini-${geminiMatch[1]}`;
+		}
+		return "gemini-2.5-flash";
+	}
+	if (name.includes("gpt-4") || name.includes("gpt4")) return "gpt-4";
+	if (name.includes("gpt-3.5")) return "gpt-3.5-turbo";
+	if (name.includes("claude")) return "claude-3-5-sonnet";
+
+	// Check path for model indicators
+	if (path.includes("gpt-4o") || path.includes("gpt4o")) return "gpt-4o";
+	if (path.includes("gemini")) return "gemini-2.5-flash";
+
+	return null;
 }

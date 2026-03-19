@@ -28,7 +28,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useChatAttachments } from "@/hooks/use-chat-attachments";
 import useVoiceRecording from "@/hooks/use-voice-recording";
-import { getAudioUnsupportedMessage } from "@/lib/model-capabilities";
+import {
+	getAudioUnsupportedMessage,
+	inferModelNameFromAgent,
+} from "@/lib/model-capabilities";
 import { cn } from "@/lib/utils";
 import type { AgentListItemDto as Agent } from "../Api";
 
@@ -63,50 +66,10 @@ export function ChatPanel({
 		isDragOver,
 	} = useChatAttachments();
 
-	// Infer model name from agent name or path
-	// This is a best-effort approach; we can enhance this later with actual model info from backend
-	// Handles:
-	// - Direct model names in agent name: "gpt-4o-agent", "gemini-agent"
-	// - OpenRouter format in path: "agents/openai-gpt-4o-agent"
-	// - Common patterns: "gpt4o", "gemini-2.5", etc.
-	const inferredModelName = useMemo(() => {
-		if (!selectedAgent) return null;
-
-		const name = selectedAgent.name.toLowerCase();
-		const path = selectedAgent.relativePath?.toLowerCase() || "";
-		const combined = `${name} ${path}`;
-
-		// Check for OpenRouter format patterns (provider/model)
-		if (
-			combined.includes("openai/gpt-4o") ||
-			combined.includes("openai/gpt4o")
-		) {
-			return "openai/gpt-4o";
-		}
-		if (combined.includes("google/gemini")) {
-			return "google/gemini-2.5-flash";
-		}
-
-		// Check for direct model patterns in agent name
-		if (name.includes("gpt-4o") || name.includes("gpt4o")) return "gpt-4o";
-		if (name.includes("gemini")) {
-			// Try to extract specific version if present
-			const geminiMatch = name.match(/gemini[-\s]?([\d.]+)?/);
-			if (geminiMatch?.[1]) {
-				return `gemini-${geminiMatch[1]}`;
-			}
-			return "gemini-2.5-flash";
-		}
-		if (name.includes("gpt-4") || name.includes("gpt4")) return "gpt-4";
-		if (name.includes("gpt-3.5")) return "gpt-3.5-turbo";
-		if (name.includes("claude")) return "claude-3-5-sonnet";
-
-		// Check path for model indicators
-		if (path.includes("gpt-4o") || path.includes("gpt4o")) return "gpt-4o";
-		if (path.includes("gemini")) return "gemini-2.5-flash";
-
-		return null;
-	}, [selectedAgent]);
+	const inferredModelName = useMemo(
+		() => inferModelNameFromAgent(selectedAgent),
+		[selectedAgent],
+	);
 
 	const {
 		recording,
@@ -398,12 +361,6 @@ export function ChatPanel({
 												<div>
 													<PromptInputMicButton
 														variant={"secondary"}
-														onClick={() => {
-															// Show tooltip message
-															toast.error(
-																getAudioUnsupportedMessage(inferredModelName),
-															);
-														}}
 														disabled={true}
 													/>
 												</div>
