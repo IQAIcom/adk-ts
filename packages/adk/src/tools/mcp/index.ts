@@ -134,10 +134,7 @@ export class McpToolset {
 				);
 			}
 
-			if (
-				this.tools.length > 0 &&
-				!this.config.cacheConfig?.enabled === false
-			) {
+			if (this.tools.length > 0 && this.config.cacheConfig?.enabled !== false) {
 				return this.tools;
 			}
 
