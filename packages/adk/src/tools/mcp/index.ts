@@ -72,6 +72,10 @@ export class McpToolset {
 		return true;
 	}
 
+	private isCacheEnabled(): boolean {
+		return this.config.cacheConfig?.enabled !== false;
+	}
+
 	/**
 	 * Initializes the client service and establishes a connection.
 	 */
@@ -134,7 +138,7 @@ export class McpToolset {
 				);
 			}
 
-			if (this.tools.length > 0 && this.config.cacheConfig?.enabled !== false) {
+			if (this.tools.length > 0 && this.isCacheEnabled()) {
 				return this.tools;
 			}
 
@@ -169,7 +173,7 @@ export class McpToolset {
 				}
 			}
 
-			if (this.config.cacheConfig?.enabled !== false) {
+			if (this.isCacheEnabled()) {
 				this.tools = tools;
 			}
 
