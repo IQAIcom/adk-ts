@@ -355,6 +355,14 @@ describe("LangGraphAgent", () => {
 			expect(results[2].node).toBe("NodeC");
 		});
 
+		it("getExecutionResults should not accumulate across runs", async () => {
+			await executeGraphAndGetEvents(graph, mockContext);
+			expect(graph.getExecutionResults()).toHaveLength(3);
+
+			await executeGraphAndGetEvents(graph, mockContext);
+			expect(graph.getExecutionResults()).toHaveLength(3);
+		});
+
 		it("clearExecutionHistory should reset results", async () => {
 			await executeGraphAndGetEvents(graph, mockContext);
 			expect(graph.getExecutionResults()).toHaveLength(3);
