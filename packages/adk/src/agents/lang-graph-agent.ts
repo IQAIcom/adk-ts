@@ -187,6 +187,7 @@ export class LangGraphAgent extends BaseAgent {
 	protected async *runAsyncImpl(
 		context: InvocationContext,
 	): AsyncGenerator<Event, void, unknown> {
+		this.results = [];
 		this.logger.debug(
 			`Starting graph execution from root node "${this.rootNode}"`,
 		);
