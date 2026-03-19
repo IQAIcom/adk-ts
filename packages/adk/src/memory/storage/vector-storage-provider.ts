@@ -184,19 +184,13 @@ export class VectorStorageProvider implements MemoryStorageProvider {
 				this.memoryCache.delete(id);
 			}
 		} else {
-			// Delete by filter - need to find matching IDs first
-			const idsToDelete: string[] = [];
+			// Delete by filter — delegate to vector store directly
+			const vectorFilter = this.buildDeleteFilter(filter);
+			deleted = await this.vectorStore.delete({ filter: vectorFilter });
 
+			// Clean matching entries from cache
 			for (const [id, record] of this.memoryCache.entries()) {
 				if (this.matchesFilter(record, filter)) {
-					idsToDelete.push(id);
-				}
-			}
-
-			if (idsToDelete.length > 0) {
-				deleted = await this.vectorStore.delete({ ids: idsToDelete });
-
-				for (const id of idsToDelete) {
 					this.memoryCache.delete(id);
 				}
 			}
@@ -209,15 +203,19 @@ export class VectorStorageProvider implements MemoryStorageProvider {
 	 * Count memories matching filter.
 	 */
 	async count(filter: MemoryDeleteFilter): Promise<number> {
-		// Use cache for counting since not all vector stores support count
-		let count = 0;
+		// Prefer vector store's native count if available
+		if (this.vectorStore.count) {
+			const vectorFilter = this.buildDeleteFilter(filter);
+			return this.vectorStore.count(vectorFilter);
+		}
 
+		// Fall back to cache-based counting
+		let count = 0;
 		for (const record of this.memoryCache.values()) {
 			if (this.matchesFilter(record, filter)) {
 				count++;
 			}
 		}
-
 		return count;
 	}
 
@@ -400,6 +398,24 @@ export class VectorStorageProvider implements MemoryStorageProvider {
 		}
 
 		return filter;
+	}
+
+	/**
+	 * Build filter object for vector store delete/count operations.
+	 */
+	private buildDeleteFilter(
+		filter: MemoryDeleteFilter,
+	): Record<string, unknown> {
+		const vectorFilter: Record<string, unknown> = {};
+
+		if (filter.userId) vectorFilter.userId = filter.userId;
+		if (filter.appName) vectorFilter.appName = filter.appName;
+		if (filter.sessionId) vectorFilter.sessionId = filter.sessionId;
+		if (filter.before) vectorFilter.before = filter.before;
+		if (filter.after) vectorFilter.after = filter.after;
+		if (this.namespace) vectorFilter.namespace = this.namespace;
+
+		return vectorFilter;
 	}
 
 	/**
