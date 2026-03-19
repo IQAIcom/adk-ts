@@ -96,7 +96,7 @@ export class FileOperationsTool extends BaseTool {
 			const resolvedPath = this.resolvePath(args.filepath);
 
 			// Validate the path is within the base path (for security)
-			this.validatePath(resolvedPath);
+			await this.validatePath(resolvedPath);
 
 			// Determine encoding
 			const encoding = args.encoding || "utf8";
@@ -153,17 +153,58 @@ export class FileOperationsTool extends BaseTool {
 	}
 
 	/**
-	 * Validate that a path is within the base path for security
+	 * Validate that a path is within the base path for security.
+	 * Resolves symlinks to prevent symlink escape attacks.
 	 */
-	private validatePath(filepath: string): void {
-		const normalizedPath = path.normalize(filepath);
-		const normalizedBasePath = path.normalize(this.basePath);
+	private async validatePath(filepath: string): Promise<void> {
+		const realBasePath = await fs.realpath(this.basePath);
 
-		// Check if the path is outside the base path
-		if (!normalizedPath.startsWith(normalizedBasePath)) {
-			throw new Error(
-				`Access denied: Can't access paths outside the base directory`,
-			);
+		const isWithinBase = (p: string, base: string) =>
+			p === base || p.startsWith(base + path.sep);
+
+		try {
+			const realPath = await fs.realpath(filepath);
+			if (!isWithinBase(realPath, realBasePath)) {
+				throw new Error(
+					"Access denied: Can't access paths outside the base directory",
+				);
+			}
+		} catch (error: unknown) {
+			if (
+				error instanceof Error &&
+				"code" in error &&
+				(error as NodeJS.ErrnoException).code === "ENOENT"
+			) {
+				// File doesn't exist yet (write/mkdir) — validate the parent directory
+				const parentDir = path.dirname(filepath);
+				try {
+					const realParent = await fs.realpath(parentDir);
+					if (!isWithinBase(realParent, realBasePath)) {
+						throw new Error(
+							"Access denied: Can't access paths outside the base directory",
+						);
+					}
+				} catch (parentError: unknown) {
+					if (
+						parentError instanceof Error &&
+						"code" in parentError &&
+						(parentError as NodeJS.ErrnoException).code === "ENOENT"
+					) {
+						// Parent also doesn't exist — fall back to normalize check
+						const normalizedPath = path.normalize(filepath);
+						const normalizedBasePath = path.normalize(this.basePath);
+						if (!isWithinBase(normalizedPath, normalizedBasePath)) {
+							throw new Error(
+								"Access denied: Can't access paths outside the base directory",
+							);
+						}
+					} else {
+						throw parentError;
+					}
+				}
+			} else {
+				throw error;
+			}
 		}
 	}
 
@@ -283,7 +324,7 @@ export class FileOperationsTool extends BaseTool {
 			const results = await Promise.all(
 				entries.map(async (entry) => {
 					const entryPath = path.join(dirpath, entry.name);
-					const stats = await fs.stat(entryPath);
+					const stats = await fs.lstat(entryPath);
 
 					return {
 						name: entry.name,

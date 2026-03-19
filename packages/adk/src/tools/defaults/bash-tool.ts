@@ -74,17 +74,22 @@ export class BashTool extends BaseTool {
 		/>\s*\/dev\/sd[a-z]/, // writing to disk devices
 		/mkfs/, // filesystem formatting
 		/dd\s+if=/, // disk operations
-		/wget.*\|\s*sh/, // download and execute
-		/curl.*\|\s*bash/, // download and execute
+		/wget.*\|\s*(sh|bash)/, // download and execute
+		/curl.*\|\s*(bash|sh)/, // download and execute
 		/eval\s+['"`]/, // eval with strings
-		/base64.*\|\s*sh/, // decode and execute
-		/nc\s+-.*e/, // netcat reverse shell
+		/base64.*\|\s*(sh|bash)/, // decode and execute
+		/(nc|ncat|netcat)\s+-.*e/, // netcat reverse shell (nc, ncat, netcat)
 		/\/proc\/.*\/mem/, // memory access
 		/iptables/, // firewall manipulation
 		/chmod\s+777/, // overly permissive
 		/chown\s+root/, // ownership changes
 		/sudo/, // privilege escalation
 		/su\s+/, // user switching
+		/python[23]?\s+-c\s/, // python interpreter execution
+		/node\s+-e\s/, // node interpreter execution
+		/perl\s+-e\s/, // perl interpreter execution
+		/ruby\s+-e\s/, // ruby interpreter execution
+		/php\s+-r\s/, // php interpreter execution
 	];
 
 	// Special characters that enable command chaining/injection

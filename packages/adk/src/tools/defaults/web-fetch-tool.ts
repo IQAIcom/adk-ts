@@ -3,6 +3,7 @@ import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
+import { validateUrlForFetch } from "../utils/url-validation";
 
 export interface WebFetchToolResult {
 	success: boolean;
@@ -47,12 +48,21 @@ export class WebFetchTool extends BaseTool {
 		_context: ToolContext,
 	): Promise<WebFetchToolResult> {
 		try {
+			validateUrlForFetch(args.url);
+
 			const response = await axios.get(args.url, {
 				timeout: 30000,
 				maxRedirects: 5,
 				headers: {
 					"User-Agent":
 						"Mozilla/5.0 (compatible; ADK/1.0; +http://example.com)",
+				},
+				beforeRedirect: (options: Record<string, unknown>) => {
+					const redirectUrl =
+						typeof options.href === "string"
+							? options.href
+							: `${options.protocol}//${options.hostname}${options.path}`;
+					validateUrlForFetch(redirectUrl);
 				},
 			});
 
