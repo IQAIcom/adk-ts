@@ -36,6 +36,8 @@ export class CodeExecutionUtils {
 		let decodedData: string;
 		if (data instanceof ArrayBuffer) {
 			decodedData = new TextDecoder().decode(data);
+		} else {
+			decodedData = data;
 		}
 
 		// Check if already base64 encoded
