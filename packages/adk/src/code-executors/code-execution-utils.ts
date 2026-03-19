@@ -33,12 +33,8 @@ export class CodeExecutionUtils {
 	 */
 	static getEncodedFileContent(data: string | ArrayBuffer): string {
 		// Convert ArrayBuffer to string if needed
-		let decodedData: string;
-		if (data instanceof ArrayBuffer) {
-			decodedData = new TextDecoder().decode(data);
-		} else {
-			decodedData = data;
-		}
+		const decodedData =
+			data instanceof ArrayBuffer ? new TextDecoder().decode(data) : data;
 
 		// Check if already base64 encoded
 		if (CodeExecutionUtils.isBase64Encoded(decodedData)) {
