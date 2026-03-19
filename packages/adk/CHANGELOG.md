@@ -1,5 +1,12 @@
 # @iqai/adk
 
+## 0.8.2
+
+### Patch Changes
+
+- c1093ed: fix: clear LangGraphAgent results on each invocation
+- deb7ec5: fix: assign decodedData when input is string in getEncodedFileContent
+
 ## 0.8.1
 
 ### Patch Changes
