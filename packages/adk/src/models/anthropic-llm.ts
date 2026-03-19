@@ -7,6 +7,21 @@ import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
 
+function safeParseToolArgs(
+	json: string | undefined,
+	logger: Logger,
+): Record<string, unknown> {
+	try {
+		return JSON.parse(json || "{}");
+	} catch (error) {
+		logger.warn("Failed to parse tool call arguments, using empty args", {
+			rawArgs: json,
+			error: String(error),
+		});
+		return {};
+	}
+}
+
 type AnthropicRole = "user" | "assistant";
 
 const DEFAULT_MAX_OUTPUT_TOKENS = 1024;
@@ -279,7 +294,7 @@ export class AnthropicLlm extends BaseLlm {
 								functionCall: {
 									id: block.id,
 									name: block.name,
-									args: JSON.parse(block.inputJson || "{}"),
+									args: safeParseToolArgs(block.inputJson, this.logger),
 								},
 							});
 						}
