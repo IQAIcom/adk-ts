@@ -29,36 +29,33 @@ export interface VertexAiEvalFacadeConfig {
 	metricName: PrebuiltMetrics;
 }
 
-/**
- * Maps a PrebuiltMetrics value to the Vertex AI evaluateInstances API input key.
- */
-function getMetricInputKey(metric: PrebuiltMetrics): string {
-	switch (metric) {
-		case PrebuiltMetrics.RESPONSE_EVALUATION_SCORE:
-			return "coherence_input";
-		case PrebuiltMetrics.SAFETY_V1:
-			return "safety_input";
-		default:
-			throw new Error(
-				`Metric "${metric}" is not supported by Vertex AI evaluation.`,
-			);
-	}
+interface EvalResult {
+	summaryMetrics: Array<{ meanScore: number | undefined }>;
 }
 
-/**
- * Maps a PrebuiltMetrics value to the Vertex AI evaluateInstances API result key.
- */
-function getMetricResultKey(metric: PrebuiltMetrics): string {
-	switch (metric) {
-		case PrebuiltMetrics.RESPONSE_EVALUATION_SCORE:
-			return "coherenceResult";
-		case PrebuiltMetrics.SAFETY_V1:
-			return "safetyResult";
-		default:
-			throw new Error(
-				`Metric "${metric}" is not supported by Vertex AI evaluation.`,
-			);
+const VERTEX_AI_METRIC_KEYS = {
+	[PrebuiltMetrics.RESPONSE_EVALUATION_SCORE]: {
+		inputKey: "coherence_input",
+		resultKey: "coherenceResult",
+	},
+	[PrebuiltMetrics.SAFETY_V1]: {
+		inputKey: "safety_input",
+		resultKey: "safetyResult",
+	},
+} as const;
+
+function getMetricKeys(metric: PrebuiltMetrics): {
+	inputKey: string;
+	resultKey: string;
+} {
+	const keys =
+		VERTEX_AI_METRIC_KEYS[metric as keyof typeof VERTEX_AI_METRIC_KEYS];
+	if (!keys) {
+		throw new Error(
+			`Metric "${metric}" is not supported by Vertex AI evaluation.`,
+		);
 	}
+	return keys;
 }
 
 export class VertexAiEvalFacade {
@@ -149,13 +146,10 @@ export class VertexAiEvalFacade {
 		return "";
 	}
 
-	private _getScore(evalResult: any): number | undefined {
-		if (
-			evalResult?.summaryMetrics?.[0]?.meanScore !== undefined &&
-			typeof evalResult.summaryMetrics[0].meanScore === "number" &&
-			!Number.isNaN(evalResult.summaryMetrics[0].meanScore)
-		) {
-			return evalResult.summaryMetrics[0].meanScore;
+	private _getScore(evalResult: EvalResult): number | undefined {
+		const meanScore = evalResult?.summaryMetrics?.[0]?.meanScore;
+		if (typeof meanScore === "number" && !Number.isNaN(meanScore)) {
+			return meanScore;
 		}
 		return undefined;
 	}
@@ -170,7 +164,7 @@ export class VertexAiEvalFacade {
 	private static async _performEval(
 		evalCase: { prompt: string; reference: string; response: string },
 		metric: PrebuiltMetrics,
-	): Promise<any> {
+	): Promise<EvalResult> {
 		const projectId = process.env.GOOGLE_CLOUD_PROJECT;
 		const location = process.env.GOOGLE_CLOUD_LOCATION;
 
@@ -190,9 +184,10 @@ export class VertexAiEvalFacade {
 			);
 		}
 
+		const { inputKey, resultKey } = getMetricKeys(metric);
+
 		const url = `https://${location}-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/${location}:evaluateInstances`;
 
-		const inputKey = getMetricInputKey(metric);
 		const instance: Record<string, string> = {
 			prediction: evalCase.response,
 		};
@@ -207,15 +202,28 @@ export class VertexAiEvalFacade {
 			},
 		};
 
-		const response = await axios.post(url, requestBody, {
-			headers: {
-				Authorization: `Bearer ${accessToken}`,
-				"Content-Type": "application/json",
-			},
-		});
+		let responseData: any;
+		try {
+			const response = await axios.post(url, requestBody, {
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					"Content-Type": "application/json",
+				},
+			});
+			responseData = response.data;
+		} catch (error) {
+			if (axios.isAxiosError(error)) {
+				const detail = error.response?.data
+					? JSON.stringify(error.response.data)
+					: "";
+				throw new Error(
+					`Vertex AI evaluation API request failed: ${error.message}${detail ? ` — ${detail}` : ""}`,
+				);
+			}
+			throw error;
+		}
 
-		const resultKey = getMetricResultKey(metric);
-		const score = response.data?.[resultKey]?.score;
+		const score = responseData?.[resultKey]?.score;
 
 		return {
 			summaryMetrics: [
