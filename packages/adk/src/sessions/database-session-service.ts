@@ -102,8 +102,18 @@ export class DatabaseSessionService extends BaseSessionService {
 			return this.initPromise;
 		}
 
-		this.initPromise = this._doInitialize();
-		return this.initPromise;
+		const promise = this._doInitialize();
+		this.initPromise = promise;
+
+		// Clear the promise on failure to allow retries.
+		promise.catch(() => {
+			// Avoid race conditions if a new initialization has started.
+			if (this.initPromise === promise) {
+				this.initPromise = null;
+			}
+		});
+
+		return promise;
 	}
 
 	private async _doInitialize(): Promise<void> {
@@ -196,7 +206,6 @@ export class DatabaseSessionService extends BaseSessionService {
 
 			this.initialized = true;
 		} catch (error) {
-			this.initPromise = null; // Allow retry on failure
 			console.error("Error initializing database:", error);
 			throw error;
 		}
