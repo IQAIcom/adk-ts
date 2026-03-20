@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.8.3
+
+### Patch Changes
+
+- 0c189c7: security: fix SSRF, API key exposure, pattern bypass, symlink escapes
+
 ## 0.8.2
 
 ### Patch Changes
