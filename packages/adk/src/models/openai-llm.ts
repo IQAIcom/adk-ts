@@ -1,27 +1,12 @@
-import { Logger } from "@adk/logger";
 import OpenAI from "openai";
 import { BaseLlm } from "./base-llm";
 import type { BaseLLMConnection } from "./base-llm-connection";
 import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
+import { safeParseToolArgs } from "./llm-utils";
 
 type OpenAIRole = "user" | "assistant" | "system";
-
-function safeParseToolArgs(
-	json: string | undefined,
-	logger: Logger,
-): Record<string, unknown> {
-	try {
-		return JSON.parse(json || "{}");
-	} catch (error) {
-		logger.warn("Failed to parse tool call arguments, using empty args", {
-			rawArgs: json,
-			error: String(error),
-		});
-		return {};
-	}
-}
 
 /**
  * OpenAI LLM implementation using GPT models
