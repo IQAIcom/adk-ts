@@ -620,8 +620,9 @@ export class DatabaseSessionService extends BaseSessionService {
 				updatedSession.update_time,
 			);
 
-			// Also update the in-memory session
-			super.appendEvent(session, event);
+			// Update in-memory session state and add the event
+			this.updateSessionState(session, event);
+			session.events.push(event);
 
 			return event;
 		});
