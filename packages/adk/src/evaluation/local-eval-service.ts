@@ -20,8 +20,8 @@ export class LocalEvalService extends BaseEvalService {
 		this.readyPromise = this.initializeRunner();
 	}
 
-	private async ensureReady(): Promise<void> {
-		await this.readyPromise;
+	private ensureReady(): Promise<void> {
+		return this.readyPromise;
 	}
 
 	private async initializeRunner() {
