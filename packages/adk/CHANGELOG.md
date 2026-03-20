@@ -1,5 +1,11 @@
 # @iqai/adk
 
+## 0.8.4
+
+### Patch Changes
+
+- 621aa3f: fix: align Anthropic non-streaming path to use camelCase for function call properties
+
 ## 0.8.3
 
 ### Patch Changes
