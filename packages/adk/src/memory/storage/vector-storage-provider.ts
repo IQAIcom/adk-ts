@@ -408,11 +408,12 @@ export class VectorStorageProvider implements MemoryStorageProvider {
 	): Record<string, unknown> {
 		const vectorFilter: Record<string, unknown> = {};
 
-		if (filter.userId) vectorFilter.userId = filter.userId;
-		if (filter.appName) vectorFilter.appName = filter.appName;
-		if (filter.sessionId) vectorFilter.sessionId = filter.sessionId;
-		if (filter.before) vectorFilter.before = filter.before;
-		if (filter.after) vectorFilter.after = filter.after;
+		if (filter.userId !== undefined) vectorFilter.userId = filter.userId;
+		if (filter.appName !== undefined) vectorFilter.appName = filter.appName;
+		if (filter.sessionId !== undefined)
+			vectorFilter.sessionId = filter.sessionId;
+		if (filter.before !== undefined) vectorFilter.before = filter.before;
+		if (filter.after !== undefined) vectorFilter.after = filter.after;
 		if (this.namespace) vectorFilter.namespace = this.namespace;
 
 		return vectorFilter;
@@ -425,11 +426,16 @@ export class VectorStorageProvider implements MemoryStorageProvider {
 		record: MemoryRecord,
 		filter: MemoryDeleteFilter,
 	): boolean {
-		if (filter.userId && record.userId !== filter.userId) return false;
-		if (filter.appName && record.appName !== filter.appName) return false;
-		if (filter.sessionId && record.sessionId !== filter.sessionId) return false;
-		if (filter.before && record.timestamp > filter.before) return false;
-		if (filter.after && record.timestamp < filter.after) return false;
+		if (filter.userId !== undefined && record.userId !== filter.userId)
+			return false;
+		if (filter.appName !== undefined && record.appName !== filter.appName)
+			return false;
+		if (filter.sessionId !== undefined && record.sessionId !== filter.sessionId)
+			return false;
+		if (filter.before !== undefined && record.timestamp > filter.before)
+			return false;
+		if (filter.after !== undefined && record.timestamp < filter.after)
+			return false;
 
 		return true;
 	}
