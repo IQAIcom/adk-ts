@@ -448,12 +448,38 @@ export class OpenAiLlm extends BaseLlm {
 		}
 
 		if (part.inline_data?.mime_type && part.inline_data?.data) {
-			return {
-				type: "image_url",
-				image_url: {
-					url: `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`,
-				},
-			};
+			const mimeType = part.inline_data.mime_type;
+
+			// Handle audio input
+			if (mimeType.startsWith("audio/")) {
+				const formatMap: Record<string, string> = {
+					"audio/wav": "wav",
+					"audio/mp3": "mp3",
+					"audio/mpeg": "mp3",
+					"audio/webm": "webm",
+					"audio/ogg": "ogg",
+					"audio/mp4": "mp4",
+				};
+				const format = formatMap[mimeType] || mimeType.split("/")[1];
+
+				return {
+					type: "input_audio" as const,
+					input_audio: {
+						data: part.inline_data.data,
+						format,
+					},
+				};
+			}
+
+			// Handle image input (existing behavior)
+			if (mimeType.startsWith("image/")) {
+				return {
+					type: "image_url",
+					image_url: {
+						url: `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`,
+					},
+				};
+			}
 		}
 
 		throw new Error("Unsupported part type for OpenAI conversion");
@@ -591,7 +617,6 @@ export class OpenAiLlm extends BaseLlm {
 		if (part.inline_data) {
 			// Ensure inline data is in the correct format for OpenAI
 			if (!part.inline_data.mime_type || !part.inline_data.data) {
-				// biome-ignore lint/performance/noDelete: Remove invalid inline data
 				delete part.inline_data;
 			}
 		}

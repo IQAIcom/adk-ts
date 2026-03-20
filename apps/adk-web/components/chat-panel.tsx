@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot, MessageSquare, Paperclip, User as UserIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Message as ChatMessage } from "@/app/(dashboard)/_schema";
 import { ConversationAutoScroll } from "@/components/ai-elements/conversation-auto-scroll";
@@ -21,8 +21,17 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Response } from "@/components/ai-elements/response";
 import { Button } from "@/components/ui/button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useChatAttachments } from "@/hooks/use-chat-attachments";
 import useVoiceRecording from "@/hooks/use-voice-recording";
+import {
+	getAudioUnsupportedMessage,
+	inferModelNameFromAgent,
+} from "@/lib/model-capabilities";
 import { cn } from "@/lib/utils";
 import type { AgentListItemDto as Agent } from "../Api";
 
@@ -57,6 +66,11 @@ export function ChatPanel({
 		isDragOver,
 	} = useChatAttachments();
 
+	const inferredModelName = useMemo(
+		() => inferModelNameFromAgent(selectedAgent),
+		[selectedAgent],
+	);
+
 	const {
 		recording,
 		error,
@@ -65,7 +79,8 @@ export function ChatPanel({
 		startRecording,
 		stopRecording,
 		clearAudio,
-	} = useVoiceRecording();
+		audioSupported,
+	} = useVoiceRecording({ modelName: inferredModelName });
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -84,13 +99,26 @@ export function ChatPanel({
 	const handleVoiceRecording = async () => {
 		if (recording) {
 			// Stop recording and get both the audio file and transcript
-			const { file, transcript } = await stopRecording();
+			const { file, transcript, hasValidTranscript } = await stopRecording();
 
 			if (file) {
+				// Check if we have valid transcription
+				if (!hasValidTranscript) {
+					toast.error(
+						"Transcription failed or is too short. Please try speaking more clearly or use text input.",
+					);
+					clearAudio();
+					return;
+				}
+
 				// Use the transcribed text as the message
-				// If transcription failed or is empty, use a fallback message
-				const messageText =
-					transcript?.trim() || "Voice message (transcription unavailable)";
+				const messageText = transcript?.trim() || "";
+
+				if (!messageText) {
+					toast.error("No transcription available. Please try again.");
+					clearAudio();
+					return;
+				}
 
 				// Send the transcribed text along with the audio file
 				// The agent receives the text message, and optionally the audio file as attachment
@@ -320,12 +348,30 @@ export function ChatPanel({
 									</PromptInputButton>
 								</PromptInputTools>
 								<div>
-									<PromptInputMicButton
-										variant={"secondary"}
-										status={{ recording }}
-										onClick={handleVoiceRecording}
-										disabled={isLoading || isSendingMessage}
-									/>
+									{audioSupported ? (
+										<PromptInputMicButton
+											variant={"secondary"}
+											status={{ recording }}
+											onClick={handleVoiceRecording}
+											disabled={isLoading || isSendingMessage}
+										/>
+									) : (
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<div>
+													<PromptInputMicButton
+														variant={"secondary"}
+														disabled={true}
+													/>
+												</div>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p className="max-w-xs">
+													{getAudioUnsupportedMessage(inferredModelName)}
+												</p>
+											</TooltipContent>
+										</Tooltip>
+									)}
 									<PromptInputSubmit
 										status={isSendingMessage ? "streaming" : "ready"}
 										disabled={
