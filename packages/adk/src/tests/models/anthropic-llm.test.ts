@@ -10,6 +10,7 @@ vi.mock("@adk/helpers/logger", () => ({
 	Logger: vi.fn(() => ({
 		debug: vi.fn(),
 		error: vi.fn(),
+		warn: vi.fn(),
 	})),
 }));
 
@@ -304,6 +305,65 @@ describe("AnthropicLlm", () => {
 				promptTokenCount: 20,
 				candidatesTokenCount: 15,
 				totalTokenCount: 35,
+			});
+		});
+
+		it("should handle malformed tool call JSON without crashing", async () => {
+			const streamEvents = [
+				{
+					type: "message_start",
+					message: { usage: { input_tokens: 20 } },
+				},
+				{
+					type: "content_block_start",
+					index: 0,
+					content_block: {
+						type: "tool_use",
+						id: "tool_bad",
+						name: "get_weather",
+					},
+				},
+				{
+					type: "content_block_delta",
+					index: 0,
+					delta: {
+						type: "input_json_delta",
+						partial_json: '{"location": "Tok',
+					},
+				},
+				// Stream cuts off — no closing brace
+				{ type: "content_block_stop", index: 0 },
+				{
+					type: "message_delta",
+					usage: { output_tokens: 10 },
+					delta: { stop_reason: "tool_use" },
+				},
+				{ type: "message_stop" },
+			];
+
+			mockMessagesCreate.mockResolvedValue(createMockStream(streamEvents));
+
+			const anthropicLlm = new AnthropicLlm();
+			const generator = anthropicLlm["generateContentAsyncImpl"](
+				mockLlmRequest,
+				true,
+			);
+
+			const responses: LlmResponse[] = [];
+			for await (const response of generator) {
+				responses.push(response);
+			}
+
+			// Should not crash — returns response with empty args
+			expect(responses).toHaveLength(1);
+			const final = responses[0];
+			expect(final.content?.parts).toHaveLength(1);
+			expect(final.content?.parts?.[0]).toEqual({
+				functionCall: {
+					id: "tool_bad",
+					name: "get_weather",
+					args: {},
+				},
 			});
 		});
 
