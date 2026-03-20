@@ -627,7 +627,7 @@ describe("AnthropicLlm", () => {
 
 			it("should convert function call part to Anthropic block", () => {
 				const part = {
-					function_call: {
+					functionCall: {
 						id: "123",
 						name: "test_func",
 						args: { param1: "value1" },
@@ -644,7 +644,7 @@ describe("AnthropicLlm", () => {
 
 			it("should convert function response part to Anthropic block", () => {
 				const part = {
-					function_response: {
+					functionResponse: {
 						id: "123",
 						response: { result: "success" },
 					},
@@ -681,7 +681,7 @@ describe("AnthropicLlm", () => {
 				};
 				const part = anthropicLlm["anthropicBlockToPart"](block);
 				expect(part).toEqual({
-					function_call: {
+					functionCall: {
 						id: "123",
 						name: "test_func",
 						args: { param1: "value1" },

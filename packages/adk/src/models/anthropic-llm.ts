@@ -402,18 +402,18 @@ export class AnthropicLlm extends BaseLlm {
 		part: any,
 	): Anthropic.MessageParam["content"][0] {
 		if (part.text) return { type: "text", text: part.text };
-		if (part.function_call)
+		if (part.functionCall)
 			return {
 				type: "tool_use",
-				id: part.function_call.id || "",
-				name: part.function_call.name,
-				input: part.function_call.args || {},
+				id: part.functionCall.id || "",
+				name: part.functionCall.name,
+				input: part.functionCall.args || {},
 			};
-		if (part.function_response)
+		if (part.functionResponse)
 			return {
 				type: "tool_result",
-				tool_use_id: part.function_response.id || "",
-				content: String(part.function_response.response?.result || ""),
+				tool_use_id: part.functionResponse.id || "",
+				content: String(part.functionResponse.response?.result || ""),
 				is_error: false,
 			};
 		throw new Error("Unsupported part type for Anthropic conversion");
@@ -426,7 +426,7 @@ export class AnthropicLlm extends BaseLlm {
 		if (block.type === "text") return { text: block.text };
 		if (block.type === "tool_use")
 			return {
-				function_call: { id: block.id, name: block.name, args: block.input },
+				functionCall: { id: block.id, name: block.name, args: block.input },
 			};
 		throw new Error("Unsupported Anthropic content block type");
 	}
