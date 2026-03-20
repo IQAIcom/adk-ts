@@ -2,6 +2,7 @@ import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "../../models/function-declaration";
 import { BaseTool } from "../base/base-tool";
 import type { ToolContext } from "../tool-context";
+import { validateUrlForFetch } from "../utils/url-validation";
 
 interface HttpRequestResult {
 	statusCode: number;
@@ -89,8 +90,8 @@ export class HttpRequestTool extends BaseTool {
 				timeout = 10000,
 			} = args;
 
-			// Prepare URL with query parameters
-			const urlObj = new URL(url);
+			// Validate and prepare URL with query parameters
+			const urlObj = validateUrlForFetch(url);
 			if (params) {
 				Object.entries(params).forEach(([key, value]) => {
 					urlObj.searchParams.append(key, value);
@@ -103,12 +104,14 @@ export class HttpRequestTool extends BaseTool {
 				requestHeaders["Content-Type"] = "application/json";
 			}
 
-			// Configure request options
+			// Configure request options — redirect: "manual" prevents following
+			// redirects to internal/private addresses (SSRF via redirect)
 			const options: RequestInit = {
 				method,
 				headers: requestHeaders,
 				body: body,
 				signal: AbortSignal.timeout(timeout),
+				redirect: "manual",
 			};
 
 			// Execute request

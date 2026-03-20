@@ -139,11 +139,7 @@ Two patterns are supported:
 import { Steps } from "fumadocs-ui/components/steps";
 
 <Steps>
-  ### 1. First Step
-  Content for step 1.
-
-  ### 2. Second Step
-  Content for step 2.
+  ### 1. First Step Content for step 1. ### 2. Second Step Content for step 2.
 </Steps>;
 ```
 
@@ -167,16 +163,8 @@ Used for: Tutorials, quickstarts, setup guides. Use Pattern A for simple linear 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 <Tabs items={["pnpm", "npm", "yarn"]}>
-  <Tab value="pnpm">
-    ```bash
-    pnpm add @iqai/adk
-    ```
-  </Tab>
-  <Tab value="npm">
-    ```bash
-    npm install @iqai/adk
-    ```
-  </Tab>
+  <Tab value="pnpm">```bash pnpm add @iqai/adk ```</Tab>
+  <Tab value="npm">```bash npm install @iqai/adk ```</Tab>
 </Tabs>;
 ````
 
