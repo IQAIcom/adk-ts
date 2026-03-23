@@ -1,5 +1,24 @@
 # @iqai/adk
 
+## 0.8.4
+
+### Patch Changes
+
+- 621aa3f: fix: align Anthropic non-streaming path to use camelCase for function call properties
+
+## 0.8.3
+
+### Patch Changes
+
+- 0c189c7: security: fix SSRF, API key exposure, pattern bypass, symlink escapes
+
+## 0.8.2
+
+### Patch Changes
+
+- c1093ed: fix: clear LangGraphAgent results on each invocation
+- deb7ec5: fix: assign decodedData when input is string in getEncodedFileContent
+
 ## 0.8.1
 
 ### Patch Changes

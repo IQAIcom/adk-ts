@@ -297,11 +297,12 @@ export class LlmSummaryProvider implements MemorySummaryProvider {
 			this.baseUrl ?? "https://generativelanguage.googleapis.com/v1beta";
 
 		const response = await fetch(
-			`${baseUrl}/models/${this.model}:generateContent?key=${apiKey}`,
+			`${baseUrl}/models/${this.model}:generateContent`,
 			{
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
+					"x-goog-api-key": apiKey,
 				},
 				body: JSON.stringify({
 					contents: [{ parts: [{ text: prompt }] }],
