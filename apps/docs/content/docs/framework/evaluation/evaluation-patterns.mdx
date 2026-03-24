@@ -246,7 +246,7 @@ const researcher = new LlmAgent({
   name: "researcher",
   model: "gemini-2.5-flash",
   instruction: "Research the topic thoroughly.",
-  tools: [searchTool],
+  tools: [searchTool], // Assume searchTool is a pre-defined tool.
 });
 
 const writer = new LlmAgent({

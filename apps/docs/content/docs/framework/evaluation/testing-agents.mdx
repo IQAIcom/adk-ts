@@ -16,7 +16,7 @@ import { AgentEvaluator, AgentBuilder } from "@iqai/adk";
 // 1. Build your agent
 const { agent } = await AgentBuilder.create("weather_agent")
   .withModel("gemini-2.5-flash")
-  .withTools([weatherTool])
+  .withTools([weatherTool]) // Assume weatherTool is a pre-defined tool.
   .withInstruction("You are a weather assistant.")
   .build();
 

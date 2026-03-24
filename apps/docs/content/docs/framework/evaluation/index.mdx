@@ -129,6 +129,7 @@ await AgentEvaluator.evaluate(agent, "./evaluation/tests");
 Programmatic usage with an already-loaded EvalSet:
 
 ```typescript
+import * as fs from "node:fs/promises";
 import { AgentEvaluator } from "@iqai/adk";
 import type { EvalSet } from "@iqai/adk";
 
