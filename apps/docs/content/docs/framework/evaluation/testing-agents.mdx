@@ -1,300 +1,67 @@
 ---
 title: Testing Agents
-description: Current approaches and future automated testing methods
+description: Write test cases, configure evaluation criteria, and run automated evaluations with AgentEvaluator
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-Agent testing involves validating behavior across multiple dimensions from tool usage to response quality. The `@iqai/adk` now includes a comprehensive automated evaluation framework alongside manual testing approaches.
+## Basic Workflow
 
-## Current Testing Approaches
-
-### Manual Testing with Examples
-
-The most immediate way to test agents is through the provided examples and custom test scripts:
+The evaluation workflow has three steps: write test cases, set thresholds, and run.
 
 ```typescript
-import { LlmAgent, Runner, InMemorySessionService } from "@iqai/adk";
+import { AgentEvaluator, AgentBuilder } from "@iqai/adk";
 
-async function testAgent() {
-  const agent = new LlmAgent({
-    name: "test_agent",
-    model: "gemini-2.5-flash",
-    description: "Agent for testing",
-    instruction: "You are a helpful assistant",
-  });
+// 1. Build your agent
+const { agent } = await AgentBuilder.create("weather_agent")
+  .withModel("gemini-2.5-flash")
+  .withTools([weatherTool])
+  .withInstruction("You are a weather assistant.")
+  .build();
 
-  const sessionService = new InMemorySessionService();
-  const session = await sessionService.createSession("test_app", "test_user");
+// 2. Run evaluation against a directory of test files
+await AgentEvaluator.evaluate(agent, "./evaluation/tests");
 
-  const runner = new Runner({
-    appName: "test_app",
-    agent,
-    sessionService,
-  });
-
-  // Test specific scenarios
-  await testScenario(runner, session.id, "What is 2 + 2?");
-  await testScenario(runner, session.id, "Help me plan a meeting");
-}
-
-async function testScenario(runner: Runner, sessionId: string, query: string) {
-  console.log(`Testing: ${query}`);
-
-  const events = [];
-  for await (const event of runner.runAsync({
-    userId: "test_user",
-    sessionId,
-    newMessage: { parts: [{ text: query }] },
-  })) {
-    events.push(event);
-    if (event.content?.parts && !event.partial) {
-      console.log(`Response: ${event.content.parts.map(p => p.text).join("")}`);
-    }
-  }
-
-  // Manual validation
-  validateResponse(events, query);
-}
-
-function validateResponse(events: Event[], query: string) {
-  // Custom validation logic
-  const finalEvents = events.filter(e => e.isFinalResponse());
-  console.log(`Generated ${finalEvents.length} final responses`);
-
-  // Check for specific criteria
-  if (query.includes("plan")) {
-    // Verify planning behavior
-  }
-
-  if (query.includes("calculate")) {
-    // Verify calculation accuracy
-  }
-}
+// 3. If no error is thrown, all metrics passed their thresholds
+console.log("All evaluations passed!");
 ```
 
-### Session-Based Testing
+`AgentEvaluator.evaluate()` finds all `*.test.json` files recursively in the given path, loads the sibling `test_config.json` for thresholds, runs the agent against each test case, and **throws an Error** if any metric falls below its threshold.
 
-Use session services to test multi-turn conversations:
+## Writing Test Cases
 
-```typescript
-async function testConversationFlow() {
-  const sessionService = new InMemorySessionService();
-  const session = await sessionService.createSession("test_app", "user_123");
+Test cases use the **EvalSet** JSON schema. Each file must end with `.test.json`.
 
-  const testTurns = [
-    "Hello, I need help with my project",
-    "It's a web development project using React",
-    "What are the best practices for state management?",
-    "Can you provide specific examples?",
-  ];
-
-  for (const turn of testTurns) {
-    console.log(`\n--- Turn: ${turn} ---`);
-    await testScenario(runner, session.id, turn);
-
-    // Analyze session state
-    const updatedSession = await sessionService.getSession(
-      "test_app",
-      "user_123",
-      session.id,
-    );
-    console.log(`Session has ${updatedSession?.events?.length || 0} events`);
-  }
-}
-```
-
-### Tool Usage Validation
-
-Test agent tool interactions by monitoring function calls:
-
-```typescript
-function validateToolUsage(events: Event[]) {
-  const functionCalls = events
-    .flatMap(e => e.getFunctionCalls())
-    .map(fc => ({ name: fc.name, args: fc.args }));
-
-  console.log("Function calls made:", functionCalls);
-
-  // Validate expected tool usage
-  const expectedTools = ["search_tool", "calculator_tool"];
-  const usedTools = functionCalls.map(fc => fc.name);
-
-  for (const tool of expectedTools) {
-    if (usedTools.includes(tool)) {
-      console.log(`✅ Expected tool '${tool}' was used`);
-    } else {
-      console.log(`❌ Expected tool '${tool}' was NOT used`);
-    }
-  }
-}
-```
-
-## Testing Strategies
-
-### Unit Testing Patterns
-
-Test individual agent capabilities in isolation:
-
-```typescript
-describe("Agent Capabilities", () => {
-  test("should handle basic calculations", async () => {
-    const response = await runSingleQuery(agent, "What is 15 * 7?");
-    expect(response).toContain("105");
-  });
-
-  test("should use search tool for information queries", async () => {
-    const events = await runAndCollectEvents(
-      agent,
-      "What is the weather in Paris?",
-    );
-    const toolCalls = events.flatMap(e => e.getFunctionCalls());
-    expect(toolCalls.some(fc => fc.name === "search_tool")).toBe(true);
-  });
-
-  test("should maintain context across turns", async () => {
-    const session = await createTestSession();
-    await runQuery(session, "My name is Alice");
-    const response = await runQuery(session, "What is my name?");
-    expect(response.toLowerCase()).toContain("alice");
-  });
-});
-```
-
-### Integration Testing
-
-Test complete workflows and agent interactions:
-
-```typescript
-async function testWorkflowIntegration() {
-  // Test end-to-end workflow
-  const workflow = [
-    { query: "I need to book a flight", expectedTools: ["search_flights"] },
-    {
-      query: "From New York to London on March 15",
-      expectedTools: ["book_flight"],
-    },
-    { query: "Send confirmation to my email", expectedTools: ["send_email"] },
-  ];
-
-  for (const step of workflow) {
-    const events = await runAndCollectEvents(agent, step.query);
-    validateToolUsage(events, step.expectedTools);
-  }
-}
-```
-
-### Performance Testing
-
-Monitor response times and resource usage:
-
-```typescript
-async function testPerformance() {
-  const queries = [
-    "Simple question",
-    "Complex multi-step query with calculations",
-    "Query requiring multiple tool calls",
-  ];
-
-  for (const query of queries) {
-    const startTime = Date.now();
-    await runSingleQuery(agent, query);
-    const duration = Date.now() - startTime;
-
-    console.log(`Query: "${query}" took ${duration}ms`);
-
-    // Set performance expectations
-    if (duration > 10000) {
-      console.warn(`⚠️  Query took longer than expected: ${duration}ms`);
-    }
-  }
-}
-```
-
-## Automated Evaluation Framework
-
-<Callout type="info" title="Experimental Feature">
-
-The automated evaluation framework is now available as an experimental
-feature. APIs may evolve based on user feedback.
-
-</Callout>
-
-### AgentEvaluator: Core Testing Interface
-
-The `AgentEvaluator` provides the main entry point for automated agent testing:
-
-```typescript
-import { AgentEvaluator } from "@iqai/adk/evaluation";
-import { LlmAgent } from "@iqai/adk";
-
-// Create your agent
-const agent = new LlmAgent({
-  name: "test-agent",
-  model: "gpt-4",
-  instruction: "You are a helpful assistant",
-});
-
-// Run evaluation against test files
-const results = await AgentEvaluator.evaluate({
-  agent,
-  testFilePaths: ["./tests/basic.test.json"],
-  testConfigFilePath: "./test_config.json",
-  numRuns: 3, // Run multiple times for reliability
-});
-
-console.log(`Overall Score: ${results.overallScore}`);
-console.log(`Passed: ${results.passedTests}/${results.totalTests}`);
-```
-
-### Test File Structure
-
-Test files use a structured JSON format with expected behaviors:
+### Full Example
 
 ```json
 {
-  "name": "basic_calculation_test",
-  "agent_config": {
-    "name": "calculator_agent",
-    "tools": ["calculator_tool"]
-  },
-  "test_cases": [
+  "evalSetId": "weather-agent-tests",
+  "name": "Weather Agent Evaluation",
+  "creationTimestamp": 0,
+  "evalCases": [
     {
-      "user_query": "What is 42 + 17?",
-      "expected_tools": ["calculator_tool"],
-      "expected_response_contains": ["59"],
-      "max_response_time_ms": 5000
-    }
-  ]
-}
-```
-
-### Integration Testing with EvalSets
-
-Comprehensive evaluation of complex agent behaviors:
-
-**Planned Features:**
-
-- Multi-turn conversation scenarios
-- Complex workflow validation
-- Batch processing of evaluation scenarios
-- Statistical analysis of results
-
-**EvalSet Structure (Coming Soon):**
-
-```json
-{
-  "evalset_name": "customer_support_scenarios",
-  "sessions": [
-    {
-      "initial_state": { "user_type": "premium" },
-      "conversation_turns": [
+      "evalId": "case-1",
+      "conversation": [
         {
-          "user_message": "I have an issue with my account",
-          "expected_agent_behavior": {
-            "should_escalate": false,
-            "should_use_tools": ["account_lookup"],
-            "response_tone": "helpful"
+          "creationTimestamp": 0,
+          "userContent": {
+            "role": "user",
+            "parts": [{ "text": "What is the weather in London?" }]
+          },
+          "finalResponse": {
+            "role": "model",
+            "parts": [{ "text": "The weather in London" }]
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "name": "get_weather",
+                "args": { "city": "London" }
+              }
+            ],
+            "intermediateResponses": []
           }
         }
       ]
@@ -303,83 +70,309 @@ Comprehensive evaluation of complex agent behaviors:
 }
 ```
 
-### Automated Evaluation Classes
+### Response-Only Test Case
 
-**AgentEvaluator (Coming Soon):**
+When you only care about the final response (ROUGE scoring), omit `intermediateData`:
 
-- Comprehensive agent performance assessment
-- Configurable evaluation criteria
-- Integration with CI/CD pipelines
-- Performance trend analysis
+```json
+{
+  "evalId": "greeting-test",
+  "conversation": [
+    {
+      "creationTimestamp": 0,
+      "userContent": {
+        "role": "user",
+        "parts": [{ "text": "Hello!" }]
+      },
+      "finalResponse": {
+        "role": "model",
+        "parts": [{ "text": "Hello! How can I help you today?" }]
+      }
+    }
+  ]
+}
+```
 
-**TrajectoryEvaluator (Coming Soon):**
+### Tool Trajectory Test Case
 
-- Tool usage pattern analysis
-- Decision path optimization
-- Efficiency measurement
-- Strategy consistency validation
+When you care about which tools are called with what arguments:
 
-**ResponseEvaluator (Coming Soon):**
+```json
+{
+  "evalId": "search-test",
+  "conversation": [
+    {
+      "creationTimestamp": 0,
+      "userContent": {
+        "role": "user",
+        "parts": [{ "text": "Search for TypeScript tutorials" }]
+      },
+      "intermediateData": {
+        "toolUses": [
+          {
+            "name": "web_search",
+            "args": { "query": "TypeScript tutorials" }
+          }
+        ],
+        "intermediateResponses": []
+      }
+    }
+  ]
+}
+```
 
-- Semantic similarity scoring
-- Quality assessment metrics
-- Reference comparison
-- Automated scoring algorithms
+### Multi-Turn Test Case
 
-## Best Practices
+Test conversations with multiple turns:
 
-### Test Design
+```json
+{
+  "evalId": "multi-turn-test",
+  "conversation": [
+    {
+      "creationTimestamp": 0,
+      "userContent": {
+        "role": "user",
+        "parts": [{ "text": "What is the weather in London?" }]
+      },
+      "finalResponse": {
+        "role": "model",
+        "parts": [{ "text": "The weather in London is sunny, 22°C." }]
+      },
+      "intermediateData": {
+        "toolUses": [{ "name": "get_weather", "args": { "city": "London" } }],
+        "intermediateResponses": []
+      }
+    },
+    {
+      "creationTimestamp": 0,
+      "userContent": {
+        "role": "user",
+        "parts": [{ "text": "What about Tokyo?" }]
+      },
+      "finalResponse": {
+        "role": "model",
+        "parts": [{ "text": "The weather in Tokyo is cloudy, 18°C." }]
+      },
+      "intermediateData": {
+        "toolUses": [{ "name": "get_weather", "args": { "city": "Tokyo" } }],
+        "intermediateResponses": []
+      }
+    }
+  ]
+}
+```
 
-**Representative Scenarios:**
+### Stateful Test Case
 
-- Cover typical user journeys
-- Include edge cases and error conditions
-- Test various complexity levels
-- Validate cross-functional scenarios
+Test agents that depend on session state using `sessionInput`:
 
-**Clear Success Criteria:**
+```json
+{
+  "evalId": "stateful-test",
+  "conversation": [
+    {
+      "creationTimestamp": 0,
+      "userContent": {
+        "role": "user",
+        "parts": [{ "text": "What is my account balance?" }]
+      },
+      "finalResponse": {
+        "role": "model",
+        "parts": [{ "text": "Your account balance is $1,250." }]
+      }
+    }
+  ],
+  "sessionInput": {
+    "appName": "banking_app",
+    "userId": "user_123",
+    "state": {
+      "account_balance": 1250,
+      "account_type": "checking"
+    }
+  }
+}
+```
 
-- Define specific, measurable expectations
-- Set appropriate performance thresholds
-- Balance automation with human judgment
-- Document evaluation rationale
+## Schema Reference
 
-### Test Maintenance
+**EvalSet** (top level):
 
-**Version Control:**
+| Field               | Type         | Required | Description                              |
+| ------------------- | ------------ | -------- | ---------------------------------------- |
+| `evalSetId`         | `string`     | Yes      | Unique identifier for this test set      |
+| `name`              | `string`     | No       | Human-readable name                      |
+| `description`       | `string`     | No       | Description of what this set tests       |
+| `evalCases`         | `EvalCase[]` | Yes      | Array of test cases                      |
+| `creationTimestamp` | `number`     | Yes      | Creation time (use `0` for static files) |
 
-- Track test scenarios and expected outcomes
-- Maintain test data consistency
-- Document evaluation methodology
-- Regular review and updates
+**EvalCase** (each test case):
 
-**Continuous Improvement:**
+| Field          | Type           | Required | Description                     |
+| -------------- | -------------- | -------- | ------------------------------- |
+| `evalId`       | `string`       | Yes      | Unique identifier for this case |
+| `conversation` | `Invocation[]` | Yes      | One or more conversation turns  |
+| `sessionInput` | `SessionInput` | No       | Pre-populated session state     |
 
-- Analyze test failures systematically
-- Update tests based on production feedback
-- Expand coverage as agents evolve
-- Balance comprehensive testing with execution speed
+**Invocation** (each conversation turn):
 
-### Integration Guidelines
+| Field               | Type               | Required | Description                                                     |
+| ------------------- | ------------------ | -------- | --------------------------------------------------------------- |
+| `invocationId`      | `string`           | No       | Optional identifier for this turn                               |
+| `userContent`       | `Content`          | Yes      | The user message (`{ role: "user", parts: [{ text: "..." }] }`) |
+| `finalResponse`     | `Content`          | No       | Expected agent response (for response metrics)                  |
+| `intermediateData`  | `IntermediateData` | No       | Expected tool usage (for trajectory metrics)                    |
+| `creationTimestamp` | `number`           | Yes      | Timestamp (use `0` for static files)                            |
 
-**Development Workflow:**
+**IntermediateData** (expected tool usage):
 
-- Run quick tests during development
-- Comprehensive tests before deployment
-- Automated regression testing
-- Performance monitoring in production
+| Field                   | Type             | Required | Description                                     |
+| ----------------------- | ---------------- | -------- | ----------------------------------------------- |
+| `toolUses`              | `FunctionCall[]` | Yes      | Expected tool calls in order (`{ name, args }`) |
+| `intermediateResponses` | `Array`          | Yes      | Intermediate responses (use `[]` if none)       |
 
-**Team Collaboration:**
+**SessionInput** (pre-populated state):
 
-- Share test scenarios across team members
-- Document testing conventions
-- Regular review of testing strategy
-- Clear escalation procedures for test failures
+| Field     | Type                  | Required | Description                     |
+| --------- | --------------------- | -------- | ------------------------------- |
+| `appName` | `string`              | Yes      | Application name                |
+| `userId`  | `string`              | Yes      | User identifier                 |
+| `state`   | `Record<string, any>` | Yes      | Key-value state to pre-populate |
 
-<Callout type="info" title="Getting Started">
+## Configuring Criteria
 
-Start with manual testing using the examples, then gradually build custom test
-scripts as your agent functionality grows. This provides immediate validation
-while preparing for the upcoming automated framework.
+Create a `test_config.json` file in the same directory as your test files:
+
+```json
+{
+  "criteria": {
+    "tool_trajectory_avg_score": 1.0,
+    "response_match_score": 0.8
+  }
+}
+```
+
+Each key must be a valid metric name. The value is the minimum score required to pass.
+
+**Allowed metric keys:**
+
+- `tool_trajectory_avg_score` — tool call sequence matching (0-1)
+- `response_match_score` — ROUGE-1 response similarity (0-1)
+- `response_evaluation_score` — LLM-as-judge quality score (1-5)
+- `safety_v1` — safety / harmlessness check (0-1)
+- `final_response_match_v2` — LLM judge binary validity (0-1, experimental)
+
+If no `test_config.json` is found, the defaults are:
+
+```json
+{
+  "tool_trajectory_avg_score": 1.0,
+  "response_match_score": 0.8
+}
+```
+
+<Callout type="info" title="Match Criteria to Your Test Data">
+
+Only include criteria for data you've provided. If your test cases don't
+include `intermediateData`, don't set `tool_trajectory_avg_score`. If they
+don't include `finalResponse`, don't set `response_match_score`.
 
 </Callout>
+
+## Directory Structure
+
+A typical evaluation setup:
+
+```
+evaluation/
+├── tests/
+│   ├── basic.test.json        # EvalSet test cases
+│   ├── edge-cases.test.json   # More test cases
+│   └── test_config.json       # Shared criteria for this directory
+└── agent.ts                   # Agent definition
+```
+
+`AgentEvaluator.evaluate()` searches the directory recursively for `*.test.json` files. Each test file uses the `test_config.json` found in its own directory (or falls back to defaults).
+
+## Test Case Design Tips
+
+- **Be representative** — cover scenarios your agent will encounter in production, not just the happy path. Include edge cases, ambiguous queries, and multi-turn conversations.
+- **Define clear expectations** — for each test case, specify the expected response (for ROUGE scoring), the expected tool calls with arguments (for trajectory scoring), or both.
+- **Start small, expand iteratively** — begin with 5-10 test cases covering core functionality. Add failure modes as you discover them in production.
+- **Version control your tests** — test files are plain JSON. Commit them alongside your agent code.
+
+## Integration with Test Runners
+
+Use evaluation inside Vitest, Jest, or any test runner:
+
+```typescript
+import { describe, it } from "vitest";
+import { AgentEvaluator } from "@iqai/adk";
+import { getMyAgent } from "./agent";
+
+describe("Agent Evaluation", () => {
+  it("should pass all evaluation criteria", async () => {
+    const { agent } = await getMyAgent();
+
+    // Throws on failure — Vitest treats the thrown error as a test failure
+    await AgentEvaluator.evaluate(agent, "./evaluation/tests", 1);
+  }, 60_000); // Allow generous timeout for LLM calls
+});
+```
+
+<Callout type="info" title="Timeouts">
+
+Agent evaluations make real LLM API calls, so they are slower than unit tests.
+Set generous timeouts (30-120 seconds) depending on the number of test cases
+and `numRuns`.
+
+</Callout>
+
+## Legacy Test Format
+
+<Callout type="warning" title="Deprecated">
+
+The legacy array format is auto-migrated at runtime but emits a deprecation
+warning. Use the EvalSet schema for new test files. Use
+`migrateEvalDataToNewSchema()` to convert existing files.
+
+</Callout>
+
+The older format uses a flat array:
+
+```json
+[
+  {
+    "query": "What is the weather in London?",
+    "reference": "The weather in London",
+    "expected_tool_use": [
+      { "name": "get_weather", "args": { "city": "London" } }
+    ]
+  }
+]
+```
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="📊 Metrics & Scoring"
+    description="Deep dive into evaluation metrics, custom scoring, and statistical analysis"
+    href="/docs/framework/evaluation/metrics-and-scoring"
+  />
+  <Card
+    title="📐 Evaluation Patterns"
+    description="Advanced patterns for CI/CD integration, domain-specific evaluation, and production monitoring"
+    href="/docs/framework/evaluation/evaluation-patterns"
+  />
+  <Card
+    title="💡 Evaluation Concepts"
+    description="Understand why and how agent evaluation works"
+    href="/docs/framework/evaluation/evaluation-concepts"
+  />
+  <Card
+    title="🔧 Tools"
+    description="Understand tool integration — key for testing tool trajectories"
+    href="/docs/framework/tools"
+  />
+</Cards>

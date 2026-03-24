@@ -1,490 +1,335 @@
 ---
 title: Evaluation Patterns
-description: Domain-specific evaluation strategies and best practices
+description: Practical patterns for organizing evaluations, CI/CD integration, custom evaluators, and testing multi-agent systems
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Different types of agents require specialized evaluation approaches tailored to their specific use cases and performance requirements.
+## Organizing Test Suites
 
-## Customer Support Agents
+### By Capability
 
-Customer support agents need evaluation that focuses on issue resolution, user satisfaction, and escalation handling.
+Separate test files by what they validate:
 
-### Key Evaluation Areas
+```
+evaluation/
+├── tool-usage/
+│   ├── search.test.json         # Search tool tests
+│   ├── calculator.test.json     # Calculator tool tests
+│   └── test_config.json         # Strict trajectory matching
+├── response-quality/
+│   ├── factual.test.json        # Factual Q&A tests
+│   ├── conversational.test.json # Open-ended response tests
+│   └── test_config.json         # Response scoring only
+└── safety/
+    ├── harmful-inputs.test.json # Adversarial prompts
+    └── test_config.json         # Safety metric only
+```
 
-**Issue Resolution Effectiveness:**
-
-- **First Contact Resolution**: Percentage of issues resolved without escalation
-- **Resolution Accuracy**: Correctness of solutions provided
-- **Resolution Time**: Speed of problem solving
-- **Follow-up Requirements**: Need for additional assistance
-
-**Communication Quality:**
-
-- **Tone Appropriateness**: Professional yet empathetic communication
-- **Clarity**: Easy-to-understand explanations
-- **Completeness**: Comprehensive response coverage
-- **Personalization**: Appropriate use of user context
-
-**Knowledge Base Usage:**
-
-- **Search Accuracy**: Finding relevant information efficiently
-- **Information Synthesis**: Combining multiple sources effectively
-- **Source Attribution**: Proper citation of knowledge sources
-- **Gap Identification**: Recognizing when information is unavailable
-
-### Evaluation Implementation
+Each directory gets its own `test_config.json` with criteria appropriate to what it tests:
 
 ```typescript
-async function evaluateCustomerSupportAgent(
-  agent: LlmAgent,
-  supportScenarios: CustomerSupportScenario[],
-) {
-  const results = [];
+import { AgentEvaluator } from "@iqai/adk";
 
-  for (const scenario of supportScenarios) {
-    const sessionService = new InMemorySessionService();
-    const session = await sessionService.createSession("support", "customer");
+// Run all test suites
+await AgentEvaluator.evaluate(agent, "./evaluation");
 
-    const runner = new Runner({
-      appName: "support_app",
-      agent,
-      sessionService,
-    });
+// Or run a specific suite
+await AgentEvaluator.evaluate(agent, "./evaluation/tool-usage");
+```
 
-    // Run the support scenario
-    const events = [];
-    for await (const event of runner.runAsync({
-      userId: "customer",
-      sessionId: session.id,
-      newMessage: { parts: [{ text: scenario.userIssue }] },
-    })) {
-      events.push(event);
-    }
+### By Environment
 
-    // Evaluate the interaction
-    const evaluation = {
-      scenario: scenario.type,
-      resolved: checkIssueResolution(events, scenario),
-      escalated: checkEscalation(events),
-      tone: analyzeTone(events),
-      accuracy: validateAccuracy(events, scenario.expectedSolution),
-      toolsUsed: extractToolUsage(events),
-    };
+Use different thresholds for different stages:
 
-    results.push(evaluation);
-  }
+```
+evaluation/
+├── smoke/                 # Fast, loose thresholds — run on every commit
+│   ├── basic.test.json
+│   └── test_config.json   # { "response_match_score": 0.5 }
+├── standard/              # Full suite — run on PR
+│   ├── comprehensive.test.json
+│   └── test_config.json   # { "response_match_score": 0.8, "tool_trajectory_avg_score": 1.0 }
+└── release/               # Strict — run before deploy
+    ├── regression.test.json
+    └── test_config.json   # { "response_match_score": 0.9, "safety_v1": 1.0 }
+```
 
-  return analyzeSupportResults(results);
-}
+## CI/CD Integration
 
-interface CustomerSupportScenario {
-  type: "billing" | "technical" | "account" | "general";
-  userIssue: string;
-  expectedSolution: string;
-  shouldEscalate: boolean;
-  requiredTools: string[];
+### GitHub Actions
+
+```yaml
+name: Agent Evaluation
+on:
+  pull_request:
+    paths:
+      - "src/agents/**"
+      - "evaluation/**"
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install
+      - run: pnpm build
+      - name: Run agent evaluation
+        run: pnpm tsx evaluation/run.ts
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+```
+
+With a simple runner script:
+
+```typescript
+// evaluation/run.ts
+import { AgentEvaluator } from "@iqai/adk";
+import { getMyAgent } from "../src/agents/my-agent";
+
+const { agent } = await getMyAgent();
+
+try {
+  await AgentEvaluator.evaluate(agent, "./evaluation/standard");
+  console.log("Evaluation passed");
+} catch (error) {
+  console.error("Evaluation failed:", error.message);
+  process.exit(1);
 }
 ```
 
-### Success Metrics
+### Quality Gates
 
-**Resolution Metrics:**
-
-- **Target**: 85%+ first-contact resolution for standard issues
-- **Escalation Rate**: Less than 15% for routine inquiries
-- **Accuracy Rate**: 95%+ for factual information
-
-**User Experience Metrics:**
-
-- **Response Clarity**: Subjective assessment of explanation quality
-- **Tone Appropriateness**: Professional and empathetic communication
-- **Completeness**: All aspects of inquiry addressed
-
-## Task Automation Agents
-
-Task automation agents require evaluation focused on workflow completion, integration quality, and error handling.
-
-### Key Evaluation Areas
-
-**Workflow Completion:**
-
-- **End-to-End Success**: Complete task execution without intervention
-- **Step Accuracy**: Correct execution of individual workflow steps
-- **State Management**: Proper handling of workflow state
-- **Dependency Handling**: Managing task dependencies and prerequisites
-
-**Integration Quality:**
-
-- **API Usage**: Proper integration with external systems
-- **Data Transformation**: Accurate processing and formatting
-- **Error Handling**: Graceful handling of system failures
-- **Authentication**: Proper credential and access management
-
-**Efficiency Metrics:**
-
-- **Execution Time**: Speed of task completion
-- **Resource Usage**: Optimal use of system resources
-- **Retry Logic**: Intelligent handling of transient failures
-- **Parallel Processing**: Effective use of concurrent operations
-
-### Evaluation Implementation
+Use evaluation as a deployment gate — `AgentEvaluator.evaluate()` throws on failure, so a non-zero exit code blocks the pipeline:
 
 ```typescript
-interface AutomationTask {
-  name: string;
-  steps: TaskStep[];
-  expectedDuration: number;
-  requiredTools: string[];
-  successCriteria: SuccessCriteria;
-}
+// evaluation/release-gate.ts
+import { AgentEvaluator } from "@iqai/adk";
+import { getMyAgent } from "../src/agents/my-agent";
 
-interface TaskStep {
-  action: string;
-  expectedTool: string;
-  expectedData: any;
-  dependencies: string[];
-}
+const { agent } = await getMyAgent();
 
-async function evaluateAutomationAgent(
-  agent: LlmAgent,
-  automationTasks: AutomationTask[],
-) {
-  const results = [];
-
-  for (const task of automationTasks) {
-    const startTime = Date.now();
-
-    try {
-      const events = await executeAutomationTask(agent, task);
-      const executionTime = Date.now() - startTime;
-
-      const evaluation = {
-        taskName: task.name,
-        completed: checkTaskCompletion(events, task),
-        accuracy: validateStepAccuracy(events, task.steps),
-        efficiency: executionTime <= task.expectedDuration,
-        toolUsage: analyzeToolUsage(events, task.requiredTools),
-        errorHandling: evaluateErrorRecovery(events),
-        executionTime,
-      };
-
-      results.push(evaluation);
-    } catch (error) {
-      results.push({
-        taskName: task.name,
-        completed: false,
-        error: error.message,
-        executionTime: Date.now() - startTime,
-      });
-    }
-  }
-
-  return analyzeAutomationResults(results);
-}
+// Strict evaluation for release — 5 runs for higher statistical confidence
+await AgentEvaluator.evaluate(agent, "./evaluation/release", 5);
 ```
 
-### Success Metrics
+## Programmatic Evaluation
 
-**Completion Metrics:**
-
-- **Target**: 95%+ successful task completion
-- **Efficiency**: Within 120% of expected execution time
-- **Error Recovery**: 90%+ recovery from transient failures
-
-**Quality Metrics:**
-
-- **Step Accuracy**: 98%+ correct step execution
-- **Data Integrity**: 100% accurate data transformation
-- **Integration**: Zero authentication or API errors
-
-## Information Retrieval Agents
-
-Information retrieval agents need evaluation focused on search accuracy, source quality, and information synthesis.
-
-### Key Evaluation Areas
-
-**Search Effectiveness:**
-
-- **Query Understanding**: Interpretation of user information needs
-- **Search Strategy**: Effective use of search tools and techniques
-- **Result Relevance**: Quality of retrieved information
-- **Coverage**: Comprehensive information gathering
-
-**Source Quality:**
-
-- **Reliability**: Use of trustworthy information sources
-- **Currency**: Access to up-to-date information
-- **Attribution**: Proper citation and source tracking
-- **Diversity**: Multiple perspectives and sources
-
-**Information Synthesis:**
-
-- **Accuracy**: Correct interpretation of source material
-- **Coherence**: Logical organization of information
-- **Completeness**: Comprehensive coverage of the topic
-- **Bias Awareness**: Recognition and mitigation of source bias
-
-### Evaluation Implementation
+For dynamic test generation or custom workflows, use `evaluateEvalSet()` directly:
 
 ```typescript
-interface InformationQuery {
-  query: string;
-  domain: string;
-  expectedSources: string[];
-  requiredInformation: string[];
-  qualityThreshold: number;
-}
+import { AgentEvaluator } from "@iqai/adk";
+import type { EvalSet } from "@iqai/adk";
 
-async function evaluateRetrievalAgent(
-  agent: LlmAgent,
-  queries: InformationQuery[],
-) {
-  const results = [];
-
-  for (const query of queries) {
-    const events = await executeInformationQuery(agent, query.query);
-
-    const evaluation = {
-      query: query.query,
-      domain: query.domain,
-      searchAccuracy: evaluateSearchAccuracy(events, query),
-      sourceQuality: assessSourceQuality(events, query.expectedSources),
-      informationCompleteness: checkInformationCoverage(
-        events,
-        query.requiredInformation,
-      ),
-      synthesisQuality: evaluateSynthesis(events),
-      citations: validateCitations(events),
-    };
-
-    results.push(evaluation);
-  }
-
-  return analyzeRetrievalResults(results);
-}
-
-function evaluateSearchAccuracy(events: Event[], query: InformationQuery) {
-  const searchEvents = events.filter(e =>
-    e.getFunctionCalls().some(fc => fc.name.includes("search")),
-  );
-
-  const relevantResults = searchEvents.filter(e =>
-    containsRelevantInformation(e, query.requiredInformation),
-  );
-
+function generateTestCases(scenarios: string[]): EvalSet {
   return {
-    precision: relevantResults.length / searchEvents.length,
-    recall: calculateRecall(relevantResults, query.requiredInformation),
-    f1Score: calculateF1Score(relevantResults, query),
+    evalSetId: `dynamic-${Date.now()}`,
+    creationTimestamp: Date.now(),
+    evalCases: scenarios.map((scenario, i) => ({
+      evalId: `case-${i}`,
+      conversation: [
+        {
+          creationTimestamp: Date.now(),
+          userContent: {
+            role: "user" as const,
+            parts: [{ text: scenario }],
+          },
+          finalResponse: {
+            role: "model" as const,
+            parts: [{ text: getExpectedResponse(scenario) }],
+          },
+        },
+      ],
+    })),
   };
 }
+
+const evalSet = generateTestCases([
+  "What is 2 + 2?",
+  "What is the capital of France?",
+  "Explain photosynthesis briefly.",
+]);
+
+await AgentEvaluator.evaluateEvalSet(
+  agent,
+  evalSet,
+  { response_match_score: 0.7 },
+  3, // numRuns
+  true, // printDetailedResults
+);
 ```
 
-### Success Metrics
+## Custom Evaluators
 
-**Accuracy Metrics:**
-
-- **Search Precision**: 80%+ relevant results
-- **Information Recall**: 90%+ required information found
-- **Source Reliability**: 95%+ authoritative sources
-
-**Quality Metrics:**
-
-- **Citation Accuracy**: 100% proper attribution
-- **Synthesis Coherence**: Subjective assessment of organization
-- **Bias Mitigation**: Recognition of perspective limitations
-
-## Multi-Agent System Evaluation
-
-Multi-agent systems require evaluation of coordination, communication, and collective performance.
-
-### Key Evaluation Areas
-
-**Agent Coordination:**
-
-- **Task Distribution**: Effective allocation of work across agents
-- **Communication**: Clear inter-agent information exchange
-- **Synchronization**: Proper timing of collaborative activities
-- **Conflict Resolution**: Handling of contradictory agent outputs
-
-**System Performance:**
-
-- **Collective Accuracy**: Combined agent performance vs individual
-- **Efficiency Gains**: Benefits of parallelization and specialization
-- **Redundancy Management**: Optimal use of multiple agents
-- **Fault Tolerance**: System resilience to individual agent failures
-
-### Evaluation Implementation
+Extend the `Evaluator` base class to create custom metrics:
 
 ```typescript
-async function evaluateMultiAgentSystem(
-  agents: BaseAgent[],
-  collaborativeScenarios: CollaborativeScenario[],
-) {
-  const results = [];
+import { Evaluator, EvalStatus } from "@iqai/adk";
+import type {
+  EvaluationResult,
+  PerInvocationResult,
+  MetricInfo,
+  Invocation,
+} from "@iqai/adk";
 
-  for (const scenario of collaborativeScenarios) {
-    // Create coordinating agent that manages the sub-agents
-    const coordinator = new SequentialAgent({
-      name: "coordinator",
-      description: "Coordinates multiple specialized agents",
-      subAgents: agents,
-    });
-
-    const events = await executeCollaborativeTask(coordinator, scenario);
-
-    const evaluation = {
-      scenario: scenario.name,
-      overallSuccess: checkCollaborativeSuccess(events, scenario),
-      agentContributions: analyzeAgentContributions(events, agents),
-      coordination: evaluateCoordination(events),
-      efficiency: compareToBaselinePerformance(events, scenario),
-      conflictResolution: assessConflictHandling(events),
-    };
-
-    results.push(evaluation);
-  }
-
-  return analyzeMultiAgentResults(results);
-}
-```
-
-## Production Evaluation Patterns
-
-### Continuous Monitoring
-
-**Real-time Quality Assessment:**
-
-```typescript
-class ProductionEvaluationMonitor {
-  private qualityThresholds: QualityThresholds;
-  private alertCallbacks: ((issue: QualityIssue) => void)[];
-
-  async monitorAgentInteraction(
-    agentResponse: Event,
-    userFeedback?: UserFeedback,
-  ) {
-    const quality = await this.assessResponseQuality(agentResponse);
-
-    if (quality.overall < this.qualityThresholds.overall) {
-      await this.triggerQualityAlert({
-        type: "quality_degradation",
-        agent: agentResponse.author,
-        score: quality.overall,
-        threshold: this.qualityThresholds.overall,
-        timestamp: new Date(),
-      });
-    }
-
-    if (userFeedback) {
-      await this.incorporateUserFeedback(agentResponse, userFeedback);
-    }
-  }
-
-  private async assessResponseQuality(response: Event) {
+class ResponseLengthEvaluator extends Evaluator {
+  static override getMetricInfo(): MetricInfo {
     return {
-      relevance: await this.calculateRelevance(response),
-      accuracy: await this.validateAccuracy(response),
-      helpfulness: await this.assessHelpfulness(response),
-      overall: 0, // computed composite score
+      metricName: "response_length_score",
+      description:
+        "Checks that responses are within an acceptable length range",
+      metricValueInfo: {
+        interval: {
+          minValue: 0,
+          maxValue: 1,
+          openAtMin: false,
+          openAtMax: false,
+        },
+      },
+    };
+  }
+
+  async evaluateInvocations(
+    actualInvocations: Invocation[],
+    expectedInvocations: Invocation[],
+  ): Promise<EvaluationResult> {
+    const perInvocationResults: PerInvocationResult[] = [];
+    let totalScore = 0;
+
+    for (let i = 0; i < actualInvocations.length; i++) {
+      const actual = actualInvocations[i];
+      const expected = expectedInvocations[i];
+      const responseText =
+        actual.finalResponse?.parts?.map(p => p.text).join("") ?? "";
+
+      // Score based on whether response length is reasonable
+      const wordCount = responseText.split(/\s+/).length;
+      const score = wordCount >= 5 && wordCount <= 500 ? 1.0 : 0.0;
+
+      perInvocationResults.push({
+        actualInvocation: actual,
+        expectedInvocation: expected,
+        score,
+        evalStatus:
+          score >= this.metric.threshold
+            ? EvalStatus.PASSED
+            : EvalStatus.FAILED,
+      });
+
+      totalScore += score;
+    }
+
+    const overallScore = totalScore / actualInvocations.length;
+    return {
+      overallScore,
+      overallEvalStatus:
+        overallScore >= this.metric.threshold
+          ? EvalStatus.PASSED
+          : EvalStatus.FAILED,
+      perInvocationResults,
     };
   }
 }
 ```
 
-### A/B Testing
+## Testing Multi-Agent Systems
 
-**Comparative Agent Evaluation:**
+When testing `SequentialAgent`, `ParallelAgent`, or other composite agents, evaluate the overall system behavior rather than individual sub-agents:
 
 ```typescript
-async function runAgentABTest(
-  agentA: LlmAgent,
-  agentB: LlmAgent,
-  testScenarios: TestScenario[],
-  trafficSplit: number = 0.5,
-) {
-  const resultsA = [];
-  const resultsB = [];
+import { AgentEvaluator, SequentialAgent, LlmAgent } from "@iqai/adk";
 
-  for (const scenario of testScenarios) {
-    const useAgentA = Math.random() < trafficSplit;
-    const agent = useAgentA ? agentA : agentB;
+const researcher = new LlmAgent({
+  name: "researcher",
+  model: "gemini-2.5-flash",
+  instruction: "Research the topic thoroughly.",
+  tools: [searchTool],
+});
 
-    const result = await evaluateScenario(agent, scenario);
+const writer = new LlmAgent({
+  name: "writer",
+  model: "gemini-2.5-flash",
+  instruction: "Write a summary based on the research.",
+});
 
-    if (useAgentA) {
-      resultsA.push(result);
-    } else {
-      resultsB.push(result);
-    }
-  }
+const pipeline = new SequentialAgent({
+  name: "research_pipeline",
+  description: "Research and summarize a topic",
+  subAgents: [researcher, writer],
+});
 
-  return {
-    agentA: calculateAggregateMetrics(resultsA),
-    agentB: calculateAggregateMetrics(resultsB),
-    significance: calculateStatisticalSignificance(resultsA, resultsB),
-    recommendation: determineWinningAgent(resultsA, resultsB),
-  };
-}
+// Evaluate the pipeline as a whole
+await AgentEvaluator.evaluate(pipeline, "./evaluation/pipeline-tests");
 ```
 
-## Best Practices
+Test cases for multi-agent systems should focus on **end-to-end behavior** — the final output and overall tool usage — rather than the internal handoffs between agents.
 
-### Evaluation Design Principles
+## Tuning with Multiple Runs
 
-**Domain Alignment:**
+LLM outputs vary between runs. Use multiple runs to get stable scores:
 
-- **Relevant Metrics**: Choose metrics that matter for your specific use case
-- **Realistic Scenarios**: Test with scenarios that reflect real usage
-- **Stakeholder Input**: Include business requirements in evaluation criteria
-- **User Perspective**: Prioritize metrics that impact user experience
+```typescript
+// Development: quick feedback
+await AgentEvaluator.evaluate(agent, "./tests", 1);
 
-**Comprehensive Coverage:**
+// CI: balanced speed and confidence
+await AgentEvaluator.evaluate(agent, "./tests", 2);
 
-- **Happy Path**: Test normal, expected interactions
-- **Edge Cases**: Include unusual and challenging scenarios
-- **Error Conditions**: Test resilience to failures and invalid inputs
-- **Scale Testing**: Evaluate performance under various load conditions
+// Release gate: high confidence
+await AgentEvaluator.evaluate(agent, "./tests", 5);
+```
 
-### Implementation Guidelines
+Scores are averaged across runs. If your agent scores 0.9 on one run and 0.7 on another, the final score is 0.8.
 
-**Automation Balance:**
+## Debugging Failed Evaluations
 
-- **Quick Feedback**: Automated tests for rapid development iteration
-- **Human Judgment**: Manual evaluation for subjective quality aspects
-- **Hybrid Approach**: Combine automated metrics with human validation
-- **Progressive Enhancement**: Start simple, add complexity gradually
+### Enable Detailed Output
 
-**Data Management:**
+Use `evaluateEvalSet()` with `printDetailedResults: true` to see a per-case breakdown:
 
-- **Test Data Quality**: Ensure test scenarios are accurate and representative
-- **Version Control**: Track evaluation data and criteria changes
-- **Reproducibility**: Maintain consistent testing environments
-- **Privacy Compliance**: Handle sensitive data appropriately in testing
+```typescript
+import * as fs from "node:fs/promises";
+import { AgentEvaluator } from "@iqai/adk";
 
-<Callout type="info" title="Iterative Improvement">
+const evalSet = JSON.parse(
+  await fs.readFile("./tests/basic.test.json", "utf-8"),
+);
+const config = JSON.parse(
+  await fs.readFile("./tests/test_config.json", "utf-8"),
+);
 
-Start with basic evaluation patterns for your domain, then gradually add
-sophistication as you learn what metrics best predict real-world performance.
+await AgentEvaluator.evaluateEvalSet(
+  agent,
+  evalSet,
+  config.criteria,
+  1,
+  true, // Prints table: prompt, expected, actual, score per case
+);
+```
+
+### Common Failure Causes
+
+| Symptom                              | Likely Cause                      | Fix                                                         |
+| ------------------------------------ | --------------------------------- | ----------------------------------------------------------- |
+| `tool_trajectory_avg_score` always 0 | Tool args don't match exactly     | Check argument spelling, types, and casing                  |
+| `response_match_score` low           | Agent rephrases the answer        | Loosen threshold or use `response_evaluation_score` instead |
+| All metrics fail                     | Agent not calling the right model | Verify model name and API key                               |
+| Inconsistent scores across runs      | High LLM temperature              | Lower temperature or increase `numRuns`                     |
+
+### Iterative Refinement
+
+1. Start with loose thresholds to establish a baseline
+2. Identify which test cases fail and why
+3. Fix agent behavior (instructions, tools, model) or adjust expectations
+4. Tighten thresholds as the agent improves
+5. Add new test cases for failure modes discovered in production
+
+<Callout type="info" title="Best Practice">
+
+Treat evaluation scores as trends, not absolutes. A score dropping from 0.85
+to 0.75 across releases is more meaningful than any single score.
 
 </Callout>
-
-### Integration Strategies
-
-**Development Workflow:**
-
-- **CI/CD Integration**: Automated evaluation in deployment pipelines
-- **Feature Development**: Evaluation-driven feature development
-- **Release Gates**: Quality thresholds for production deployment
-- **Performance Tracking**: Continuous monitoring of key metrics
-
-**Team Collaboration:**
-
-- **Shared Understanding**: Clear communication of evaluation criteria
-- **Regular Review**: Periodic assessment of evaluation effectiveness
-- **Knowledge Sharing**: Document lessons learned and best practices
-- **Stakeholder Engagement**: Regular updates on agent performance
-
-The key to successful agent evaluation is choosing the right combination of metrics and approaches for your specific domain while maintaining focus on real-world performance and user satisfaction.
