@@ -308,9 +308,10 @@ export class GoogleLlm extends BaseLlm {
 	 */
 	get apiBackend(): GoogleLLMVariant {
 		if (!this.#apiBackend) {
-			if (this.#config?.vertexai === true) {
+			const cfg = this.#config;
+			if (cfg?.vertexai && cfg.project && cfg.location) {
 				this.#apiBackend = GoogleLLMVariant.VERTEX_AI;
-			} else if (this.#config) {
+			} else if (cfg) {
 				this.#apiBackend = GoogleLLMVariant.GEMINI_API;
 			} else {
 				const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
@@ -375,22 +376,30 @@ export class GoogleLlm extends BaseLlm {
 		}
 
 		// 2. Explicit config fields
-		if (cfg?.vertexai && cfg.project && cfg.location) {
-			return new GoogleGenAI({
-				vertexai: true,
-				project: cfg.project,
-				location: cfg.location,
-				...overrides,
-			});
-		}
-		if (cfg?.apiKey) {
-			return new GoogleGenAI({
-				apiKey: cfg.apiKey,
-				...overrides,
-			});
+		if (cfg) {
+			if (cfg.vertexai && cfg.project && cfg.location) {
+				return new GoogleGenAI({
+					vertexai: true,
+					project: cfg.project,
+					location: cfg.location,
+					...overrides,
+				});
+			}
+			if (cfg.apiKey) {
+				return new GoogleGenAI({
+					apiKey: cfg.apiKey,
+					...overrides,
+				});
+			}
+			// Config was provided but is incomplete — fail fast rather than
+			// silently falling through to process.env (which would reintroduce
+			// the race condition this config is meant to prevent).
+			throw new Error(
+				"Incomplete GoogleLlmConfig: provide apiKey, vertexai + project + location, or a pre-built client.",
+			);
 		}
 
-		// 3. Env fallback (existing behaviour)
+		// 3. Env fallback (only when no config was provided)
 		const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
 		const apiKey = process.env.GOOGLE_API_KEY;
 		const project = process.env.GOOGLE_CLOUD_PROJECT;

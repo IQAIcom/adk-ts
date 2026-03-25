@@ -234,6 +234,24 @@ describe("GoogleLlm", () => {
 			llm.apiClient;
 			expect(GoogleGenAI).toHaveBeenCalledWith({ apiKey: "fallback-key" });
 		});
+
+		it("throws on incomplete config instead of falling through to env", () => {
+			process.env.GOOGLE_API_KEY = "env-key";
+			const llm = new GoogleLlm("gemini-2.5-flash", {
+				vertexai: true,
+				project: "p",
+				// missing location
+			});
+			expect(() => llm.apiClient).toThrow(/Incomplete GoogleLlmConfig/);
+		});
+
+		it("apiBackend returns GEMINI_API when vertexai is true but project/location missing", () => {
+			const llm = new GoogleLlm("gemini-2.5-flash", {
+				vertexai: true,
+				apiKey: "key",
+			});
+			expect(llm.apiBackend).toBe("GEMINI_API");
+		});
 	});
 
 	describe("race condition safety", () => {
