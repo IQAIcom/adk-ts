@@ -108,19 +108,34 @@ class StreamingResponseAggregator {
 }
 
 /**
+ * Explicit configuration for GoogleLlm — avoids process.env race conditions
+ * in multi-tenant servers.
+ */
+export interface GoogleLlmConfig {
+	apiKey?: string;
+	vertexai?: boolean;
+	project?: string;
+	location?: string;
+	/** Pre-built client — bypasses all other config / env vars */
+	client?: GoogleGenAI;
+}
+
+/**
  * Integration for Gemini models.
  */
 export class GoogleLlm extends BaseLlm {
-	private _apiClient?: GoogleGenAI;
-	private _liveApiClient?: GoogleGenAI;
-	private _apiBackend?: GoogleLLMVariant;
-	private _trackingHeaders?: Record<string, string>;
+	#apiClient?: GoogleGenAI;
+	#liveApiClient?: GoogleGenAI;
+	#apiBackend?: GoogleLLMVariant;
+	#trackingHeaders?: Record<string, string>;
+	#config?: GoogleLlmConfig;
 
 	/**
 	 * Constructor for Gemini
 	 */
-	constructor(model = "gemini-2.5-flash") {
+	constructor(model = "gemini-2.5-flash", config?: GoogleLlmConfig) {
 		super(model);
+		this.#config = config;
 	}
 
 	/**
@@ -282,50 +297,36 @@ export class GoogleLlm extends BaseLlm {
 	 * Provides the api client.
 	 */
 	get apiClient(): GoogleGenAI {
-		if (!this._apiClient) {
-			const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
-			const apiKey = process.env.GOOGLE_API_KEY;
-			const project = process.env.GOOGLE_CLOUD_PROJECT;
-			const location = process.env.GOOGLE_CLOUD_LOCATION;
-
-			if (useVertexAI && project && location) {
-				this._apiClient = new GoogleGenAI({
-					vertexai: true,
-					project,
-					location,
-				});
-			} else if (apiKey) {
-				this._apiClient = new GoogleGenAI({
-					apiKey,
-				});
-			} else {
-				throw new Error(
-					"Google API Key or Vertex AI configuration is required. " +
-						"Set GOOGLE_API_KEY or GOOGLE_GENAI_USE_VERTEXAI=true with GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION.",
-				);
-			}
+		if (!this.#apiClient) {
+			this.#apiClient = this.#buildClient();
 		}
-		return this._apiClient;
+		return this.#apiClient;
 	}
 
 	/**
 	 * Gets the API backend type.
 	 */
 	get apiBackend(): GoogleLLMVariant {
-		if (!this._apiBackend) {
-			const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
-			this._apiBackend = useVertexAI
-				? GoogleLLMVariant.VERTEX_AI
-				: GoogleLLMVariant.GEMINI_API;
+		if (!this.#apiBackend) {
+			if (this.#config?.vertexai === true) {
+				this.#apiBackend = GoogleLLMVariant.VERTEX_AI;
+			} else if (this.#config) {
+				this.#apiBackend = GoogleLLMVariant.GEMINI_API;
+			} else {
+				const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
+				this.#apiBackend = useVertexAI
+					? GoogleLLMVariant.VERTEX_AI
+					: GoogleLLMVariant.GEMINI_API;
+			}
 		}
-		return this._apiBackend;
+		return this.#apiBackend;
 	}
 
 	/**
 	 * Gets the tracking headers.
 	 */
 	get trackingHeaders(): Record<string, string> {
-		if (!this._trackingHeaders) {
+		if (!this.#trackingHeaders) {
 			let frameworkLabel = "google-adk/1.0.0"; // Replace with actual version
 			if (process.env[AGENT_ENGINE_TELEMETRY_ENV_VARIABLE_NAME]) {
 				frameworkLabel = `${frameworkLabel}+${AGENT_ENGINE_TELEMETRY_TAG}`;
@@ -333,12 +334,12 @@ export class GoogleLlm extends BaseLlm {
 			const languageLabel = `gl-node/${process.version}`;
 			const versionHeaderValue = `${frameworkLabel} ${languageLabel}`;
 
-			this._trackingHeaders = {
+			this.#trackingHeaders = {
 				"x-goog-api-client": versionHeaderValue,
 				"user-agent": versionHeaderValue,
 			};
 		}
-		return this._trackingHeaders;
+		return this.#trackingHeaders;
 	}
 
 	/**
@@ -354,28 +355,65 @@ export class GoogleLlm extends BaseLlm {
 	 * Gets the live API client.
 	 */
 	get liveApiClient(): GoogleGenAI {
-		if (!this._liveApiClient) {
-			const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
-			const apiKey = process.env.GOOGLE_API_KEY;
-			const project = process.env.GOOGLE_CLOUD_PROJECT;
-			const location = process.env.GOOGLE_CLOUD_LOCATION;
-
-			if (useVertexAI && project && location) {
-				this._liveApiClient = new GoogleGenAI({
-					vertexai: true,
-					project,
-					location,
-					apiVersion: this.liveApiVersion,
-				});
-			} else if (apiKey) {
-				this._liveApiClient = new GoogleGenAI({
-					apiKey,
-					apiVersion: this.liveApiVersion,
-				});
-			} else {
-				throw new Error("API configuration required for live client");
-			}
+		if (!this.#liveApiClient) {
+			this.#liveApiClient = this.#buildClient({
+				apiVersion: this.liveApiVersion,
+			});
 		}
-		return this._liveApiClient;
+		return this.#liveApiClient;
+	}
+
+	/**
+	 * Builds a GoogleGenAI client from explicit config (if provided) or env vars.
+	 */
+	#buildClient(overrides?: { apiVersion?: string }): GoogleGenAI {
+		const cfg = this.#config;
+
+		// 1. Pre-built client injection — ignore overrides (caller should pre-configure)
+		if (cfg?.client) {
+			return cfg.client;
+		}
+
+		// 2. Explicit config fields
+		if (cfg?.vertexai && cfg.project && cfg.location) {
+			return new GoogleGenAI({
+				vertexai: true,
+				project: cfg.project,
+				location: cfg.location,
+				...overrides,
+			});
+		}
+		if (cfg?.apiKey) {
+			return new GoogleGenAI({
+				apiKey: cfg.apiKey,
+				...overrides,
+			});
+		}
+
+		// 3. Env fallback (existing behaviour)
+		const useVertexAI = process.env.GOOGLE_GENAI_USE_VERTEXAI === "true";
+		const apiKey = process.env.GOOGLE_API_KEY;
+		const project = process.env.GOOGLE_CLOUD_PROJECT;
+		const location = process.env.GOOGLE_CLOUD_LOCATION;
+
+		if (useVertexAI && project && location) {
+			return new GoogleGenAI({
+				vertexai: true,
+				project,
+				location,
+				...overrides,
+			});
+		}
+		if (apiKey) {
+			return new GoogleGenAI({
+				apiKey,
+				...overrides,
+			});
+		}
+
+		throw new Error(
+			"Google API Key or Vertex AI configuration is required. " +
+				"Set GOOGLE_API_KEY or GOOGLE_GENAI_USE_VERTEXAI=true with GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION.",
+		);
 	}
 }

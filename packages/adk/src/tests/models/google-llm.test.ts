@@ -91,18 +91,21 @@ describe("GoogleLlm", () => {
 	});
 
 	describe("trackingHeaders", () => {
-		it("returns correct headers with and without AGENT_ENGINE_TELEMETRY_ENV_VARIABLE_NAME", () => {
-			const llm = new GoogleLlm();
+		it("returns correct headers without AGENT_ENGINE_TELEMETRY", () => {
 			process.env.GOOGLE_CLOUD_AGENT_ENGINE_ID = undefined;
-			const headers1 = llm.trackingHeaders;
-			expect(headers1["x-goog-api-client"]).toMatch(/google-adk\/1\.0\.0/);
-			process.env.GOOGLE_CLOUD_AGENT_ENGINE_ID = "foo";
-
-			(llm as any)._trackingHeaders = undefined;
-			const headers2 = llm.trackingHeaders;
-			expect(headers2["x-goog-api-client"]).toMatch(
-				/\+remote_reasoning_engine/,
+			const llm = new GoogleLlm();
+			const headers = llm.trackingHeaders;
+			expect(headers["x-goog-api-client"]).toMatch(/google-adk\/1\.0\.0/);
+			expect(headers["x-goog-api-client"]).not.toMatch(
+				/remote_reasoning_engine/,
 			);
+		});
+
+		it("returns correct headers with AGENT_ENGINE_TELEMETRY", () => {
+			process.env.GOOGLE_CLOUD_AGENT_ENGINE_ID = "foo";
+			const llm = new GoogleLlm();
+			const headers = llm.trackingHeaders;
+			expect(headers["x-goog-api-client"]).toMatch(/\+remote_reasoning_engine/);
 		});
 	});
 
@@ -154,7 +157,7 @@ describe("GoogleLlm", () => {
 			process.env.GOOGLE_CLOUD_LOCATION = undefined;
 			const llm = new GoogleLlm();
 			expect(() => llm.liveApiClient).toThrow(
-				/API configuration required for live client/,
+				/Google API Key or Vertex AI configuration is required/,
 			);
 		});
 	});
@@ -165,6 +168,124 @@ describe("GoogleLlm", () => {
 			expect(() => llm.connect({} as any)).toThrow(
 				"Live connection is not supported for foo.",
 			);
+		});
+	});
+
+	describe("explicit config (GoogleLlmConfig)", () => {
+		it("uses explicit apiKey config, bypasses env", () => {
+			process.env.GOOGLE_API_KEY = "env-key";
+			const llm = new GoogleLlm("gemini-2.5-flash", {
+				apiKey: "explicit-key",
+			});
+			llm.apiClient;
+			expect(GoogleGenAI).toHaveBeenCalledWith({ apiKey: "explicit-key" });
+			expect(GoogleGenAI).toHaveBeenCalledTimes(1);
+		});
+
+		it("uses explicit vertexai config, bypasses env", () => {
+			process.env.GOOGLE_GENAI_USE_VERTEXAI = undefined;
+			process.env.GOOGLE_API_KEY = "env-key";
+			const llm = new GoogleLlm("gemini-2.5-flash", {
+				vertexai: true,
+				project: "my-proj",
+				location: "us-central1",
+			});
+			llm.apiClient;
+			expect(GoogleGenAI).toHaveBeenCalledWith({
+				vertexai: true,
+				project: "my-proj",
+				location: "us-central1",
+			});
+		});
+
+		it("uses pre-built client injection directly", () => {
+			const fakeClient = { models: {} } as unknown as GoogleGenAI;
+			const llm = new GoogleLlm("gemini-2.5-flash", { client: fakeClient });
+			expect(llm.apiClient).toBe(fakeClient);
+			expect(GoogleGenAI).not.toHaveBeenCalled();
+		});
+
+		it("pre-built client is returned for liveApiClient too", () => {
+			const fakeClient = { models: {} } as unknown as GoogleGenAI;
+			const llm = new GoogleLlm("gemini-2.5-flash", { client: fakeClient });
+			expect(llm.liveApiClient).toBe(fakeClient);
+			expect(GoogleGenAI).not.toHaveBeenCalled();
+		});
+
+		it("apiBackend returns VERTEX_AI when config.vertexai is true", () => {
+			const llm = new GoogleLlm("gemini-2.5-flash", {
+				vertexai: true,
+				project: "p",
+				location: "l",
+			});
+			expect(llm.apiBackend).toBe("VERTEX_AI");
+		});
+
+		it("apiBackend returns GEMINI_API when config is provided without vertexai", () => {
+			const llm = new GoogleLlm("gemini-2.5-flash", {
+				apiKey: "key",
+			});
+			expect(llm.apiBackend).toBe("GEMINI_API");
+		});
+
+		it("falls back to env when no config provided", () => {
+			process.env.GOOGLE_API_KEY = "fallback-key";
+			const llm = new GoogleLlm("gemini-2.5-flash");
+			llm.apiClient;
+			expect(GoogleGenAI).toHaveBeenCalledWith({ apiKey: "fallback-key" });
+		});
+	});
+
+	describe("race condition safety", () => {
+		it("concurrent instances with different configs resolve independently", () => {
+			// Simulate what would be a race in a multi-tenant server:
+			// Two concurrent requests with different Google backends
+			const vertexLlm = new GoogleLlm("gemini-2.5-flash", {
+				vertexai: true,
+				project: "proj-a",
+				location: "us-east1",
+			});
+			const apiKeyLlm = new GoogleLlm("gemini-2.5-flash", {
+				apiKey: "key-b",
+			});
+
+			// Access clients — the order shouldn't matter
+			apiKeyLlm.apiClient;
+			vertexLlm.apiClient;
+
+			expect(GoogleGenAI).toHaveBeenCalledTimes(2);
+			expect(GoogleGenAI).toHaveBeenCalledWith({
+				apiKey: "key-b",
+			});
+			expect(GoogleGenAI).toHaveBeenCalledWith({
+				vertexai: true,
+				project: "proj-a",
+				location: "us-east1",
+			});
+
+			// Backends resolve independently too
+			expect(vertexLlm.apiBackend).toBe("VERTEX_AI");
+			expect(apiKeyLlm.apiBackend).toBe("GEMINI_API");
+		});
+
+		it("N concurrent instances each get their own client", () => {
+			const configs = Array.from({ length: 10 }, (_, i) => ({
+				apiKey: `key-${i}`,
+			}));
+
+			const llms = configs.map((cfg) => new GoogleLlm("gemini-2.5-flash", cfg));
+
+			// Access all clients
+			for (const llm of llms) {
+				llm.apiClient;
+			}
+
+			expect(GoogleGenAI).toHaveBeenCalledTimes(10);
+			for (let i = 0; i < 10; i++) {
+				expect(GoogleGenAI).toHaveBeenCalledWith({
+					apiKey: `key-${i}`,
+				});
+			}
 		});
 	});
 });
