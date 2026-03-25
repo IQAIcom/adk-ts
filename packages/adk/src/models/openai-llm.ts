@@ -4,6 +4,7 @@ import type { BaseLLMConnection } from "./base-llm-connection";
 import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
+import { safeParseToolArgs } from "./llm-utils";
 
 type OpenAIRole = "user" | "assistant" | "system";
 
@@ -185,7 +186,10 @@ export class OpenAiLlm extends BaseLlm {
 										functionCall: {
 											id: toolCall.id,
 											name: toolCall.function.name,
-											args: JSON.parse(toolCall.function.arguments || "{}"),
+											args: safeParseToolArgs(
+												toolCall.function.arguments,
+												this.logger,
+											),
 										},
 									});
 								}
@@ -296,7 +300,7 @@ export class OpenAiLlm extends BaseLlm {
 						functionCall: {
 							id: toolCall.id || "",
 							name: toolCall.function.name,
-							args: JSON.parse(toolCall.function.arguments || "{}"),
+							args: safeParseToolArgs(toolCall.function.arguments, this.logger),
 						},
 					});
 				}
@@ -345,7 +349,7 @@ export class OpenAiLlm extends BaseLlm {
 						functionCall: {
 							id: toolCall.id,
 							name: toolCall.function.name,
-							args: JSON.parse(toolCall.function.arguments || "{}"),
+							args: safeParseToolArgs(toolCall.function.arguments, this.logger),
 						},
 					});
 				}
