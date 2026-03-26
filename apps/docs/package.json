@@ -14,6 +14,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"dedent": "^1.6.0",
+		"framer-motion": "^12.38.0",
 		"fumadocs-core": "^15.8.5",
 		"fumadocs-mdx": "^13.0.8",
 		"fumadocs-ui": "^15.8.5",

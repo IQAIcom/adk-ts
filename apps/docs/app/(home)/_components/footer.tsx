@@ -153,8 +153,8 @@ const communityLinks = [
 
 export function Footer() {
 	return (
-		<footer className="bg-card border-t border-border w-screen">
-			<div className="max-w-6xl mx-auto px-4 py-12">
+		<footer className="border-t landing-border">
+			<div className="px-4 sm:px-6 lg:px-8 py-12">
 				<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-8">
 					{/* About */}
 					<div className="space-y-4 col-span-2 lg:col-span-1">
@@ -273,32 +273,31 @@ export function Footer() {
 						</ul>
 					</div>
 				</div>
-
-				{/* Bottom Footer */}
-				<div className="mt-12 pt-8 border-t border-border">
-					<div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-						<div className="text-sm text-muted-foreground">
-							© 2025 ADK-TS. Released under the MIT License.
-						</div>
-						<div className="flex items-center gap-4 text-sm">
-							<Link
-								href="https://www.getdrip.com/forms/505929689/submissions/new"
-								className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								📧 Newsletter
-							</Link>
-							<Link
-								href="https://iqai.com"
-								className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								<span className="text-lg">🧠</span>
-								Powered by IQ
-							</Link>
-						</div>
+			</div>
+			{/* Bottom Footer */}
+			<div className="border-t landing-border px-4 sm:px-6 lg:px-8 py-8">
+				<div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+					<div className="text-sm text-muted-foreground">
+						© 2025 ADK-TS. Released under the MIT License.
+					</div>
+					<div className="flex items-center gap-4 text-sm">
+						<Link
+							href="https://www.getdrip.com/forms/505929689/submissions/new"
+							className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							📧 Newsletter
+						</Link>
+						<Link
+							href="https://iqai.com"
+							className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<span className="text-lg">🧠</span>
+							Powered by IQ
+						</Link>
 					</div>
 				</div>
 			</div>

@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { HomeLayout } from "fumadocs-ui/layouts/home";
-import { baseOptions } from "@/app/layout.config";
 
 export const metadata: Metadata = {
 	title: {
@@ -15,5 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
-	return <HomeLayout {...baseOptions}>{children}</HomeLayout>;
+	return <>{children}</>;
 }

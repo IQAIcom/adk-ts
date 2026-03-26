@@ -1,0 +1,37 @@
+/* Landing page reusable border styles */
+
+/* Standard border color: white at 20% opacity */
+.landing-border {
+	border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Gradient border (navbar bottom) */
+.landing-border-gradient {
+	border-image-source: linear-gradient(
+		249.64deg,
+		rgba(255, 255, 255, 0.2) 4.99%,
+		rgba(102, 102, 102, 0.2) 93.43%
+	);
+	border-image-slice: 1;
+}
+
+/* Layout vertical borders */
+.landing-border-x {
+	border-left: 1px solid rgba(255, 255, 255, 0.2);
+	border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Section bottom border */
+.landing-border-b {
+	border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Section top border */
+.landing-border-t {
+	border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Center divider (vertical) */
+.landing-border-r {
+	border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
