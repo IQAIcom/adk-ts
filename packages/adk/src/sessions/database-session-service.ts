@@ -98,14 +98,17 @@ export class DatabaseSessionService extends BaseSessionService {
 			return this.initPromise;
 		}
 
-		this.initPromise = this._doInitialize();
+		const promise = this._doInitialize();
+		this.initPromise = promise;
 
 		// Clear the promise on failure to allow retries.
-		this.initPromise.catch(() => {
-			this.initPromise = null;
+		promise.catch(() => {
+			if (this.initPromise === promise) {
+				this.initPromise = null;
+			}
 		});
 
-		return this.initPromise;
+		return promise;
 	}
 
 	private async _doInitialize(): Promise<void> {
