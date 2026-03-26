@@ -188,7 +188,7 @@ function LinkColumn({
 					<li key={link.href}>
 						<Link
 							href={link.href}
-							className="text-sm text-neutral-400 font-medium hover:text-primary transition-colors"
+							className="text-sm text-neutral-400 font-medium hover:text-white transition-colors"
 							{...(link.external && {
 								target: "_blank",
 								rel: "noopener noreferrer",
@@ -239,7 +239,7 @@ export function Footer() {
 								<Link
 									key={link.href}
 									href={link.href}
-									className="text-muted-foreground hover:text-primary transition-colors"
+									className="text-white hover:text-primary transition-colors"
 									target="_blank"
 									rel="noopener noreferrer"
 									aria-label={link.title}

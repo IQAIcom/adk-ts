@@ -154,7 +154,7 @@ export function Navbar() {
 							<Link
 								key={link.href}
 								href={link.href}
-								className="hidden md:block text-base font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+								className="hidden md:block text-base font-medium uppercase tracking-wide text-muted-foreground hover:text-primary transition-colors"
 								{...(link.external && {
 									target: "_blank",
 									rel: "noopener noreferrer",
@@ -168,7 +168,7 @@ export function Navbar() {
 						<button
 							type="button"
 							onClick={() => setResourcesOpen(!resourcesOpen)}
-							className="hidden md:inline-flex items-center gap-1 text-base font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+							className="hidden md:inline-flex items-center gap-1 text-base font-medium uppercase tracking-wide text-muted-foreground hover:text-primary transition-colors"
 						>
 							Resources
 							<ChevronDown
@@ -180,7 +180,7 @@ export function Navbar() {
 						<div className="flex items-center gap-4">
 							<button
 								type="button"
-								className="text-muted-foreground hover:text-foreground transition-colors"
+								className="text-muted-foreground hover:text-primary transition-colors"
 								aria-label="Search"
 							>
 								<Search className="size-6" />
@@ -190,7 +190,7 @@ export function Navbar() {
 								href="https://github.com/IQAICOM/adk-ts"
 								target="_blank"
 								rel="noopener noreferrer"
-								className="text-muted-foreground hover:text-foreground transition-colors"
+								className="text-muted-foreground hover:text-primary transition-colors"
 								aria-label="GitHub"
 							>
 								<GitHubIcon className="size-6" />
@@ -199,7 +199,7 @@ export function Navbar() {
 							{/* Mobile menu toggle */}
 							<button
 								type="button"
-								className="md:hidden ml-1 text-muted-foreground hover:text-foreground transition-colors"
+								className="md:hidden ml-1 text-muted-foreground hover:text-primary transition-colors"
 								onClick={() => setMobileOpen(!mobileOpen)}
 								aria-label="Toggle menu"
 							>
@@ -392,7 +392,7 @@ function DesktopResourceLinkType({
 	return (
 		<Link
 			href={link.href}
-			className="px-6 md:px-8 lg:px-16 py-6 text-muted-foreground hover:text-foreground transition-colors"
+			className="group px-6 md:px-8 lg:px-16 py-6 hover:bg-white/5 transition-colors"
 			onClick={onClick}
 			{...(link.external && {
 				target: "_blank",
@@ -400,7 +400,7 @@ function DesktopResourceLinkType({
 			})}
 		>
 			<div className="flex items-start gap-4">
-				<span className="rounded-md border border-neutral-700 p-2 bg-white/5 hover:bg-white/10 transition-colors">
+				<span className="rounded-md border border-neutral-700 p-2 bg-white/5 group-hover:bg-white/15 transition-colors">
 					{link.icon}
 				</span>
 				<div className="grid gap-3">
@@ -428,14 +428,14 @@ function MobileResourceLinkType({
 	return (
 		<Link
 			href={link.href}
-			className="flex items-start gap-3 py-7 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+			className="group flex items-start gap-3 py-7 hover:bg-white/5 transition-colors"
 			onClick={onClick}
 			{...(link.external && {
 				target: "_blank",
 				rel: "noopener noreferrer",
 			})}
 		>
-			<span className="rounded-md border border-neutral-700 p-2 bg-white/5 hover:bg-white/10 transition-colors">
+			<span className="rounded-md border border-neutral-700 p-2 bg-white/5 group-hover:bg-white/15 transition-colors">
 				{link.icon}
 			</span>
 			<div className="grid gap-3">
