@@ -58,6 +58,24 @@
 	pointer-events: none;
 }
 
+/* Newsletter outline button */
+.landing-newsletter-btn {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 16px;
+	border-radius: 6px;
+	border: 2px solid var(--primary);
+	background: color-mix(in srgb, var(--primary) 10%, transparent);
+	color: var(--primary);
+	font-size: 0.75rem;
+	font-weight: 500;
+	transition: background-color 0.15s;
+}
+
+.landing-newsletter-btn:hover {
+	background: color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
 /* Responsive grid background — cells grow on smaller screens */
 .landing-grid-bg {
 	background-repeat: no-repeat;

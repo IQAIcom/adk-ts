@@ -66,6 +66,19 @@ const RESOURCE_LINKS: ResourceLinkType[] = [
 const CURRENT_YEAR = new Date().getFullYear();
 
 /* ──────────────────────────────────────────────
+ * Reusable class strings
+ * ────────────────────────────────────────────── */
+
+const navLinkClass =
+	"text-base font-medium uppercase tracking-wide text-muted-foreground hover:text-primary transition-colors";
+
+const iconBoxClass =
+	"rounded-md border border-neutral-700 p-2 bg-white/5 group-hover:bg-white/15 transition-colors";
+
+const actionBtnClass =
+	"text-muted-foreground hover:text-primary transition-colors";
+
+/* ──────────────────────────────────────────────
  * Reusable SVG rule components
  * ────────────────────────────────────────────── */
 
@@ -154,7 +167,7 @@ export function Navbar() {
 							<Link
 								key={link.href}
 								href={link.href}
-								className="hidden md:block text-base font-medium uppercase tracking-wide text-muted-foreground hover:text-primary transition-colors"
+								className={`hidden md:block ${navLinkClass}`}
 								{...(link.external && {
 									target: "_blank",
 									rel: "noopener noreferrer",
@@ -168,7 +181,7 @@ export function Navbar() {
 						<button
 							type="button"
 							onClick={() => setResourcesOpen(!resourcesOpen)}
-							className="hidden md:inline-flex items-center gap-1 text-base font-medium uppercase tracking-wide text-muted-foreground hover:text-primary transition-colors"
+							className={`hidden md:inline-flex items-center gap-1 ${navLinkClass}`}
 						>
 							Resources
 							<ChevronDown
@@ -180,7 +193,7 @@ export function Navbar() {
 						<div className="flex items-center gap-4">
 							<button
 								type="button"
-								className="text-muted-foreground hover:text-primary transition-colors"
+								className={actionBtnClass}
 								aria-label="Search"
 							>
 								<Search className="size-6" />
@@ -190,7 +203,7 @@ export function Navbar() {
 								href="https://github.com/IQAICOM/adk-ts"
 								target="_blank"
 								rel="noopener noreferrer"
-								className="text-muted-foreground hover:text-primary transition-colors"
+								className={actionBtnClass}
 								aria-label="GitHub"
 							>
 								<GitHubIcon className="size-6" />
@@ -199,7 +212,7 @@ export function Navbar() {
 							{/* Mobile menu toggle */}
 							<button
 								type="button"
-								className="md:hidden ml-1 text-muted-foreground hover:text-primary transition-colors"
+								className={`md:hidden ml-1 ${actionBtnClass}`}
 								onClick={() => setMobileOpen(!mobileOpen)}
 								aria-label="Toggle menu"
 							>
@@ -352,7 +365,7 @@ export function Navbar() {
 							<div className="flex items-center gap-y-4 gap-x-6 flex-col sm:flex-row">
 								<Link
 									href="https://www.getdrip.com/forms/505929689/submissions/new"
-									className="inline-flex items-center px-3 py-1.5 rounded-md border-2 border-primary bg-primary/10 text-primary text-xs font-medium hover:bg-primary/10 transition-colors"
+									className="landing-newsletter-btn"
 									target="_blank"
 									rel="noopener noreferrer"
 								>
@@ -400,9 +413,7 @@ function DesktopResourceLinkType({
 			})}
 		>
 			<div className="flex items-start gap-4">
-				<span className="rounded-md border border-neutral-700 p-2 bg-white/5 group-hover:bg-white/15 transition-colors">
-					{link.icon}
-				</span>
+				<span className={iconBoxClass}>{link.icon}</span>
 				<div className="grid gap-3">
 					<div className="text-lg font-medium text-foreground">{link.text}</div>
 					<div className="text-sm text-muted-foreground">
@@ -435,9 +446,7 @@ function MobileResourceLinkType({
 				rel: "noopener noreferrer",
 			})}
 		>
-			<span className="rounded-md border border-neutral-700 p-2 bg-white/5 group-hover:bg-white/15 transition-colors">
-				{link.icon}
-			</span>
+			<span className={iconBoxClass}>{link.icon}</span>
 			<div className="grid gap-3">
 				<div className="text-sm sm:text-lg font-medium text-foreground">
 					{link.text}

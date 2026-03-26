@@ -164,6 +164,20 @@ const COMMUNITY_LINKS = [
 ];
 
 /* ──────────────────────────────────────────────
+ * Reusable class strings
+ * ────────────────────────────────────────────── */
+
+const footerLinkClass =
+	"text-sm text-neutral-400 font-medium hover:text-white transition-colors";
+
+const socialIconClass = "text-white hover:text-primary transition-colors";
+
+const columnTitleClass =
+	"text-sm font-bold uppercase tracking-wider text-[#FFFFFFCC]";
+
+const copyrightTextClass = "text-xs text-neutral-400 font-medium";
+
+/* ──────────────────────────────────────────────
  * Link column component
  * ────────────────────────────────────────────── */
 
@@ -180,15 +194,13 @@ function LinkColumn({
 		<div
 			className={`flex flex-col items-start gap-y-6 p-6 lg:py-10 lg:px-14 ${className ?? ""}`}
 		>
-			<h3 className="text-sm font-bold uppercase tracking-wider text-[#FFFFFFCC]">
-				{title}
-			</h3>
+			<h3 className={columnTitleClass}>{title}</h3>
 			<ul className="grid gap-y-3">
 				{links.map((link) => (
 					<li key={link.href}>
 						<Link
 							href={link.href}
-							className="text-sm text-neutral-400 font-medium hover:text-white transition-colors"
+							className={footerLinkClass}
 							{...(link.external && {
 								target: "_blank",
 								rel: "noopener noreferrer",
@@ -239,7 +251,7 @@ export function Footer() {
 								<Link
 									key={link.href}
 									href={link.href}
-									className="text-white hover:text-primary transition-colors"
+									className={socialIconClass}
 									target="_blank"
 									rel="noopener noreferrer"
 									aria-label={link.title}
@@ -310,21 +322,21 @@ export function Footer() {
 			</div>
 
 			{/* ── Copyright bar ── */}
-			<div className="border-t landing-border px-6 sm:px-8 lg:px-12 md:py-5 lg:py-8">
+			<div className="border-t landing-border px-6 md:px-8 lg:px-12 py-5 lg:py-8">
 				<div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-					<p className="text-xs text-neutral-400 font-medium text-center sm:text-left">
+					<p className={`${copyrightTextClass} text-center sm:text-left`}>
 						&copy; {CURRENT_YEAR} ADK-TS. Released under the MIT License.
 					</p>
 					<div className="flex items-center gap-6 flex-col sm:flex-row">
 						<Link
 							href="https://www.getdrip.com/forms/505929689/submissions/new"
-							className="inline-flex items-center px-4 py-1.5 rounded-md border-2 border-primary bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+							className="landing-newsletter-btn"
 							target="_blank"
 							rel="noopener noreferrer"
 						>
 							Newsletter
 						</Link>
-						<span className="text-xs text-neutral-400 font-medium">
+						<span className={copyrightTextClass}>
 							Powered by{" "}
 							<Link
 								href="https://iqai.com"
