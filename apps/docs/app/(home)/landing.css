@@ -35,3 +35,44 @@
 .landing-border-r {
 	border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+/* Reusable pink glow — bleeds only downward */
+.landing-glow {
+	position: relative;
+	clip-path: inset(0 0 -500px 0);
+}
+
+.landing-glow::before {
+	content: "";
+	position: absolute;
+	width: 100%;
+	max-width: 800px;
+	height: 100%;
+	max-height: 800px;
+	top: 14px;
+	left: 50%;
+	transform: translateX(-50%);
+	border-radius: 9999px;
+	background: rgba(255, 26, 136, 0.2);
+	filter: blur(500px);
+	pointer-events: none;
+}
+
+/* Responsive grid background — cells grow on smaller screens */
+.landing-grid-bg {
+	background-repeat: no-repeat;
+	background-position: top;
+	background-size: 350% auto;
+}
+
+@media (min-width: 768px) {
+	.landing-grid-bg {
+		background-size: 200% auto;
+	}
+}
+
+@media (min-width: 1280px) {
+	.landing-grid-bg {
+		background-size: 100% auto;
+	}
+}
