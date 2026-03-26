@@ -75,7 +75,6 @@ export interface DatabaseSessionServiceConfig {
 
 export class DatabaseSessionService extends BaseSessionService {
 	private db: Kysely<Database>;
-	private initialized = false;
 	private initPromise: Promise<void> | null = null;
 
 	constructor(config: DatabaseSessionServiceConfig) {
@@ -95,25 +94,18 @@ export class DatabaseSessionService extends BaseSessionService {
 	 * Uses promise deduplication so concurrent callers share a single initialization.
 	 */
 	private initializeDatabase(): Promise<void> {
-		if (this.initialized) {
-			return Promise.resolve();
-		}
 		if (this.initPromise) {
 			return this.initPromise;
 		}
 
-		const promise = this._doInitialize();
-		this.initPromise = promise;
+		this.initPromise = this._doInitialize();
 
 		// Clear the promise on failure to allow retries.
-		promise.catch(() => {
-			// Avoid race conditions if a new initialization has started.
-			if (this.initPromise === promise) {
-				this.initPromise = null;
-			}
+		this.initPromise.catch(() => {
+			this.initPromise = null;
 		});
 
-		return promise;
+		return this.initPromise;
 	}
 
 	private async _doInitialize(): Promise<void> {
@@ -204,7 +196,6 @@ export class DatabaseSessionService extends BaseSessionService {
 				.column("user_id")
 				.execute();
 
-			this.initialized = true;
 		} catch (error) {
 			console.error("Error initializing database:", error);
 			throw error;
@@ -215,9 +206,7 @@ export class DatabaseSessionService extends BaseSessionService {
 	 * Ensure database is initialized before any operation
 	 */
 	private async ensureInitialized(): Promise<void> {
-		if (!this.initialized) {
-			await this.initializeDatabase();
-		}
+		await this.initializeDatabase();
 	}
 
 	private generateSessionId(): string {
