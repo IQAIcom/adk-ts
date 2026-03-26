@@ -1,3 +1,5 @@
+@reference "../../app/global.css";
+
 /* Landing page reusable styles */
 
 :root {
@@ -68,7 +70,7 @@
 
 /* Responsive grid background — cells grow on smaller screens */
 .landing-grid-bg {
-	@apply bg-no-repeat bg-top;
+	@apply bg-repeat-y bg-top;
 	background-size: 350% auto;
 
 	@media (min-width: 768px) {

@@ -241,7 +241,7 @@ export function Footer() {
 						/>
 						<div className="grid gap-2">
 							<h2 className="text-2xl font-bold text-foreground">ADK-TS</h2>
-							<p className="text-base font-medium text-muted-foreground max-w-[280px]">
+							<p className="text-base font-medium text-muted-foreground max-w-70">
 								Production-ready framework for building intelligent AI agents
 								with TypeScript and multi-LLM support.
 							</p>
