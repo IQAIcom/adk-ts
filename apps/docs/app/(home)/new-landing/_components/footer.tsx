@@ -192,7 +192,7 @@ function LinkColumn({
 }) {
 	return (
 		<div
-			className={`flex flex-col items-start gap-y-6 p-6 lg:py-10 lg:px-14 ${className ?? ""}`}
+			className={`flex flex-col items-start gap-y-6 p-6 lg:py-16 lg:px-16 ${className ?? ""}`}
 		>
 			<h3 className={columnTitleClass}>{title}</h3>
 			<ul className="grid gap-y-3">
@@ -222,102 +222,104 @@ function LinkColumn({
 export function Footer() {
 	return (
 		<footer>
-			{/* ── Links section — 3-col grid on lg, stacked on sm/md ── */}
-			<div
-				className="grid grid-cols-2 lg:grid-cols-3 landing-grid-bg landing-glow"
-				style={{
-					backgroundImage: "url('/landing-page/footer-grid-large.svg')",
-				}}
-			>
-				{/* Brand info — spans 2 cols on sm/md, 1 col + 2 rows on lg */}
-				<div className="col-span-2 lg:col-span-1 lg:row-span-2 border-t border-b lg:border-b-0 lg:border-r landing-border p-6 sm:p-8 lg:p-10">
-					<div className="space-y-4 max-w-xs">
-						<Image
-							src="/adk.png"
-							alt="ADK TypeScript"
-							width={140}
-							height={140}
-							className="rounded-xl"
-						/>
-						<div className="grid gap-2">
-							<h2 className="text-2xl font-bold text-foreground">ADK-TS</h2>
-							<p className="text-base font-medium text-muted-foreground max-w-70">
-								Production-ready framework for building intelligent AI agents
-								with TypeScript and multi-LLM support.
-							</p>
-						</div>
-						<div className="flex flex-wrap gap-4">
-							{SOCIAL_LINKS.map((link) => (
-								<Link
-									key={link.href}
-									href={link.href}
-									className={socialIconClass}
-									target="_blank"
-									rel="noopener noreferrer"
-									aria-label={link.title}
-								>
-									{link.icon}
-								</Link>
-							))}
+			<div className="landing-glow">
+				{/* ── Links section — 3-col grid on lg, stacked on sm/md ── */}
+				<div
+					className="grid grid-cols-2 lg:grid-cols-3 landing-grid-bg"
+					style={{
+						backgroundImage: "url('/landing-page/footer-grid-large.svg')",
+					}}
+				>
+					{/* Brand info — spans 2 cols on sm/md, 1 col + 2 rows on lg */}
+					<div className="col-span-2 lg:col-span-1 lg:row-span-2 border-t border-b lg:border-b-0 lg:border-r landing-border p-6 sm:p-8 lg:p-10">
+						<div className="space-y-4 max-w-xs">
+							<Image
+								src="/adk.png"
+								alt="ADK TypeScript"
+								width={140}
+								height={140}
+								className="rounded-xl"
+							/>
+							<div className="grid gap-2">
+								<h2 className="text-2xl font-bold text-foreground">ADK-TS</h2>
+								<p className="text-base font-medium text-muted-foreground max-w-70">
+									Production-ready framework for building intelligent AI agents
+									with TypeScript and multi-LLM support.
+								</p>
+							</div>
+							<div className="flex flex-wrap gap-4">
+								{SOCIAL_LINKS.map((link) => (
+									<Link
+										key={link.href}
+										href={link.href}
+										className={socialIconClass}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={link.title}
+									>
+										{link.icon}
+									</Link>
+								))}
+							</div>
 						</div>
 					</div>
+
+					{/* Link columns — borders connect to parent edges */}
+					<LinkColumn
+						title="Documentation"
+						links={DOCUMENTATION_LINKS}
+						className="border-t border-r landing-border"
+					/>
+					<LinkColumn
+						title="Resources"
+						links={RESOURCE_LINKS}
+						className="border-t landing-border"
+					/>
+					<LinkColumn
+						title="Support"
+						links={SUPPORT_LINKS}
+						className="border-t border-r border-b landing-border"
+					/>
+					<LinkColumn
+						title="Community"
+						links={COMMUNITY_LINKS}
+						className="border-t border-b landing-border"
+					/>
 				</div>
 
-				{/* Link columns — borders connect to parent edges */}
-				<LinkColumn
-					title="Documentation"
-					links={DOCUMENTATION_LINKS}
-					className="border-t border-r landing-border"
-				/>
-				<LinkColumn
-					title="Resources"
-					links={RESOURCE_LINKS}
-					className="border-t landing-border"
-				/>
-				<LinkColumn
-					title="Support"
-					links={SUPPORT_LINKS}
-					className="border-t border-r border-b landing-border"
-				/>
-				<LinkColumn
-					title="Community"
-					links={COMMUNITY_LINKS}
-					className="border-t border-b landing-border"
-				/>
-			</div>
-
-			{/* ── Footer image section — grid bg + gradient + overlay image ── */}
-			<div
-				className="relative overflow-hidden py-24 md:py-20 lg:py-10 landing-grid-bg"
-				style={{
-					backgroundImage: "url('/landing-page/footer-grid-small.svg')",
-				}}
-			>
-				{/* Left-to-right black-to-transparent gradient */}
+				{/* ── Footer image section — grid bg + gradient + overlay image ── */}
 				<div
-					className="absolute inset-0"
+					className="relative overflow-hidden py-24 md:py-20 lg:py-10 landing-grid-bg"
 					style={{
-						background:
-							"linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, 0) 100%)",
+						backgroundImage: "url('/landing-page/footer-grid-small.svg')",
 					}}
-				/>
-				{/* Centered glow gradient */}
-				<Image
-					src="/landing-page/footer-name-gradient.svg"
-					alt=""
-					width={825}
-					height={642}
-					className="absolute inset-0 w-full h-full object-cover max-w-3xl mx-auto"
-				/>
-				{/* Foreground image */}
-				<div className="relative flex items-center justify-center py-16 sm:py-20 lg:py-24">
-					<Image
-						src="/landing-page/footer-name-image.png"
-						alt="ADK-TS"
-						width={1087}
-						height={250}
-						className="w-full h-auto px-6 sm:px-8 lg:px-10"
+				>
+					{/* Left-to-right black-to-transparent gradient */}
+					<div
+						className="absolute inset-0"
+						style={{
+							background:
+								"linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, 0) 100%)",
+						}}
 					/>
+					{/* Centered glow gradient */}
+					<Image
+						src="/landing-page/footer-name-gradient.svg"
+						alt=""
+						width={825}
+						height={642}
+						className="absolute inset-0 w-full h-full object-cover max-w-3xl mx-auto"
+					/>
+					{/* Foreground image */}
+					<div className="relative flex items-center justify-center py-16 sm:py-20 lg:py-24">
+						<Image
+							src="/landing-page/footer-name-image.png"
+							alt="ADK-TS"
+							width={1087}
+							height={250}
+							className="w-full h-auto px-6 sm:px-8 lg:px-10"
+						/>
+					</div>
 				</div>
 			</div>
 
