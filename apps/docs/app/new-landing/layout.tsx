@@ -13,6 +13,10 @@ export const metadata: Metadata = {
 	alternates: {
 		canonical: "https://adk.iqai.com",
 	},
+	robots: {
+		index: false,
+		follow: false,
+	},
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
