@@ -1,12 +1,14 @@
 ---
 title: Agent Evaluation
-description: Comprehensive framework for testing and validating agent performance across scenarios
+description: Automated quality assurance for your agents — test behavior, score performance, and catch regressions before they reach production
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Agent evaluation provides systematic approaches to testing and validating agent performance, moving beyond prototype to production-ready AI systems.
+Your agent works — it answers questions, calls tools, and handles conversations. But how do you know it _keeps_ working after you change a prompt, swap a model, or add a new tool?
+
+Agent evaluation is automated QA for your agent. You define test scenarios with expected outcomes, run your agent against them, and get scored results. If scores drop below your thresholds, the evaluation fails — giving you a safety net before changes reach production.
 
 <Callout type="info" title="Status">
 
@@ -15,22 +17,16 @@ may receive additive changes; core evaluator signatures are stable.
 
 </Callout>
 
-## Overview
-
-Unlike traditional software testing, agent evaluation must account for the probabilistic nature of LLM responses and the complexity of multi-step reasoning processes. Effective evaluation encompasses multiple dimensions from tool usage patterns to response quality.
-
 ## Key Features
 
-The ADK-TS evaluation framework provides comprehensive agent testing capabilities:
+- **AgentEvaluator** — single entry point: point it at your agent and a test directory, and it handles the rest
+- **Multiple Metrics** — ROUGE scoring, LLM-as-judge, tool trajectory analysis, safety evaluation
+- **Flexible Test Format** — JSON-based test cases with support for multi-turn conversations
+- **Local & Cloud Evaluation** — run evaluations locally or integrate with Vertex AI
+- **Session State Support** — test stateful agents with conversation history
+- **Configurable Thresholds** — set pass/fail criteria for different evaluation metrics
 
-- **Agent Evaluator**: Automated evaluation of agent performance across test cases
-- **Multiple Metrics**: ROUGE scoring, LLM-as-judge, tool trajectory analysis, safety evaluation
-- **Flexible Test Format**: JSON-based test cases with support for multi-turn conversations
-- **Local & Cloud Evaluation**: Run evaluations locally or integrate with Vertex AI
-- **Session State Support**: Test stateful agents with conversation history
-- **Configurable Thresholds**: Set pass/fail criteria for different evaluation metrics
-
-## Documentation Structure
+## Explore
 
 <Cards>
   <Card
@@ -38,19 +34,16 @@ The ADK-TS evaluation framework provides comprehensive agent testing capabilitie
     description="Core principles and challenges in agent evaluation"
     href="/docs/framework/evaluation/evaluation-concepts"
   />
-
-<Card
-  title="🧪 Testing Agents"
-  description="Current approaches and future automated testing methods"
-  href="/docs/framework/evaluation/testing-agents"
-/>
-
-<Card
-  title="📊 Metrics and Scoring"
-  description="Measurement approaches for trajectory and response quality"
-  href="/docs/framework/evaluation/metrics-and-scoring"
-/>
-
+  <Card
+    title="🧪 Testing Agents"
+    description="Manual and automated approaches to testing agent behavior"
+    href="/docs/framework/evaluation/testing-agents"
+  />
+  <Card
+    title="📊 Metrics and Scoring"
+    description="Measurement approaches for trajectory and response quality"
+    href="/docs/framework/evaluation/metrics-and-scoring"
+  />
   <Card
     title="🎯 Evaluation Patterns"
     description="Domain-specific evaluation strategies and best practices"
@@ -62,20 +55,20 @@ The ADK-TS evaluation framework provides comprehensive agent testing capabilitie
 
 The evaluation framework includes these key components:
 
-- **AgentEvaluator**: Main entry point for agent performance assessment
-- **TrajectoryEvaluator**: Analyzes tool usage patterns and decision paths
-- **ResponseEvaluator**: ROUGE-1 scoring and LLM-based response quality assessment
-- **SafetyEvaluator**: Evaluates response harmlessness and safety
-- **EvalSet Management**: Organized test cases with metadata and version control
-- **MetricEvaluatorRegistry**: Extensible system for custom evaluation metrics
-- **LocalEvalService**: Complete local evaluation pipeline with parallel execution
+- **AgentEvaluator** — main entry point for automated agent performance assessment
+- **TrajectoryEvaluator** — analyzes tool usage patterns and decision paths
+- **ResponseEvaluator** — ROUGE-1 scoring and LLM-based response quality assessment
+- **SafetyEvaluatorV1** — evaluates response harmlessness and safety
+- **EvalSet Management** — organized test cases with metadata and version control
+- **MetricEvaluatorRegistry** — extensible system for custom evaluation metrics
+- **LocalEvalService** — complete local evaluation pipeline with parallel execution
 
 ## Getting Started
 
 Workflow:
 
-1. **Author Dataset**: Provide either:
-   - Legacy array format: `[{ "query": "...", "reference": "..." }]` (auto-migrated at runtime – deprecated warning emitted), or
+1. **Author Dataset** — provide either:
+   - Legacy array format: `[{ "query": "...", "reference": "..." }]` (auto-migrated at runtime, deprecated warning emitted), or
    - New EvalSet schema (preferred):
 
 ```json
@@ -93,7 +86,10 @@ Workflow:
             "role": "user",
             "parts": [{ "text": "What is 2 + 2?" }]
           },
-          "finalResponse": { "role": "model", "parts": [{ "text": "4" }] }
+          "finalResponse": {
+            "role": "model",
+            "parts": [{ "text": "4" }]
+          }
         }
       ]
     }
@@ -104,14 +100,18 @@ Workflow:
 2. **Configure Criteria** in `test_config.json` (sibling to each `*.test.json`):
 
 ```json
-{ "criteria": { "response_match_score": 0.8 } }
+{
+  "criteria": {
+    "response_match_score": 0.8
+  }
+}
 ```
 
-3. **Run Evaluation** – signature: `await AgentEvaluator.evaluate(agent, pathOrFile, numRuns?)`.
+3. **Run Evaluation** — signature: `await AgentEvaluator.evaluate(agent, pathOrFile, numRuns?)`.
    - Throws an Error if any metric fails threshold (no return value).
-4. **Iterate** – tighten thresholds / expand cases as agent improves.
+4. **Iterate** — tighten thresholds / expand cases as agent improves.
 
-Minimal usage example:
+Minimal usage example — use `.build()` when you need the agent instance for evaluation or reuse:
 
 ```typescript
 import { AgentBuilder, AgentEvaluator } from "@iqai/adk";
@@ -121,16 +121,38 @@ const { agent } = await AgentBuilder.create("eval_agent")
   .withInstruction("Answer briefly and accurately.")
   .build();
 
+// Point at a directory — finds all *.test.json files recursively
 await AgentEvaluator.evaluate(agent, "./evaluation/tests");
-// If it does not throw, all criteria passed.
+// Throws an Error if any metric fails its threshold
 ```
 
-Programmatic (advanced) usage using an already loaded EvalSet:
+<Callout type="info" title="`.build()` vs `.ask()`">
+
+Use `.build()` when you need an agent instance — for evaluation, multi-agent
+composition, or reuse across multiple calls. Use `.ask()` for one-off queries
+where you just need the response.
+
+</Callout>
+
+Programmatic usage with an already-loaded EvalSet:
 
 ```typescript
-// If you parsed an EvalSet JSON yourself
-// import type { Evaluation } from '@iqai/adk';
-// await AgentEvaluator.evaluateEvalSet(agent, evalSet, { response_match_score: 0.8 });
+import * as fs from "node:fs/promises";
+import { AgentEvaluator } from "@iqai/adk";
+import type { EvalSet } from "@iqai/adk";
+import { agent } from "./my-agent"; // Your agent instance
+
+const evalSet: EvalSet = JSON.parse(
+  await fs.readFile("./tests/basic.test.json", "utf-8"),
+);
+
+await AgentEvaluator.evaluateEvalSet(
+  agent,
+  evalSet,
+  { response_match_score: 0.8 },
+  2, // numRuns
+  true, // printDetailedResults
+);
 ```
 
 Default criteria if `test_config.json` absent:
@@ -149,19 +171,16 @@ Each metric key must be one of: `tool_trajectory_avg_score`, `response_evaluatio
     description="Learn about different agent types and their capabilities"
     href="/docs/framework/agents"
   />
-
-<Card
-  title="🔧 Tools"
-  description="Understand tool integration and usage patterns"
-  href="/docs/framework/tools"
-/>
-
-<Card
-  title="💬 Sessions"
-  description="Session management for conversation tracking"
-  href="/docs/framework/session-state-memory/session"
-/>
-
+  <Card
+    title="🔧 Tools"
+    description="Understand tool integration and usage patterns"
+    href="/docs/framework/tools"
+  />
+  <Card
+    title="💬 Sessions"
+    description="Session management for conversation tracking"
+    href="/docs/framework/session-state-memory/session"
+  />
   <Card
     title="📋 Callbacks"
     description="Event handling and agent lifecycle management"
