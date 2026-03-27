@@ -1,0 +1,83 @@
+@reference "../../app/global.css";
+
+/* Landing page reusable styles */
+
+:root {
+	--landing-border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Standard border color */
+.landing-border {
+	border-color: var(--landing-border-color);
+}
+
+/* Gradient border (navbar bottom) */
+.landing-border-gradient {
+	border-image-source: linear-gradient(
+		249.64deg,
+		var(--landing-border-color) 4.99%,
+		rgba(102, 102, 102, 0.2) 93.43%
+	);
+	border-image-slice: 1;
+}
+
+/* Layout vertical borders */
+.landing-border-x {
+	@apply border-x;
+	border-color: var(--landing-border-color);
+}
+
+/* Section bottom border */
+.landing-border-b {
+	@apply border-b;
+	border-color: var(--landing-border-color);
+}
+
+/* Section top border */
+.landing-border-t {
+	@apply border-t;
+	border-color: var(--landing-border-color);
+}
+
+/* Center divider (vertical) */
+.landing-border-r {
+	@apply border-r;
+	border-color: var(--landing-border-color);
+}
+
+/* Reusable pink glow — bleeds only downward */
+.landing-glow {
+	@apply relative;
+	clip-path: inset(0 0 -500px 0);
+}
+
+.landing-glow::before {
+	@apply absolute w-full max-w-[800px] h-full max-h-[800px] top-3.5 left-1/2 -translate-x-1/2 rounded-full pointer-events-none;
+	content: "";
+	background: rgba(255, 26, 136, 0.2);
+	filter: blur(500px);
+}
+
+/* Newsletter outline button */
+.landing-newsletter-btn {
+	@apply inline-flex items-center px-4 py-1.5 rounded-md border-2 border-primary text-primary text-xs font-medium transition-colors;
+	background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.landing-newsletter-btn:hover {
+	background: color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+/* Responsive grid background — cells grow on smaller screens */
+.landing-grid-bg {
+	@apply bg-repeat-y bg-top;
+	background-size: 350% auto;
+
+	@media (min-width: 768px) {
+		background-size: 200% auto;
+	}
+
+	@media (min-width: 1280px) {
+		background-size: 100% auto;
+	}
+}
