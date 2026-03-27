@@ -57,7 +57,7 @@ export function Hero() {
 					loop
 					muted
 					playsInline
-					className="absolute top-0 right-0 w-full lg:w-4/6 h-full object-cover opacity-60"
+					className="absolute top-0 right-0 w-full lg:w-4/6 h-full object-contain opacity-60"
 				>
 					<source src="/landing-page/hero-video.mp4" type="video/mp4" />
 				</video>
@@ -67,7 +67,7 @@ export function Hero() {
 			<div className="relative z-10 flex items-center min-h-screen p-6 sm:p-10 lg:p-16">
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-end w-full">
 					{/* Left Column - Text */}
-					<div className="text-center grid gap-3 md:gap-3.5 lg:gap-8 lg:text-left">
+					<div className="mt-12 md:mt-24 lg:mt-0 text-center grid gap-3 md:gap-3.5 lg:gap-8 lg:text-left">
 						{/* Badge */}
 						<motion.div
 							initial={{ opacity: 0, y: 20 }}
