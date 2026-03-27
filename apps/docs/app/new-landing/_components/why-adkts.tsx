@@ -1,7 +1,11 @@
-import React from "react";
+import { SectionWrapper } from "./section-wrapper";
 
 const WhyADKTSSection = () => {
-	return <div>WhyADKTSSection</div>;
+	return (
+		<SectionWrapper id="why-adkts">
+			<div>WhyADKTSSection</div>
+		</SectionWrapper>
+	);
 };
 
 export default WhyADKTSSection;

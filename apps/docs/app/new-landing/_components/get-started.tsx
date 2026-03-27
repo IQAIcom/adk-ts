@@ -1,7 +1,11 @@
-import React from "react";
+import { SectionWrapper } from "./section-wrapper";
 
 const GetStartedSection = () => {
-	return <div>GetStartedSection</div>;
+	return (
+		<SectionWrapper id="get-started">
+			<div>GetStartedSection</div>
+		</SectionWrapper>
+	);
 };
 
 export default GetStartedSection;

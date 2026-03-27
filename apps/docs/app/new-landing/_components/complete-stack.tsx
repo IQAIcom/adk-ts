@@ -1,7 +1,11 @@
-import React from "react";
+import { SectionWrapper } from "./section-wrapper";
 
 const CompleteStackSection = () => {
-	return <div>CompleteStackSection</div>;
+	return (
+		<SectionWrapper id="complete-stack">
+			<div>CompleteStackSection</div>
+		</SectionWrapper>
+	);
 };
 
 export default CompleteStackSection;

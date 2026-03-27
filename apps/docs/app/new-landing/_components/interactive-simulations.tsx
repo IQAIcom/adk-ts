@@ -1,7 +1,11 @@
-import React from "react";
+import { SectionWrapper } from "./section-wrapper";
 
 const InteractiveSimulationsSection = () => {
-	return <div>InteractiveSimulationsSection</div>;
+	return (
+		<SectionWrapper id="interactive-simulations">
+			<div>InteractiveSimulationsSection</div>
+		</SectionWrapper>
+	);
 };
 
 export default InteractiveSimulationsSection;

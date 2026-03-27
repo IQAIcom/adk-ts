@@ -1,7 +1,11 @@
-import React from "react";
+import { SectionWrapper } from "./section-wrapper";
 
 const BuiltForDevelopersSection = () => {
-	return <div>BuiltForDevelopersSection</div>;
+	return (
+		<SectionWrapper id="built-for-developers">
+			<div>BuiltForDevelopersSection</div>
+		</SectionWrapper>
+	);
 };
 
 export default BuiltForDevelopersSection;

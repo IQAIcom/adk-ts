@@ -1,7 +1,11 @@
-import React from "react";
+import { SectionWrapper } from "./section-wrapper";
 
 const ProjectFeaturesSection = () => {
-	return <div>ProjectFeaturesSection</div>;
+	return (
+		<SectionWrapper id="project-features">
+			<div>ProjectFeaturesSection</div>
+		</SectionWrapper>
+	);
 };
 
 export default ProjectFeaturesSection;

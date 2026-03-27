@@ -1,7 +1,11 @@
-import React from "react";
+import { SectionWrapper } from "./section-wrapper";
 
 const MCPServersSection = () => {
-	return <div>MCPServersSection</div>;
+	return (
+		<SectionWrapper id="mcp-servers">
+			<div>MCPServersSection</div>
+		</SectionWrapper>
+	);
 };
 
 export default MCPServersSection;
