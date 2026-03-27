@@ -111,7 +111,7 @@ Workflow:
    - Throws an Error if any metric fails threshold (no return value).
 4. **Iterate** — tighten thresholds / expand cases as agent improves.
 
-Minimal usage example:
+Minimal usage example — use `.build()` when you need the agent instance for evaluation or reuse:
 
 ```typescript
 import { AgentBuilder, AgentEvaluator } from "@iqai/adk";
@@ -126,12 +126,21 @@ await AgentEvaluator.evaluate(agent, "./evaluation/tests");
 // Throws an Error if any metric fails its threshold
 ```
 
+<Callout type="info" title="`.build()` vs `.ask()`">
+
+Use `.build()` when you need an agent instance — for evaluation, multi-agent
+composition, or reuse across multiple calls. Use `.ask()` for one-off queries
+where you just need the response.
+
+</Callout>
+
 Programmatic usage with an already-loaded EvalSet:
 
 ```typescript
 import * as fs from "node:fs/promises";
 import { AgentEvaluator } from "@iqai/adk";
 import type { EvalSet } from "@iqai/adk";
+import { agent } from "./my-agent"; // Your agent instance
 
 const evalSet: EvalSet = JSON.parse(
   await fs.readFile("./tests/basic.test.json", "utf-8"),

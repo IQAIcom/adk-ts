@@ -124,6 +124,17 @@ For dynamic test generation or custom workflows, use `evaluateEvalSet()` directl
 import { AgentEvaluator } from "@iqai/adk";
 import type { EvalSet } from "@iqai/adk";
 
+// Map each scenario to its expected response
+function getExpectedResponse(scenario: string): string {
+  const responses: Record<string, string> = {
+    "What is 2 + 2?": "4",
+    "What is the capital of France?": "Paris",
+    "Explain photosynthesis briefly.":
+      "Photosynthesis is the process by which plants convert sunlight into energy.",
+  };
+  return responses[scenario] ?? "I don't have an answer for that.";
+}
+
 function generateTestCases(scenarios: string[]): EvalSet {
   return {
     evalSetId: `dynamic-${Date.now()}`,
