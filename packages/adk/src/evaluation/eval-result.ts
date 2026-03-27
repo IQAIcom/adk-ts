@@ -44,6 +44,6 @@ export class EvalResult implements EvalSetResult {
 		this.evalSetResultName = init.evalSetResultName;
 		this.evalSetId = init.evalSetId || "";
 		this.evalCaseResults = init.evalCaseResults || [];
-		this.creationTimestamp = init.creationTimestamp || Date.now() / 1000;
+		this.creationTimestamp = init.creationTimestamp || Date.now();
 	}
 }

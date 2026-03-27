@@ -1,5 +1,20 @@
 # @iqai/mcp-docs
 
+## 0.1.7
+
+### Patch Changes
+
+- Updated dependencies [d25219b]
+- Updated dependencies [2336621]
+- Updated dependencies [b4b6887]
+- Updated dependencies [751b3e9]
+- Updated dependencies [800239b]
+- Updated dependencies [d35873a]
+- Updated dependencies [c6ff7ef]
+- Updated dependencies [fbb3c30]
+- Updated dependencies [7c9ddf6]
+  - @iqai/adk@0.8.5
+
 ## 0.1.6
 
 ### Patch Changes

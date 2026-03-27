@@ -1,5 +1,27 @@
 # @iqai/adk
 
+## 0.8.5
+
+### Patch Changes
+
+- d25219b: fix: deduplicate concurrent database session initialization
+- 2336621: fix: share endInvocation flag by reference between parent/child contexts
+
+  endInvocation was a primitive boolean copied by value when creating child
+  invocation contexts, so sub-agents setting it to true never propagated to
+  the parent. Wrapped in a shared InvocationFlags object passed by reference.
+
+- b4b6887: fix: standardize evaluation timestamps to milliseconds
+- 751b3e9: fix: handle all Part types in GcsArtifactService
+- 800239b: fix: use correct invocationId when merging parallel function responses
+- d35873a: fix: guard streaming tool call JSON.parse to prevent generator crashes
+- c6ff7ef: fix: vector storage delete/count bypass stale in-memory cache
+
+  Filter-based `delete()` and `count()` in `VectorStorageProvider` now delegate to the underlying vector store instead of relying on an in-memory cache that is empty after process restart.
+
+- fbb3c30: fix: replace random score stubs with real Vertex AI evaluation API calls
+- 7c9ddf6: fix: resolve race condition in LocalEvalService constructor
+
 ## 0.8.4
 
 ### Patch Changes

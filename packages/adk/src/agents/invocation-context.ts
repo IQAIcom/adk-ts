@@ -15,6 +15,12 @@ import type { TranscriptionEntry } from "./transcription-entry";
 export type SpanCounters = { llm: number; tool: number; agent: number };
 
 /**
+ * Shared mutable flags for an invocation, passed by reference so that
+ * child contexts and parent contexts stay in sync.
+ */
+export type InvocationFlags = { endInvocation: boolean };
+
+/**
  * Transfer context for multi-agent workflows
  * Tracks the chain of agent transfers for telemetry
  */
@@ -175,11 +181,22 @@ export class InvocationContext {
 	readonly session: Session;
 
 	/**
+	 * Shared flags container so that child/parent contexts stay in sync.
+	 */
+	private readonly _invocationFlags: InvocationFlags;
+
+	/**
 	 * Whether to end this invocation.
 	 *
 	 * Set to True in callbacks or tools to terminate this invocation.
 	 */
-	endInvocation = false;
+	get endInvocation(): boolean {
+		return this._invocationFlags.endInvocation;
+	}
+
+	set endInvocation(value: boolean) {
+		this._invocationFlags.endInvocation = value;
+	}
 
 	/**
 	 * The queue to receive live requests.
@@ -229,6 +246,7 @@ export class InvocationContext {
 		userContent?: Content;
 		session: Session;
 		endInvocation?: boolean;
+		invocationFlags?: InvocationFlags;
 		liveRequestQueue?: LiveRequestQueue;
 		activeStreamingTools?: Record<string, ActiveStreamingTool>;
 		transcriptionCache?: TranscriptionEntry[];
@@ -246,7 +264,9 @@ export class InvocationContext {
 		this.agent = options.agent;
 		this.userContent = options.userContent;
 		this.session = options.session;
-		this.endInvocation = options.endInvocation || false;
+		this._invocationFlags = options.invocationFlags ?? {
+			endInvocation: options.endInvocation || false,
+		};
 		this.liveRequestQueue = options.liveRequestQueue;
 		this.activeStreamingTools = options.activeStreamingTools;
 		this.transcriptionCache = options.transcriptionCache;
@@ -314,6 +334,13 @@ export class InvocationContext {
 	}
 
 	/**
+	 * Exposes shared invocation flags for child contexts.
+	 */
+	getInvocationFlags(): InvocationFlags {
+		return this._invocationFlags;
+	}
+
+	/**
 	 * Creates a child invocation context for a sub-agent
 	 */
 	createChildContext(agent: BaseAgent): InvocationContext {
@@ -327,7 +354,7 @@ export class InvocationContext {
 			agent: agent, // Update to the new agent
 			userContent: this.userContent,
 			session: this.session,
-			endInvocation: this.endInvocation,
+			invocationFlags: this._invocationFlags,
 			liveRequestQueue: this.liveRequestQueue,
 			activeStreamingTools: this.activeStreamingTools,
 			transcriptionCache: this.transcriptionCache,
