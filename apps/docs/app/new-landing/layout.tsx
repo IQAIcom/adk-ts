@@ -1,3 +1,6 @@
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { Satoshi } from "./fonts";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
@@ -13,5 +16,11 @@ export const metadata: Metadata = {
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
-	return <>{children}</>;
+	return (
+		<div
+			className={`${Satoshi.variable} ${GeistSans.variable} ${GeistMono.variable}`}
+		>
+			{children}
+		</div>
+	);
 }

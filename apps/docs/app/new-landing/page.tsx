@@ -12,13 +12,15 @@ import InteractiveSimulationsSection from "./_components/interactive-simulations
 import ProjectFeaturesSection from "./_components/project-features";
 import GetStartedSection from "./_components/get-started";
 import CTASection from "./_components/cta";
+import LLMModels from "./_components/llm-models";
 
 export default function HomePage() {
 	return (
-		<div className="min-h-screen w-screen bg-black text-white overflow-x-clip">
+		<div className="landing-fonts min-h-screen w-screen bg-black text-white overflow-x-clip">
 			<Navbar />
 			<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
 				<Hero />
+				<LLMModels />
 				<WhyADKTSSection />
 				<BuiltForDevelopersSection />
 				<CompleteStackSection />
