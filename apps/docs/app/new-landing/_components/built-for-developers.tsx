@@ -174,26 +174,28 @@ const BuiltForDevelopersSection = () => {
 	const [activeCount, setActiveCount] = useState(0);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	const stepRef = useRef(0);
+	const hasPlayedRef = useRef(false);
 
 	useEffect(() => {
 		const el = panelRef.current;
 		if (!el) return;
 
-		let step = 0;
-		let hasPlayed = false;
-
 		const tick = () => {
-			step++;
-			if (step > TOTAL_STEPS) return; // done, stay at 100%
-			setActiveCount(step);
+			stepRef.current++;
+			if (stepRef.current > TOTAL_STEPS) {
+				if (timerRef.current) clearTimeout(timerRef.current);
+				return;
+			}
+			setActiveCount(stepRef.current);
 			timerRef.current = setTimeout(tick, STEP_INTERVAL);
 		};
 
 		const observer = new IntersectionObserver(
 			([entry]) => {
-				if (entry.isIntersecting && !hasPlayed) {
-					hasPlayed = true;
-					step = 0;
+				if (entry.isIntersecting && !hasPlayedRef.current) {
+					hasPlayedRef.current = true;
+					stepRef.current = 0;
 					setActiveCount(0);
 					timerRef.current = setTimeout(tick, STEP_INTERVAL);
 				}
@@ -204,7 +206,7 @@ const BuiltForDevelopersSection = () => {
 		observer.observe(el);
 		return () => {
 			observer.disconnect();
-			clearTimeout(timerRef.current);
+			if (timerRef.current) clearTimeout(timerRef.current);
 		};
 	}, []);
 
@@ -331,10 +333,7 @@ const BuiltForDevelopersSection = () => {
 			</div>
 
 			{/* Terminal command */}
-			<div
-				className="mt-3.5 bg-[#0000001f] px-5 py-3 font-mono text-xs text-white/80 flex items-center gap-3 border border-white/10 rounded-md"
-				style={{ boxShadow: "0px 4px 4px 0px #00000040" }}
-			>
+			<div className="mt-3.5 bg-[#0000001f] px-5 py-3 font-mono text-xs text-white/80 flex items-center gap-3 border border-white/10 rounded-md shadow-[0px_4px_4px_0px_#00000040]">
 				<span className="text-primary text-[11px]">$</span>
 				<span>
 					npx @iqai/adk-cli new my-agent{" "}
