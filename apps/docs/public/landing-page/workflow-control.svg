@@ -29,7 +29,28 @@
   @keyframes boxFlow {
     to { stroke-dashoffset: -9.09; }
   }
+  .moving-dot { filter: drop-shadow(0 0 3px #C471ED); }
 </style>
+<!-- Moving dots along workflow connection arcs -->
+<circle r="2.5" fill="#C471ED" opacity="0.9" class="moving-dot">
+  <animateMotion dur="3s" repeatCount="indefinite" path="M340.845,71.3977 C400.642,47.4788 472.399,47.4788 532.196,71.3977"/>
+</circle>
+<circle r="2.5" fill="#C471ED" opacity="0.9" class="moving-dot">
+  <animateMotion dur="3.5s" repeatCount="indefinite" path="M591.993,143.514 C591.993,191.352 442.5,165.041 442.5,212.879"/>
+</circle>
+<circle r="2.5" fill="#C471ED" opacity="0.9" class="moving-dot">
+  <animateMotion dur="3.5s" repeatCount="indefinite" path="M442.5,320.513 C406.622,374.331 179.392,340.844 143.514,394.662"/>
+</circle>
+<circle r="2.5" fill="#C471ED" opacity="0.9" class="moving-dot">
+  <animateMotion dur="3s" repeatCount="indefinite" path="M203.311,430.182 C257.128,408.655 328.885,408.655 382.703,430.182"/>
+</circle>
+<circle r="2.5" fill="#C471ED" opacity="0.9" class="moving-dot">
+  <animateMotion dur="3s" repeatCount="indefinite" path="M502.297,430.182 C556.115,408.655 627.872,408.655 681.689,430.182"/>
+</circle>
+<!-- Arrow-shaped triangle dot for workflow direction -->
+<path d="M-4,-3 L4,0 L-4,3 Z" fill="#64C8FF" opacity="0.7">
+  <animateMotion dur="3.5s" repeatCount="indefinite" rotate="auto" path="M591.993,143.514 C591.993,191.352 442.5,165.041 442.5,212.879"/>
+</path>
 <g clip-path="url(#clip0_6075_11685)">
 <path d="M254.938 116.42V175.383L168.638 127.429V68.8806L254.938 116.42Z" fill="url(#paint0_linear_6075_11685)" fill-opacity="0.4" stroke="white" stroke-opacity="0.2" stroke-width="1.11781"/>
 </g>

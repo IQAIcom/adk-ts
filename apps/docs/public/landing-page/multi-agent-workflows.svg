@@ -7,22 +7,46 @@
   @keyframes flowArc {
     to { stroke-dashoffset: -10.76; }
   }
-  /* Sequential vertical connectors — flow downward with staggered timing */
+  /* Sequential vertical connectors — flow UPWARD */
   path[stroke-dasharray="3.55 3.55"] {
-    animation: flowDown 1.5s linear infinite;
+    animation: flowUp 1.5s linear infinite;
   }
-  @keyframes flowDown {
-    to { stroke-dashoffset: -7.1; }
+  @keyframes flowUp {
+    to { stroke-dashoffset: 7.1; }
   }
-  /* Blue dots — pulse glow */
+  /* Static blue dots — subtle pulse */
   path[fill="#64C8FF"] {
     animation: dotPulse 2s ease-in-out infinite;
   }
   @keyframes dotPulse {
-    0%, 100% { opacity: 0.5; }
+    0%, 100% { opacity: 0.4; }
     50% { opacity: 1; }
   }
+  /* Moving dots glow */
+  .moving-dot {
+    filter: drop-shadow(0 0 3px #64C8FF);
+  }
 </style>
+<!-- Sequential flow: bottom box → up through stack → arc to center -->
+<circle r="3" fill="#64C8FF" opacity="0.9" class="moving-dot">
+  <animateMotion dur="1.5s" repeatCount="indefinite" path="M139.572,277.93 L139.572,260.202" begin="0s"/>
+</circle>
+<circle r="3" fill="#64C8FF" opacity="0.9" class="moving-dot">
+  <animateMotion dur="1.5s" repeatCount="indefinite" path="M139.572,162.695 L139.572,144.967" begin="1s"/>
+</circle>
+<circle r="3" fill="#64C8FF" opacity="0.9" class="moving-dot">
+  <animateMotion dur="2.5s" repeatCount="indefinite" path="M164,107.645 C217.817,86.1182 289.574,86.1182 343.392,107.645" begin="2s"/>
+</circle>
+<!-- Parallel arcs: all flow simultaneously (right side) -->
+<circle r="2.5" fill="#C471ED" opacity="0.9" class="moving-dot">
+  <animateMotion dur="3s" repeatCount="indefinite" path="M472,124.145 C525.818,102.618 597.574,102.618 651.392,124.145"/>
+</circle>
+<circle r="2.5" fill="#C471ED" opacity="0.9" class="moving-dot">
+  <animateMotion dur="3s" repeatCount="indefinite" path="M457,221.145 C510.817,199.618 582.574,199.618 636.392,221.145"/>
+</circle>
+<circle r="2.5" fill="#C471ED" opacity="0.9" class="moving-dot">
+  <animateMotion dur="3s" repeatCount="indefinite" path="M446.638,281.653 C502.246,265.296 573.683,272.061 625.231,298.566"/>
+</circle>
 <g opacity="0.04" filter="url(#filter0_f_5970_3851)">
 <path d="M472 124.145C525.818 102.618 597.574 102.618 651.392 124.145" stroke="#C471ED" stroke-width="9.56757" stroke-linecap="round"/>
 </g>
