@@ -1,6 +1,6 @@
 "use client";
 
-import { Blocks, Box, Cog, GitFork, Layers, ShieldCheck } from "lucide-react";
+import { Blocks, Cpu, Cog, GitFork, ShieldCheck, Network } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { SectionWrapper } from "./section-wrapper";
@@ -8,7 +8,7 @@ import { SectionWrapper } from "./section-wrapper";
 const features = [
 	{
 		id: "agentbuilder-api",
-		icon: Box,
+		icon: Cpu,
 		label: "AgentBuilder API",
 		title: "AgentBuilder API",
 		description:
@@ -17,7 +17,7 @@ const features = [
 	},
 	{
 		id: "multi-llm-support",
-		icon: Layers,
+		icon: Network,
 		label: "Multi-LLM Support",
 		title: "Multi-LLM Support",
 		description:
@@ -30,7 +30,7 @@ const features = [
 		label: "Production-Ready Architecture",
 		title: "Production-Ready Architecture",
 		description:
-			"Enterprise-grade session management, persistent memory, and artifact handling built in from day one — not bolted on as an afterthought.",
+			"Deploy to Node.js, serverless, or containers without changing your agent code, with sessions, memory, streaming, and Zod-typed outputs all built in.",
 		image: "/landing-page/production-ready.svg",
 	},
 	{
@@ -39,7 +39,7 @@ const features = [
 		label: "Advanced Tooling",
 		title: "Advanced Tooling",
 		description:
-			"Create custom tools with full type safety, automatic schema generation, and seamless MCP server integration for unlimited extensibility.",
+			"Turn any function into a typed agent tool with automatic schema generation via ADK-TS, and connect to 20+ built-in MCP servers or any external API from a single unified tool registry.",
 		image: "/landing-page/advanced-tooling.svg",
 	},
 	{
@@ -48,7 +48,7 @@ const features = [
 		label: "Multi-Agent Workflows",
 		title: "Multi-Agent Workflows",
 		description:
-			"Compose agents into sequential, parallel, or loop-based pipelines with built-in state sharing and orchestration control.",
+			"Run tasks sequentially, in parallel, or in loops using the same AgentBuilder API, with four execution patterns: sequential pipelines, parallel fan-outs, iterative loops, and custom DAGs.",
 		image: "/landing-page/multi-agent-workflows.svg",
 	},
 	{
@@ -57,7 +57,7 @@ const features = [
 		label: "Workflow Control",
 		title: "Workflow Control",
 		description:
-			"Fine-grained control over agent execution with callbacks, streaming events, and runtime configuration for every step of your pipeline.",
+			"Pause and resume agent workflows at any step with built-in suspend/resume primitives, enabling human-in-the-loop systems, approval gates, and long-running pipelines using persistent state snapshots and an agent scheduler for cron-style execution.",
 		image: "/landing-page/workflow-control.svg",
 	},
 ];
@@ -100,9 +100,9 @@ export default function WhyADKTSSection() {
 	return (
 		<SectionWrapper id="why-adkts" className="landing-glow">
 			{/* Section header */}
-			<div className="mb-12 lg:mb-16">
-				<span className="landing-badge mb-4 inline-block">Core Features</span>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight mb-4">
+			<div className="mb-20 md:mb-10 lg:mb-8 grid gap-5">
+				<span className="landing-badge w-max inline-flex">Core Features</span>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight">
 					Why ADK-TS?
 				</h2>
 				<p className="text-sm sm:text-base lg:text-lg text-muted-foreground max-w-xl">
@@ -114,7 +114,7 @@ export default function WhyADKTSSection() {
 			{/* Desktop: side nav + scrolling content */}
 			<div className="hidden lg:grid lg:grid-cols-[280px_1fr] gap-12">
 				{/* Left nav — sticky */}
-				<nav className="sticky top-24 self-start space-y-1">
+				<nav className="sticky top-40 self-start space-y-8 mt-[100px]">
 					{features.map((feature, index) => {
 						const Icon = feature.icon;
 						const isActive = index === activeIndex;
@@ -123,20 +123,20 @@ export default function WhyADKTSSection() {
 								key={feature.id}
 								type="button"
 								onClick={() => scrollToFeature(index)}
-								className={`flex items-center gap-3 w-full text-left px-4 py-3 rounded-md transition-colors text-sm ${
+								className={`flex items-center gap-2 w-full text-left pl-2 transition-colors text-base font-medium font-satoshi ${
 									isActive
-										? "text-primary border-l-2 border-primary bg-primary/5"
-										: "text-muted-foreground hover:text-foreground border-l-2 border-transparent"
+										? "text-primary border-l-3 border-primary"
+										: "text-muted-foreground hover:text-foreground border-l-2 border-white/10"
 								}`}
 							>
-								<Icon className="size-4 shrink-0" />
+								<Icon className="size-5 shrink-0" />
 								{feature.label}
 							</button>
 						);
 					})}
 
 					{/* Progress indicator */}
-					<div className="flex items-center gap-3 pt-6 px-4 text-xs text-muted-foreground">
+					<div className="flex items-center gap-3 pt-8 border-t border-white/10 font-medium text-xs text-white/40">
 						<span>{String(activeIndex + 1).padStart(2, "0")}</span>
 						<div className="flex-1 h-0.5 bg-white/10 rounded-full overflow-hidden">
 							<div
@@ -151,22 +151,24 @@ export default function WhyADKTSSection() {
 				</nav>
 
 				{/* Right content */}
-				<div className="space-y-24">
+				<div className="space-y-24 border py-10 px-8 border-white/10">
 					{features.map((feature, index) => (
 						<div
 							key={feature.id}
 							ref={(el) => {
 								sectionRefs.current[index] = el;
 							}}
-							className="scroll-mt-24"
+							className="scroll-mt-24 border-b border-white/10 last:border-0"
 						>
-							<div className="landing-gradient-border rounded-lg p-6 mb-8">
-								<h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-								<p className="text-sm text-muted-foreground leading-relaxed">
+							<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-[#0A0A0A99]">
+								<h3 className="text-lg text-foreground font-medium">
+									{feature.title}
+								</h3>
+								<p className="text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
 									{feature.description}
 								</p>
 							</div>
-							<div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
+							<div className="mt-10 relative w-full aspect-4/3 overflow-hidden">
 								<Image
 									src={feature.image}
 									alt={feature.title}
@@ -180,16 +182,21 @@ export default function WhyADKTSSection() {
 			</div>
 
 			{/* Mobile/Tablet: stacked layout */}
-			<div className="lg:hidden space-y-16">
+			<div className="lg:hidden space-y-5 md:space-y-10">
 				{features.map((feature) => (
-					<div key={feature.id}>
-						<div className="landing-gradient-border rounded-lg p-5 mb-6">
-							<h3 className="text-base font-semibold mb-2">{feature.title}</h3>
-							<p className="text-sm text-muted-foreground leading-relaxed">
+					<div
+						key={feature.id}
+						className="scroll-mt-24 border-b border-white/10 last:border-0"
+					>
+						<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-[#0A0A0A99]">
+							<h3 className="text-lg text-foreground font-medium">
+								{feature.title}
+							</h3>
+							<p className="text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
 								{feature.description}
 							</p>
 						</div>
-						<div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden">
+						<div className="mt-10 relative w-full aspect-4/3 overflow-hidden">
 							<Image
 								src={feature.image}
 								alt={feature.title}
