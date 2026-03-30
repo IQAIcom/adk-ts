@@ -68,7 +68,7 @@ function LinkColumn({
 export function Footer() {
 	return (
 		<footer>
-			<div className="landing-glow">
+			<div className="sticky-glow">
 				{/* ── Links section — 3-col grid on lg, stacked on sm/md ── */}
 				<div
 					className="grid grid-cols-2 lg:grid-cols-3 landing-grid-bg"

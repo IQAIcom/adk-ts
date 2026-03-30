@@ -98,7 +98,7 @@ export default function WhyADKTSSection() {
 	};
 
 	return (
-		<SectionWrapper id="why-adkts" className="landing-glow">
+		<SectionWrapper id="why-adkts" className="sticky-glow">
 			{/* Section header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Core Features</span>
