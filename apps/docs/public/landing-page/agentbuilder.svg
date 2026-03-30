@@ -1,4 +1,20 @@
 <svg width="762" height="523" viewBox="0 0 762 523" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>
+  /* Connection arcs between agent components — flow outward */
+  path[stroke-dasharray="5.98 4.78"] {
+    animation: flowArc 3s linear infinite;
+  }
+  @keyframes flowArc {
+    to { stroke-dashoffset: -10.76; }
+  }
+  /* Builder box dashed outlines — subtle shimmer */
+  path[stroke-dasharray="0.65 0.65"] {
+    animation: shimmer 4s linear infinite;
+  }
+  @keyframes shimmer {
+    to { stroke-dashoffset: -1.3; }
+  }
+</style>
 <path d="M1.45508 52.6337L99.0637 3.82935L196.672 52.6337L99.0637 101.438L1.45508 52.6337Z" fill="url(#paint0_linear_5970_3607)" stroke="white" stroke-opacity="0.5" stroke-width="1.30145"/>
 <path d="M1.45508 52.6338V111.199L99.0637 160.003V101.438L1.45508 52.6338Z" fill="url(#paint1_linear_5970_3607)" stroke="white" stroke-opacity="0.5" stroke-width="1.30145"/>
 <path d="M98.747 101.807V159.63L13.7362 116.742V58.919L98.747 101.807Z" fill="url(#paint2_linear_5970_3607)"/>

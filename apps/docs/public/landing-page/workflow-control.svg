@@ -1,4 +1,35 @@
 <svg width="848" height="623" viewBox="0 0 848 623" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>
+  /* Connection arcs — data flowing between workflow stages */
+  path[stroke-dasharray="5.98 4.78"] {
+    animation: flowArc 3s linear infinite;
+  }
+  @keyframes flowArc {
+    to { stroke-dashoffset: -10.76; }
+  }
+  /* Suspend boundary — dashed rectangle pulses to show pause/resume */
+  path[stroke-dasharray="9.54 6.36"] {
+    animation: boundaryPulse 3s ease-in-out infinite;
+  }
+  @keyframes boundaryPulse {
+    0%, 100% { stroke-opacity: 0.15; }
+    50% { stroke-opacity: 0.35; }
+  }
+  /* Suspend zone circle — rotating dash pattern */
+  path[stroke-dasharray="6.36 4.77"] {
+    animation: rotateDash 6s linear infinite;
+  }
+  @keyframes rotateDash {
+    to { stroke-dashoffset: -11.13; }
+  }
+  /* Dashed box outlines — subtle flow */
+  path[stroke-dasharray="5.05 4.04"] {
+    animation: boxFlow 4s linear infinite;
+  }
+  @keyframes boxFlow {
+    to { stroke-dashoffset: -9.09; }
+  }
+</style>
 <g clip-path="url(#clip0_6075_11685)">
 <path d="M254.938 116.42V175.383L168.638 127.429V68.8806L254.938 116.42Z" fill="url(#paint0_linear_6075_11685)" fill-opacity="0.4" stroke="white" stroke-opacity="0.2" stroke-width="1.11781"/>
 </g>

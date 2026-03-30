@@ -1,4 +1,28 @@
 <svg width="864" height="532" viewBox="0 0 864 532" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>
+  /* Parallel arcs — all flow simultaneously */
+  path[stroke-dasharray="5.98 4.78"] {
+    animation: flowArc 3s linear infinite;
+  }
+  @keyframes flowArc {
+    to { stroke-dashoffset: -10.76; }
+  }
+  /* Sequential vertical connectors — flow downward with staggered timing */
+  path[stroke-dasharray="3.55 3.55"] {
+    animation: flowDown 1.5s linear infinite;
+  }
+  @keyframes flowDown {
+    to { stroke-dashoffset: -7.1; }
+  }
+  /* Blue dots — pulse glow */
+  path[fill="#64C8FF"] {
+    animation: dotPulse 2s ease-in-out infinite;
+  }
+  @keyframes dotPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+</style>
 <g opacity="0.04" filter="url(#filter0_f_5970_3851)">
 <path d="M472 124.145C525.818 102.618 597.574 102.618 651.392 124.145" stroke="#C471ED" stroke-width="9.56757" stroke-linecap="round"/>
 </g>

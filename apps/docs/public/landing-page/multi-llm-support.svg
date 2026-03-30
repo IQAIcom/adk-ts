@@ -1,4 +1,20 @@
 <svg width="753" height="496" viewBox="0 0 753 496" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>
+  /* LLM provider connection arcs — all flowing simultaneously to show interchangeability */
+  path[stroke-dasharray="5.98 4.78"] {
+    animation: flowArc 3s linear infinite;
+  }
+  @keyframes flowArc {
+    to { stroke-dashoffset: -10.76; }
+  }
+  /* Larger connection arcs */
+  path[stroke-dasharray="7.41 5.93"] {
+    animation: flowArcLarge 3s linear infinite;
+  }
+  @keyframes flowArcLarge {
+    to { stroke-dashoffset: -13.34; }
+  }
+</style>
 <path d="M79.5 254.031V334.031L7 293.531V214.031L79.5 254.031Z" fill="url(#paint0_linear_5970_3733)" fill-opacity="0.4" stroke="white" stroke-opacity="0.2"/>
 <path d="M6 211.531L81 169.531L156 211.531L81 253.531L6 211.531Z" fill="url(#paint1_linear_5970_3733)" stroke="white" stroke-opacity="0.9" stroke-width="1.96497"/>
 <path d="M6 211.031L80.7 169.531L155.4 211.031L80.7 252.531L6 211.031Z" fill="#0A0A0A" fill-opacity="0.6" stroke="white" stroke-opacity="0.4" stroke-width="1.66"/>
