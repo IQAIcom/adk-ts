@@ -236,10 +236,18 @@ const BuiltForDevelopersSection = () => {
 						</div>
 					</div>
 					{/* Code */}
-					<div className="relative flex-1 px-5 py-4 overflow-x-auto">
-						<pre className="text-white/80">
-							<code>{codeLines}</code>
-						</pre>
+					<div className="relative flex-1 overflow-x-auto">
+						<div className="flex min-h-full">
+							{/* Line numbers */}
+							<div className="select-none text-right text-white/20 pr-4 pl-4 pt-4 shrink-0 leading-[1.7] border-r border-white/10">
+								{Array.from({ length: 20 }, (_, i) => (
+									<div key={`ln-${i + 1}`}>{i + 1}</div>
+								))}
+							</div>
+							<pre className="text-white/80 pr-5 pl-4 py-4">
+								<code>{codeLines}</code>
+							</pre>
+						</div>
 						{/* IntelliSense popup */}
 						<div className="absolute bottom-[30%] left-[38%] border border-neutral-700 rounded bg-black shadow-2xl text-[13px] font-mono overflow-hidden whitespace-nowrap w-full max-w-[296px]">
 							<div className="px-2.5 py-1.5 border-b border-neutral-700 text-[#79C0FF] bg-[#171717] text-[10px]">
