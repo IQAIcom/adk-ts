@@ -14,6 +14,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useRef, useState, useEffect } from "react";
+import { CURRENT_YEAR } from "./footer.data";
 
 /* ──────────────────────────────────────────────
  * Data
@@ -62,8 +63,6 @@ const RESOURCE_LINKS: ResourceLinkType[] = [
 		external: true,
 	},
 ];
-
-const CURRENT_YEAR = new Date().getFullYear();
 
 /* ──────────────────────────────────────────────
  * Reusable class strings
