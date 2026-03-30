@@ -134,9 +134,9 @@
 }
 
 .landing-glow::before {
-	@apply absolute w-full max-w-200 h-full max-h-200 top-3.5 left-1/2 -translate-x-1/2 rounded-full pointer-events-none;
+	@apply absolute w-full max-w-200 h-full top-3.5 left-1/2 -translate-x-1/2 rounded-full pointer-events-none;
 	content: "";
-	background: rgba(255, 26, 136, 0.5);
+	background: rgba(255, 26, 136, 0.3);
 	filter: blur(500px);
 }
 
