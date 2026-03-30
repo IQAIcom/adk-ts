@@ -1,3 +1,4 @@
+import { clsx } from "clsx";
 import type { ReactNode } from "react";
 
 interface SectionWrapperProps {
@@ -14,7 +15,10 @@ export function SectionWrapper({
 	return (
 		<section
 			id={id}
-			className={`relative border-b landing-border p-6 sm:p-10 lg:p-16 ${className}`}
+			className={clsx(
+				"relative border-b landing-border p-6 sm:p-10 lg:p-16",
+				className,
+			)}
 		>
 			{children}
 		</section>

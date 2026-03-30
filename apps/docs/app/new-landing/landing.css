@@ -2,20 +2,20 @@
 
 /* Landing page font families (CSS vars set by next/font in layout) */
 @theme inline {
-  --font-satoshi: var(--font-satoshi);
-  --font-geist-sans: var(--font-geist-sans);
-  --font-geist-mono: var(--font-geist-mono);
+	--font-satoshi: var(--font-satoshi);
+	--font-geist-sans: var(--font-geist-sans);
+	--font-geist-mono: var(--font-geist-mono);
 }
 
 /* Landing page reusable styles */
 
 :root {
-  --landing-border-color: rgba(255, 255, 255, 0.2);
+	--landing-border-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Landing page fonts: Satoshi for body, Geist for headings, Geist Mono for code */
 .landing-fonts {
-  font-family: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+	font-family: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
 }
 
 .landing-fonts h1,
@@ -24,156 +24,156 @@
 .landing-fonts h4,
 .landing-fonts h5,
 .landing-fonts h6 {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+	font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 .landing-fonts code,
 .landing-fonts pre,
 .landing-fonts .font-mono {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
+	font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 /* Standard border color */
 .landing-border {
-  border-color: var(--landing-border-color);
+	border-color: var(--landing-border-color);
 }
 
 /* Gradient border (navbar bottom) */
 .landing-border-gradient {
-  border-image-source: linear-gradient(
-    249.64deg,
-    var(--landing-border-color) 4.99%,
-    rgba(102, 102, 102, 0.2) 93.43%
-  );
-  border-image-slice: 1;
+	border-image-source: linear-gradient(
+		249.64deg,
+		var(--landing-border-color) 4.99%,
+		rgba(102, 102, 102, 0.2) 93.43%
+	);
+	border-image-slice: 1;
 }
 
 /* Layout vertical borders */
 .landing-border-x {
-  @apply border-x;
-  border-color: var(--landing-border-color);
+	@apply border-x;
+	border-color: var(--landing-border-color);
 }
 
 /* Section bottom border */
 .landing-border-b {
-  @apply border-b;
-  border-color: var(--landing-border-color);
+	@apply border-b;
+	border-color: var(--landing-border-color);
 }
 
 /* Section top border */
 .landing-border-t {
-  @apply border-t;
-  border-color: var(--landing-border-color);
+	@apply border-t;
+	border-color: var(--landing-border-color);
 }
 
 /* Center divider (vertical) */
 .landing-border-r {
-  @apply border-r;
-  border-color: var(--landing-border-color);
+	@apply border-r;
+	border-color: var(--landing-border-color);
 }
 
 /* Reusable gradient border (works with border-radius) */
 .landing-gradient-border {
-  @apply relative;
-  isolation: isolate;
+	@apply relative;
+	isolation: isolate;
 }
 
 .landing-gradient-border::before {
-  content: "";
-  @apply absolute inset-0 rounded-[inherit] pointer-events-none;
-  padding: 1px;
-  background: linear-gradient(
-    249.64deg,
-    rgba(255, 255, 255, 0.5) 4.99%,
-    rgba(102, 102, 102, 0.5) 93.43%
-  );
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
+	content: "";
+	@apply absolute inset-0 rounded-[inherit] pointer-events-none;
+	padding: 1px;
+	background: linear-gradient(
+		249.64deg,
+		rgba(255, 255, 255, 0.5) 4.99%,
+		rgba(102, 102, 102, 0.5) 93.43%
+	);
+	mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	mask-composite: exclude;
 }
 
 /* Badge variant (extends gradient border) */
 .landing-badge {
-  @apply relative inline-flex items-center rounded-md bg-[#D9D9D91A] backdrop-blur-sm px-3 py-2 text-[10px] lg:text-sm font-medium text-white;
-  isolation: isolate;
+	@apply relative inline-flex items-center rounded-md bg-[#D9D9D91A] backdrop-blur-sm px-3 py-2 text-[10px] lg:text-sm font-medium text-white;
+	isolation: isolate;
 }
 
 .landing-badge::before {
-  content: "";
-  @apply absolute inset-0 rounded-[inherit] pointer-events-none;
-  padding: 1px;
-  background: linear-gradient(
-    249.64deg,
-    rgba(255, 255, 255, 0.5) 4.99%,
-    rgba(102, 102, 102, 0.5) 93.43%
-  );
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
+	content: "";
+	@apply absolute inset-0 rounded-[inherit] pointer-events-none;
+	padding: 1px;
+	background: linear-gradient(
+		249.64deg,
+		rgba(255, 255, 255, 0.5) 4.99%,
+		rgba(102, 102, 102, 0.5) 93.43%
+	);
+	mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	mask-composite: exclude;
 }
 
 /* Reusable pink glow — bleeds only downward */
 .landing-glow {
-  @apply relative;
-  clip-path: inset(0 0 -500px 0);
+	@apply relative;
+	clip-path: inset(0 0 -500px 0);
 }
 
 .landing-glow::before {
-  @apply absolute w-full max-w-200 h-full max-h-200 top-3.5 left-1/2 -translate-x-1/2 rounded-full pointer-events-none;
-  content: "";
-  background: rgba(255, 26, 136, 0.5);
-  filter: blur(500px);
+	@apply absolute w-full max-w-200 h-full max-h-200 top-3.5 left-1/2 -translate-x-1/2 rounded-full pointer-events-none;
+	content: "";
+	background: rgba(255, 26, 136, 0.5);
+	filter: blur(500px);
 }
 
 /* Newsletter outline button */
 .landing-newsletter-btn {
-  @apply inline-flex items-center px-4 py-1.5 rounded-md border-2 border-primary text-primary text-xs font-medium transition-colors;
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
+	@apply inline-flex items-center px-4 py-1.5 rounded-md border-2 border-primary text-primary text-xs font-medium transition-colors;
+	background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .landing-newsletter-btn:hover {
-  background: color-mix(in srgb, var(--primary) 20%, transparent);
+	background: color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 /* LLM grid — inset vertical dividers on sm/md, full border-r on lg */
 .llm-grid > div {
-  position: relative;
+	position: relative;
 }
 
 .llm-grid > div::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 1px;
-  background: var(--landing-border-color);
+	content: "";
+	position: absolute;
+	right: 0;
+	top: 10px;
+	bottom: 10px;
+	width: 1px;
+	background: var(--landing-border-color);
 }
 
 /* Hide VR on last column per breakpoint */
 /* 2-col: hide on every 2nd child */
 .llm-grid > div:nth-child(2n)::after {
-  display: none;
+	display: none;
 }
 
 /* 3-col (md): show all, hide every 3rd */
 @media (min-width: 768px) {
-  .llm-grid > div:nth-child(2n)::after {
-    display: block;
-  }
-  .llm-grid > div:nth-child(3n)::after {
-    display: none;
-  }
+	.llm-grid > div:nth-child(2n)::after {
+		display: block;
+	}
+	.llm-grid > div:nth-child(3n)::after {
+		display: none;
+	}
 }
 
 /* 6-col (lg): hide all pseudos, use real border-r instead */
 @media (min-width: 1024px) {
-  .llm-grid > div::after,
-  .llm-grid > div:nth-child(n)::after {
-    display: none;
-  }
+	.llm-grid > div::after,
+	.llm-grid > div:nth-child(n)::after {
+		display: none;
+	}
 }
 
 /* Hero code card — make fumadocs code block transparent for glass effect */
@@ -183,26 +183,26 @@
 .hero-code-card [data-rehype-pretty-code-figure],
 .hero-code-card .shiki,
 .hero-code-card .shiki span {
-  background: transparent !important;
+	background: transparent !important;
 }
 
 /* Hide fumadocs built-in copy button in hero code card */
 .hero-code-card button[aria-label="Copy"],
 .hero-code-card [data-rehype-pretty-code-figure] button,
 .hero-code-card figure button {
-  display: none !important;
+	display: none !important;
 }
 
 /* Responsive grid background — cells grow on smaller screens */
 .landing-grid-bg {
-  @apply bg-repeat-y bg-top;
-  background-size: 350% auto;
+	@apply bg-repeat-y bg-top;
+	background-size: 350% auto;
 
-  @media (min-width: 768px) {
-    background-size: 200% auto;
-  }
+	@media (min-width: 768px) {
+		background-size: 200% auto;
+	}
 
-  @media (min-width: 1280px) {
-    background-size: 100% auto;
-  }
+	@media (min-width: 1280px) {
+		background-size: 100% auto;
+	}
 }
