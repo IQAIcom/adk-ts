@@ -100,12 +100,10 @@ export default function WhyADKTSSection() {
 	return (
 		<SectionWrapper id="why-adkts" className="landing-glow">
 			{/* Section header */}
-			<div className="mb-20 md:mb-10 lg:mb-8 grid gap-5">
-				<span className="landing-badge w-max inline-flex">Core Features</span>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight">
-					Why ADK-TS?
-				</h2>
-				<p className="text-sm sm:text-base lg:text-lg text-muted-foreground max-w-xl">
+			<div className="landing-section-header">
+				<span className="landing-badge">Core Features</span>
+				<h2>Why ADK-TS?</h2>
+				<p>
 					A TypeScript-native framework for building, orchestrating, and running
 					AI agents in production. Built for developers who want full control.
 				</p>
