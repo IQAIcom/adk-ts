@@ -169,11 +169,11 @@ export default function WhyADKTSSection() {
 								</p>
 							</div>
 							<div className="mt-10 relative w-full aspect-4/3 overflow-hidden">
-								<Image
-									src={feature.image}
-									alt={feature.title}
-									fill
-									className="object-contain"
+								<object
+									type="image/svg+xml"
+									data={feature.image}
+									aria-label={feature.title}
+									className="w-full h-full object-contain pointer-events-none"
 								/>
 							</div>
 						</div>
