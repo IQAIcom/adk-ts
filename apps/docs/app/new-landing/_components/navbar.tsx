@@ -141,7 +141,7 @@ export function Navbar() {
 	return (
 		<nav
 			ref={navRef}
-			className="sticky top-0 z-50 border-b landing-border-gradient py-3 lg:py-4"
+			className="sticky top-0 z-50 border-b landing-border-gradient py-3 lg:py-4 bg-black"
 			style={{ backdropFilter: "blur(36px)" }}
 		>
 			{/* ── Desktop & mobile top bar ── */}

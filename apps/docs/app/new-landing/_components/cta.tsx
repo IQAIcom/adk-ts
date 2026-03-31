@@ -5,7 +5,7 @@ import { SectionWrapper } from "./section-wrapper";
 
 const CTASection = () => {
 	return (
-		<SectionWrapper id="cta" className="landing-glow">
+		<SectionWrapper id="cta">
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-[90px] items-center">
 				{/* CTA image */}
 				<div className="relative order-2 lg:order-1 max-w-lg mx-auto">

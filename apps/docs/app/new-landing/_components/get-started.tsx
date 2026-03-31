@@ -74,7 +74,7 @@ const steps = [
 
 const GetStartedSection = () => {
 	return (
-		<SectionWrapper id="get-started" className="landing-glow">
+		<SectionWrapper id="get-started">
 			{/* Section header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Getting Started</span>

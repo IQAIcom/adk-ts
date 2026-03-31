@@ -11,7 +11,7 @@ const models = [
 
 export default function LLMModels() {
 	return (
-		<SectionWrapper id="llm-models" className="py-0! px-0! lg:py-8! ">
+		<SectionWrapper id="llm-models" className="py-0! px-0! lg:py-8! bg-black">
 			<div className="llm-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
 				{models.map((model, index) => {
 					const isLastRow2 = index >= 4;

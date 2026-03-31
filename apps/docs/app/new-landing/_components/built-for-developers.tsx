@@ -213,7 +213,7 @@ const BuiltForDevelopersSection = () => {
 	const progress = Math.round((activeCount / TOTAL_STEPS) * 100);
 
 	return (
-		<SectionWrapper id="built-for-developers" className="landing-glow">
+		<SectionWrapper id="built-for-developers">
 			{/* Section header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Developer Experience</span>
