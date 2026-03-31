@@ -60,7 +60,7 @@ const showcaseProjects = [
 	},
 ];
 
-export default function ShowcaseSection() {
+const ProjectFeaturesSection = () => {
 	const sectionRef = useRef<HTMLDivElement>(null);
 	const trackRef = useRef<HTMLDivElement>(null);
 	const [maxScroll, setMaxScroll] = useState(0);
@@ -237,7 +237,8 @@ export default function ShowcaseSection() {
 			</div>
 		</section>
 	);
-}
+};
+export default ProjectFeaturesSection;
 
 interface ShowcaseCardProps {
 	project: (typeof showcaseProjects)[0];
