@@ -256,10 +256,8 @@ const BuiltForDevelopersSection = () => {
 	const [popupSelected, setPopupSelected] = useState(false);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const codeRef = useRef<HTMLDivElement>(null);
-	const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-	const codeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-		undefined,
-	);
+	const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+	const codeTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const stepRef = useRef(0);
 	const hasPlayedRef = useRef(false);
 	const codeHasPlayedRef = useRef(false);
@@ -302,64 +300,65 @@ const BuiltForDevelopersSection = () => {
 		const el = codeRef.current;
 		if (!el) return;
 
-		let lineStep = 0;
+		let cancelled = false;
 
-		const typeLine = () => {
-			lineStep++;
-			if (lineStep > TOTAL_CODE_LINES) {
-				// Hold finished state, then reset and loop
-				codeTimerRef.current = setTimeout(() => {
-					lineStep = 0;
-					setVisibleLines(0);
-					setShowPopup(false);
-					setHighlightedOption(-1);
-					setPopupSelected(false);
-					codeTimerRef.current = setTimeout(typeLine, CODE_LINE_INTERVAL);
-				}, 2000);
-				return;
-			}
-			setVisibleLines(lineStep);
-			// When we reach the .withModel line: show partial ".with|", then popup
-			if (lineStep === POPUP_LINE + 1) {
+		const sleep = (ms: number) =>
+			new Promise<void>((resolve) => {
+				codeTimerRef.current = setTimeout(resolve, ms);
+			});
+
+		const runAnimation = async () => {
+			while (!cancelled) {
+				setVisibleLines(0);
+				setShowPopup(false);
+				setHighlightedOption(-1);
 				setPopupSelected(false);
-				// Brief pause to show the partial ".with|" typing
-				codeTimerRef.current = setTimeout(() => {
-					setShowPopup(true);
-					setHighlightedOption(-1);
-					// Highlight options one by one, then select withTools
-					codeTimerRef.current = setTimeout(() => {
-						setHighlightedOption(0); // highlight withDescription
-						codeTimerRef.current = setTimeout(() => {
-							setHighlightedOption(1); // highlight withModel
-							codeTimerRef.current = setTimeout(() => {
-								setHighlightedOption(2); // highlight withTools — select this one
-								codeTimerRef.current = setTimeout(() => {
-									// "Select" withTools — close popup, show full line, resume
-									setShowPopup(false);
-									setHighlightedOption(-1);
-									setPopupSelected(true);
-									codeTimerRef.current = setTimeout(
-										typeLine,
-										CODE_LINE_INTERVAL,
-									);
-								}, 800);
-							}, 600);
-						}, 600);
-					}, 500);
-				}, 400);
-				return;
+
+				for (let line = 1; line <= TOTAL_CODE_LINES; line++) {
+					if (cancelled) return;
+					setVisibleLines(line);
+
+					// IntelliSense sequence at the popup line
+					if (line === POPUP_LINE + 1) {
+						setPopupSelected(false);
+						await sleep(400); // show partial ".with|"
+						if (cancelled) return;
+
+						setShowPopup(true);
+						setHighlightedOption(-1);
+						await sleep(500);
+						if (cancelled) return;
+
+						setHighlightedOption(0); // withDescription
+						await sleep(600);
+						if (cancelled) return;
+
+						setHighlightedOption(1); // withModel
+						await sleep(600);
+						if (cancelled) return;
+
+						setHighlightedOption(2); // withTools — select
+						await sleep(800);
+						if (cancelled) return;
+
+						setShowPopup(false);
+						setHighlightedOption(-1);
+						setPopupSelected(true);
+					}
+
+					await sleep(CODE_LINE_INTERVAL);
+				}
+
+				// Hold finished state before looping
+				await sleep(2000);
 			}
-			codeTimerRef.current = setTimeout(typeLine, CODE_LINE_INTERVAL);
 		};
 
 		const observer = new IntersectionObserver(
 			([entry]) => {
 				if (entry.isIntersecting && !codeHasPlayedRef.current) {
 					codeHasPlayedRef.current = true;
-					lineStep = 0;
-					setVisibleLines(0);
-					setShowPopup(false);
-					codeTimerRef.current = setTimeout(typeLine, CODE_LINE_INTERVAL);
+					runAnimation();
 				}
 			},
 			{ threshold: 0.3 },
@@ -367,6 +366,7 @@ const BuiltForDevelopersSection = () => {
 
 		observer.observe(el);
 		return () => {
+			cancelled = true;
 			observer.disconnect();
 			if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
 		};
