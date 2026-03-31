@@ -95,7 +95,7 @@
 
 /* Badge variant (extends gradient border) */
 .landing-badge {
-	@apply relative inline-flex items-center rounded-md bg-[#D9D9D91A] backdrop-blur-sm px-3 py-2 text-[10px] lg:text-sm font-medium text-white;
+	@apply relative w-max inline-flex items-center rounded-md bg-[#D9D9D91A] backdrop-blur-sm px-3 py-2 text-[10px] lg:text-sm font-medium text-white;
 	isolation: isolate;
 }
 
@@ -114,6 +114,19 @@
 	mask-composite: exclude;
 }
 
+/* Reusable section header */
+.landing-section-header {
+	@apply mb-20 md:mb-10 lg:mb-8 grid gap-5;
+}
+
+.landing-section-header h2 {
+	@apply text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight;
+}
+
+.landing-section-header p {
+	@apply text-sm sm:text-base lg:text-lg text-muted-foreground max-w-xl;
+}
+
 /* Reusable pink glow — bleeds only downward */
 .landing-glow {
 	@apply relative;
@@ -121,9 +134,9 @@
 }
 
 .landing-glow::before {
-	@apply absolute w-full max-w-200 h-full max-h-200 top-3.5 left-1/2 -translate-x-1/2 rounded-full pointer-events-none;
+	@apply absolute w-full max-w-200 h-full top-3.5 left-1/2 -translate-x-1/2 rounded-full pointer-events-none;
 	content: "";
-	background: rgba(255, 26, 136, 0.5);
+	background: rgba(255, 26, 136, 0.3);
 	filter: blur(500px);
 }
 
