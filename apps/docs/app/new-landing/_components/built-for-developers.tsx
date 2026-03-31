@@ -224,9 +224,9 @@ const BuiltForDevelopersSection = () => {
 			{/* Code snippet + DX highlights */}
 			<div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-y-3.5 lg:gap-x-8">
 				{/* Code editor */}
-				<div className="border border-white/20 rounded-lg bg-[#0000001f] flex flex-col overflow-hidden font-mono text-[11px] leading-[1.7]">
+				<div className="border border-white/20 rounded-lg bg- flex flex-col overflow-hidden font-mono text-[11px] leading-[1.7] bg-[#0A0A0A99]">
 					{/* Title bar */}
-					<div className="flex items-center gap-2 tracking-widest text-white/50 uppercase bg-[#000000] border-b border-[#FFFFFF0F] px-5  py-0.5 text-[11px]">
+					<div className="flex items-center gap-2 tracking-widest text-white/50 uppercase bg-black/40 border-b border-[#FFFFFF0F] px-5  py-0.5 text-[11px]">
 						<div className="flex gap-1.5">
 							<span className="size-2.5 rounded-full bg-[#FF5F57]" />
 							<span className="size-2.5 rounded-full bg-[#FEBC2E]" />
@@ -275,7 +275,7 @@ const BuiltForDevelopersSection = () => {
 						</div>
 					</div>
 					{/* Status bar */}
-					<div className="flex items-center justify-between gap-2 font-mono text-white/50 uppercase bg-[#000000] border-t border-[#FFFFFF0F] px-5 py-2.5 text-2.5">
+					<div className="flex items-center justify-between gap-2 font-mono text-white/50 uppercase bg-black/40 border-t border-[#FFFFFF0F] px-5 py-2  text-[11px]">
 						<div className="flex gap-3">
 							<span>TypeScript</span> <span>UTF-8</span>
 						</div>
@@ -289,9 +289,9 @@ const BuiltForDevelopersSection = () => {
 				{/* DX Highlights panel */}
 				<div
 					ref={panelRef}
-					className="border border-white/20 rounded-lg bg-[#0000001f] flex flex-col font-mono overflow-hidden"
+					className="border border-white/20 rounded-lg bg-[#0A0A0A99] flex flex-col font-mono overflow-hidden"
 				>
-					<div className="flex items-center gap-2 tracking-widest text-white/50 uppercase bg-[#000000] border-b border-[#FFFFFF0F] px-5 py-3.5 text-[11px]">
+					<div className="flex items-center gap-2 tracking-widest text-white/50 uppercase bg-black/40 border-b border-[#FFFFFF0F] px-5 py-3.5 text-[11px]">
 						<span className="size-1.5 bg-primary border border-primary" />
 						DX Highlights
 					</div>
@@ -318,7 +318,7 @@ const BuiltForDevelopersSection = () => {
 						})}
 					</div>
 					{/* DX Score bar */}
-					<div className="flex items-center gap-2 font-mono tracking-widest text-white/50 uppercase bg-[#000000] border-t border-[#FFFFFF0F] px-5 py-2.5 text-[11px] ">
+					<div className="flex items-center gap-2 font-mono tracking-widest text-white/50 uppercase bg-black/40 border-t border-[#FFFFFF0F] px-5 py-2.5 text-[11px] ">
 						<div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
 							<div
 								className="h-full rounded-full bg-linear-to-r from-primary to-[#FF1A8866] transition-[width] duration-100"
@@ -333,7 +333,7 @@ const BuiltForDevelopersSection = () => {
 			</div>
 
 			{/* Terminal command */}
-			<div className="mt-3.5 bg-[#0000001f] px-5 py-3 font-mono text-xs text-white/80 flex items-center gap-3 border border-white/10 rounded-md shadow-[0px_4px_4px_0px_#00000040]">
+			<div className="mt-3.5 bg-[#0A0A0A99] px-5 py-3 font-mono text-xs text-white/80 flex items-center gap-3 border border-white/10 rounded-md shadow-[0px_4px_4px_0px_#00000040]">
 				<span className="text-primary text-[11px]">$</span>
 				<span>
 					npx @iqai/adk-cli new my-agent{" "}
