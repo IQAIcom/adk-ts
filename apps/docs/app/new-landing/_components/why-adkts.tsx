@@ -64,7 +64,7 @@ const features = [
 
 const FeatureItem = ({ feature }: { feature: (typeof features)[0] }) => (
 	<>
-		<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-[#0a0a0a66] max-w-2xl">
+		<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-black/60 max-w-2xl">
 			<h3 className="text-lg text-foreground font-medium">{feature.title}</h3>
 			<p className="text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
 				{feature.description}
@@ -117,7 +117,10 @@ export default function WhyADKTSSection() {
 	};
 
 	return (
-		<SectionWrapper id="why-adkts">
+		<SectionWrapper
+			id="why-adkts"
+			className="bg-black sticky-glow overflow-hidden"
+		>
 			{/* Section header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Core Features</span>

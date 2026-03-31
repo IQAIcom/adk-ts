@@ -90,7 +90,7 @@ const GetStartedSection = () => {
 				{steps.map((step) => (
 					<div
 						key={step.step}
-						className="border border-white/20 rounded-md px-2 py-1 bg-[#0A0A0A99] flex flex-col"
+						className="border border-white/20 rounded-md px-2 py-1 bg-black/60 flex flex-col"
 					>
 						{/* Step header */}
 						<div className="py-7 space-y-4.5">
