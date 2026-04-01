@@ -62,6 +62,25 @@ const features = [
 	},
 ];
 
+const FeatureItem = ({ feature }: { feature: (typeof features)[0] }) => (
+	<>
+		<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-[#0A0A0A99]">
+			<h3 className="text-lg text-foreground font-medium">{feature.title}</h3>
+			<p className="text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
+				{feature.description}
+			</p>
+		</div>
+		<div className="mt-10 relative w-full aspect-4/3 overflow-hidden">
+			<Image
+				src={feature.image}
+				alt={feature.title}
+				fill
+				className="object-contain"
+			/>
+		</div>
+	</>
+);
+
 export default function WhyADKTSSection() {
 	const [activeIndex, setActiveIndex] = useState(0);
 	const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -98,7 +117,7 @@ export default function WhyADKTSSection() {
 	};
 
 	return (
-		<SectionWrapper id="why-adkts" className="landing-glow">
+		<SectionWrapper id="why-adkts" className="sticky-glow">
 			{/* Section header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Core Features</span>
@@ -158,22 +177,7 @@ export default function WhyADKTSSection() {
 							}}
 							className="scroll-mt-24 border-b border-white/10 last:border-0"
 						>
-							<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-[#0A0A0A99]">
-								<h3 className="text-lg text-foreground font-medium">
-									{feature.title}
-								</h3>
-								<p className="text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
-									{feature.description}
-								</p>
-							</div>
-							<div className="mt-10 relative w-full aspect-4/3 overflow-hidden">
-								<Image
-									src={feature.image}
-									alt={feature.title}
-									fill
-									className="object-contain"
-								/>
-							</div>
+							<FeatureItem feature={feature} />
 						</div>
 					))}
 				</div>
@@ -186,22 +190,7 @@ export default function WhyADKTSSection() {
 						key={feature.id}
 						className="scroll-mt-24 border-b border-white/10 last:border-0"
 					>
-						<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-[#0A0A0A99]">
-							<h3 className="text-lg text-foreground font-medium">
-								{feature.title}
-							</h3>
-							<p className="text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
-								{feature.description}
-							</p>
-						</div>
-						<div className="mt-10 relative w-full aspect-4/3 overflow-hidden">
-							<Image
-								src={feature.image}
-								alt={feature.title}
-								fill
-								className="object-contain"
-							/>
-						</div>
+						<FeatureItem feature={feature} />
 					</div>
 				))}
 			</div>
