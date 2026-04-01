@@ -119,7 +119,7 @@ export default function WhyADKTSSection() {
 	return (
 		<SectionWrapper
 			id="why-adkts"
-			className="bg-black sticky-glow overflow-hidden"
+			className="bg-black sticky-glow overflow-x-clip"
 		>
 			{/* Section header */}
 			<div className="landing-section-header">

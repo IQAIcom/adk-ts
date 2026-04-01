@@ -111,7 +111,7 @@ const GetStartedSection = () => {
 						<div className="border-t border-white/20 px-4 py-7 font-mono text-xs leading-[1.8] overflow-x-auto">
 							{step.code.map((line) => (
 								<div
-									key={`${step.step}-${line.text || "empty"}`}
+									key={`${step.step}-${line.text.slice(0, 20)}`}
 									className="text-[#05DF72CC]"
 								>
 									{line.text || "\u00A0"}
