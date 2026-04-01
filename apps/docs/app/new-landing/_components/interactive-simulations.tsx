@@ -1,5 +1,8 @@
+"use client";
+
 import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
+import { SectionWrapper } from "./section-wrapper";
 import { Play, RotateCw, Clock, Zap, Target } from "lucide-react";
 
 interface DemoCardProps {
@@ -107,7 +110,7 @@ function DemoCard({
 			<div className="p-8 pb-6">
 				<div className="mb-6">
 					<h3 className="text-4xl font-bold mb-2">{title}</h3>
-					<p className="text-[#FF1A88] text-sm font-mono">{subtitle}</p>
+					<p className="text-primary text-sm font-mono">{subtitle}</p>
 				</div>
 
 				<p className="text-white/50 text-base leading-relaxed mb-6 max-w-3xl">
@@ -122,7 +125,7 @@ function DemoCard({
 							<div className="text-white/40 text-xs font-mono mb-0.5">
 								Latency:
 							</div>
-							<div className="text-[#FF1A88] font-mono text-lg">{latency}</div>
+							<div className="text-primary font-mono text-lg">{latency}</div>
 						</div>
 					</div>
 					<div className="flex items-center gap-3">
@@ -131,7 +134,7 @@ function DemoCard({
 							<div className="text-white/40 text-xs font-mono mb-0.5">
 								Tokens:
 							</div>
-							<div className="text-[#FF1A88] font-mono text-lg">{tokens}</div>
+							<div className="text-primary font-mono text-lg">{tokens}</div>
 						</div>
 					</div>
 					{accuracy && (
@@ -141,9 +144,7 @@ function DemoCard({
 								<div className="text-white/40 text-xs font-mono mb-0.5">
 									Accuracy:
 								</div>
-								<div className="text-[#FF1A88] font-mono text-lg">
-									{accuracy}
-								</div>
+								<div className="text-primary font-mono text-lg">{accuracy}</div>
 							</div>
 						</div>
 					)}
@@ -996,7 +997,7 @@ function DemoCard({
 								type="button"
 								onClick={startSimulation}
 								disabled={isPlaying}
-								className="p-2 bg-[#1a1a1a] border border-white/20 hover:border-[#FF1A88] hover:bg-[#FF1A88]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 rounded"
+								className="p-2 bg-[#1a1a1a] border border-white/20 hover:border-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 rounded"
 							>
 								<Play
 									className="w-3.5 h-3.5 text-white/70"
@@ -1056,104 +1057,93 @@ function DemoCard({
 
 const InteractiveSimulationsSection = () => {
 	return (
-		<section className="relative py-32 px-8">
-			<div className="max-w-[1600px] mx-auto">
-				{/* Section Header */}
-				<div className="mb-24">
-					<motion.div
-						initial={{ opacity: 0, y: 20 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.8 }}
-					>
-						<h2 className="text-sm font-mono text-white/40 uppercase tracking-wider mb-4">
-							Real-World Implementations
-						</h2>
-						<h3 className="text-5xl font-bold mb-6">
-							Multi-Agent
-							<br />
-							Systems in Action
-						</h3>
-						<p className="text-white/50 text-lg max-w-2xl">
-							Experience live simulations of production-grade multi-agent
-							workflows. Watch how specialized agents collaborate to solve
-							complex real-world problems.
-						</p>
-					</motion.div>
-				</div>
-
-				{/* Demo Cards */}
-				<div>
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.8, delay: 0.1 }}
-					>
-						<DemoCard
-							title="Autonomous Support"
-							subtitle="Customer Service AI"
-							description="A tri-agent system that triages incoming tickets, queries knowledge bases, and generates contextual responses in real-time."
-							latency="84ms"
-							tokens="1.2k"
-							accuracy="94.2%"
-							inputLabel="INPUT"
-							agents={[
-								{ name: "Triage", label: "Classify & Route" },
-								{ name: "Knowledge-Base", label: "Document Search" },
-								{ name: "Responder", label: "Generate Reply" },
-							]}
-						/>
-					</motion.div>
-
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.8, delay: 0.2 }}
-					>
-						<DemoCard
-							title="Market Research"
-							subtitle="Parallel Intelligence Gathering"
-							description="Three agents work simultaneously to scrape data, analyze competitors, and synthesize insights for strategic decisions."
-							latency="142ms"
-							tokens="3.8k"
-							accuracy="94.2%"
-							inputLabel="Data Sources"
-							outputLabel="OUTPUT"
-							hasOutput={true}
-							agents={[
-								{ name: "Scraper", label: "Data Collection" },
-								{ name: "Analyst", label: "Pattern Detection" },
-								{ name: "Summarizer", label: "Report Generation" },
-							]}
-						/>
-					</motion.div>
-
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.8, delay: 0.3 }}
-					>
-						<DemoCard
-							title="Code Modernization"
-							subtitle="Sequential Transformation Pipeline"
-							description="A chain of specialized agents that refactors legacy code, runs comprehensive tests, and auto-generates documentation."
-							latency="267ms"
-							tokens="5.1k"
-							accuracy="91.8%"
-							hasInput={false}
-							agents={[
-								{ name: "Refactorer", label: "Code Transform" },
-								{ name: "Tester", label: "QA & Validation" },
-								{ name: "Documenter", label: "Auto-docs" },
-							]}
-						/>
-					</motion.div>
-				</div>
+		<SectionWrapper id="interactive-simulations">
+			{/* Section Header */}
+			<div className="landing-section-header">
+				<span className="landing-badge">Real-World Implementations</span>
+				<h2>
+					Multi-Agent
+					<br />
+					Systems in Action
+				</h2>
+				<p>
+					Experience live simulations of production-grade multi-agent workflows.
+					Watch how specialized agents collaborate to solve complex real-world
+					problems.
+				</p>
 			</div>
-		</section>
+
+			{/* Demo Cards */}
+			<div>
+				<motion.div
+					initial={{ opacity: 0, y: 30 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.8, delay: 0.1 }}
+				>
+					<DemoCard
+						title="Autonomous Support"
+						subtitle="Customer Service AI"
+						description="A tri-agent system that triages incoming tickets, queries knowledge bases, and generates contextual responses in real-time."
+						latency="84ms"
+						tokens="1.2k"
+						accuracy="94.2%"
+						inputLabel="INPUT"
+						agents={[
+							{ name: "Triage", label: "Classify & Route" },
+							{ name: "Knowledge-Base", label: "Document Search" },
+							{ name: "Responder", label: "Generate Reply" },
+						]}
+					/>
+				</motion.div>
+
+				<motion.div
+					initial={{ opacity: 0, y: 30 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.8, delay: 0.2 }}
+				>
+					<DemoCard
+						title="Market Research"
+						subtitle="Parallel Intelligence Gathering"
+						description="Three agents work simultaneously to scrape data, analyze competitors, and synthesize insights for strategic decisions."
+						latency="142ms"
+						tokens="3.8k"
+						accuracy="94.2%"
+						inputLabel="Data Sources"
+						outputLabel="OUTPUT"
+						hasOutput={true}
+						agents={[
+							{ name: "Scraper", label: "Data Collection" },
+							{ name: "Analyst", label: "Pattern Detection" },
+							{ name: "Summarizer", label: "Report Generation" },
+						]}
+					/>
+				</motion.div>
+
+				<motion.div
+					initial={{ opacity: 0, y: 30 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.8, delay: 0.3 }}
+				>
+					<DemoCard
+						title="Code Modernization"
+						subtitle="Sequential Transformation Pipeline"
+						description="A chain of specialized agents that refactors legacy code, runs comprehensive tests, and auto-generates documentation."
+						latency="267ms"
+						tokens="5.1k"
+						accuracy="91.8%"
+						hasInput={false}
+						agents={[
+							{ name: "Refactorer", label: "Code Transform" },
+							{ name: "Tester", label: "QA & Validation" },
+							{ name: "Documenter", label: "Auto-docs" },
+						]}
+					/>
+				</motion.div>
+			</div>
+		</SectionWrapper>
 	);
 };
 export default InteractiveSimulationsSection;

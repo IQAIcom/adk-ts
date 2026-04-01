@@ -1,3 +1,5 @@
+"use client";
+
 import { motion, useScroll, useTransform } from "motion/react";
 import { useRef, useLayoutEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
@@ -132,7 +134,7 @@ const ProjectFeaturesSection = () => {
 								viewport={{ once: true }}
 							>
 								<div className="flex items-center gap-3 mb-4">
-									<div className="w-2 h-2 bg-[#FF1A88]" />
+									<div className="w-2 h-2 bg-primary" />
 									<span className="text-xs font-mono text-white/40 tracking-wider uppercase">
 										Showcase
 									</span>
@@ -179,7 +181,7 @@ const ProjectFeaturesSection = () => {
 								{/* View All Showcases Button */}
 								<Link
 									href="/showcases"
-									className="mt-8 inline-flex items-center gap-3 px-6 py-3 bg-black/40 border border-white/10 hover:border-[#FF1A88]/50 text-white/70 hover:text-white transition-all duration-300 group"
+									className="mt-8 inline-flex items-center gap-3 px-6 py-3 bg-black/40 border border-white/10 hover:border-primary/50 text-white/70 hover:text-white transition-all duration-300 group"
 								>
 									<span className="text-sm font-mono">View All Showcases</span>
 									<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
@@ -273,7 +275,7 @@ function ShowcaseCard({ project, index }: ShowcaseCardProps) {
 
 					{/* Pink accent line */}
 					<motion.div
-						className="absolute top-0 left-0 right-0 h-px bg-[#FF1A88]"
+						className="absolute top-0 left-0 right-0 h-px bg-primary"
 						initial={{ scaleX: 0 }}
 						whileInView={{ scaleX: 1 }}
 						transition={{ duration: 0.8, delay: 0.2 + index * 0.1 }}
@@ -300,7 +302,7 @@ function ShowcaseCard({ project, index }: ShowcaseCardProps) {
 
 				{/* Card content */}
 				<div className="p-6">
-					<h3 className="text-xl font-mono font-bold mb-3 text-white group-hover:text-[#FF1A88] transition-colors duration-300">
+					<h3 className="text-xl font-mono font-bold mb-3 text-white group-hover:text-primary transition-colors duration-300">
 						{project.title}
 					</h3>
 
@@ -313,7 +315,7 @@ function ShowcaseCard({ project, index }: ShowcaseCardProps) {
 						{project.tags.map((tag) => (
 							<span
 								key={tag}
-								className="px-3 py-1 text-xs font-mono border border-white/10 text-white/50 hover:border-[#FF1A88]/30 hover:text-white/70 transition-all duration-300"
+								className="px-3 py-1 text-xs font-mono border border-white/10 text-white/50 hover:border-primary/30 hover:text-white/70 transition-all duration-300"
 							>
 								{tag}
 							</span>
@@ -337,7 +339,7 @@ function ShowcaseCard({ project, index }: ShowcaseCardProps) {
 
 				{/* Hover effect border */}
 				<div className="absolute inset-0 pointer-events-none">
-					<motion.div className="absolute inset-0 border-2 border-[#FF1A88] opacity-0 group-hover:opacity-20 transition-opacity duration-500" />
+					<motion.div className="absolute inset-0 border-2 border-primary opacity-0 group-hover:opacity-20 transition-opacity duration-500" />
 				</div>
 			</div>
 		</motion.div>
