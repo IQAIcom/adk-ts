@@ -23,37 +23,33 @@ interface CategoryContent {
 const categories: CategoryContent[] = [
 	{
 		id: "defi",
-		label: "DeFi & Blockchain",
+		label: "Blockchain & DeFi",
 		description:
-			"Connect agents to DeFi protocols, DEXs, and on-chain data across 200+ chains",
+			"Connect agents to on-chain protocols, DEX liquidity, and blockchain execution across multiple networks.",
 		highlights: [
 			{
-				name: "DeFi Llama",
-				mcpName: "McpDefillama",
+				name: "ABI Decoder",
+				mcpName: "McpAbi",
 				description:
-					"Access comprehensive DeFi protocol data including TVL, yield rates, and historical metrics",
-				features: [
-					"Real-time TVL tracking",
-					"Protocol revenue analytics",
-					"200+ chains supported",
-				],
+					"Decode and interact with smart contract ABIs for any on-chain address.",
+				features: ["ABI fetch", "Function decoding", "Event parsing"],
 			},
 			{
-				name: "DeBank",
-				mcpName: "McpDebank",
+				name: "NEAR Intents",
+				mcpName: "McpNearIntents",
 				description:
-					"Track wallet portfolios, DeFi positions, and NFT holdings across multiple chains",
+					"Execute cross-chain swaps and asset moves via NEAR's intent system without managing bridges.",
 				features: [
-					"Multi-chain portfolio tracking",
-					"DeFi position analysis",
-					"NFT valuation",
+					"Cross-chain intents",
+					"Swap execution",
+					"Chain abstraction",
 				],
 			},
 			{
 				name: "Odos",
 				mcpName: "McpOdos",
 				description:
-					"Smart order routing across DEXs for optimal swap paths and best execution",
+					"Aggregated order routing across 100+ DEXs on 20+ chains for optimal swap execution and minimal slippage.",
 				features: [
 					"Multi-hop optimization",
 					"20+ chains",
@@ -63,69 +59,102 @@ const categories: CategoryContent[] = [
 		],
 	},
 	{
-		id: "prediction",
-		label: "Prediction Markets",
+		id: "market-data",
+		label: "Market Data",
 		description:
-			"Build agents that interact with prediction and betting markets for market intelligence",
+			"Give agents real-time access to crypto prices, protocol TVL, wallet portfolios, and exchange data.",
+		highlights: [
+			{
+				name: "DeFi Llama",
+				mcpName: "McpDefillama",
+				description:
+					"Access comprehensive DeFi protocol data, including TVL, yield rates, and protocol revenue.",
+				features: ["Real-time TVL", "Protocol revenue", "200+ chain support"],
+			},
+			{
+				name: "DeBank",
+				mcpName: "McpDebank",
+				description:
+					"Track wallet portfolios, DeFi positions, and NFT holdings across multiple chains.",
+				features: [
+					"Multi-chain portfolio",
+					"DeFi position analysis",
+					"NFT valuation",
+				],
+			},
+			{
+				name: "CoinGecko",
+				mcpName: "McpCoinGecko",
+				description:
+					"Access real-time and historical cryptocurrency market data from CoinGecko's free API.",
+				features: [
+					"Price feeds",
+					"Market cap rankings",
+					"Historical OHLCV data",
+				],
+			},
+		],
+	},
+	{
+		id: "prediction",
+		label: "Prediction",
+		description:
+			"Build agents that monitor odds, place positions, and aggregate signals across prediction and event markets.",
 		highlights: [
 			{
 				name: "Polymarket",
 				mcpName: "McpPolymarket",
 				description:
-					"Access decentralized prediction markets built on Polygon for odds, bets, and outcomes",
+					"Access Polymarket's decentralized prediction markets for real-time odds, position management, and historical resolution data.",
 				features: [
 					"Real-time market odds",
 					"Order placement",
-					"Historical resolution data",
+					"Historical resolution",
 				],
 			},
 			{
 				name: "Kalshi",
 				mcpName: "McpKalshi",
 				description:
-					"CFTC-regulated event contracts marketplace for US-based prediction markets",
+					"CFTC-regulated event contracts marketplace for US-based prediction markets.",
 				features: [
 					"Regulated trading",
-					"Economic & political events",
-					"Settlement tracking",
+					"Economic & Political Events",
+					"Settlement Tracking",
 				],
 			},
 			{
 				name: "Limitless",
 				mcpName: "McpLimitless",
 				description:
-					"Aggregated prediction data from multiple sources for comprehensive intelligence",
-				features: [
-					"Cross-platform aggregation",
-					"Consensus calculations",
-					"Real-time comparison",
-				],
+					"Access Limitless prediction markets for question-based event contracts.",
+				features: ["Market discovery", "Position tracking", "Settlement data"],
 			},
 		],
 	},
 	{
-		id: "communication",
-		label: "Communication",
+		id: "messaging",
+		label: "Messaging",
 		description:
-			"Enable agents to interact through popular messaging and community platforms",
+			"Give agents a presence in messaging platforms. Send messages, handle commands, and manage communities.",
 		highlights: [
 			{
 				name: "Telegram",
 				mcpName: "McpTelegram",
 				description:
-					"Build Telegram bots powered by ADK-TS agents with full messaging capabilities",
+					"Build Telegram bots with full ADK-TS agent capabilities — messaging, commands, and group management.",
 				features: [
-					"Bot messaging",
-					"Command handling",
+					"Bot Messaging",
+					"Command Handling",
 					"Group management",
-					"Media uploads",
+					"Media Uploads",
 				],
 			},
 			{
 				name: "Discord",
 				mcpName: "McpDiscord",
 				description:
-					"Create Discord bots with agent capabilities for server and community management",
+					"Create Discord bots powered by ADK-TS agents for slash commands, role management, and rich embeds.",
 				features: [
 					"Slash commands",
 					"Role management",
@@ -136,8 +165,8 @@ const categories: CategoryContent[] = [
 		],
 	},
 	{
-		id: "ai-knowledge",
-		label: "AI & Knowledge",
+		id: "ai-data",
+		label: "AI & Data",
 		description:
 			"Specialized MCPs for agent orchestration, knowledge bases, and utilities",
 		highlights: [
@@ -220,10 +249,6 @@ const MCPServersSection = () => {
 							<div className="p-6 border border-white/10 bg-black/40">
 								<div className="text-4xl font-semibold mb-2">20+</div>
 								<div className="text-sm text-white/40">MCP Servers</div>
-							</div>
-							<div className="p-6 border border-white/10 bg-black/40">
-								<div className="text-4xl font-semibold mb-2">4</div>
-								<div className="text-sm text-white/40">Categories</div>
 							</div>
 							<div className="p-6 border border-white/10 bg-black/40">
 								<div className="text-4xl font-semibold mb-2">100%</div>
@@ -362,11 +387,14 @@ const MCPServersSection = () => {
 						</div>
 						<div className="p-4 border border-white/10 bg-black/80 rounded font-mono text-sm">
 							<pre className="text-white/70 leading-relaxed overflow-x-auto">
-								{`import { AgentBuilder, ${activeCategory.highlights[0].mcpName}, getMcpTools } from "@iqai/adk";
+								{`import { AgentBuilder, ${activeCategory.highlights[0].mcpName} } from "@iqai/adk";
 
-const mcp = new ${activeCategory.highlights[0].mcpName}();
-const agent = await AgentBuilder.create("my_agent")
-  .withTools(...getMcpTools(mcp))
+const toolset = ${activeCategory.highlights[0].mcpName}();
+const tools = await toolset.getTools();
+
+const { runner } = await AgentBuilder.create("my-agent")
+  .withModel("gemini-2.5-flash")
+  .withTools(...tools)
   .build();`}
 							</pre>
 						</div>
@@ -400,6 +428,19 @@ const agent = await AgentBuilder.create("my_agent")
 					</div>
 				</div>
 			</motion.div>
+
+			{/* External MCP callout */}
+			<div className="border border-white/10 rounded-md bg-white/5 p-5 mb-10">
+				<p className="text-sm font-medium text-white mb-1">
+					Not just IQ AI servers.
+				</p>
+				<p className="text-xs text-white/50">
+					ADK-TS connects to any MCP server from the ecosystem —
+					Anthropic&apos;s official servers, community servers, or servers you
+					build yourself using the{" "}
+					<code className="text-primary/70">mcp-starter</code> template.
+				</p>
+			</div>
 		</SectionWrapper>
 	);
 };
