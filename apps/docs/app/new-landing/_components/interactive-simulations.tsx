@@ -50,7 +50,7 @@ function DemoCard({
 		const timestamp = new Date().toLocaleTimeString("en-US", { hour12: false });
 		return [
 			`[${timestamp}] 🚀 Initializing ${agent.name} agent...`,
-			`[${timestamp}] ⚙️  Loading model: gpt-4-turbo`,
+			`[${timestamp}] ⚙️  Loading model: gemini-2.5-flash`,
 			`[${timestamp}] 📥 Processing input: ${agent.label}`,
 			`[${timestamp}] 🔄 Executing task...`,
 			`[${timestamp}] ✅ ${agent.name} completed successfully`,
@@ -1061,7 +1061,7 @@ const InteractiveSimulationsSection = () => {
 			{/* Section Header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Interactive Simulations</span>
-				<h2>Multi-Agent Systems in Actionn</h2>
+				<h2>See Multi-Agent Execution in Action</h2>
 				<p>
 					Interactive simulations of real multi-agent execution flows. See how
 					agents coordinate, call tools, and generate structured outputs step by

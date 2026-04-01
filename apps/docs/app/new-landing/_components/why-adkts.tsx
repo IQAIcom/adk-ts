@@ -12,7 +12,7 @@ const features = [
 		label: "AgentBuilder API",
 		title: "AgentBuilder API",
 		description:
-			"Build single-prompt agents and full multi-team orchestrators with the same fluent AgentBuilder interface, without any rewrites or boilerplate changes.",
+			"Build a single-prompt agent or a full multi-team orchestrator using the same fluent AgentBuilder interface — no rewrites, no boilerplate changes.",
 		image: "/landing-page/agentbuilder.svg",
 	},
 	{
@@ -21,7 +21,7 @@ const features = [
 		label: "Multi-LLM Support",
 		title: "Multi-LLM Support",
 		description:
-			"Seamlessly switch between any LLM provider by changing one string, while your agent logic, tools, and memory remain unchanged.",
+			"Switch between any LLM provider by changing one string. Your agent logic, tools, and memory stay exactly the same.",
 		image: "/landing-page/multi-llm-support.svg",
 	},
 	{
@@ -30,7 +30,7 @@ const features = [
 		label: "Production-Ready Architecture",
 		title: "Production-Ready Architecture",
 		description:
-			"Deploy to Node.js, serverless, or containers without changing your agent code, with sessions, memory, streaming, and Zod-typed outputs all built in.",
+			"Sessions, memory, streaming, and Zod-typed outputs are all built in. Deploy to Node.js, serverless, or containers without changing a line of your agent code.",
 		image: "/landing-page/production-ready.svg",
 	},
 	{
@@ -39,7 +39,7 @@ const features = [
 		label: "Advanced Tooling",
 		title: "Advanced Tooling",
 		description:
-			"Turn any function into a typed agent tool with automatic schema generation via ADK-TS, and connect to 20+ built-in MCP servers or any external API from a single unified tool registry.",
+			"Turn any function into a typed agent tool — ADK-TS generates the schema automatically. Connect to 20+ built-in MCP servers or any external API from the same tool registry.",
 		image: "/landing-page/advanced-tooling.svg",
 	},
 	{
@@ -48,7 +48,7 @@ const features = [
 		label: "Multi-Agent Workflows",
 		title: "Multi-Agent Workflows",
 		description:
-			"Run tasks sequentially, in parallel, or in loops using the same AgentBuilder API, with four execution patterns: sequential pipelines, parallel fan-outs, iterative loops, and custom DAGs.",
+			"Run tasks sequentially, in parallel, or in loops — all using the same AgentBuilder API. Four execution patterns: sequential pipelines, parallel fan-outs, iterative loops, and custom DAGs.",
 		image: "/landing-page/multi-agent-workflows.svg",
 	},
 	{
@@ -57,7 +57,7 @@ const features = [
 		label: "Workflow Control",
 		title: "Workflow Control",
 		description:
-			"Pause and resume agent workflows at any step with built-in suspend/resume primitives, enabling human-in-the-loop systems, approval gates, and long-running pipelines using persistent state snapshots and an agent scheduler for cron-style execution.",
+			"Pause and resume agent workflows at any step with built-in suspend/resume primitives. Build human-in-the-loop systems, approval gates, and long-running pipelines — with persistent state snapshots and an agent scheduler for cron-style execution.",
 		image: "/landing-page/workflow-control.svg",
 	},
 ];

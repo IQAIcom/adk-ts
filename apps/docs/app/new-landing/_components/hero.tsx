@@ -31,14 +31,14 @@ function ClipboardCopyButton({ text }: { text: string }) {
 const cliCommand = "npx @iqai/adk-cli new";
 
 const codeSnippet = dedent`
-	const workflow = AgentBuilder
-	  .asSequential([researchAgent,analysisAgent])
-	  .withTools([GoogleSearch, DataProcessor])
-	  .withMemory(vectorMemoryService);
+	const { runner } = await AgentBuilder
+	  .create("research-pipeline")
+	  .withModel("gemini-2.5-flash")
+	  .asSequential([researchAgent, analysisAgent, summaryAgent])
+	  .withInstruction("Orchestrate research, analysis, and synthesis")
+	  .build();
 
-	const result = await workflow.ask(
-	  "Analyze market trends in AI"
-	);
+	const result = await runner.ask("Analyze AI market trends");
 `;
 
 export function Hero() {
@@ -131,7 +131,7 @@ export function Hero() {
 						<div className="hero-code-card landing-gradient-border overflow-hidden rounded-md bg-[#D9D9D90D] backdrop-blur-[36px] grid gap-5 p-3 pb-6">
 							<div className="flex items-center justify-between border-b border-white/20">
 								<span className="font-mono font-medium text-base text-muted-foreground pb-1">
-									multi-agent-system.ts
+									agent-pipeline.ts
 								</span>
 								<ClipboardCopyButton text={codeSnippet} />
 							</div>

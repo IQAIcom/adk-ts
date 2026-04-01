@@ -10,14 +10,10 @@ const CompleteStackSection = () => {
 			{/* Section Header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Developer Platform</span>
-				<h2>
-					The Complete
-					<br />
-					Agent Stack
-				</h2>
+				<h2>The Complete ADK-TS Stack</h2>
 				<p>
-					Everything you need to build, test, and deploy AI agents. From CLI
-					tools to observability, all batteries included.
+					Not just a framework, but a complete development experience. Every
+					layer you need, from project scaffolding to production observability.
 				</p>
 			</div>
 
@@ -31,11 +27,12 @@ const CompleteStackSection = () => {
 					transition={{ duration: 0.8, delay: 0 }}
 					className="relative p-12 border-b lg:border-r border-white/5 bg-black/20 hover:bg-black/40 transition-colors duration-500"
 				>
-					<h3 className="font-mono text-3xl mb-4 leading-tight">ADK CLI</h3>
+					<h3 className="font-mono text-3xl mb-4 leading-tight">ADK-TS CLI</h3>
 
 					<p className="text-base text-white/60 leading-relaxed mb-8">
-						Powerful command-line interface for scaffolding projects, managing
-						agents, running development servers, and deploying to production.
+						The official CLI for ADK-TS. Scaffold projects from templates, run
+						agents with hot-reload, and launch a web UI for testing — all in one
+						tool.
 					</p>
 
 					{/* Stats grid */}
@@ -51,7 +48,7 @@ const CompleteStackSection = () => {
 									<div className="font-mono text-2xl font-semibold">
 										{"<"}3s
 									</div>
-									<div className="text-xs text-white/40">Project creation</div>
+									<div className="text-xs text-white/40">Project ready</div>
 								</div>
 							</div>
 						</div>
@@ -65,7 +62,7 @@ const CompleteStackSection = () => {
 								</div>
 								<div>
 									<div className="font-mono text-2xl font-semibold">HMR</div>
-									<div className="text-xs text-white/40">Hot module reload</div>
+									<div className="text-xs text-white/40">Hot reload</div>
 								</div>
 							</div>
 						</div>
@@ -78,10 +75,8 @@ const CompleteStackSection = () => {
 									<FileStack className="w-6 h-6 text-primary relative z-10" />
 								</div>
 								<div>
-									<div className="font-mono text-2xl font-semibold">12+</div>
-									<div className="text-xs text-white/40">
-										Built-in templates
-									</div>
+									<div className="font-mono text-2xl font-semibold">7+</div>
+									<div className="text-xs text-white/40">Starter templates</div>
 								</div>
 							</div>
 						</div>
@@ -107,13 +102,13 @@ const CompleteStackSection = () => {
 
 					<div className="space-y-2">
 						<div className="px-4 py-3 border border-white/10 bg-white/5 rounded font-mono text-sm text-white/80">
-							<span className="text-primary">$</span> adk init my-agent
+							<span className="text-primary">$</span> adk new my-agent
 						</div>
 						<div className="px-4 py-3 border border-white/10 bg-white/5 rounded font-mono text-sm text-white/80">
-							<span className="text-primary">$</span> adk dev
+							<span className="text-primary">$</span> adk run
 						</div>
 						<div className="px-4 py-3 border border-white/10 bg-white/5 rounded font-mono text-sm text-white/80">
-							<span className="text-primary">$</span> adk deploy --prod
+							<span className="text-primary">$</span> adk web
 						</div>
 					</div>
 				</motion.div>
@@ -131,8 +126,9 @@ const CompleteStackSection = () => {
 					</h3>
 
 					<p className="text-base text-white/60 leading-relaxed mb-8">
-						Built-in session management with persistent memory storage. Multiple
-						storage backends with unified API and automatic context retention.
+						Persistent session state across every conversation. Multiple storage
+						backends with a unified interface and automatic conversation
+						threading.
 					</p>
 
 					{/* Stack visualization */}
@@ -208,9 +204,9 @@ const CompleteStackSection = () => {
 					</h3>
 
 					<p className="text-base text-white/60 leading-relaxed mb-8">
-						Extensible plugin architecture with lifecycle hooks. Event-driven
-						callbacks for complete control over agent behavior and composable
-						middleware.
+						Orchestrate complex agents with a built-in workflow engine and
+						plugin system. Intercept events, manage long-running tasks, and
+						extend agent behavior with ease.
 					</p>
 
 					{/* Lifecycle flow */}
@@ -292,8 +288,9 @@ const CompleteStackSection = () => {
 					</h3>
 
 					<p className="text-base text-white/60 leading-relaxed mb-8">
-						Full OpenTelemetry integration for metrics, traces, and logs.
-						Monitor agent performance and debug execution flows in production.
+						Production-grade observability and systematic evaluation. Monitor
+						performance with OpenTelemetry and test agent behavior with built-in
+						evaluation suites.
 					</p>
 
 					{/* Checkmarks list */}

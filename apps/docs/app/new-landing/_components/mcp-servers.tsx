@@ -186,16 +186,12 @@ const MCPServersSection = () => {
 		<SectionWrapper id="mcp-servers">
 			{/* Section Header */}
 			<div className="landing-section-header">
-				<span className="landing-badge">Model Context Protocol</span>
-				<h2>
-					Pre-built MCP
-					<br />
-					Collection
-				</h2>
+				<span className="landing-badge">Model Context Protocol (MCP)</span>
+				<h2>Pre-Built MCP Servers</h2>
 				<p>
-					Production-ready MCPs for blockchain, communication, prediction
-					markets, and more. Use them standalone or integrate seamlessly with
-					ADK-TS agents.
+					Production-ready MCP servers built by IQ AI for DeFi, market data,
+					messaging, prediction markets, and more. Use them with ADK-TS, other
+					agent frameworks, or any MCP-compatible runtime.
 				</p>
 			</div>
 
@@ -215,7 +211,7 @@ const MCPServersSection = () => {
 							className="group inline-flex items-center gap-3 px-6 py-3 border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap flex-shrink-0"
 						>
 							<span className="font-mono text-sm text-primary">
-								Explore All MCPs
+								Browse All MCP Servers
 							</span>
 							<ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform duration-300" />
 						</a>
@@ -223,8 +219,8 @@ const MCPServersSection = () => {
 						{/* Overview Stats */}
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
 							<div className="p-6 border border-white/10 bg-black/40">
-								<div className="text-4xl font-semibold mb-2">18+</div>
-								<div className="text-sm text-white/40">MCPs Available</div>
+								<div className="text-4xl font-semibold mb-2">20+</div>
+								<div className="text-sm text-white/40">MCP Servers</div>
 							</div>
 							<div className="p-6 border border-white/10 bg-black/40">
 								<div className="text-4xl font-semibold mb-2">4</div>
@@ -232,11 +228,11 @@ const MCPServersSection = () => {
 							</div>
 							<div className="p-6 border border-white/10 bg-black/40">
 								<div className="text-4xl font-semibold mb-2">100%</div>
-								<div className="text-sm text-white/40">TypeScript</div>
+								<div className="text-sm text-white/40">TypeScript First</div>
 							</div>
 							<div className="p-6 border border-white/10 bg-black/40">
 								<div className="text-4xl font-semibold mb-2">MIT</div>
-								<div className="text-sm text-white/40">Open Source</div>
+								<div className="text-sm text-white/40">MIT Licensed</div>
 							</div>
 						</div>
 					</div>

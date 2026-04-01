@@ -19,7 +19,7 @@ const steps = [
 		labelColor: "text-[#4ADE80]",
 		title: "Configure Your Agent",
 		description:
-			"Choose your LLM provider and model, then add instructions, tools, and sub-agents.",
+			"Choose any supported model and add instructions, tools, or sub-agents.",
 		code: [
 			{
 				text: "import { AgentBuilder, GoogleSearchTool,",

@@ -113,7 +113,9 @@ const ProjectFeaturesSection = () => {
 												<span className="text-2xl font-bold text-white">
 													90+
 												</span>
-												<span className="text-xs text-white/40">Projects</span>
+												<span className="text-xs text-white/40">
+													Community Projects
+												</span>
 											</div>
 											<div className="w-px h-12 bg-white/10" />
 											<div className="flex flex-col">
