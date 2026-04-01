@@ -128,7 +128,7 @@ body {
 }
 
 .landing-section-header p {
-	@apply text-sm sm:text-base lg:text-lg text-muted-foreground max-w-xl;
+	@apply text-sm sm:text-base lg:text-lg text-muted-foreground max-w-3xl;
 }
 
 /* Reusable pink glow — bleeds only downward */

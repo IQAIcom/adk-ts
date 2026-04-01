@@ -105,46 +105,48 @@ function DemoCard({
 	};
 
 	return (
-		<div className="relative border border-white/20 bg-black/60 mb-16 rounded-lg overflow-hidden">
+		<div className="relative border border-white/20 bg-black/60 rounded-lg overflow-hidden">
 			{/* Header Section */}
-			<div className="p-8 pb-6">
-				<div className="mb-6">
-					<h3 className="text-4xl font-bold mb-2">{title}</h3>
-					<p className="text-primary text-sm font-mono">{subtitle}</p>
+			<div className="p-6 space-y-6">
+				<div className="">
+					<h3 className="text-3xl text-white font-bold">{title}</h3>
+					<p className="text-primary font-medium text-sm">{subtitle}</p>
 				</div>
 
-				<p className="text-white/50 text-base leading-relaxed mb-6 max-w-3xl">
+				<p className="text-muted-foreground font-medium text-lg leading-relaxed max-w-3xl">
 					{description}
 				</p>
 
 				{/* Metrics */}
-				<div className="flex gap-8 pb-6 border-b border-white/10">
+				<div className="flex p-4 gap-8 border-b border-white/20">
 					<div className="flex items-center gap-3">
-						<Clock className="w-4 h-4 text-white/40" />
+						<Clock className="size-5 text-muted-foreground" />
 						<div>
-							<div className="text-white/40 text-xs font-mono mb-0.5">
+							<div className="text-muted-foreground text-xs text-medium mb-0.5">
 								Latency:
 							</div>
-							<div className="text-primary font-mono text-lg">{latency}</div>
+							<div className="text-primary text-lg font-medium">{latency}</div>
 						</div>
 					</div>
 					<div className="flex items-center gap-3">
-						<Zap className="w-4 h-4 text-white/40" />
+						<Zap className="size-5 text-muted-foreground" />
 						<div>
-							<div className="text-white/40 text-xs font-mono mb-0.5">
+							<div className="text-muted-foreground text-xs text-medium mb-0.5">
 								Tokens:
 							</div>
-							<div className="text-primary font-mono text-lg">{tokens}</div>
+							<div className="text-primary text-lg font-medium">{tokens}</div>
 						</div>
 					</div>
 					{accuracy && (
 						<div className="flex items-center gap-3">
-							<Target className="w-4 h-4 text-white/40" />
+							<Target className="size-5 text-muted-foreground" />
 							<div>
-								<div className="text-white/40 text-xs font-mono mb-0.5">
+								<div className="text-muted-foreground text-xs text-medium mb-0.5">
 									Accuracy:
 								</div>
-								<div className="text-primary font-mono text-lg">{accuracy}</div>
+								<div className="text-primary text-lg font-medium">
+									{accuracy}
+								</div>
 							</div>
 						</div>
 					)}
@@ -152,11 +154,11 @@ function DemoCard({
 			</div>
 
 			{/* Body Section - Two Columns */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 pt-0">
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
 				{/* LEFT - Node Graph Visualization */}
 				<div
-					className="relative bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center"
-					style={{ minHeight: "500px" }}
+					className="relative bg-black/40 border border-white/20 overflow-hidden flex items-center justify-center rounded-md"
+					style={{ minHeight: "500px", maxHeight: "500px" }}
 				>
 					<svg
 						aria-hidden="true"
@@ -182,7 +184,7 @@ function DemoCard({
 							{hasInput && (
 								<motion.path
 									d="M 150,250 L 300,250"
-									stroke={isPlaying ? "#FF1A88" : "rgba(255,255,255,0.2)"}
+									stroke={isPlaying ? "#FF1A88" : "#FFFFFF33"}
 									strokeWidth="2"
 									strokeDasharray="6 4"
 									strokeDashoffset={0}
@@ -980,7 +982,7 @@ function DemoCard({
 				</div>
 
 				{/* RIGHT - Terminal Window */}
-				<div className="relative border border-white/20 bg-black/60 flex flex-col rounded-lg overflow-hidden">
+				<div className="relative border border-white/20 bg-black/60 flex flex-col rounded-md overflow-hidden">
 					{/* Window Header - macOS Style */}
 					<div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0a0a0a]">
 						<div className="flex items-center gap-2">
@@ -988,9 +990,7 @@ function DemoCard({
 							<div className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
 							<div className="w-3 h-3 rounded-full bg-[#28C840]" />
 						</div>
-						<div className="text-white/40 text-xs font-mono">
-							agent-output.log
-						</div>
+						<div className="text-white text-xs">agent-output.log</div>
 						{/* Control Buttons - Relocated here */}
 						<div className="flex gap-2">
 							<button
@@ -1019,10 +1019,10 @@ function DemoCard({
 					<div className="flex flex-col flex-1">
 						<div
 							ref={logContainerRef}
-							className="flex-1 bg-black border border-white/10 m-6 p-4 overflow-y-auto font-mono text-xs"
+							className="flex-1 bg-black rounded border border-white/10 m-6 p-4 overflow-y-auto text-xs"
 						>
 							{logs.length === 0 ? (
-								<div className="text-white/30 text-center py-20">
+								<div className="text-white text-center py-20 translate-y-1/2">
 									Press Play to start simulation
 								</div>
 							) : (
@@ -1057,24 +1057,20 @@ function DemoCard({
 
 const InteractiveSimulationsSection = () => {
 	return (
-		<SectionWrapper id="interactive-simulations">
+		<SectionWrapper id="interactive-simulations" className="grid gap-y-24">
 			{/* Section Header */}
 			<div className="landing-section-header">
-				<span className="landing-badge">Real-World Implementations</span>
-				<h2>
-					Multi-Agent
-					<br />
-					Systems in Action
-				</h2>
+				<span className="landing-badge">Interactive Simulations</span>
+				<h2>Multi-Agent Systems in Actionn</h2>
 				<p>
-					Experience live simulations of production-grade multi-agent workflows.
-					Watch how specialized agents collaborate to solve complex real-world
-					problems.
+					Interactive simulations of real multi-agent execution flows. See how
+					agents coordinate, call tools, and generate structured outputs step by
+					step.
 				</p>
 			</div>
 
 			{/* Demo Cards */}
-			<div>
+			<div className="grid gap-16">
 				<motion.div
 					initial={{ opacity: 0, y: 30 }}
 					whileInView={{ opacity: 1, y: 0 }}
@@ -1083,8 +1079,8 @@ const InteractiveSimulationsSection = () => {
 				>
 					<DemoCard
 						title="Autonomous Support"
-						subtitle="Customer Service AI"
-						description="A tri-agent system that triages incoming tickets, queries knowledge bases, and generates contextual responses in real-time."
+						subtitle="Customer Support Pipeline"
+						description="A multi-agent customer support system that classifies incoming tickets, retrieves knowledge, and generates structured responses in real time."
 						latency="84ms"
 						tokens="1.2k"
 						accuracy="94.2%"
@@ -1106,7 +1102,7 @@ const InteractiveSimulationsSection = () => {
 					<DemoCard
 						title="Market Research"
 						subtitle="Parallel Intelligence Gathering"
-						description="Three agents work simultaneously to scrape data, analyze competitors, and synthesize insights for strategic decisions."
+						description="Parallel agents collect data, identify patterns, and synthesize structured reports for research and competitive intelligence."
 						latency="142ms"
 						tokens="3.8k"
 						accuracy="94.2%"
@@ -1130,7 +1126,7 @@ const InteractiveSimulationsSection = () => {
 					<DemoCard
 						title="Code Modernization"
 						subtitle="Sequential Transformation Pipeline"
-						description="A chain of specialized agents that refactors legacy code, runs comprehensive tests, and auto-generates documentation."
+						description=" A sequential agent pipeline that refactors legacy code, validates changes, runs tests, and generates documentation artifacts."
 						latency="267ms"
 						tokens="5.1k"
 						accuracy="91.8%"
