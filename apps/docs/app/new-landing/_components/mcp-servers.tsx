@@ -223,30 +223,20 @@ const MCPServersSection = () => {
 						{/* Overview Stats */}
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
 							<div className="p-6 border border-white/10 bg-black/40">
-								<div className="text-4xl font-mono font-semibold mb-2">18+</div>
-								<div className="text-sm font-mono text-white/40">
-									MCPs Available
-								</div>
+								<div className="text-4xl font-semibold mb-2">18+</div>
+								<div className="text-sm text-white/40">MCPs Available</div>
 							</div>
 							<div className="p-6 border border-white/10 bg-black/40">
-								<div className="text-4xl font-mono font-semibold mb-2">4</div>
-								<div className="text-sm font-mono text-white/40">
-									Categories
-								</div>
+								<div className="text-4xl font-semibold mb-2">4</div>
+								<div className="text-sm text-white/40">Categories</div>
 							</div>
 							<div className="p-6 border border-white/10 bg-black/40">
-								<div className="text-4xl font-mono font-semibold mb-2">
-									100%
-								</div>
-								<div className="text-sm font-mono text-white/40">
-									TypeScript
-								</div>
+								<div className="text-4xl font-semibold mb-2">100%</div>
+								<div className="text-sm text-white/40">TypeScript</div>
 							</div>
 							<div className="p-6 border border-white/10 bg-black/40">
-								<div className="text-4xl font-mono font-semibold mb-2">MIT</div>
-								<div className="text-sm font-mono text-white/40">
-									Open Source
-								</div>
+								<div className="text-4xl font-semibold mb-2">MIT</div>
+								<div className="text-sm text-white/40">Open Source</div>
 							</div>
 						</div>
 					</div>
@@ -261,7 +251,7 @@ const MCPServersSection = () => {
 							type="button"
 							key={category.id}
 							onClick={() => setActiveTab(category.id)}
-							className={`px-6 py-3 font-mono text-sm whitespace-nowrap border transition-all duration-300 ${
+							className={`px-6 py-3 text-sm whitespace-nowrap border transition-all duration-300 ${
 								activeTab === category.id
 									? "border-primary border-b-transparent bg-primary/20 text-primary relative z-10 shadow-[0_0_20px_rgba(255,26,136,0.3)]"
 									: "border-white/10 border-b-white/10 bg-black/20 text-white/60 hover:border-white/20 hover:text-white/80 hover:bg-black/30"
@@ -285,7 +275,7 @@ const MCPServersSection = () => {
 				>
 					{/* Category Description */}
 					<div className="mb-10">
-						<p className="text-lg font-mono text-white/70 leading-relaxed">
+						<p className="text-lg text-white/70 leading-relaxed">
 							{activeCategory.description}
 						</p>
 					</div>
@@ -298,11 +288,11 @@ const MCPServersSection = () => {
 								className="border border-white/10 bg-black/60 p-6 hover:border-primary/30 hover:bg-black/80 transition-all duration-300"
 							>
 								<div className="mb-4">
-									<div className="px-3 py-1 border border-white/10 bg-white/5 rounded text-xs font-mono text-white/40 inline-block mb-3">
+									<div className="px-3 py-1 border border-white/10 bg-white/5 rounded text-xs text-white/40 inline-block mb-3">
 										{highlight.mcpName}
 									</div>
-									<h4 className="text-xl font-mono mb-2">{highlight.name}</h4>
-									<p className="text-sm font-mono text-white/60 leading-relaxed">
+									<h4 className="text-xl mb-2">{highlight.name}</h4>
+									<p className="text-sm text-white/60 leading-relaxed">
 										{highlight.description}
 									</p>
 								</div>
@@ -311,9 +301,7 @@ const MCPServersSection = () => {
 									{highlight.features.map((feature) => (
 										<div key={feature} className="flex items-start gap-2">
 											<div className="w-1 h-1 bg-primary mt-2 flex-shrink-0" />
-											<div className="text-xs font-mono text-white/50">
-												{feature}
-											</div>
+											<div className="text-xs text-white/50">{feature}</div>
 										</div>
 									))}
 								</div>
@@ -364,7 +352,7 @@ const MCPServersSection = () => {
 											strokeDasharray="2 2"
 										/>
 									</svg>
-									<span className="text-xs font-mono text-white/30">
+									<span className="text-xs text-white/30">
 										MCP Communication
 									</span>
 								</div>
@@ -374,7 +362,7 @@ const MCPServersSection = () => {
 
 					{/* Quick Integration Example */}
 					<div className="border-t border-white/5 pt-8">
-						<div className="text-xs font-mono text-white/40 uppercase tracking-wider mb-4">
+						<div className="text-xs text-white/40 uppercase tracking-wider mb-4">
 							Quick Integration
 						</div>
 						<div className="p-4 border border-white/10 bg-black/80 rounded font-mono text-sm">
@@ -400,18 +388,18 @@ const agent = await AgentBuilder.create("my_agent")
 				className="mt-16 pt-8 border-t border-white/5"
 			>
 				<div className="flex flex-wrap gap-6 items-center justify-center">
-					<div className="text-sm font-mono text-white/40">COMPATIBILITY</div>
+					<div className="text-sm text-white/40">COMPATIBILITY</div>
 					<div className="flex flex-wrap gap-3 justify-center">
-						<div className="px-4 py-2 border border-primary/30 bg-primary/10 rounded font-mono text-xs text-primary">
+						<div className="px-4 py-2 border border-primary/30 bg-primary/10 rounded text-xs text-primary">
 							ADK-TS v2.0+
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Standalone Usage
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Node.js 18+
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							TypeScript 5+
 						</div>
 					</div>

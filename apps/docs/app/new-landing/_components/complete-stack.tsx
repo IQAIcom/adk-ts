@@ -33,7 +33,7 @@ const CompleteStackSection = () => {
 				>
 					<h3 className="font-mono text-3xl mb-4 leading-tight">ADK CLI</h3>
 
-					<p className="text-base font-mono text-white/60 leading-relaxed mb-8">
+					<p className="text-base text-white/60 leading-relaxed mb-8">
 						Powerful command-line interface for scaffolding projects, managing
 						agents, running development servers, and deploying to production.
 					</p>
@@ -51,9 +51,7 @@ const CompleteStackSection = () => {
 									<div className="font-mono text-2xl font-semibold">
 										{"<"}3s
 									</div>
-									<div className="text-xs font-mono text-white/40">
-										Project creation
-									</div>
+									<div className="text-xs text-white/40">Project creation</div>
 								</div>
 							</div>
 						</div>
@@ -67,9 +65,7 @@ const CompleteStackSection = () => {
 								</div>
 								<div>
 									<div className="font-mono text-2xl font-semibold">HMR</div>
-									<div className="text-xs font-mono text-white/40">
-										Hot module reload
-									</div>
+									<div className="text-xs text-white/40">Hot module reload</div>
 								</div>
 							</div>
 						</div>
@@ -83,7 +79,7 @@ const CompleteStackSection = () => {
 								</div>
 								<div>
 									<div className="font-mono text-2xl font-semibold">12+</div>
-									<div className="text-xs font-mono text-white/40">
+									<div className="text-xs text-white/40">
 										Built-in templates
 									</div>
 								</div>
@@ -101,15 +97,13 @@ const CompleteStackSection = () => {
 									<div className="font-mono text-2xl font-semibold">
 										1-click
 									</div>
-									<div className="text-xs font-mono text-white/40">
-										Deploy command
-									</div>
+									<div className="text-xs text-white/40">Deploy command</div>
 								</div>
 							</div>
 						</div>
 					</div>
 
-					<div className="text-xs font-mono text-white/40 mb-4">COMMANDS</div>
+					<div className="text-xs text-white/40 mb-4">COMMANDS</div>
 
 					<div className="space-y-2">
 						<div className="px-4 py-3 border border-white/10 bg-white/5 rounded font-mono text-sm text-white/80">
@@ -136,7 +130,7 @@ const CompleteStackSection = () => {
 						Sessions & Memory
 					</h3>
 
-					<p className="text-base font-mono text-white/60 leading-relaxed mb-8">
+					<p className="text-base text-white/60 leading-relaxed mb-8">
 						Built-in session management with persistent memory storage. Multiple
 						storage backends with unified API and automatic context retention.
 					</p>
@@ -150,7 +144,7 @@ const CompleteStackSection = () => {
 								</div>
 								<div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full" />
 							</div>
-							<div className="flex-1 text-xs font-mono text-white/40">
+							<div className="flex-1 text-xs text-white/40">
 								100ms avg latency, 10k+ sessions/sec
 							</div>
 						</div>
@@ -163,7 +157,7 @@ const CompleteStackSection = () => {
 									</span>
 								</div>
 							</div>
-							<div className="flex-1 text-xs font-mono text-white/40">
+							<div className="flex-1 text-xs text-white/40">
 								Persistent storage, full-text search
 							</div>
 						</div>
@@ -176,26 +170,24 @@ const CompleteStackSection = () => {
 									</span>
 								</div>
 							</div>
-							<div className="flex-1 text-xs font-mono text-white/40">
+							<div className="flex-1 text-xs text-white/40">
 								Zero-config local development
 							</div>
 						</div>
 					</div>
 
-					<div className="text-xs font-mono text-white/40 mb-4">
-						KEY FEATURES
-					</div>
+					<div className="text-xs text-white/40 mb-4">KEY FEATURES</div>
 
 					<div className="space-y-2">
-						<div className="flex items-center gap-3 text-sm font-mono text-white/70">
+						<div className="flex items-center gap-3 text-sm text-white/70">
 							<div className="w-1.5 h-1.5 bg-primary" />
 							Automatic conversation threading
 						</div>
-						<div className="flex items-center gap-3 text-sm font-mono text-white/70">
+						<div className="flex items-center gap-3 text-sm text-white/70">
 							<div className="w-1.5 h-1.5 bg-white/30" />
 							Context window management
 						</div>
-						<div className="flex items-center gap-3 text-sm font-mono text-white/70">
+						<div className="flex items-center gap-3 text-sm text-white/70">
 							<div className="w-1.5 h-1.5 bg-white/30" />
 							Cross-agent memory sharing
 						</div>
@@ -215,7 +207,7 @@ const CompleteStackSection = () => {
 						Callbacks & Plugin System
 					</h3>
 
-					<p className="text-base font-mono text-white/60 leading-relaxed mb-8">
+					<p className="text-base text-white/60 leading-relaxed mb-8">
 						Extensible plugin architecture with lifecycle hooks. Event-driven
 						callbacks for complete control over agent behavior and composable
 						middleware.
@@ -223,74 +215,64 @@ const CompleteStackSection = () => {
 
 					{/* Lifecycle flow */}
 					<div className="mb-8">
-						<div className="text-xs font-mono text-white/40 mb-4">
-							LIFECYCLE HOOKS
-						</div>
+						<div className="text-xs text-white/40 mb-4">LIFECYCLE HOOKS</div>
 
 						<div className="space-y-3">
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-primary" />
-								<div className="text-sm font-mono text-white/80">
-									beforeExecute
-								</div>
-								<div className="flex-1 text-xs font-mono text-white/40">
+								<div className="text-sm text-white/80">beforeExecute</div>
+								<div className="flex-1 text-xs text-white/40">
 									Validate & modify prompt
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-white/20" />
-								<div className="text-sm font-mono text-white/80">
-									onToolCall
-								</div>
-								<div className="flex-1 text-xs font-mono text-white/40">
+								<div className="text-sm text-white/80">onToolCall</div>
+								<div className="flex-1 text-xs text-white/40">
 									Intercept tool execution
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-white/20" />
-								<div className="text-sm font-mono text-white/80">onStream</div>
-								<div className="flex-1 text-xs font-mono text-white/40">
+								<div className="text-sm text-white/80">onStream</div>
+								<div className="flex-1 text-xs text-white/40">
 									Process streaming chunks
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-white/20" />
-								<div className="text-sm font-mono text-white/80">
-									afterExecute
-								</div>
-								<div className="flex-1 text-xs font-mono text-white/40">
+								<div className="text-sm text-white/80">afterExecute</div>
+								<div className="flex-1 text-xs text-white/40">
 									Log & trigger webhooks
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-white/20" />
-								<div className="text-sm font-mono text-white/80">onError</div>
-								<div className="flex-1 text-xs font-mono text-white/40">
+								<div className="text-sm text-white/80">onError</div>
+								<div className="flex-1 text-xs text-white/40">
 									Handle failures gracefully
 								</div>
 							</div>
 						</div>
 					</div>
 
-					<div className="text-xs font-mono text-white/40 mb-4">
-						BUILT-IN PLUGINS
-					</div>
+					<div className="text-xs text-white/40 mb-4">BUILT-IN PLUGINS</div>
 
 					<div className="flex flex-wrap gap-3">
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Rate Limiter
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Logger
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Validator
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Cache
 						</div>
 					</div>
@@ -309,7 +291,7 @@ const CompleteStackSection = () => {
 						Observability
 					</h3>
 
-					<p className="text-base font-mono text-white/60 leading-relaxed mb-8">
+					<p className="text-base text-white/60 leading-relaxed mb-8">
 						Full OpenTelemetry integration for metrics, traces, and logs.
 						Monitor agent performance and debug execution flows in production.
 					</p>
@@ -320,7 +302,7 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-primary rounded flex items-center justify-center flex-shrink-0">
 								<div className="w-2.5 h-2.5 bg-primary" />
 							</div>
-							<div className="text-sm font-mono text-white/90">
+							<div className="text-sm text-white/90">
 								Distributed tracing with context propagation
 							</div>
 						</div>
@@ -329,7 +311,7 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-white/30 rounded flex items-center justify-center flex-shrink-0">
 								<div className="w-2.5 h-2.5 bg-white/30" />
 							</div>
-							<div className="text-sm font-mono text-white/60">
+							<div className="text-sm text-white/60">
 								Custom metrics & dashboards
 							</div>
 						</div>
@@ -338,27 +320,25 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-white/30 rounded flex items-center justify-center flex-shrink-0">
 								<div className="w-2.5 h-2.5 bg-white/30" />
 							</div>
-							<div className="text-sm font-mono text-white/60">
+							<div className="text-sm text-white/60">
 								Structured logging with correlation IDs
 							</div>
 						</div>
 					</div>
 
-					<div className="text-xs font-mono text-white/40 mb-4">
-						MONITORING PLATFORMS
-					</div>
+					<div className="text-xs text-white/40 mb-4">MONITORING PLATFORMS</div>
 
 					<div className="flex flex-wrap gap-3">
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Datadog
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							New Relic
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Grafana
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded font-mono text-xs text-white/60">
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Jaeger
 						</div>
 					</div>
