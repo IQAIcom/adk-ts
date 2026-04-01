@@ -31,14 +31,14 @@ function ClipboardCopyButton({ text }: { text: string }) {
 const cliCommand = "npx @iqai/adk-cli new";
 
 const codeSnippet = dedent`
-	const { runner } = await AgentBuilder
-	  .create("research-pipeline")
-	  .withModel("gemini-2.5-flash")
-	  .asSequential([researchAgent, analysisAgent, summaryAgent])
-	  .withInstruction("Orchestrate research, analysis, and synthesis")
-	  .build();
+const { runner } = await AgentBuilder
+  .create("research-pipeline")
+  .withModel("gemini-2.5-flash")
+  .asSequential([researcher, analyst, summarizer])
+  .withInstruction("Research, analyze and summarize")
+  .build();
 
-	const result = await runner.ask("Analyze AI market trends");
+const result = await runner.ask("AI market trends");
 `;
 
 export function Hero() {
@@ -126,7 +126,7 @@ export function Hero() {
 						initial={{ opacity: 0, y: 30 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.6, delay: 0.4 }}
-						className="w-full max-w-117.5 mx-auto lg:mx-0 lg:ml-auto"
+						className="w-full max-w-120 mx-auto lg:mx-0 lg:ml-auto"
 					>
 						<div className="hero-code-card landing-gradient-border overflow-hidden rounded-md bg-[#D9D9D90D] backdrop-blur-[36px] grid gap-5 p-3 pb-6">
 							<div className="flex items-center justify-between border-b border-white/20">
@@ -135,7 +135,7 @@ export function Hero() {
 								</span>
 								<ClipboardCopyButton text={codeSnippet} />
 							</div>
-							<div className="overflow-x-auto text-left text-xs leading-relaxed rounded-md! border-white/20 p-2">
+							<div className="overflow-x-auto text-left text-xs leading-relaxed rounded-md! border-white/20">
 								<DynamicCodeBlock lang="typescript" code={codeSnippet} />
 							</div>
 						</div>
