@@ -43,7 +43,7 @@ const codeSnippet = dedent`
 
 export function Hero() {
 	return (
-		<section className="relative overflow-hidden border-b landing-border min-h-screen">
+		<section className="relative overflow-hidden border-b landing-border min-h-screen bg-black">
 			{/* Star background + video layer */}
 			<div className="absolute inset-0 overflow-hidden">
 				{/* Star specks background */}

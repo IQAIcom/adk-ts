@@ -18,7 +18,7 @@ export default function HomePage() {
 	return (
 		<div className="landing-fonts min-h-screen w-screen bg-black text-white overflow-x-clip">
 			<Navbar />
-			<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
+			<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative landing-glow">
 				<Hero />
 				<LLMModels />
 				<WhyADKTSSection />

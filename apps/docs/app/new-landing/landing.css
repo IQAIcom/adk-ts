@@ -13,6 +13,10 @@
 	--landing-border-color: rgba(255, 255, 255, 0.2);
 }
 
+body {
+	background-color: #000;
+}
+
 /* Landing page fonts: Satoshi for body, Geist for headings, Geist Mono for code */
 .landing-fonts {
 	font-family: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
@@ -128,20 +132,23 @@
 }
 
 /* Reusable pink glow — bleeds only downward */
-.landing-glow,
-.sticky-glow {
+.landing-glow {
 	@apply relative;
-	clip-path: inset(0 0 -500px 0);
 }
 
 .landing-glow::before {
-	@apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none;
+	@apply fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0;
 	content: "";
-	width: 800px;
-	height: 800px;
+	width: 750px;
+	height: 750px;
 	border-radius: 16777200px;
 	background: hsla(331, 100%, 55%, 0.2);
 	filter: blur(200px);
+}
+
+.sticky-glow {
+	@apply relative;
+	clip-path: inset(0 0 -500px 0);
 }
 
 .sticky-glow::before {
