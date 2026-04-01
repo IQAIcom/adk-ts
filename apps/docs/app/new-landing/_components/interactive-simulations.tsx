@@ -20,6 +20,7 @@ interface DemoCardProps {
 	outputLabel?: string;
 	hasInput?: boolean;
 	hasOutput?: boolean;
+	patternLabel?: string;
 }
 
 function DemoCard({
@@ -32,6 +33,7 @@ function DemoCard({
 	agents,
 	inputLabel = "INPUT",
 	hasInput = true,
+	patternLabel,
 }: DemoCardProps) {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [activeAgent, setActiveAgent] = useState(-1);
@@ -160,6 +162,11 @@ function DemoCard({
 					className="relative bg-black/40 border border-white/20 overflow-hidden flex items-center justify-center rounded-md"
 					style={{ minHeight: "500px", maxHeight: "500px" }}
 				>
+					{patternLabel && (
+						<div className="absolute top-4 left-4 px-2.5 py-1 text-[10px] font-medium text-primary/70 border border-primary/20 bg-primary/5 rounded">
+							{patternLabel}
+						</div>
+					)}
 					<svg
 						aria-hidden="true"
 						viewBox="0 0 800 500"
@@ -1081,6 +1088,7 @@ const InteractiveSimulationsSection = () => {
 						title="Autonomous Support"
 						subtitle="Customer Support Pipeline"
 						description="A multi-agent customer support system that classifies incoming tickets, retrieves knowledge, and generates structured responses in real time."
+						patternLabel="Sequential with Context Sharing"
 						latency="84ms"
 						tokens="1.2k"
 						accuracy="94.2%"
@@ -1103,6 +1111,7 @@ const InteractiveSimulationsSection = () => {
 						title="Market Research"
 						subtitle="Parallel Intelligence Gathering"
 						description="Parallel agents collect data, identify patterns, and synthesize structured reports for research and competitive intelligence."
+						patternLabel="Pattern: Parallel + Aggregation"
 						latency="142ms"
 						tokens="3.8k"
 						accuracy="94.2%"
@@ -1126,7 +1135,8 @@ const InteractiveSimulationsSection = () => {
 					<DemoCard
 						title="Code Modernization"
 						subtitle="Sequential Transformation Pipeline"
-						description=" A sequential agent pipeline that refactors legacy code, validates changes, runs tests, and generates documentation artifacts."
+						description="A sequential agent pipeline that refactors legacy code, validates changes, runs tests, and generates documentation artifacts."
+						patternLabel="Pattern: Sequential with Validation Gates"
 						latency="267ms"
 						tokens="5.1k"
 						accuracy="91.8%"

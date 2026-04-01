@@ -79,7 +79,7 @@ const ProjectFeaturesSection = () => {
 					</p>
 				</div>
 				<Link
-					href="/showcases"
+					href="/showcase"
 					className="landing-newsletter-btn p-3! space-x-3 text-lg!"
 				>
 					<span className="text-sm">View All Showcases</span>
@@ -120,7 +120,7 @@ const ProjectFeaturesSection = () => {
 											<div className="w-px h-12 bg-white/10" />
 											<div className="flex flex-col">
 												<span className="text-2xl font-bold text-white">
-													90+
+													115+
 												</span>
 												<span className="text-xs text-white/40">Stars</span>
 											</div>
@@ -138,7 +138,7 @@ const ProjectFeaturesSection = () => {
 
 									{/* View All Showcases Button */}
 									<Link
-										href="/showcases"
+										href="/showcase"
 										className="landing-newsletter-btn p-3! space-x-3 text-lg!"
 									>
 										<span className="text-sm">View All Showcases</span>

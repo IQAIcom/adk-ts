@@ -58,20 +58,6 @@ const CompleteStackSection = () => {
 								<div className="w-12 h-12 relative flex items-center justify-center">
 									<div className="absolute inset-0 bg-primary/10 rounded-lg" />
 									<div className="absolute inset-0 border border-primary/30 rounded-lg" />
-									<Flame className="w-6 h-6 text-primary relative z-10" />
-								</div>
-								<div>
-									<div className="font-mono text-2xl font-semibold">HMR</div>
-									<div className="text-xs text-white/40">Hot reload</div>
-								</div>
-							</div>
-						</div>
-
-						<div>
-							<div className="flex items-center gap-3 mb-3">
-								<div className="w-12 h-12 relative flex items-center justify-center">
-									<div className="absolute inset-0 bg-primary/10 rounded-lg" />
-									<div className="absolute inset-0 border border-primary/30 rounded-lg" />
 									<FileStack className="w-6 h-6 text-primary relative z-10" />
 								</div>
 								<div>
@@ -86,13 +72,25 @@ const CompleteStackSection = () => {
 								<div className="w-12 h-12 relative flex items-center justify-center">
 									<div className="absolute inset-0 bg-primary/10 rounded-lg" />
 									<div className="absolute inset-0 border border-primary/30 rounded-lg" />
+									<Flame className="w-6 h-6 text-primary relative z-10" />
+								</div>
+								<div>
+									<div className="font-mono text-2xl font-semibold">HMR</div>
+									<div className="text-xs text-white/40">Hot reload</div>
+								</div>
+							</div>
+						</div>
+
+						<div>
+							<div className="flex items-center gap-3 mb-3">
+								<div className="w-12 h-12 relative flex items-center justify-center">
+									<div className="absolute inset-0 bg-primary/10 rounded-lg" />
+									<div className="absolute inset-0 border border-primary/30 rounded-lg" />
 									<Rocket className="w-6 h-6 text-primary relative z-10" />
 								</div>
 								<div>
-									<div className="font-mono text-2xl font-semibold">
-										1-click
-									</div>
-									<div className="text-xs text-white/40">Deploy command</div>
+									<div className="font-mono text-2xl font-semibold">Web</div>
+									<div className="text-xs text-white/40">Browser UI</div>
 								</div>
 							</div>
 						</div>
@@ -109,6 +107,9 @@ const CompleteStackSection = () => {
 						</div>
 						<div className="px-4 py-3 border border-white/10 bg-white/5 rounded font-mono text-sm text-white/80">
 							<span className="text-primary">$</span> adk web
+						</div>
+						<div className="px-4 py-3 border border-white/10 bg-white/5 rounded font-mono text-sm text-white/80">
+							<span className="text-primary">$</span> adk serve
 						</div>
 					</div>
 				</motion.div>
@@ -134,40 +135,42 @@ const CompleteStackSection = () => {
 					{/* Stack visualization */}
 					<div className="space-y-4 mb-8">
 						<div className="flex items-center gap-4">
-							<div className="w-32 h-14 relative">
-								<div className="absolute inset-0 bg-white/5 border border-white/10 rounded flex items-center justify-center">
-									<span className="font-mono text-xs text-white/60">Redis</span>
-								</div>
-								<div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full" />
-							</div>
-							<div className="flex-1 text-xs text-white/40">
-								100ms avg latency, 10k+ sessions/sec
-							</div>
-						</div>
-
-						<div className="flex items-center gap-4">
-							<div className="w-32 h-14 relative">
-								<div className="absolute inset-0 bg-white/5 border border-white/10 rounded flex items-center justify-center">
-									<span className="font-mono text-xs text-white/60">
-										PostgreSQL
-									</span>
-								</div>
-							</div>
-							<div className="flex-1 text-xs text-white/40">
-								Persistent storage, full-text search
-							</div>
-						</div>
-
-						<div className="flex items-center gap-4">
-							<div className="w-32 h-14 relative">
+							<div className="w-34 h-14 relative">
 								<div className="absolute inset-0 bg-white/5 border border-white/10 rounded flex items-center justify-center">
 									<span className="font-mono text-xs text-white/60">
 										In-Memory
 									</span>
 								</div>
+								<div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full" />
 							</div>
 							<div className="flex-1 text-xs text-white/40">
-								Zero-config local development
+								Zero-config local development, no persistence needed.
+							</div>
+						</div>
+
+						<div className="flex items-center gap-4">
+							<div className="w-34 h-14 relative">
+								<div className="absolute inset-0 bg-white/5 border border-white/10 rounded flex items-center justify-center">
+									<span className="font-mono text-xs text-white/60">
+										PostgreSQL/SQLite
+									</span>
+								</div>
+							</div>
+							<div className="flex-1 text-xs text-white/40">
+								Persistent sessions with Drizzle ORM and full-text search.
+							</div>
+						</div>
+
+						<div className="flex items-center gap-4">
+							<div className="w-34 h-14 relative">
+								<div className="absolute inset-0 bg-white/5 border border-white/10 rounded flex items-center justify-center">
+									<span className="font-mono text-xs text-white/60">
+										Vertex AI
+									</span>
+								</div>
+							</div>
+							<div className="flex-1 text-xs text-white/40">
+								Google Cloud-native session storage for production scale.
 							</div>
 						</div>
 					</div>
@@ -187,10 +190,18 @@ const CompleteStackSection = () => {
 							<div className="w-1.5 h-1.5 bg-white/30" />
 							Cross-agent memory sharing
 						</div>
+						<div className="flex items-center gap-3 text-sm text-white/70">
+							<div className="w-1.5 h-1.5 bg-white/30" />
+							Vertex AI RAG memory integration
+						</div>
+						<div className="flex items-center gap-3 text-sm text-white/70">
+							<div className="w-1.5 h-1.5 bg-white/30" />
+							Unified Memory API (combine multiple sources)
+						</div>
 					</div>
 				</motion.div>
 
-				{/* Callbacks & Plugins Card */}
+				{/* Workflows & Extensibility Card */}
 				<motion.div
 					initial={{ opacity: 0, y: 40 }}
 					whileInView={{ opacity: 1, y: 0 }}
@@ -200,7 +211,7 @@ const CompleteStackSection = () => {
 					style={{ userSelect: "text" }}
 				>
 					<h3 className="font-mono text-3xl mb-4 leading-tight">
-						Callbacks & Plugin System
+						Workflows & Extensibility
 					</h3>
 
 					<p className="text-base text-white/60 leading-relaxed mb-8">
@@ -216,41 +227,49 @@ const CompleteStackSection = () => {
 						<div className="space-y-3">
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-primary" />
-								<div className="text-sm text-white/80">beforeExecute</div>
+								<div className="text-sm text-white/80">beforeModelCallback</div>
 								<div className="flex-1 text-xs text-white/40">
-									Validate & modify prompt
+									Inspect and transform prompts before model execution
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-white/20" />
-								<div className="text-sm text-white/80">onToolCall</div>
+								<div className="text-sm text-white/80">beforeToolCallback</div>
 								<div className="flex-1 text-xs text-white/40">
-									Intercept tool execution
+									Observe or override tool execution
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-white/20" />
-								<div className="text-sm text-white/80">onStream</div>
+								<div className="text-sm text-white/80">afterModelCallback</div>
 								<div className="flex-1 text-xs text-white/40">
-									Process streaming chunks
+									Post-process and validate model responses
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-white/20" />
-								<div className="text-sm text-white/80">afterExecute</div>
+								<div className="text-sm text-white/80">afterToolCallback</div>
 								<div className="flex-1 text-xs text-white/40">
-									Log & trigger webhooks
+									Capture and transform tool results
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-white/20" />
-								<div className="text-sm text-white/80">onError</div>
+								<div className="text-sm text-white/80">beforeAgentCallback</div>
 								<div className="flex-1 text-xs text-white/40">
-									Handle failures gracefully
+									Intercept agent execution before any step
+								</div>
+							</div>
+
+							<div className="flex items-center gap-3">
+								<div className="w-2 h-2 bg-white/20" />
+								<div className="text-sm text-white/80">afterAgentCallback</div>
+								<div className="flex-1 text-xs text-white/40">
+									Inspect final agent output and execution trace
 								</div>
 							</div>
 						</div>
@@ -260,21 +279,21 @@ const CompleteStackSection = () => {
 
 					<div className="flex flex-wrap gap-3">
 						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
-							Rate Limiter
+							ModelFallbackPlugin
 						</div>
 						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
-							Logger
+							LangfusePlugin
 						</div>
 						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
-							Validator
+							ReflectRetryToolPlugin
 						</div>
 						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
-							Cache
+							ToolFilterPlugin
 						</div>
 					</div>
 				</motion.div>
 
-				{/* Observability Card */}
+				{/* Reliability & Observability Card */}
 				<motion.div
 					initial={{ opacity: 0, y: 40 }}
 					whileInView={{ opacity: 1, y: 0 }}
@@ -284,7 +303,7 @@ const CompleteStackSection = () => {
 					style={{ userSelect: "text" }}
 				>
 					<h3 className="font-mono text-3xl mb-4 leading-tight">
-						Observability
+						Reliability & Observability
 					</h3>
 
 					<p className="text-base text-white/60 leading-relaxed mb-8">
@@ -296,29 +315,29 @@ const CompleteStackSection = () => {
 					{/* Checkmarks list */}
 					<div className="space-y-3 mb-8">
 						<div className="flex items-center gap-3 p-3 border border-primary/20 bg-primary/5 rounded-lg">
-							<div className="w-5 h-5 border-2 border-primary rounded flex items-center justify-center flex-shrink-0">
+							<div className="w-5 h-5 border-2 border-primary rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-primary" />
 							</div>
 							<div className="text-sm text-white/90">
-								Distributed tracing with context propagation
+								Distributed tracing (OTLP) with automatic context propagation
 							</div>
 						</div>
 
-						<div className="flex items-center gap-3 p-3 border border-white/10 bg-white/[0.02] rounded-lg">
-							<div className="w-5 h-5 border-2 border-white/30 rounded flex items-center justify-center flex-shrink-0">
+						<div className="flex items-center gap-3 p-3 border border-white/10 bg-white/2 rounded-lg">
+							<div className="w-5 h-5 border-2 border-white/30 rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-white/30" />
 							</div>
 							<div className="text-sm text-white/60">
-								Custom metrics & dashboards
+								ADK-TS semantic spans for agents, tools, and models
 							</div>
 						</div>
 
-						<div className="flex items-center gap-3 p-3 border border-white/10 bg-white/[0.02] rounded-lg">
-							<div className="w-5 h-5 border-2 border-white/30 rounded flex items-center justify-center flex-shrink-0">
+						<div className="flex items-center gap-3 p-3 border border-white/10 bg-white/2 rounded-lg">
+							<div className="w-5 h-5 border-2 border-white/30 rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-white/30" />
 							</div>
 							<div className="text-sm text-white/60">
-								Structured logging with correlation IDs
+								Structured logs correlated with traces and requests
 							</div>
 						</div>
 					</div>
@@ -327,16 +346,19 @@ const CompleteStackSection = () => {
 
 					<div className="flex flex-wrap gap-3">
 						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
-							Datadog
+							Langfuse (built-in)
 						</div>
 						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
-							New Relic
+							Datadog
 						</div>
 						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Grafana
 						</div>
 						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
 							Jaeger
+						</div>
+						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
+							New Relic
 						</div>
 					</div>
 				</motion.div>

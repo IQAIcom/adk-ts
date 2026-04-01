@@ -34,7 +34,7 @@ _Note: this project uses [**pnpm**](https://pnpm.io/) as the package manager. Yo
   pnpm install
 ```
 
-2. **Build the ADK-TS Package**
+1. **Build the ADK-TS Package**
 
 For the examples to work correctly, you need to build the core ADK-TS package first. This step compiles the TypeScript code and prepares the necessary files.
 
@@ -42,7 +42,7 @@ For the examples to work correctly, you need to build the core ADK-TS package fi
   pnpm build
 ```
 
-3. **Configure Environment Variables**
+1. **Configure Environment Variables**
 
 Create a `.env` file in the **examples directory** (not in the root folder) and add your API keys and optional model configuration. This file is used to set environment variables that the examples will use.
 
@@ -62,7 +62,7 @@ The default LLM is Google Gemini. You can get a Google API key from [Google AI S
 
 > Note: Some examples require additional configuration or dependencies. Please check the [`.env.example`](.env.example) file for specific instructions.
 
-4. **Run Examples**
+1. **Run Examples**
 
 To explore the examples, you can either browse all available examples or run a specific one directly:
 
@@ -107,7 +107,7 @@ We have **9 comprehensive examples** that cover the complete ADK-TS feature set,
 
 ## 🤝 Contributing
 
-If you would like to add examples or improve existing ones, please check out our [Contributing Guide](../../CONTRIBUTION.md) for details on how to get started.
+If you would like to add examples or improve existing ones, please check out our [Contributing Guide](../../CONTRIBUTING.md) for details on how to get started.
 
 ---
 

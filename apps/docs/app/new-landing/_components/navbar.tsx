@@ -24,7 +24,11 @@ const NAV_LINKS = [
 	{ text: "Docs", href: "/docs" },
 	{ text: "MCP", href: "/docs/mcp-servers" },
 	{ text: "API", href: "https://iqaicom.github.io/adk-ts/", external: true },
-	{ text: "Blog", href: "https://blog.iqai.com/", external: true },
+	{
+		text: "Blog",
+		href: "https://blog.iqai.com/tag/dev//tag/dev/",
+		external: true,
+	},
 ];
 
 type ResourceLinkType = {

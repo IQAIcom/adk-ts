@@ -42,9 +42,22 @@ const steps = [
 			},
 			{ text: '      assistant")', color: "text-[#98C379]" },
 			{
-				text: '    .withInstruction("Gather information and',
+				text: '    .withInstruction("Gather information',
 				color: "text-[#98C379]",
 			},
+			{
+				text: '      and summarize findings.")',
+				color: "text-[#98C379]",
+			},
+			{
+				text: "    .withTools(new GoogleSearchTool(),",
+				color: "text-[#61AFEF]",
+			},
+			{
+				text: "      new LoadMemoryTool())",
+				color: "text-[#61AFEF]",
+			},
+			{ text: "    .build();", color: "text-[#ABB2BF]" },
 		],
 	},
 	{
@@ -78,7 +91,7 @@ const GetStartedSection = () => {
 			{/* Section header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Getting Started</span>
-				<h2>Create Agents in Minutes</h2>
+				<h2>Create Your First Agent in Minutes</h2>
 				<p>
 					Start with a simple agent or scale to a full multi-agent system using
 					the same strongly-typed AgentBuilder API.

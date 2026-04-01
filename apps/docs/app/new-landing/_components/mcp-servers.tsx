@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowRight } from "lucide-react";
 import { SectionWrapper } from "./section-wrapper";
+import Link from "next/link";
 
 interface MCPHighlight {
 	name: string;
@@ -204,17 +205,15 @@ const MCPServersSection = () => {
 				>
 					<div className="flex items-start justify-between gap-8 mb-12">
 						{/* Explore All MCPs button */}
-						<a
-							href="https://iqaicom.github.io/adk-ts/"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="group inline-flex items-center gap-3 px-6 py-3 border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap flex-shrink-0"
+						<Link
+							href="/docs/mcp-servers"
+							className="group inline-flex items-center gap-3 px-6 py-3 border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap shrink-0"
 						>
 							<span className="font-mono text-sm text-primary">
 								Browse All MCP Servers
 							</span>
 							<ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform duration-300" />
-						</a>
+						</Link>
 
 						{/* Overview Stats */}
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">

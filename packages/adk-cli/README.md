@@ -315,7 +315,7 @@ Tests are organized alongside source files:
 - **[ADK-TS Repository](https://github.com/IQAIcom/adk-ts)** - Main framework repository
 - **[Live Documentation](https://adk.iqai.com)** - Published documentation site
 - **[CLI Documentation](https://adk.iqai.com/docs/cli)** - User-facing CLI docs
-- **[Contributing Guide](../../CONTRIBUTION.md)** - General project contribution guidelines
+- **[Contributing Guide](../../CONTRIBUTING.md)** - General project contribution guidelines
 - **[Examples](../../apps/examples/)** - Code examples and tutorials
 
 ### Technical Resources
