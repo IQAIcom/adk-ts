@@ -16,7 +16,10 @@ import LLMModels from "./_components/llm-models";
 
 export default function HomePage() {
 	return (
-		<div className="landing-fonts min-h-screen w-screen bg-black text-white overflow-x-clip">
+		<div
+			className="dark landing-fonts min-h-screen w-screen bg-black text-white overflow-x-clip"
+			style={{ colorScheme: "dark" }}
+		>
 			<Navbar />
 			<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative landing-glow">
 				<Hero />
