@@ -16,7 +16,7 @@ export function SectionWrapper({
 		<section
 			id={id}
 			className={clsx(
-				"relative border-b landing-border p-6 py-10 md:py-20 lg:p-16 lg:py-24",
+				"relative border-b border-[#FFFFFF33] landing-border p-6 py-10 md:py-20 lg:p-16 lg:py-24",
 				className,
 			)}
 		>

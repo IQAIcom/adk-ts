@@ -6,9 +6,12 @@ import { SectionWrapper } from "./section-wrapper";
 
 const CompleteStackSection = () => {
 	return (
-		<SectionWrapper id="complete-stack" className="bg-white text-[#1A1A1A]!">
+		<SectionWrapper
+			id="complete-stack"
+			className="bg-white text-[#1A1A1A]! border border-[#D1D5DB]!"
+		>
 			{/* Section Header */}
-			<div className="landing-section-header">
+			<div className="landing-section-header mb-8 md:mb-12.5 lg:mb-22.5!">
 				<span className="relative w-max inline-flex items-center rounded-md bg-[#F3F4F6] backdrop-blur-sm px-3 py-2 text-[10px] lg:text-sm font-medium border text-[#1A1A1A]! border-[#D1D5DB]!">
 					Developer Platform
 				</span>
@@ -20,7 +23,7 @@ const CompleteStackSection = () => {
 			</div>
 
 			{/* 2x2 Grid of Capabilities */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-0 border border-[#D1D5DB]">
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-0 border-y border-[#D1D5DB]">
 				{/* CLI Card */}
 				<motion.div
 					initial={{ opacity: 0, y: 40 }}

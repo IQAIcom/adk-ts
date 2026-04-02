@@ -213,12 +213,17 @@ const MCPServersSection = () => {
 		categories.find((cat) => cat.id === activeTab) || categories[0];
 
 	return (
-		<SectionWrapper id="mcp-servers">
+		<SectionWrapper
+			id="mcp-servers"
+			className="bg-white text-[#1A1A1A]! border border-[#D1D5DB]!"
+		>
 			{/* Section Header */}
 			<div className="landing-section-header">
-				<span className="landing-badge">Model Context Protocol (MCP)</span>
-				<h2>Pre-Built MCP Servers</h2>
-				<p>
+				<span className="relative w-max inline-flex items-center rounded-md bg-[#F3F4F6] backdrop-blur-sm px-3 py-2 text-[10px] lg:text-sm font-medium border text-[#1A1A1A]! border-[#D1D5DB]!">
+					Model Context Protocol (MCP)
+				</span>
+				<h2 className="text-[#0F172A]!">Pre-Built MCP Servers</h2>
+				<p className="text-[#475569]!">
 					Production-ready MCP servers built by IQ AI for DeFi, market data,
 					messaging, prediction markets, and more. Use them with ADK-TS, other
 					agent frameworks, or any MCP-compatible runtime.
@@ -246,17 +251,17 @@ const MCPServersSection = () => {
 
 						{/* Overview Stats */}
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-							<div className="p-6 border border-white/10 bg-black/40">
+							<div className="p-6 border border-[#E5E7EB] bg-[#F9FAFB]">
 								<div className="text-4xl font-semibold mb-2">20+</div>
-								<div className="text-sm text-white/40">MCP Servers</div>
+								<div className="text-sm text-[#94A3B8]">MCP Servers</div>
 							</div>
-							<div className="p-6 border border-white/10 bg-black/40">
+							<div className="p-6 border border-[#E5E7EB] bg-[#F9FAFB]">
 								<div className="text-4xl font-semibold mb-2">100%</div>
-								<div className="text-sm text-white/40">TypeScript First</div>
+								<div className="text-sm text-[#94A3B8]">TypeScript First</div>
 							</div>
-							<div className="p-6 border border-white/10 bg-black/40">
+							<div className="p-6 border border-[#E5E7EB] bg-[#F9FAFB]">
 								<div className="text-4xl font-semibold mb-2">MIT</div>
-								<div className="text-sm text-white/40">MIT Licensed</div>
+								<div className="text-sm text-[#94A3B8]">MIT Licensed</div>
 							</div>
 						</div>
 					</div>
@@ -274,7 +279,7 @@ const MCPServersSection = () => {
 							className={`px-6 py-3 text-sm whitespace-nowrap border transition-all duration-300 ${
 								activeTab === category.id
 									? "border-primary border-b-transparent bg-primary/20 text-primary relative z-10 shadow-[0_0_20px_rgba(255,26,136,0.3)]"
-									: "border-white/10 border-b-white/10 bg-black/20 text-white/60 hover:border-white/20 hover:text-white/80 hover:bg-black/30"
+									: "border-[#E5E7EB] border-b-[#E5E7EB] bg-[#F9FAFB] text-[#475569] hover:border-[#D1D5DB] hover:text-[#334155] hover:bg-[#F3F4F6]"
 							} ${index === 0 ? "" : "-ml-px"}`}
 						>
 							{category.label}
@@ -291,11 +296,11 @@ const MCPServersSection = () => {
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -20 }}
 					transition={{ duration: 0.3 }}
-					className="border border-white/10 bg-black/40 p-12 -mt-px"
+					className="border border-[#E5E7EB] bg-[#F9FAFB] p-12 -mt-px"
 				>
 					{/* Category Description */}
 					<div className="mb-10">
-						<p className="text-lg text-white/70 leading-relaxed">
+						<p className="text-lg text-[#475569] leading-relaxed">
 							{activeCategory.description}
 						</p>
 					</div>
@@ -305,14 +310,14 @@ const MCPServersSection = () => {
 						{activeCategory.highlights.map((highlight) => (
 							<div
 								key={highlight.name}
-								className="border border-white/10 bg-black/60 p-6 hover:border-primary/30 hover:bg-black/80 transition-all duration-300"
+								className="border border-[#E5E7EB] bg-[#F3F4F6] p-6 hover:border-primary/30 hover:bg-[#F9F9F9] transition-all duration-300"
 							>
 								<div className="mb-4">
-									<div className="px-3 py-1 border border-white/10 bg-white/5 rounded text-xs text-white/40 inline-block mb-3">
+									<div className="px-3 py-1 border border-[#E5E7EB] bg-[#F9F9F9] rounded text-xs text-[#94A3B8] inline-block mb-3">
 										{highlight.mcpName}
 									</div>
 									<h4 className="text-xl mb-2">{highlight.name}</h4>
-									<p className="text-sm text-white/60 leading-relaxed">
+									<p className="text-sm text-[#475569] leading-relaxed">
 										{highlight.description}
 									</p>
 								</div>
@@ -321,7 +326,7 @@ const MCPServersSection = () => {
 									{highlight.features.map((feature) => (
 										<div key={feature} className="flex items-start gap-2">
 											<div className="w-1 h-1 bg-primary mt-2 flex-shrink-0" />
-											<div className="text-xs text-white/50">{feature}</div>
+											<div className="text-xs text-[#64748B]">{feature}</div>
 										</div>
 									))}
 								</div>
@@ -334,7 +339,7 @@ const MCPServersSection = () => {
 								initial={{ opacity: 0, scale: 0.9 }}
 								animate={{ opacity: 1, scale: 1 }}
 								transition={{ duration: 0.6, delay: 0.2 }}
-								className="border border-white/10 bg-black/60 p-6 flex items-center justify-center min-h-[400px]"
+								className="border border-[#E5E7EB] bg-[#F3F4F6] p-6 flex items-center justify-center min-h-[400px]"
 							>
 								<div className="flex flex-col items-center gap-4">
 									<svg
@@ -372,7 +377,7 @@ const MCPServersSection = () => {
 											strokeDasharray="2 2"
 										/>
 									</svg>
-									<span className="text-xs text-white/30">
+									<span className="text-xs text-[#0F172A]/30">
 										MCP Communication
 									</span>
 								</div>
@@ -381,12 +386,12 @@ const MCPServersSection = () => {
 					</div>
 
 					{/* Quick Integration Example */}
-					<div className="border-t border-white/5 pt-8">
-						<div className="text-xs text-white/40 uppercase tracking-wider mb-4">
+					<div className="border-t border-[#E5E7EB] pt-8">
+						<div className="text-xs text-[#94A3B8] uppercase tracking-wider mb-4">
 							Quick Integration
 						</div>
-						<div className="p-4 border border-white/10 bg-black/80 rounded font-mono text-sm">
-							<pre className="text-white/70 leading-relaxed overflow-x-auto">
+						<div className="p-4 border border-[#E5E7EB] bg-[#F9F9F9] rounded font-mono text-sm">
+							<pre className="text-[#475569] leading-relaxed overflow-x-auto">
 								{`import { AgentBuilder, ${activeCategory.highlights[0].mcpName} } from "@iqai/adk";
 
 const toolset = ${activeCategory.highlights[0].mcpName}();
@@ -408,21 +413,21 @@ const { runner } = await AgentBuilder.create("my-agent")
 				whileInView={{ opacity: 1, y: 0 }}
 				viewport={{ once: true }}
 				transition={{ duration: 0.6, delay: 0.3 }}
-				className="mt-16 pt-8 border-t border-white/5"
+				className="mt-16 pt-8 border-t border-[#E5E7EB]"
 			>
 				<div className="flex flex-wrap gap-6 items-center justify-center">
-					<div className="text-sm text-white/40">COMPATIBILITY</div>
+					<div className="text-sm text-[#94A3B8]">COMPATIBILITY</div>
 					<div className="flex flex-wrap gap-3 justify-center">
 						<div className="px-4 py-2 border border-primary/30 bg-primary/10 rounded text-xs text-primary">
 							ADK-TS v2.0+
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
+						<div className="px-4 py-2 border border-[#E5E7EB] bg-[#F9F9F9] rounded text-xs text-[#475569]">
 							Standalone Usage
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
+						<div className="px-4 py-2 border border-[#E5E7EB] bg-[#F9F9F9] rounded text-xs text-[#475569]">
 							Node.js 18+
 						</div>
-						<div className="px-4 py-2 border border-white/10 bg-white/5 rounded text-xs text-white/60">
+						<div className="px-4 py-2 border border-[#E5E7EB] bg-[#F9F9F9] rounded text-xs text-[#475569]">
 							TypeScript 5+
 						</div>
 					</div>
@@ -430,11 +435,11 @@ const { runner } = await AgentBuilder.create("my-agent")
 			</motion.div>
 
 			{/* External MCP callout */}
-			<div className="border border-white/10 rounded-md bg-white/5 p-5 mb-10">
-				<p className="text-sm font-medium text-white mb-1">
+			<div className="border border-[#E5E7EB] rounded-md bg-[#F9F9F9] p-5 mb-10">
+				<p className="text-sm font-medium text-[#0F172A] mb-1">
 					Not just IQ AI servers.
 				</p>
-				<p className="text-xs text-white/50">
+				<p className="text-xs text-[#64748B]">
 					ADK-TS connects to any MCP server from the ecosystem —
 					Anthropic&apos;s official servers, community servers, or servers you
 					build yourself using the{" "}
