@@ -34,11 +34,13 @@ const CTASection = () => {
 							href="/docs"
 							className="inline-flex text-sm lg:text-base items-center gap-2 px-5 py-3.5 lg:py-4.5 rounded-md bg-primary text-white font-medium transition-colors hover:bg-primary/90 leading-0"
 						>
-							Read Docs
+							Read the Docs
 							<ArrowRight className="size-4" />
 						</Link>
 						<Link
-							href="/docs/framework/get-started"
+							href="https://github.com/IQAIcom/adk-ts-samples"
+							target="_blank"
+							rel="noopener noreferrer"
 							className="inline-flex text-sm lg:text-base items-center gap-2 px-5 py-3.5 lg:py-4.5 rounded-md border border-[#D1D5DB] text-white font-medium transition-colors hover:bg-white/5 shadow-[inset_0px_1px_1px_0px_#FFFFFF59,inset_0px_-2px_2px_0px_#8D8D8D0F] leading-0"
 						>
 							Explore Templates

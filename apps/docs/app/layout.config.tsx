@@ -30,7 +30,7 @@ const baseNavLinks = [
 	},
 	{
 		text: "Blog",
-		url: "https://blog.iqai.com/",
+		url: "https://blog.iqai.com/tag/dev//",
 		icon: <PenTool className="w-4 h-4" />,
 		external: true,
 	},
@@ -78,7 +78,7 @@ const docsResourceMenuItems = [
 	...resourceMenuItems,
 	{
 		text: "Blog",
-		url: "https://blog.iqai.com/",
+		url: "https://blog.iqai.com/tag/dev//",
 		icon: <PenTool className="w-4 h-4" />,
 		external: true,
 	},

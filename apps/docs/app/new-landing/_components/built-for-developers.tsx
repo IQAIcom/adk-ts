@@ -32,7 +32,7 @@ const dxHighlights = [
 	},
 	{
 		icon: LayoutDashboard,
-		title: "7 Starter Templates",
+		title: "7+ Starter Templates",
 		description: "RAG, chat, workflow & more out of the box",
 	},
 	{
