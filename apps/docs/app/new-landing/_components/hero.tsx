@@ -2,7 +2,7 @@
 
 import dedent from "dedent";
 import { DynamicCodeBlock } from "fumadocs-ui/components/dynamic-codeblock";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { ArrowRight, Check, Clipboard, Copy } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";

@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { SectionWrapper } from "./section-wrapper";
@@ -8,7 +9,13 @@ const CTASection = () => {
 		<SectionWrapper id="cta">
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-[90px] items-center">
 				{/* CTA image */}
-				<div className="relative order-2 lg:order-1 max-w-lg mx-auto">
+				<motion.div
+					className="relative order-2 lg:order-1 max-w-lg mx-auto"
+					initial={{ opacity: 0, y: 20 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.6, delay: 0.2 }}
+				>
 					<Image
 						src="/landing-page/cta.svg"
 						alt="Agent Builder — from NPM install to production deploy"
@@ -16,10 +23,16 @@ const CTASection = () => {
 						height={400}
 						className="w-full h-auto"
 					/>
-				</div>
+				</motion.div>
 
 				{/* CTA content */}
-				<div className="space-y-8 order-1 lg:order-2">
+				<motion.div
+					className="space-y-8 order-1 lg:order-2"
+					initial={{ opacity: 0, y: 20 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.6 }}
+				>
 					<div className="space-y-5">
 						<h2 className="text-2xl md:text-5xl text-white font-bold tracking-tight max-w-md">
 							Ready to Build Your First Agent?
@@ -46,7 +59,7 @@ const CTASection = () => {
 							Explore Templates
 						</Link>
 					</div>
-				</div>
+				</motion.div>
 			</div>
 		</SectionWrapper>
 	);

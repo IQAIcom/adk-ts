@@ -274,7 +274,13 @@ const MCPServersSection = () => {
 			className="bg-white text-[#1A1A1A]! border-b border-[#D1D5DB]!"
 		>
 			{/* Section Header + Explore Button */}
-			<div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
+			<motion.div
+				className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12"
+				initial={{ opacity: 0, y: 20 }}
+				whileInView={{ opacity: 1, y: 0 }}
+				viewport={{ once: true }}
+				transition={{ duration: 0.6 }}
+			>
 				<div className="landing-section-header mb-0!">
 					<span className="relative w-max inline-flex items-center rounded-md bg-[#F3F4F6] backdrop-blur-sm px-3 py-2 text-[10px] lg:text-sm font-medium border text-[#1A1A1A]! border-[#D1D5DB]!">
 						Model Context Protocol (MCP)
@@ -296,7 +302,7 @@ const MCPServersSection = () => {
 						<ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform duration-300" />
 					</Link>
 				</div>
-			</div>
+			</motion.div>
 
 			{/* Overview Stats */}
 			<div className="grid grid-cols-2 lg:grid-cols-4 gap-7 mb-10">
