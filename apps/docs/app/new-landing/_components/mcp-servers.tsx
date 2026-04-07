@@ -276,7 +276,7 @@ const MCPServersSection = () => {
 		>
 			{/* Section Header + Explore Button */}
 			<motion.div
-				className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12"
+				className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-7 lg:mb-12"
 				initial={{ opacity: 0, y: 20 }}
 				whileInView={{ opacity: 1, y: 0 }}
 				viewport={{ once: true }}
@@ -297,7 +297,7 @@ const MCPServersSection = () => {
 				<div>
 					<Link
 						href="/docs/mcp-servers"
-						className="group flex items-center gap-3 px-6 py-3 border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap shrink-0 rounded-md self-start w-fit"
+						className="group flex items-center gap-3  py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs lg:text-sm border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap shrink-0 rounded-md self-start w-fit"
 					>
 						<span className="text-sm text-primary">Explore All MCPs</span>
 						<ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform duration-300" />
@@ -306,7 +306,7 @@ const MCPServersSection = () => {
 			</motion.div>
 
 			{/* Overview Stats */}
-			<div className="grid grid-cols-2 lg:grid-cols-4 gap-7 mb-10">
+			<div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-7 mb-7 lg:mb-10">
 				<div className="px-3.5 py-4 lg:p-6 border rounded-md border-[#D1D5DB]">
 					<div className="text-sm md:text-2xl lg:text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
 						20+
@@ -342,18 +342,18 @@ const MCPServersSection = () => {
 			</div>
 
 			{/* Horizontal Tabs */}
-			<div className="mb-0">
+			<div className="lg:mb-0 mb-7">
 				<div className="flex gap-0 overflow-x-auto rounded-md">
 					{categories.map((category, index) => (
 						<button
 							type="button"
 							key={category.id}
 							onClick={() => setActiveTab(category.id)}
-							className={`px-6 py-3 text-sm whitespace-nowrap border transition-all duration-300 ${
+							className={`py-2.5 px-3 lg:px-6 lg:py-3 text-xs lg:text-sm whitespace-nowrap border transition-all duration-300 ${
 								activeTab === category.id
 									? "border-primary bg-primary/20 text-primary relative z-10"
 									: "border-[#D1D5DB] bg-[#F9F9F9] text-[#475569] hover:border-[#D1D5DB] hover:text-[#334155] hover:bg-[#F3F4F6]"
-							} ${index === 0 ? "rounded-l-md" : ""} ${index === categories.length - 1 ? "rounded-tr-md" : ""}`}
+							} ${index === 0 ? "rounded-l-md" : ""} ${index === categories.length - 1 ? "rounded-r-md" : ""}`}
 						>
 							{category.label}
 						</button>
@@ -362,10 +362,10 @@ const MCPServersSection = () => {
 			</div>
 
 			{/* Tab Content */}
-			<div className="border border-[#D1D5DB] rounded-md p-8">
+			<div className="border border-[#D1D5DB] rounded-md p-4 lg:p-8">
 				{/* Category Description */}
-				<div className="mb-10">
-					<p className="text-lg text-[#475569] font-medium leading-relaxed">
+				<div className="mb-4.5 lg:mb-10">
+					<p className="text-sm lg:text-lg text-[#475569] lg:font-medium leading-relaxed">
 						{activeCategory.description}
 					</p>
 				</div>
@@ -375,16 +375,16 @@ const MCPServersSection = () => {
 					{activeCategory.highlights.map((highlight) => (
 						<div
 							key={highlight.name}
-							className="border border-[#D1D5DB] rounded-md space-y-4 p-6"
+							className="border border-[#D1D5DB] rounded-md space-y-4 p-4 lg:p-6"
 						>
 							<div className="mb-4 space-y-2.5">
 								<div className="px-7 py-1 border border-[#D1D5DB] bg-[#F3F4F6] rounded-md font-medium text-xs text-[#475569] inline-block">
 									{highlight.mcpName}
 								</div>
-								<h4 className="text-xl font-geist-sans font-semibold text-[#0F172A]">
+								<h4 className="text-[13px] lg:text-xl font-geist-sans font-semibold text-[#0F172A]">
 									{highlight.name}
 								</h4>
-								<p className="text-sm fontmedium text-[#475569] leading-relaxed">
+								<p className="text-sm lg:text-base lg:font-medium text-[#475569] leading-relaxed">
 									{highlight.description}
 								</p>
 							</div>
@@ -393,7 +393,7 @@ const MCPServersSection = () => {
 								{highlight.features.map((feature) => (
 									<div key={feature} className="flex items-start gap-2">
 										<div className="w-1 h-1 bg-primary mt-2 shrink-0" />
-										<div className="text-sm text-[#475569] fontmedium">
+										<div className="text-sm lg:text-base text-[#475569] lg:font-medium">
 											{feature}
 										</div>
 									</div>
@@ -410,7 +410,7 @@ const MCPServersSection = () => {
 								alt="Messaging MCP illustration"
 								width={400}
 								height={400}
-								className="w-full h-auto"
+								className="w-[200px] md:w-full h-auto"
 							/>
 						</div>
 					)}

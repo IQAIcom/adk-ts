@@ -67,12 +67,14 @@ const features = [
 const FeatureItem = ({ feature }: { feature: (typeof features)[0] }) => (
 	<>
 		<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-black/60 max-w-2xl">
-			<h3 className="text-lg text-foreground font-medium">{feature.title}</h3>
-			<p className="text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
+			<h3 className="text-base lg:text-lg text-foreground font-medium">
+				{feature.title}
+			</h3>
+			<p className="text-sm lg:text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
 				{feature.description}
 			</p>
 		</div>
-		<div className="mt-10 relative w-full aspect-4/3 overflow-hidden">
+		<div className="mt-5 lg:mt-10 borer relative w-full aspect-4/3 overflow-hidden">
 			<Image
 				src={feature.image}
 				alt={feature.title}

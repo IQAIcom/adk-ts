@@ -78,11 +78,8 @@ const ProjectFeaturesSection = () => {
 						Community-built projects and hackathon winners powered by ADK-TS.
 					</p>
 				</div>
-				<Link
-					href="/showcase"
-					className="landing-newsletter-btn p-3! space-x-3 text-lg!"
-				>
-					<span className="text-sm">View All Showcases</span>
+				<Link href="/showcase" className="landing-newsletter-btn space-x-3">
+					<span className="">View All Showcases</span>
 					<ArrowRight className="w-4 h-4" />
 				</Link>
 			</div>

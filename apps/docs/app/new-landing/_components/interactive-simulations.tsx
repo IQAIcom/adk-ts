@@ -109,49 +109,53 @@ function DemoCard({
 	return (
 		<div className="relative border border-white/20 bg-black/60 rounded-lg overflow-hidden">
 			{/* Header Section */}
-			<div className="p-6 space-y-6">
+			<div className="p-6 space-y-4 lg:space-y-6">
 				<div className="">
-					<h3 className="text-3xl text-white font-bold">{title}</h3>
+					<h3 className="text-xl lg:text-3xl text-white font-bold">{title}</h3>
 					<p className="text-primary font-medium text-sm">{subtitle}</p>
 				</div>
 
-				<p className="text-muted-foreground font-medium text-lg leading-relaxed max-w-3xl">
+				<p className="text-muted-foreground font-medium text-sm lg:text-lg leading-relaxed max-w-3xl">
 					{description}
 				</p>
 
 				{/* Metrics */}
-				<div className="flex flex-col sm:flex-row justify-center p-4 gap-8 border-b border-white/20">
-					<div className="flex items-center gap-3">
-						<Clock className="size-5 text-muted-foreground" />
-						<div>
-							<div className="text-muted-foreground text-xs text-medium mb-0.5">
-								Latency:
-							</div>
-							<div className="text-primary text-lg font-medium">{latency}</div>
-						</div>
-					</div>
-					<div className="flex items-center gap-3">
-						<Zap className="size-5 text-muted-foreground" />
-						<div>
-							<div className="text-muted-foreground text-xs text-medium mb-0.5">
-								Tokens:
-							</div>
-							<div className="text-primary text-lg font-medium">{tokens}</div>
-						</div>
-					</div>
-					{accuracy && (
+				<div className="border-b border-white/20">
+					<div className="flex justify-between lg:justify-center py-4 lg:gap-8  max-w-[318px] mr-auto">
 						<div className="flex items-center gap-3">
-							<Target className="size-5 text-muted-foreground" />
+							<Clock className="size-5 text-muted-foreground" />
 							<div>
 								<div className="text-muted-foreground text-xs text-medium mb-0.5">
-									Accuracy:
+									Latency:
 								</div>
 								<div className="text-primary text-lg font-medium">
-									{accuracy}
+									{latency}
 								</div>
 							</div>
 						</div>
-					)}
+						<div className="flex items-center gap-3">
+							<Zap className="size-5 text-muted-foreground" />
+							<div>
+								<div className="text-muted-foreground text-xs text-medium mb-0.5">
+									Tokens:
+								</div>
+								<div className="text-primary text-lg font-medium">{tokens}</div>
+							</div>
+						</div>
+						{accuracy && (
+							<div className="flex items-center gap-3">
+								<Target className="size-5 text-muted-foreground" />
+								<div>
+									<div className="text-muted-foreground text-xs text-medium mb-0.5">
+										Accuracy:
+									</div>
+									<div className="text-primary text-lg font-medium">
+										{accuracy}
+									</div>
+								</div>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 

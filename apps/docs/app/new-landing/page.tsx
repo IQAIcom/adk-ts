@@ -21,7 +21,7 @@ export default function HomePage() {
 			style={{ colorScheme: "dark" }}
 		>
 			<Navbar />
-			<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative landing-glow">
+			<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative landing-glow">
 				<Hero />
 				<LLMModels />
 				<WhyADKTSSection />

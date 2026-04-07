@@ -43,7 +43,7 @@ const CompleteStackSection = () => {
 					</p>
 
 					{/* Stats grid */}
-					<div className="grid md:grid-cols-2 gap-x-5 gap-y-6 mb-12">
+					<div className="grid grid-cols-2 gap-x-5 gap-y-6 mb-12">
 						<div>
 							<div className="flex items-center gap-3 mb-3">
 								<div className="w-12 h-12 relative flex items-center justify-center">
@@ -52,10 +52,10 @@ const CompleteStackSection = () => {
 									<Zap className="w-6 h-6 text-primary relative z-10" />
 								</div>
 								<div className="space-y-2">
-									<div className="font-geist-sans text-[#0F172A] text-2xl font-semibold">
+									<div className="font-geist-sans text-[#0F172A] text-xl lg:text-2xl font-semibold">
 										{"<"}3s
 									</div>
-									<div className="text-sm font-medium text-[#475569]">
+									<div className="text-xs lg:text-sm font-medium text-[#475569]">
 										Project ready
 									</div>
 								</div>
@@ -70,10 +70,10 @@ const CompleteStackSection = () => {
 									<FileStack className="w-6 h-6 text-primary relative z-10" />
 								</div>
 								<div className="space-y-2">
-									<div className="text-[#0F172A] text-2xl font-semibold">
+									<div className="text-[#0F172A] text-xl lg:text-2xl font-semibold">
 										7+
 									</div>
-									<div className="text-sm font-medium text-[#475569]">
+									<div className="text-xs lg:text-sm font-medium text-[#475569]">
 										Starter templates
 									</div>
 								</div>
@@ -88,10 +88,10 @@ const CompleteStackSection = () => {
 									<Flame className="w-6 h-6 text-primary relative z-10" />
 								</div>
 								<div className="space-y-2">
-									<div className="text-[#0F172A] text-2xl font-semibold">
+									<div className="text-[#0F172A] text-xl lg:text-2xl font-semibold">
 										HMR
 									</div>
-									<div className="text-sm font-medium text-[#475569]">
+									<div className="text-xs lg:text-sm font-medium text-[#475569]">
 										Hot reload
 									</div>
 								</div>
@@ -106,10 +106,10 @@ const CompleteStackSection = () => {
 									<Rocket className="w-6 h-6 text-primary relative z-10" />
 								</div>
 								<div className="space-y-2">
-									<div className="text-[#0F172A] text-2xl font-semibold">
+									<div className="text-[#0F172A] text-xl lg:text-2xl font-semibold">
 										Web
 									</div>
-									<div className="text-sm font-medium text-[#475569]">
+									<div className="text-xs lg:text-sm font-medium text-[#475569]">
 										Browser UI
 									</div>
 								</div>
@@ -121,26 +121,30 @@ const CompleteStackSection = () => {
 
 					<div className="space-y-2">
 						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
-							<span className="text-primary">$</span> adk new my-agent
-							<span className="ml-3">
+							<span className="text-primary">$</span>{" "}
+							<span className="text-[13px]">adk new my-agent</span>
+							<span className="text-[11px] ml-3 block md:inline-block">
 								# Scaffold a project from 7+ starter templates
 							</span>
 						</div>
 						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
-							<span className="text-primary">$</span> adk run
-							<span className="ml-3">
+							<span className="text-primary">$</span>{" "}
+							<span className="text-[13px]">adk run</span>
+							<span className="text-[11px] ml-3 block md:inline-block">
 								# Interactive terminal chat with your agent
 							</span>
 						</div>
 						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
-							<span className="text-primary">$</span> adk web
-							<span className="ml-3">
+							<span className="text-primary">$</span>{" "}
+							<span className="text-[13px]">adk web</span>
+							<span className="text-[11px] ml-3 block md:inline-block">
 								# Launch browser UI to test and inspect agents
 							</span>
 						</div>
 						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
-							<span className="text-primary">$</span> adk serve
-							<span className="ml-3">
+							<span className="text-primary">$</span>{" "}
+							<span className="text-[13px]">adk serve</span>
+							<span className="text-[11px] ml-3 block md:inline-block">
 								# Start an API server for agent management
 							</span>
 						</div>
@@ -355,7 +359,7 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-primary rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-primary" />
 							</div>
-							<div className="text-sm text-[#1E293B]">
+							<div className="text-xs lg:text-sm text-[#1E293B]">
 								Distributed tracing (OTLP) with automatic context propagation
 							</div>
 						</div>
@@ -364,7 +368,7 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-[#D1D5DB] rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-[#D1D5DB]" />
 							</div>
-							<div className="text-sm text-[#475569]">
+							<div className="text-xs lg:text-sm text-[#475569]">
 								ADK-TS semantic spans for agents, tools, and models
 							</div>
 						</div>
@@ -373,7 +377,7 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-[#D1D5DB] rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-[#D1D5DB]" />
 							</div>
-							<div className="text-sm text-[#475569]">
+							<div className="text-xs lg:text-sm text-[#475569]">
 								Structured logs correlated with traces and requests
 							</div>
 						</div>
@@ -384,19 +388,19 @@ const CompleteStackSection = () => {
 					</div>
 
 					<div className="flex flex-wrap gap-3">
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							Langfuse (built-in)
 						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							Datadog
 						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							Grafana
 						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							Jaeger
 						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							New Relic
 						</div>
 					</div>
