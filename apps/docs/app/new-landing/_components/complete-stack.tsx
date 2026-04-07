@@ -30,7 +30,7 @@ const CompleteStackSection = () => {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8, delay: 0 }}
-					className="relative p-12 border-b lg:border-r border-[#D1D5DB] "
+					className="relative py-12 lg:p-12 border-b lg:border-r border-[#D1D5DB] "
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">
 						ADK-TS CLI
@@ -43,7 +43,7 @@ const CompleteStackSection = () => {
 					</p>
 
 					{/* Stats grid */}
-					<div className="grid grid-cols-2 gap-x-5 gap-y-6 mb-12">
+					<div className="grid md:grid-cols-2 gap-x-5 gap-y-6 mb-12">
 						<div>
 							<div className="flex items-center gap-3 mb-3">
 								<div className="w-12 h-12 relative flex items-center justify-center">
@@ -153,7 +153,7 @@ const CompleteStackSection = () => {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8, delay: 0.1 }}
-					className="relative p-12 border-b border-[#D1D5DB] "
+					className="relative py-12 lg:p-12 border-b border-[#D1D5DB] "
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">
 						Sessions & Memory
@@ -240,7 +240,7 @@ const CompleteStackSection = () => {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8, delay: 0.2 }}
-					className="relative p-12 lg:border-r border-[#D1D5DB] "
+					className="relative py-12 lg:p-12 lg:border-r border-[#D1D5DB] "
 					style={{ userSelect: "text" }}
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">
@@ -336,7 +336,7 @@ const CompleteStackSection = () => {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8, delay: 0.3 }}
-					className="relative p-12 "
+					className="relative  py-12 lg:p-12 "
 					style={{ userSelect: "text" }}
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { ArrowRight, Copy, Clipboard, Check } from "lucide-react";
+import { ArrowRight, Clipboard, Check } from "lucide-react";
 import { SectionWrapper } from "./section-wrapper";
 import Link from "next/link";
+import Image from "next/image";
 
 interface MCPHighlight {
 	name: string;
@@ -296,7 +297,7 @@ const MCPServersSection = () => {
 				<div>
 					<Link
 						href="/docs/mcp-servers"
-						className="group flex items-center gap-3 px-6 py-3 border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap shrink-0 rounded-md self-start"
+						className="group flex items-center gap-3 px-6 py-3 border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap shrink-0 rounded-md self-start w-fit"
 					>
 						<span className="text-sm text-primary">Explore All MCPs</span>
 						<ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform duration-300" />
@@ -306,29 +307,37 @@ const MCPServersSection = () => {
 
 			{/* Overview Stats */}
 			<div className="grid grid-cols-2 lg:grid-cols-4 gap-7 mb-10">
-				<div className="p-6 border rounded-md border-[#D1D5DB]">
-					<div className="text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
+				<div className="px-3.5 py-4 lg:p-6 border rounded-md border-[#D1D5DB]">
+					<div className="text-sm md:text-2xl lg:text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
 						20+
 					</div>
-					<div className="text-sm font-medium text-[#475569]">MCP Servers</div>
+					<div className="text-[11px] md:text-sm font-medium text-[#475569]">
+						MCP Servers
+					</div>
 				</div>
-				<div className="p-6 border rounded-md border-[#D1D5DB]">
-					<div className="text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1 uppercase">
+				<div className="px-3.5 py-4 p-6 border rounded-md border-[#D1D5DB]">
+					<div className="text-sm md:text-2xl lg:text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1 uppercase">
 						TypeScript
 					</div>
-					<div className="text-sm font-medium text-[#475569]">First</div>
+					<div className="text-[11px] md:text-sm font-medium text-[#475569]">
+						First
+					</div>
 				</div>
-				<div className="p-6 border rounded-md border-[#D1D5DB]">
-					<div className="text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
+				<div className="px-3.5 py-4 p-6 border rounded-md border-[#D1D5DB]">
+					<div className="text-sm md:text-2xl lg:text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
 						MIT
 					</div>
-					<div className="text-sm font-medium text-[#475569]">Licensed</div>
+					<div className="text-[11px] md:text-sm font-medium text-[#475569]">
+						Licensed
+					</div>
 				</div>
-				<div className="p-6 border rounded-md border-[#D1D5DB]">
-					<div className="text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
+				<div className="px-3.5 py-4 p-6 border rounded-md border-[#D1D5DB]">
+					<div className="text-sm md:text-2xl lg:text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
 						Framework
 					</div>
-					<div className="text-sm font-medium text-[#475569]">Agnostic</div>
+					<div className="text-[11px] md:text-sm font-medium text-[#475569]">
+						Agnostic
+					</div>
 				</div>
 			</div>
 
@@ -393,55 +402,17 @@ const MCPServersSection = () => {
 						</div>
 					))}
 
-					{/* Bot Animation - Only show for communication tab */}
-					{activeTab === "communication" && (
-						<motion.div
-							initial={{ opacity: 0, scale: 0.9 }}
-							animate={{ opacity: 1, scale: 1 }}
-							transition={{ duration: 0.6, delay: 0.2 }}
-							className="border border-[#E5E7EB] bg-[#F3F4F6] p-6 flex items-center justify-center min-h-[400px]"
-						>
-							<div className="flex flex-col items-center gap-4">
-								<svg
-									aria-hidden="true"
-									viewBox="0 0 200 160"
-									fill="none"
-									className="w-48 h-40 opacity-60"
-								>
-									<path
-										d="M100 40 L160 75 L100 110 L40 75 Z"
-										fill="#0F0F0F"
-										stroke="white"
-										strokeOpacity="0.4"
-										strokeWidth="1.5"
-									/>
-									<path
-										d="M40 75 L40 105 L100 140 L100 110 Z"
-										fill="#0A0A0A"
-										stroke="white"
-										strokeOpacity="0.4"
-										strokeWidth="1.5"
-									/>
-									<path
-										d="M160 75 L160 105 L100 140 L100 110 Z"
-										fill="#121212"
-										stroke="white"
-										strokeOpacity="0.4"
-										strokeWidth="1.5"
-									/>
-									<path
-										d="M40 75 L100 40 L160 75"
-										stroke="#FF1A88"
-										strokeWidth="1.5"
-										fill="none"
-										strokeDasharray="2 2"
-									/>
-								</svg>
-								<span className="text-xs text-[#0F172A]/30">
-									MCP Communication
-								</span>
-							</div>
-						</motion.div>
+					{/* Messaging illustration - Only show for messaging tab */}
+					{activeTab === "messaging" && (
+						<div className="border border-[#D1D5DB] rounded-md overflow-hidden flex items-center justify-center">
+							<Image
+								src="/landing-page/messaging-mcp.svg"
+								alt="Messaging MCP illustration"
+								width={400}
+								height={400}
+								className="w-full h-auto"
+							/>
+						</div>
 					)}
 				</div>
 

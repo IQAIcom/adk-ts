@@ -120,7 +120,7 @@ function DemoCard({
 				</p>
 
 				{/* Metrics */}
-				<div className="flex p-4 gap-8 border-b border-white/20">
+				<div className="flex flex-col sm:flex-row justify-center p-4 gap-8 border-b border-white/20">
 					<div className="flex items-center gap-3">
 						<Clock className="size-5 text-muted-foreground" />
 						<div>
@@ -158,10 +158,7 @@ function DemoCard({
 			{/* Body Section - Two Columns */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
 				{/* LEFT - Node Graph Visualization */}
-				<div
-					className="relative bg-black/40 border border-white/20 overflow-hidden flex items-center justify-center rounded-md"
-					style={{ minHeight: "500px", maxHeight: "500px" }}
-				>
+				<div className="relative bg-black/40 border border-white/20 overflow-hidden flex items-center justify-center rounded-md h-auto lg:min-h-[500px] lg:max-h-[500px]">
 					{patternLabel && (
 						<div className="absolute top-4 left-4 px-2.5 py-1 text-[10px] font-medium text-primary/70 border border-primary/20 bg-primary/5 rounded">
 							{patternLabel}
@@ -1064,7 +1061,10 @@ function DemoCard({
 
 const InteractiveSimulationsSection = () => {
 	return (
-		<SectionWrapper id="interactive-simulations" className="grid gap-y-24">
+		<SectionWrapper
+			id="interactive-simulations"
+			className="grid md:gap-y-12 lg:gap-y-24"
+		>
 			{/* Section Header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Interactive Simulations</span>
@@ -1077,7 +1077,7 @@ const InteractiveSimulationsSection = () => {
 			</div>
 
 			{/* Demo Cards */}
-			<div className="grid gap-16">
+			<div className="grid gap-8 lg:gap-16">
 				<motion.div
 					initial={{ opacity: 0, y: 30 }}
 					whileInView={{ opacity: 1, y: 0 }}
