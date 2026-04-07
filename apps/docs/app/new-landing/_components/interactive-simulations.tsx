@@ -1067,7 +1067,7 @@ const InteractiveSimulationsSection = () => {
 	return (
 		<SectionWrapper
 			id="interactive-simulations"
-			className="grid md:gap-y-12 lg:gap-y-24"
+			className="grid md:gap-y-4 lg:gap-y-12"
 		>
 			{/* Section Header */}
 			<div className="landing-section-header">

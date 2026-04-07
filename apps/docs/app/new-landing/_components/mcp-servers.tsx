@@ -297,7 +297,7 @@ const MCPServersSection = () => {
 				<div>
 					<Link
 						href="/docs/mcp-servers"
-						className="group flex items-center gap-3  py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs lg:text-sm border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap shrink-0 rounded-md self-start w-fit"
+						className="group flex items-center gap-3  py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs md:text-sm border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-all duration-300 whitespace-nowrap shrink-0 rounded-md self-start w-fit"
 					>
 						<span className="text-sm text-primary">Explore All MCPs</span>
 						<ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform duration-300" />
@@ -349,7 +349,7 @@ const MCPServersSection = () => {
 							type="button"
 							key={category.id}
 							onClick={() => setActiveTab(category.id)}
-							className={`py-2.5 px-3 lg:px-6 lg:py-3 text-xs lg:text-sm whitespace-nowrap border transition-all duration-300 ${
+							className={`py-2.5 px-3 md:px-6 md:py-3 text-xs md:text-sm whitespace-nowrap border transition-all duration-300 ${
 								activeTab === category.id
 									? "border-primary bg-primary/20 text-primary relative z-10"
 									: "border-[#D1D5DB] bg-[#F9F9F9] text-[#475569] hover:border-[#D1D5DB] hover:text-[#334155] hover:bg-[#F3F4F6]"
@@ -371,7 +371,7 @@ const MCPServersSection = () => {
 				</div>
 
 				{/* MCP Highlights Grid */}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
 					{activeCategory.highlights.map((highlight) => (
 						<div
 							key={highlight.name}
@@ -381,7 +381,7 @@ const MCPServersSection = () => {
 								<div className="px-7 py-1 border border-[#D1D5DB] bg-[#F3F4F6] rounded-md font-medium text-xs text-[#475569] inline-block">
 									{highlight.mcpName}
 								</div>
-								<h4 className="text-[13px] lg:text-xl font-geist-sans font-semibold text-[#0F172A]">
+								<h4 className="text-[13px] md:text-sm lg:text-xl font-geist-sans font-semibold text-[#0F172A]">
 									{highlight.name}
 								</h4>
 								<p className="text-sm lg:text-base lg:font-medium text-[#475569] leading-relaxed">

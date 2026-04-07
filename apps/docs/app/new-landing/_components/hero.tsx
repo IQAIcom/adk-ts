@@ -24,9 +24,9 @@ function ClipboardCopyButton({ text }: { text: string }) {
 			aria-label="Copy to clipboard"
 		>
 			{copied ? (
-				<Check className="size-3 lg:size-5" />
+				<Check className="size-3 md:size-4 lg:size-5" />
 			) : (
-				<Clipboard className="size-3 lg:size-5" />
+				<Clipboard className="size-3 md:size-4 lg:size-5" />
 			)}
 		</button>
 	);
@@ -88,7 +88,7 @@ export function Hero() {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ duration: 0.5, delay: 0.1 }}
-							className="text-2xl sm:text-3xl md:text-4xl lg:text-[3.5rem] font-semibold tracking-tight text-foreground leading-tight"
+							className="text-2xl md:text-4xl lg:text-[3.5rem] font-semibold tracking-tight text-foreground leading-tight"
 						>
 							Build Production-Ready AI Agents in TypeScript
 						</motion.h1>
@@ -98,7 +98,7 @@ export function Hero() {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ duration: 0.5, delay: 0.2 }}
-							className="text-sm sm:text-base font-medium md:text-lg lg:text-2xl text-muted-foreground max-w-lg mx-auto lg:mx-0"
+							className="text-sm md:text-base font-medium lg:text-2xl text-muted-foreground max-w-lg mx-auto lg:mx-0"
 						>
 							A TypeScript-first framework for building single and multi-agent
 							systems with tools, memory, streaming, and full runtime control.
@@ -113,7 +113,7 @@ export function Hero() {
 						>
 							<Link
 								href="/docs/framework/get-started"
-								className="group inline-flex items-center justify-center rounded-lg bg-primary py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs lg:text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 shadow-lg hover:shadow-primary/25"
+								className="group inline-flex items-center justify-center rounded-lg bg-primary py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs md:text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 shadow-lg hover:shadow-primary/25"
 							>
 								Get Started
 								<ArrowRight
@@ -134,12 +134,12 @@ export function Hero() {
 					>
 						<div className="hero-code-card landing-gradient-border overflow-hidden rounded-md bg-[#D9D9D90D] backdrop-blur-[36px] grid gap-5 p-3 pb-6">
 							<div className="flex items-center justify-between border-b border-white/20">
-								<span className="font-mono font-medium text-[10px] lg:text-base text-muted-foreground pb-1">
+								<span className="font-mono font-medium text-[10px] sm:text-sm lg:text-base text-muted-foreground pb-1">
 									agent-pipeline.ts
 								</span>
 								<ClipboardCopyButton text={codeSnippet} />
 							</div>
-							<div className="overflow-x-auto text-left text-[10px]! lg:text-xs leading-relaxed rounded-md! border-white/20">
+							<div className="overflow-x-auto text-left text-[10px]! sm:text-xs lg:text-sm leading-relaxed rounded-md! border-white/20">
 								<DynamicCodeBlock lang="typescript" code={codeSnippet} />
 							</div>
 						</div>
@@ -163,7 +163,7 @@ function CliCopyButton() {
 		<button
 			type="button"
 			onClick={copy}
-			className="group inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 backdrop-blur-sm py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs lg:text-sm font-medium font-mono text-primary-foreground transition-all hover:bg-white/10 hover:text-white"
+			className="group inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 backdrop-blur-sm py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs md:text-sm font-medium font-mono text-primary-foreground transition-all hover:bg-white/10 hover:text-white"
 		>
 			{cliCommand}
 			{copied ? (

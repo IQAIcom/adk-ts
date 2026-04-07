@@ -22,7 +22,7 @@ export default function LLMModels() {
 						<div
 							key={model}
 							className={[
-								"flex items-center justify-center px-4 py-5 sm:py-6 text-sm sm:text-base font-medium text-muted-foreground",
+								"flex items-center justify-center px-4 py-5 sm:py-6 text-sm sm:text-base md:text-lg font-medium text-muted-foreground",
 								// Real border-r on lg only (inset vertical pseudo handles sm/md via CSS)
 								isLastItem ? "" : "lg:border-r lg:border-white/20",
 								// Horizontal rules: full-width, touch edges

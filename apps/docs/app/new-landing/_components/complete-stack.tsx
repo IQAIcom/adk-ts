@@ -55,7 +55,7 @@ const CompleteStackSection = () => {
 									<div className="font-geist-sans text-[#0F172A] text-xl lg:text-2xl font-semibold">
 										{"<"}3s
 									</div>
-									<div className="text-xs lg:text-sm font-medium text-[#475569]">
+									<div className="text-xs md:text-sm font-medium text-[#475569]">
 										Project ready
 									</div>
 								</div>
@@ -73,7 +73,7 @@ const CompleteStackSection = () => {
 									<div className="text-[#0F172A] text-xl lg:text-2xl font-semibold">
 										7+
 									</div>
-									<div className="text-xs lg:text-sm font-medium text-[#475569]">
+									<div className="text-xs md:text-sm font-medium text-[#475569]">
 										Starter templates
 									</div>
 								</div>
@@ -91,7 +91,7 @@ const CompleteStackSection = () => {
 									<div className="text-[#0F172A] text-xl lg:text-2xl font-semibold">
 										HMR
 									</div>
-									<div className="text-xs lg:text-sm font-medium text-[#475569]">
+									<div className="text-xs md:text-sm font-medium text-[#475569]">
 										Hot reload
 									</div>
 								</div>
@@ -109,7 +109,7 @@ const CompleteStackSection = () => {
 									<div className="text-[#0F172A] text-xl lg:text-2xl font-semibold">
 										Web
 									</div>
-									<div className="text-xs lg:text-sm font-medium text-[#475569]">
+									<div className="text-xs md:text-sm font-medium text-[#475569]">
 										Browser UI
 									</div>
 								</div>
@@ -122,29 +122,29 @@ const CompleteStackSection = () => {
 					<div className="space-y-2">
 						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
 							<span className="text-primary">$</span>{" "}
-							<span className="text-[13px]">adk new my-agent</span>
-							<span className="text-[11px] ml-3 block md:inline-block">
+							<span className="text-[13px] md:text-sm">adk new my-agent</span>
+							<span className="text-[11px] md:text-sm ml-3 block md:inline-block">
 								# Scaffold a project from 7+ starter templates
 							</span>
 						</div>
 						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
 							<span className="text-primary">$</span>{" "}
-							<span className="text-[13px]">adk run</span>
-							<span className="text-[11px] ml-3 block md:inline-block">
+							<span className="text-[13px] md:text-sm">adk run</span>
+							<span className="text-[11px] md:text-sm ml-3 block md:inline-block">
 								# Interactive terminal chat with your agent
 							</span>
 						</div>
 						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
 							<span className="text-primary">$</span>{" "}
-							<span className="text-[13px]">adk web</span>
-							<span className="text-[11px] ml-3 block md:inline-block">
+							<span className="text-[13px] md:text-sm">adk web</span>
+							<span className="text-[11px] md:text-sm ml-3 block md:inline-block">
 								# Launch browser UI to test and inspect agents
 							</span>
 						</div>
 						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
 							<span className="text-primary">$</span>{" "}
-							<span className="text-[13px]">adk serve</span>
-							<span className="text-[11px] ml-3 block md:inline-block">
+							<span className="text-[13px] md:text-sm">adk serve</span>
+							<span className="text-[11px] md:text-sm ml-3 block md:inline-block">
 								# Start an API server for agent management
 							</span>
 						</div>
@@ -174,13 +174,13 @@ const CompleteStackSection = () => {
 						<div className="flex items-center gap-4">
 							<div className="w-34 h-14 relative">
 								<div className="absolute inset-0 bg-[#F9F9F9] border border-[#E5E5E5] rounded flex items-center justify-center">
-									<span className="font-mono text-xs text-[#475569]">
+									<span className="text-xs md:text-sm text-[#475569]">
 										In-Memory
 									</span>
 								</div>
 								<div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full" />
 							</div>
-							<div className="flex-1 text-xs text-[#94A3B8]">
+							<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 								Zero-config local development, no persistence needed.
 							</div>
 						</div>
@@ -188,12 +188,12 @@ const CompleteStackSection = () => {
 						<div className="flex items-center gap-4">
 							<div className="w-34 h-14 relative">
 								<div className="absolute inset-0 bg-[#F9F9F9] border border-[#E5E5E5] rounded flex items-center justify-center">
-									<span className="font-mono text-xs text-[#475569]">
+									<span className="text-xs md:text-sm text-[#475569]">
 										PostgreSQL/SQLite
 									</span>
 								</div>
 							</div>
-							<div className="flex-1 text-xs text-[#94A3B8]">
+							<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 								Persistent sessions with Drizzle ORM and full-text search.
 							</div>
 						</div>
@@ -201,12 +201,12 @@ const CompleteStackSection = () => {
 						<div className="flex items-center gap-4">
 							<div className="w-34 h-14 relative">
 								<div className="absolute inset-0 bg-[#F9F9F9] border border-[#E5E5E5] rounded flex items-center justify-center">
-									<span className="font-mono text-xs text-[#475569]">
+									<span className="text-xs md:text-sm text-[#475569]">
 										Vertex AI
 									</span>
 								</div>
 							</div>
-							<div className="flex-1 text-xs text-[#94A3B8]">
+							<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 								Google Cloud-native session storage for production scale.
 							</div>
 						</div>
@@ -264,52 +264,60 @@ const CompleteStackSection = () => {
 						<div className="space-y-3">
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-primary" />
-								<div className="text-sm text-[#334155]">
+								<div className="text-sm text-[#334155] md:font-medium">
 									beforeModelCallback
 								</div>
-								<div className="flex-1 text-xs text-[#94A3B8]">
+								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Inspect and transform prompts before model execution
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155]">beforeToolCallback</div>
-								<div className="flex-1 text-xs text-[#94A3B8]">
+								<div className="text-sm text-[#334155] md:font-medium">
+									beforeToolCallback
+								</div>
+								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Observe or override tool execution
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155]">afterModelCallback</div>
-								<div className="flex-1 text-xs text-[#94A3B8]">
+								<div className="text-sm text-[#334155] md:font-medium">
+									afterModelCallback
+								</div>
+								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Post-process and validate model responses
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155]">afterToolCallback</div>
-								<div className="flex-1 text-xs text-[#94A3B8]">
+								<div className="text-sm text-[#334155] md:font-medium">
+									afterToolCallback
+								</div>
+								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Capture and transform tool results
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155]">
+								<div className="text-sm text-[#334155] md:font-medium">
 									beforeAgentCallback
 								</div>
-								<div className="flex-1 text-xs text-[#94A3B8]">
+								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Intercept agent execution before any step
 								</div>
 							</div>
 
 							<div className="flex items-center gap-3">
 								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155]">afterAgentCallback</div>
-								<div className="flex-1 text-xs text-[#94A3B8]">
+								<div className="text-sm text-[#334155] md:font-medium">
+									afterAgentCallback
+								</div>
+								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Inspect final agent output and execution trace
 								</div>
 							</div>
@@ -359,7 +367,7 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-primary rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-primary" />
 							</div>
-							<div className="text-xs lg:text-sm text-[#1E293B]">
+							<div className="text-xs md:text-sm text-[#1E293B]">
 								Distributed tracing (OTLP) with automatic context propagation
 							</div>
 						</div>
@@ -368,7 +376,7 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-[#D1D5DB] rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-[#D1D5DB]" />
 							</div>
-							<div className="text-xs lg:text-sm text-[#475569]">
+							<div className="text-xs md:text-sm text-[#475569]">
 								ADK-TS semantic spans for agents, tools, and models
 							</div>
 						</div>
@@ -377,7 +385,7 @@ const CompleteStackSection = () => {
 							<div className="w-5 h-5 border-2 border-[#D1D5DB] rounded flex items-center justify-center shrink-0">
 								<div className="w-2.5 h-2.5 bg-[#D1D5DB]" />
 							</div>
-							<div className="text-xs lg:text-sm text-[#475569]">
+							<div className="text-xs md:text-sm text-[#475569]">
 								Structured logs correlated with traces and requests
 							</div>
 						</div>
