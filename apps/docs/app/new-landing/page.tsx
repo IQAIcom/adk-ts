@@ -21,24 +21,26 @@ export default function HomePage() {
 			style={{ colorScheme: "dark" }}
 		>
 			<Navbar />
-			<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative landing-glow">
-				<Hero />
-				<LLMModels />
-				<WhyADKTSSection />
-				<BuiltForDevelopersSection />
-			</div>
-			<div className="bg-white">
-				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
-					<CompleteStackSection />
-					<MCPServersSection />
+			<div className="landing-glow relative">
+				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x ">
+					<Hero />
+					<LLMModels />
+					<WhyADKTSSection />
+					<BuiltForDevelopersSection />
 				</div>
-			</div>
-			<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative landing-glow">
-				<InteractiveSimulationsSection />
-				<ProjectFeaturesSection />
-				<GetStartedSection />
-				<CTASection />
-				<Footer />
+				<div className="bg-white">
+					<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x ">
+						<CompleteStackSection />
+						<MCPServersSection />
+					</div>
+				</div>
+				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
+					<InteractiveSimulationsSection />
+					<ProjectFeaturesSection />
+					<GetStartedSection />
+					<CTASection />
+					<Footer />
+				</div>
 			</div>
 		</div>
 	);
