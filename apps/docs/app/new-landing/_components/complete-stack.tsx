@@ -30,7 +30,7 @@ const CompleteStackSection = () => {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8, delay: 0 }}
-					className="relative py-12 lg:p-12 border-b lg:border-r border-[#D1D5DB] "
+					className="relative py-12 lg:py-12 lg:pr-12 border-b lg:border-r border-[#D1D5DB] "
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">
 						ADK-TS CLI
@@ -157,7 +157,7 @@ const CompleteStackSection = () => {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8, delay: 0.1 }}
-					className="relative py-12 lg:p-12 border-b border-[#D1D5DB] "
+					className="relative py-12 lg:py-12 lg:pl-12 border-b border-[#D1D5DB] "
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">
 						Sessions & Memory
@@ -244,7 +244,7 @@ const CompleteStackSection = () => {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8, delay: 0.2 }}
-					className="relative py-12 lg:p-12 lg:border-r border-[#D1D5DB] "
+					className="relative py-12  lg:py-12 lg:pr-12 lg:border-r border-[#D1D5DB] "
 					style={{ userSelect: "text" }}
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">
@@ -348,7 +348,7 @@ const CompleteStackSection = () => {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8, delay: 0.3 }}
-					className="relative  py-12 lg:p-12 "
+					className="relative  py-12  lg:py-12 lg:pl-12 "
 					style={{ userSelect: "text" }}
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">

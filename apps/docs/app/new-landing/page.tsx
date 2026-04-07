@@ -26,8 +26,14 @@ export default function HomePage() {
 				<LLMModels />
 				<WhyADKTSSection />
 				<BuiltForDevelopersSection />
-				<CompleteStackSection />
-				<MCPServersSection />
+			</div>
+			<div className="bg-white">
+				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
+					<CompleteStackSection />
+					<MCPServersSection />
+				</div>
+			</div>
+			<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative landing-glow">
 				<InteractiveSimulationsSection />
 				<ProjectFeaturesSection />
 				<GetStartedSection />

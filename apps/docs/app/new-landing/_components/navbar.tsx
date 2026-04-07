@@ -150,7 +150,7 @@ export function Navbar() {
 		>
 			{/* ── Desktop & mobile top bar ── */}
 			<div className="mx-auto max-w-7xl">
-				<div className="mx-6 md:mx-10 lg:mx-12 flex items-center justify-between">
+				<div className="mx-3  md:mx-10 lg:mx-12 flex items-center justify-between">
 					{/* Brand logo */}
 					<Link href="/" className="flex items-center gap-2 font-semibold">
 						<Image
