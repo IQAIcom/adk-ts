@@ -23,7 +23,7 @@ const CompleteStackSection = () => {
 			</div>
 
 			{/* 2x2 Grid of Capabilities */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-0 border-y border-[#D1D5DB]">
+			<div className="-mx-2 md:-mx-6 lg:-mx-16 px-2 md:px-6 lg:px-16 grid grid-cols-1 lg:grid-cols-2 gap-0 border-y border-[#D1D5DB]">
 				{/* CLI Card */}
 				<motion.div
 					initial={{ opacity: 0, y: 40 }}

@@ -272,7 +272,7 @@ const MCPServersSection = () => {
 	return (
 		<SectionWrapper
 			id="mcp-servers"
-			className="bg-white text-[#1A1A1A]! border-b border-[#D1D5DB]!"
+			className="bg-white text-[#1A1A1A]! border border-[#D1D5DB]! border-t-0"
 		>
 			{/* Section Header + Explore Button */}
 			<motion.div
