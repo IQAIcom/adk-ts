@@ -145,8 +145,8 @@ export function Navbar() {
 	return (
 		<nav
 			ref={navRef}
-			className="sticky top-0 z-50 border-b landing-border-gradient py-3 lg:py-4 bg-black"
-			style={{ backdropFilter: "blur(36px)" }}
+			className="sticky top-0 z-50 border-b landing-border-gradient py-3 lg:py-4"
+			style={{ background: "#D9D9D908", backdropFilter: "blur(36px)" }}
 		>
 			{/* ── Desktop & mobile top bar ── */}
 			<div className="mx-auto max-w-7xl">
@@ -232,7 +232,13 @@ export function Navbar() {
 
 			{/* ── Desktop resources dropdown — full-bleed overlay ── */}
 			{resourcesOpen && (
-				<div className="hidden md:block absolute left-1/2 -translate-x-1/2 w-screen bg-black z-40">
+				<div
+					className="hidden md:block absolute left-1/2 -translate-x-1/2 w-screen z-40"
+					style={{
+						background: "var(--color-neutral-950, #0A0A0A)",
+						boxShadow: "0px 38px 50px 10px #00000040",
+					}}
+				>
 					{/* Top row (first 2 resources) */}
 					<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
 						<VerticalRule className="left-0" />

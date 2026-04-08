@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "motion/react";
 import { ArrowRight, Clipboard, Check } from "lucide-react";
 import { SectionWrapper } from "./section-wrapper";
@@ -263,11 +263,36 @@ const { runner } = await AgentBuilder.create("ai-agent")
 	},
 ];
 
+const AUTO_SWITCH_INTERVAL = 5000;
+
 const MCPServersSection = () => {
 	const [activeTab, setActiveTab] = useState("defi");
 	const [copied, setCopied] = useState(false);
+	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const activeCategory =
 		categories.find((cat) => cat.id === activeTab) || categories[0];
+
+	const startAutoSwitch = useCallback(() => {
+		if (intervalRef.current) clearInterval(intervalRef.current);
+		intervalRef.current = setInterval(() => {
+			setActiveTab((prev) => {
+				const idx = categories.findIndex((cat) => cat.id === prev);
+				return categories[(idx + 1) % categories.length].id;
+			});
+		}, AUTO_SWITCH_INTERVAL);
+	}, []);
+
+	const handleTabClick = (tabId: string) => {
+		setActiveTab(tabId);
+		startAutoSwitch();
+	};
+
+	useEffect(() => {
+		startAutoSwitch();
+		return () => {
+			if (intervalRef.current) clearInterval(intervalRef.current);
+		};
+	}, [startAutoSwitch]);
 
 	return (
 		<SectionWrapper
@@ -348,8 +373,8 @@ const MCPServersSection = () => {
 						<button
 							type="button"
 							key={category.id}
-							onClick={() => setActiveTab(category.id)}
-							className={`py-2.5 px-3 md:px-6 md:py-3 text-xs md:text-sm whitespace-nowrap border transition-all duration-300 ${
+							onClick={() => handleTabClick(category.id)}
+							className={`py-2.5 px-3 md:px-6 md:py-3 font-medium text-xs md:text-sm whitespace-nowrap border transition-all duration-300 ${
 								activeTab === category.id
 									? "border-primary bg-primary/20 text-primary relative z-10"
 									: "border-[#D1D5DB] bg-[#F9F9F9] text-[#475569] hover:border-[#D1D5DB] hover:text-[#334155] hover:bg-[#F3F4F6]"
@@ -365,7 +390,7 @@ const MCPServersSection = () => {
 			<div className="border border-[#D1D5DB] rounded-md p-4 lg:p-8">
 				{/* Category Description */}
 				<div className="mb-4.5 lg:mb-10">
-					<p className="text-sm lg:text-lg text-[#475569] lg:font-medium leading-relaxed">
+					<p className="text-sm lg:text-lg text-[#475569] leading-relaxed">
 						{activeCategory.description}
 					</p>
 				</div>
@@ -384,7 +409,7 @@ const MCPServersSection = () => {
 								<h4 className="text-[13px] md:text-sm lg:text-xl font-geist-sans font-semibold text-[#0F172A]">
 									{highlight.name}
 								</h4>
-								<p className="text-sm lg:text-base lg:font-medium text-[#475569] leading-relaxed">
+								<p className="text-sm lg:text-base text-[#475569] leading-relaxed">
 									{highlight.description}
 								</p>
 							</div>
@@ -393,7 +418,7 @@ const MCPServersSection = () => {
 								{highlight.features.map((feature) => (
 									<div key={feature} className="flex items-start gap-2">
 										<div className="w-1 h-1 bg-primary mt-2 shrink-0" />
-										<div className="text-sm lg:text-base text-[#475569] lg:font-medium">
+										<div className="text-sm lg:text-base text-[#475569]">
 											{feature}
 										</div>
 									</div>
@@ -404,13 +429,13 @@ const MCPServersSection = () => {
 
 					{/* Messaging illustration - Only show for messaging tab */}
 					{activeTab === "messaging" && (
-						<div className="border border-[#D1D5DB] rounded-md overflow-hidden flex items-center justify-center">
+						<div className="relative border border-[#D1D5DB] rounded-md overflow-hidden">
 							<Image
 								src="/landing-page/messaging-mcp.svg"
 								alt="Messaging MCP illustration"
 								width={400}
 								height={400}
-								className="w-[200px] md:w-full h-auto"
+								className="absolute inset-0 w-full h-full object-contain"
 							/>
 						</div>
 					)}

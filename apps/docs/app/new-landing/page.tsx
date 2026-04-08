@@ -21,15 +21,19 @@ export default function HomePage() {
 			style={{ colorScheme: "dark" }}
 		>
 			<Navbar />
-			<div className="landing-glow relative">
-				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x ">
+			{/* Glow clipped to container width */}
+			<div className="landing-glow-container">
+				<div className="landing-glow-orb" />
+			</div>
+			<div className="relative">
+				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
 					<Hero />
 					<LLMModels />
 					<WhyADKTSSection />
 					<BuiltForDevelopersSection />
 				</div>
 				<div className="bg-white">
-					<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x ">
+					<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
 						<CompleteStackSection />
 						<MCPServersSection />
 					</div>

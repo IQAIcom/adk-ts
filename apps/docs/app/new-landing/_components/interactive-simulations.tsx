@@ -40,11 +40,14 @@ function DemoCard({
 	const [logs, setLogs] = useState<string[]>([]);
 	const logContainerRef = useRef<HTMLDivElement>(null);
 
-	// Auto-scroll to bottom when logs update
+	// Auto-scroll to bottom smoothly when logs update
 	// biome-ignore lint/correctness/useExhaustiveDependencies: logs triggers scroll on update
 	useEffect(() => {
 		if (logContainerRef.current) {
-			logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+			logContainerRef.current.scrollTo({
+				top: logContainerRef.current.scrollHeight,
+				behavior: "smooth",
+			});
 		}
 	}, [logs]);
 
@@ -162,7 +165,7 @@ function DemoCard({
 			{/* Body Section - Two Columns */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
 				{/* LEFT - Node Graph Visualization */}
-				<div className="relative bg-black/40 border border-white/20 overflow-hidden flex items-center justify-center rounded-md h-auto lg:min-h-[500px] lg:max-h-[500px]">
+				<div className="relative bg-black/40 border border-white/20 overflow-hidden flex items-center justify-center rounded-md h-auto lg:h-[500px]">
 					{patternLabel && (
 						<div className="absolute top-4 left-4 px-2.5 py-1 text-[10px] font-medium text-primary/70 border border-primary/20 bg-primary/5 rounded">
 							{patternLabel}
@@ -990,7 +993,7 @@ function DemoCard({
 				</div>
 
 				{/* RIGHT - Terminal Window */}
-				<div className="relative border border-white/20 bg-black/60 flex flex-col rounded-md overflow-hidden">
+				<div className="relative border border-white/20 bg-black/60 flex flex-col rounded-md overflow-hidden lg:h-[500px]">
 					{/* Window Header - macOS Style */}
 					<div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0a0a0a]">
 						<div className="flex items-center gap-2">
@@ -1024,10 +1027,10 @@ function DemoCard({
 					</div>
 
 					{/* Window Content */}
-					<div className="flex flex-col flex-1">
+					<div className="flex flex-col flex-1 min-h-0">
 						<div
 							ref={logContainerRef}
-							className="flex-1 bg-black rounded border border-white/10 m-6 p-4 overflow-y-auto text-xs"
+							className="flex-1 min-h-0 bg-black rounded border border-white/10 m-6 p-4 overflow-y-auto text-xs"
 						>
 							{logs.length === 0 ? (
 								<div className="text-white text-center py-20 translate-y-1/2">

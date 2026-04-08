@@ -98,7 +98,7 @@ export function Hero() {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ duration: 0.5, delay: 0.2 }}
-							className="text-sm md:text-base font-medium lg:text-2xl text-muted-foreground max-w-lg mx-auto lg:mx-0"
+							className="text-sm md:text-base font-base lg:text-2xl text-muted-foreground max-w-lg mx-auto lg:mx-0"
 						>
 							A TypeScript-first framework for building single and multi-agent
 							systems with tools, memory, streaming, and full runtime control.
