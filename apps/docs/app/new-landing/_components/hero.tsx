@@ -3,7 +3,7 @@
 import dedent from "dedent";
 import { DynamicCodeBlock } from "fumadocs-ui/components/dynamic-codeblock";
 import { motion } from "motion/react";
-import { ArrowRight, Check, Clipboard, Copy } from "lucide-react";
+import { ArrowRight, Check, Clipboard } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 
@@ -21,12 +21,12 @@ function ClipboardCopyButton({ text }: { text: string }) {
 			type="button"
 			onClick={copy}
 			className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:text-primary/80 transition-colors"
-			aria-label="Copy to clipboard"
+			aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
 		>
 			{copied ? (
-				<Check className="size-3 md:size-4 lg:size-5" />
+				<Check className="size-3 md:size-4 lg:size-5" aria-hidden="true" />
 			) : (
-				<Clipboard className="size-3 md:size-4 lg:size-5" />
+				<Clipboard className="size-3 md:size-4 lg:size-5" aria-hidden="true" />
 			)}
 		</button>
 	);
@@ -49,7 +49,7 @@ export function Hero() {
 	return (
 		<section className="relative overflow-hidden border-b landing-border min-h-screen bg-black">
 			{/* Star background + video layer */}
-			<div className="absolute inset-0 overflow-hidden">
+			<div className="absolute inset-0 overflow-hidden" aria-hidden="true">
 				{/* Star specks background */}
 				<div
 					className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -61,6 +61,7 @@ export function Hero() {
 					loop
 					muted
 					playsInline
+					preload="metadata"
 					className="absolute top-0 right-0 w-full lg:w-4/6 h-full object-cover object-left lg:object-contain opacity-60"
 				>
 					<source src="/landing-page/hero-video.mp4" type="video/mp4" />
@@ -118,7 +119,7 @@ export function Hero() {
 								Get Started
 								<ArrowRight
 									className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"
-									name="Arrow Right"
+									aria-hidden="true"
 								/>
 							</Link>
 							<CliCopyButton />
@@ -164,12 +165,18 @@ function CliCopyButton() {
 			type="button"
 			onClick={copy}
 			className="group inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 backdrop-blur-sm py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs md:text-sm font-medium font-mono text-primary-foreground transition-all hover:bg-white/10 hover:text-white"
+			aria-label={
+				copied ? "Copied CLI command" : "Copy CLI command to clipboard"
+			}
 		>
-			{cliCommand}
+			<span aria-hidden="true">{cliCommand}</span>
 			{copied ? (
-				<Check className="h-4 w-4 text-green-500" />
+				<Check className="h-4 w-4 text-green-500" aria-hidden="true" />
 			) : (
-				<Copy className="h-4 w-4 text-primary-foreground" />
+				<Clipboard
+					className="h-4 w-4 text-primary-foreground"
+					aria-hidden="true"
+				/>
 			)}
 		</button>
 	);

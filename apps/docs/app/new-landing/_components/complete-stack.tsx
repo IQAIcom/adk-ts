@@ -117,38 +117,46 @@ const CompleteStackSection = () => {
 						</div>
 					</div>
 
-					<div className="text-xs text-[#475569] mb-3.5">COMMANDS</div>
+					<h4 className="text-xs text-[#475569] mb-3.5">COMMANDS</h4>
 
-					<div className="space-y-2">
-						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
-							<span className="text-primary">$</span>{" "}
-							<span className="text-[13px] md:text-sm">adk new my-agent</span>
+					<ul className="space-y-2" aria-label="CLI commands">
+						<li className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
+							<span className="text-primary" aria-hidden="true">
+								$
+							</span>{" "}
+							<code className="text-[13px] md:text-sm">adk new my-agent</code>
 							<span className="text-[11px] md:text-sm ml-3 block md:inline-block">
 								# Scaffold a project from 7+ starter templates
 							</span>
-						</div>
-						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
-							<span className="text-primary">$</span>{" "}
-							<span className="text-[13px] md:text-sm">adk run</span>
+						</li>
+						<li className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
+							<span className="text-primary" aria-hidden="true">
+								$
+							</span>{" "}
+							<code className="text-[13px] md:text-sm">adk run</code>
 							<span className="text-[11px] md:text-sm ml-3 block md:inline-block">
 								# Interactive terminal chat with your agent
 							</span>
-						</div>
-						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
-							<span className="text-primary">$</span>{" "}
-							<span className="text-[13px] md:text-sm">adk web</span>
+						</li>
+						<li className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
+							<span className="text-primary" aria-hidden="true">
+								$
+							</span>{" "}
+							<code className="text-[13px] md:text-sm">adk web</code>
 							<span className="text-[11px] md:text-sm ml-3 block md:inline-block">
 								# Launch browser UI to test and inspect agents
 							</span>
-						</div>
-						<div className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
-							<span className="text-primary">$</span>{" "}
-							<span className="text-[13px] md:text-sm">adk serve</span>
+						</li>
+						<li className="px-4 py-3.5 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-sm text-[#475569]">
+							<span className="text-primary" aria-hidden="true">
+								$
+							</span>{" "}
+							<code className="text-[13px] md:text-sm">adk serve</code>
 							<span className="text-[11px] md:text-sm ml-3 block md:inline-block">
 								# Start an API server for agent management
 							</span>
-						</div>
-					</div>
+						</li>
+					</ul>
 				</motion.div>
 
 				{/* Sessions & Memory Card */}
@@ -212,30 +220,45 @@ const CompleteStackSection = () => {
 						</div>
 					</div>
 
-					<div className="text-xs text-[#94A3B8] mb-4">KEY FEATURES</div>
+					<h4 className="text-xs text-[#94A3B8] mb-4">KEY FEATURES</h4>
 
-					<div className="space-y-2">
-						<div className="flex items-center gap-3 text-sm text-[#475569]">
-							<div className="w-1.5 h-1.5 bg-primary" />
+					<ul className="space-y-2" aria-label="Key features">
+						<li className="flex items-center gap-3 text-sm text-[#475569]">
+							<span
+								className="w-1.5 h-1.5 bg-primary shrink-0"
+								aria-hidden="true"
+							/>
 							Automatic conversation threading
-						</div>
-						<div className="flex items-center gap-3 text-sm text-[#475569]">
-							<div className="w-1.5 h-1.5 bg-[#D1D5DB]" />
+						</li>
+						<li className="flex items-center gap-3 text-sm text-[#475569]">
+							<span
+								className="w-1.5 h-1.5 bg-[#D1D5DB] shrink-0"
+								aria-hidden="true"
+							/>
 							Context window management
-						</div>
-						<div className="flex items-center gap-3 text-sm text-[#475569]">
-							<div className="w-1.5 h-1.5 bg-[#D1D5DB]" />
+						</li>
+						<li className="flex items-center gap-3 text-sm text-[#475569]">
+							<span
+								className="w-1.5 h-1.5 bg-[#D1D5DB] shrink-0"
+								aria-hidden="true"
+							/>
 							Cross-agent memory sharing
-						</div>
-						<div className="flex items-center gap-3 text-sm text-[#475569]">
-							<div className="w-1.5 h-1.5 bg-[#D1D5DB]" />
+						</li>
+						<li className="flex items-center gap-3 text-sm text-[#475569]">
+							<span
+								className="w-1.5 h-1.5 bg-[#D1D5DB] shrink-0"
+								aria-hidden="true"
+							/>
 							Vertex AI RAG memory integration
-						</div>
-						<div className="flex items-center gap-3 text-sm text-[#475569]">
-							<div className="w-1.5 h-1.5 bg-[#D1D5DB]" />
+						</li>
+						<li className="flex items-center gap-3 text-sm text-[#475569]">
+							<span
+								className="w-1.5 h-1.5 bg-[#D1D5DB] shrink-0"
+								aria-hidden="true"
+							/>
 							Unified Memory API (combine multiple sources)
-						</div>
-					</div>
+						</li>
+					</ul>
 				</motion.div>
 
 				{/* Workflows & Extensibility Card */}
@@ -259,87 +282,105 @@ const CompleteStackSection = () => {
 
 					{/* Lifecycle flow */}
 					<div className="mb-8">
-						<div className="text-xs text-[#94A3B8] mb-4">LIFECYCLE HOOKS</div>
+						<h4 className="text-xs text-[#94A3B8] mb-4">LIFECYCLE HOOKS</h4>
 
-						<div className="space-y-3">
-							<div className="flex items-center gap-3">
-								<div className="w-2 h-2 bg-primary" />
-								<div className="text-sm text-[#334155] md:font-medium">
+						<ul className="space-y-3" aria-label="Lifecycle hooks">
+							<li className="flex items-center gap-3">
+								<span
+									className="w-2 h-2 bg-primary shrink-0"
+									aria-hidden="true"
+								/>
+								<code className="text-sm text-[#334155] md:font-medium">
 									beforeModelCallback
-								</div>
-								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
+								</code>
+								<span className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Inspect and transform prompts before model execution
-								</div>
-							</div>
+								</span>
+							</li>
 
-							<div className="flex items-center gap-3">
-								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155] md:font-medium">
+							<li className="flex items-center gap-3">
+								<span
+									className="w-2 h-2 bg-[#D1D5DB] shrink-0"
+									aria-hidden="true"
+								/>
+								<code className="text-sm text-[#334155] md:font-medium">
 									beforeToolCallback
-								</div>
-								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
+								</code>
+								<span className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Observe or override tool execution
-								</div>
-							</div>
+								</span>
+							</li>
 
-							<div className="flex items-center gap-3">
-								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155] md:font-medium">
+							<li className="flex items-center gap-3">
+								<span
+									className="w-2 h-2 bg-[#D1D5DB] shrink-0"
+									aria-hidden="true"
+								/>
+								<code className="text-sm text-[#334155] md:font-medium">
 									afterModelCallback
-								</div>
-								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
+								</code>
+								<span className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Post-process and validate model responses
-								</div>
-							</div>
+								</span>
+							</li>
 
-							<div className="flex items-center gap-3">
-								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155] md:font-medium">
+							<li className="flex items-center gap-3">
+								<span
+									className="w-2 h-2 bg-[#D1D5DB] shrink-0"
+									aria-hidden="true"
+								/>
+								<code className="text-sm text-[#334155] md:font-medium">
 									afterToolCallback
-								</div>
-								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
+								</code>
+								<span className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Capture and transform tool results
-								</div>
-							</div>
+								</span>
+							</li>
 
-							<div className="flex items-center gap-3">
-								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155] md:font-medium">
+							<li className="flex items-center gap-3">
+								<span
+									className="w-2 h-2 bg-[#D1D5DB] shrink-0"
+									aria-hidden="true"
+								/>
+								<code className="text-sm text-[#334155] md:font-medium">
 									beforeAgentCallback
-								</div>
-								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
+								</code>
+								<span className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Intercept agent execution before any step
-								</div>
-							</div>
+								</span>
+							</li>
 
-							<div className="flex items-center gap-3">
-								<div className="w-2 h-2 bg-[#D1D5DB]" />
-								<div className="text-sm text-[#334155] md:font-medium">
+							<li className="flex items-center gap-3">
+								<span
+									className="w-2 h-2 bg-[#D1D5DB] shrink-0"
+									aria-hidden="true"
+								/>
+								<code className="text-sm text-[#334155] md:font-medium">
 									afterAgentCallback
-								</div>
-								<div className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
+								</code>
+								<span className="flex-1 text-xs text-[#94A3B8] md:text-sm md:text-[#475569]">
 									Inspect final agent output and execution trace
-								</div>
-							</div>
-						</div>
+								</span>
+							</li>
+						</ul>
 					</div>
 
-					<div className="text-xs text-[#94A3B8] mb-4">BUILT-IN PLUGINS</div>
+					<h4 className="text-xs text-[#94A3B8] mb-4">BUILT-IN PLUGINS</h4>
 
-					<div className="flex flex-wrap gap-3">
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+					<ul className="flex flex-wrap gap-3" aria-label="Built-in plugins">
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
 							ModelFallbackPlugin
-						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+						</li>
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
 							LangfusePlugin
-						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+						</li>
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
 							ReflectRetryToolPlugin
-						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
+						</li>
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-xs text-[#475569]">
 							ToolFilterPlugin
-						</div>
-					</div>
+						</li>
+					</ul>
 				</motion.div>
 
 				{/* Reliability & Observability Card */}
@@ -362,56 +403,66 @@ const CompleteStackSection = () => {
 					</p>
 
 					{/* Checkmarks list */}
-					<div className="space-y-3 mb-8">
-						<div className="flex items-center gap-3 p-3 border border-primary/20 bg-primary/5 rounded-lg">
-							<div className="w-5 h-5 border-2 border-primary rounded flex items-center justify-center shrink-0">
-								<div className="w-2.5 h-2.5 bg-primary" />
-							</div>
-							<div className="text-xs md:text-sm text-[#1E293B]">
+					<ul className="space-y-3 mb-8" aria-label="Observability features">
+						<li className="flex items-center gap-3 p-3 border border-primary/20 bg-primary/5 rounded-lg">
+							<span
+								className="w-5 h-5 border-2 border-primary rounded flex items-center justify-center shrink-0"
+								aria-hidden="true"
+							>
+								<span className="w-2.5 h-2.5 bg-primary" />
+							</span>
+							<span className="text-xs md:text-sm text-[#1E293B]">
 								Distributed tracing (OTLP) with automatic context propagation
-							</div>
-						</div>
+							</span>
+						</li>
 
-						<div className="flex items-center gap-3 p-3 border border-[#E5E7EB] bg-[#F9FAFB] rounded-lg">
-							<div className="w-5 h-5 border-2 border-[#D1D5DB] rounded flex items-center justify-center shrink-0">
-								<div className="w-2.5 h-2.5 bg-[#D1D5DB]" />
-							</div>
-							<div className="text-xs md:text-sm text-[#475569]">
+						<li className="flex items-center gap-3 p-3 border border-[#E5E7EB] bg-[#F9FAFB] rounded-lg">
+							<span
+								className="w-5 h-5 border-2 border-[#D1D5DB] rounded flex items-center justify-center shrink-0"
+								aria-hidden="true"
+							>
+								<span className="w-2.5 h-2.5 bg-[#D1D5DB]" />
+							</span>
+							<span className="text-xs md:text-sm text-[#475569]">
 								ADK-TS semantic spans for agents, tools, and models
-							</div>
-						</div>
+							</span>
+						</li>
 
-						<div className="flex items-center gap-3 p-3 border border-[#E5E7EB] bg-[#F9FAFB] rounded-lg">
-							<div className="w-5 h-5 border-2 border-[#D1D5DB] rounded flex items-center justify-center shrink-0">
-								<div className="w-2.5 h-2.5 bg-[#D1D5DB]" />
-							</div>
-							<div className="text-xs md:text-sm text-[#475569]">
+						<li className="flex items-center gap-3 p-3 border border-[#E5E7EB] bg-[#F9FAFB] rounded-lg">
+							<span
+								className="w-5 h-5 border-2 border-[#D1D5DB] rounded flex items-center justify-center shrink-0"
+								aria-hidden="true"
+							>
+								<span className="w-2.5 h-2.5 bg-[#D1D5DB]" />
+							</span>
+							<span className="text-xs md:text-sm text-[#475569]">
 								Structured logs correlated with traces and requests
-							</div>
-						</div>
-					</div>
+							</span>
+						</li>
+					</ul>
 
-					<div className="text-xs text-[#94A3B8] mb-4">
-						MONITORING PLATFORMS
-					</div>
+					<h4 className="text-xs text-[#94A3B8] mb-4">MONITORING PLATFORMS</h4>
 
-					<div className="flex flex-wrap gap-3">
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
+					<ul
+						className="flex flex-wrap gap-3"
+						aria-label="Supported monitoring platforms"
+					>
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							Langfuse (built-in)
-						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
+						</li>
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							Datadog
-						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
+						</li>
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							Grafana
-						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
+						</li>
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							Jaeger
-						</div>
-						<div className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
+						</li>
+						<li className="px-4 py-2 border border-[#E5E5E5] bg-[#F9F9F9] rounded text-[11px] lg:text-xs text-[#475569]">
 							New Relic
-						</div>
-					</div>
+						</li>
+					</ul>
 				</motion.div>
 			</div>
 		</SectionWrapper>

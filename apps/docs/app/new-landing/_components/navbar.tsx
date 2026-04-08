@@ -93,6 +93,7 @@ function VerticalRule({ className }: { className?: string }) {
 				backgroundImage: "url('/landing-page/vertical-rule.svg')",
 				backgroundSize: "3px auto",
 			}}
+			aria-hidden="true"
 		/>
 	);
 }
@@ -105,6 +106,7 @@ function HorizontalRule() {
 				backgroundImage: "url('/landing-page/horizontal-rule.svg')",
 				backgroundSize: "auto 3px",
 			}}
+			aria-hidden="true"
 		/>
 	);
 }
@@ -159,6 +161,7 @@ export function Navbar() {
 							width={30}
 							height={30}
 							className="rounded-lg"
+							priority
 						/>
 						<span>ADK-TS</span>
 					</Link>
@@ -185,10 +188,13 @@ export function Navbar() {
 							type="button"
 							onClick={() => setResourcesOpen(!resourcesOpen)}
 							className={`hidden md:inline-flex items-center gap-1 ${navLinkClass}`}
+							aria-expanded={resourcesOpen}
+							aria-haspopup="true"
 						>
 							Resources
 							<ChevronDown
 								className={`h-3 w-3 transition-transform ${resourcesOpen ? "rotate-180" : ""}`}
+								aria-hidden="true"
 							/>
 						</button>
 
@@ -217,7 +223,8 @@ export function Navbar() {
 								type="button"
 								className={`md:hidden ml-1 ${actionBtnClass}`}
 								onClick={() => setMobileOpen(!mobileOpen)}
-								aria-label="Toggle menu"
+								aria-label={mobileOpen ? "Close menu" : "Open menu"}
+								aria-expanded={mobileOpen}
 							>
 								{mobileOpen ? (
 									<X className="size-6" />
@@ -236,7 +243,8 @@ export function Navbar() {
 					className="hidden md:block absolute left-1/2 -translate-x-1/2 w-screen z-40"
 					style={{
 						background: "var(--color-neutral-950, #0A0A0A)",
-						boxShadow: "0px 38px 50px 10px #00000040",
+						boxShadow:
+							"0px 20px 60px 15px rgba(0, 0, 0, 0.6), 0px 8px 20px 0px rgba(0, 0, 0, 0.4)",
 					}}
 				>
 					{/* Top row (first 2 resources) */}
@@ -278,7 +286,12 @@ export function Navbar() {
 
 			{/* ── Mobile menu — full-screen overlay ── */}
 			{mobileOpen && (
-				<div className="md:hidden fixed top-0 left-0 w-screen h-screen z-100 flex flex-col bg-black">
+				<div
+					className="md:hidden fixed top-0 left-0 w-screen h-screen z-100 flex flex-col bg-black"
+					role="dialog"
+					aria-modal="true"
+					aria-label="Navigation menu"
+				>
 					{/* Mobile header — logo + close button */}
 					<header className="flex items-center justify-between px-6 py-3 border-b landing-border-gradient bg-[#d9d9d913]">
 						<Link
@@ -336,10 +349,12 @@ export function Navbar() {
 										type="button"
 										onClick={() => setResourcesOpen(!resourcesOpen)}
 										className="flex w-full text-sm sm:text-lg items-center justify-between py-4 font-medium text-foreground hover:bg-white/5 transition-colors"
+										aria-expanded={resourcesOpen}
 									>
 										Resources
 										<ChevronDown
 											className={`h-4 w-4 transition-transform ${resourcesOpen ? "rotate-180" : ""}`}
+											aria-hidden="true"
 										/>
 									</button>
 									<HorizontalRule />

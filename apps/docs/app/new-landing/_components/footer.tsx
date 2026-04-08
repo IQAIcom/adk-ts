@@ -81,10 +81,11 @@ export function Footer() {
 						<div className="space-y-4 max-w-xs">
 							<Image
 								src="/adk.png"
-								alt="ADK TypeScript"
+								alt="ADK-TS logo"
 								width={140}
 								height={140}
 								className="rounded-xl"
+								loading="lazy"
 							/>
 							<div className="grid gap-2">
 								<h2 className="text-2xl font-bold text-foreground">ADK-TS</h2>
@@ -147,6 +148,7 @@ export function Footer() {
 							background:
 								"linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, 0) 100%)",
 						}}
+						aria-hidden="true"
 					/>
 					{/* Centered glow gradient */}
 					<Image
@@ -155,15 +157,19 @@ export function Footer() {
 						width={825}
 						height={642}
 						className="absolute inset-0 w-full h-full object-cover max-w-3xl mx-auto"
+						loading="lazy"
+						aria-hidden="true"
 					/>
 					{/* Foreground image */}
 					<div className="relative flex items-center justify-center py-16 sm:py-20 lg:py-24">
 						<Image
 							src="/landing-page/footer-name-image.png"
-							alt="ADK-TS"
+							alt="ADK-TS — TypeScript AI Agent Framework"
 							width={1087}
 							height={250}
 							className="w-full h-auto px-6 sm:px-8 lg:px-10"
+							loading="lazy"
+							sizes="(max-width: 768px) 90vw, (max-width: 1200px) 80vw, 1087px"
 						/>
 					</div>
 				</div>
