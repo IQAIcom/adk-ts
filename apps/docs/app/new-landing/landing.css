@@ -157,11 +157,14 @@ body {
 
 .landing-glow-orb {
 	@apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2;
-	width: 500px;
-	height: 500px;
-	border-radius: 16777200px;
-	background: hsla(331, 100%, 55%, 0.2);
-	filter: blur(200px);
+	width: 900px;
+	height: 900px;
+	border-radius: 50%;
+	background: radial-gradient(
+		circle,
+		hsla(331, 100%, 55%, 0.2) 0%,
+		transparent 70%
+	);
 }
 
 .sticky-glow {
@@ -241,7 +244,6 @@ body {
 .hero-code-card figure button {
 	display: none !important;
 }
-
 
 /* Responsive grid background — cells grow on smaller screens */
 .landing-grid-bg {

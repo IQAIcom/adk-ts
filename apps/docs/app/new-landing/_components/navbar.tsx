@@ -144,161 +144,35 @@ export function Navbar() {
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
 
+	// Lock body scroll when resources dropdown is open
+	useEffect(() => {
+		document.body.style.overflow = resourcesOpen ? "hidden" : "";
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [resourcesOpen]);
+
 	return (
-		<nav
-			ref={navRef}
-			className="sticky top-0 z-50 border-b landing-border-gradient py-3 lg:py-4"
-			style={{ background: "#D9D9D908", backdropFilter: "blur(36px)" }}
-		>
-			{/* ── Desktop & mobile top bar ── */}
-			<div className="mx-auto max-w-7xl">
-				<div className="mx-3  md:mx-10 lg:mx-12 flex items-center justify-between">
-					{/* Brand logo */}
-					<Link href="/" className="flex items-center gap-2 font-semibold">
-						<Image
-							src="/adk.png"
-							alt="ADK-TS"
-							width={30}
-							height={30}
-							className="rounded-lg"
-							priority
-						/>
-						<span>ADK-TS</span>
-					</Link>
-
-					{/* Navigation pill — contains links (desktop) + actions (all sizes) */}
-					<div className="flex items-center gap-10 rounded-md border border-neutral-700 p-2 bg-white/5 transition-colors px-5 py-2">
-						{/* Primary nav links — desktop only */}
-						{NAV_LINKS.map((link) => (
-							<Link
-								key={link.href}
-								href={link.href}
-								className={`hidden md:block ${navLinkClass}`}
-								{...(link.external && {
-									target: "_blank",
-									rel: "noopener noreferrer",
-								})}
-							>
-								{link.text}
-							</Link>
-						))}
-
-						{/* Resources dropdown trigger — desktop only */}
-						<button
-							type="button"
-							onClick={() => setResourcesOpen(!resourcesOpen)}
-							className={`hidden md:inline-flex items-center gap-1 ${navLinkClass}`}
-							aria-expanded={resourcesOpen}
-							aria-haspopup="true"
-						>
-							Resources
-							<ChevronDown
-								className={`h-3 w-3 transition-transform ${resourcesOpen ? "rotate-180" : ""}`}
-								aria-hidden="true"
-							/>
-						</button>
-
-						{/* Action buttons — all sizes */}
-						<div className="flex items-center gap-4">
-							<button
-								type="button"
-								className={actionBtnClass}
-								aria-label="Search"
-							>
-								<Search className="size-6" />
-							</button>
-
-							<Link
-								href="https://github.com/IQAICOM/adk-ts"
-								target="_blank"
-								rel="noopener noreferrer"
-								className={actionBtnClass}
-								aria-label="GitHub"
-							>
-								<GitHubIcon className="size-6" />
-							</Link>
-
-							{/* Mobile menu toggle */}
-							<button
-								type="button"
-								className={`md:hidden ml-1 ${actionBtnClass}`}
-								onClick={() => setMobileOpen(!mobileOpen)}
-								aria-label={mobileOpen ? "Close menu" : "Open menu"}
-								aria-expanded={mobileOpen}
-							>
-								{mobileOpen ? (
-									<X className="size-6" />
-								) : (
-									<Menu className="size-6" />
-								)}
-							</button>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			{/* ── Desktop resources dropdown — full-bleed overlay ── */}
+		<>
+			{/* Backdrop overlay — outside nav so it covers the full page */}
 			{resourcesOpen && (
-				<div
-					className="hidden md:block absolute left-1/2 -translate-x-1/2 w-screen z-40"
-					style={{
-						background: "var(--color-neutral-950, #0A0A0A)",
-						boxShadow:
-							"0px 20px 60px 15px rgba(0, 0, 0, 0.6), 0px 8px 20px 0px rgba(0, 0, 0, 0.4)",
-					}}
-				>
-					{/* Top row (first 2 resources) */}
-					<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
-						<VerticalRule className="left-0" />
-						<VerticalRule className="left-1/2 -translate-x-1/2" />
-						<VerticalRule className="right-0" />
-						<div className="grid grid-cols-2">
-							{RESOURCE_LINKS.slice(0, 2).map((link) => (
-								<DesktopResourceLinkType
-									key={link.href}
-									link={link}
-									onClick={() => setResourcesOpen(false)}
-								/>
-							))}
-						</div>
-					</div>
-
-					{/* Full-bleed horizontal divider */}
-					<HorizontalRule />
-
-					{/* Bottom row (last 2 resources) */}
-					<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
-						<VerticalRule className="left-0" />
-						<VerticalRule className="left-1/2 -translate-x-1/2" />
-						<VerticalRule className="right-0" />
-						<div className="grid grid-cols-2">
-							{RESOURCE_LINKS.slice(2, 4).map((link) => (
-								<DesktopResourceLinkType
-									key={link.href}
-									link={link}
-									onClick={() => setResourcesOpen(false)}
-								/>
-							))}
-						</div>
-					</div>
-				</div>
+				<button
+					type="button"
+					className="hidden md:block fixed inset-0 z-40 bg-black/25 backdrop-blur-sm w-full h-full cursor-default"
+					onClick={() => setResourcesOpen(false)}
+					aria-label="Close resources menu"
+				/>
 			)}
-
-			{/* ── Mobile menu — full-screen overlay ── */}
-			{mobileOpen && (
-				<div
-					className="md:hidden fixed top-0 left-0 w-screen h-screen z-100 flex flex-col bg-black"
-					role="dialog"
-					aria-modal="true"
-					aria-label="Navigation menu"
-				>
-					{/* Mobile header — logo + close button */}
-					<header className="flex items-center justify-between px-6 py-3 border-b landing-border-gradient bg-[#d9d9d913]">
-						<Link
-							href="/"
-							className="flex items-center gap-2 font-semibold"
-							onClick={() => setMobileOpen(false)}
-						>
+			<nav
+				ref={navRef}
+				className="sticky top-0 z-50 border-b landing-border-gradient py-3 lg:py-4"
+				style={{ background: "#D9D9D908", backdropFilter: "blur(36px)" }}
+			>
+				{/* ── Desktop & mobile top bar ── */}
+				<div className="mx-auto max-w-7xl">
+					<div className="mx-3  md:mx-10 lg:mx-12 flex items-center justify-between">
+						{/* Brand logo */}
+						<Link href="/" className="flex items-center gap-2 font-semibold">
 							<Image
 								src="/adk.png"
 								alt="ADK-TS"
@@ -308,110 +182,242 @@ export function Navbar() {
 							/>
 							<span>ADK-TS</span>
 						</Link>
-						<button
-							type="button"
-							className="rounded-md border border-neutral-700 p-2 bg-white/5 hover:bg-white/10 transition-colors"
-							onClick={() => setMobileOpen(false)}
-							aria-label="Close menu"
-						>
-							<X className="size-5" />
-						</button>
-					</header>
 
-					{/* Mobile nav body — scrollable with vertical SVG rules */}
-					<div className="flex-1 overflow-y-auto mx-6 md:mx-10">
-						<div className="relative min-h-full">
-							<VerticalRule className="left-0" />
-							<VerticalRule className="right-0" />
+						{/* Navigation pill — contains links (desktop) + actions (all sizes) */}
+						<div className="flex items-center gap-10 rounded-md border border-neutral-700 p-2 bg-white/5 transition-colors px-5 py-2">
+							{/* Primary nav links — desktop only */}
+							{NAV_LINKS.map((link) => (
+								<Link
+									key={link.href}
+									href={link.href}
+									className={`hidden md:block ${navLinkClass}`}
+									{...(link.external && {
+										target: "_blank",
+										rel: "noopener noreferrer",
+									})}
+								>
+									{link.text}
+								</Link>
+							))}
 
-							<div className="mx-3 sm:mx-6">
-								{/* Primary nav links */}
-								{NAV_LINKS.map((link) => (
-									<div key={link.href}>
-										<Link
-											href={link.href}
-											className="block py-4 text-sm sm:text-lg font-medium text-foreground hover:bg-white/5 transition-colors"
-											onClick={() => setMobileOpen(false)}
-											{...(link.external && {
-												target: "_blank",
-												rel: "noopener noreferrer",
-											})}
-										>
-											{link.text}
-										</Link>
-										<HorizontalRule />
-									</div>
-								))}
+							{/* Resources dropdown trigger — desktop only */}
+							<button
+								type="button"
+								onClick={() => setResourcesOpen(!resourcesOpen)}
+								className={`hidden md:inline-flex items-center gap-1 ${navLinkClass}`}
+							>
+								Resources
+								<ChevronDown
+									className={`h-3 w-3 transition-transform ${resourcesOpen ? "rotate-180" : ""}`}
+								/>
+							</button>
 
-								{/* Resources accordion */}
-								<div>
-									<button
-										type="button"
-										onClick={() => setResourcesOpen(!resourcesOpen)}
-										className="flex w-full text-sm sm:text-lg items-center justify-between py-4 font-medium text-foreground hover:bg-white/5 transition-colors"
-										aria-expanded={resourcesOpen}
-									>
-										Resources
-										<ChevronDown
-											className={`h-4 w-4 transition-transform ${resourcesOpen ? "rotate-180" : ""}`}
-											aria-hidden="true"
-										/>
-									</button>
-									<HorizontalRule />
+							{/* Action buttons — all sizes */}
+							<div className="flex items-center gap-4">
+								<button
+									type="button"
+									className={actionBtnClass}
+									aria-label="Search"
+								>
+									<Search className="size-6" />
+								</button>
 
-									{/* Expanded resource links */}
-									{resourcesOpen && (
-										<div>
-											{RESOURCE_LINKS.map((link) => (
-												<div key={link.href}>
-													<MobileResourceLinkType
-														link={link}
-														onClick={() => setMobileOpen(false)}
-													/>
-													<HorizontalRule />
-												</div>
-											))}
-										</div>
+								<Link
+									href="https://github.com/IQAICOM/adk-ts"
+									target="_blank"
+									rel="noopener noreferrer"
+									className={actionBtnClass}
+									aria-label="GitHub"
+								>
+									<GitHubIcon className="size-6" />
+								</Link>
+
+								{/* Mobile menu toggle */}
+								<button
+									type="button"
+									className={`md:hidden ml-1 ${actionBtnClass}`}
+									onClick={() => setMobileOpen(!mobileOpen)}
+									aria-label="Toggle menu"
+								>
+									{mobileOpen ? (
+										<X className="size-6" />
+									) : (
+										<Menu className="size-6" />
 									)}
-								</div>
+								</button>
 							</div>
 						</div>
 					</div>
+				</div>
 
-					{/* Mobile footer — copyright, newsletter, IQ branding */}
-					<footer className="border-y landing-border py-5 relative">
-						<VerticalRule className="left-6 md:left-10" />
-						<VerticalRule className="right-6 md:right-10" />
-						<div className="mx-9 sm:mx-12 md:mx-16 flex flex-col items-center sm:flex-row sm:justify-between gap-4">
-							<p className="text-xs text-neutral-400 text-center sm:text-left">
-								&copy; {CURRENT_YEAR} ADK-TS. Released under the MIT License.
-							</p>
-							<div className="flex items-center gap-y-4 gap-x-6 flex-col sm:flex-row">
-								<Link
-									href="https://www.getdrip.com/forms/505929689/submissions/new"
-									className="landing-newsletter-btn"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									Newsletter
-								</Link>
-								<span className="text-xs font-medium tracking-wide text-neutral-400">
-									Powered by{" "}
+				{/* ── Desktop resources dropdown — full-bleed overlay ── */}
+				{resourcesOpen && (
+					<div
+						className="hidden md:block absolute left-1/2 -translate-x-1/2 w-screen z-40"
+						style={{
+							background: "var(--color-neutral-950, #0A0A0A)",
+							boxShadow: "0px 38px 50px 10px #00000040",
+						}}
+					>
+						{/* Top row (first 2 resources) */}
+						<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
+							<VerticalRule className="left-0" />
+							<VerticalRule className="left-1/2 -translate-x-1/2" />
+							<VerticalRule className="right-0" />
+							<div className="grid grid-cols-2">
+								{RESOURCE_LINKS.slice(0, 2).map((link) => (
+									<DesktopResourceLinkType
+										key={link.href}
+										link={link}
+										onClick={() => setResourcesOpen(false)}
+									/>
+								))}
+							</div>
+						</div>
+
+						{/* Full-bleed horizontal divider */}
+						<HorizontalRule />
+
+						{/* Bottom row (last 2 resources) */}
+						<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">
+							<VerticalRule className="left-0" />
+							<VerticalRule className="left-1/2 -translate-x-1/2" />
+							<VerticalRule className="right-0" />
+							<div className="grid grid-cols-2">
+								{RESOURCE_LINKS.slice(2, 4).map((link) => (
+									<DesktopResourceLinkType
+										key={link.href}
+										link={link}
+										onClick={() => setResourcesOpen(false)}
+									/>
+								))}
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* ── Mobile menu — full-screen overlay ── */}
+				{mobileOpen && (
+					<div className="md:hidden fixed top-0 left-0 w-screen h-screen z-100 flex flex-col bg-black">
+						{/* Mobile header — logo + close button */}
+						<header className="flex items-center justify-between px-6 py-3 border-b landing-border-gradient bg-[#d9d9d913]">
+							<Link
+								href="/"
+								className="flex items-center gap-2 font-semibold"
+								onClick={() => setMobileOpen(false)}
+							>
+								<Image
+									src="/adk.png"
+									alt="ADK-TS"
+									width={30}
+									height={30}
+									className="rounded-lg"
+								/>
+								<span>ADK-TS</span>
+							</Link>
+							<button
+								type="button"
+								className="rounded-md border border-neutral-700 p-2 bg-white/5 hover:bg-white/10 transition-colors"
+								onClick={() => setMobileOpen(false)}
+								aria-label="Close menu"
+							>
+								<X className="size-5" />
+							</button>
+						</header>
+
+						{/* Mobile nav body — scrollable with vertical SVG rules */}
+						<div className="flex-1 overflow-y-auto mx-6 md:mx-10">
+							<div className="relative min-h-full">
+								<VerticalRule className="left-0" />
+								<VerticalRule className="right-0" />
+
+								<div className="mx-3 sm:mx-6">
+									{/* Primary nav links */}
+									{NAV_LINKS.map((link) => (
+										<div key={link.href}>
+											<Link
+												href={link.href}
+												className="block py-4 text-sm sm:text-lg font-medium text-foreground hover:bg-white/5 transition-colors"
+												onClick={() => setMobileOpen(false)}
+												{...(link.external && {
+													target: "_blank",
+													rel: "noopener noreferrer",
+												})}
+											>
+												{link.text}
+											</Link>
+											<HorizontalRule />
+										</div>
+									))}
+
+									{/* Resources accordion */}
+									<div>
+										<button
+											type="button"
+											onClick={() => setResourcesOpen(!resourcesOpen)}
+											className="flex w-full text-sm sm:text-lg items-center justify-between py-4 font-medium text-foreground hover:bg-white/5 transition-colors"
+										>
+											Resources
+											<ChevronDown
+												className={`h-4 w-4 transition-transform ${resourcesOpen ? "rotate-180" : ""}`}
+											/>
+										</button>
+										<HorizontalRule />
+
+										{/* Expanded resource links */}
+										{resourcesOpen && (
+											<div>
+												{RESOURCE_LINKS.map((link) => (
+													<div key={link.href}>
+														<MobileResourceLinkType
+															link={link}
+															onClick={() => setMobileOpen(false)}
+														/>
+														<HorizontalRule />
+													</div>
+												))}
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* Mobile footer — copyright, newsletter, IQ branding */}
+						<footer className="border-y landing-border py-5 relative">
+							<VerticalRule className="left-6 md:left-10" />
+							<VerticalRule className="right-6 md:right-10" />
+							<div className="mx-9 sm:mx-12 md:mx-16 flex flex-col items-center sm:flex-row sm:justify-between gap-4">
+								<p className="text-xs text-neutral-400 text-center sm:text-left">
+									&copy; {CURRENT_YEAR} ADK-TS. Released under the MIT License.
+								</p>
+								<div className="flex items-center gap-y-4 gap-x-6 flex-col sm:flex-row">
 									<Link
-										href="https://iqai.com"
-										className="text-primary hover:text-primary/80 font-medium transition-colors"
+										href="https://www.getdrip.com/forms/505929689/submissions/new"
+										className="landing-newsletter-btn"
 										target="_blank"
 										rel="noopener noreferrer"
 									>
-										IQ
+										Newsletter
 									</Link>
-								</span>
+									<span className="text-xs font-medium tracking-wide text-neutral-400">
+										Powered by{" "}
+										<Link
+											href="https://iqai.com"
+											className="text-primary hover:text-primary/80 font-medium transition-colors"
+											target="_blank"
+											rel="noopener noreferrer"
+										>
+											IQ
+										</Link>
+									</span>
+								</div>
 							</div>
-						</div>
-					</footer>
-				</div>
-			)}
-		</nav>
+						</footer>
+					</div>
+				)}
+			</nav>
+		</>
 	);
 }
 
