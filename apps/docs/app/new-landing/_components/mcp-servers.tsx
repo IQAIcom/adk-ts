@@ -268,31 +268,43 @@ const AUTO_SWITCH_INTERVAL = 5000;
 const MCPServersSection = () => {
 	const [activeTab, setActiveTab] = useState("defi");
 	const [copied, setCopied] = useState(false);
+	const [autoPlay, setAutoPlay] = useState(true);
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const activeCategory =
 		categories.find((cat) => cat.id === activeTab) || categories[0];
 
+	const stopAutoSwitch = useCallback(() => {
+		if (intervalRef.current) {
+			clearInterval(intervalRef.current);
+			intervalRef.current = null;
+		}
+	}, []);
+
 	const startAutoSwitch = useCallback(() => {
-		if (intervalRef.current) clearInterval(intervalRef.current);
+		stopAutoSwitch();
 		intervalRef.current = setInterval(() => {
 			setActiveTab((prev) => {
 				const idx = categories.findIndex((cat) => cat.id === prev);
 				return categories[(idx + 1) % categories.length].id;
 			});
 		}, AUTO_SWITCH_INTERVAL);
-	}, []);
+	}, [stopAutoSwitch]);
 
 	const handleTabClick = (tabId: string) => {
 		setActiveTab(tabId);
-		startAutoSwitch();
+		setAutoPlay(false);
+		stopAutoSwitch();
+	};
+
+	const pauseAutoSwitch = () => stopAutoSwitch();
+	const resumeAutoSwitch = () => {
+		if (autoPlay) startAutoSwitch();
 	};
 
 	useEffect(() => {
-		startAutoSwitch();
-		return () => {
-			if (intervalRef.current) clearInterval(intervalRef.current);
-		};
-	}, [startAutoSwitch]);
+		if (autoPlay) startAutoSwitch();
+		return stopAutoSwitch;
+	}, [autoPlay, startAutoSwitch, stopAutoSwitch]);
 
 	return (
 		<SectionWrapper
@@ -400,6 +412,10 @@ const MCPServersSection = () => {
 				role="tabpanel"
 				id={`tabpanel-${activeCategory.id}`}
 				aria-labelledby={`tab-${activeCategory.id}`}
+				onMouseEnter={pauseAutoSwitch}
+				onMouseLeave={resumeAutoSwitch}
+				onFocus={pauseAutoSwitch}
+				onBlur={resumeAutoSwitch}
 			>
 				{/* Category Description */}
 				<div className="mb-4.5 lg:mb-10">
