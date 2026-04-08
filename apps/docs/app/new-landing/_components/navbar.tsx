@@ -142,13 +142,21 @@ export function Navbar() {
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
 
+	// Lock body scroll when resources dropdown is open
+	useEffect(() => {
+		document.body.style.overflow = resourcesOpen ? "hidden" : "";
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [resourcesOpen]);
+
 	return (
 		<>
 			{/* Backdrop overlay — outside nav so it covers the full page */}
 			{resourcesOpen && (
 				<button
 					type="button"
-					className="hidden md:block fixed inset-0 z-40 bg-black/25 w-full h-full cursor-default"
+					className="hidden md:block fixed inset-0 z-40 bg-black/25 backdrop-blur-sm w-full h-full cursor-default"
 					onClick={() => setResourcesOpen(false)}
 					aria-label="Close resources menu"
 				/>
