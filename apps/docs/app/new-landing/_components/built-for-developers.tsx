@@ -11,6 +11,7 @@ import {
 	SquareTerminal,
 } from "lucide-react";
 import { Check } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { SectionWrapper } from "./section-wrapper";
 
@@ -377,11 +378,17 @@ const BuiltForDevelopersSection = () => {
 	return (
 		<SectionWrapper id="built-for-developers">
 			{/* Section header */}
-			<div className="landing-section-header">
+			<motion.div
+				className="landing-section-header"
+				initial={{ opacity: 0, y: 20 }}
+				whileInView={{ opacity: 1, y: 0 }}
+				viewport={{ once: true }}
+				transition={{ duration: 0.6 }}
+			>
 				<span className="landing-badge">Developer Experience</span>
 				<h2>Built for Developers</h2>
 				<p>TypeScript-first . Full IntelliSense . Zero Configuration</p>
-			</div>
+			</motion.div>
 
 			{/* Code snippet + DX highlights */}
 			<div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-y-3.5 lg:gap-x-8">

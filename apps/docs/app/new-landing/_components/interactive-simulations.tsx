@@ -40,11 +40,14 @@ function DemoCard({
 	const [logs, setLogs] = useState<string[]>([]);
 	const logContainerRef = useRef<HTMLDivElement>(null);
 
-	// Auto-scroll to bottom when logs update
+	// Auto-scroll to bottom smoothly when logs update
 	// biome-ignore lint/correctness/useExhaustiveDependencies: logs triggers scroll on update
 	useEffect(() => {
 		if (logContainerRef.current) {
-			logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+			logContainerRef.current.scrollTo({
+				top: logContainerRef.current.scrollHeight,
+				behavior: "smooth",
+			});
 		}
 	}, [logs]);
 
@@ -109,59 +112,60 @@ function DemoCard({
 	return (
 		<div className="relative border border-white/20 bg-black/60 rounded-lg overflow-hidden">
 			{/* Header Section */}
-			<div className="p-6 space-y-6">
+			<div className="p-6 space-y-4 lg:space-y-6">
 				<div className="">
-					<h3 className="text-3xl text-white font-bold">{title}</h3>
+					<h3 className="text-xl lg:text-3xl text-white font-bold">{title}</h3>
 					<p className="text-primary font-medium text-sm">{subtitle}</p>
 				</div>
 
-				<p className="text-muted-foreground font-medium text-lg leading-relaxed max-w-3xl">
+				<p className="text-muted-foreground font-medium text-sm lg:text-lg leading-relaxed max-w-3xl">
 					{description}
 				</p>
 
 				{/* Metrics */}
-				<div className="flex p-4 gap-8 border-b border-white/20">
-					<div className="flex items-center gap-3">
-						<Clock className="size-5 text-muted-foreground" />
-						<div>
-							<div className="text-muted-foreground text-xs text-medium mb-0.5">
-								Latency:
-							</div>
-							<div className="text-primary text-lg font-medium">{latency}</div>
-						</div>
-					</div>
-					<div className="flex items-center gap-3">
-						<Zap className="size-5 text-muted-foreground" />
-						<div>
-							<div className="text-muted-foreground text-xs text-medium mb-0.5">
-								Tokens:
-							</div>
-							<div className="text-primary text-lg font-medium">{tokens}</div>
-						</div>
-					</div>
-					{accuracy && (
+				<div className="border-b border-white/20">
+					<div className="flex justify-between lg:justify-center py-4 lg:gap-8  max-w-[318px] mr-auto">
 						<div className="flex items-center gap-3">
-							<Target className="size-5 text-muted-foreground" />
+							<Clock className="size-5 text-muted-foreground" />
 							<div>
 								<div className="text-muted-foreground text-xs text-medium mb-0.5">
-									Accuracy:
+									Latency:
 								</div>
 								<div className="text-primary text-lg font-medium">
-									{accuracy}
+									{latency}
 								</div>
 							</div>
 						</div>
-					)}
+						<div className="flex items-center gap-3">
+							<Zap className="size-5 text-muted-foreground" />
+							<div>
+								<div className="text-muted-foreground text-xs text-medium mb-0.5">
+									Tokens:
+								</div>
+								<div className="text-primary text-lg font-medium">{tokens}</div>
+							</div>
+						</div>
+						{accuracy && (
+							<div className="flex items-center gap-3">
+								<Target className="size-5 text-muted-foreground" />
+								<div>
+									<div className="text-muted-foreground text-xs text-medium mb-0.5">
+										Accuracy:
+									</div>
+									<div className="text-primary text-lg font-medium">
+										{accuracy}
+									</div>
+								</div>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 
 			{/* Body Section - Two Columns */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
 				{/* LEFT - Node Graph Visualization */}
-				<div
-					className="relative bg-black/40 border border-white/20 overflow-hidden flex items-center justify-center rounded-md"
-					style={{ minHeight: "500px", maxHeight: "500px" }}
-				>
+				<div className="relative bg-black/40 border border-white/20 overflow-hidden flex items-center justify-center rounded-md h-auto lg:h-[500px]">
 					{patternLabel && (
 						<div className="absolute top-4 left-4 px-2.5 py-1 text-[10px] font-medium text-primary/70 border border-primary/20 bg-primary/5 rounded">
 							{patternLabel}
@@ -989,7 +993,7 @@ function DemoCard({
 				</div>
 
 				{/* RIGHT - Terminal Window */}
-				<div className="relative border border-white/20 bg-black/60 flex flex-col rounded-md overflow-hidden">
+				<div className="relative border border-white/20 bg-black/60 flex flex-col rounded-md overflow-hidden lg:h-[500px]">
 					{/* Window Header - macOS Style */}
 					<div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0a0a0a]">
 						<div className="flex items-center gap-2">
@@ -1023,10 +1027,10 @@ function DemoCard({
 					</div>
 
 					{/* Window Content */}
-					<div className="flex flex-col flex-1">
+					<div className="flex flex-col flex-1 min-h-0">
 						<div
 							ref={logContainerRef}
-							className="flex-1 bg-black rounded border border-white/10 m-6 p-4 overflow-y-auto text-xs"
+							className="flex-1 min-h-0 bg-black rounded border border-white/10 m-6 p-4 overflow-y-auto text-xs"
 						>
 							{logs.length === 0 ? (
 								<div className="text-white text-center py-20 translate-y-1/2">
@@ -1064,7 +1068,10 @@ function DemoCard({
 
 const InteractiveSimulationsSection = () => {
 	return (
-		<SectionWrapper id="interactive-simulations" className="grid gap-y-24">
+		<SectionWrapper
+			id="interactive-simulations"
+			className="grid md:gap-y-4 lg:gap-y-12"
+		>
 			{/* Section Header */}
 			<div className="landing-section-header">
 				<span className="landing-badge">Interactive Simulations</span>
@@ -1077,7 +1084,7 @@ const InteractiveSimulationsSection = () => {
 			</div>
 
 			{/* Demo Cards */}
-			<div className="grid gap-16">
+			<div className="grid gap-8 lg:gap-16">
 				<motion.div
 					initial={{ opacity: 0, y: 30 }}
 					whileInView={{ opacity: 1, y: 0 }}

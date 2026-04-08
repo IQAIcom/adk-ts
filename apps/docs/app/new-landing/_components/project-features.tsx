@@ -80,9 +80,9 @@ const ProjectFeaturesSection = () => {
 				</div>
 				<Link
 					href="/showcase"
-					className="landing-newsletter-btn p-3! space-x-3 text-lg!"
+					className="inline-flex items-center py-2.5 px-3 lg:px-5 lg:py-4.5 rounded-md border-2 border-primary text-primary text-xs md:text-sm font-medium transition-colors space-x-3"
 				>
-					<span className="text-sm">View All Showcases</span>
+					<span className="">View All Showcases</span>
 					<ArrowRight className="w-4 h-4" />
 				</Link>
 			</div>
@@ -139,7 +139,7 @@ const ProjectFeaturesSection = () => {
 									{/* View All Showcases Button */}
 									<Link
 										href="/showcase"
-										className="landing-newsletter-btn p-3! space-x-3 text-lg!"
+										className="inline-flex items-center py-2.5 px-3 lg:px-5 lg:py-4.5 rounded-md border-2 border-primary text-primary text-xs md:text-sm font-medium transition-colors p-3! space-x-3 text-lg!"
 									>
 										<span className="text-sm">View All Showcases</span>
 										<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />

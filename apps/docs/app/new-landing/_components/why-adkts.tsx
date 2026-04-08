@@ -1,6 +1,8 @@
 "use client";
 
 import { Blocks, Cpu, Cog, GitFork, ShieldCheck, Network } from "lucide-react";
+
+import { motion } from "motion/react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { SectionWrapper } from "./section-wrapper";
@@ -65,12 +67,14 @@ const features = [
 const FeatureItem = ({ feature }: { feature: (typeof features)[0] }) => (
 	<>
 		<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-black/60 max-w-2xl">
-			<h3 className="text-lg text-foreground font-medium">{feature.title}</h3>
-			<p className="text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
+			<h3 className="text-base lg:text-lg text-foreground font-medium">
+				{feature.title}
+			</h3>
+			<p className="text-sm lg:text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
 				{feature.description}
 			</p>
 		</div>
-		<div className="mt-10 relative w-full aspect-4/3 overflow-hidden">
+		<div className="mt-5 lg:mt-10 borer relative w-full aspect-4/3 overflow-hidden">
 			<Image
 				src={feature.image}
 				alt={feature.title}
@@ -122,17 +126,29 @@ export default function WhyADKTSSection() {
 			className="bg-black sticky-glow overflow-x-clip"
 		>
 			{/* Section header */}
-			<div className="landing-section-header">
+			<motion.div
+				className="landing-section-header"
+				initial={{ opacity: 0, y: 20 }}
+				whileInView={{ opacity: 1, y: 0 }}
+				viewport={{ once: true }}
+				transition={{ duration: 0.6 }}
+			>
 				<span className="landing-badge">Core Features</span>
 				<h2>Why ADK-TS?</h2>
 				<p>
 					A TypeScript-native framework for building, orchestrating, and running
 					AI agents in production. Built for developers who want full control.
 				</p>
-			</div>
+			</motion.div>
 
 			{/* Desktop: side nav + scrolling content */}
-			<div className="hidden lg:grid lg:grid-cols-[280px_1fr] gap-12">
+			<motion.div
+				className="hidden lg:grid lg:grid-cols-[280px_1fr] gap-12"
+				initial={{ opacity: 0, y: 20 }}
+				whileInView={{ opacity: 1, y: 0 }}
+				viewport={{ once: true }}
+				transition={{ duration: 0.6, delay: 0.2 }}
+			>
 				{/* Left nav — sticky */}
 				<nav className="sticky top-40 self-start space-y-8 mt-[100px]">
 					{features.map((feature, index) => {
@@ -184,10 +200,16 @@ export default function WhyADKTSSection() {
 						</div>
 					))}
 				</div>
-			</div>
+			</motion.div>
 
 			{/* Mobile/Tablet: stacked layout */}
-			<div className="lg:hidden space-y-5 md:space-y-10">
+			<motion.div
+				className="lg:hidden space-y-5 md:space-y-10"
+				initial={{ opacity: 0, y: 20 }}
+				whileInView={{ opacity: 1, y: 0 }}
+				viewport={{ once: true }}
+				transition={{ duration: 0.6, delay: 0.2 }}
+			>
 				{features.map((feature) => (
 					<div
 						key={feature.id}
@@ -196,7 +218,7 @@ export default function WhyADKTSSection() {
 						<FeatureItem feature={feature} />
 					</div>
 				))}
-			</div>
+			</motion.div>
 		</SectionWrapper>
 	);
 }

@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { SectionWrapper } from "./section-wrapper";
 
 const steps = [
@@ -89,19 +90,29 @@ const GetStartedSection = () => {
 	return (
 		<SectionWrapper id="get-started">
 			{/* Section header */}
-			<div className="landing-section-header">
+			<motion.div
+				className="landing-section-header"
+				initial={{ opacity: 0, y: 20 }}
+				whileInView={{ opacity: 1, y: 0 }}
+				viewport={{ once: true }}
+				transition={{ duration: 0.6 }}
+			>
 				<span className="landing-badge">Getting Started</span>
 				<h2>Create Your First Agent in Minutes</h2>
 				<p>
 					Start with a simple agent or scale to a full multi-agent system using
 					the same strongly-typed AgentBuilder API.
 				</p>
-			</div>
+			</motion.div>
 
 			{/* Step cards */}
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-				{steps.map((step) => (
-					<div
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				{steps.map((step, index) => (
+					<motion.div
+						initial={{ opacity: 0, y: 20 }}
+						whileInView={{ opacity: 1, y: 0 }}
+						viewport={{ once: true }}
+						transition={{ duration: 0.5, delay: index * 0.15 }}
 						key={step.step}
 						className="border border-white/20 rounded-md px-2 py-1 bg-black/60 flex flex-col"
 					>
@@ -131,7 +142,7 @@ const GetStartedSection = () => {
 								</div>
 							))}
 						</div>
-					</div>
+					</motion.div>
 				))}
 			</div>
 		</SectionWrapper>

@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { SectionWrapper } from "./section-wrapper";
@@ -8,7 +9,13 @@ const CTASection = () => {
 		<SectionWrapper id="cta">
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-[90px] items-center">
 				{/* CTA image */}
-				<div className="relative order-2 lg:order-1 max-w-lg mx-auto">
+				<motion.div
+					className="relative order-2 lg:order-1 max-w-lg mx-auto"
+					initial={{ opacity: 0, y: 20 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.6, delay: 0.2 }}
+				>
 					<Image
 						src="/landing-page/cta.svg"
 						alt="Agent Builder — from NPM install to production deploy"
@@ -16,10 +23,16 @@ const CTASection = () => {
 						height={400}
 						className="w-full h-auto"
 					/>
-				</div>
+				</motion.div>
 
 				{/* CTA content */}
-				<div className="space-y-8 order-1 lg:order-2">
+				<motion.div
+					className="space-y-8 order-1 lg:order-2"
+					initial={{ opacity: 0, y: 20 }}
+					whileInView={{ opacity: 1, y: 0 }}
+					viewport={{ once: true }}
+					transition={{ duration: 0.6 }}
+				>
 					<div className="space-y-5">
 						<h2 className="text-2xl md:text-5xl text-white font-bold tracking-tight max-w-md">
 							Ready to Build Your First Agent?
@@ -32,7 +45,7 @@ const CTASection = () => {
 					<div className="flex flex-wrap gap-7">
 						<Link
 							href="/docs"
-							className="inline-flex text-sm lg:text-base items-center gap-2 px-5 py-3.5 lg:py-4.5 rounded-md bg-primary text-white font-medium transition-colors hover:bg-primary/90 leading-0"
+							className="inline-flex text-sm lg:text-base items-center gap-2 py-2.5 px-3 lg:px-5 lg:py-4.5 rounded-md bg-primary text-white font-medium transition-colors hover:bg-primary/90 leading-0"
 						>
 							Read the Docs
 							<ArrowRight className="size-4" />
@@ -41,12 +54,12 @@ const CTASection = () => {
 							href="https://github.com/IQAIcom/adk-ts-samples"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="inline-flex text-sm lg:text-base items-center gap-2 px-5 py-3.5 lg:py-4.5 rounded-md border border-[#D1D5DB] text-white font-medium transition-colors hover:bg-white/5 shadow-[inset_0px_1px_1px_0px_#FFFFFF59,inset_0px_-2px_2px_0px_#8D8D8D0F] leading-0"
+							className="inline-flex  text-sm lg:text-base items-center gap-2 py-2.5 px-3 lg:px-5 lg:py-4.5 rounded-md border border-[#D1D5DB] text-white font-medium transition-colors hover:bg-white/5 shadow-[inset_0px_1px_1px_0px_#FFFFFF59,inset_0px_-2px_2px_0px_#8D8D8D0F]"
 						>
 							Explore Templates
 						</Link>
 					</div>
-				</div>
+				</motion.div>
 			</div>
 		</SectionWrapper>
 	);

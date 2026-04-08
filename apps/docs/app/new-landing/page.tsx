@@ -16,20 +16,35 @@ import LLMModels from "./_components/llm-models";
 
 export default function HomePage() {
 	return (
-		<div className="landing-fonts min-h-screen w-screen bg-black text-white overflow-x-clip">
+		<div
+			className="dark landing-fonts min-h-screen w-screen bg-black text-white overflow-x-clip"
+			style={{ colorScheme: "dark" }}
+		>
 			<Navbar />
-			<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative landing-glow">
-				<Hero />
-				<LLMModels />
-				<WhyADKTSSection />
-				<BuiltForDevelopersSection />
-				<CompleteStackSection />
-				<MCPServersSection />
-				<InteractiveSimulationsSection />
-				<ProjectFeaturesSection />
-				<GetStartedSection />
-				<CTASection />
-				<Footer />
+			{/* Glow clipped to container width */}
+			<div className="landing-glow-container">
+				<div className="landing-glow-orb" />
+			</div>
+			<div className="relative">
+				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
+					<Hero />
+					<LLMModels />
+					<WhyADKTSSection />
+					<BuiltForDevelopersSection />
+				</div>
+				<div className="bg-white">
+					<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
+						<CompleteStackSection />
+						<MCPServersSection />
+					</div>
+				</div>
+				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
+					<InteractiveSimulationsSection />
+					<ProjectFeaturesSection />
+					<GetStartedSection />
+					<CTASection />
+					<Footer />
+				</div>
 			</div>
 		</div>
 	);
