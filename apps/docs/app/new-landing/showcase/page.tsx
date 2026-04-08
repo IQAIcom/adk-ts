@@ -35,7 +35,7 @@ export default function HomePage() {
 				}}
 				aria-hidden="true"
 			/>
-			<main id="main-content" className="relative">
+			<main id="main-content" className="relative z-10">
 				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
 					<ShowcaseHero />
 					<LLMModels transparent />
@@ -43,7 +43,7 @@ export default function HomePage() {
 					<CTASection />
 				</div>
 			</main>
-			<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
+			<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x z-10">
 				<Footer />
 			</div>
 		</div>
