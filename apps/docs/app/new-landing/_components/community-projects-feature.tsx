@@ -5,12 +5,13 @@ import { useRef, useLayoutEffect, useState } from "react";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { SectionWrapper } from "./section-wrapper";
+import { SHOWCASE_STATS } from "./showcase.data";
 import { projects } from "@/app/showcase/_schema";
 import Image from "next/image";
 
 const showcaseProjects = projects.slice(0, 6); // Show top 6 projects
 
-const ProjectFeaturesSection = () => {
+const CommunityProjectFeatureSection = () => {
 	const sectionRef = useRef<HTMLDivElement>(null);
 	const trackRef = useRef<HTMLDivElement>(null);
 	const rightColRef = useRef<HTMLDivElement>(null);
@@ -109,30 +110,19 @@ const ProjectFeaturesSection = () => {
 										</p>
 
 										<div className="flex items-center gap-4">
-											<div className="flex flex-col">
-												<span className="text-2xl font-bold text-white">
-													90+
-												</span>
-												<span className="text-xs text-white/40">
-													Community Projects
-												</span>
-											</div>
-											<div className="w-px h-12 bg-white/10" />
-											<div className="flex flex-col">
-												<span className="text-2xl font-bold text-white">
-													115+
-												</span>
-												<span className="text-xs text-white/40">Stars</span>
-											</div>
-											<div className="w-px h-12 bg-white/10" />
-											<div className="flex flex-col">
-												<span className="text-2xl font-bold text-white">
-													100+
-												</span>
-												<span className="text-xs text-white/40">
-													Contributors
-												</span>
-											</div>
+											{SHOWCASE_STATS.map((stat, i) => (
+												<>
+													{i > 0 && <div className="w-px h-12 bg-white/10" />}
+													<div key={stat.label} className="flex flex-col">
+														<span className="text-2xl font-bold text-white">
+															{stat.value}
+														</span>
+														<span className="text-xs text-white/40">
+															{stat.label}
+														</span>
+													</div>
+												</>
+											))}
 										</div>
 									</div>
 
@@ -207,7 +197,7 @@ const ProjectFeaturesSection = () => {
 		</SectionWrapper>
 	);
 };
-export default ProjectFeaturesSection;
+export default CommunityProjectFeatureSection;
 
 interface ShowcaseCardProps {
 	project: (typeof showcaseProjects)[0];

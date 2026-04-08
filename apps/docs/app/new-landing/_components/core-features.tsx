@@ -90,7 +90,7 @@ const FeatureItem = ({ feature }: { feature: (typeof features)[0] }) => (
 	</article>
 );
 
-export default function WhyADKTSSection() {
+export default function CoreFeaturesSection() {
 	const [activeIndex, setActiveIndex] = useState(0);
 	const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
