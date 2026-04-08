@@ -190,11 +190,11 @@ body {
 }
 
 /* LLM grid — inset vertical dividers on sm/md, full border-r on lg */
-.llm-grid > div {
+.llm-grid > li {
 	position: relative;
 }
 
-.llm-grid > div::after {
+.llm-grid > li::after {
 	content: "";
 	position: absolute;
 	right: 0;
@@ -206,24 +206,24 @@ body {
 
 /* Hide VR on last column per breakpoint */
 /* 2-col: hide on every 2nd child */
-.llm-grid > div:nth-child(2n)::after {
+.llm-grid > li:nth-child(2n)::after {
 	display: none;
 }
 
 /* 3-col (md): show all, hide every 3rd */
 @media (min-width: 768px) {
-	.llm-grid > div:nth-child(2n)::after {
+	.llm-grid > li:nth-child(2n)::after {
 		display: block;
 	}
-	.llm-grid > div:nth-child(3n)::after {
+	.llm-grid > li:nth-child(3n)::after {
 		display: none;
 	}
 }
 
 /* 6-col (lg): hide all pseudos, use real border-r instead */
 @media (min-width: 1024px) {
-	.llm-grid > div::after,
-	.llm-grid > div:nth-child(n)::after {
+	.llm-grid > li::after,
+	.llm-grid > li:nth-child(n)::after {
 		display: none;
 	}
 }
