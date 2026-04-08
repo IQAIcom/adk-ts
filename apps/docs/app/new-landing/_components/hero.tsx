@@ -166,7 +166,7 @@ function CliCopyButton() {
 			onClick={copy}
 			className="group inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 backdrop-blur-sm py-2.5 px-3 lg:px-5 lg:py-4.5 text-xs md:text-sm font-medium font-mono text-primary-foreground transition-all hover:bg-white/10 hover:text-white"
 			aria-label={
-				copied ? "Copied CLI command" : "Copy CLI command to clipboard"
+				copied ? `Copied: ${cliCommand}` : `Copy CLI command: ${cliCommand}`
 			}
 		>
 			<span aria-hidden="true">{cliCommand}</span>
