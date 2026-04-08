@@ -3,7 +3,6 @@
 import { Blocks, Cpu, Cog, GitFork, ShieldCheck, Network } from "lucide-react";
 
 import { motion } from "motion/react";
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { SectionWrapper } from "./section-wrapper";
 
@@ -74,12 +73,12 @@ const FeatureItem = ({ feature }: { feature: (typeof features)[0] }) => (
 				{feature.description}
 			</p>
 		</div>
-		<div className="mt-5 lg:mt-10 borer relative w-full aspect-4/3 overflow-hidden">
-			<Image
-				src={feature.image}
-				alt={feature.title}
-				fill
-				className="object-contain"
+		<div className="mt-5 lg:mt-10 relative w-full aspect-4/3 overflow-hidden">
+			<object
+				data={feature.image}
+				type="image/svg+xml"
+				aria-label={feature.title}
+				className="w-full h-full"
 			/>
 		</div>
 	</>
