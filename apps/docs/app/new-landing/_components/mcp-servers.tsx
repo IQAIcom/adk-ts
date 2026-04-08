@@ -268,43 +268,46 @@ const AUTO_SWITCH_INTERVAL = 5000;
 const MCPServersSection = () => {
 	const [activeTab, setActiveTab] = useState("defi");
 	const [copied, setCopied] = useState(false);
-	const [autoPlay, setAutoPlay] = useState(true);
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const hovering = useRef(false);
 	const activeCategory =
 		categories.find((cat) => cat.id === activeTab) || categories[0];
 
-	const stopAutoSwitch = useCallback(() => {
+	const stopInterval = useCallback(() => {
 		if (intervalRef.current) {
 			clearInterval(intervalRef.current);
 			intervalRef.current = null;
 		}
 	}, []);
 
-	const startAutoSwitch = useCallback(() => {
-		stopAutoSwitch();
+	const startInterval = useCallback(() => {
+		stopInterval();
 		intervalRef.current = setInterval(() => {
 			setActiveTab((prev) => {
 				const idx = categories.findIndex((cat) => cat.id === prev);
 				return categories[(idx + 1) % categories.length].id;
 			});
 		}, AUTO_SWITCH_INTERVAL);
-	}, [stopAutoSwitch]);
+	}, [stopInterval]);
 
 	const handleTabClick = (tabId: string) => {
 		setActiveTab(tabId);
-		setAutoPlay(false);
-		stopAutoSwitch();
+		if (!hovering.current) startInterval();
 	};
 
-	const pauseAutoSwitch = () => stopAutoSwitch();
+	const pauseAutoSwitch = () => {
+		hovering.current = true;
+		stopInterval();
+	};
 	const resumeAutoSwitch = () => {
-		if (autoPlay) startAutoSwitch();
+		hovering.current = false;
+		startInterval();
 	};
 
 	useEffect(() => {
-		if (autoPlay) startAutoSwitch();
-		return stopAutoSwitch;
-	}, [autoPlay, startAutoSwitch, stopAutoSwitch]);
+		startInterval();
+		return stopInterval;
+	}, [startInterval, stopInterval]);
 
 	return (
 		<SectionWrapper
@@ -394,6 +397,10 @@ const MCPServersSection = () => {
 			>
 				<div
 					className="flex gap-0 overflow-x-auto rounded-md"
+					onMouseEnter={pauseAutoSwitch}
+					onMouseLeave={resumeAutoSwitch}
+					onFocus={pauseAutoSwitch}
+					onBlur={resumeAutoSwitch}
 					role="tablist"
 					aria-label="MCP server categories"
 				>
