@@ -46,7 +46,7 @@ function DemoCard({
 		if (logContainerRef.current) {
 			logContainerRef.current.scrollTo({
 				top: logContainerRef.current.scrollHeight,
-				behavior: "smooth",
+				behavior: "auto",
 			});
 		}
 	}, [logs]);
