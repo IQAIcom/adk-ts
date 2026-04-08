@@ -9,9 +9,16 @@ const models = [
 	"OpenRouter",
 ];
 
-export default function LLMModels() {
+export default function LLMModels({
+	transparent = false,
+}: {
+	transparent?: boolean;
+}) {
 	return (
-		<SectionWrapper id="llm-models" className="py-0! px-0! lg:py-8! bg-black">
+		<SectionWrapper
+			id="llm-models"
+			className={`py-0! px-0! lg:py-8! ${transparent ? "" : "bg-black"}`}
+		>
 			<h2 className="sr-only">Supported LLM Providers</h2>
 			<ul
 				className="llm-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
