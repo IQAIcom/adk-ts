@@ -6,8 +6,18 @@ import { SHOWCASE_STATS } from "./showcase.data";
 
 export function ShowcaseHero() {
 	return (
-		<SectionWrapper id="showcase-hero">
-			<div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10">
+		<SectionWrapper id="showcase-hero" className="relative overflow-hidden">
+			{/* Stars background — scoped to hero only */}
+			<div
+				className="absolute inset-0 pointer-events-none"
+				style={{
+					backgroundImage: "url('/showcase/showcase-bg-stars.svg')",
+					backgroundRepeat: "no-repeat",
+					backgroundSize: "cover",
+				}}
+				aria-hidden="true"
+			/>
+			<div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10">
 				{/* Left — section header */}
 				<motion.header
 					className="landing-section-header mb-0! max-w-xl"

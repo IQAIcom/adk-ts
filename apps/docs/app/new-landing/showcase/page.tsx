@@ -25,16 +25,6 @@ export default function HomePage() {
 			<div className="landing-glow-container" aria-hidden="true">
 				<div className="landing-glow-orb" />
 			</div>
-			{/* Stars — above glow, behind content */}
-			<div
-				className="fixed inset-0 z-1 pointer-events-none"
-				style={{
-					backgroundImage: "url('/showcase/showcase-bg-stars.svg')",
-					backgroundRepeat: "no-repeat",
-					backgroundSize: "cover",
-				}}
-				aria-hidden="true"
-			/>
 			<main id="main-content" className="relative z-10">
 				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
 					<ShowcaseHero />
