@@ -30,7 +30,7 @@ export function DocsHero() {
 				aria-hidden="true"
 			/>
 
-			<div className="relative flex flex-col items-center text-center">
+			<header className="relative flex flex-col items-center text-center">
 				<motion.div
 					className="space-y-8 max-w-2xl"
 					initial={{ opacity: 0, y: 20 }}
@@ -89,7 +89,7 @@ export function DocsHero() {
 						)}
 					</button>
 				</motion.div>
-			</div>
+			</header>
 		</SectionWrapper>
 	);
 }
