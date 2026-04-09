@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { Zap, Flame, FileStack, Rocket } from "lucide-react";
 import { SectionWrapper } from "./section-wrapper";
 
-const CompleteStackSection = () => {
+const DeveloperPlatformSection = () => {
 	return (
 		<SectionWrapper
 			id="complete-stack"
@@ -468,4 +468,4 @@ const CompleteStackSection = () => {
 		</SectionWrapper>
 	);
 };
-export default CompleteStackSection;
+export default DeveloperPlatformSection;

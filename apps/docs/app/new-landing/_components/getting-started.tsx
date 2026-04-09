@@ -86,7 +86,7 @@ const steps = [
 	},
 ];
 
-const GetStartedSection = () => {
+const GettingStartedSection = () => {
 	return (
 		<SectionWrapper id="get-started">
 			{/* Section header */}
@@ -153,4 +153,4 @@ const GetStartedSection = () => {
 	);
 };
 
-export default GetStartedSection;
+export default GettingStartedSection;

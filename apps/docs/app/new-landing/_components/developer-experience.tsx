@@ -249,7 +249,7 @@ const TOTAL_CODE_LINES = codeLinesData.length;
 const TOTAL_STEPS = dxHighlights.length;
 const STEP_INTERVAL = 800; // ms per icon
 
-const BuiltForDevelopersSection = () => {
+const DeveloperExperienceSection = () => {
 	const [activeCount, setActiveCount] = useState(0);
 	const [visibleLines, setVisibleLines] = useState(0);
 	const [showPopup, setShowPopup] = useState(false);
@@ -536,4 +536,4 @@ const BuiltForDevelopersSection = () => {
 	);
 };
 
-export default BuiltForDevelopersSection;
+export default DeveloperExperienceSection;

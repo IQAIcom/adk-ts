@@ -268,43 +268,46 @@ const AUTO_SWITCH_INTERVAL = 5000;
 const MCPServersSection = () => {
 	const [activeTab, setActiveTab] = useState("defi");
 	const [copied, setCopied] = useState(false);
-	const [autoPlay, setAutoPlay] = useState(true);
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const hovering = useRef(false);
 	const activeCategory =
 		categories.find((cat) => cat.id === activeTab) || categories[0];
 
-	const stopAutoSwitch = useCallback(() => {
+	const stopInterval = useCallback(() => {
 		if (intervalRef.current) {
 			clearInterval(intervalRef.current);
 			intervalRef.current = null;
 		}
 	}, []);
 
-	const startAutoSwitch = useCallback(() => {
-		stopAutoSwitch();
+	const startInterval = useCallback(() => {
+		stopInterval();
 		intervalRef.current = setInterval(() => {
 			setActiveTab((prev) => {
 				const idx = categories.findIndex((cat) => cat.id === prev);
 				return categories[(idx + 1) % categories.length].id;
 			});
 		}, AUTO_SWITCH_INTERVAL);
-	}, [stopAutoSwitch]);
+	}, [stopInterval]);
 
 	const handleTabClick = (tabId: string) => {
 		setActiveTab(tabId);
-		setAutoPlay(false);
-		stopAutoSwitch();
+		if (!hovering.current) startInterval();
 	};
 
-	const pauseAutoSwitch = () => stopAutoSwitch();
+	const pauseAutoSwitch = () => {
+		hovering.current = true;
+		stopInterval();
+	};
 	const resumeAutoSwitch = () => {
-		if (autoPlay) startAutoSwitch();
+		hovering.current = false;
+		startInterval();
 	};
 
 	useEffect(() => {
-		if (autoPlay) startAutoSwitch();
-		return stopAutoSwitch;
-	}, [autoPlay, startAutoSwitch, stopAutoSwitch]);
+		startInterval();
+		return stopInterval;
+	}, [startInterval, stopInterval]);
 
 	return (
 		<SectionWrapper
@@ -343,7 +346,13 @@ const MCPServersSection = () => {
 			</motion.div>
 
 			{/* Overview Stats */}
-			<div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-7 mb-7 lg:mb-10">
+			<motion.div
+				className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-7 mb-7 lg:mb-10"
+				initial={{ opacity: 0, y: 20 }}
+				whileInView={{ opacity: 1, y: 0 }}
+				viewport={{ once: true }}
+				transition={{ duration: 0.6, delay: 0.1 }}
+			>
 				<div className="px-3.5 py-4 lg:p-6 border rounded-md border-[#D1D5DB]">
 					<div className="text-sm md:text-2xl lg:text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
 						20+
@@ -376,12 +385,22 @@ const MCPServersSection = () => {
 						Agnostic
 					</div>
 				</div>
-			</div>
+			</motion.div>
 
 			{/* Horizontal Tabs */}
-			<div className="lg:mb-0 mb-7">
+			<motion.div
+				className="lg:mb-0 mb-7"
+				initial={{ opacity: 0, y: 20 }}
+				whileInView={{ opacity: 1, y: 0 }}
+				viewport={{ once: true }}
+				transition={{ duration: 0.6, delay: 0.2 }}
+			>
 				<div
 					className="flex gap-0 overflow-x-auto rounded-md"
+					onMouseEnter={pauseAutoSwitch}
+					onMouseLeave={resumeAutoSwitch}
+					onFocus={pauseAutoSwitch}
+					onBlur={resumeAutoSwitch}
 					role="tablist"
 					aria-label="MCP server categories"
 				>
@@ -404,7 +423,7 @@ const MCPServersSection = () => {
 						</button>
 					))}
 				</div>
-			</div>
+			</motion.div>
 
 			{/* Tab Content */}
 			<div

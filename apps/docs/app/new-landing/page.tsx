@@ -1,18 +1,18 @@
 "use client";
 
 import "./landing.css";
-import { Footer } from "./_components/footer";
 import { Navbar } from "./_components/navbar";
 import { Hero } from "./_components/hero";
-import WhyADKTSSection from "./_components/why-adkts";
-import BuiltForDevelopersSection from "./_components/built-for-developers";
-import CompleteStackSection from "./_components/complete-stack";
+import LLMModels from "./_components/llm-models";
+import CoreFeaturesSection from "./_components/core-features";
+import DeveloperExperienceSection from "./_components/developer-experience";
+import DeveloperPlatformSection from "./_components/developer-platform";
 import MCPServersSection from "./_components/mcp-servers";
 import InteractiveSimulationsSection from "./_components/interactive-simulations";
-import ProjectFeaturesSection from "./_components/project-features";
-import GetStartedSection from "./_components/get-started";
+import CommunityProjectFeatureSection from "./_components/community-projects-feature";
+import GettingStartedSection from "./_components/getting-started";
 import CTASection from "./_components/cta";
-import LLMModels from "./_components/llm-models";
+import { Footer } from "./_components/footer";
 
 export default function HomePage() {
 	return (
@@ -35,19 +35,19 @@ export default function HomePage() {
 				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
 					<Hero />
 					<LLMModels />
-					<WhyADKTSSection />
-					<BuiltForDevelopersSection />
+					<CoreFeaturesSection />
+					<DeveloperExperienceSection />
 				</div>
 				<div className="bg-white">
 					<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
-						<CompleteStackSection />
+						<DeveloperPlatformSection />
 						<MCPServersSection />
 					</div>
 				</div>
 				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
 					<InteractiveSimulationsSection />
-					<ProjectFeaturesSection />
-					<GetStartedSection />
+					<CommunityProjectFeatureSection />
+					<GettingStartedSection />
 					<CTASection />
 				</div>
 			</main>
