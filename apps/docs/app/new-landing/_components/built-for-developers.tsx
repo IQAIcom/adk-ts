@@ -396,10 +396,12 @@ const BuiltForDevelopersSection = () => {
 				<div
 					ref={codeRef}
 					className="border border-white/20 rounded-lg flex flex-col overflow-hidden font-mono text-[11px] leading-[1.7] bg-black/50"
+					role="img"
+					aria-label="Animated code editor showing ADK-TS agent creation with IntelliSense autocomplete"
 				>
 					{/* Title bar */}
 					<div className="flex items-center gap-2 tracking-widest text-white/50 uppercase bg-black/40 border-b border-[#FFFFFF0F] px-5 py-0.5 text-[11px]">
-						<div className="flex gap-1.5">
+						<div className="flex gap-1.5" aria-hidden="true">
 							<span className="size-2.5 rounded-full bg-[#FF5F57]" />
 							<span className="size-2.5 rounded-full bg-[#FEBC2E]" />
 							<span className="size-2.5 rounded-full bg-[#28C840]" />
@@ -484,17 +486,18 @@ const BuiltForDevelopersSection = () => {
 						<span className="size-1.5 bg-primary border border-primary" />
 						DX Highlights
 					</div>
-					<div className="flex-1">
+					<ul className="flex-1" aria-label="Developer experience highlights">
 						{dxHighlights.map((item, index) => {
 							const Icon = item.icon;
 							const isActive = index < activeCount;
 							return (
-								<div
+								<li
 									key={item.title}
 									className="flex items-center gap-4 px-5 py-2.5 first:mt-1 last:mb-4.5"
 								>
 									<Icon
 										className={`size-4.5 shrink-0 transition-colors duration-300 ${isActive ? "text-primary" : "text-white/60"}`}
+										aria-hidden="true"
 									/>
 									<div>
 										<p className="text-xs text-foreground">{item.title}</p>
@@ -502,10 +505,10 @@ const BuiltForDevelopersSection = () => {
 											{item.description}
 										</p>
 									</div>
-								</div>
+								</li>
 							);
 						})}
-					</div>
+					</ul>
 					{/* DX Score bar */}
 					<div className="flex items-center gap-2 font-mono tracking-widest text-white/50 uppercase bg-black/40 border-t border-[#FFFFFF0F] px-5 py-2.5 text-[11px] ">
 						<div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">

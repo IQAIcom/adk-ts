@@ -160,7 +160,11 @@ body {
 	width: 900px;
 	height: 900px;
 	border-radius: 50%;
-	background: radial-gradient(circle, hsla(331, 100%, 55%, 0.2) 0%, transparent 70%);
+	background: radial-gradient(
+		circle,
+		hsla(331, 100%, 55%, 0.2) 0%,
+		transparent 70%
+	);
 }
 
 .sticky-glow {
@@ -241,7 +245,6 @@ body {
 	display: none !important;
 }
 
-
 /* Responsive grid background — cells grow on smaller screens */
 .landing-grid-bg {
 	@apply bg-repeat-y bg-top;
@@ -253,5 +256,25 @@ body {
 
 	@media (min-width: 1280px) {
 		background-size: 100% auto;
+	}
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	.landing-glow-orb {
+		filter: none;
+	}
+
+	video {
+		display: none;
 	}
 }

@@ -106,9 +106,9 @@ const GetStartedSection = () => {
 			</motion.div>
 
 			{/* Step cards */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			<ol className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0">
 				{steps.map((step, index) => (
-					<motion.div
+					<motion.li
 						initial={{ opacity: 0, y: 20 }}
 						whileInView={{ opacity: 1, y: 0 }}
 						viewport={{ once: true }}
@@ -120,7 +120,9 @@ const GetStartedSection = () => {
 						<div className="py-7 space-y-4.5">
 							<div className="flex items-center gap-2 text-sm font-mono uppercase tracking-wider">
 								<span className="text-neutral-400">Step {step.step}</span>
-								<span className="text-white/20">—</span>
+								<span className="text-white/20" aria-hidden="true">
+									—
+								</span>
 								<span className="text-primary">{step.label}</span>
 							</div>
 							<h3 className="text-xl font-bold text-foreground">
@@ -132,19 +134,21 @@ const GetStartedSection = () => {
 						</div>
 
 						{/* Code block */}
-						<div className="border-t border-white/20 px-4 py-7 font-mono text-xs leading-[1.8] overflow-x-auto">
-							{step.code.map((line) => (
-								<div
-									key={`${step.step}-${line.text.slice(0, 20)}`}
-									className="text-[#05DF72CC]"
-								>
-									{line.text || "\u00A0"}
-								</div>
-							))}
-						</div>
-					</motion.div>
+						<pre className="border-t border-white/20 px-4 py-7 font-mono text-xs leading-[1.8] overflow-x-auto">
+							<code>
+								{step.code.map((line) => (
+									<div
+										key={`${step.step}-${line.text.slice(0, 20)}`}
+										className="text-[#05DF72CC]"
+									>
+										{line.text || "\u00A0"}
+									</div>
+								))}
+							</code>
+						</pre>
+					</motion.li>
 				))}
-			</div>
+			</ol>
 		</SectionWrapper>
 	);
 };

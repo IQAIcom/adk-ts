@@ -20,12 +20,18 @@ export default function HomePage() {
 			className="dark landing-fonts min-h-screen w-screen bg-black text-white overflow-x-clip"
 			style={{ colorScheme: "dark" }}
 		>
+			<a
+				href="#main-content"
+				className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-white focus:outline-none"
+			>
+				Skip to main content
+			</a>
 			<Navbar />
 			{/* Glow clipped to container width */}
-			<div className="landing-glow-container">
+			<div className="landing-glow-container" aria-hidden="true">
 				<div className="landing-glow-orb" />
 			</div>
-			<div className="relative">
+			<main id="main-content" className="relative">
 				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
 					<Hero />
 					<LLMModels />
@@ -43,8 +49,10 @@ export default function HomePage() {
 					<ProjectFeaturesSection />
 					<GetStartedSection />
 					<CTASection />
-					<Footer />
 				</div>
+			</main>
+			<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
+				<Footer />
 			</div>
 		</div>
 	);

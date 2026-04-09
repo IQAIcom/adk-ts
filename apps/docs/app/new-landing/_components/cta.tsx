@@ -22,6 +22,8 @@ const CTASection = () => {
 						width={500}
 						height={400}
 						className="w-full h-auto"
+						loading="lazy"
+						sizes="(max-width: 1024px) 90vw, 500px"
 					/>
 				</motion.div>
 

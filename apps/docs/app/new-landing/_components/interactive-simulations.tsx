@@ -46,7 +46,7 @@ function DemoCard({
 		if (logContainerRef.current) {
 			logContainerRef.current.scrollTo({
 				top: logContainerRef.current.scrollHeight,
-				behavior: "smooth",
+				behavior: "auto",
 			});
 		}
 	}, [logs]);
@@ -1008,20 +1008,26 @@ function DemoCard({
 								type="button"
 								onClick={startSimulation}
 								disabled={isPlaying}
+								aria-label={isPlaying ? "Simulation running" : "Run simulation"}
 								className="p-2 bg-[#1a1a1a] border border-white/20 hover:border-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 rounded"
 							>
 								<Play
 									className="w-3.5 h-3.5 text-white/70"
 									fill="currentColor"
+									aria-hidden="true"
 								/>
 							</button>
 							<button
 								type="button"
 								onClick={resetSimulation}
 								disabled={logs.length === 0}
+								aria-label="Reset simulation"
 								className="p-2 bg-[#1a1a1a] border border-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 rounded"
 							>
-								<RotateCw className="w-3.5 h-3.5 text-white/70" />
+								<RotateCw
+									className="w-3.5 h-3.5 text-white/70"
+									aria-hidden="true"
+								/>
 							</button>
 						</div>
 					</div>
@@ -1031,6 +1037,9 @@ function DemoCard({
 						<div
 							ref={logContainerRef}
 							className="flex-1 min-h-0 bg-black rounded border border-white/10 m-6 p-4 overflow-y-auto text-xs"
+							role="log"
+							aria-label="Simulation output"
+							aria-live="polite"
 						>
 							{logs.length === 0 ? (
 								<div className="text-white text-center py-20 translate-y-1/2">

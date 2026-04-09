@@ -268,31 +268,43 @@ const AUTO_SWITCH_INTERVAL = 5000;
 const MCPServersSection = () => {
 	const [activeTab, setActiveTab] = useState("defi");
 	const [copied, setCopied] = useState(false);
+	const [autoPlay, setAutoPlay] = useState(true);
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const activeCategory =
 		categories.find((cat) => cat.id === activeTab) || categories[0];
 
+	const stopAutoSwitch = useCallback(() => {
+		if (intervalRef.current) {
+			clearInterval(intervalRef.current);
+			intervalRef.current = null;
+		}
+	}, []);
+
 	const startAutoSwitch = useCallback(() => {
-		if (intervalRef.current) clearInterval(intervalRef.current);
+		stopAutoSwitch();
 		intervalRef.current = setInterval(() => {
 			setActiveTab((prev) => {
 				const idx = categories.findIndex((cat) => cat.id === prev);
 				return categories[(idx + 1) % categories.length].id;
 			});
 		}, AUTO_SWITCH_INTERVAL);
-	}, []);
+	}, [stopAutoSwitch]);
 
 	const handleTabClick = (tabId: string) => {
 		setActiveTab(tabId);
-		startAutoSwitch();
+		setAutoPlay(false);
+		stopAutoSwitch();
+	};
+
+	const pauseAutoSwitch = () => stopAutoSwitch();
+	const resumeAutoSwitch = () => {
+		if (autoPlay) startAutoSwitch();
 	};
 
 	useEffect(() => {
-		startAutoSwitch();
-		return () => {
-			if (intervalRef.current) clearInterval(intervalRef.current);
-		};
-	}, [startAutoSwitch]);
+		if (autoPlay) startAutoSwitch();
+		return stopAutoSwitch;
+	}, [autoPlay, startAutoSwitch, stopAutoSwitch]);
 
 	return (
 		<SectionWrapper
@@ -368,11 +380,19 @@ const MCPServersSection = () => {
 
 			{/* Horizontal Tabs */}
 			<div className="lg:mb-0 mb-7">
-				<div className="flex gap-0 overflow-x-auto rounded-md">
+				<div
+					className="flex gap-0 overflow-x-auto rounded-md"
+					role="tablist"
+					aria-label="MCP server categories"
+				>
 					{categories.map((category, index) => (
 						<button
 							type="button"
 							key={category.id}
+							role="tab"
+							id={`tab-${category.id}`}
+							aria-selected={activeTab === category.id}
+							aria-controls={`tabpanel-${category.id}`}
 							onClick={() => handleTabClick(category.id)}
 							className={`py-2.5 px-3 md:px-6 md:py-3 font-medium text-xs md:text-sm whitespace-nowrap border transition-all duration-300 ${
 								activeTab === category.id
@@ -387,7 +407,16 @@ const MCPServersSection = () => {
 			</div>
 
 			{/* Tab Content */}
-			<div className="border border-[#D1D5DB] rounded-md p-4 lg:p-8">
+			<div
+				className="border border-[#D1D5DB] rounded-md p-4 lg:p-8"
+				role="tabpanel"
+				id={`tabpanel-${activeCategory.id}`}
+				aria-labelledby={`tab-${activeCategory.id}`}
+				onMouseEnter={pauseAutoSwitch}
+				onMouseLeave={resumeAutoSwitch}
+				onFocus={pauseAutoSwitch}
+				onBlur={resumeAutoSwitch}
+			>
 				{/* Category Description */}
 				<div className="mb-4.5 lg:mb-10">
 					<p className="text-sm lg:text-lg text-[#475569] leading-relaxed">
@@ -414,16 +443,19 @@ const MCPServersSection = () => {
 								</p>
 							</div>
 
-							<div className="space-y-2">
+							<ul className="space-y-2">
 								{highlight.features.map((feature) => (
-									<div key={feature} className="flex items-start gap-2">
-										<div className="w-1 h-1 bg-primary mt-2 shrink-0" />
-										<div className="text-sm lg:text-base text-[#475569]">
+									<li key={feature} className="flex items-start gap-2">
+										<span
+											className="w-1 h-1 bg-primary mt-2 shrink-0"
+											aria-hidden="true"
+										/>
+										<span className="text-sm lg:text-base text-[#475569]">
 											{feature}
-										</div>
-									</div>
+										</span>
+									</li>
 								))}
-							</div>
+							</ul>
 						</div>
 					))}
 
@@ -432,10 +464,12 @@ const MCPServersSection = () => {
 						<div className="relative border border-[#D1D5DB] rounded-md overflow-hidden">
 							<Image
 								src="/landing-page/messaging-mcp.svg"
-								alt="Messaging MCP illustration"
+								alt="Messaging MCP integration showing Telegram and Discord connections"
 								width={400}
 								height={400}
 								className="absolute inset-0 w-full h-full object-contain"
+								loading="lazy"
+								sizes="(max-width: 1024px) 90vw, 33vw"
 							/>
 						</div>
 					)}
@@ -455,7 +489,7 @@ const MCPServersSection = () => {
 								setTimeout(() => setCopied(false), 2000);
 							}}
 							className="absolute top-3 right-3 text-primary hover:bg-primary-foreground transition-colors"
-							aria-label="Copy code"
+							aria-label={copied ? "Copied" : "Copy code"}
 						>
 							{copied ? (
 								<Check className="w-4 h-4" />

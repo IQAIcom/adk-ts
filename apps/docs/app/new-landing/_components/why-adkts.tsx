@@ -65,24 +65,29 @@ const features = [
 ];
 
 const FeatureItem = ({ feature }: { feature: (typeof features)[0] }) => (
-	<>
+	<article aria-labelledby={`feature-${feature.id}`}>
 		<div className="border border-white/10 rounded-md p-5 grid gap-2.5 bg-black/60 max-w-2xl">
-			<h3 className="text-base lg:text-lg text-foreground font-medium">
+			<h3
+				id={`feature-${feature.id}`}
+				className="text-base lg:text-lg text-foreground font-medium"
+			>
 				{feature.title}
 			</h3>
 			<p className="text-sm lg:text-base font-medium text-muted-foreground leading-relaxed max-w-xl">
 				{feature.description}
 			</p>
 		</div>
-		<div className="mt-5 lg:mt-10 borer relative w-full aspect-4/3 overflow-hidden">
+		<div className="mt-5 lg:mt-10 relative w-full aspect-4/3 overflow-hidden">
 			<Image
 				src={feature.image}
-				alt={feature.title}
+				alt={`${feature.title} illustration`}
 				fill
 				className="object-contain"
+				loading="lazy"
+				sizes="(max-width: 1024px) 90vw, 60vw"
 			/>
 		</div>
-	</>
+	</article>
 );
 
 export default function WhyADKTSSection() {
@@ -150,7 +155,10 @@ export default function WhyADKTSSection() {
 				transition={{ duration: 0.6, delay: 0.2 }}
 			>
 				{/* Left nav — sticky */}
-				<nav className="sticky top-40 self-start space-y-8 mt-[100px]">
+				<nav
+					className="sticky top-40 self-start space-y-8 mt-[100px]"
+					aria-label="Core features"
+				>
 					{features.map((feature, index) => {
 						const Icon = feature.icon;
 						const isActive = index === activeIndex;
@@ -159,21 +167,31 @@ export default function WhyADKTSSection() {
 								key={feature.id}
 								type="button"
 								onClick={() => scrollToFeature(index)}
+								aria-current={isActive ? "true" : undefined}
 								className={`flex items-center gap-2 w-full text-left pl-2 transition-colors text-base font-medium font-satoshi ${
 									isActive
 										? "text-primary border-l-3 border-primary"
 										: "text-muted-foreground hover:text-foreground border-l-2 border-white/10"
 								}`}
 							>
-								<Icon className="size-5 shrink-0" />
+								<Icon className="size-5 shrink-0" aria-hidden="true" />
 								{feature.label}
 							</button>
 						);
 					})}
 
 					{/* Progress indicator */}
-					<div className="flex items-center gap-3 pt-8 border-t border-white/10 font-medium text-xs text-white/40">
-						<span>{String(activeIndex + 1).padStart(2, "0")}</span>
+					<div
+						className="flex items-center gap-3 pt-8 border-t border-white/10 font-medium text-xs text-white/40"
+						role="progressbar"
+						aria-label="Feature progress"
+						aria-valuenow={activeIndex + 1}
+						aria-valuemin={1}
+						aria-valuemax={features.length}
+					>
+						<span aria-hidden="true">
+							{String(activeIndex + 1).padStart(2, "0")}
+						</span>
 						<div className="flex-1 h-0.5 bg-white/10 rounded-full overflow-hidden">
 							<div
 								className="h-full bg-primary rounded-full transition-all duration-300"
@@ -182,7 +200,9 @@ export default function WhyADKTSSection() {
 								}}
 							/>
 						</div>
-						<span>{String(features.length).padStart(2, "0")}</span>
+						<span aria-hidden="true">
+							{String(features.length).padStart(2, "0")}
+						</span>
 					</div>
 				</nav>
 
