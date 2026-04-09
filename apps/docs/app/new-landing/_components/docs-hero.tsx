@@ -12,9 +12,11 @@ export function DocsHero() {
 	const [copied, setCopied] = useState(false);
 
 	const copyCommand = () => {
-		navigator.clipboard.writeText(CLI_COMMAND);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		if (typeof navigator !== "undefined" && navigator.clipboard) {
+			navigator.clipboard.writeText(CLI_COMMAND);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		}
 	};
 
 	return (
