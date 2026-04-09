@@ -91,7 +91,7 @@ const CommunityProjectAllSection = () => {
 											aria-hidden="true"
 										>
 											<div className="text-4xl font-bold text-muted-foreground/20 group-hover:text-primary/30 transition-colors">
-												{project.title.substring(0, 2).toUpperCase()}
+project.title.slice(0, 2).toUpperCase()
 											</div>
 										</div>
 									)}
