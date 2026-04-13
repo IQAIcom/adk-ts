@@ -2,8 +2,8 @@
 
 import { Blocks, Cpu, Cog, GitFork, ShieldCheck, Network } from "lucide-react";
 
-import { motion } from "motion/react";
 import Image from "next/image";
+import { FadeInView } from "./fade-in-view";
 import { useEffect, useRef, useState } from "react";
 import { SectionWrapper } from "./section-wrapper";
 
@@ -131,28 +131,19 @@ export default function CoreFeaturesSection() {
 			className="bg-black sticky-glow overflow-x-clip"
 		>
 			{/* Section header */}
-			<motion.div
-				className="landing-section-header"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true }}
-				transition={{ duration: 0.6 }}
-			>
+			<FadeInView className="landing-section-header">
 				<span className="landing-badge">Core Features</span>
 				<h2>Why ADK-TS?</h2>
 				<p>
 					A TypeScript-native framework for building, orchestrating, and running
 					AI agents in production. Built for developers who want full control.
 				</p>
-			</motion.div>
+			</FadeInView>
 
 			{/* Desktop: side nav + scrolling content */}
-			<motion.div
+			<FadeInView
 				className="hidden lg:grid lg:grid-cols-[280px_1fr] gap-12"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true }}
-				transition={{ duration: 0.6, delay: 0.2 }}
+				delay={0.2}
 			>
 				{/* Left nav — sticky */}
 				<nav
@@ -220,16 +211,10 @@ export default function CoreFeaturesSection() {
 						</div>
 					))}
 				</div>
-			</motion.div>
+			</FadeInView>
 
 			{/* Mobile/Tablet: stacked layout */}
-			<motion.div
-				className="lg:hidden space-y-5 md:space-y-10"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true }}
-				transition={{ duration: 0.6, delay: 0.2 }}
-			>
+			<FadeInView className="lg:hidden space-y-5 md:space-y-10" delay={0.2}>
 				{features.map((feature) => (
 					<div
 						key={feature.id}
@@ -238,7 +223,7 @@ export default function CoreFeaturesSection() {
 						<FeatureItem feature={feature} />
 					</div>
 				))}
-			</motion.div>
+			</FadeInView>
 		</SectionWrapper>
 	);
 }

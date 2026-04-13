@@ -4,7 +4,7 @@
 	"version": "0.0.0",
 	"scripts": {
 		"build": "next build",
-		"dev": "next dev --turbo",
+		"dev": "NODE_OPTIONS='--max-old-space-size=8192' next dev --turbo",
 		"start": "next start",
 		"postinstall": "fumadocs-mdx",
 		"fetch-tools": "tsx scripts/fetch-mcp-tools.ts"

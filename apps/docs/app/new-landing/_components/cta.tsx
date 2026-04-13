@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import { motion } from "motion/react";
+import { FadeInView } from "./fade-in-view";
 import Image from "next/image";
 import Link from "next/link";
 import { SectionWrapper } from "./section-wrapper";
@@ -9,12 +9,9 @@ const CTASection = () => {
 		<SectionWrapper id="cta">
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-[90px] items-center">
 				{/* CTA image */}
-				<motion.div
+				<FadeInView
 					className="relative order-2 lg:order-1 max-w-lg mx-auto"
-					initial={{ opacity: 0, y: 20 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.6, delay: 0.2 }}
+					delay={0.2}
 				>
 					<Image
 						src="/landing-page/cta.svg"
@@ -25,16 +22,10 @@ const CTASection = () => {
 						loading="lazy"
 						sizes="(max-width: 1024px) 90vw, 500px"
 					/>
-				</motion.div>
+				</FadeInView>
 
 				{/* CTA content */}
-				<motion.div
-					className="space-y-8 order-1 lg:order-2"
-					initial={{ opacity: 0, y: 20 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.6 }}
-				>
+				<FadeInView className="space-y-8 order-1 lg:order-2">
 					<div className="space-y-5">
 						<h2 className="text-2xl md:text-5xl text-white font-bold tracking-tight max-w-md">
 							Ready to Build Your First Agent?
@@ -61,7 +52,7 @@ const CTASection = () => {
 							Explore Templates
 						</Link>
 					</div>
-				</motion.div>
+				</FadeInView>
 			</div>
 		</SectionWrapper>
 	);

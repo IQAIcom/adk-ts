@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion } from "motion/react";
+import { FadeInView } from "./fade-in-view";
 import { ArrowRight, Clipboard, Check } from "lucide-react";
 import { SectionWrapper } from "./section-wrapper";
 import Link from "next/link";
@@ -315,13 +315,7 @@ const MCPServersSection = () => {
 			className="bg-white text-[#1A1A1A]! border border-[#D1D5DB]! border-t-0"
 		>
 			{/* Section Header + Explore Button */}
-			<motion.div
-				className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-7 lg:mb-12"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true }}
-				transition={{ duration: 0.6 }}
-			>
+			<FadeInView className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-7 lg:mb-12">
 				<div className="landing-section-header mb-0!">
 					<span className="relative w-max inline-flex items-center rounded-md bg-[#F3F4F6] backdrop-blur-sm px-3 py-2 text-[10px] lg:text-sm font-medium border text-[#1A1A1A]! border-[#D1D5DB]!">
 						Model Context Protocol (MCP)
@@ -343,15 +337,12 @@ const MCPServersSection = () => {
 						<ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform duration-300" />
 					</Link>
 				</div>
-			</motion.div>
+			</FadeInView>
 
 			{/* Overview Stats */}
-			<motion.div
+			<FadeInView
 				className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-7 mb-7 lg:mb-10"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true }}
-				transition={{ duration: 0.6, delay: 0.1 }}
+				delay={0.1}
 			>
 				<div className="px-3.5 py-4 lg:p-6 border rounded-md border-[#D1D5DB]">
 					<div className="text-sm md:text-2xl lg:text-4xl text-[#0F172A] font-geist-sans font-semibold mb-1">
@@ -385,16 +376,10 @@ const MCPServersSection = () => {
 						Agnostic
 					</div>
 				</div>
-			</motion.div>
+			</FadeInView>
 
 			{/* Horizontal Tabs */}
-			<motion.div
-				className="lg:mb-0 mb-7"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true }}
-				transition={{ duration: 0.6, delay: 0.2 }}
-			>
+			<FadeInView className="lg:mb-0 mb-7" delay={0.2}>
 				<div
 					className="flex gap-0 overflow-x-auto rounded-md"
 					onMouseEnter={pauseAutoSwitch}
@@ -423,7 +408,7 @@ const MCPServersSection = () => {
 						</button>
 					))}
 				</div>
-			</motion.div>
+			</FadeInView>
 
 			{/* Tab Content */}
 			<div
