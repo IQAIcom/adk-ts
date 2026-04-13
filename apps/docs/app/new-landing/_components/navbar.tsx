@@ -132,6 +132,16 @@ export function Navbar() {
 	const [mobileOpen, setMobileOpen] = useState(false);
 	const [resourcesOpen, setResourcesOpen] = useState(false);
 	const navRef = useRef<HTMLDivElement>(null);
+	const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const openOnHover = () => {
+		if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+		setResourcesOpen(true);
+	};
+
+	const closeOnLeave = () => {
+		hoverTimeout.current = setTimeout(() => setResourcesOpen(false), 200);
+	};
 
 	// Close resources dropdown on outside click
 	useEffect(() => {
@@ -204,6 +214,8 @@ export function Navbar() {
 							<button
 								type="button"
 								onClick={() => setResourcesOpen(!resourcesOpen)}
+								onMouseEnter={openOnHover}
+								onMouseLeave={closeOnLeave}
 								className={`hidden md:inline-flex items-center gap-1 ${navLinkClass}`}
 							>
 								Resources
@@ -254,10 +266,13 @@ export function Navbar() {
 				{resourcesOpen && (
 					<div
 						className="hidden md:block absolute left-1/2 -translate-x-1/2 w-screen z-40"
+						role="menu"
 						style={{
 							background: "var(--color-neutral-950, #0A0A0A)",
 							boxShadow: "0px 38px 50px 10px #00000040",
 						}}
+						onMouseEnter={openOnHover}
+						onMouseLeave={closeOnLeave}
 					>
 						{/* Top row (first 2 resources) */}
 						<div className="mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x relative">

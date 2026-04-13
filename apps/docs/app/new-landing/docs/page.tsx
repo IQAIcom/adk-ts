@@ -2,13 +2,12 @@
 
 import "../landing.css";
 import { Navbar } from "../_components/navbar";
-import LLMModels from "../_components/llm-models";
-import { ShowcaseHero } from "../_components/showcase-hero";
-import CommunityProjectAllSection from "../_components/community-projects-all";
+import { DocsHero } from "../_components/docs-hero";
+import { DocsLinksSection } from "../_components/docs-links";
 import CTASection from "../_components/cta";
 import { Footer } from "../_components/footer";
 
-export default function ShowcasePage() {
+export default function DocsPage() {
 	return (
 		<div
 			className="dark landing-fonts min-h-screen w-screen bg-black text-white overflow-x-clip"
@@ -27,9 +26,8 @@ export default function ShowcasePage() {
 			</div>
 			<main id="main-content" className="relative z-10">
 				<div className="mx-3 sm:mx-6 md:mx-10 lg:mx-auto max-w-7xl landing-border-x">
-					<ShowcaseHero />
-					<LLMModels transparent />
-					<CommunityProjectAllSection />
+					<DocsHero />
+					<DocsLinksSection />
 					<CTASection />
 				</div>
 			</main>
