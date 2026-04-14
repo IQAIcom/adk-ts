@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion } from "motion/react";
 import { SectionWrapper } from "./section-wrapper";
+import { FadeInView } from "./fade-in-view";
 import { Play, RotateCw, Clock, Zap, Target } from "lucide-react";
 
 interface DemoCardProps {
@@ -193,49 +193,27 @@ function DemoCard({
 						<g opacity={isPlaying ? "1" : "0.4"}>
 							{/* User to Supervisor */}
 							{hasInput && (
-								<motion.path
+								<path
 									d="M 150,250 L 300,250"
 									stroke={isPlaying ? "#FF1A88" : "#FFFFFF33"}
 									strokeWidth="2"
 									strokeDasharray="6 4"
-									strokeDashoffset={0}
-									initial={{ strokeDashoffset: 0 }}
-									animate={
-										isPlaying
-											? { strokeDashoffset: [0, -10] }
-											: { strokeDashoffset: 0 }
-									}
-									transition={{
-										duration: 1.5,
-										repeat: Number.POSITIVE_INFINITY,
-										ease: "linear",
-									}}
+									className={isPlaying ? "anim-dash-flow" : ""}
 								/>
 							)}
 
 							{/* Supervisor to Branch Point */}
-							<motion.path
+							<path
 								d={hasInput ? "M 380,250 L 480,250" : "M 200,250 L 320,250"}
 								stroke={isPlaying ? "#FF1A88" : "rgba(255,255,255,0.2)"}
 								strokeWidth="2"
 								strokeDasharray="6 4"
-								strokeDashoffset={0}
-								initial={{ strokeDashoffset: 0 }}
-								animate={
-									isPlaying
-										? { strokeDashoffset: [0, -10] }
-										: { strokeDashoffset: 0 }
-								}
-								transition={{
-									duration: 1.5,
-									repeat: Number.POSITIVE_INFINITY,
-									ease: "linear",
-									delay: 0.2,
-								}}
+								className={isPlaying ? "anim-dash-flow" : ""}
+								style={isPlaying ? { animationDelay: "0.2s" } : undefined}
 							/>
 
 							{/* Branch to Top Agent */}
-							<motion.path
+							<path
 								d={
 									hasInput
 										? "M 480,250 L 480,150 L 580,150"
@@ -244,44 +222,22 @@ function DemoCard({
 								stroke={isPlaying ? "#FF1A88" : "rgba(255,255,255,0.2)"}
 								strokeWidth="2"
 								strokeDasharray="6 4"
-								strokeDashoffset={0}
-								initial={{ strokeDashoffset: 0 }}
-								animate={
-									isPlaying
-										? { strokeDashoffset: [0, -10] }
-										: { strokeDashoffset: 0 }
-								}
-								transition={{
-									duration: 1.5,
-									repeat: Number.POSITIVE_INFINITY,
-									ease: "linear",
-									delay: 0.4,
-								}}
+								className={isPlaying ? "anim-dash-flow" : ""}
+								style={isPlaying ? { animationDelay: "0.4s" } : undefined}
 							/>
 
 							{/* Branch to Middle Agent */}
-							<motion.path
+							<path
 								d={hasInput ? "M 480,250 L 580,250" : "M 320,250 L 450,250"}
 								stroke={isPlaying ? "#FF1A88" : "rgba(255,255,255,0.2)"}
 								strokeWidth="2"
 								strokeDasharray="6 4"
-								strokeDashoffset={0}
-								initial={{ strokeDashoffset: 0 }}
-								animate={
-									isPlaying
-										? { strokeDashoffset: [0, -10] }
-										: { strokeDashoffset: 0 }
-								}
-								transition={{
-									duration: 1.5,
-									repeat: Number.POSITIVE_INFINITY,
-									ease: "linear",
-									delay: 0.6,
-								}}
+								className={isPlaying ? "anim-dash-flow" : ""}
+								style={isPlaying ? { animationDelay: "0.6s" } : undefined}
 							/>
 
 							{/* Branch to Bottom Agent */}
-							<motion.path
+							<path
 								d={
 									hasInput
 										? "M 480,250 L 480,350 L 580,350"
@@ -290,102 +246,150 @@ function DemoCard({
 								stroke={isPlaying ? "#FF1A88" : "rgba(255,255,255,0.2)"}
 								strokeWidth="2"
 								strokeDasharray="6 4"
-								strokeDashoffset={0}
-								initial={{ strokeDashoffset: 0 }}
-								animate={
-									isPlaying
-										? { strokeDashoffset: [0, -10] }
-										: { strokeDashoffset: 0 }
-								}
-								transition={{
-									duration: 1.5,
-									repeat: Number.POSITIVE_INFINITY,
-									ease: "linear",
-									delay: 0.8,
-								}}
+								className={isPlaying ? "anim-dash-flow" : ""}
+								style={isPlaying ? { animationDelay: "0.8s" } : undefined}
 							/>
 						</g>
 
-						{/* Data particles flowing */}
+						{/* Data particles flowing — SMIL animations (GPU-composited) */}
 						{isPlaying && (
 							<>
 								{/* Flow to Top Agent */}
-								<motion.circle
+								<circle
 									r="4"
 									fill="#FF1A88"
 									filter={`url(#glow-${title.replace(/\s/g, "")})`}
-									animate={{
-										cx: hasInput
-											? [150, 300, 380, 480, 480, 580]
-											: [200, 320, 320, 450],
-										cy: hasInput
-											? [250, 250, 250, 250, 150, 150]
-											: [250, 250, 150, 150],
-										opacity: [0, 1, 1, 1, 1, 0],
-									}}
-									transition={{
-										duration: 2.5,
-										repeat: Number.POSITIVE_INFINITY,
-										ease: "easeInOut",
-										times: hasInput
-											? [0, 0.2, 0.4, 0.6, 0.8, 1]
-											: [0, 0.3, 0.6, 1],
-									}}
-								/>
+								>
+									<animate
+										attributeName="cx"
+										values={
+											hasInput ? "150;300;380;480;480;580" : "200;320;320;450"
+										}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;0.8;1" : "0;0.3;0.6;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+										calcMode="spline"
+										keySplines={
+											hasInput
+												? "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+												: "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+										}
+									/>
+									<animate
+										attributeName="cy"
+										values={
+											hasInput ? "250;250;250;250;150;150" : "250;250;150;150"
+										}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;0.8;1" : "0;0.3;0.6;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+										calcMode="spline"
+										keySplines={
+											hasInput
+												? "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+												: "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+										}
+									/>
+									<animate
+										attributeName="opacity"
+										values={hasInput ? "0;1;1;1;1;0" : "0;1;1;0"}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;0.8;1" : "0;0.3;0.6;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+									/>
+								</circle>
 
 								{/* Flow to Middle Agent */}
-								<motion.circle
+								<circle
 									r="4"
 									fill="#FF1A88"
 									filter={`url(#glow-${title.replace(/\s/g, "")})`}
-									animate={{
-										cx: hasInput ? [150, 300, 380, 480, 580] : [200, 320, 450],
-										cy: hasInput ? [250, 250, 250, 250, 250] : [250, 250, 250],
-										opacity: [0, 1, 1, 1, 0],
-									}}
-									transition={{
-										duration: 2.5,
-										repeat: Number.POSITIVE_INFINITY,
-										ease: "easeInOut",
-										delay: 0.3,
-										times: hasInput ? [0, 0.2, 0.4, 0.6, 1] : [0, 0.4, 1],
-									}}
-								/>
+								>
+									<animate
+										attributeName="cx"
+										values={hasInput ? "150;300;380;480;580" : "200;320;450"}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;1" : "0;0.4;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+										begin="0.3s"
+										calcMode="spline"
+										keySplines={
+											hasInput
+												? "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+												: "0.42 0 0.58 1;0.42 0 0.58 1"
+										}
+									/>
+									<animate
+										attributeName="cy"
+										values={hasInput ? "250;250;250;250;250" : "250;250;250"}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;1" : "0;0.4;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+										begin="0.3s"
+									/>
+									<animate
+										attributeName="opacity"
+										values={hasInput ? "0;1;1;1;0" : "0;1;0"}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;1" : "0;0.4;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+										begin="0.3s"
+									/>
+								</circle>
 
 								{/* Flow to Bottom Agent */}
-								<motion.circle
+								<circle
 									r="4"
 									fill="#FF1A88"
 									filter={`url(#glow-${title.replace(/\s/g, "")})`}
-									animate={{
-										cx: hasInput
-											? [150, 300, 380, 480, 480, 580]
-											: [200, 320, 320, 450],
-										cy: hasInput
-											? [250, 250, 250, 250, 350, 350]
-											: [250, 250, 350, 350],
-										opacity: [0, 1, 1, 1, 1, 0],
-									}}
-									transition={{
-										duration: 2.5,
-										repeat: Number.POSITIVE_INFINITY,
-										ease: "easeInOut",
-										delay: 0.6,
-										times: hasInput
-											? [0, 0.2, 0.4, 0.6, 0.8, 1]
-											: [0, 0.3, 0.6, 1],
-									}}
-								/>
+								>
+									<animate
+										attributeName="cx"
+										values={
+											hasInput ? "150;300;380;480;480;580" : "200;320;320;450"
+										}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;0.8;1" : "0;0.3;0.6;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+										begin="0.6s"
+										calcMode="spline"
+										keySplines={
+											hasInput
+												? "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+												: "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+										}
+									/>
+									<animate
+										attributeName="cy"
+										values={
+											hasInput ? "250;250;250;250;350;350" : "250;250;350;350"
+										}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;0.8;1" : "0;0.3;0.6;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+										begin="0.6s"
+										calcMode="spline"
+										keySplines={
+											hasInput
+												? "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+												: "0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+										}
+									/>
+									<animate
+										attributeName="opacity"
+										values={hasInput ? "0;1;1;1;1;0" : "0;1;1;0"}
+										keyTimes={hasInput ? "0;0.2;0.4;0.6;0.8;1" : "0;0.3;0.6;1"}
+										dur="2.5s"
+										repeatCount="indefinite"
+										begin="0.6s"
+									/>
+								</circle>
 							</>
 						)}
 
 						{/* User Node */}
 						{hasInput && (
-							<motion.g
-								initial={{ opacity: 0, x: -20 }}
-								animate={{ opacity: 1, x: 0 }}
-								transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-							>
+							<g className="anim-svg-enter-left">
 								<rect
 									x="60"
 									y="220"
@@ -400,7 +404,7 @@ function DemoCard({
 									strokeWidth="2"
 									rx="4"
 								/>
-								<motion.rect
+								<rect
 									x="60"
 									y="220"
 									width="90"
@@ -409,14 +413,10 @@ function DemoCard({
 									stroke="#FF1A88"
 									strokeWidth="2"
 									rx="4"
-									opacity={activeAgent === -1 && isPlaying ? 0.4 : 0}
-									animate={{
-										opacity: activeAgent === -1 && isPlaying ? [0, 0.4, 0] : 0,
-									}}
-									transition={{
-										duration: 1.5,
-										repeat: Number.POSITIVE_INFINITY,
-									}}
+									className={
+										activeAgent === -1 && isPlaying ? "anim-pulse-glow" : ""
+									}
+									opacity={activeAgent === -1 && isPlaying ? undefined : 0}
 								/>
 								<text
 									x="105"
@@ -439,18 +439,13 @@ function DemoCard({
 								>
 									{inputLabel}
 								</text>
-							</motion.g>
+							</g>
 						)}
 
 						{/* Supervisor Node */}
-						<motion.g
-							initial={{ opacity: 0, scale: 0.95 }}
-							animate={{ opacity: 1, scale: 1 }}
-							transition={{
-								duration: 0.6,
-								delay: 0.1,
-								ease: [0.22, 1, 0.36, 1],
-							}}
+						<g
+							className="anim-svg-enter-scale"
+							style={{ animationDelay: "0.1s" }}
 						>
 							<rect
 								x={hasInput ? "210" : "80"}
@@ -466,7 +461,7 @@ function DemoCard({
 								strokeWidth="2"
 								rx="4"
 							/>
-							<motion.rect
+							<rect
 								x={hasInput ? "210" : "80"}
 								y="215"
 								width="170"
@@ -475,16 +470,16 @@ function DemoCard({
 								stroke="#FF1A88"
 								strokeWidth="2"
 								rx="4"
-								opacity={
-									activeAgent >= 0 && activeAgent <= 2 && isPlaying ? 0.4 : 0
+								className={
+									activeAgent >= 0 && activeAgent <= 2 && isPlaying
+										? "anim-pulse-glow"
+										: ""
 								}
-								animate={{
-									opacity:
-										activeAgent >= 0 && activeAgent <= 2 && isPlaying
-											? [0, 0.4, 0]
-											: 0,
-								}}
-								transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
+								opacity={
+									activeAgent >= 0 && activeAgent <= 2 && isPlaying
+										? undefined
+										: 0
+								}
 							/>
 							<text
 								x={hasInput ? "295" : "165"}
@@ -517,17 +512,12 @@ function DemoCard({
 							>
 								Route & Coordinate
 							</text>
-						</motion.g>
+						</g>
 
 						{/* Agent 1 - Top */}
-						<motion.g
-							initial={{ opacity: 0, x: 20 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{
-								duration: 0.6,
-								delay: 0.2,
-								ease: [0.22, 1, 0.36, 1],
-							}}
+						<g
+							className="anim-svg-enter-right"
+							style={{ animationDelay: "0.2s" }}
 						>
 							<rect
 								x={hasInput ? "580" : "450"}
@@ -541,7 +531,7 @@ function DemoCard({
 								strokeWidth="2"
 								rx="4"
 							/>
-							<motion.rect
+							<rect
 								x={hasInput ? "580" : "450"}
 								y="120"
 								width="160"
@@ -550,11 +540,8 @@ function DemoCard({
 								stroke="#FF1A88"
 								strokeWidth="2"
 								rx="4"
-								opacity={activeAgent === 0 ? 0.4 : 0}
-								animate={{
-									opacity: activeAgent === 0 ? [0, 0.4, 0] : 0,
-								}}
-								transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
+								className={activeAgent === 0 ? "anim-pulse-glow" : ""}
+								opacity={activeAgent === 0 ? undefined : 0}
 							/>
 
 							{/* Icon for agent */}
@@ -651,29 +638,20 @@ function DemoCard({
 								{agents[0].label}
 							</text>
 							{activeAgent === 0 && (
-								<motion.circle
+								<circle
 									cx={hasInput ? "730" : "600"}
 									cy="130"
 									r="4"
 									fill="#FF1A88"
-									animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-									transition={{
-										duration: 1.2,
-										repeat: Number.POSITIVE_INFINITY,
-									}}
+									className="anim-dot-pulse"
 								/>
 							)}
-						</motion.g>
+						</g>
 
 						{/* Agent 2 - Middle */}
-						<motion.g
-							initial={{ opacity: 0, x: 20 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{
-								duration: 0.6,
-								delay: 0.3,
-								ease: [0.22, 1, 0.36, 1],
-							}}
+						<g
+							className="anim-svg-enter-right"
+							style={{ animationDelay: "0.3s" }}
 						>
 							<rect
 								x={hasInput ? "580" : "450"}
@@ -687,7 +665,7 @@ function DemoCard({
 								strokeWidth="2"
 								rx="4"
 							/>
-							<motion.rect
+							<rect
 								x={hasInput ? "580" : "450"}
 								y="220"
 								width="160"
@@ -696,11 +674,8 @@ function DemoCard({
 								stroke="#FF1A88"
 								strokeWidth="2"
 								rx="4"
-								opacity={activeAgent === 1 ? 0.4 : 0}
-								animate={{
-									opacity: activeAgent === 1 ? [0, 0.4, 0] : 0,
-								}}
-								transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
+								className={activeAgent === 1 ? "anim-pulse-glow" : ""}
+								opacity={activeAgent === 1 ? undefined : 0}
 							/>
 
 							{/* Icon for agent */}
@@ -810,29 +785,20 @@ function DemoCard({
 								{agents[1].label}
 							</text>
 							{activeAgent === 1 && (
-								<motion.circle
+								<circle
 									cx={hasInput ? "730" : "600"}
 									cy="230"
 									r="4"
 									fill="#FF1A88"
-									animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-									transition={{
-										duration: 1.2,
-										repeat: Number.POSITIVE_INFINITY,
-									}}
+									className="anim-dot-pulse"
 								/>
 							)}
-						</motion.g>
+						</g>
 
 						{/* Agent 3 - Bottom */}
-						<motion.g
-							initial={{ opacity: 0, x: 20 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{
-								duration: 0.6,
-								delay: 0.4,
-								ease: [0.22, 1, 0.36, 1],
-							}}
+						<g
+							className="anim-svg-enter-right"
+							style={{ animationDelay: "0.4s" }}
 						>
 							<rect
 								x={hasInput ? "580" : "450"}
@@ -846,7 +812,7 @@ function DemoCard({
 								strokeWidth="2"
 								rx="4"
 							/>
-							<motion.rect
+							<rect
 								x={hasInput ? "580" : "450"}
 								y="320"
 								width="160"
@@ -855,11 +821,8 @@ function DemoCard({
 								stroke="#FF1A88"
 								strokeWidth="2"
 								rx="4"
-								opacity={activeAgent === 2 ? 0.4 : 0}
-								animate={{
-									opacity: activeAgent === 2 ? [0, 0.4, 0] : 0,
-								}}
-								transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
+								className={activeAgent === 2 ? "anim-pulse-glow" : ""}
+								opacity={activeAgent === 2 ? undefined : 0}
 							/>
 
 							{/* Icon for agent */}
@@ -976,19 +939,15 @@ function DemoCard({
 								{agents[2].label}
 							</text>
 							{activeAgent === 2 && (
-								<motion.circle
+								<circle
 									cx={hasInput ? "730" : "600"}
 									cy="330"
 									r="4"
 									fill="#FF1A88"
-									animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-									transition={{
-										duration: 1.2,
-										repeat: Number.POSITIVE_INFINITY,
-									}}
+									className="anim-dot-pulse"
 								/>
 							)}
-						</motion.g>
+						</g>
 					</svg>
 				</div>
 
@@ -1047,25 +1006,17 @@ function DemoCard({
 								</div>
 							) : (
 								logs.map((log, index) => (
-									<motion.div
+									<div
 										// biome-ignore lint/suspicious/noArrayIndexKey: logs are append-only and never reorder
 										key={`log-${index}`}
-										initial={{ opacity: 0, x: -10 }}
-										animate={{ opacity: 1, x: 0 }}
-										className="text-green-400/80 mb-0.5"
+										className="text-green-400/80 mb-0.5 anim-log-slide-in"
 									>
 										{log}
-									</motion.div>
+									</div>
 								))
 							)}
 							{isPlaying && (
-								<motion.div
-									className="text-white/50"
-									animate={{ opacity: [1, 0.3, 1] }}
-									transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
-								>
-									▊
-								</motion.div>
+								<div className="text-white/50 anim-cursor-blink">▊</div>
 							)}
 						</div>
 					</div>
@@ -1094,12 +1045,7 @@ const InteractiveSimulationsSection = () => {
 
 			{/* Demo Cards */}
 			<div className="grid gap-8 lg:gap-16">
-				<motion.div
-					initial={{ opacity: 0, y: 30 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.8, delay: 0.1 }}
-				>
+				<FadeInView y={30} duration={0.8} delay={0.1}>
 					<DemoCard
 						title="Autonomous Support"
 						subtitle="Customer Support Pipeline"
@@ -1115,14 +1061,9 @@ const InteractiveSimulationsSection = () => {
 							{ name: "Responder", label: "Generate Reply" },
 						]}
 					/>
-				</motion.div>
+				</FadeInView>
 
-				<motion.div
-					initial={{ opacity: 0, y: 30 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.8, delay: 0.2 }}
-				>
+				<FadeInView y={30} duration={0.8} delay={0.2}>
 					<DemoCard
 						title="Market Research"
 						subtitle="Parallel Intelligence Gathering"
@@ -1140,14 +1081,9 @@ const InteractiveSimulationsSection = () => {
 							{ name: "Summarizer", label: "Report Generation" },
 						]}
 					/>
-				</motion.div>
+				</FadeInView>
 
-				<motion.div
-					initial={{ opacity: 0, y: 30 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.8, delay: 0.3 }}
-				>
+				<FadeInView y={30} duration={0.8} delay={0.3}>
 					<DemoCard
 						title="Code Modernization"
 						subtitle="Sequential Transformation Pipeline"
@@ -1163,7 +1099,7 @@ const InteractiveSimulationsSection = () => {
 							{ name: "Documenter", label: "Auto-docs" },
 						]}
 					/>
-				</motion.div>
+				</FadeInView>
 			</div>
 		</SectionWrapper>
 	);

@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { FadeInView } from "./fade-in-view";
 import { SectionWrapper } from "./section-wrapper";
 
 const steps = [
@@ -90,63 +90,56 @@ const GettingStartedSection = () => {
 	return (
 		<SectionWrapper id="get-started">
 			{/* Section header */}
-			<motion.div
-				className="landing-section-header"
-				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true }}
-				transition={{ duration: 0.6 }}
-			>
+			<FadeInView className="landing-section-header">
 				<span className="landing-badge">Getting Started</span>
 				<h2>Create Your First Agent in Minutes</h2>
 				<p>
 					Start with a simple agent or scale to a full multi-agent system using
 					the same strongly-typed AgentBuilder API.
 				</p>
-			</motion.div>
+			</FadeInView>
 
 			{/* Step cards */}
 			<ol className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0">
 				{steps.map((step, index) => (
-					<motion.li
-						initial={{ opacity: 0, y: 20 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.5, delay: index * 0.15 }}
-						key={step.step}
-						className="border border-white/20 rounded-md px-2 py-1 bg-black/60 flex flex-col"
-					>
-						{/* Step header */}
-						<div className="py-7 space-y-4.5">
-							<div className="flex items-center gap-2 text-sm font-mono uppercase tracking-wider">
-								<span className="text-neutral-400">Step {step.step}</span>
-								<span className="text-white/20" aria-hidden="true">
-									—
-								</span>
-								<span className="text-primary">{step.label}</span>
+					<li key={step.step}>
+						<FadeInView
+							className="border border-white/20 rounded-md px-2 py-1 bg-black/60 flex flex-col"
+							delay={index * 0.15}
+							duration={0.5}
+						>
+							{/* Step header */}
+							<div className="py-7 space-y-4.5">
+								<div className="flex items-center gap-2 text-sm font-mono uppercase tracking-wider">
+									<span className="text-neutral-400">Step {step.step}</span>
+									<span className="text-white/20" aria-hidden="true">
+										—
+									</span>
+									<span className="text-primary">{step.label}</span>
+								</div>
+								<h3 className="text-xl font-bold text-foreground">
+									{step.title}
+								</h3>
+								<p className="text-xs text-muted-foreground font-medium leading-relaxed">
+									{step.description}
+								</p>
 							</div>
-							<h3 className="text-xl font-bold text-foreground">
-								{step.title}
-							</h3>
-							<p className="text-xs text-muted-foreground font-medium leading-relaxed">
-								{step.description}
-							</p>
-						</div>
 
-						{/* Code block */}
-						<pre className="border-t border-white/20 px-4 py-7 font-mono text-xs leading-[1.8] overflow-x-auto">
-							<code>
-								{step.code.map((line) => (
-									<div
-										key={`${step.step}-${line.text.slice(0, 20)}`}
-										className="text-[#05DF72CC]"
-									>
-										{line.text || "\u00A0"}
-									</div>
-								))}
-							</code>
-						</pre>
-					</motion.li>
+							{/* Code block */}
+							<pre className="border-t border-white/20 px-4 py-7 font-mono text-xs leading-[1.8] overflow-x-auto">
+								<code>
+									{step.code.map((line) => (
+										<div
+											key={`${step.step}-${line.text.slice(0, 20)}`}
+											className="text-[#05DF72CC]"
+										>
+											{line.text || "\u00A0"}
+										</div>
+									))}
+								</code>
+							</pre>
+						</FadeInView>
+					</li>
 				))}
 			</ol>
 		</SectionWrapper>

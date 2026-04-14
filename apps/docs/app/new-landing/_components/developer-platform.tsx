@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { FadeInView } from "./fade-in-view";
 import { Zap, Flame, FileStack, Rocket } from "lucide-react";
 import { SectionWrapper } from "./section-wrapper";
 
@@ -25,11 +25,10 @@ const DeveloperPlatformSection = () => {
 			{/* 2x2 Grid of Capabilities */}
 			<div className="-mx-2 md:-mx-6 lg:-mx-16 px-2 md:px-6 lg:px-16 grid grid-cols-1 lg:grid-cols-2 gap-0 border-y border-[#D1D5DB]">
 				{/* CLI Card */}
-				<motion.div
-					initial={{ opacity: 0, y: 40 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.8, delay: 0 }}
+				<FadeInView
+					y={40}
+					duration={0.8}
+					delay={0}
 					className="relative py-12 lg:py-12 lg:pr-12 border-b lg:border-r border-[#D1D5DB] "
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">
@@ -157,14 +156,13 @@ const DeveloperPlatformSection = () => {
 							</span>
 						</li>
 					</ul>
-				</motion.div>
+				</FadeInView>
 
 				{/* Sessions & Memory Card */}
-				<motion.div
-					initial={{ opacity: 0, y: 40 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.8, delay: 0.1 }}
+				<FadeInView
+					y={40}
+					duration={0.8}
+					delay={0.1}
 					className="relative py-12 lg:py-12 lg:pl-12 border-b border-[#D1D5DB] "
 				>
 					<h3 className="text-xl mb-1.5 font-semibold leading-tight text-[#0F172A]">
@@ -259,14 +257,13 @@ const DeveloperPlatformSection = () => {
 							Unified Memory API (combine multiple sources)
 						</li>
 					</ul>
-				</motion.div>
+				</FadeInView>
 
 				{/* Workflows & Extensibility Card */}
-				<motion.div
-					initial={{ opacity: 0, y: 40 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.8, delay: 0.2 }}
+				<FadeInView
+					y={40}
+					duration={0.8}
+					delay={0.2}
 					className="relative py-12  lg:py-12 lg:pr-12 lg:border-r border-[#D1D5DB] "
 					style={{ userSelect: "text" }}
 				>
@@ -381,14 +378,13 @@ const DeveloperPlatformSection = () => {
 							ToolFilterPlugin
 						</li>
 					</ul>
-				</motion.div>
+				</FadeInView>
 
 				{/* Reliability & Observability Card */}
-				<motion.div
-					initial={{ opacity: 0, y: 40 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.8, delay: 0.3 }}
+				<FadeInView
+					y={40}
+					duration={0.8}
+					delay={0.3}
 					className="relative  py-12  lg:py-12 lg:pl-12 "
 					style={{ userSelect: "text" }}
 				>
@@ -463,7 +459,7 @@ const DeveloperPlatformSection = () => {
 							New Relic
 						</li>
 					</ul>
-				</motion.div>
+				</FadeInView>
 			</div>
 		</SectionWrapper>
 	);

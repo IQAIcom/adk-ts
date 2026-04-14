@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "motion/react";
-import { useRef, useLayoutEffect, useState } from "react";
+import { Fragment, useRef, useLayoutEffect, useState } from "react";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { SectionWrapper } from "./section-wrapper";
@@ -111,9 +111,9 @@ const CommunityProjectFeatureSection = () => {
 
 										<div className="flex items-center gap-4">
 											{SHOWCASE_STATS.map((stat, i) => (
-												<>
+												<Fragment key={stat.label}>
 													{i > 0 && <div className="w-px h-12 bg-white/10" />}
-													<div key={stat.label} className="flex flex-col">
+													<div className="flex flex-col">
 														<span className="text-2xl font-bold text-white">
 															{stat.value}
 														</span>
@@ -121,7 +121,7 @@ const CommunityProjectFeatureSection = () => {
 															{stat.label}
 														</span>
 													</div>
-												</>
+												</Fragment>
 											))}
 										</div>
 									</div>

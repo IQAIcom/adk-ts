@@ -1,18 +1,32 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import "./landing.css";
 import { Navbar } from "./_components/navbar";
 import { Hero } from "./_components/hero";
 import LLMModels from "./_components/llm-models";
 import CoreFeaturesSection from "./_components/core-features";
-import DeveloperExperienceSection from "./_components/developer-experience";
-import DeveloperPlatformSection from "./_components/developer-platform";
-import MCPServersSection from "./_components/mcp-servers";
-import InteractiveSimulationsSection from "./_components/interactive-simulations";
-import CommunityProjectFeatureSection from "./_components/community-projects-feature";
-import GettingStartedSection from "./_components/getting-started";
-import CTASection from "./_components/cta";
-import { Footer } from "./_components/footer";
+
+const DeveloperExperienceSection = dynamic(
+	() => import("./_components/developer-experience"),
+);
+const DeveloperPlatformSection = dynamic(
+	() => import("./_components/developer-platform"),
+);
+const MCPServersSection = dynamic(() => import("./_components/mcp-servers"));
+const InteractiveSimulationsSection = dynamic(
+	() => import("./_components/interactive-simulations"),
+);
+const CommunityProjectFeatureSection = dynamic(
+	() => import("./_components/community-projects-feature"),
+);
+const GettingStartedSection = dynamic(
+	() => import("./_components/getting-started"),
+);
+const CTASection = dynamic(() => import("./_components/cta"));
+const Footer = dynamic(() =>
+	import("./_components/footer").then((mod) => ({ default: mod.Footer })),
+);
 
 export default function HomePage() {
 	return (

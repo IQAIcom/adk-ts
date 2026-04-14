@@ -259,6 +259,131 @@ body {
 	}
 }
 
+/* ── Animation keyframes (GPU-composited, no JS per frame) ── */
+
+/* Dashed SVG line flow — replaces motion.path infinite strokeDashoffset */
+@keyframes dash-flow {
+	to {
+		stroke-dashoffset: -10;
+	}
+}
+
+/* Pulsing glow overlay — replaces motion.rect infinite opacity */
+@keyframes pulse-glow {
+	0%,
+	100% {
+		opacity: 0;
+	}
+	50% {
+		opacity: 0.4;
+	}
+}
+
+/* Active-agent dot pulse — replaces motion.circle scale+opacity */
+@keyframes dot-pulse {
+	0%,
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.5);
+		opacity: 0.5;
+	}
+}
+
+/* Blinking terminal cursor */
+@keyframes cursor-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
+
+/* Log line slide-in */
+@keyframes log-slide-in {
+	from {
+		opacity: 0;
+		transform: translateX(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* SVG node entrance — fade + slide */
+@keyframes svg-enter-left {
+	from {
+		opacity: 0;
+		transform: translateX(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes svg-enter-right {
+	from {
+		opacity: 0;
+		transform: translateX(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes svg-enter-scale {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* Utility classes for the above keyframes */
+.anim-dash-flow {
+	animation: dash-flow 1.5s linear infinite;
+}
+
+.anim-pulse-glow {
+	animation: pulse-glow 1.5s ease infinite;
+}
+
+.anim-dot-pulse {
+	animation: dot-pulse 1.2s ease infinite;
+	transform-origin: center;
+	transform-box: fill-box;
+}
+
+.anim-cursor-blink {
+	animation: cursor-blink 1s ease infinite;
+}
+
+.anim-log-slide-in {
+	animation: log-slide-in 0.3s ease both;
+}
+
+.anim-svg-enter-left {
+	animation: svg-enter-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.anim-svg-enter-right {
+	animation: svg-enter-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.anim-svg-enter-scale {
+	animation: svg-enter-scale 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
 	*,
