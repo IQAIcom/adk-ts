@@ -144,6 +144,7 @@ export class PluginManager {
 	runAfterModelCallback(params: {
 		callbackContext: CallbackContext;
 		llmResponse: LlmResponse;
+		llmRequest?: LlmRequest;
 	}) {
 		return this.runCallbacks(
 			pluginCallbackNameSchema.enum.afterModelCallback,

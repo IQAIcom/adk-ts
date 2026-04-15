@@ -575,6 +575,7 @@ export abstract class BaseLlmFlow {
 					invocationContext,
 					llmResponse,
 					modelResponseEvent,
+					llmRequest,
 				);
 
 				yield alteredLlmResponse || llmResponse;
@@ -665,6 +666,7 @@ export abstract class BaseLlmFlow {
 		invocationContext: InvocationContext,
 		llmResponse: LlmResponse,
 		modelResponseEvent: Event,
+		llmRequest?: LlmRequest,
 	): Promise<LlmResponse | undefined> {
 		const callbackContext = new CallbackContext(invocationContext, {
 			eventActions: modelResponseEvent.actions,
@@ -675,6 +677,7 @@ export abstract class BaseLlmFlow {
 			await invocationContext.pluginManager.runAfterModelCallback({
 				callbackContext,
 				llmResponse,
+				llmRequest,
 			});
 
 		if (pluginResult) {

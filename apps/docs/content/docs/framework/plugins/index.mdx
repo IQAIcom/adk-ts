@@ -19,9 +19,11 @@ ADK-TS plugins extend your agent's capabilities with specialized functionality t
 
 ## How do Plugins work?
 
-An ADK-TS Plugin extends the `BasePlugin` class and contains one or more callback methods, indicating where in the agent lifecycle the Plugin should be executed. You integrate Plugins into an agent by registering them in your agent's Runner class. For more information on how and where you can trigger Plugins in your agent application, see Plugin callback hooks.
+An ADK-TS Plugin extends the `BasePlugin` class and contains one or more callback methods, indicating where in the agent lifecycle the Plugin should be executed. You integrate Plugins into an agent by registering them on a `Runner`, via `AgentBuilder.withPlugins()`, or directly on an `LlmAgent`. For more information on how and where you can trigger Plugins in your agent application, see Plugin callback hooks.
 
-Plugin functionality builds on [Callbacks](/docs/framework/callbacks), which is a key design element of the ADK-TS extensible architecture. While a typical Agent Callback is configured on a single agent, a single tool for a specific task, a Plugin is registered once on the `Runner` and its callbacks apply globally to every agent, tool, and LLM call managed by that runner. Plugins let you package related callback functions together to be used across a workflow. This makes Plugins an ideal solution for implementing features that cut across your entire agent application.
+Plugin functionality builds on [Callbacks](/docs/framework/callbacks), which is a key design element of the ADK-TS extensible architecture. While a typical Agent Callback is configured on a single agent, a single tool for a specific task, a Plugin is most commonly registered on the `Runner` for global scope, though agent-level registration is also supported.
+
+Runner-level plugin callbacks apply globally to every agent, tool, and LLM call managed by that runner. Plugins let you package related callback functions together to be used across a workflow. This makes Plugins an ideal solution for implementing features that cut across your entire agent application.
 
 ## Prebuilt Plugins
 
@@ -231,37 +233,77 @@ export class BasicLoggingPlugin extends BasePlugin {
 
 ### Register Plugin class
 
-Register Plugins on the `Runner`. Runner-level Plugins apply globally to all Agents, Tools, and LLM calls managed by that runner. You can set a `pluginCloseTimeout` to bound shutdown time.
+There are three ways to register plugins, each with different scope:
 
-```typescript
-import { InMemoryRunner, Agents, LlmAgent } from "@iqai/adk";
-import { BasicLoggingPlugin } from "./basic-logging-plugin";
+<Tabs items={['Runner (Global)', 'AgentBuilder (Global)', 'LlmAgent (Agent-Scoped)']}>
+  <Tab value="Runner (Global)">
+    Register Plugins on the `Runner` for global scope — they apply to all Agents, Tools, and LLM calls managed by that runner. You can set a `pluginCloseTimeout` to bound shutdown time.
 
-// Build a root agent (can be any BaseAgent; LlmAgent shown later)
-const rootAgent = new LlmAgent({
-  name: "root_agent",
-  description: "Root agent",
-});
+    ```typescript
+    import { InMemoryRunner, LlmAgent } from "@iqai/adk";
+    import { BasicLoggingPlugin } from "./basic-logging-plugin";
 
-// Pass initialization options to your plugin constructor if needed
-const logging = new BasicLoggingPlugin("basic_logging_plugin");
+    const rootAgent = new LlmAgent({
+      name: "root_agent",
+      description: "Root agent",
+    });
 
-// Register plugins at Runner construction
-const runner = new InMemoryRunner(rootAgent, {
-  appName: "DocsExampleApp",
-  plugins: [logging],
-});
+    const logging = new BasicLoggingPlugin("basic_logging_plugin");
 
-// Optionally control close timeout at Runner level (constructor overload)
-// new Runner({ appName, agent, sessionService, plugins: [logging], pluginCloseTimeout: 5000 });
-```
+    const runner = new InMemoryRunner(rootAgent, {
+      appName: "DocsExampleApp",
+      plugins: [logging],
+    });
+    ```
+
+  </Tab>
+
+  <Tab value="AgentBuilder (Global)">
+    The `AgentBuilder` provides a fluent API for plugin registration via `withPlugins()`. Plugins registered this way are passed through to the Runner that `build()` creates, so they also have global scope.
+
+    ```typescript
+    import { AgentBuilder } from "@iqai/adk";
+    import { BasicLoggingPlugin } from "./basic-logging-plugin";
+
+    const { runner } = await AgentBuilder.withModel("gemini-1.5-flash")
+      .withDescription("My assistant")
+      .withPlugins(new BasicLoggingPlugin())
+      .build();
+    ```
+
+  </Tab>
+
+  <Tab value="LlmAgent (Agent-Scoped)">
+    You can attach plugins directly to an `LlmAgent` via its constructor. Agent-level plugins are scoped to that specific agent rather than applying globally via the Runner.
+
+    ```typescript
+    import { LlmAgent, ReflectAndRetryToolPlugin } from "@iqai/adk";
+
+    const agent = new LlmAgent({
+      name: "my_agent",
+      description: "Agent with scoped plugins",
+      model: "gemini-1.5-flash",
+      plugins: [new ReflectAndRetryToolPlugin({ maxRetries: 3 })],
+    });
+    ```
+
+  </Tab>
+</Tabs>
+
+#### Registration Scope Comparison
+
+| Method                       | Scope                            | Use When                                        |
+| ---------------------------- | -------------------------------- | ----------------------------------------------- |
+| `Runner` / `InMemoryRunner`  | Global (all agents, tools, LLMs) | Cross-cutting concerns like logging, monitoring |
+| `AgentBuilder.withPlugins()` | Global (via built Runner)        | Fluent API preference                           |
+| `LlmAgent({ plugins })`      | Agent-scoped                     | Plugin should only apply to a specific agent    |
 
 ### Run the agent with the Plugin
 
 The following example shows a complete workflow using `LlmAgent`, a simple `FunctionTool`, and a plugin attached via `InMemoryRunner`. It streams events and demonstrates error handling.
 
 ```typescript
-import { LlmAgent, InMemoryRunner, Tools, Events, Models } from "@iqai/adk";
+import { LlmAgent, InMemoryRunner, BaseTool } from "@iqai/adk";
 import { BasicLoggingPlugin } from "./basic-logging-plugin";
 
 // A toy tool to demonstrate tool callbacks
@@ -715,6 +757,13 @@ normally.
 
 </Callout>
 
+<Callout type="info" title="Error Type">
+  The `error` parameter is typed as `unknown` in `BasePlugin`. In practice,
+  `PluginManager` always passes an `Error` instance, but defensive type guards
+  (e.g., `params.error instanceof Error`) are recommended for forward
+  compatibility.
+</Callout>
+
 ```typescript
 async onModelErrorCallback(params: {
   callbackContext: CallbackContext;
@@ -859,6 +908,13 @@ async afterToolCallback(params: {
 By returning a result object, this resumes the execution flow, and
 `afterToolCallback` will be triggered normally.
 
+</Callout>
+
+<Callout type="info" title="Error Type">
+  The `error` parameter is typed as `unknown` in `BasePlugin`. In practice,
+  `PluginManager` always passes an `Error` instance, but defensive type guards
+  (e.g., `params.error instanceof Error`) are recommended for forward
+  compatibility.
 </Callout>
 
 ```typescript
@@ -1011,219 +1067,51 @@ async afterRunCallback(params: {
 
 ## Best Practices
 
-### Plugin Design Guidelines
+These guidelines apply to all plugins — both prebuilt and custom. For plugin-specific guidance, see the individual plugin pages.
+
+### Plugin Design
 
 1. **Keep Plugins Focused**: Each plugin should handle a single cross-cutting concern (logging, caching, authorization, etc.)
-
 2. **Handle Errors Gracefully**: Plugin errors should not crash the entire application. Wrap plugin logic in try-catch blocks.
-
-3. **Be Performance Conscious**: Plugins run on every callback. Avoid heavy computations or blocking operations.
-
+3. **Document Intervention Behavior**: Clearly document when your plugin will intervene (return non-undefined) to help users understand the impact.
 4. **Use Appropriate Hook Patterns**:
    - Return `undefined` to observe without interference
    - Return a value only when you need to short-circuit
    - Modify context objects when you need to amend behavior
 
-5. **Document Intervention Behavior**: Clearly document when your plugin will intervene (return non-undefined) to help users understand the impact.
+### Configuration
 
-### Performance Considerations
+1. **Start Conservative**: Begin with default configuration and adjust based on observations. All prebuilt plugins ship sensible defaults — tune only after measuring.
+2. **Monitor and Test**: Track plugin behavior in development before production. Log callback frequency, latency, and intervention rate to catch issues early.
+
+### Performance
 
 - **Minimize Callback Overhead**: Only implement callbacks you actually need
 - **Async Operations**: Use proper async/await to avoid blocking
 - **Caching**: Cache expensive lookups (permissions, configurations)
 - **Batch Operations**: Batch metrics/logs instead of sending one at a time
-- **Timeout Protection**: Use the `pluginCloseTimeout` to prevent hanging
+- **Timeout Protection**: Use the `pluginCloseTimeout` to prevent hanging during shutdown
 
-## Next Steps
+### Multi-Plugin Usage
 
-Now that you understand how to build and use Plugins, explore these resources:
+- **Order Matters**: Plugins execute in registration order. Place filtering plugins before retry plugins (e.g., `ToolOutputFilterPlugin` before `ReflectAndRetryToolPlugin`).
+- **Intervention Hierarchy**: The first plugin to return a non-undefined value short-circuits the rest. Plan your registration order accordingly.
+- **Resource Management**: Use proper cleanup in `close()` methods. The Runner calls close on all plugins during shutdown.
+- **Unique Names**: Each plugin must have a unique name. Registration will throw if a duplicate name is detected.
 
-<Cards>
-  <Card
-    title="🔄 Model Fallback Plugin"
-    description="Handle rate limits with automatic fallback"
-    href="/docs/framework/plugins/model-fallback-plugin"
-  />
-</Cards>
+## Troubleshooting
 
-### Additional Plugin Resources
+Common issues when working with plugins:
 
-<Callout type="info" title="Plugin Documentation">
-  For detailed implementation guides and advanced usage, refer to the individual
-  plugin documentation pages linked above.
-</Callout>
+| Issue                     | Possible Cause                                 | Solution                                                                                                      |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Plugin not executing      | Not registered on Runner/AgentBuilder/LlmAgent | Verify registration; check that `build()` was called for AgentBuilder                                         |
+| Callback not firing       | Wrong callback method name or signature        | Verify you implemented the exact method name from `BasePlugin` (e.g., `afterToolCallback`, not `onAfterTool`) |
+| Plugin overriding another | Registration order conflict                    | Reorder plugins — first to return non-undefined wins                                                          |
+| Shutdown hanging          | Plugin `close()` never resolves                | Set `pluginCloseTimeout` on the Runner (default: 5000ms)                                                      |
+| Duplicate name error      | Two plugins share the same name                | Give each plugin a unique name in its constructor                                                             |
 
-## Getting Started
-
-Plugins are registered at the Runner level and apply globally to all agents, tools, and model calls within that runner. This makes them perfect for cross-cutting concerns like logging, monitoring, filtering, and error handling.
-
-### Basic Plugin Integration
-
-<Tabs items={['Simple', 'Advanced', 'Multiple Plugins']}>
-  <Tab value="Simple">
-    ```typescript
-    import { InMemoryRunner, LlmAgent } from "@iqai/adk";
-    import { ToolOutputFilterPlugin } from "@iqai/adk";
-
-    // Create your agent
-    const agent = new LlmAgent({
-      name: "assistant",
-      description: "Helpful assistant",
-      model: "gemini-1.5-flash",
-    });
-
-    // Register plugin with the runner
-    const runner = new InMemoryRunner(agent, {
-      appName: "my-app",
-      plugins: [
-        new ToolOutputFilterPlugin({
-          filterModel: "gemini-1.5-flash", // Fast/cheap model for filter generation
-        }),
-      ],
-    });
-    ```
-
-  </Tab>
-
-  <Tab value="Advanced">
-    ```typescript
-    import { InMemoryRunner, LlmAgent } from "@iqai/adk";
-    import { ToolOutputFilterPlugin } from "@iqai/adk";
-
-    // Advanced configuration with custom thresholds
-    const filterPlugin = new ToolOutputFilterPlugin({
-      filterModel: "gemini-1.5-flash",
-      config: {
-        sizeThreshold: 10000,    // Trigger filtering at 10KB
-        targetSize: 5000,        // Aim for 5KB output
-        maxIterations: 5,        // Allow up to 5 filtering iterations
-        debug: true,             // Enable debug logging
-      },
-      enabledTools: ["api-tool", "data-fetcher"], // Only filter specific tools
-    });
-
-    const runner = new InMemoryRunner(agent, {
-      appName: "advanced-app",
-      plugins: [filterPlugin],
-      pluginCloseTimeout: 5000, // 5 second timeout for plugin cleanup
-    });
-    ```
-
-  </Tab>
-
-  <Tab value="Multiple Plugins">
-    ```typescript
-    import { InMemoryRunner, LlmAgent } from "@iqai/adk";
-    import {
-      ToolOutputFilterPlugin,
-      ReflectAndRetryToolPlugin,
-      LangfusePlugin
-    } from "@iqai/adk";
-
-    // Combine multiple plugins for comprehensive functionality
-    const plugins = [
-      // Filter large outputs
-      new ToolOutputFilterPlugin({
-        filterModel: "gemini-1.5-flash",
-      }),
-
-      // Retry failed tools
-      new ReflectAndRetryToolPlugin({
-        maxRetries: 3,
-      }),
-
-      // Monitor and trace
-      new LangfusePlugin({
-        publicKey: process.env.LANGFUSE_PUBLIC_KEY,
-        secretKey: process.env.LANGFUSE_SECRET_KEY,
-        baseUrl: process.env.LANGFUSE_BASE_URL,
-      }),
-    ];
-
-    const runner = new InMemoryRunner(agent, {
-      appName: "production-app",
-      plugins,
-    });
-    ```
-
-  </Tab>
-</Tabs>
-
-### Plugin Execution Order
-
-Plugins execute in the order they are registered, with each plugin's callbacks running before the corresponding agent, model, or tool callbacks:
-
-1. **Plugin callbacks** run first (global scope)
-2. **Agent/Model/Tool callbacks** run second (local scope)
-3. **Plugin intervention** takes precedence (short-circuits execution)
-
-### Common Use Cases
-
-<Callout type="tip" title="Plugin Applications">
-  Plugins are ideal for implementing cross-cutting concerns that apply across
-  your entire agent workflow:
-</Callout>
-
-- **Output Management**: Filter large API responses, truncate verbose data, optimize token usage
-- **Error Handling**: Automatic retry logic, error recovery, fallback mechanisms
-- **Observability**: Logging, monitoring, tracing, analytics integration
-- **Security**: Input validation, output sanitization, access control
-- **Performance**: Caching, rate limiting, resource optimization
-- **Compliance**: Audit logging, data retention, privacy controls
-
-## Integration Examples
-
-### With AgentBuilder
-
-```typescript
-import { AgentBuilder } from "@iqai/adk";
-import { ToolOutputFilterPlugin } from "@iqai/adk";
-
-const { runner } = await AgentBuilder.withModel("gemini-1.5-flash")
-  .withDescription("Data analysis assistant")
-  .withTools(dataTools)
-  .withSessionService(sessionService)
-  .withPlugins(
-    new ToolOutputFilterPlugin({
-      filterModel: "gemini-1.5-flash",
-      config: {
-        sizeThreshold: 8000,
-        targetSize: 4000,
-      },
-    }),
-  )
-  .build();
-```
-
-### With Custom Implementation
-
-```typescript
-import { BasePlugin } from "@iqai/adk";
-
-class CustomLoggingPlugin extends BasePlugin {
-  async afterToolCallback(params: {
-    tool: BaseTool;
-    toolArgs: Record<string, any>;
-    toolContext: ToolContext;
-    result: Record<string, any>;
-  }): Promise<Record<string, any> | undefined> {
-    // Log tool execution
-    console.log(
-      `Tool ${params.tool.name} executed with result:`,
-      params.result,
-    );
-
-    // Return undefined to continue with original result
-    return undefined;
-  }
-}
-
-// Register custom plugin
-const runner = new InMemoryRunner(agent, {
-  appName: "custom-app",
-  plugins: [new CustomLoggingPlugin("custom_logger")],
-});
-```
+For plugin-specific troubleshooting, see the individual plugin pages. For general framework issues, see the [troubleshooting guide](/docs/framework/guides/troubleshooting).
 
 ## Plugin Development
 
@@ -1232,7 +1120,7 @@ const runner = new InMemoryRunner(agent, {
 Plugins extend the `BasePlugin` class and implement callback methods for specific lifecycle events:
 
 ```typescript
-import { BasePlugin } from "@iqai/adk";
+import { BasePlugin, BaseTool, ToolContext } from "@iqai/adk";
 
 export class MyCustomPlugin extends BasePlugin {
   constructor(name = "my_custom_plugin") {
@@ -1252,35 +1140,9 @@ export class MyCustomPlugin extends BasePlugin {
 }
 ```
 
-### Best Practices
-
-1. **Focus on Single Responsibility**: Each plugin should handle one cross-cutting concern
-2. **Handle Errors Gracefully**: Use try-catch blocks to prevent plugin failures from crashing the application
-3. **Be Performance Conscious**: Plugins run on every callback - avoid heavy computations
-4. **Document Behavior**: Clearly document when your plugin will intervene vs. observe
-5. **Use Appropriate Return Values**: Return `undefined` to observe, return values to intervene
-
-## Support and Documentation
-
-<Callout type="info" title="Getting Help">
-  For plugin-specific issues, refer to the individual plugin documentation. For
-  general plugin development questions, check the [callbacks
-  documentation](/docs/framework/callbacks) and [best practices
-  guide](/docs/framework/guides/best-practices).
-</Callout>
-
-### Resources
+## Resources
 
 - **[Plugin Callbacks](/docs/framework/callbacks)**: Understanding the plugin lifecycle and callback hooks
 - **[Best Practices](/docs/framework/guides/best-practices)**: Production-ready patterns and approaches
 - **[Agent Development](/docs/framework/agents)**: Core agent concepts and integration patterns
 - **[Tool Development](/docs/framework/tools)**: Creating tools that work seamlessly with plugins
-
-### Plugin Compatibility
-
-All prebuilt plugins are designed to work together without conflicts. When combining multiple plugins:
-
-- **Order Matters**: Plugins execute in registration order
-- **Intervention Hierarchy**: First plugin to intervene takes precedence
-- **Resource Management**: Use proper cleanup in `close()` methods
-- **Configuration Conflicts**: Review plugin configurations for overlapping functionality
