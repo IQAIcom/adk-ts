@@ -1,30 +1,17 @@
 ---
 title: Reflect and Retry Plugin
-description: Automatically reflect on tool errors and retry with corrected calls in @iqai/adk
+description: Automatically recover from tool errors with intelligent retry logic
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-The Reflect and Retry Plugin helps your agent recover from tool execution errors by guiding the model to reflect on failures and retry with corrected arguments or strategy. It intercepts tool failures, generates structured reflection guidance, and retries the operation up to a configurable limit.
+When a tool fails, the **Reflect and Retry Plugin** doesn't just retry blindly — it generates structured reflection guidance so the model understands _what went wrong_ and can retry with corrected arguments or a different approach.
 
-This plugin is especially useful for improving robustness when tools may fail due to invalid parameters, transient state, or incorrect function selection.
+This is especially useful when tools fail due to invalid parameters, transient errors, or incorrect function selection.
 
-## Key Capabilities
-
-- **Concurrency-safe**: Uses an internal lock to safely handle parallel tool executions
-- **Configurable retry limits**: Control how many retries are attempted per tool
-- **Flexible tracking scope**: Track failures per invocation (default) or globally across invocations
-- **Per-tool failure tracking**: Retry counters are tracked independently for each tool
-- **Extensible error detection**: Override error extraction to detect failures in non-exception responses
-
-## Installation
-
-```bash
-pnpm add @iqai/adk
-```
-
-## Quick Start
+## Quick start
 
 ```typescript
 import { AgentBuilder, ReflectAndRetryToolPlugin } from "@iqai/adk";
@@ -34,30 +21,25 @@ const { runner } = await AgentBuilder.withModel("gpt-4o")
   .build();
 ```
 
+## How it works
+
+1. A tool throws an error (or returns an error response)
+2. The plugin catches it and generates reflection guidance — including the original call, error message, and suggestions
+3. The model sees the guidance and retries with corrected arguments
+4. If it fails again, the cycle repeats up to `maxRetries`
+5. After all retries are exhausted, the error is thrown (or a final reflection message is returned, depending on config)
+
+The plugin tracks retries independently per tool and is concurrency-safe — multiple tools can fail and retry in parallel without race conditions.
+
 ## Usage
 
-<Tabs items={['AgentBuilder', 'Direct Agent', 'Custom Configuration']}>
+<Tabs items={['AgentBuilder', 'Direct Agent', 'Custom Config']}>
   <Tab value="AgentBuilder">
     ```typescript
-    import {
-      AgentBuilder,
-      InMemorySessionService,
-      ReflectAndRetryToolPlugin,
-    } from "@iqai/adk";
-    import { openrouter } from "@openrouter/ai-sdk-provider";
-    import { randomUUID } from "crypto";
+    import { AgentBuilder, ReflectAndRetryToolPlugin } from "@iqai/adk";
 
-    const { runner } = await AgentBuilder.withModel(
-      openrouter("openai/gpt-4.1-mini"),
-    )
+    const { runner } = await AgentBuilder.withModel("gpt-4o")
       .withDescription("Calendar scheduling assistant")
-      .withInstruction("Help users manage calendar events.")
-      .withTools(/* calendar tools */)
-      .withSessionService(new InMemorySessionService())
-      .withQuickSession({
-        sessionId: randomUUID(),
-        appName: "calendar-agent",
-      })
       .withPlugins(new ReflectAndRetryToolPlugin({ maxRetries: 3 }))
       .build();
     ```
@@ -70,32 +52,27 @@ const { runner } = await AgentBuilder.withModel("gpt-4o")
 
     const agent = new LlmAgent({
       name: "calendar_specialist",
-      description: "Specialist agent for managing calendar and scheduling tasks",
-      plugins: [
-        new ReflectAndRetryToolPlugin({
-          maxRetries: 3,
-        }),
-      ],
+      description: "Manages calendar and scheduling tasks",
+      plugins: [new ReflectAndRetryToolPlugin({ maxRetries: 3 })],
     });
     ```
 
   </Tab>
 
-  <Tab value="Custom Configuration">
+  <Tab value="Custom Config">
     ```typescript
     import { LlmAgent, ReflectAndRetryToolPlugin, TrackingScope } from "@iqai/adk";
-
-    const customRetryPlugin = new ReflectAndRetryToolPlugin({
-      name: "my_custom_retry_plugin",
-      maxRetries: 5,
-      throwExceptionIfRetryExceeded: false,
-      trackingScope: TrackingScope.GLOBAL,
-    });
 
     const agent = new LlmAgent({
       name: "robust_assistant",
       description: "Assistant with enhanced error recovery",
-      plugins: [customRetryPlugin],
+      plugins: [
+        new ReflectAndRetryToolPlugin({
+          maxRetries: 5,
+          throwExceptionIfRetryExceeded: false, // return reflection instead of throwing
+          trackingScope: TrackingScope.GLOBAL,   // track retries across all requests
+        }),
+      ],
     });
     ```
 
@@ -104,70 +81,25 @@ const { runner } = await AgentBuilder.withModel("gpt-4o")
 
 ## Configuration
 
-### ReflectAndRetryToolPluginOptions
+| Option                          | Type            | Default                       | Description                                                                           |
+| ------------------------------- | --------------- | ----------------------------- | ------------------------------------------------------------------------------------- |
+| `maxRetries`                    | `number`        | `3`                           | Retry attempts per tool after an error                                                |
+| `throwExceptionIfRetryExceeded` | `boolean`       | `true`                        | Throw original error after retries exhausted (if `false`, returns reflection message) |
+| `trackingScope`                 | `TrackingScope` | `INVOCATION`                  | `INVOCATION` resets per request, `GLOBAL` tracks across all requests                  |
+| `name`                          | `string`        | `"reflect_retry_tool_plugin"` | Plugin name for identification                                                        |
+
+<Callout type="tip">
+  Use `INVOCATION` scope (default) for user-facing agents where each request
+  should start fresh. Use `GLOBAL` for system-wide rate limiting across all
+  invocations.
+</Callout>
+
+## Custom error detection
+
+By default, the plugin catches exceptions thrown by tools. If your tools return error objects instead of throwing, override `extractErrorFromResult`:
 
 ```typescript
-interface ReflectAndRetryToolPluginOptions {
-  /** Plugin name (default: "reflect_retry_tool_plugin") */
-  name?: string;
-
-  /** Number of retry attempts per tool after an error is detected (default: 3) */
-  maxRetries?: number;
-
-  /** Whether to throw the original error after retries are exhausted (default: true) */
-  throwExceptionIfRetryExceeded?: boolean;
-
-  /** Controls how retry counters are scoped (default: TrackingScope.INVOCATION) */
-  trackingScope?: TrackingScope;
-}
-```
-
-### Configuration Details
-
-- **`name`** _(optional)_
-  - Plugin name for identification
-  - Default: `"reflect_retry_tool_plugin"`
-
-- **`maxRetries`** _(default: 3)_
-  - Number of retry attempts per tool after an error is detected
-  - Must be a non-negative integer
-  - Set to `0` to disable retries
-
-- **`throwExceptionIfRetryExceeded`** _(default: true)_
-  - Whether to throw the original error after retries are exhausted
-  - If `false`, the plugin returns a final reflection message instead
-
-- **`trackingScope`** _(default: TrackingScope.INVOCATION)_
-  - Controls how retry counters are scoped
-  - `TrackingScope.INVOCATION`: Track failures per invocation (resets each request)
-  - `TrackingScope.GLOBAL`: Track failures globally across all invocations
-
-## How It Works
-
-### Retry Process
-
-1. **Error Detection**: Monitors tool execution for failures (exceptions or custom error detection)
-2. **Reflection Generation**: Creates structured guidance for the model including the original tool call, error message, suggestions for correction, and remaining retry attempts
-3. **Retry Attempt**: Allows the model to retry with corrected arguments or approach
-4. **Tracking**: Maintains retry counters per tool (based on tracking scope)
-5. **Limit Enforcement**: Stops retrying after `maxRetries` is reached
-
-### Concurrency Safety
-
-The plugin uses internal locking mechanisms to ensure thread-safe operation when multiple tools execute in parallel:
-
-- Per-tool retry counters are safely managed
-- No race conditions in error tracking
-- Consistent behavior across concurrent executions
-
-## Advanced Usage
-
-### Custom Error Detection
-
-Override `extractErrorFromResult` to detect failures in non-exception responses:
-
-```typescript
-import { ReflectAndRetryToolPlugin } from "@iqai/adk";
+import { ReflectAndRetryToolPlugin, LlmAgent } from "@iqai/adk";
 
 class CustomRetryPlugin extends ReflectAndRetryToolPlugin {
   async extractErrorFromResult({
@@ -175,89 +107,63 @@ class CustomRetryPlugin extends ReflectAndRetryToolPlugin {
   }: {
     result: any;
   }): Promise<any | undefined> {
-    // Detect error based on response properties
     if (result?.status === "error") return result;
-
-    if (result?.error_code || result?.error_message) {
+    if (result?.error_code) {
       return {
         error: result.error_message || "Unknown error",
         code: result.error_code,
       };
     }
-
-    return undefined; // No error detected
+    return undefined; // no error detected
   }
 }
 
 const agent = new LlmAgent({
-  name: "calendar_specialist",
+  name: "api_agent",
   description: "Agent with custom error detection",
   plugins: [new CustomRetryPlugin({ maxRetries: 5 })],
 });
 ```
 
-### With Multiple Plugins
+## When to use it
 
-```typescript
-import { InMemoryRunner, LLMRegistry } from "@iqai/adk";
-import { ToolOutputFilterPlugin, ReflectAndRetryToolPlugin } from "@iqai/adk";
+- **Unreliable external APIs** — transient failures, flaky services
+- **Complex tool logic** — tools with multiple validation steps
+- **User input validation** — tools that validate parameters the model provides
+- **Development phase** — catch and recover from edge cases during prototyping
 
-// Filter large outputs first, then handle errors
-const runner = new InMemoryRunner(agent, {
-  appName: "production-app",
-  plugins: [
-    new ToolOutputFilterPlugin({
-      filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
-    }),
-    new ReflectAndRetryToolPlugin({
-      maxRetries: 3,
-    }),
-  ],
-});
-```
+## When not to use it
 
-## Best Practices
-
-### When to Use
-
-- **Unreliable External APIs**: Services that may have transient failures
-- **Complex Tool Logic**: Tools with multiple validation steps
-- **User Input Validation**: Tools that validate user-provided parameters
-- **State-dependent Operations**: Tools that depend on external state
-
-### When Not to Use
-
-- **Deterministic Failures**: Errors that will always occur with the same input
-- **Security-sensitive Operations**: Where retry could cause security issues
-- **Resource-intensive Operations**: Where retry is too expensive
-- **Time-critical Operations**: Where retry delay is unacceptable
-
-### Tracking Scope Selection
-
-- Use `INVOCATION` scope (default) for user-facing agents where each request should start fresh
-- Use `GLOBAL` scope for system-wide rate limiting across all invocations
+- **Deterministic failures** — same input will always fail (retrying won't help)
+- **Security-sensitive operations** — where retrying could cause issues
+- **Resource-intensive operations** — where retry cost is too high
+- **Time-critical operations** — where retry latency is unacceptable
 
 ## Troubleshooting
 
-**Plugin not retrying failures:**
+| Issue                 | Fix                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| Not retrying failures | Check `maxRetries > 0`. For non-exception errors, implement `extractErrorFromResult`. |
+| Too many retries      | Reduce `maxRetries`. Use more specific error detection. Use `INVOCATION` scope.       |
+| Retries not helping   | The failure may be deterministic. Check tool error messages for better guidance.      |
+| Concurrency issues    | Plugin is concurrency-safe. Check for resource conflicts in your tools.               |
 
-- Check if error detection is working correctly
-- Verify `maxRetries` is greater than 0
-- For non-exception errors, implement custom `extractErrorFromResult`
+## Next steps
 
-**Too many retries:**
-
-- Reduce `maxRetries` value
-- Implement more specific error detection to avoid retrying non-transient failures
-- Use `INVOCATION` scope instead of `GLOBAL`
-
-**Retries not helping:**
-
-- Analyze failure patterns to understand root cause
-- Improve tool error messages for better reflection guidance
-- Consider if the failure is deterministic rather than transient
-
-**Concurrency issues:**
-
-- The plugin is designed to be concurrency-safe
-- Check for external resource conflicts in your tool implementations
+<Cards>
+  <Card
+    title="🔧 Tool Output Filter"
+    description="Pair with retry — filter large outputs, then handle errors"
+    href="/docs/framework/plugins/tool-output-filter"
+  />
+  <Card
+    title="⚡ Model Fallback"
+    description="Handle rate limits alongside tool failures"
+    href="/docs/framework/plugins/model-fallback-plugin"
+  />
+  <Card
+    title="🔌 Plugins Overview"
+    description="Learn how plugins work and how to build your own"
+    href="/docs/framework/plugins"
+  />
+</Cards>

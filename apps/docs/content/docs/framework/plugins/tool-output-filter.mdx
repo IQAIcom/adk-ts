@@ -1,79 +1,51 @@
 ---
 title: Tool Output Filter Plugin
-description: Automatically filter and reduce large tool outputs using intelligent JQ filtering to maintain optimal token usage
+description: Shrink large tool outputs with intelligent JQ filtering to save tokens
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-The Tool Output Filter Plugin automatically detects and reduces oversized tool outputs using intelligent JQ filtering powered by LLM. It helps maintain optimal token usage by filtering verbose API responses, large datasets, and nested structures while preserving essential information.
+When a tool returns a huge JSON response (like a full API payload or database result), it eats up your token budget and can confuse the model. The **Tool Output Filter Plugin** automatically detects oversized outputs and uses an LLM to generate [JQ](https://jqlang.github.io/jq/) filters that extract only the relevant data — shrinking the output while preserving what matters.
 
-## Key Features
-
-- **Automatic Detection**: Monitors tool output size and key count to trigger filtering
-- **Intelligent Filtering**: Uses LLM to generate context-aware JQ filters
-- **Iterative Refinement**: Multiple filtering iterations for optimal size reduction
-- **Configurable Thresholds**: Customizable size limits and target sizes
-- **Tool-Specific Control**: Enable/disable filtering for specific tools
-- **Security First**: Rejects dangerous JQ patterns (system commands, env access) and validates filter safety
-
-## Installation
-
-```bash
-pnpm add @iqai/adk
-```
-
-<Callout type="warning" title="External Dependency">
-  This plugin requires the `jq` command-line tool to be installed and available
-  in your system's PATH.
-</Callout>
-
-```bash
-# macOS
-brew install jq
-
-# Ubuntu/Debian
-sudo apt-get install jq
-
-# CentOS/RHEL/Fedora
-sudo yum install jq
-
-# Windows (Chocolatey)
-choco install jq
-
-# Verify
-jq --version
-```
-
-## Quick Start
+## Quick start
 
 ```typescript
-import {
-  InMemoryRunner,
-  LlmAgent,
-  LLMRegistry,
-  ToolOutputFilterPlugin,
-} from "@iqai/adk";
+import { AgentBuilder, LLMRegistry, ToolOutputFilterPlugin } from "@iqai/adk";
 
-const agent = new LlmAgent({
-  name: "data_assistant",
-  description: "Analyzes large datasets",
-  model: "gemini-1.5-pro",
-});
-
-const runner = new InMemoryRunner(agent, {
-  appName: "my-app",
-  plugins: [
+const { runner } = await AgentBuilder.withModel("gemini-1.5-pro")
+  .withDescription("Data analysis assistant")
+  .withPlugins(
     new ToolOutputFilterPlugin({
       filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
     }),
-  ],
-});
+  )
+  .build();
 ```
+
+That's it. Any tool output over 8KB or 50 JSON keys will be automatically filtered down to ~4KB.
+
+<Callout type="warning" title="Requires JQ">
+  This plugin shells out to the `jq` command-line tool. Install it before using:
+  `brew install jq` (macOS), `apt-get install jq` (Ubuntu), or `choco install
+  jq` (Windows).
+</Callout>
+
+## How it works
+
+1. A tool returns a large JSON response
+2. The plugin checks if it exceeds the size/key thresholds
+3. If so, it asks a fast LLM (like Gemini Flash) to generate a JQ filter expression (e.g., `{id, name, summary}`)
+4. It runs `jq` on the data to extract just the relevant fields
+5. If the result is still too large, it repeats (up to `maxIterations`)
+6. The filtered output replaces the original, with metadata showing what changed
+
+If anything goes wrong (JQ error, timeout, dangerous pattern), the plugin falls back to the original output — it never breaks your agent.
 
 ## Usage
 
-<Tabs items={['AgentBuilder', 'Direct Agent', 'Custom Configuration']}>
+<Tabs items={['AgentBuilder', 'Direct Agent', 'Custom Config']}>
   <Tab value="AgentBuilder">
     ```typescript
     import { AgentBuilder, LLMRegistry, ToolOutputFilterPlugin } from "@iqai/adk";
@@ -83,7 +55,7 @@ const runner = new InMemoryRunner(agent, {
       .withPlugins(
         new ToolOutputFilterPlugin({
           filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
-          enabledTools: ["api_tool", "database_tool"],
+          enabledTools: ["api_tool", "database_tool"], // only filter these
         }),
       )
       .build();
@@ -99,7 +71,6 @@ const runner = new InMemoryRunner(agent, {
       name: "data_assistant",
       description: "Analyzes large datasets",
       model: "gemini-1.5-pro",
-      tools: [new LargeDataApiTool()],
       plugins: [
         new ToolOutputFilterPlugin({
           filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
@@ -110,35 +81,26 @@ const runner = new InMemoryRunner(agent, {
 
   </Tab>
 
-  <Tab value="Custom Configuration">
+  <Tab value="Custom Config">
     ```typescript
-    import { InMemoryRunner, LlmAgent, LLMRegistry, ToolOutputFilterPlugin } from "@iqai/adk";
+    import { AgentBuilder, LLMRegistry, ToolOutputFilterPlugin } from "@iqai/adk";
 
-    const agent = new LlmAgent({
-      name: "data_assistant",
-      description: "Analyzes large datasets",
-      model: "gemini-1.5-pro",
-    });
-
-    const filterPlugin = new ToolOutputFilterPlugin({
-      filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
-      config: {
-        sizeThreshold: 12000,  // Trigger at 12KB instead of default 8KB
-        keyThreshold: 75,      // Trigger at 75 keys instead of default 50
-        targetSize: 6000,      // Target 6KB output instead of default 4KB
-        maxIterations: 5,      // Allow up to 5 iterations (default: 3)
-        maxSchemaDepth: 6,     // Extract schema to depth 6 (default: 4)
-        debug: true,           // Enable debug logging
-      },
-      enabledTools: ["api_fetcher", "database_query"],
-      // Or use disabledTools to exclude specific tools:
-      // disabledTools: ["small_api", "config_tool"],
-    });
-
-    const runner = new InMemoryRunner(agent, {
-      appName: "advanced-filter-demo",
-      plugins: [filterPlugin],
-    });
+    const { runner } = await AgentBuilder.withModel("gemini-1.5-pro")
+      .withDescription("Data analysis assistant")
+      .withPlugins(
+        new ToolOutputFilterPlugin({
+          filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
+          config: {
+            sizeThreshold: 12000,  // trigger at 12KB (default: 8000)
+            keyThreshold: 75,      // trigger at 75 keys (default: 50)
+            targetSize: 6000,      // aim for 6KB output (default: 4000)
+            maxIterations: 5,      // up to 5 filter passes (default: 3)
+            debug: true,           // log filtering details
+          },
+          enabledTools: ["api_fetcher", "database_query"],
+        }),
+      )
+      .build();
     ```
 
   </Tab>
@@ -146,90 +108,24 @@ const runner = new InMemoryRunner(agent, {
 
 ## Configuration
 
-### FilterConfig
+| Option           | Type       | Default     | Description                                                        |
+| ---------------- | ---------- | ----------- | ------------------------------------------------------------------ |
+| `filterModel`    | `BaseLlm`  | Required    | LLM to generate JQ filters. Use `LLMRegistry.newLLM("model-name")` |
+| `sizeThreshold`  | `number`   | `8000`      | Character count to trigger filtering                               |
+| `keyThreshold`   | `number`   | `50`        | JSON key count to trigger filtering                                |
+| `targetSize`     | `number`   | `4000`      | Target output size after filtering                                 |
+| `maxIterations`  | `number`   | `3`         | Max filter-and-check cycles                                        |
+| `maxSchemaDepth` | `number`   | `4`         | Depth for schema extraction                                        |
+| `debug`          | `boolean`  | `false`     | Log filtering details                                              |
+| `enabledTools`   | `string[]` | `undefined` | Only filter these tools (undefined = all)                          |
+| `disabledTools`  | `string[]` | `undefined` | Skip filtering for these tools                                     |
 
-```typescript
-interface FilterConfig {
-  /** Size threshold in characters to trigger filtering (default: 8000) */
-  sizeThreshold?: number;
+<Callout type="tip">
+  Use a fast, cheap model for `filterModel` (like Gemini Flash) — filter
+  generation is lightweight and doesn't need a powerful model.
+</Callout>
 
-  /** Key/field count threshold to trigger filtering (default: 50) */
-  keyThreshold?: number;
-
-  /** Target size after filtering (default: 4000) */
-  targetSize?: number;
-
-  /** Maximum filtering iterations (default: 3) */
-  maxIterations?: number;
-
-  /** Maximum depth for schema extraction (default: 4) */
-  maxSchemaDepth?: number;
-
-  /** Enable debug logging (default: false) */
-  debug?: boolean;
-}
-```
-
-### ToolOutputFilterPluginOptions
-
-```typescript
-interface ToolOutputFilterPluginOptions {
-  /** Plugin name (default: "tool_output_filter_plugin") */
-  name?: string;
-
-  /** LLM model used to generate JQ filters (required) */
-  filterModel: BaseLlm;
-
-  /** Only filter outputs from these tools (undefined = filter all) */
-  enabledTools?: string[];
-
-  /** Skip filtering for these tools */
-  disabledTools?: string[];
-
-  /** Configuration for filtering behavior */
-  config?: FilterConfig;
-}
-```
-
-### Configuration Details
-
-- **`filterModel`** _(required, `BaseLlm`)_
-  - The LLM used to generate context-aware JQ filters
-  - Use `LLMRegistry.newLLM("gemini-1.5-flash")` to create an instance from a model string
-  - Use a fast/cheap model since filter generation is lightweight
-
-- **`sizeThreshold`** _(default: 8000)_
-  - Character count at which filtering is triggered
-  - Outputs below this size pass through unchanged
-
-- **`keyThreshold`** _(default: 50)_
-  - Number of JSON keys at which filtering is triggered
-  - Catches deeply nested structures even if character count is moderate
-
-- **`targetSize`** _(default: 4000)_
-  - The target output size after filtering
-  - The plugin iterates until output is at or below this size (or max iterations reached)
-
-- **`maxIterations`** _(default: 3)_
-  - Maximum number of filter-and-check cycles
-  - More iterations yield better compression but increase latency
-
-- **`enabledTools` / `disabledTools`**
-  - Whitelist or blacklist tools by name
-  - If `enabledTools` is set, only those tools are filtered
-  - If `disabledTools` is set, those tools are skipped
-
-- **`debug`** _(default: false)_
-  - Enables detailed logging: response size analysis, generated JQ filters, iteration progress, success/failure reasons
-
-## How It Works
-
-1. **Detection**: Monitors tool output size and key count against thresholds
-2. **Analysis**: Extracts JSON schema and generates a preview of the data
-3. **Filter Generation**: Uses LLM to create a context-aware JQ filter expression
-4. **Application**: Applies JQ filter via spawned process (with 10-second timeout)
-5. **Iteration**: Repeats until target size is reached or max iterations exceeded
-6. **Metadata**: Adds filtering metadata to the result
+## What the filtered output looks like
 
 When filtering is applied, the output includes metadata:
 
@@ -247,91 +143,24 @@ When filtering is applied, the output includes metadata:
 }
 ```
 
-If filtering fails for any reason (JQ error, timeout, dangerous pattern detected, filtered output larger than original), the plugin falls back to the original unfiltered output.
+## When to use it
 
-## Advanced Usage
+- Large API responses (REST APIs returning verbose data)
+- Database queries with nested relationships
+- File processing (large JSON/XML files)
+- Third-party integrations with verbose outputs
 
-### Custom Filter Model
+## When not to use it
 
-Use `LLMRegistry.newLLM()` to create a `BaseLlm` instance from any registered model string:
+- Small outputs (unnecessary overhead)
+- Binary/non-JSON data (plugin only processes JSON)
+- Critical data where every field matters
+- Real-time requirements where filtering latency is unacceptable
 
-```typescript
-import { LLMRegistry, ToolOutputFilterPlugin } from "@iqai/adk";
-
-const plugin = new ToolOutputFilterPlugin({
-  filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
-  config: { sizeThreshold: 10000, targetSize: 5000 },
-});
-```
-
-### Performance Tuning
+## Debugging
 
 ```typescript
-// High-throughput: fewer filtering triggers, faster convergence
-// LLMRegistry.newLLM() converts a model string to a BaseLlm instance
-const highThroughput = new ToolOutputFilterPlugin({
-  filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
-  config: {
-    sizeThreshold: 15000,
-    targetSize: 8000,
-    maxIterations: 2,
-    maxSchemaDepth: 3,
-  },
-});
-
-// Aggressive compression: lower thresholds, more iterations
-const aggressive = new ToolOutputFilterPlugin({
-  filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
-  config: {
-    sizeThreshold: 5000,
-    targetSize: 2000,
-    maxIterations: 5,
-  },
-});
-```
-
-### With Multiple Plugins
-
-```typescript
-import { InMemoryRunner, LLMRegistry } from "@iqai/adk";
-import { ToolOutputFilterPlugin, ReflectAndRetryToolPlugin } from "@iqai/adk";
-
-// Filter large outputs first, then handle errors
-const runner = new InMemoryRunner(agent, {
-  appName: "production-app",
-  plugins: [
-    new ToolOutputFilterPlugin({
-      filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
-    }),
-    new ReflectAndRetryToolPlugin({
-      maxRetries: 3,
-    }),
-  ],
-});
-```
-
-## Best Practices
-
-### When to Use
-
-- **Large API Responses**: REST APIs returning verbose data
-- **Database Queries**: Complex queries with nested relationships
-- **File Processing**: Reading large JSON/XML files
-- **External Integrations**: Third-party services with verbose responses
-
-### When Not to Use
-
-- **Small Outputs**: Outputs below size thresholds (unnecessary overhead)
-- **Binary Data**: Non-JSON outputs (plugin only processes JSON)
-- **Critical Data**: When every field is essential for downstream processing
-- **Real-time Requirements**: When filtering latency is unacceptable
-
-### Debugging
-
-Enable debug mode to monitor filtering behavior:
-
-```typescript
-const plugin = new ToolOutputFilterPlugin({
+new ToolOutputFilterPlugin({
   filterModel: LLMRegistry.newLLM("gemini-1.5-flash"),
   config: { debug: true },
 });
@@ -340,26 +169,29 @@ const plugin = new ToolOutputFilterPlugin({
 
 ## Troubleshooting
 
-**Plugin not filtering outputs:**
+| Issue                      | Fix                                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| Not filtering outputs      | Check output exceeds thresholds. Verify tool isn't in `disabledTools`.                   |
+| Filtering too slow         | Reduce `maxIterations`. Increase `targetSize`. Use faster filter model.                  |
+| Critical data filtered out | Increase `targetSize`. Adjust `sizeThreshold` higher.                                    |
+| JQ errors                  | Verify JQ is installed (`jq --version`). Check for malformed JSON. Enable `debug: true`. |
 
-- Check if output exceeds size/key thresholds
-- Verify tool is not in `disabledTools` list
-- Ensure tool is in `enabledTools` list (if specified)
+## Next steps
 
-**Filtering taking too long:**
-
-- Reduce `maxIterations`
-- Increase `targetSize` for faster convergence
-- Use a faster filter model
-
-**Critical data being filtered out:**
-
-- Increase `targetSize` to preserve more data
-- Reduce `maxSchemaDepth` for more aggressive schema extraction
-- Adjust `sizeThreshold` to trigger filtering less frequently
-
-**JQ errors:**
-
-- Check for malformed JSON in tool outputs
-- Verify JQ is installed and accessible (`jq --version`)
-- Enable `debug: true` for detailed error messages
+<Cards>
+  <Card
+    title="🔄 Reflect and Retry"
+    description="Pair with output filtering for robust error recovery"
+    href="/docs/framework/plugins/reflect-and-retry"
+  />
+  <Card
+    title="📊 Langfuse"
+    description="Monitor filtering behavior with observability"
+    href="/docs/framework/plugins/langfuse-plugin"
+  />
+  <Card
+    title="🔌 Plugins Overview"
+    description="Learn how plugins work and how to build your own"
+    href="/docs/framework/plugins"
+  />
+</Cards>

@@ -1,30 +1,15 @@
 ---
 title: Model Fallback Plugin
-description: Automatic model fallback on rate limit errors in @iqai/adk
+description: Automatically retry and fall back to alternative models on rate limits
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-The Model Fallback Plugin provides automatic recovery from rate limit errors (HTTP 429) by retrying the current model and falling back to alternative models when retries are exhausted. This improves agent reliability in production environments where API quotas may be limited or shared.
+When your primary model hits a rate limit (HTTP 429), the **Model Fallback Plugin** automatically retries it, then falls back to alternative models if retries are exhausted. Your agent stays running even when one provider is overloaded.
 
-## Key Capabilities
-
-- **Automatic retry**: Retries the current model with configurable delay before falling back
-- **Ordered fallback chain**: Falls back through a prioritized list of alternative models
-- **Universal rate limit detection**: Detects rate limits across all providers (OpenAI, Anthropic, Google, etc.)
-- **Per-request isolation**: Each request has independent retry/fallback state
-- **Configurable behavior**: Customize retry count and delay timing
-
-## Installation
-
-The Model Fallback Plugin is included with `@iqai/adk`. No additional dependencies required.
-
-```bash
-pnpm add @iqai/adk
-```
-
-## Quick Start
+## Quick start
 
 ```typescript
 import { AgentBuilder } from "@iqai/adk";
@@ -36,15 +21,32 @@ const { runner } = await AgentBuilder.create("resilient_agent")
 
 // If gpt-4o hits rate limits:
 // 1. Retries gpt-4o up to 3 times (1s delay each)
-// 2. Falls back to gpt-4o-mini (with same retry logic)
+// 2. Falls back to gpt-4o-mini (same retry logic)
 // 3. Falls back to gemini-2.0-flash as last resort
 ```
 
+## How it works
+
+```
+Request → Primary Model → 429 Error
+                              ↓
+                    Retry same model (up to maxRetries)
+                    with retryDelayMs delay between attempts
+                              ↓
+                    Still failing? → Try fallback[0]
+                              ↓
+                    Still failing? → Try fallback[1]
+                              ↓
+                    All exhausted → Error propagates
+```
+
+Each fallback model gets the full retry cycle before moving to the next. After a request completes, the next request starts fresh with the primary model (no "sticky" fallback).
+
 ## Usage
 
-<Tabs items={['AgentBuilder', 'Direct Agent', 'Custom Configuration']}>
+<Tabs items={['AgentBuilder', 'Direct Agent', 'Custom Config']}>
   <Tab value="AgentBuilder">
-    The simplest approach uses `withFallbackModels()`, which automatically creates and registers the plugin:
+    The simplest approach — `withFallbackModels()` creates and registers the plugin for you:
 
     ```typescript
     import { AgentBuilder } from "@iqai/adk";
@@ -71,21 +73,21 @@ const { runner } = await AgentBuilder.create("resilient_agent")
 
   </Tab>
 
-  <Tab value="Custom Configuration">
-    For custom retry counts or delays, instantiate `ModelFallbackPlugin` directly:
+  <Tab value="Custom Config">
+    For custom retry counts or delays:
 
     ```typescript
     import { AgentBuilder, ModelFallbackPlugin } from "@iqai/adk";
 
-    const fallbackPlugin = new ModelFallbackPlugin(
-      ["gpt-4o-mini", "gemini-2.0-flash"], // fallback models
-      5,    // maxRetries (default: 3)
-      2000, // retryDelayMs (default: 1000)
-    );
-
     const { runner } = await AgentBuilder.create("custom_fallback_agent")
       .withModel("gpt-4o")
-      .withPlugins(fallbackPlugin)
+      .withPlugins(
+        new ModelFallbackPlugin(
+          ["gpt-4o-mini", "gemini-2.0-flash"], // fallback models
+          5,    // maxRetries per model (default: 3)
+          2000, // retryDelayMs (default: 1000)
+        ),
+      )
       .build();
     ```
 
@@ -98,69 +100,31 @@ const { runner } = await AgentBuilder.create("resilient_agent")
 | ---------------- | ---------- | -------- | -------------------------------------------- |
 | `fallbackModels` | `string[]` | Required | Ordered list of fallback model names         |
 | `maxRetries`     | `number`   | `3`      | Retry attempts per model before falling back |
-| `retryDelayMs`   | `number`   | `1000`   | Delay in milliseconds between retry attempts |
+| `retryDelayMs`   | `number`   | `1000`   | Delay (ms) between retry attempts            |
 
-### Configuration Details
+<Callout type="tip">
+  Order fallback models by priority — most capable first, cheapest last. Mix
+  providers (e.g., OpenAI primary, Google fallback) to avoid correlated rate
+  limits.
+</Callout>
 
-- **`fallbackModels`** _(required)_
-  - Ordered list of alternative model names
-  - Models are tried in order; each gets the full retry cycle before moving to the next
-  - Order by priority: most capable first, cheapest/fastest last
+## What gets detected
 
-- **`maxRetries`** _(default: 3)_
-  - Number of retry attempts per model before falling back to the next
-  - Applies to both the primary model and each fallback model
+The plugin uses `RateLimitError.isRateLimitError()` to catch rate limits across all providers:
 
-- **`retryDelayMs`** _(default: 1000)_
-  - Fixed delay between retry attempts in milliseconds
-  - Applied between each retry, not between fallback transitions
+- **Status code**: HTTP 429
+- **Error types**: `rate_limit_error`, `RateLimitError`
+- **Message patterns**: "rate limit", "too many requests", "resource exhausted", "quota exceeded"
 
-## How It Works
-
-```
-Request → Primary Model → 429 Error
-                              ↓
-                    Retry same model (up to maxRetries)
-                    with retryDelayMs delay between attempts
-                              ↓
-                    Still failing? → Try fallback[0]
-                              ↓
-                    Still failing? → Try fallback[1]
-                              ↓
-                    All exhausted → Error propagates
-```
-
-Each fallback model also gets the full retry cycle before moving to the next.
-
-## Rate Limit Detection
-
-The plugin uses `RateLimitError.isRateLimitError()` to detect rate limits across all providers:
-
-**Detected via status code:**
-
-- HTTP 429 status
-
-**Detected via error type:**
-
-- `rate_limit_error`
-- `RateLimitError`
-
-**Detected via message patterns:**
-
-- "rate limit"
-- "too many requests"
-- "resource exhausted"
-- "quota exceeded"
+Only rate limit errors trigger fallback. Network errors, auth errors, and invalid requests propagate normally — this is by design.
 
 ### Using RateLimitError directly
-
-You can also use `RateLimitError` for custom error handling outside of plugins:
 
 ```typescript
 import { RateLimitError } from "@iqai/adk";
 
 try {
-  await agent.run(message);
+  const response = await runner.ask("Hello!");
 } catch (error) {
   if (RateLimitError.isRateLimitError(error)) {
     console.log("Rate limited, please wait...");
@@ -168,40 +132,43 @@ try {
 }
 ```
 
-## Best Practices
+## When to use it
 
-### When to Use
-
-- **Rate-limit-prone APIs**: Models with strict per-minute or per-day quotas
-- **High-traffic production**: When many users share the same API key
-- **Multi-provider strategy**: When you want automatic cross-provider failover
-- **Cost optimization**: Fall back from expensive to cheaper models under load
-
-### Fallback Chain Strategy
-
-- Order models by capability: most capable first, cheapest last
-- Mix providers to avoid correlated rate limits (e.g., OpenAI primary, Google fallback)
-- Include at least one high-quota model as the final fallback
+- **Rate-limit-prone APIs** — models with strict per-minute or per-day quotas
+- **High-traffic production** — many users sharing the same API key
+- **Multi-provider strategy** — automatic cross-provider failover
+- **Cost optimization** — fall back from expensive to cheaper models under load
 
 ## Troubleshooting
 
-**Fallback not triggering:**
+| Issue                     | Fix                                                                   |
+| ------------------------- | --------------------------------------------------------------------- |
+| Fallback not triggering   | Verify it's a 429 error. Other errors (auth, network) aren't handled. |
+| All models exhausted      | Increase `maxRetries` or add more fallback models.                    |
+| Non-429 errors not caught | By design — only rate limits trigger fallback.                        |
 
-- Verify the error is a rate limit (HTTP 429). Other errors (auth, network) are not handled.
-- Check that `fallbackModels` is not empty
+## Good to know
 
-**All models exhausted:**
+- **Per-request state** — each request starts fresh with the primary model
+- **No sticky fallback** — the plugin doesn't "remember" rate-limited models
+- **Non-rate-limit errors** — propagate normally, not handled by this plugin
 
-- The original rate limit error propagates after all retries and fallbacks are exhausted
-- Consider increasing `maxRetries` or adding more fallback models
-- Check if multiple services are rate limiting simultaneously
+## Next steps
 
-**Non-429 errors not caught:**
-
-- This is by design. Only rate limit errors trigger fallback. Network, auth, and invalid request errors propagate normally.
-
-## Behavior Notes
-
-- **Per-request state**: Fallback state is isolated per invocation. After a request completes, the next request starts fresh with the primary model.
-- **No sticky fallback**: The plugin does not "remember" that a model was rate limited. Each new request tries the primary model first.
-- **Non-rate-limit errors**: Other errors (network, auth, invalid request) are not handled by this plugin and propagate normally.
+<Cards>
+  <Card
+    title="🔄 Reflect and Retry"
+    description="Handle tool failures with intelligent retry logic"
+    href="/docs/framework/plugins/reflect-and-retry"
+  />
+  <Card
+    title="📊 Langfuse"
+    description="Monitor fallback behavior with observability"
+    href="/docs/framework/plugins/langfuse-plugin"
+  />
+  <Card
+    title="🔌 Plugins Overview"
+    description="Learn how plugins work and how to build your own"
+    href="/docs/framework/plugins"
+  />
+</Cards>
