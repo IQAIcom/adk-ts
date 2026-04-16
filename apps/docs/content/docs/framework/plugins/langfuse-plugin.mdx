@@ -1,30 +1,42 @@
 ---
 title: Langfuse Plugin
-description: Capture, track, and analyze agent and tool interactions with Langfuse in @iqai/adk
+description: Add observability and tracing to your agents with Langfuse
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-The **Langfuse Plugin** integrates `@iqai/adk` agents with **[Langfuse](https://langfuse.com/docs)** for robust tracing, monitoring, and observability of LLM and tool executions. It automatically records user messages, agent actions, model generations, and tool calls, including errors and token usage.
+The **Langfuse Plugin** automatically records everything your agent does — user messages, LLM calls, tool executions, errors, and token usage — and sends it to [Langfuse](https://langfuse.com/docs) for tracing and monitoring. No manual instrumentation needed.
 
-This plugin is especially useful for:
+This is especially useful for:
 
-- **Observability** of agent workflows
-- **Debugging** tool or model errors
-- **Tracking** model usage and token consumption
-- **Correlating** events across complex agent hierarchies
+- **Debugging** — see exactly what happened in a failed agent run
+- **Token tracking** — know how many tokens each model call uses
+- **Performance monitoring** — track latency across agents, tools, and LLM calls
+- **Multi-agent visibility** — trace nested agent hierarchies with parent-child spans
 
-## Key Features
+## Quick start
 
-- **Automatic tracing**: Tracks every invocation, agent, tool, and model generation
-- **Error monitoring**: Captures LLM or tool errors with full context
-- **Token and model usage tracking**: Aggregates input/output tokens and models used per invocation
-- **Hierarchical spans**: Supports nested agents and tool calls with parent-child relationships
-- **Flexible serialization**: Converts complex `Content` and `Event` objects into structured logs for Langfuse
-- **Flush and shutdown control**: Manually flush or shutdown Langfuse client if needed
+```typescript
+import { AgentBuilder, LangfusePlugin } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.withModel("gpt-4o")
+  .withDescription("My assistant")
+  .withPlugins(
+    new LangfusePlugin({
+      publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
+      secretKey: process.env.LANGFUSE_SECRET_KEY!,
+    }),
+  )
+  .build();
+```
+
+Your agent runs are now visible in the Langfuse dashboard.
 
 ## Installation
+
+The Langfuse SDK is a separate dependency:
 
 ```bash
 pnpm add @iqai/adk langfuse
@@ -32,37 +44,20 @@ pnpm add @iqai/adk langfuse
 
 ## Usage
 
-<Tabs items={['AgentBuilder', 'Direct Agent', 'Advanced Configuration']}>
+<Tabs items={['AgentBuilder', 'Direct Agent', 'Custom Config']}>
   <Tab value="AgentBuilder">
     ```typescript
-    import {
-      AgentBuilder,
-      InMemorySessionService,
-      LangfusePlugin,
-    } from "@iqai/adk";
-    import { openrouter } from "@openrouter/ai-sdk-provider";
-    import { randomUUID } from "crypto";
+    import { AgentBuilder, LangfusePlugin } from "@iqai/adk";
 
-    const langfusePlugin = new LangfusePlugin({
-      publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
-      secretKey: process.env.LANGFUSE_SECRET_KEY!,
-      flushAt: 5,
-    });
-
-    const sessionService = new InMemorySessionService();
-
-    const { runner } = await AgentBuilder.withModel(
-      openrouter("openai/gpt-4.1-mini"),
-    )
-      .withDescription("Calendar scheduling assistant")
-      .withInstruction("Help users manage calendar events.")
-      .withTools(/* calendar tools */)
-      .withSessionService(sessionService)
-      .withQuickSession({
-        sessionId: randomUUID(),
-        appName: "calendar-agent",
-      })
-      .withPlugins(langfusePlugin)
+    const { runner } = await AgentBuilder.withModel("gpt-4o")
+      .withDescription("Calendar assistant")
+      .withPlugins(
+        new LangfusePlugin({
+          publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
+          secretKey: process.env.LANGFUSE_SECRET_KEY!,
+          flushAt: 5,
+        }),
+      )
       .build();
     ```
 
@@ -86,250 +81,134 @@ pnpm add @iqai/adk langfuse
 
   </Tab>
 
-  <Tab value="Advanced Configuration">
+  <Tab value="Custom Config">
     ```typescript
-    import { LlmAgent, LangfusePlugin } from "@iqai/adk";
+    import { AgentBuilder, LangfusePlugin } from "@iqai/adk";
 
-    const langfusePlugin = new LangfusePlugin({
-      name: "my_langfuse_plugin",
-      publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
-      secretKey: process.env.LANGFUSE_SECRET_KEY!,
-      baseUrl: "https://eu.cloud.langfuse.com", // EU region
-      release: "v1.2.3", // Release version for tracking
-      flushAt: 10, // Flush after 10 events
-      flushInterval: 5000, // Flush every 5 seconds
-    });
-
-    const agent = new LlmAgent({
-      name: "production_agent",
-      description: "Production agent with comprehensive monitoring",
-      plugins: [langfusePlugin],
-    });
+    const { runner } = await AgentBuilder.withModel("gpt-4o")
+      .withDescription("Production agent")
+      .withPlugins(
+        new LangfusePlugin({
+          publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
+          secretKey: process.env.LANGFUSE_SECRET_KEY!,
+          baseUrl: "https://eu.cloud.langfuse.com", // EU region
+          release: "v1.2.3",      // tag traces with version
+          flushAt: 10,             // batch 10 events before sending
+          flushInterval: 5000,     // or flush every 5s
+        }),
+      )
+      .build();
     ```
 
   </Tab>
 </Tabs>
 
-## Configuration Options
+## Configuration
 
-| Option          | Type   | Default                           | Description                     |
-| --------------- | ------ | --------------------------------- | ------------------------------- |
-| `name`          | string | `"langfuse_plugin"`               | Plugin name for identification  |
-| `publicKey`     | string | -                                 | Langfuse public API key         |
-| `secretKey`     | string | -                                 | Langfuse secret API key         |
-| `baseUrl`       | string | `"https://us.cloud.langfuse.com"` | Langfuse API endpoint           |
-| `release`       | string | undefined                         | Optional release tag for traces |
-| `flushAt`       | number | `1`                               | Flush after this many events    |
-| `flushInterval` | number | `1000`                            | Flush interval in milliseconds  |
+| Option          | Type     | Default                           | Description                               |
+| --------------- | -------- | --------------------------------- | ----------------------------------------- |
+| `publicKey`     | `string` | Required                          | Langfuse public API key                   |
+| `secretKey`     | `string` | Required                          | Langfuse secret API key                   |
+| `baseUrl`       | `string` | `"https://us.cloud.langfuse.com"` | API endpoint (use EU URL or self-hosted)  |
+| `release`       | `string` | `undefined`                       | Tag traces with a version (e.g., git SHA) |
+| `flushAt`       | `number` | `1`                               | Events to buffer before sending           |
+| `flushInterval` | `number` | `1000`                            | Max ms between flushes                    |
+| `name`          | `string` | `"langfuse_plugin"`               | Plugin name for identification            |
 
-## Callback Hooks
+<Callout type="tip">
+  For **development**, use `flushAt: 1` (immediate visibility). For
+  **production**, use `flushAt: 10` and `flushInterval: 5000` (fewer API calls).
+</Callout>
 
-The plugin intercepts key agent events to send structured logs to Langfuse:
+## What gets traced
 
-### User messages
+The plugin hooks into every stage of the agent lifecycle:
 
-- **`onUserMessageCallback`**: Records user input and triggers a `user_message` event
+| What                | Hooks used                                    | What's captured                                 |
+| ------------------- | --------------------------------------------- | ----------------------------------------------- |
+| **User messages**   | `onUserMessageCallback`                       | Input text                                      |
+| **Agent execution** | `beforeAgent` / `afterAgent`                  | Input, output, models used, sub-agent hierarchy |
+| **LLM calls**       | `beforeModel` / `afterModel` / `onModelError` | Request, response, token usage, errors          |
+| **Tool calls**      | `beforeTool` / `afterTool` / `onToolError`    | Arguments, results, errors                      |
+| **Run lifecycle**   | `beforeRun` / `afterRun` / `onEvent`          | Start/end, all emitted events                   |
 
-### Agent execution
+## Flush and shutdown
 
-- **`beforeAgentCallback` / `afterAgentCallback`**: Starts and ends agent spans. Tracks input, output, models used, and sub-agent hierarchy
+By default, the client batches and flushes automatically. For explicit control:
 
-### Model calls
+```typescript
+// Force send all buffered data (doesn't shut down — can keep recording)
+await langfusePlugin.flush();
 
-- **`beforeModelCallback` / `afterModelCallback`**: Captures model request and response, including token usage and generation metadata
-- **`onModelErrorCallback`**: Logs errors for LLM calls with full context
+// Gracefully shutdown after flushing (no more recording after this)
+await langfusePlugin.close();
+```
 
-### Tool calls
+**When to call manually:**
 
-- **`beforeToolCallback` / `afterToolCallback`**: Captures tool invocation and results
-- **`onToolErrorCallback`**: Records tool failures and metadata
+- **Short-lived processes** (serverless, scripts, cron) — call `flush()` then `close()` before exit
+- **Long-running servers** — you usually don't need to; the Runner calls `close()` during shutdown
 
-### Run lifecycle
+## Customizing serialization
 
-- **`beforeRunCallback` / `afterRunCallback`**: Tracks overall invocation start and completion
-- **`onEventCallback`**: Captures all events in the invocation, including function calls and final outputs
-
-## Advanced Usage
-
-### Customizing Serialization
-
-`LangfusePlugin` converts complex `Content` or `Event` objects to structured logs. You can extend:
+The plugin converts complex `Content` and `Event` objects to structured logs. Override `toPlainText` if you need custom formatting:
 
 ```typescript
 class CustomLangfusePlugin extends LangfusePlugin {
-  protected toPlainText(data: any): string {
-    // Custom logic to extract plain text
+  toPlainText(data: any): string {
     return super.toPlainText(data);
   }
 }
 ```
 
-### Manual Flush and Shutdown
-
-By default, the Langfuse client batches events and flushes them automatically based on the `flushAt` and `flushInterval` configuration options. In some scenarios, however, you may want explicit control over when data is sent or when the client is shut down.
-
-#### `flush()`
-
-```typescript
-await langfusePlugin.flush();
-```
-
-Forces all buffered traces, spans, and events to be sent to Langfuse immediately.
-
-**Use this when:**
-
-- You are running in short-lived environments (e.g. serverless functions, scripts, or cron jobs)
-- You want to ensure all telemetry is delivered before continuing execution
-- You need deterministic delivery for testing or debugging
-
-Internally, this calls `flushAsync()` on the Langfuse client and does **not** shut it down, so the plugin can continue recording events afterward.
-
-#### `close()`
-
-```typescript
-await langfusePlugin.close();
-```
-
-Gracefully shuts down the Langfuse client after flushing any remaining buffered data.
-
-**Use this when:**
-
-- Your application or worker is terminating
-- You no longer plan to record any additional traces or events
-- You want to release resources and prevent further writes
-
-Once `close()` is called, the plugin should be considered inactive.
-
-#### Recommended Usage
-
-In long-running applications (e.g. servers), you typically do **not** need to call either method manually.
-In short-lived processes, a common pattern is:
-
-```typescript
-await langfusePlugin.flush();
-await langfusePlugin.close();
-```
-
-This ensures all telemetry is delivered before the process exits.
-
-## Integration Examples
-
-### With Multiple Plugins
-
-```typescript
-import { InMemoryRunner, LlmAgent } from "@iqai/adk";
-import {
-  LangfusePlugin,
-  ToolOutputFilterPlugin,
-  ReflectAndRetryToolPlugin,
-} from "@iqai/adk";
-
-const plugins = [
-  // Monitor everything
-  new LangfusePlugin({
-    publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
-    secretKey: process.env.LANGFUSE_SECRET_KEY!,
-  }),
-
-  // Filter large outputs
-  new ToolOutputFilterPlugin({
-    filterModel: "gemini-1.5-flash",
-  }),
-
-  // Retry failed operations
-  new ReflectAndRetryToolPlugin({
-    maxRetries: 3,
-  }),
-];
-
-const runner = new InMemoryRunner(agent, {
-  appName: "production-app",
-  plugins,
-});
-```
-
-### Environment-specific Configuration
+## Environment-specific configuration
 
 ```typescript
 import { LangfusePlugin } from "@iqai/adk";
 
-// Different configurations for different environments
-const getLangfuseConfig = () => {
-  if (process.env.NODE_ENV === "production") {
-    return {
-      publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
-      secretKey: process.env.LANGFUSE_SECRET_KEY!,
-      baseUrl: process.env.LANGFUSE_BASE_URL || "https://us.cloud.langfuse.com",
-      flushAt: 10,
-      flushInterval: 5000,
-    };
-  } else {
-    return {
-      publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
-      secretKey: process.env.LANGFUSE_SECRET_KEY!,
-      baseUrl: process.env.LANGFUSE_BASE_URL || "https://us.cloud.langfuse.com",
-      flushAt: 1, // Immediate flushing for development
-      flushInterval: 1000,
-    };
-  }
-};
-
-const langfusePlugin = new LangfusePlugin(getLangfuseConfig());
+const langfusePlugin = new LangfusePlugin(
+  process.env.NODE_ENV === "production"
+    ? {
+        publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
+        secretKey: process.env.LANGFUSE_SECRET_KEY!,
+        flushAt: 10,
+        flushInterval: 5000,
+      }
+    : {
+        publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
+        secretKey: process.env.LANGFUSE_SECRET_KEY!,
+        flushAt: 1,
+        flushInterval: 1000,
+      },
+);
 ```
-
-## Benefits
-
-- **Centralized observability** for multi-agent workflows
-- **Debugging** complex tool and LLM interactions
-- **Token and model usage analytics**
-- **Error tracking** with detailed context
-- **Supports nested agents and tool spans**
-
-## Best Practices
-
-### Configuration
-
-- **Use appropriate flush settings**: Higher values for production, lower for development
-- **Set meaningful release tags**: Helps track performance across versions
-- **Configure proper base URL**: Use EU or US region based on your requirements
-
-### Security
-
-- **Secure API keys**: Store Langfuse keys in environment variables
-- **Use different projects**: Separate development and production data
-- **Monitor usage**: Track API key usage and rotate regularly
-
-### Performance
-
-- **Batch appropriately**: Balance between data freshness and API calls
-- **Monitor flush intervals**: Adjust based on your application's needs
-- **Handle network issues**: The plugin includes retry logic for network failures
 
 ## Troubleshooting
 
-### Common Issues
+| Issue                         | Fix                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| No data in Langfuse           | Verify API keys. Check network connectivity. Ensure plugin is registered. |
+| Missing traces                | Call `flush()` then `close()` in short-lived processes before exit.       |
+| High `flushAt` buffering data | Lower `flushAt` or `flushInterval` for faster delivery.                   |
+| Auth errors                   | Check keys are correct, have permissions, and match the right project.    |
+| Performance impact            | Increase `flushAt` and `flushInterval` to batch more aggressively.        |
 
-**No data appearing in Langfuse:**
+## Next steps
 
-- Verify API keys are correct
-- Check network connectivity to Langfuse
-- Ensure plugin is properly registered
-- Check flush settings aren't too high
-
-**Missing traces or spans:**
-
-- Verify all plugin callbacks are implemented
-- Check for errors in plugin execution
-- Ensure proper shutdown/flush on application exit
-
-**Performance issues:**
-
-- Increase flush interval for batching
-- Reduce flushAt threshold
-- Check for network latency to Langfuse API
-
-**Authentication errors:**
-
-- Verify publicKey and secretKey are correct
-- Check API key permissions in Langfuse dashboard
-- Ensure keys are for the correct project
+<Cards>
+  <Card
+    title="🔧 Tool Output Filter"
+    description="Shrink large tool outputs before they hit Langfuse"
+    href="/docs/framework/plugins/tool-output-filter"
+  />
+  <Card
+    title="🔄 Reflect and Retry"
+    description="Add error recovery alongside observability"
+    href="/docs/framework/plugins/reflect-and-retry"
+  />
+  <Card
+    title="🔌 Plugins Overview"
+    description="Learn how plugins work and how to build your own"
+    href="/docs/framework/plugins"
+  />
+</Cards>
