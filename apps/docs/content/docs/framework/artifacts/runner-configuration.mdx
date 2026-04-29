@@ -1,71 +1,99 @@
 ---
 title: Runner Configuration
-description: Configure artifact behavior at run-time, including auto-saving user input blobs
+description: Wire an artifact service to your ADK-TS Runner and enable automatic saving of user-uploaded blobs.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-## Enable auto-save for user input blobs
+Before any callback or tool can save or load an artifact, the `Runner` needs an `artifactService`. This page covers how to wire one up and how to enable auto-saving of binary uploads sent by the user.
 
-When enabled, the runner automatically saves any incoming `inlineData` parts from the user's message as artifacts before appending the event. Each saved artifact is named `artifact_<invocationId>_<index>` and the original message part is replaced with a short text placeholder.
+## Wiring the service
 
-Requirements:
+Without an `artifactService`, every `saveArtifact` and `loadArtifact` call will throw at runtime. The recommended way is to pass it through `AgentBuilder` using `.withArtifactService()`:
 
-- An `artifactService` must be configured on the `Runner`
-- Enable via `withRunConfig({ saveInputBlobsAsArtifacts: true })` on the agent builder, or per-run via `RunConfig`
+```typescript
+import { AgentBuilder, InMemoryArtifactService } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withArtifactService(new InMemoryArtifactService())
+  .build();
+```
+
+If you're constructing the `Runner` directly, pass `artifactService` in the options:
 
 ```typescript
 import {
-  agentBuilder,
   Runner,
+  LlmAgent,
   InMemorySessionService,
   InMemoryArtifactService,
-  RunConfig,
 } from "@iqai/adk";
-
-// Configure at agent build time
-const agent = agentBuilder()
-  .name("artifact_agent")
-  .model("gemini-2.5-flash")
-  .withRunConfig({ saveInputBlobsAsArtifacts: true })
-  .build();
 
 const runner = new Runner({
   appName: "my_app",
-  agent,
+  agent: new LlmAgent({
+    name: "my_agent",
+    model: "gemini-2.5-flash",
+    description: "An agent that does things",
+  }),
   sessionService: new InMemorySessionService(),
   artifactService: new InMemoryArtifactService(),
 });
-
-// Or enable per run
-// await runner.runAsync({
-//   userId,
-//   sessionId,
-//   newMessage,
-//   runConfig: new RunConfig({ saveInputBlobsAsArtifacts: true })
-// });
 ```
 
-<Callout type="info">
+Use `InMemoryArtifactService` during development and switch to `GcsArtifactService` for production. Both implement the same interface, so no other code needs to change.
 
-Artifacts saved by this mechanism use the incoming part's `inlineData` (base64
-string + MIME type) as-is. Ensure your front-end encodes uploads as base64 and
-sets a correct `mimeType`.
+## Auto-save user uploads
 
-</Callout>
+Normally, binary content sent by the user (images, files) arrives as `inlineData` parts inside the message and the agent has to process them itself. When `saveInputBlobsAsArtifacts` is enabled, the runner automatically saves each `inlineData` part as an artifact before the agent sees the message. The original part is replaced with a short text placeholder so the agent receives a clean, text-only message.
 
-## Minimal example: sending an image upload
+Each saved artifact is named `artifact_<invocationId>_<index>`, where `index` is the position of the part in the message.
+
+To enable this for every run, set it at build time via `withRunConfig`:
 
 ```typescript
+import { AgentBuilder, InMemoryArtifactService } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("upload_agent")
+  .withModel("gemini-2.5-flash")
+  .withArtifactService(new InMemoryArtifactService())
+  .withRunConfig({ saveInputBlobsAsArtifacts: true })
+  .build();
+```
+
+To enable it only for specific runs, pass a `RunConfig` to `runAsync` instead:
+
+```typescript
+import { RunConfig } from "@iqai/adk";
+
+const message = {};
+
+for await (const event of runner.runAsync({
+  userId: "u1",
+  sessionId: "s1",
+  newMessage: message,
+  runConfig: new RunConfig({ saveInputBlobsAsArtifacts: true }),
+})) {
+  // handle events
+}
+```
+
+## Sending a file upload
+
+When auto-save is enabled, any message you send with `inlineData` parts will trigger it. Encode the raw bytes as base64 and set the correct `mimeType`:
+
+```typescript
+import { readFileSync } from "node:fs";
 import type { Content } from "@google/genai";
 
-const imageBytes = Buffer.from(/* raw PNG bytes */);
 const message: Content = {
   role: "user",
   parts: [
     {
       inlineData: {
-        data: imageBytes.toString("base64"),
+        data: readFileSync("./upload.png").toString("base64"),
         mimeType: "image/png",
       },
     },
@@ -77,8 +105,28 @@ for await (const event of runner.runAsync({
   sessionId: "s1",
   newMessage: message,
 })) {
-  // Events stream
+  // The image is auto-saved as "artifact_<invocationId>_0"
+  // The agent receives a text placeholder instead of the raw bytes
 }
-
-// The image will be saved as an artifact, e.g. "artifact_<invocationId>_0"
 ```
+
+<Callout type="info">
+  The artifact name follows the pattern `artifact_<invocationId>_<index>`. If
+  the user sends multiple files in one message, they are saved as `_0`, `_1`,
+  `_2`, and so on. Your callbacks and tools can then load them by name.
+</Callout>
+
+## Next steps
+
+<Cards>
+  <Card
+    title="🔌 Context Integration"
+    description="Access saved artifacts inside callbacks and tools"
+    href="/docs/framework/artifacts/context-integration"
+  />
+  <Card
+    title="💾 Service Implementations"
+    description="Switch from InMemory to GCS for production"
+    href="/docs/framework/artifacts/service-implementations"
+  />
+</Cards>

@@ -1,7 +1,6 @@
 {
 	"icon": "FileText",
 	"pages": [
-		"index",
 		"runner-configuration",
 		"context-integration",
 		"scoping-and-versioning",

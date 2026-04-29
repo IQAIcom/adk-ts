@@ -1,28 +1,23 @@
 ---
-title: Best Practices for Artifact Management
-description: Performance, security, versioning, and production considerations for artifact management
+title: Best Practices
+description: Caching, batching, validation, cleanup, and naming conventions for artifact management in ADK-TS.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-This guide covers essential best practices for using artifacts in production environments, focusing on performance optimization, security considerations, and operational excellence.
+This page covers patterns that prevent common mistakes when working with artifacts at scale — from avoiding unnecessary service calls to safely cleaning up files after processing.
 
-<Callout type="info">
+## Cache frequently read artifacts
 
-For general ADK-TS best practices, see the [Best Practices
-Guide](/docs/framework/guides/best-practices).
-
-</Callout>
-
-## Performance Optimization
-
-### Caching Strategies
-
-Keep a small in-process cache for hot artifacts.
+Every `loadArtifact` call hits the backing service. For GCS this means a network round-trip on every callback or tool invocation. If the same artifact is read many times per session and doesn't change often, wrap it in an in-process cache with a TTL:
 
 ```typescript
+import type { BaseArtifactService } from "@iqai/adk";
+import type { Part } from "@google/genai";
+
 const cache = new Map<string, { part: Part; ts: number }>();
-const TTL_MS = 5 * 60 * 1000;
+const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 async function loadWithCache(
   svc: BaseArtifactService,
@@ -33,52 +28,53 @@ async function loadWithCache(
     filename: string;
     version?: number;
   },
-): Promise<Part | null> {
-  const k = `${key.appName}:${key.userId}:${key.sessionId}:${key.filename}:${
-    key.version ?? "latest"
-  }`;
+): Promise<Part | undefined> {
+  const k = `${key.appName}:${key.userId}:${key.sessionId}:${key.filename}:${key.version ?? "latest"}`;
   const hit = cache.get(k);
   if (hit && Date.now() - hit.ts < TTL_MS) return hit.part;
+
   const part = await svc.loadArtifact(key);
   if (part) cache.set(k, { part, ts: Date.now() });
   return part;
 }
 ```
 
-### Batch Operations
+This is most useful with `GcsArtifactService`. `InMemoryArtifactService` has no network overhead and doesn't need caching.
+
+## Batch saves with Promise.all
+
+Awaiting saves one at a time blocks each call until the previous one completes. When you need to save multiple artifacts in a single callback or tool, run them in parallel with `Promise.all`:
 
 ```typescript
+// ❌ Sequential — each save blocks the next
+await ctx.saveArtifact("summary.txt", { text: "..." });
+await ctx.saveArtifact("metadata.json", {
+  inlineData: { data: metaB64, mimeType: "application/json" },
+});
+await ctx.saveArtifact("chart.png", {
+  inlineData: { data: chartB64, mimeType: "image/png" },
+});
+
+// ✅ Parallel — all three saves run at the same time
 await Promise.all([
-  svc.saveArtifact({
-    /* args1 */
+  ctx.saveArtifact("summary.txt", { text: "..." }),
+  ctx.saveArtifact("metadata.json", {
+    inlineData: { data: metaB64, mimeType: "application/json" },
   }),
-  svc.saveArtifact({
-    /* args2 */
-  }),
-  svc.saveArtifact({
-    /* args3 */
+  ctx.saveArtifact("chart.png", {
+    inlineData: { data: chartB64, mimeType: "image/png" },
   }),
 ]);
 ```
 
-### Size Optimization
+## Validate before saving
+
+When the content or filename comes from user input, validate it before calling `saveArtifact`. Without checks, a user can pass unsupported MIME types, very large files that exhaust memory or storage, or filenames with special characters that break downstream tooling.
 
 ```typescript
-// Compress text/JSON before saving
-const json = JSON.stringify(someData);
-const compact = json.replace(/\s+/g, " ");
+import type { Part } from "@google/genai";
 
-// Validate size (default 10MB)
-const ok =
-  Buffer.from(part.inlineData.data, "base64").length <= 10 * 1024 * 1024;
-```
-
-## Security and Access Control
-
-### Data Validation
-
-```typescript
-const ALLOWED = new Set([
+const ALLOWED_MIME = new Set([
   "text/plain",
   "text/csv",
   "application/json",
@@ -86,693 +82,157 @@ const ALLOWED = new Set([
   "image/jpeg",
   "application/pdf",
 ]);
-const MAX = 50 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
-function validatePart(filename: string, part: Part) {
-  const errors: string[] = [],
-    warnings: string[] = [];
-  const mime = part.inlineData.mimeType;
-  const size = Buffer.from(part.inlineData.data, "base64").length;
-  if (!ALLOWED.has(mime)) errors.push(`Unsupported MIME: ${mime}`);
-  if (size > MAX) errors.push(`File too large: ${size}`);
+function validatePart(
+  filename: string,
+  part: Part,
+): { ok: boolean; error?: string } {
+  // Only allow safe filename characters (strip user: prefix before checking)
   if (!/^[a-zA-Z0-9._-]+$/.test(filename.replace("user:", "")))
-    errors.push("Invalid filename");
-  if (mime === "application/json") {
-    try {
-      JSON.parse(Buffer.from(part.inlineData.data, "base64").toString());
-    } catch {
-      errors.push("Invalid JSON");
-    }
-  }
-  if (size === 0) warnings.push("Empty file");
-  return { isValid: errors.length === 0, errors, warnings, size };
+    return { ok: false, error: "Invalid filename characters" };
+
+  // text and fileData parts have no binary payload to size-check
+  if (!part.inlineData) return { ok: true };
+
+  const { mimeType, data } = part.inlineData;
+  if (!ALLOWED_MIME.has(mimeType))
+    return { ok: false, error: `Unsupported MIME type: ${mimeType}` };
+
+  const size = Buffer.from(data, "base64").length;
+  if (size > MAX_BYTES)
+    return {
+      ok: false,
+      error: `File too large: ${size} bytes (max ${MAX_BYTES})`,
+    };
+
+  return { ok: true };
 }
 ```
 
-### Access Control Patterns
+## Naming conventions
 
-Implement proper access controls:
+Consistent filename prefixes make it easy to list, filter, and clean up related artifacts programmatically:
 
-```typescript
-class SecureArtifactService {
-  constructor(
-    private baseService: BaseArtifactService,
-    private authService: AuthService
-  ) {}
+| Prefix   | Scope   | Example                                         | Notes                              |
+| -------- | ------- | ----------------------------------------------- | ---------------------------------- |
+| _(none)_ | Session | `"report.pdf"`, `"summary.txt"`                 | Default — discarded on session end |
+| `user:`  | User    | `"user:avatar.png"`, `"user:settings.json"`     | Persists across sessions           |
+| `temp_`  | Session | `"temp_upload.csv"`, `"temp_parse_result.json"` | Delete immediately after use       |
+| `cache_` | Either  | `"cache_analysis.json"`                         | Safe to delete and regenerate      |
 
-  async saveArtifact(
-    args: {
-      appName: string;
-      userId: string;
-      sessionId: string;
-      filename: string;
-      artifact: Part;
-    },
-    requestingUserId: string,
-    permissions: string[]
-  ): Promise<number> {
-    // Verify user can save artifacts
-    if (!permissions.includes('artifact:write')) {
-      throw new Error('Insufficient permissions to save artifacts');
-    }
+## Cleanup and deletion
 
-    // Verify user can save to this location
-    if (args.userId !== requestingUserId && !permissions.includes('artifact:admin')) {
-      throw new Error('Cannot save artifacts for other users');
-    }
+`deleteArtifact` removes all versions of a filename permanently and is only available on the service directly — not on context objects.
 
-    // Validate user namespace access
-    if (args.filename.startsWith('user:') && args.userId !== requestingUserId) {
-      throw new Error('Cannot save to user namespace of other users');
-    }
-
-    // Apply rate limiting
-    await this.checkRateLimit(requestingUserId, 'save');
-
-    return this.baseService.saveArtifact(args);
-  }
-
-  async loadArtifact(
-    args: {
-      appName: string;
-      userId: string;
-      sessionId: string;
-      filename: string;
-      version?: number;
-    },
-    requestingUserId: string,
-    permissions: string[]
-  ): Promise<Part | null> {
-    // Verify user can read artifacts
-    if (!permissions.includes('artifact:read'))
-      throw new Error('Insufficient permissions to read artifacts');
-    }
-
-    // Check if user can access this data
-    const canAccess =
-      args.userId === requestingUserId ||
-      permissions.includes('artifact:admin') ||
-      this.isSharedArtifact(args.filename);
-
-    if (!canAccess) {
-      throw new Error('Access denied to artifact');
-    }
-
-    return this.baseService.loadArtifact(args);
-  }
-
-  private async checkRateLimit(userId: string, operation: string): Promise<void> {
-    // Implement rate limiting logic
-    const key = `ratelimit:${userId}:${operation}`;
-    const current = await this.getRateLimitCount(key);
-
-    if (current > this.getRateLimit(operation)) {
-      throw new Error('Rate limit exceeded');
-    }
-
-    await this.incrementRateLimit(key);
-  }
-
-  private isSharedArtifact(filename: string): boolean {
-    // Define shared artifact patterns
-    return filename.startsWith('shared:') || filename.startsWith('public:');
-  }
-
-  private getRateLimit(operation: string): number {
-    const limits = {
-      save: 100,  // 100 saves per hour
-      load: 1000  // 1000 loads per hour
-    };
-    return limits[operation] || 10;
-  }
-
-  private async getRateLimitCount(key: string): Promise<number> {
-    // Implementation depends on your rate limiting store (Redis, etc.)
-    return 0;
-  }
-
-  private async incrementRateLimit(key: string): Promise<void> {
-    // Implementation depends on your rate limiting store
-  }
-```
-
-## Artifact Cleanup and Deletion
-
-### Understanding deleteArtifact
-
-For persistent storage like `GcsArtifactService`, artifacts remain until explicitly deleted. The `deleteArtifact` method allows you to remove artifacts and all their versions. This is a powerful operation that should be used carefully.
-
-<Callout type="warning" title="Safety Consideration">
-
-The `deleteArtifact` method is intentionally not exposed through context
-objects (`CallbackContext` or `ToolContext`) for safety reasons. It must be
-accessed directly through the artifact service instance.
-
+<Callout type="warning">
+  Deletion is permanent and removes all versions. There is no undo. Test cleanup
+  logic in a staging environment before running in production.
 </Callout>
 
-### When to Delete Artifacts
-
-Consider implementing cleanup strategies when:
-
-- **Temporary Data**: Artifacts represent temporary processing results that have a limited lifespan
-- **Storage Costs**: Large artifacts accumulate and impact storage costs
-- **Privacy Requirements**: User data must be deleted per retention policies or user requests
-- **Session Cleanup**: Session-scoped artifacts should be cleaned up when sessions end
-
-### Basic Deletion
+To delete a single file after processing:
 
 ```typescript
 import { GcsArtifactService } from "@iqai/adk";
 
-const artifactService = new GcsArtifactService("my-bucket");
+const svc = new GcsArtifactService("my-bucket");
 
-// Delete a specific artifact (removes all versions)
-await artifactService.deleteArtifact({
+await svc.deleteArtifact({
   appName: "my_app",
-  userId: "user123",
-  sessionId: "session456",
-  filename: "temp_processing.csv",
+  userId: "u1",
+  sessionId: "s1",
+  filename: "temp_upload.csv",
 });
 ```
 
-### Cleanup Strategies
+To delete all artifacts matching a prefix — for example, cleaning up all `temp_` files after a session:
 
-For persistent storage, implement cleanup strategies using `deleteArtifact`:
+```typescript
+import type { BaseArtifactService } from "@iqai/adk";
 
-#### 1. GCS Lifecycle Policies
+async function deleteByPrefix(
+  svc: BaseArtifactService,
+  args: { appName: string; userId: string; sessionId: string },
+  prefix: string,
+) {
+  const keys = await svc.listArtifactKeys(args);
+  await Promise.all(
+    keys
+      .filter(k => k.startsWith(prefix))
+      .map(filename => svc.deleteArtifact({ ...args, filename })),
+  );
+}
 
-For `GcsArtifactService`, configure bucket lifecycle policies to automatically delete old artifacts:
-
-```bash
-# Set lifecycle policy to delete artifacts older than 90 days
-gsutil lifecycle set lifecycle.json gs://my-artifacts-bucket
+// Example: delete all temp_ artifacts for a session
+await deleteByPrefix(
+  svc,
+  { appName: "my_app", userId: "u1", sessionId: "s1" },
+  "temp_",
+);
 ```
+
+For GCS, you can also configure a bucket lifecycle policy to auto-delete blobs older than a set number of days — useful for enforcing data retention limits without manual cleanup:
 
 ```json
 {
   "lifecycle": {
-    "rule": [
-      {
-        "action": { "type": "Delete" },
-        "condition": { "age": 90 }
-      }
-    ]
+    "rule": [{ "action": { "type": "Delete" }, "condition": { "age": 90 } }]
   }
 }
 ```
 
-#### 2. Administrative Cleanup Tools
-
-Build specific tools or administrative functions that utilize `deleteArtifact`:
-
-```typescript
-import { BaseArtifactService } from "@iqai/adk";
-
-// Simple cleanup function for temporary artifacts
-async function cleanupTemporaryArtifacts(
-  artifactService: BaseArtifactService,
-  appName: string,
-  userId: string,
-  sessionId: string,
-): Promise<void> {
-  const artifacts = await artifactService.listArtifactKeys({
-    appName,
-    userId,
-    sessionId,
-  });
-
-  // Delete artifacts that start with 'temp_'
-  for (const filename of artifacts) {
-    if (filename.startsWith("temp_")) {
-      try {
-        await artifactService.deleteArtifact({
-          appName,
-          userId,
-          sessionId,
-          filename,
-        });
-      } catch (error) {
-        console.warn(`Failed to delete ${filename}:`, error);
-      }
-    }
-  }
-}
+```bash
+gsutil lifecycle set lifecycle.json gs://my-artifacts-bucket
 ```
 
-#### 3. Pattern-Based Deletion
+## Retry transient errors
 
-Carefully manage filenames to allow pattern-based deletion:
-
-```typescript
-// Use consistent naming conventions for easy cleanup
-const TEMP_PREFIX = "temp_";
-const CACHE_PREFIX = "cache_";
-const USER_DATA_PREFIX = "user:";
-
-async function cleanupByPattern(
-  artifactService: BaseArtifactService,
-  appName: string,
-  userId: string,
-  sessionId: string,
-) {
-  const artifacts = await artifactService.listArtifactKeys({
-    appName,
-    userId,
-    sessionId,
-  });
-
-  // Delete all temporary artifacts
-  const tempArtifacts = artifacts.filter(name => name.startsWith(TEMP_PREFIX));
-
-  for (const filename of tempArtifacts) {
-    await artifactService.deleteArtifact({
-      appName,
-      userId,
-      sessionId,
-      filename,
-    });
-  }
-}
-```
-
-#### 4. Scheduled Cleanup Jobs
-
-Implement scheduled cleanup for production environments:
+GCS calls can fail transiently due to network blips or temporary service unavailability. Rather than letting a single failure crash a callback, wrap GCS operations in exponential backoff. The delay doubles on each attempt, giving the service time to recover:
 
 ```typescript
-import { BaseArtifactService } from "@iqai/adk";
-
-class ScheduledArtifactCleanup {
-  constructor(
-    private artifactService: BaseArtifactService,
-    private appName: string,
-  ) {}
-
-  async runDailyCleanup(): Promise<void> {
-    // This would typically be called by a cron job or scheduler
-    console.log("Starting daily artifact cleanup...");
-
-    // Get all users (implementation depends on your user management)
-    const users = await this.getAllUsers();
-
-    for (const userId of users) {
-      try {
-        // Clean up temporary artifacts older than 7 days
-        await this.cleanupOldArtifacts(userId, 7);
-      } catch (error) {
-        console.error(`Cleanup failed for user ${userId}:`, error);
-      }
-    }
-
-    console.log("Daily cleanup completed");
-  }
-
-  private async cleanupOldArtifacts(
-    userId: string,
-    daysOld: number,
-  ): Promise<void> {
-    // Implementation would check artifact metadata/timestamps
-    // and delete artifacts older than specified days
-    // This is a simplified example
-  }
-
-  private async getAllUsers(): Promise<string[]> {
-    // Implementation depends on your user management system
-    return [];
-  }
-}
-```
-
-### Important Considerations
-
-- **Irreversible Operation**: Deletion removes all versions of an artifact permanently
-- **No Context Access**: `deleteArtifact` is not available through `CallbackContext` or `ToolContext` for safety
-- **Direct Service Access**: Always access through the artifact service instance
-- **Error Handling**: Implement proper error handling and logging for cleanup operations
-- **Testing**: Test cleanup strategies thoroughly in staging before production deployment
-
-## Version Management
-
-### Cleanup Strategies
-
-Implement automatic cleanup for old versions:
-
-```typescript
-class ArtifactVersionManager {
-  constructor(private artifactService: BaseArtifactService) {}
-
-  async cleanupOldVersions(
-    appName: string,
-    userId: string,
-    sessionId: string,
-    retentionPolicy: RetentionPolicy,
-  ): Promise<CleanupResult> {
-    const artifacts = await this.artifactService.listArtifactKeys({
-      appName,
-      userId,
-      sessionId,
-    });
-
-    let totalDeleted = 0;
-    const errors: string[] = [];
-
-    for (const filename of artifacts) {
-      try {
-        const versions = await this.artifactService.listVersions({
-          appName,
-          userId,
-          sessionId,
-          filename,
-        });
-
-        const versionsToDelete = this.selectVersionsForDeletion(
-          versions,
-          retentionPolicy,
-        );
-
-        for (const version of versionsToDelete) {
-          // Note: Current interface doesn't support version-specific deletion
-          // This would need to be added to BaseArtifactService
-          console.log(`Would delete ${filename} version ${version}`);
-          totalDeleted++;
-        }
-      } catch (error) {
-        errors.push(`Failed to cleanup ${filename}: ${error.message}`);
-      }
-    }
-
-    return {
-      artifactsProcessed: artifacts.length,
-      versionsDeleted: totalDeleted,
-      errors,
-    };
-  }
-
-  private selectVersionsForDeletion(
-    versions: number[],
-    policy: RetentionPolicy,
-  ): number[] {
-    const sortedVersions = [...versions].sort((a, b) => b - a); // newest first
-
-    switch (policy.strategy) {
-      case "keep_latest":
-        return sortedVersions.slice(policy.count);
-
-      case "keep_recent":
-        // Keep versions from the last N days (simplified)
-        const cutoffVersion = sortedVersions[policy.count - 1] || 0;
-        return versions.filter(v => v < cutoffVersion);
-
-      case "custom":
-        return policy.customSelector(versions);
-
-      default:
-        return [];
-    }
-  }
-}
-
-interface RetentionPolicy {
-  strategy: "keep_latest" | "keep_recent" | "custom";
-  count: number;
-  customSelector?: (versions: number[]) => number[];
-}
-
-interface CleanupResult {
-  artifactsProcessed: number;
-  versionsDeleted: number;
-  errors: string[];
-}
-```
-
-### Backup Strategies
-
-Implement backup and recovery for critical artifacts:
-
-```typescript
-class ArtifactBackupService {
-  constructor(
-    private primaryService: BaseArtifactService,
-    private backupService: BaseArtifactService,
-  ) {}
-
-  async saveWithBackup(args: {
-    appName: string;
-    userId: string;
-    sessionId: string;
-    filename: string;
-    artifact: Part;
-  }): Promise<number> {
-    // Save to primary storage
-    const version = await this.primaryService.saveArtifact(args);
-
-    // Async backup (don't wait for completion)
-    this.backupArtifact(args, version).catch(error => {
-      console.error("Backup failed:", error);
-    });
-
-    return version;
-  }
-
-  private async backupArtifact(
-    args: {
-      appName: string;
-      userId: string;
-      sessionId: string;
-      filename: string;
-      artifact: Part;
-    },
-    version: number,
-  ): Promise<void> {
-    try {
-      // Add backup metadata
-      const backupArtifact = {
-        ...args.artifact,
-        inlineData: {
-          ...args.artifact.inlineData,
-          // Add backup metadata to MIME type
-          mimeType: `${args.artifact.inlineData.mimeType}; backup=true; original-version=${version}`,
-        },
-      };
-
-      await this.backupService.saveArtifact({
-        ...args,
-        artifact: backupArtifact,
-      });
-    } catch (error) {
-      console.error("Failed to create backup:", error);
-      throw error;
-    }
-  }
-
-  async restoreFromBackup(args: {
-    appName: string;
-    userId: string;
-    sessionId: string;
-    filename: string;
-    version?: number;
-  }): Promise<Part | null> {
-    console.log("Attempting restore from backup...");
-
-    try {
-      const backup = await this.backupService.loadArtifact(args);
-
-      if (backup) {
-        // Remove backup metadata from MIME type
-        const cleanArtifact = {
-          ...backup,
-          inlineData: {
-            ...backup.inlineData,
-            mimeType: backup.inlineData.mimeType.split(";")[0],
-          },
-        };
-
-        // Restore to primary storage
-        await this.primaryService.saveArtifact({
-          ...args,
-          artifact: cleanArtifact,
-        });
-
-        return cleanArtifact;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Backup restore failed:", error);
-      throw error;
-    }
-  }
-}
-```
-
-## Error Handling and Resilience
-
-### Retry Logic (simple backoff)
-
-```typescript
-async function withRetry<T>(op: () => Promise<T>, attempts = 3, base = 1000) {
-  let last: unknown;
+async function withRetry<T>(
+  op: () => Promise<T>,
+  attempts = 3,
+  baseDelayMs = 1000,
+): Promise<T> {
+  let lastError: unknown;
   for (let i = 0; i <= attempts; i++) {
     try {
       return await op();
     } catch (e) {
-      last = e;
-      if (i === attempts) break;
-      await new Promise(r => setTimeout(r, base * Math.pow(2, i)));
-    }
-  }
-  throw last;
-}
-```
-
-## Monitoring and Observability
-
-### Metrics Collection
-
-Track artifact usage and performance:
-
-```typescript
-class ArtifactMetricsCollector {
-  private metrics = {
-    saves: 0,
-    loads: 0,
-    errors: 0,
-    totalSize: 0,
-    averageSize: 0,
-    operationTimes: [] as number[],
-  };
-
-  constructor(private artifactService: BaseArtifactService) {}
-
-  async saveArtifactWithMetrics(args: {
-    appName: string;
-    userId: string;
-    sessionId: string;
-    filename: string;
-    artifact: Part;
-  }): Promise<number> {
-    const startTime = Date.now();
-
-    try {
-      const version = await this.artifactService.saveArtifact(args);
-
-      // Record success metrics
-      this.metrics.saves++;
-      const size = Buffer.from(args.artifact.inlineData.data, "base64").length;
-      this.updateSizeMetrics(size);
-      this.recordOperationTime(Date.now() - startTime);
-
-      return version;
-    } catch (error) {
-      this.metrics.errors++;
-      throw error;
-    }
-  }
-
-  async loadArtifactWithMetrics(args: {
-    appName: string;
-    userId: string;
-    sessionId: string;
-    filename: string;
-    version?: number;
-  }): Promise<Part | null> {
-    const startTime = Date.now();
-
-    try {
-      const artifact = await this.artifactService.loadArtifact(args);
-
-      // Record success metrics
-      this.metrics.loads++;
-
-      if (artifact) {
-        const size = Buffer.from(artifact.inlineData.data, "base64").length;
-        this.updateSizeMetrics(size);
+      lastError = e;
+      if (i < attempts) {
+        await new Promise(r => setTimeout(r, baseDelayMs * 2 ** i));
       }
-
-      this.recordOperationTime(Date.now() - startTime);
-
-      return artifact;
-    } catch (error) {
-      this.metrics.errors++;
-      throw error;
     }
   }
-
-  private updateSizeMetrics(size: number): void {
-    this.metrics.totalSize += size;
-    const totalOps = this.metrics.saves + this.metrics.loads;
-    this.metrics.averageSize = this.metrics.totalSize / totalOps;
-  }
-
-  private recordOperationTime(time: number): void {
-    this.metrics.operationTimes.push(time);
-
-    // Keep only last 1000 operations for memory efficiency
-    if (this.metrics.operationTimes.length > 1000) {
-      this.metrics.operationTimes = this.metrics.operationTimes.slice(-1000);
-    }
-  }
-
-  getMetrics() {
-    const times = this.metrics.operationTimes;
-
-    return {
-      ...this.metrics,
-      averageOperationTime:
-        times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0,
-      p95OperationTime:
-        times.length > 0
-          ? times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)]
-          : 0,
-      errorRate:
-        (this.metrics.errors /
-          (this.metrics.saves + this.metrics.loads + this.metrics.errors)) *
-        100,
-    };
-  }
-
-  resetMetrics(): void {
-    this.metrics = {
-      saves: 0,
-      loads: 0,
-      errors: 0,
-      totalSize: 0,
-      averageSize: 0,
-      operationTimes: [],
-    };
-  }
+  throw lastError;
 }
+
+// Usage
+const artifact = await withRetry(() =>
+  svc.loadArtifact({
+    appName: "my_app",
+    userId: "u1",
+    sessionId: "s1",
+    filename: "report.pdf",
+  }),
+);
 ```
 
-## Production Deployment Checklist
+This approach works for any artifact service call — `saveArtifact`, `loadArtifact`, `deleteArtifact`, or `listArtifactKeys`.
 
-### Infrastructure Setup
+## Next steps
 
-- **Storage Backend**: Choose appropriate service (GCS, S3, database)
-- **Backup Strategy**: Implement automated backups
-- **Monitoring**: Set up metrics and alerting
-- **Security**: Configure proper access controls and encryption
-- **Rate Limiting**: Implement rate limiting to prevent abuse
-
-### Configuration
-
-- **Size Limits**: Set appropriate file size limits
-- **MIME Types**: Whitelist allowed file types
-- **Retention Policies**: Configure version cleanup
-- **Caching**: Implement caching layer for performance
-- **Error Handling**: Add comprehensive error handling
-
-### Operational Procedures
-
-- **Monitoring Dashboard**: Set up artifact usage monitoring
-- **Backup Verification**: Test backup and restore procedures
-- **Incident Response**: Document artifact-related incident procedures
-- **Capacity Planning**: Monitor storage growth and plan scaling
-- **Security Audits**: Regular security reviews of artifact access
-
-<Callout type="warning">
-
-Always test artifact operations thoroughly in staging environments before
-deploying to production.
-
-</Callout>
+<Cards>
+  <Card
+    title="🔧 Troubleshooting"
+    description="Quick fixes for common artifact errors"
+    href="/docs/framework/artifacts/troubleshooting"
+  />
+  <Card
+    title="💾 Service Implementations"
+    description="GCS lifecycle policies and custom backends"
+    href="/docs/framework/artifacts/service-implementations"
+  />
+</Cards>
