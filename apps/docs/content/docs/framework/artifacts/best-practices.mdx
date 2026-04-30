@@ -28,7 +28,7 @@ async function loadWithCache(
     filename: string;
     version?: number;
   },
-): Promise<Part | undefined> {
+): Promise<Part | null> {
   const k = `${key.appName}:${key.userId}:${key.sessionId}:${key.filename}:${key.version ?? "latest"}`;
   const hit = cache.get(k);
   if (hit && Date.now() - hit.ts < TTL_MS) return hit.part;

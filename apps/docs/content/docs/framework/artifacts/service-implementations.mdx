@@ -150,9 +150,9 @@ class MyDatabaseArtifactService implements BaseArtifactService {
     sessionId: string;
     filename: string;
     version?: number;
-  }): Promise<Part | undefined> {
-    // Return the artifact Part, or undefined if not found
-    return undefined;
+  }): Promise<Part | null> {
+    // Return the artifact Part, or null if not found
+    return null;
   }
 
   async listArtifactKeys(args: {
