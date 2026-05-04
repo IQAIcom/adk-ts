@@ -1,60 +1,112 @@
 ---
-title: Troubleshooting Guide for Artifacts
-description: Common issues and quick fixes for artifact usage
+title: Troubleshooting
+description: Quick fixes for common artifact errors in ADK-TS — missing service, null returns, GCS auth, and base64 issues.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-This guide addresses common issues encountered when working with artifacts in the ADK-TS framework, along with practical solutions to help you resolve them quickly.
+Most artifact errors fall into one of three categories: the service isn't wired up, a file doesn't exist where you expect it, or a GCS credential or permission is misconfigured. The sections below cover each with a diagnosis and fix.
 
 <Callout type="info">
-
-For general troubleshooting, see the [Troubleshooting
-Guide](/docs/framework/guides/troubleshooting).
-
+  For general ADK-TS issues (runner errors, session problems, model errors), see
+  the [framework troubleshooting guide](/docs/framework/guides/troubleshooting).
 </Callout>
 
-## "Artifact service is not initialized"
+## Common issues
 
-Ensure your `Runner` is constructed with an `artifactService`.
+| Issue                                               | Cause                                 | Fix                                                                                                    |
+| --------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `"Artifact service is not initialized"`             | No service passed to `Runner`         | Call `.withArtifactService()` on `AgentBuilder`, or pass `artifactService` to `Runner` directly        |
+| `loadArtifact` returns `undefined`                  | Artifact or version doesn't exist     | Check the filename, scope (`user:` prefix for user-scoped), and version number                         |
+| Auto-save (`saveInputBlobsAsArtifacts`) not working | Service not wired, or wrong part type | Confirm `artifactService` is configured. Message parts must use `inlineData`, not `text`               |
+| GCS `403 Forbidden`                                 | Missing IAM permissions               | Service account needs `roles/storage.objectAdmin` on the bucket. Verify ADC or `keyFilename`           |
+| GCS `412 Precondition Failed` on save               | Concurrent write conflict             | Retry after a short delay — the GCS service uses `ifGenerationMatch: 0` which fails on race conditions |
+| Wrong data after load                               | Loaded an old version                 | Omit the `version` argument to always get the latest, or pass the exact version number                 |
+| `artifact.inlineData` is `undefined`                | Artifact was saved as `{ text }`      | Check `artifact.text` instead of `artifact.inlineData.data`                                            |
+| `deleteArtifact` not found on context               | By design — not exposed on contexts   | Call it directly on the service instance, not through `CallbackContext` or `ToolContext`               |
+
+## Wiring check
+
+If you're seeing `"Artifact service is not initialized"`, verify that the service is actually passed to the runner. The recommended way is through `AgentBuilder`:
+
+```typescript
+import { AgentBuilder, InMemoryArtifactService } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("my_agent")
+  .withModel("gemini-2.5-flash")
+  .withArtifactService(new InMemoryArtifactService()) // ← required
+  .build();
+```
+
+If you're constructing `Runner` directly, pass it in the options object:
 
 ```typescript
 import {
   Runner,
-  InMemoryArtifactService,
+  LlmAgent,
   InMemorySessionService,
+  InMemoryArtifactService,
 } from "@iqai/adk";
 
 const runner = new Runner({
   appName: "my_app",
-  agent,
+  agent: new LlmAgent({ name: "my_agent", model: "gemini-2.5-flash" }),
   sessionService: new InMemorySessionService(),
-  artifactService: new InMemoryArtifactService(),
+  artifactService: new InMemoryArtifactService(), // ← required
 });
 ```
 
-## Auto-save not working
+## Safe load pattern
 
-- Set `withRunConfig({ saveInputBlobsAsArtifacts: true })` on your agent builder, or pass `RunConfig` per run
-- Confirm incoming message parts use `inlineData` with base64 `data` and correct `mimeType`
-
-## GCS permission/auth failures
-
-- Verify ADC or service account credentials are available
-- Check IAM roles: reader/writer on the bucket for your principal
-
-## MIME/base64 pitfalls
-
-- `inlineData.data` must be a base64 string, not raw bytes
-- Always set an accurate `mimeType` (e.g., `application/json`, `image/png`)
-
-## Loading returns null/undefined
-
-- If the artifact or version doesn’t exist, `loadArtifact` returns no value
-- Handle the nullish result before decoding the data
+`loadArtifact` returns `undefined` if the artifact doesn't exist or the version is out of range. Always guard the return value before accessing its fields, and check both `text` and `inlineData` since either can be present depending on how the artifact was saved:
 
 ```typescript
-const art = await ctx.loadArtifact("maybe_exists.txt");
-if (!art) return { error: "not found" };
-const text = Buffer.from(art.inlineData.data, "base64").toString("utf-8");
+const artifact = await ctx.loadArtifact("maybe_exists.txt");
+
+if (!artifact) {
+  return { error: "not found" };
+}
+
+if (artifact.text) {
+  console.log(artifact.text);
+} else if (artifact.inlineData) {
+  const content = Buffer.from(artifact.inlineData.data, "base64").toString(
+    "utf-8",
+  );
+  console.log(content);
+}
 ```
+
+## GCS auth check
+
+If you're getting `403 Forbidden` from GCS, run these commands to verify your credentials are active and the service account has the right permissions on the bucket:
+
+```bash
+# Confirm active credentials can generate an access token
+gcloud auth application-default print-access-token
+
+# Inspect the bucket's IAM policy — look for your service account with roles/storage.objectAdmin
+gsutil iam get gs://my-artifacts-bucket
+```
+
+If your service account is missing from the output, grant access:
+
+```bash
+gsutil iam ch serviceAccount:svc@project.iam.gserviceaccount.com:roles/storage.objectAdmin gs://my-artifacts-bucket
+```
+
+## Next steps
+
+<Cards>
+  <Card
+    title="💾 Service Implementations"
+    description="InMemory vs GCS setup and configuration"
+    href="/docs/framework/artifacts/service-implementations"
+  />
+  <Card
+    title="✅ Best Practices"
+    description="Validation, cleanup, and naming conventions"
+    href="/docs/framework/artifacts/best-practices"
+  />
+</Cards>
