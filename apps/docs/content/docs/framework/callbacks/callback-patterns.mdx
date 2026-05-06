@@ -1,255 +1,382 @@
 ---
 title: Callback Patterns
-description: Design patterns and best practices for agent, model, and tool callbacks in ADK-TS
+description: Practical patterns for ADK-TS callbacks — guardrails, caching, state management, logging, and conditional execution.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-Callbacks give you precise control over the agent lifecycle, LLM requests/responses, and tool execution. This guide presents callback-centric patterns using ADK-TS, with examples built around `AgentBuilder` and references to `CallbackContext` and `ToolContext`.
+These patterns cover the most common reasons to use callbacks: enforcing policies, caching expensive calls, propagating data across steps, and controlling what runs. Each pattern shows the minimum code needed to solve a specific problem.
 
-## Callback & Context Overview
-
-- `CallbackContext` is passed to agent and model callbacks.
-  - Key fields commonly used: `state` (mutable session state), `invocationId`, `agent` (current agent), `logger` (if configured).
-- `ToolContext` is passed to tool callbacks.
-  - Key fields commonly used: `state`, `invocationId`, `tool` (current tool), `logger`.
-
-State writes inside callbacks are tracked and persisted by the `SessionService`. This makes it simple to pass information across the agent run.
-
-<Callout>
-
-These examples use the ADK-TS API. Configure callbacks via
-`AgentBuilder` chain methods and rely on canonicalization to support single
-callbacks or arrays.
-
+<Callout type="info">
+  State writes inside callbacks are automatically tracked and persisted by the
+  `SessionService`. You don't need to do anything extra to save state changes
+  made inside a callback.
 </Callout>
 
-## Builder Setup
+## Guardrails and policy enforcement
 
-```ts
-import { AgentBuilder } from '@iqai/adk';
-import { BaseTool } from '@iqai/adk';
+Block unsafe prompts before they reach the LLM, and reject unauthorized tool calls before they execute. Both work by returning early from a `before_` callback.
 
-// Example tool (shape depends on your tool implementation)
-const searchApi: BaseTool = /* ... */;
+```typescript
+import { AgentBuilder, LlmResponse } from "@iqai/adk";
+import type {
+  CallbackContext,
+  LlmRequest,
+  BaseTool,
+  ToolContext,
+} from "@iqai/adk";
 
-// Create builder using static method and chain configuration
-const { agent, runner } = await AgentBuilder
-  .create('context-patterns-agent')
-  .withModel('<your-model-id>')
-  .withTools(searchApi)
-  .withBeforeAgentCallback(async (ctx) => {
-    // Warm up state; skip agent run by returning Content if desired
-    ctx.state['start_time'] = Date.now();
-  })
-  .withAfterAgentCallback(async (ctx) => {
-    // Post-run logging or final content override by returning Content
-    ctx.logger?.info?.(`Invocation ${ctx.invocationId} completed`);
-  })
-  .withBeforeModelCallback(async (ctx, req) => {
-    // Inspect/mutate LLM request; optionally return a response to short-circuit
-    if (ctx.state['block_llm'] === true) {
-      // Returning a response here skips the LLM call
-      return { contents: [{ type: 'text', text: 'LLM call blocked by policy.' }] };
-    }
+const { runner } = await AgentBuilder.create("policy_agent")
+  .withModel("gemini-2.5-flash")
+  .withBeforeModelCallback(
+    ({
+      callbackContext,
+      llmRequest,
+    }: {
+      callbackContext: CallbackContext;
+      llmRequest: LlmRequest;
+    }): LlmResponse | null => {
+      const text = llmRequest.contents
+        .flatMap(c => c.parts ?? [])
+        .map(p => p.text ?? "")
+        .join(" ");
 
-    // Example mutation: add system instruction dynamically
-    req.config = {
-      ...req.config,
-      systemInstruction: `${req.config?.systemInstruction ?? ''}\nUser tier: ${ctx.state['user_tier'] ?? 'free'}`,
-    };
-    return req;
-  })
-  .withAfterModelCallback(async (ctx, res) => {
-    // Modify/shape LLM response (e.g., trim text or add metadata)
-    const first = res.contents?.[0];
-    if (first?.type === 'text') {
-      first.text = first.text.trim();
-    }
-    return res;
-  })
-  .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    // Validate or enrich tool args; return a result to short-circuit execution
-    if (tool.name === 'searchApi' && typeof args.query !== 'string') {
-      return { error: 'query must be a string' };
-    }
+      if (text.includes("confidential") || text.includes("internal policy")) {
+        return new LlmResponse({
+          content: {
+            role: "model",
+            parts: [{ text: "I can't help with that topic." }],
+          },
+        });
+      }
 
-    // Enrich args from shared state
-    args.locale = toolCtx.state['locale'] ?? 'en';
+      return null;
+    },
+  )
+  .withBeforeToolCallback(
+    (
+      tool: BaseTool,
+      args: Record<string, any>,
+      toolContext: ToolContext,
+    ): Record<string, any> | null => {
+      if (
+        tool.name === "transfer_funds" &&
+        toolContext.state.get("user_tier") !== "pro"
+      ) {
+        return { error: "This operation requires a Pro account." };
+      }
+      return null;
+    },
+  )
+  .build();
+```
+
+## State management across steps
+
+Use callbacks to read and write session state so data flows naturally between agent steps, LLM calls, and tool executions without manual wiring.
+
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import type { CallbackContext, BaseTool, ToolContext } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("stateful_agent")
+  .withModel("gemini-2.5-flash")
+  .withBeforeAgentCallback((callbackContext: CallbackContext): undefined => {
+    // Stamp the run start time so downstream callbacks can measure duration
+    callbackContext.state.set("run_start_ms", Date.now());
+    return undefined;
   })
-  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
-    // Persist useful values into state for later steps
-    if (result && typeof result === 'object' && 'top_hit' in result) {
-      toolCtx.state['last_top_hit'] = (result as { top_hit: any }).top_hit;
-    }
-    return result;
+  .withAfterToolCallback(
+    (
+      tool: BaseTool,
+      args: Record<string, any>,
+      toolContext: ToolContext,
+      toolResponse: Record<string, any>,
+    ): Record<string, any> | null => {
+      // Persist key results so later tool calls or the agent can reference them
+      if (toolResponse.order_id) {
+        toolContext.state.set("last_order_id", toolResponse.order_id);
+      }
+      return null;
+    },
+  )
+  .withAfterAgentCallback((callbackContext: CallbackContext): undefined => {
+    const startMs = callbackContext.state.get("run_start_ms") ?? Date.now();
+    console.log(`Run completed in ${Date.now() - startMs}ms`);
+    return undefined;
   })
   .build();
-
-// Now you can use the agent and runner
-export { agent, runner };
 ```
 
-## Design Patterns
+## Logging and observability
 
-### 1. Guardrails & Policy Enforcement
+Add structured logs at each lifecycle stage for monitoring without changing any business logic.
 
-- Use `withBeforeModelCallback` to inspect `req.contents` and block unsafe prompts by returning a response.
-- Use `withBeforeToolCallback` to validate `call.args` and return an error result when needed.
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import type {
+  CallbackContext,
+  LlmRequest,
+  LlmResponse,
+  BaseTool,
+  ToolContext,
+} from "@iqai/adk";
 
-```ts
-builder
-  .withBeforeModelCallback(async (ctx, req) => {
-    const forbidden = ["forbidden-topic", "profanity"];
-    const text = (req.contents ?? [])
-      .filter(c => c.type === "text")
-      .map((c: { text: string }) => c.text)
-      .join("\n");
-    if (forbidden.some(k => text.includes(k))) {
-      return {
-        contents: [{ type: "text", text: "Sorry, I can’t help with that." }],
-      };
-    }
-    return req;
-  })
-  .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    if (tool.name === "transferFunds" && toolCtx.state["user_tier"] !== "pro") {
-      return { error: "This operation requires a pro account." };
-    }
-  });
-```
-
-### 2. Dynamic State Management
-
-- Read/write `ctx.state` and `toolCtx.state` to carry data between steps.
-- Changes are tracked automatically and persisted.
-
-```ts
-builder
-  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
-    // Save transaction id for later use
-    if (result && typeof result === "object" && "transaction_id" in result) {
-      toolCtx.state["last_transaction_id"] = (
-        result as { transaction_id: any }
-      ).transaction_id;
-    }
-    return result;
-  })
-  .withBeforeAgentCallback(async ctx => {
-    // Personalize behavior based on prior state
-    const tier = ctx.state["user_tier"] ?? "free";
-    ctx.logger?.info?.(`Running agent for tier: ${tier}`);
-  });
-```
-
-### 3. Logging and Monitoring
-
-- Add structured logs in `before/after` callbacks for observability.
-
-```ts
-builder
-  .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    toolCtx.logger?.info?.(
-      `Before Tool: ${tool.name} (invocation: ${
-        toolCtx.invocationId
-      }) args=${JSON.stringify(args)}`,
+const { runner } = await AgentBuilder.create("monitored_agent")
+  .withModel("gemini-2.5-flash")
+  .withBeforeAgentCallback((callbackContext: CallbackContext): undefined => {
+    console.log(
+      `[agent:start] ${callbackContext.agentName} invocation=${callbackContext.invocationId}`,
     );
+    return undefined;
   })
-  .withAfterModelCallback(async (ctx, res) => {
-    ctx.logger?.info?.(
-      `After Model: ${ctx.agent.name} (invocation: ${ctx.invocationId})`,
-    );
-    return res;
-  });
+  .withBeforeToolCallback(
+    (
+      tool: BaseTool,
+      args: Record<string, any>,
+      toolContext: ToolContext,
+    ): Record<string, any> | null => {
+      console.log(
+        `[tool:start] ${tool.name} args=${JSON.stringify(args)} call=${toolContext.functionCallId}`,
+      );
+      return null;
+    },
+  )
+  .withAfterModelCallback(
+    ({
+      callbackContext,
+      llmResponse,
+    }: {
+      callbackContext: CallbackContext;
+      llmResponse: LlmResponse;
+    }): LlmResponse | null => {
+      const chars = llmResponse.content?.parts?.[0]?.text?.length ?? 0;
+      console.log(
+        `[model:done] ${callbackContext.agentName} response=${chars} chars`,
+      );
+      return null;
+    },
+  )
+  .build();
 ```
 
-### 4. Caching
+## Tool result caching
 
-- Avoid redundant calls by checking a cache key in `state`.
-- If found, return directly from a `before_` callback; otherwise, persist in the corresponding `after_` callback.
+Avoid redundant tool calls by checking a cache key in state before execution. If the result is cached, return it immediately; if not, save it after the tool runs.
 
-```ts
-builder
-  .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    const key = `cache:search:${args.query}`;
-    const hit = toolCtx.state[key];
-    if (hit) return hit; // short-circuit tool
-  })
-  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
-    const key = `cache:search:${args.query}`;
-    toolCtx.state[key] = result;
-    return result;
-  });
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import type { BaseTool, ToolContext } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("caching_agent")
+  .withModel("gemini-2.5-flash")
+  .withBeforeToolCallback(
+    (
+      tool: BaseTool,
+      args: Record<string, any>,
+      toolContext: ToolContext,
+    ): Record<string, any> | null => {
+      const cacheKey = `cache:${tool.name}:${JSON.stringify(args)}`;
+      const cached = toolContext.state.get(cacheKey);
+
+      if (cached) {
+        console.log(`Cache hit for ${tool.name}`);
+        return cached;
+      }
+
+      return null;
+    },
+  )
+  .withAfterToolCallback(
+    (
+      tool: BaseTool,
+      args: Record<string, any>,
+      toolContext: ToolContext,
+      toolResponse: Record<string, any>,
+    ): Record<string, any> | null => {
+      const cacheKey = `cache:${tool.name}:${JSON.stringify(args)}`;
+      toolContext.state.set(cacheKey, toolResponse);
+      return null;
+    },
+  )
+  .build();
 ```
 
-### 5. Request/Response Modification
+## Request and response modification
 
-- Mutate the outgoing LLM request or the returned response to fit your UX.
+Mutate the LLM request to inject dynamic context, or modify the response to clean up formatting before the agent processes it further.
 
-```ts
-builder
-  .withBeforeModelCallback(async (ctx, req) => {
-    req.config = {
-      ...req.config,
-      systemInstruction: `${req.config?.systemInstruction ?? ""}\nSession: ${
-        ctx.invocationId
-      }`,
-    };
-    return req;
-  })
-  .withAfterModelCallback(async (ctx, res) => {
-    const contents = res.contents ?? [];
-    res.contents = contents.map((c: { type: string; text?: string }) =>
-      c.type === "text" ? { ...c, text: c.text?.replaceAll("\n\n", "\n") } : c,
-    );
-    return res;
-  });
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import type { CallbackContext, LlmRequest, LlmResponse } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("enriched_agent")
+  .withModel("gemini-2.5-flash")
+  .withBeforeModelCallback(
+    ({
+      callbackContext,
+      llmRequest,
+    }: {
+      callbackContext: CallbackContext;
+      llmRequest: LlmRequest;
+    }): LlmResponse | null => {
+      // Append per-user context to the system instruction
+      const userTier = callbackContext.state.get("user_tier") ?? "free";
+      if (llmRequest.config) {
+        llmRequest.config.systemInstruction =
+          `${llmRequest.config.systemInstruction ?? ""}\nUser tier: ${userTier}`.trim();
+      }
+      return null;
+    },
+  )
+  .withAfterModelCallback(
+    ({
+      callbackContext,
+      llmResponse,
+    }: {
+      callbackContext: CallbackContext;
+      llmResponse: LlmResponse;
+    }): LlmResponse | null => {
+      // Collapse multiple blank lines in the response text
+      if (llmResponse.content?.parts) {
+        llmResponse.content.parts = llmResponse.content.parts.map(part =>
+          part.text
+            ? { ...part, text: part.text.replace(/\n{3,}/g, "\n\n") }
+            : part,
+        );
+      }
+      return null;
+    },
+  )
+  .build();
 ```
 
-### 6. Conditional Skipping of Steps
+## Conditional step skipping
 
-- Return a value from a `before_` callback to skip the normal operation.
+Return from a `before_` callback to skip a step entirely — useful for maintenance modes, quota enforcement, or feature flags.
 
-```ts
-builder
-  .withBeforeAgentCallback(async ctx => {
-    if (ctx.state["maintenance_mode"] === true) {
-      // Returning Content here completes the run immediately
-      return [{ type: "text", text: "Agent is under maintenance." }];
-    }
-  })
-  .withBeforeModelCallback(async (ctx, req) => {
-    if (ctx.state["use_cached_response"]) {
-      return { contents: [{ type: "text", text: "Cached response" }] };
-    }
-    return req;
-  })
-  .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    if (toolCtx.state["api_quota_exceeded"]) {
-      return { error: "API quota exceeded" };
-    }
-  });
+```typescript
+import { AgentBuilder, LlmResponse } from "@iqai/adk";
+import type {
+  CallbackContext,
+  LlmRequest,
+  BaseTool,
+  ToolContext,
+} from "@iqai/adk";
+import type { Content } from "@google/genai";
+
+const { runner } = await AgentBuilder.create("conditional_agent")
+  .withModel("gemini-2.5-flash")
+  .withBeforeAgentCallback(
+    (callbackContext: CallbackContext): Content | undefined => {
+      if (callbackContext.state.get("maintenance_mode")) {
+        return {
+          role: "model",
+          parts: [
+            { text: "Service is temporarily unavailable for maintenance." },
+          ],
+        };
+      }
+      return undefined;
+    },
+  )
+  .withBeforeModelCallback(
+    ({
+      callbackContext,
+    }: {
+      callbackContext: CallbackContext;
+      llmRequest: LlmRequest;
+    }): LlmResponse | null => {
+      if (callbackContext.state.get("use_cached_response")) {
+        const cached =
+          callbackContext.state.get("cached_response_text") ??
+          "No cached response.";
+        return new LlmResponse({
+          content: { role: "model", parts: [{ text: cached }] },
+        });
+      }
+      return null;
+    },
+  )
+  .withBeforeToolCallback(
+    (
+      _tool: BaseTool,
+      _args: Record<string, any>,
+      toolContext: ToolContext,
+    ): Record<string, any> | null => {
+      if (toolContext.state.get("api_quota_exceeded")) {
+        return { error: "API quota exceeded. Please try again later." };
+      }
+      return null;
+    },
+  )
+  .build();
 ```
 
-### 7. Tool-Specific Actions (Auth & Summarization Control)
+## Per-tool auth injection
 
-- Implement per-tool behaviors like auth injection, summarization toggles, or rate-limiting.
+Inject authentication tokens or enrich arguments for specific tools without changing the tool implementations.
 
-```ts
-builder
-  .withBeforeToolCallback(async (tool, args, toolCtx) => {
-    if (tool.name === "searchApi") {
-      args.headers = {
-        ...(args.headers ?? {}),
-        Authorization: `Bearer ${toolCtx.state["api_token"] ?? ""}`,
-      };
-    }
-  })
-  .withAfterToolCallback(async (tool, args, toolCtx, result) => {
-    if (tool.name === "searchApi" && toolCtx.state["summarize"] === true) {
-      // Example: mark for summarization in subsequent steps
-      toolCtx.state["needs_summary"] = true;
-    }
-    return result;
-  });
+```typescript
+import { AgentBuilder } from "@iqai/adk";
+import type { BaseTool, ToolContext } from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("auth_agent")
+  .withModel("gemini-2.5-flash")
+  .withBeforeToolCallback(
+    (
+      tool: BaseTool,
+      args: Record<string, any>,
+      toolContext: ToolContext,
+    ): Record<string, any> | null => {
+      // Only inject auth for tools that need it
+      if (["search_api", "fetch_data"].includes(tool.name)) {
+        const token = toolContext.state.get("api_token");
+        if (!token) {
+          return { error: "No API token found. Please authenticate first." };
+        }
+        args.authorization = `Bearer ${token}`;
+      }
+      return null;
+    },
+  )
+  .withAfterToolCallback(
+    (
+      tool: BaseTool,
+      args: Record<string, any>,
+      toolContext: ToolContext,
+      toolResponse: Record<string, any>,
+    ): Record<string, any> | null => {
+      // Flag the result for summarization if the agent requested it
+      if (
+        tool.name === "search_api" &&
+        toolContext.state.get("auto_summarize")
+      ) {
+        return { ...toolResponse, _needs_summary: true };
+      }
+      return null;
+    },
+  )
+  .build();
 ```
+
+## Next steps
+
+<Cards>
+  <Card
+    title="📋 Callback Types"
+    description="Full signatures and return behavior for all six callback types"
+    href="/docs/framework/callbacks/types"
+  />
+  <Card
+    title="🧠 Context Objects"
+    description="CallbackContext and ToolContext properties and methods"
+    href="/docs/framework/context/callback-context"
+  />
+  <Card
+    title="🔌 Plugins"
+    description="Package callbacks into reusable plugins for sharing across agents"
+    href="/docs/framework/plugins"
+  />
+</Cards>

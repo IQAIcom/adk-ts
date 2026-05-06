@@ -1,450 +1,377 @@
 ---
 title: Callback Types
-description: Understanding different types of callbacks and when each type fires in the agent lifecycle
+description: Signatures, trigger points, and return behavior for all six ADK-TS callback types — agent, model, and tool.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-The framework provides different types of callbacks that trigger at various stages of an agent's execution. Understanding when each callback fires and what context it receives is key to using them effectively.
+ADK-TS provides six callback types across three lifecycle stages: agent execution, LLM interaction, and tool execution. This page covers the exact signature for each, when it fires, and what each return value does.
 
-## Agent Lifecycle Callbacks
+## Agent lifecycle callbacks
 
-These callbacks are available on any agent that inherits from `BaseAgent` (including `LlmAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent`, etc.).
+These fire around the agent's own execution and are available on all agent types — `LlmAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent`, and any custom agent extending `BaseAgent`.
 
-### Before Agent Callback
+### beforeAgentCallback
 
-**When:** Called immediately before the agent's `runAsyncImpl` method is executed. It runs after the agent's `InvocationContext` is created but before its core logic begins.
-
-**Purpose:** Ideal for setting up resources or state needed only for this specific agent's run, performing validation checks on the session state, logging the entry point of the agent's activity, or potentially skipping the agent execution entirely.
-
-**Signature:**
+Fires immediately before the agent's `runAsyncImpl` begins. Use it to validate state, initialise resources, log entry points, or skip the agent entirely by returning early.
 
 ```typescript
+import type { Content } from "@google/genai";
+import type { CallbackContext } from "@iqai/adk";
+
 type BeforeAgentCallback = (
   callbackContext: CallbackContext,
 ) => Promise<Content | undefined> | Content | undefined;
 ```
 
-**Example:**
+Returning `undefined` lets the agent run normally. Returning a `Content` object skips the agent entirely and uses that content as its output.
 
 ```typescript
-import { LlmAgent, CallbackContext, Content } from "@iqai/adk";
+import { LlmAgent } from "@iqai/adk";
+import type { CallbackContext } from "@iqai/adk";
+import type { Content } from "@google/genai";
 
-const beforeAgentCallback = (
-  callbackContext: CallbackContext,
-): Content | undefined => {
-  // Check if agent should be skipped
-  const skipAgent = callbackContext.state.get("skip_agent");
+const agent = new LlmAgent({
+  name: "guarded_agent",
+  model: "gemini-2.5-flash",
+  instruction: "You are a helpful assistant.",
+  description: "An agent with a guardrail on availability.",
+  beforeAgentCallback: (
+    callbackContext: CallbackContext,
+  ): Content | undefined => {
+    const isBlocked = callbackContext.state.get("agent_blocked");
 
-  if (skipAgent) {
-    // Return content to skip agent execution
-    return {
-      role: "model",
-      parts: [{ text: "Agent execution was skipped based on state." }],
-    };
-  }
+    if (isBlocked) {
+      return {
+        role: "model",
+        parts: [{ text: "This agent is currently unavailable." }],
+      };
+    }
 
-  // Log agent start
-  console.log(`Starting agent: ${callbackContext.agentName}`);
-
-  return undefined; // Proceed with normal execution
-};
+    console.log(`Agent started: ${callbackContext.agentName}`);
+    return undefined;
+  },
+});
 ```
 
-<Callout type="info">
+### afterAgentCallback
 
-**Gatekeeping Pattern:** `beforeAgentCallback` acts as a gatekeeper, allowing
-you to intercept execution before a major step and potentially prevent it
-based on checks like state, input validation, or permissions.
-
-</Callout>
-
-### After Agent Callback
-
-**When:** Called immediately after the agent's `runAsyncImpl` method successfully completes. It does not run if the agent was skipped due to `beforeAgentCallback` returning content or if `endInvocation` was set during the agent's run.
-
-**Purpose:** Useful for cleanup tasks, post-execution validation, logging the completion of an agent's activity, modifying final state, or augmenting/replacing the agent's final output.
-
-**Signature:**
+Fires immediately after `runAsyncImpl` completes successfully. Does not fire if the agent was skipped by `beforeAgentCallback`. Use it for cleanup, post-processing, or replacing the agent's final output.
 
 ```typescript
+import type { Content } from "@google/genai";
+import type { CallbackContext } from "@iqai/adk";
+
 type AfterAgentCallback = (
   callbackContext: CallbackContext,
 ) => Promise<Content | undefined> | Content | undefined;
 ```
 
-**Example:**
+Returning `undefined` passes through the agent's original output. Returning a `Content` object replaces it.
 
 ```typescript
+import type { CallbackContext } from "@iqai/adk";
+import type { Content } from "@google/genai";
+
 const afterAgentCallback = (
   callbackContext: CallbackContext,
 ): Content | undefined => {
-  // Update completion count
-  const count = callbackContext.state.get("completion_count") || 0;
-  callbackContext.state.set("completion_count", count + 1);
-
-  // Log completion
-  console.log(
-    `Agent ${callbackContext.agentName} completed. Total completions: ${
-      count + 1
-    }`,
-  );
-
-  // Optionally modify the output
-  const shouldAddNote = callbackContext.state.get("add_completion_note");
-  if (shouldAddNote) {
-    return {
-      role: "model",
-      parts: [
-        { text: "Task completed successfully with additional processing." },
-      ],
-    };
-  }
-
-  return undefined; // Use original output
+  const count = (callbackContext.state.get("run_count") ?? 0) + 1;
+  callbackContext.state.set("run_count", count);
+  console.log(`Agent ${callbackContext.agentName} completed (run #${count})`);
+  return undefined;
 };
 ```
 
-<Callout type="info">
+## LLM interaction callbacks
 
-**Post-Processing Pattern:** `afterAgentCallback` allows post-processing or
-modification. You can inspect the result of a step and decide whether to let
-it pass through, change it, or completely replace it.
+These are specific to `LlmAgent` and fire around each call to the underlying language model. A single agent turn may involve multiple LLM calls, so these can fire more than once per invocation.
 
-</Callout>
+### beforeModelCallback
 
-## LLM Interaction Callbacks
-
-These callbacks are specific to `LlmAgent` and provide hooks around the interaction with the Large Language Model.
-
-### Before Model Callback
-
-**When:** Called just before the `generateContentAsync` request is sent to the LLM within an `LlmAgent`'s flow.
-
-**Purpose:** Allows inspection and modification of the request going to the LLM. Use cases include adding dynamic instructions, injecting few-shot examples based on state, modifying model config, implementing guardrails, or implementing request-level caching.
-
-**Signature:**
+Fires just before the LLM request is sent. Use it to inspect or modify the request — inject dynamic instructions, add few-shot examples, enforce content policies, or return a cached response to skip the network call entirely.
 
 ```typescript
-type BeforeModelCallback = ({
-  callbackContext,
-  llmRequest,
-}: {
+import type { LlmRequest, LlmResponse, CallbackContext } from "@iqai/adk";
+
+type BeforeModelCallback = (args: {
   callbackContext: CallbackContext;
   llmRequest: LlmRequest;
-}) => Promise<LlmResponse | undefined> | LlmResponse | undefined;
+}) => Promise<LlmResponse | null | undefined> | LlmResponse | null | undefined;
 ```
 
-**Example:**
+Returning `null` or `undefined` lets the LLM call proceed (with any in-place modifications you made to `llmRequest`). Returning an `LlmResponse` skips the LLM call and uses that response directly.
 
 ```typescript
-import { LlmAgent, CallbackContext, LlmRequest, LlmResponse } from "@iqai/adk";
+import { LlmAgent, LlmResponse } from "@iqai/adk";
+import type { CallbackContext, LlmRequest } from "@iqai/adk";
 
-const beforeModelCallback = ({
-  callbackContext,
-  llmRequest,
-}: {
-  callbackContext: CallbackContext;
-  llmRequest: LlmRequest;
-}): LlmResponse | undefined => {
-  // Add user preferences to system instruction
-  const userLang = callbackContext.state.get("user_language");
-  if (userLang && llmRequest.config.systemInstruction) {
-    const existingInstruction =
-      llmRequest.config.systemInstruction.parts?.[0]?.text || "";
-    llmRequest.config.systemInstruction.parts = [
-      {
-        text: `${existingInstruction}\n\nUser language preference: ${userLang}`,
-      },
-    ];
-  }
+const agent = new LlmAgent({
+  name: "policy_agent",
+  model: "gemini-2.5-flash",
+  instruction: "You are a helpful assistant.",
+  description: "An agent with a content policy on certain topics.",
+  beforeModelCallback: ({
+    callbackContext,
+    llmRequest,
+  }: {
+    callbackContext: CallbackContext;
+    llmRequest: LlmRequest;
+  }): LlmResponse | null => {
+    const lastMessage =
+      llmRequest.contents[llmRequest.contents.length - 1]?.parts?.[0]?.text ??
+      "";
 
-  // Check for blocked content
-  const lastContent = llmRequest.contents?.[llmRequest.contents.length - 1];
-  const userMessage = lastContent?.parts?.[0]?.text || "";
+    if (lastMessage.toLowerCase().includes("restricted")) {
+      return new LlmResponse({
+        content: {
+          role: "model",
+          parts: [{ text: "I cannot help with that topic." }],
+        },
+      });
+    }
 
-  if (userMessage.toLowerCase().includes("blocked_keyword")) {
-    // Return response to skip LLM call
-    return new LlmResponse({
-      content: {
-        role: "model",
-        parts: [
-          { text: "I cannot process requests containing blocked content." },
-        ],
-      },
-    });
-  }
+    // Inject the user's preferred language into the system instruction
+    const lang = callbackContext.state.get("preferred_language");
+    if (lang && llmRequest.config) {
+      llmRequest.config.systemInstruction =
+        `${llmRequest.config.systemInstruction ?? ""}\nRespond in: ${lang}`.trim();
+    }
 
-  return undefined; // Proceed with LLM call
-};
+    return null;
+  },
+});
 ```
 
-**Return Value Effect:**
+### afterModelCallback
 
-- If the callback returns `undefined`, the LLM continues its normal workflow
-- If the callback returns an `LlmResponse` object, the call to the LLM is **skipped** and the returned response is used directly
-
-### After Model Callback
-
-**When:** Called just after a response (`LlmResponse`) is received from the LLM, before it's processed further by the invoking agent.
-
-**Purpose:** Allows inspection or modification of the raw LLM response. Use cases include logging model outputs, reformatting responses, censoring sensitive information generated by the model, parsing structured data from the LLM response and storing it in state, or handling specific error codes.
-
-**Signature:**
+Fires after a response is received from the LLM, before it's processed further. Use it to log model outputs, extract structured data into state, censor sensitive content, or reformat the response.
 
 ```typescript
-type AfterModelCallback = ({
-  callbackContext,
-  llmResponse,
-}: {
+import type { LlmResponse, CallbackContext } from "@iqai/adk";
+
+type AfterModelCallback = (args: {
   callbackContext: CallbackContext;
   llmResponse: LlmResponse;
-}) => Promise<LlmResponse | undefined> | LlmResponse | undefined;
+}) => Promise<LlmResponse | null | undefined> | LlmResponse | null | undefined;
 ```
 
-**Example:**
+Returning `null` or `undefined` passes the original response through. Returning a new `LlmResponse` replaces it.
 
 ````typescript
+import type { CallbackContext, LlmResponse } from "@iqai/adk";
+
 const afterModelCallback = ({
   callbackContext,
   llmResponse,
 }: {
   callbackContext: CallbackContext;
   llmResponse: LlmResponse;
-}): LlmResponse | undefined => {
-  // Log model response
-  console.log(`LLM responded for agent: ${callbackContext.agentName}`);
+}): LlmResponse | null => {
+  const text = llmResponse.content?.parts?.[0]?.text ?? "";
 
-  // Extract and save structured data
-  const responseText = llmResponse.content?.parts?.[0]?.text || "";
-  const jsonMatch = responseText.match(/```json\n(.*?)\n```/s);
-  if (jsonMatch) {
+  // Pull out any JSON block and store it in state for downstream tools
+  const match = text.match(/```json\n([\s\S]*?)\n```/);
+  if (match) {
     try {
-      const data = JSON.parse(jsonMatch[1]);
-      callbackContext.state.set("extracted_data", data);
-    } catch (error) {
-      console.warn("Failed to parse JSON from response:", error);
+      callbackContext.state.set("extracted_json", JSON.parse(match[1]));
+    } catch {
+      // Malformed JSON — ignore
     }
   }
 
-  // Add disclaimer if needed
-  const addDisclaimer = callbackContext.state.get("add_disclaimer");
-  if (addDisclaimer && llmResponse.content) {
-    const modifiedResponse = { ...llmResponse };
-    const originalText = modifiedResponse.content.parts?.[0]?.text || "";
-    modifiedResponse.content.parts = [
-      {
-        text: `${originalText}\n\n*This response was generated by AI and should be verified.*`,
-      },
-    ];
-    return modifiedResponse;
-  }
-
-  return undefined; // Use original response
+  return null;
 };
 ````
 
-## Tool Execution Callbacks
+## Tool execution callbacks
 
-These callbacks are also specific to `LlmAgent` and trigger around the execution of tools (including `FunctionTool`, agent tools, etc.) that the LLM might request.
+These are specific to `LlmAgent` and fire around each tool call the LLM requests. They receive a `ToolContext` which extends `CallbackContext` with tool-specific methods like `listArtifacts` and `searchMemory`.
 
-<Callout type="info">
+### beforeToolCallback
 
-Status: Tool execution callbacks are implemented in the current TypeScript
-ADK-TS. You can use them today to validate/modify arguments, short-circuit
-execution, and post-process tool results.
-
-</Callout>
-
-### Before Tool Callback
-
-**When:** Called just before a specific tool's `runAsync` method is invoked, after the LLM has generated a function call for it.
-
-**Purpose:** Allows inspection and modification of tool arguments, performing authorization checks before execution, logging tool usage attempts, or implementing tool-level caching.
-
-**Signature:**
+Fires just before a tool's `runAsync` is invoked. Use it to validate arguments, check authorization, inject auth tokens, or return a cached result to skip execution.
 
 ```typescript
+import type { BaseTool, ToolContext } from "@iqai/adk";
+
 type BeforeToolCallback = (
   tool: BaseTool,
-  toolArgs: Record<string, any>,
+  args: Record<string, any>,
   toolContext: ToolContext,
-) => Promise<Record<string, any> | undefined> | Record<string, any> | undefined;
+) =>
+  | Promise<Record<string, any> | null | undefined>
+  | Record<string, any>
+  | null
+  | undefined;
 ```
 
-**Example:**
+Returning `null` or `undefined` lets the tool run (with any in-place changes to `args`). Returning a `Record<string, any>` skips execution and uses it as the tool result.
 
 ```typescript
-const beforeToolCallback: BeforeToolCallback = (
-  tool,
-  toolArgs,
-  toolContext,
-) => {
-  // Check authentication
-  const hasAuth = toolContext.state.get("api_token");
-  if (!hasAuth) {
-    // Return error result to skip tool execution
-    return {
-      error: "Authentication required for this tool",
-    };
+import type { BaseTool, ToolContext } from "@iqai/adk";
+
+const beforeToolCallback = (
+  tool: BaseTool,
+  args: Record<string, any>,
+  toolContext: ToolContext,
+): Record<string, any> | null => {
+  const token = toolContext.state.get("api_token");
+
+  if (!token) {
+    return { error: "Authentication required. Please sign in first." };
   }
 
-  // Log tool usage
+  // Inject the token so the tool can use it
+  args.authToken = token;
+
   console.log(
-    `Executing tool with function call ID: ${toolContext.functionCallId}`,
+    `Running tool: ${tool.name} (call ID: ${toolContext.functionCallId})`,
   );
-
-  // Validate arguments
-  if (!toolArgs.query || toolArgs.query.length < 3) {
-    return {
-      error: "Query must be at least 3 characters long",
-    };
-  }
-
-  return undefined; // Proceed with tool execution
+  return null;
 };
 ```
 
-**Return Value Effect:**
+### afterToolCallback
 
-1. If the callback returns `undefined`, the tool's `runAsync` method is executed with the (potentially modified) `toolArgs`
-2. If a dictionary is returned, the tool's `runAsync` method is **skipped** and the returned dictionary is used directly as the tool result
-
-### After Tool Callback
-
-**When:** Called just after the tool's `runAsync` method completes successfully.
-
-**Purpose:** Allows inspection and modification of the tool's result before it's sent back to the LLM. Useful for logging tool results, post-processing or formatting results, or saving specific parts of the result to the session state.
-
-**Signature:**
+Fires after the tool's `runAsync` completes. Use it to log results, save important values into state, filter sensitive fields, or reformat the output before the LLM sees it.
 
 ```typescript
+import type { BaseTool, ToolContext } from "@iqai/adk";
+
 type AfterToolCallback = (
   tool: BaseTool,
-  toolArgs: Record<string, any>,
+  args: Record<string, any>,
   toolContext: ToolContext,
-  toolResult: Record<string, any>,
-) => Promise<Record<string, any> | undefined> | Record<string, any> | undefined;
+  toolResponse: Record<string, any>,
+) =>
+  | Promise<Record<string, any> | null | undefined>
+  | Record<string, any>
+  | null
+  | undefined;
 ```
 
-**Example:**
+Returning `null` or `undefined` passes the original result through. Returning a new object replaces it.
 
 ```typescript
-const afterToolCallback: AfterToolCallback = (
-  tool,
-  toolArgs,
-  toolContext,
-  toolResult,
-) => {
-  // Log tool result
-  console.log(
-    `Tool completed with function call ID: ${toolContext.functionCallId}`,
-  );
+import type { BaseTool, ToolContext } from "@iqai/adk";
 
-  // Save important data to state
-  if (toolResult.transaction_id) {
-    toolContext.state.set("last_transaction_id", toolResult.transaction_id);
+const afterToolCallback = (
+  tool: BaseTool,
+  args: Record<string, any>,
+  toolContext: ToolContext,
+  toolResponse: Record<string, any>,
+): Record<string, any> | null => {
+  // Persist the transaction ID for later reference
+  if (toolResponse.transaction_id) {
+    toolContext.state.set("last_transaction_id", toolResponse.transaction_id);
   }
 
-  // Filter sensitive information
-  if (toolResult.api_key) {
-    const filteredResult = { ...toolResult };
-    delete filteredResult.api_key;
-    return filteredResult;
+  // Strip API keys from the result before the LLM sees them
+  if (toolResponse.api_key) {
+    const { api_key, ...safe } = toolResponse;
+    return safe;
   }
 
-  return undefined; // Use original result
+  return null;
 };
 ```
 
-**Return Value Effect:**
+## Callback arrays
 
-1. If the callback returns `undefined`, the original `toolResult` is used
-2. If a new dictionary is returned, it **replaces** the original `toolResult`
-
-## Context Objects
-
-Callbacks receive different context objects depending on their type:
-
-### CallbackContext
-
-Used in agent lifecycle and LLM interaction callbacks:
+Every callback property accepts either a single function or an array. When you pass an array, the framework calls each function in order and stops as soon as one returns a non-sentinel value.
 
 ```typescript
-class CallbackContext {
-  // Invocation metadata
-  readonly invocationId: string;
-  readonly agentName: string;
-  readonly appName: string;
-  readonly userId: string;
-  readonly sessionId: string;
+import { LlmAgent } from "@iqai/adk";
+import type { CallbackContext } from "@iqai/adk";
+import type { Content } from "@google/genai";
 
-  // State management (delta-aware)
-  readonly state: State;
+const loggingCallback = (ctx: CallbackContext): Content | undefined => {
+  console.log(`[log] Agent started: ${ctx.agentName}`);
+  return undefined;
+};
 
-  // Artifact operations
-  async loadArtifact(
-    filename: string,
-    version?: number,
-  ): Promise<Part | undefined>;
-  async saveArtifact(filename: string, artifact: Part): Promise<number>;
+const guardCallback = (ctx: CallbackContext): Content | undefined => {
+  if (ctx.state.get("maintenance_mode")) {
+    return { role: "model", parts: [{ text: "Under maintenance." }] };
+  }
+  return undefined;
+};
 
-  // Event actions (for tracking changes)
-  readonly eventActions: EventActions;
-}
-```
-
-### ToolContext
-
-Used in tool execution callbacks, extends CallbackContext:
-
-```typescript
-class ToolContext extends CallbackContext {
-  // Tool-specific properties
-  readonly functionCallId?: string;
-
-  // Additional tool operations
-  async listArtifacts(): Promise<string[]>;
-  async searchMemory(query: string): Promise<SearchMemoryResponse>;
-
-  // Action controls
-  readonly actions: EventActions; // alias for eventActions
-}
-```
-
-<Callout type="info">
-
-Always use the specific context type provided (`CallbackContext` for
-agent/model, `ToolContext` for tools) to ensure access to the appropriate
-methods and properties.
-
-</Callout>
-
-## Callback Arrays
-
-All callback types support both single callbacks and arrays of callbacks:
-
-```typescript
 const agent = new LlmAgent({
   name: "multi_callback_agent",
   model: "gemini-2.5-flash",
-  description: "Agent with multiple callbacks",
-  instruction: "You are helpful",
-
-  // Single callback
-  beforeAgentCallback: singleBeforeCallback,
-
-  // Array of callbacks (executed in order until one returns a value)
-  afterAgentCallback: [
-    firstAfterCallback,
-    secondAfterCallback,
-    thirdAfterCallback,
-  ],
+  instruction: "You are a helpful assistant.",
+  description: "An agent that demonstrates multiple beforeAgentCallbacks.",
+  // loggingCallback always runs; guardCallback only blocks if maintenance_mode is set
+  beforeAgentCallback: [loggingCallback, guardCallback],
 });
 ```
 
-When using callback arrays:
+## Single callback types
 
-- Callbacks are executed in the order they appear in the array
-- Execution stops when a callback returns a non-undefined value
-- If all callbacks return undefined, normal execution continues
+Each callback type has a corresponding `Single*` variant that represents one function (before wrapping in an array). These are useful when defining a callback separately and you want TypeScript to infer the exact signature without accepting arrays:
+
+| Array type            | Single type                 |
+| --------------------- | --------------------------- |
+| `BeforeAgentCallback` | `SingleAgentCallback`       |
+| `AfterAgentCallback`  | `SingleAgentCallback`       |
+| `BeforeModelCallback` | `SingleBeforeModelCallback` |
+| `AfterModelCallback`  | `SingleAfterModelCallback`  |
+| `BeforeToolCallback`  | `SingleBeforeToolCallback`  |
+| `AfterToolCallback`   | `SingleAfterToolCallback`   |
+
+```typescript
+import type {
+  SingleBeforeModelCallback,
+  SingleBeforeToolCallback,
+} from "@iqai/adk";
+
+// Explicitly typed — TypeScript enforces the exact function signature
+const addUserContext: SingleBeforeModelCallback = ({
+  callbackContext,
+  llmRequest,
+}) => {
+  const lang = callbackContext.state.get("language") ?? "en";
+  if (llmRequest.config) {
+    llmRequest.config.systemInstruction =
+      `${llmRequest.config.systemInstruction ?? ""}\nLanguage: ${lang}`.trim();
+  }
+  return null;
+};
+
+const checkAuth: SingleBeforeToolCallback = (tool, args, toolContext) => {
+  if (!toolContext.state.get("api_token")) {
+    return { error: "Not authenticated." };
+  }
+  return null;
+};
+```
+
+<Callout type="info">
+  `CallbackContext` and `ToolContext` provide state, artifact, and memory
+  access. See [CallbackContext](/docs/framework/context/callback-context) and
+  [ToolContext](/docs/framework/context/tool-context) for the full property and
+  method reference.
+</Callout>
+
+## Next steps
+
+<Cards>
+  <Card
+    title="🔧 Callback Patterns"
+    description="Guardrails, caching, state management, and more"
+    href="/docs/framework/callbacks/callback-patterns"
+  />
+  <Card
+    title="🧠 CallbackContext"
+    description="State, artifact, and invocation properties available in all callbacks"
+    href="/docs/framework/context/callback-context"
+  />
+  <Card
+    title="🛠️ ToolContext"
+    description="Additional methods available in tool callbacks"
+    href="/docs/framework/context/tool-context"
+  />
+</Cards>
