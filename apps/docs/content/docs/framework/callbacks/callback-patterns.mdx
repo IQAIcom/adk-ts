@@ -224,8 +224,9 @@ const { runner } = await AgentBuilder.create("enriched_agent")
       // Append per-user context to the system instruction
       const userTier = callbackContext.state.get("user_tier") ?? "free";
       if (llmRequest.config) {
+        const current = llmRequest.getSystemInstructionText() ?? "";
         llmRequest.config.systemInstruction =
-          `${llmRequest.config.systemInstruction ?? ""}\nUser tier: ${userTier}`.trim();
+          `${current}\nUser tier: ${userTier}`.trim();
       }
       return null;
     },
@@ -258,12 +259,7 @@ Return from a `before_` callback to skip a step entirely — useful for maintena
 
 ```typescript
 import { AgentBuilder, LlmResponse } from "@iqai/adk";
-import type {
-  CallbackContext,
-  LlmRequest,
-  BaseTool,
-  ToolContext,
-} from "@iqai/adk";
+import type { CallbackContext, BaseTool, ToolContext } from "@iqai/adk";
 import type { Content } from "@google/genai";
 
 const { runner } = await AgentBuilder.create("conditional_agent")
@@ -286,7 +282,6 @@ const { runner } = await AgentBuilder.create("conditional_agent")
       callbackContext,
     }: {
       callbackContext: CallbackContext;
-      llmRequest: LlmRequest;
     }): LlmResponse | null => {
       if (callbackContext.state.get("use_cached_response")) {
         const cached =

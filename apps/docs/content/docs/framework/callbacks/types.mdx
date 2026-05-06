@@ -135,8 +135,9 @@ const agent = new LlmAgent({
     // Inject the user's preferred language into the system instruction
     const lang = callbackContext.state.get("preferred_language");
     if (lang && llmRequest.config) {
+      const current = llmRequest.getSystemInstructionText() ?? "";
       llmRequest.config.systemInstruction =
-        `${llmRequest.config.systemInstruction ?? ""}\nRespond in: ${lang}`.trim();
+        `${current}\nRespond in: ${lang}`.trim();
     }
 
     return null;
