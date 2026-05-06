@@ -17,10 +17,9 @@ Each callback fires at a fixed point in the execution chain. The agent invokes t
   chart={`
 flowchart TD
   BA[beforeAgentCallback] --> AG[Agent logic]
-  AG --> BM[beforeModelCallback] --> LLM[LLM call] --> AM[afterModelCallback]
-  AG --> BT[beforeToolCallback] --> TL[tool.runAsync] --> AT[afterToolCallback]
-  AM --> AA[afterAgentCallback]
-  AT --> AA
+  AG --> BM[beforeModelCallback] --> LLM[LLM call] --> AM[afterModelCallback] --> AG
+  AG --> BT[beforeToolCallback] --> TL[tool.runAsync] --> AT[afterToolCallback] --> AG
+  AG --> AA[afterAgentCallback]
 `}
 />
 

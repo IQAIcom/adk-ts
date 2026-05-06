@@ -37,7 +37,7 @@ const { runner } = await AgentBuilder.create("policy_agent")
       callbackContext: CallbackContext;
       llmRequest: LlmRequest;
     }): LlmResponse | null => {
-      const text = llmRequest.contents
+      const text = (llmRequest.contents ?? [])
         .flatMap(c => c.parts ?? [])
         .map(p => p.text ?? "")
         .join(" ");
