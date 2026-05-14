@@ -1,768 +1,203 @@
 ---
 title: Context Patterns
-description: Best practices and common patterns for using context objects effectively
+description: State scoping, context selection, anti-patterns, and testing strategies for ADK-TS context objects.
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Learn common patterns and best practices for effective context usage across different scenarios in ADK-TS applications.
+A few recurring patterns come up whenever you work with context objects. This page collects the ones that save the most time.
 
-## Security Patterns
+## Pick the right context type
 
-### Context Selection by Use Case
+Use the weakest context type that satisfies your requirements. Callbacks and functions that receive a powerful context but only read state are harder to reason about — a `ReadonlyContext` parameter makes the intent clear and prevents accidental mutations.
 
-Choose the right context type based on your security and functionality requirements:
+| You need to…                       | Use                 |
+| ---------------------------------- | ------------------- |
+| Generate dynamic instructions      | `ReadonlyContext`   |
+| Read session state in a callback   | `ReadonlyContext`   |
+| Write to state or save an artifact | `CallbackContext`   |
+| Search memory or list artifacts    | `ToolContext`       |
+| Access services in a custom agent  | `InvocationContext` |
+
+## State scoping
+
+ADK-TS uses key prefixes to control how long a state value lives. Using the wrong prefix is a common source of values disappearing unexpectedly or persisting longer than intended.
+
+| Prefix   | Lifetime                          | Example key          |
+| -------- | --------------------------------- | -------------------- |
+| _(none)_ | Current session                   | `"taskStatus"`       |
+| `user:`  | Across all sessions for this user | `"user:name"`        |
+| `app:`   | Shared across all users           | `"app:featureFlags"` |
+| `temp:`  | Current turn only                 | `"temp:draftReply"`  |
 
 ```typescript
-// Read-only instruction generation - use ReadonlyContext
-const safeInstruction = (ctx: ReadonlyContext): string => {
-  return `Hello ${ctx.state.user?.name || "User"}! Session: ${
-    ctx.invocationId
-  }`;
-};
+import { CallbackContext } from "@iqai/adk";
 
-// State modification in callbacks - use CallbackContext
-async function updateUserState(ctx: CallbackContext) {
-  ctx.state.lastActive = new Date().toISOString();
-  await ctx.saveArtifact("activity.json", { text: "User active" });
-}
+function applyStateScoping(ctx: CallbackContext) {
+  // Persists for the life of this session
+  ctx.state["currentTask"] = "onboarding";
 
-// Tool with memory access - use ToolContext
-async function smartTool(params: any, ctx: ToolContext) {
-  const memories = await ctx.searchMemory(params.query);
-  ctx.state.lastSearch = memories;
-  return { found: memories.memories?.length || 0 };
-}
+  // Persists across all sessions for this user
+  ctx.state["user:name"] = "Alice";
 
-// Full agent implementation - use InvocationContext
-export class SecureAgent extends BaseAgent {
-  protected async *runAsyncImpl(ctx: InvocationContext) {
-    // Full framework access with all services
-    yield* this.processSecurely(ctx);
-  }
+  // Shared across every user in the app
+  ctx.state["app:maintenanceMode"] = false;
+
+  // Cleared after the current agent turn
+  ctx.state["temp:searchResults"] = [];
 }
 ```
 
-### Principle of Least Privilege
+<Callout type="warn">
+  The prefixes use a colon (`:`) not a dot (`.`). `"user:name"` is the correct
+  form; `"user.name"` is treated as a plain session-scoped key.
+</Callout>
 
-Use the minimal context type that provides the required functionality:
+## Common anti-patterns
+
+### Using a more powerful context than needed
 
 ```typescript
-// Good - ReadonlyContext for safe read operations
-function analyzeState(ctx: ReadonlyContext) {
-  return {
-    userCount: Object.keys(ctx.state).filter(k => k.startsWith("user.")).length,
-    sessionAge: Date.now() - (ctx.state.sessionStart || Date.now()),
-  };
+// ❌ ToolContext just to read a state value
+function getPreference(ctx: ToolContext): string {
+  return ctx.state["user:theme"];
 }
 
-// Avoid - ToolContext when you only need to read state
-function badAnalyzeState(ctx: ToolContext) {
-  // Unnecessarily powerful context for read-only operation
-  return { userCount: 1 };
+// ✅ ReadonlyContext is sufficient for reads
+function getPreference(ctx: ReadonlyContext): string {
+  return ctx.state["user:theme"] as string;
 }
 ```
 
-## State Management Patterns
+### Storing context references across calls
 
-### State Scoping Strategy
-
-Organize state using consistent scoping patterns:
+Context objects are valid only for the duration of a single callback or tool execution. Holding onto a reference after the call returns leads to stale state and undefined behaviour.
 
 ```typescript
-function manageStateScopes(ctx: CallbackContext) {
-  // Session-specific (cleared when session ends)
-  ctx.state.currentTask = "processing";
-  ctx.state.sessionProgress = 0.5;
-
-  // User-specific (persists across sessions)
-  ctx.state["user.preferences"] = { theme: "dark", language: "en" };
-  ctx.state["user.profile"] = { name: "John", level: "expert" };
-
-  // App-specific (shared across all users)
-  ctx.state["app.version"] = "1.2.0";
-  ctx.state["app.features"] = ["feature1", "feature2"];
-
-  // Temporary (explicitly cleaned up)
-  ctx.state["temp.processing"] = { status: "active", startTime: Date.now() };
-  ctx.state["temp.uploads"] = ["file1.txt", "file2.pdf"];
-}
-```
-
-### State Validation Pattern
-
-Implement robust state validation:
-
-```typescript
-function validateAndUpdateState(ctx: CallbackContext, updates: any) {
-  // Validate state schema
-  const schema = {
-    userPreferences: { theme: "string", language: "string" },
-    currentTask: "string",
-    progress: "number",
-  };
-
-  // Backup current state
-  const backup = JSON.stringify(ctx.state);
-
-  try {
-    // Validate updates
-    for (const [key, value] of Object.entries(updates)) {
-      if (schema[key]) {
-        const expectedType = schema[key];
-        if (typeof value !== expectedType) {
-          throw new Error(
-            `Invalid type for ${key}: expected ${expectedType}, got ${typeof value}`,
-          );
-        }
-      }
-    }
-
-    // Apply validated updates
-    Object.assign(ctx.state, updates, {
-      lastUpdate: new Date().toISOString(),
-      version: (ctx.state.version || 0) + 1,
-    });
-
-    return { success: true, version: ctx.state.version };
-  } catch (error) {
-    // Restore on validation failure
-    Object.assign(ctx.state, JSON.parse(backup));
-    throw error;
-  }
-}
-```
-
-### Atomic State Operations
-
-Ensure state consistency with atomic operations:
-
-```typescript
-async function atomicStateUpdate(
-  ctx: CallbackContext,
-  operation: () => Promise<void>,
-) {
-  const stateSnapshot = JSON.stringify(ctx.state);
-  const transactionId = `tx_${Date.now()}`;
-
-  try {
-    // Mark transaction start
-    ctx.state._transaction = {
-      id: transactionId,
-      started: new Date().toISOString(),
-    };
-
-    // Execute operation
-    await operation();
-
-    // Mark transaction complete
-    ctx.state._transaction.completed = new Date().toISOString();
-    delete ctx.state._transaction;
-  } catch (error) {
-    // Rollback on failure
-    Object.assign(ctx.state, JSON.parse(stateSnapshot));
-
-    // Log failed transaction
-    ctx.state.lastFailedTransaction = {
-      id: transactionId,
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString(),
-    };
-
-    throw error;
-  }
-}
-```
-
-## Service Integration Patterns
-
-### Graceful Service Degradation
-
-Handle optional services gracefully:
-
-```typescript
-async function resilientServiceOperation(ctx: ToolContext, query: string) {
-  const results = {
-    query,
-    timestamp: new Date().toISOString(),
-    sources: {
-      memory: null as any,
-      artifacts: null as any,
-      state: ctx.state,
-    },
-    fallbacksUsed: [] as string[],
-  };
-
-  // Try memory service first
-  try {
-    if (ctx.searchMemory) {
-      results.sources.memory = await ctx.searchMemory(query);
-    } else {
-      results.fallbacksUsed.push("memory-unavailable");
-    }
-  } catch (error) {
-    console.warn("Memory service failed:", error);
-    results.fallbacksUsed.push("memory-failed");
-
-    // Fallback to state-based search
-    const stateKeys = Object.keys(ctx.state);
-    const relevantKeys = stateKeys.filter(key =>
-      key.toLowerCase().includes(query.toLowerCase()),
-    );
-    results.sources.memory = {
-      memories: relevantKeys.map(key => ({
-        content: `${key}: ${ctx.state[key]}`,
-      })),
-    };
-  }
-
-  // Try artifact listing
-  try {
-    if (ctx.listArtifacts) {
-      const artifacts = await ctx.listArtifacts();
-      results.sources.artifacts = artifacts.filter(name =>
-        name.toLowerCase().includes(query.toLowerCase()),
-      );
-    } else {
-      results.fallbacksUsed.push("artifacts-unavailable");
-    }
-  } catch (error) {
-    console.warn("Artifact service failed:", error);
-    results.fallbacksUsed.push("artifacts-failed");
-    results.sources.artifacts = [];
-  }
-
-  return results;
-}
-```
-
-### Service Coordination Pattern
-
-Coordinate operations across multiple services:
-
-```typescript
-async function coordinatedOperation(ctx: InvocationContext, operation: string) {
-  const coordinationId = `coord_${Date.now()}`;
-  const results = [];
-
-  // Track coordination in session state
-  ctx.session.state.activeCoordinations =
-    ctx.session.state.activeCoordinations || {};
-  ctx.session.state.activeCoordinations[coordinationId] = {
-    operation,
-    started: new Date().toISOString(),
-    services: [],
-  };
-
-  try {
-    // Memory service operation
-    if (ctx.memoryService) {
-      const memoryResult = await ctx.memoryService.searchMemory({
-        query: operation,
-        appName: ctx.appName,
-        userId: ctx.userId,
-      });
-
-      results.push({ service: "memory", success: true, data: memoryResult });
-      ctx.session.state.activeCoordinations[coordinationId].services.push(
-        "memory",
-      );
-    }
-
-    // Artifact service operation
-    if (ctx.artifactService) {
-      const artifacts = await ctx.artifactService.listArtifactKeys({
-        appName: ctx.appName,
-        userId: ctx.userId,
-        sessionId: ctx.session.id,
-      });
-
-      results.push({ service: "artifact", success: true, data: artifacts });
-      ctx.session.state.activeCoordinations[coordinationId].services.push(
-        "artifact",
-      );
-    }
-
-    // Session service operation
-    await ctx.sessionService.updateSession(ctx.session);
-    results.push({ service: "session", success: true, data: "updated" });
-    ctx.session.state.activeCoordinations[coordinationId].services.push(
-      "session",
-    );
-
-    // Mark as completed
-    ctx.session.state.activeCoordinations[coordinationId].completed =
-      new Date().toISOString();
-
-    return results;
-  } catch (error) {
-    // Handle coordination failure
-    ctx.session.state.activeCoordinations[coordinationId].error = {
-      message: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString(),
-    };
-    throw error;
-  }
-}
-```
-
-## Error Handling Patterns
-
-### Context-Aware Error Recovery
-
-Implement error recovery based on context capabilities:
-
-```typescript
-async function recoverableOperation(ctx: CallbackContext | ToolContext) {
-  const operationId = `op_${Date.now()}`;
-
-  try {
-    // Attempt primary operation
-    const result = await performPrimaryOperation(ctx);
-
-    // Save successful result
-    await ctx.saveArtifact(`result_${operationId}.json`, {
-      text: JSON.stringify(result, null, 2),
-    });
-
-    return result;
-  } catch (primaryError) {
-    console.warn("Primary operation failed:", primaryError);
-
-    // Try recovery based on context capabilities
-    if ("searchMemory" in ctx && ctx.searchMemory) {
-      // ToolContext - try memory-based recovery
-      try {
-        const memoryResults = await ctx.searchMemory("similar operations");
-        const recoveryData = memoryResults.memories?.[0];
-
-        if (recoveryData) {
-          ctx.state.recoveryUsed = {
-            method: "memory",
-            operationId,
-            timestamp: new Date().toISOString(),
-          };
-
-          return { recovered: true, data: recoveryData };
-        }
-      } catch (memoryError) {
-        console.warn("Memory recovery failed:", memoryError);
-      }
-    }
-
-    // Fallback to state-based recovery
-    const fallbackData = ctx.state.lastSuccessfulOperation || null;
-    if (fallbackData) {
-      ctx.state.recoveryUsed = {
-        method: "state-fallback",
-        operationId,
-        timestamp: new Date().toISOString(),
-      };
-
-      return { recovered: true, data: fallbackData };
-    }
-
-    // No recovery possible - save error and rethrow
-    ctx.state.lastOperationError = {
-      operationId,
-      error:
-        primaryError instanceof Error
-          ? primaryError.message
-          : String(primaryError),
-      timestamp: new Date().toISOString(),
-    };
-
-    throw primaryError;
-  }
-}
-
-async function performPrimaryOperation(ctx: CallbackContext | ToolContext) {
-  // Placeholder for actual operation
-  throw new Error("Simulated primary operation failure");
-}
-```
-
-### Cascading Error Handling
-
-Handle errors that affect multiple context layers:
-
-```typescript
-class ErrorHandlingAgent extends BaseAgent {
-  protected async *runAsyncImpl(
-    context: InvocationContext,
-  ): AsyncGenerator<Event, void, unknown> {
-    const errorContext = {
-      invocationId: context.invocationId,
-      agentName: this.name,
-      errors: [] as any[],
-    };
-
-    try {
-      yield* this.processWithErrorHandling(context, errorContext);
-    } catch (criticalError) {
-      // Handle critical errors that affect the entire invocation
-      yield this.createCriticalErrorEvent(context, criticalError, errorContext);
-
-      // Attempt graceful degradation
-      yield* this.attemptGracefulDegradation(context, errorContext);
-    }
-  }
-
-  private async *processWithErrorHandling(
-    context: InvocationContext,
-    errorContext: any,
-  ): AsyncGenerator<Event, void, unknown> {
-    // Try normal processing with error tracking
-    try {
-      // Update session state
-      context.session.state.processingStatus = "active";
-
-      // Process with services
-      if (context.memoryService) {
-        try {
-          const memories = await context.memoryService.searchMemory({
-            query: "user context",
-            appName: context.appName,
-            userId: context.userId,
-          });
-
-          context.session.state.contextMemories =
-            memories.memories?.length || 0;
-        } catch (memoryError) {
-          errorContext.errors.push({
-            service: "memory",
-            error:
-              memoryError instanceof Error
-                ? memoryError.message
-                : String(memoryError),
-            timestamp: new Date().toISOString(),
-          });
-
-          // Continue without memory - non-critical error
-        }
-      }
-
-      // Generate success event
-      yield new Event({
-        invocationId: context.invocationId,
-        author: this.name,
-        content: {
-          parts: [{ text: "Processing completed with error handling" }],
-        },
-      });
-    } catch (error) {
-      errorContext.errors.push({
-        stage: "processing",
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      });
-      throw error;
-    }
-  }
-
-  private createCriticalErrorEvent(
-    context: InvocationContext,
-    error: unknown,
-    errorContext: any,
-  ): Event {
-    return new Event({
-      invocationId: context.invocationId,
-      author: this.name,
-      content: {
-        parts: [
-          {
-            text: `Critical error occurred. Error details saved to session state.`,
-          },
-        ],
-      },
-      errorCode: "CRITICAL_ERROR",
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-  }
-}
-```
-
-## Performance Patterns
-
-### Context Caching Strategy
-
-Cache expensive context operations:
-
-```typescript
-class CachingToolContext {
-  private cache = new Map<
-    string,
-    { data: any; timestamp: number; ttl: number }
-  >();
-
-  constructor(private baseContext: ToolContext) {}
-
-  async cachedSearchMemory(query: string, ttlMs = 60000): Promise<any> {
-    const cacheKey = `memory_${query}`;
-    const cached = this.cache.get(cacheKey);
-
-    if (cached && Date.now() - cached.timestamp < cached.ttl) {
-      // Update base context state to reflect cache hit
-      this.baseContext.state.cacheHits =
-        (this.baseContext.state.cacheHits || 0) + 1;
-      return cached.data;
-    }
-
-    // Cache miss - perform actual search
-    const result = await this.baseContext.searchMemory(query);
-
-    // Cache the result
-    this.cache.set(cacheKey, {
-      data: result,
-      timestamp: Date.now(),
-      ttl: ttlMs,
-    });
-
-    // Update context state
-    this.baseContext.state.cacheMisses =
-      (this.baseContext.state.cacheMisses || 0) + 1;
-
-    return result;
-  }
-
-  async cachedListArtifacts(ttlMs = 30000): Promise<string[]> {
-    const cacheKey = "artifacts_list";
-    const cached = this.cache.get(cacheKey);
-
-    if (cached && Date.now() - cached.timestamp < cached.ttl) {
-      return cached.data;
-    }
-
-    const result = await this.baseContext.listArtifacts();
-
-    this.cache.set(cacheKey, {
-      data: result,
-      timestamp: Date.now(),
-      ttl: ttlMs,
-    });
-
-    return result;
-  }
-
-  clearCache(): void {
-    this.cache.clear();
-    this.baseContext.state.cacheCleared = new Date().toISOString();
-  }
-}
-```
-
-### Batch Operation Pattern
-
-Optimize multiple operations using batching:
-
-```typescript
-async function batchContextOperations(ctx: ToolContext, operations: any[]) {
-  const batchId = `batch_${Date.now()}`;
-  const results = [];
-
-  // Group operations by type
-  const memoryQueries = operations.filter(op => op.type === "memory");
-  const artifactOps = operations.filter(op => op.type === "artifact");
-  const stateOps = operations.filter(op => op.type === "state");
-
-  // Track batch in state
-  ctx.state.activeBatches = ctx.state.activeBatches || {};
-  ctx.state.activeBatches[batchId] = {
-    started: new Date().toISOString(),
-    totalOps: operations.length,
-    completed: 0,
-  };
-
-  try {
-    // Batch memory queries
-    if (memoryQueries.length > 0) {
-      const memoryPromises = memoryQueries.map(async op => {
-        try {
-          const result = await ctx.searchMemory(op.query);
-          ctx.state.activeBatches[batchId].completed++;
-          return { operation: op, result, success: true };
-        } catch (error) {
-          return { operation: op, error: String(error), success: false };
-        }
-      });
-
-      const memoryResults = await Promise.all(memoryPromises);
-      results.push(...memoryResults);
-    }
-
-    // Batch artifact operations
-    if (artifactOps.length > 0) {
-      // Batch artifact loading
-      const artifactPromises = artifactOps.map(async op => {
-        try {
-          let result;
-          if (op.action === "list") {
-            result = await ctx.listArtifacts();
-          } else if (op.action === "load") {
-            result = await ctx.loadArtifact(op.filename);
-          }
-
-          ctx.state.activeBatches[batchId].completed++;
-          return { operation: op, result, success: true };
-        } catch (error) {
-          return { operation: op, error: String(error), success: false };
-        }
-      });
-
-      const artifactResults = await Promise.all(artifactPromises);
-      results.push(...artifactResults);
-    }
-
-    // Batch state operations (synchronous)
-    stateOps.forEach(op => {
-      try {
-        if (op.action === "set") {
-          ctx.state[op.key] = op.value;
-        } else if (op.action === "get") {
-          results.push({
-            operation: op,
-            result: ctx.state[op.key],
-            success: true,
-          });
-        }
-        ctx.state.activeBatches[batchId].completed++;
-      } catch (error) {
-        results.push({
-          operation: op,
-          error: String(error),
-          success: false,
-        });
-      }
-    });
-
-    // Mark batch complete
-    ctx.state.activeBatches[batchId].completedAt = new Date().toISOString();
-
-    return {
-      batchId,
-      total: operations.length,
-      successful: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
-      results,
-    };
-  } catch (error) {
-    ctx.state.activeBatches[batchId].error = {
-      message: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString(),
-    };
-    throw error;
-  }
-}
-```
-
-## Common Anti-Patterns
-
-### What to Avoid
-
-```typescript
-// ❌ DON'T: Use powerful context for simple operations
-function badReadOnlyOperation(ctx: ToolContext) {
-  // Only reading state but using ToolContext unnecessarily
-  return ctx.state.userName;
-}
-
-// ✅ DO: Use appropriate context level
-function goodReadOnlyOperation(ctx: ReadonlyContext) {
-  return ctx.state.userName;
-}
-
-// ❌ DON'T: Hold references to context beyond operation scope
+// ❌ Storing context on a service instance
 class BadService {
-  private storedContext: ToolContext; // Don't do this!
+  private ctx: ToolContext; // Don't do this
 
   setContext(ctx: ToolContext) {
-    this.storedContext = ctx; // Context may become stale
+    this.ctx = ctx;
   }
 }
 
-// ✅ DO: Pass context to each operation
+// ✅ Pass context to each operation directly
 class GoodService {
-  async performOperation(ctx: ToolContext, params: any) {
-    // Use context immediately, don't store it
-    return await ctx.searchMemory(params.query);
-  }
-}
-
-// ❌ DON'T: Ignore service availability
-async function badServiceUsage(ctx: ToolContext) {
-  // Will throw if memory service not configured
-  return await ctx.searchMemory("query");
-}
-
-// ✅ DO: Check service availability
-async function goodServiceUsage(ctx: ToolContext) {
-  try {
-    return await ctx.searchMemory("query");
-  } catch (error) {
-    if (error.message.includes("Memory service is not available")) {
-      // Handle gracefully
-      return { memories: [] };
-    }
-    throw error;
+  async search(query: string, ctx: ToolContext) {
+    return ctx.searchMemory(query);
   }
 }
 ```
 
-## Testing Patterns
+### Ignoring service availability
 
-### Context Mocking for Tests
+`artifactService` and `memoryService` are optional. Calling methods on them without checking throws at runtime.
 
 ```typescript
-// Create mock contexts for testing
-function createMockReadonlyContext(state: any = {}): ReadonlyContext {
-  return {
-    userContent: { parts: [{ text: "test input" }] },
-    invocationId: "test-invocation-123",
-    agentName: "test-agent",
-    state: Object.freeze(state),
+// ❌ Will throw if memory service is not configured
+async function badSearch(ctx: ToolContext, query: string) {
+  return await ctx.searchMemory(query);
+}
+
+// ✅ Guard or use try/catch
+async function safeSearch(ctx: ToolContext, query: string) {
+  try {
+    return await ctx.searchMemory(query);
+  } catch {
+    return [];
+  }
+}
+```
+
+## Testing
+
+The simplest approach is to pass plain objects that satisfy the type. For `ReadonlyContext`, only a few properties are needed for most tests:
+
+```typescript
+import type { ReadonlyContext } from "@iqai/adk";
+
+function buildInstruction(ctx: ReadonlyContext): string {
+  const name = ctx.state["user:name"] ?? "there";
+  return `Hello, ${name}!`;
+}
+
+// Unit test — no framework setup required
+test("builds instruction with user name", () => {
+  const ctx = {
+    userContent: undefined,
+    invocationId: "test-inv-001",
+    agentName: "greeter",
+    appName: "my-app",
+    userId: "user-1",
+    sessionId: "session-1",
+    state: Object.freeze({ "user:name": "Alice" }),
   } as ReadonlyContext;
-}
 
-function createMockToolContext(state: any = {}): ToolContext {
-  return {
-    ...createMockReadonlyContext(state),
-    state: state, // Mutable for ToolContext
-    functionCallId: "test-function-call-456",
-    actions: {
-      escalate: false,
-      transferToAgent: null,
-      skipSummarization: false,
-      stateDelta: {},
-      artifactDelta: {},
-    },
-    loadArtifact: jest.fn(),
-    saveArtifact: jest.fn(),
-    listArtifacts: jest.fn().mockResolvedValue([]),
-    searchMemory: jest.fn().mockResolvedValue({ memories: [] }),
-  } as any;
-}
-
-// Test context usage
-describe("Context Usage", () => {
-  test("should handle readonly context safely", () => {
-    const mockState = { user: { name: "Test User" } };
-    const ctx = createMockReadonlyContext(mockState);
-
-    const result = analyzeState(ctx);
-
-    expect(result.userCount).toBeGreaterThan(0);
-    expect(ctx.state).toEqual(mockState); // State unchanged
-  });
-
-  test("should use tool context features", async () => {
-    const ctx = createMockToolContext({ preferences: { theme: "dark" } });
-
-    const result = await smartTool({ query: "test" }, ctx);
-
-    expect(ctx.searchMemory).toHaveBeenCalledWith("test");
-    expect(ctx.state.lastSearch).toBeDefined();
-  });
+  expect(buildInstruction(ctx)).toBe("Hello, Alice!");
 });
 ```
 
-These patterns provide a foundation for robust, secure, and performant context usage across your ADK-TS applications. Choose the appropriate patterns based on your specific requirements and always consider the security and performance implications of your context usage decisions.
+For `ToolContext` in Vitest, stub only the methods your tool actually calls:
+
+```typescript
+import { vi } from "vitest";
+import type { ToolContext, MemorySearchResult } from "@iqai/adk";
+
+function buildMockToolContext(
+  stateValues: Record<string, unknown> = {},
+): ToolContext {
+  const state: Record<string, unknown> = { ...stateValues };
+
+  return {
+    invocationId: "test-inv-001",
+    agentName: "test-agent",
+    appName: "test-app",
+    userId: "user-1",
+    sessionId: "session-1",
+    userContent: undefined,
+    functionCallId: "call-001",
+    state: new Proxy(state, {
+      get: (t, k) => (k === "get" ? (key: string) => t[key] : t[k as string]),
+      set: (t, k, v) => {
+        t[k as string] = v;
+        return true;
+      },
+    }) as any,
+    actions: { stateDelta: {}, artifactDelta: {} } as any,
+    searchMemory: vi
+      .fn<[string], Promise<MemorySearchResult[]>>()
+      .mockResolvedValue([]),
+    listArtifacts: vi.fn().mockResolvedValue([]),
+    loadArtifact: vi.fn().mockResolvedValue(undefined),
+    saveArtifact: vi.fn().mockResolvedValue(0),
+  } as unknown as ToolContext;
+}
+```
+
+## Next steps
+
+<Cards>
+  <Card
+    title="📖 ReadonlyContext"
+    description="Immutable access to invocation identity and session state"
+    href="/docs/framework/context/readonly-context"
+  />
+  <Card
+    title="🔁 CallbackContext"
+    description="Mutable state and artifact operations for callbacks"
+    href="/docs/framework/context/callback-context"
+  />
+  <Card
+    title="🛠️ ToolContext"
+    description="Memory search, artifact listing, and flow control for tools"
+    href="/docs/framework/context/tool-context"
+  />
+  <Card
+    title="📦 State"
+    description="Deep dive into session state, scoping, and persistence"
+    href="/docs/framework/session-state-memory/state"
+  />
+</Cards>

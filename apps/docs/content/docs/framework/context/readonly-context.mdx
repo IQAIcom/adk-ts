@@ -1,288 +1,151 @@
 ---
 title: ReadonlyContext
-description: Safe read-only access to basic invocation information for instruction providers and monitoring
+description: Read-only access to invocation identity and session state — used in instruction providers and monitoring callbacks.
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-ReadonlyContext provides safe, read-only access to invocation information without modification capabilities. It's designed for security-first scenarios where you need to observe execution state but shouldn't alter it.
-
-## Overview
-
-ReadonlyContext is the base context class that provides essential invocation information in a read-only format. It's primarily used for instruction providers, template rendering, and monitoring scenarios where safety is paramount.
+`ReadonlyContext` is the base context class in ADK-TS. It exposes everything your code needs to observe an invocation — who is running, what session it belongs to, and what the current state contains — without exposing any way to change that state. This makes it safe to pass to instruction providers, analytics hooks, and any other code that should read but never write.
 
 ```typescript
-import { ReadonlyContext } from "@iqai/adk";
+import type { ReadonlyContext } from "@iqai/adk";
 ```
 
 ## Properties
 
-### userContent
+### `userContent`
 
-The original user message that started the current invocation.
+The original message that triggered this invocation. Undefined for system-initiated operations.
 
 ```typescript
 get userContent(): Content | undefined
 ```
 
-<Callout type="info">
+### `invocationId`
 
-Returns `undefined` if the invocation wasn't triggered by user content (e.g.,
-system-initiated operations).
-
-</Callout>
-
-### invocationId
-
-Unique identifier for the current invocation, useful for tracking and logging.
+A unique identifier for this invocation, generated at the start of each `runner.run()` call. Use it to correlate logs and events.
 
 ```typescript
 get invocationId(): string
 ```
 
-### agentName
+### `agentName`
 
-Name of the agent currently executing within this context.
+The name of the agent currently executing within this context.
 
 ```typescript
 get agentName(): string
 ```
 
-### state
+### `appName`
 
-Read-only view of the current session state.
+The application name configured in the runner.
+
+```typescript
+get appName(): string
+```
+
+### `userId`
+
+The user ID associated with the current session.
+
+```typescript
+get userId(): string
+```
+
+### `sessionId`
+
+The ID of the current session.
+
+```typescript
+get sessionId(): string
+```
+
+### `state`
+
+A frozen snapshot of the current session state. Because the object is frozen, any attempt to write to it will throw a `TypeError` at runtime — a safety net that makes instruction providers safe by design.
 
 ```typescript
 get state(): Readonly<Record<string, any>>
 ```
 
-The state object is frozen to prevent accidental modifications and returns a snapshot of the current session state.
+<Callout type="info">
+  To write to state, use `CallbackContext` or `ToolContext`. Both expose a
+  mutable `State` object in place of this frozen snapshot.
+</Callout>
 
-## Common Use Cases
+## Instruction providers
 
-### Instruction Providers
+The most common use of `ReadonlyContext` is inside instruction provider functions. ADK-TS calls your function before each LLM request and uses the returned string as the system instruction. The function receives a `ReadonlyContext` so it can tailor the instructions to the current session without accidentally mutating anything.
 
-ReadonlyContext is perfect for generating dynamic instructions based on current execution state:
+This example greets the user by name, falls back gracefully if the name hasn't been set yet, and includes the invocation ID for traceability:
 
 ```typescript
-import { LlmAgent, ReadonlyContext } from "@iqai/adk";
-
-const dynamicInstruction = (ctx: ReadonlyContext): string => {
-  const userName = ctx.state.user?.name || "User";
-  const sessionCount = ctx.state.sessionCount || 0;
-
-  return `You are helping ${userName}. This is session #${sessionCount + 1}.
-          Invocation ID: ${ctx.invocationId}`;
-};
+import { LlmAgent } from "@iqai/adk";
+import type { ReadonlyContext } from "@iqai/adk";
 
 const agent = new LlmAgent({
-  name: "adaptive-agent",
-  description: "An agent with dynamic instructions",
+  name: "greeter",
+  description: "Greets users by name using session state",
   model: "gemini-2.5-flash",
-  instruction: dynamicInstruction,
+  instruction: (ctx: ReadonlyContext) => {
+    const name = ctx.state["user:name"] ?? "there";
+    const taskCount = (ctx.state["user:taskCount"] as number) ?? 0;
+
+    return [
+      `You are a helpful assistant. The user's name is ${name}.`,
+      taskCount > 0
+        ? `They have completed ${taskCount} tasks so far.`
+        : "This is their first session.",
+    ].join(" ");
+  },
 });
 ```
 
-### Template Rendering
+## Conditional instructions
 
-Use ReadonlyContext to render templates based on current state:
+Use the context to branch instruction content based on state. Each branch should return a complete, self-contained instruction string:
 
 ```typescript
-function renderTemplate(ctx: ReadonlyContext): string {
-  const template = `
-Hello! I'm ${ctx.agentName}.
-Current session state: ${JSON.stringify(ctx.state, null, 2)}
-Processing invocation: ${ctx.invocationId}
-  `;
+import type { ReadonlyContext } from "@iqai/adk";
 
-  return template.trim();
+function buildInstruction(ctx: ReadonlyContext): string {
+  const role = ctx.state["user:role"] as string | undefined;
+
+  if (role === "admin") {
+    return "You are an admin assistant. You may discuss internal configuration and user management.";
+  }
+
+  if (role === "premium") {
+    return "You are a premium assistant with access to advanced features. Help the user leverage them fully.";
+  }
+
+  return "You are a helpful assistant. Answer questions clearly and concisely.";
 }
 ```
 
-### Monitoring and Logging
+## Next steps
 
-ReadonlyContext provides safe access for monitoring operations:
-
-```typescript
-function logInvocationInfo(ctx: ReadonlyContext): void {
-  console.log(`[${ctx.invocationId}] Agent: ${ctx.agentName}`);
-  console.log(`[${ctx.invocationId}] State keys:`, Object.keys(ctx.state));
-
-  if (ctx.userContent) {
-    const textParts = ctx.userContent.parts
-      ?.filter(part => part.text)
-      .map(part => part.text);
-    console.log(`[${ctx.invocationId}] User message:`, textParts?.join(" "));
-  }
-}
-```
-
-## Security Benefits
-
-### Immutable State Access
-
-ReadonlyContext ensures that state cannot be accidentally modified:
-
-```typescript
-function safeStateAccess(ctx: ReadonlyContext) {
-  // This works - reading state
-  const userPreferences = ctx.state.preferences;
-
-  // This would throw an error - state is frozen
-  // ctx.state.newProperty = "value"; // TypeError: Cannot add property
-}
-```
-
-### Prevention of Side Effects
-
-By providing only read access, ReadonlyContext prevents unintended side effects in observation code:
-
-```typescript
-// Safe - no risk of modifying execution state
-const analyzeState = (ctx: ReadonlyContext) => {
-  return {
-    agentName: ctx.agentName,
-    stateSize: Object.keys(ctx.state).length,
-    hasUserContent: !!ctx.userContent,
-    invocationId: ctx.invocationId,
-  };
-};
-```
-
-## Advanced Patterns
-
-### Conditional Instruction Generation
-
-Generate instructions based on state conditions:
-
-```typescript
-const conditionalInstruction = (ctx: ReadonlyContext): string => {
-  const isFirstTime = !ctx.state.previousInteractions;
-  const userLevel = ctx.state.userLevel || "beginner";
-
-  if (isFirstTime) {
-    return "Welcome! I'll provide detailed explanations as this is your first interaction.";
-  }
-
-  if (userLevel === "expert") {
-    return "I'll provide concise, technical responses suitable for your expertise level.";
-  }
-
-  return "I'll adapt my responses based on our previous interactions.";
-};
-```
-
-### State Validation for Instructions
-
-Validate state before generating instructions:
-
-```typescript
-const validatedInstruction = (ctx: ReadonlyContext): string => {
-  // Validate required state properties
-  if (!ctx.state.userProfile) {
-    return "Please set up your user profile first by sharing your preferences.";
-  }
-
-  if (!ctx.state.currentTask) {
-    return "I'm ready to help! What would you like to work on?";
-  }
-
-  const task = ctx.state.currentTask;
-  return `Continuing with your ${task.type} task: "${task.name}". How can I assist?`;
-};
-```
-
-### Multi-Language Support
-
-Use state information for localization:
-
-```typescript
-const localizedInstruction = (ctx: ReadonlyContext): string => {
-  const language = ctx.state.userLanguage || "en";
-  const userName = ctx.state.user?.name || "User";
-
-  const greetings = {
-    en: `Hello ${userName}! How can I help you today?`,
-    es: `¡Hola ${userName}! ¿Cómo puedo ayudarte hoy?`,
-    fr: `Bonjour ${userName}! Comment puis-je vous aider aujourd'hui?`,
-  };
-
-  return greetings[language] || greetings.en;
-};
-```
-
-## Best Practices
-
-### State Access Patterns
-
-```typescript
-// Good - Safe state access with fallbacks
-const safeAccess = (ctx: ReadonlyContext) => {
-  const userPrefs = ctx.state.preferences || {};
-  const theme = userPrefs.theme || "default";
-  return theme;
-};
-
-// Good - Check for property existence
-const conditionalAccess = (ctx: ReadonlyContext) => {
-  if ("activeTask" in ctx.state) {
-    return `Working on: ${ctx.state.activeTask.name}`;
-  }
-  return "No active task";
-};
-```
-
-### Error Handling
-
-```typescript
-const robustInstruction = (ctx: ReadonlyContext): string => {
-  try {
-    const config = ctx.state.agentConfig;
-    if (!config) {
-      return "I'm ready to help! Please let me know what you'd like to do.";
-    }
-
-    return `I'm configured for ${config.mode} mode. ${config.description}`;
-  } catch (error) {
-    console.warn("Error accessing state in instruction provider:", error);
-    return "I'm here to help! What can I do for you?";
-  }
-};
-```
-
-### Performance Considerations
-
-```typescript
-// Good - Minimal state access
-const efficientInstruction = (ctx: ReadonlyContext): string => {
-  const { userLevel, currentMode } = ctx.state;
-  return `Mode: ${currentMode || "standard"}, Level: ${
-    userLevel || "intermediate"
-  }`;
-};
-
-// Avoid - Expensive operations in instruction providers
-const inefficientInstruction = (ctx: ReadonlyContext): string => {
-  // Don't do complex processing in instruction providers
-  const allStateKeys = Object.keys(ctx.state);
-  const sortedKeys = allStateKeys.sort();
-  const summary = sortedKeys.map(key => `${key}: ${ctx.state[key]}`).join(", ");
-  return `Full state: ${summary}`;
-};
-```
-
-## Limitations
-
-ReadonlyContext intentionally provides limited functionality:
-
-- **No State Modification**: Cannot change session state
-- **No Service Access**: No access to artifact, memory, or session services
-- **No Event Actions**: Cannot trigger actions or modify execution flow
-
-For scenarios requiring these capabilities, use CallbackContext, ToolContext, or InvocationContext as appropriate.
-
-## Related Contexts
-
-- **CallbackContext**: When you need to modify state or manage artifacts
-- **ToolContext**: For tool implementations requiring memory search and enhanced features
-- **InvocationContext**: For complete framework access in agent implementations
+<Cards>
+  <Card
+    title="🔁 CallbackContext"
+    description="Extends ReadonlyContext with mutable state and artifact operations"
+    href="/docs/framework/context/callback-context"
+  />
+  <Card
+    title="🛠️ ToolContext"
+    description="Memory search, artifact listing, and flow control for tools"
+    href="/docs/framework/context/tool-context"
+  />
+  <Card
+    title="💡 Context Patterns"
+    description="State scoping, anti-patterns, and testing strategies"
+    href="/docs/framework/context/context-patterns"
+  />
+  <Card
+    title="🔔 Callbacks"
+    description="How agent lifecycle callbacks receive context"
+    href="/docs/framework/callbacks"
+  />
+</Cards>
