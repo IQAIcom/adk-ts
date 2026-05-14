@@ -160,7 +160,14 @@ function buildMockToolContext(
     userContent: undefined,
     functionCallId: "call-001",
     state: new Proxy(state, {
-      get: (t, k) => (k === "get" ? (key: string) => t[key] : t[k as string]),
+      get: (t, k) => {
+        if (k === "get") return (key: string) => t[key];
+        if (k === "set")
+          return (key: string, val: unknown) => {
+            t[key] = val;
+          };
+        return t[k as string];
+      },
       set: (t, k, v) => {
         t[k as string] = v;
         return true;

@@ -161,12 +161,12 @@ Setting `endInvocation = true` on the context signals every part of the framewor
 import { CallbackContext } from "@iqai/adk";
 
 async function safetyCallback(ctx: CallbackContext) {
-  const callCount = (ctx.state["session:callCount"] as number) ?? 0;
+  const callCount = (ctx.state["callCount"] as number) ?? 0;
   if (callCount > 50) {
     ctx.invocationContext.endInvocation = true;
     return undefined;
   }
-  ctx.state["session:callCount"] = callCount + 1;
+  ctx.state["callCount"] = callCount + 1;
   return undefined;
 }
 ```

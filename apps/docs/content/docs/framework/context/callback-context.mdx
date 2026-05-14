@@ -108,8 +108,8 @@ const { runner } = await AgentBuilder.create("assistant")
   .withArtifactService(new InMemoryArtifactService())
   .withBeforeAgentCallback(async (ctx: CallbackContext) => {
     // Track how many times this agent has been called
-    const callCount = ((ctx.state["session:agentCalls"] as number) ?? 0) + 1;
-    ctx.state["session:agentCalls"] = callCount;
+    const callCount = ((ctx.state["agentCalls"] as number) ?? 0) + 1;
+    ctx.state["agentCalls"] = callCount;
 
     // Load a user profile saved in a previous session
     const profile = await ctx.loadArtifact("user-profile.json");
@@ -141,7 +141,7 @@ const { runner } = await AgentBuilder.create("summarizer")
       invocationId: ctx.invocationId,
       agentName: ctx.agentName,
       timestamp: new Date().toISOString(),
-      callCount: ctx.state["session:agentCalls"],
+      callCount: ctx.state["agentCalls"],
     };
 
     await ctx.saveArtifact("session-summary.json", {
