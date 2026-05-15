@@ -1,589 +1,183 @@
 ---
 title: ToolContext
-description: Enhanced context for tool execution with memory search and artifact management
+description: Memory search, artifact listing, and flow control — everything a tool needs to interact with the agent's runtime.
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-ToolContext extends CallbackContext with additional capabilities specifically designed for tool implementations. It provides memory search, artifact listing, and enhanced event action management.
-
-## Overview
-
-ToolContext is the most capable context available for tool implementations, providing access to memory services, enhanced artifact operations, and function call tracking.
+`ToolContext` extends `CallbackContext` with capabilities specific to tool execution: searching long-term memory, listing session artifacts, and triggering flow control actions. ADK-TS injects it automatically into every tool call — you never construct it yourself.
 
 ```typescript
 import { ToolContext } from "@iqai/adk";
 ```
 
-## Key Features
+For guidance on how to receive `ToolContext` in different tool styles (`createTool`, function tools, class-based tools), see [ToolContext in Tools](/docs/framework/tools/tool-context).
 
-- **All CallbackContext Features**: Mutable state, artifact load/save operations
-- **Memory Search**: Query long-term memory stores and knowledge bases
-- **Artifact Listing**: Enumerate available artifacts in the session
-- **Function Call Tracking**: Link tool executions to originating LLM function calls
-- **Enhanced Event Actions**: Direct access to action management via `actions` property
+## Added properties
 
-## Properties
+### `functionCallId`
 
-### functionCallId
-
-Unique identifier linking this tool execution to the LLM function call:
+The identifier the LLM assigned to this particular function call. ADK-TS generates one if the model didn't supply it. Use it when you need to correlate a tool response with the triggering call in logs or custom event processing.
 
 ```typescript
 functionCallId?: string
 ```
 
-This ID helps correlate tool responses with their originating function calls for debugging and event tracking.
+### `actions`
 
-### actions
-
-Direct access to event actions for flow control:
+A shorthand alias for `eventActions`. Use it to set flow control flags such as `transferToAgent` or `escalate`.
 
 ```typescript
 get actions(): EventActions
 ```
 
-Provides convenient access to `eventActions` with a shorter property name.
+### `session`
 
-## Enhanced Methods
+The current `Session` object, giving direct access to `session.id`, `session.state`, and `session.events`.
 
-### listArtifacts()
+```typescript
+get session(): Session
+```
 
-Lists all artifact filenames attached to the current session:
+### `sessionService`
+
+The `BaseSessionService` instance. Provides `createSession`, `getSession`, `listSessions`, `deleteSession`, and `endSession`.
+
+```typescript
+get sessionService(): BaseSessionService
+```
+
+### `memoryService`
+
+The `MemoryService` instance, or `undefined` if no memory service was configured in the runner. Always guard against `undefined` before calling methods on it.
+
+```typescript
+get memoryService(): MemoryService | undefined
+```
+
+## Methods
+
+### `listArtifacts()`
+
+Returns the filenames of every artifact currently saved in this session. Use it when your tool needs to discover what files are available before deciding which to load.
 
 ```typescript
 async listArtifacts(): Promise<string[]>
 ```
 
 ```typescript
-async function examineSessionArtifacts(toolContext: ToolContext) {
-  const artifacts = await toolContext.listArtifacts();
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
 
-  console.log(`Found ${artifacts.length} artifacts:`);
-  artifacts.forEach(filename => {
-    console.log(`- ${filename}`);
-  });
-
-  // Save artifact inventory to state
-  toolContext.state.artifactInventory = {
-    count: artifacts.length,
-    files: artifacts,
-    lastChecked: new Date().toISOString(),
-  };
-
-  return artifacts;
-}
-```
-
-### searchMemory()
-
-Search the memory service for relevant information:
-
-```typescript
-async searchMemory(query: string): Promise<SearchMemoryResponse>
-```
-
-```typescript
-async function findRelevantContext(
-  toolContext: ToolContext,
-  userQuery: string,
-) {
-  try {
-    const memoryResults = await toolContext.searchMemory(userQuery);
-
-    // Process search results
-    const relevantMemories = memoryResults.memories || [];
-
-    // Update state with findings
-    toolContext.state.lastMemorySearch = {
-      query: userQuery,
-      resultCount: relevantMemories.length,
-      timestamp: new Date().toISOString(),
-    };
-
-    return relevantMemories;
-  } catch (error) {
-    console.error("Memory search failed:", error);
-    toolContext.state.memorySearchError = {
-      query: userQuery,
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString(),
-    };
-    return [];
-  }
-}
-```
-
-<Callout type="info">
-
-Memory search requires a memory service to be configured in the runner or
-agent setup.
-
-</Callout>
-
-## Tool Implementation Patterns
-
-### Basic Tool Structure
-
-Most tools using ToolContext follow this pattern:
-
-```typescript
-import { BaseTool, ToolContext } from "@iqai/adk";
-
-export class MyTool extends BaseTool {
-  constructor() {
-    super({
-      name: "my_tool",
-      description: "Example tool using ToolContext",
-    });
-  }
-
-  async runAsync(args: any, context: ToolContext): Promise<any> {
-    // Your tool implementation here
-    return await this.processWithContext(args, context);
-  }
-
-  private async processWithContext(args: any, context: ToolContext) {
-    // Use context features
-    const artifacts = await context.listArtifacts();
-    const memories = await context.searchMemory(args.query);
-
-    // Update state
-    context.state.toolExecution = {
-      toolName: this.name,
-      functionCallId: context.functionCallId,
-      timestamp: new Date().toISOString(),
-    };
-
-    return { success: true };
-  }
-}
-```
-
-### Memory-Enhanced Tool
-
-Create tools that leverage memory for enhanced responses:
-
-```typescript
-import { FunctionTool, ToolContext } from "@iqai/adk";
-
-async function researchTopic(
-  params: { topic: string; depth: "basic" | "detailed" },
-  toolContext: ToolContext,
-) {
-  // Search memory for existing knowledge
-  const existingKnowledge = await toolContext.searchMemory(params.topic);
-
-  // Check for cached research
-  const cacheKey = `research_${params.topic}_${params.depth}`;
-  const cachedResearch = await toolContext.loadArtifact(`${cacheKey}.json`);
-
-  if (cachedResearch) {
-    toolContext.state.cacheHit = true;
-    return JSON.parse(cachedResearch.text || "{}");
-  }
-
-  // Perform new research combining memory and external sources
-  const research = {
-    topic: params.topic,
-    depth: params.depth,
-    existingKnowledge: existingKnowledge.memories || [],
-    newFindings: [], // Your research logic here
-    timestamp: new Date().toISOString(),
-  };
-
-  // Cache the results
-  await toolContext.saveArtifact(`${cacheKey}.json`, {
-    text: JSON.stringify(research, null, 2),
-  });
-
-  // Update search context in state
-  toolContext.state.lastResearch = {
-    topic: params.topic,
-    knowledgeFound: existingKnowledge.memories?.length || 0,
-    cached: false,
-  };
-
-  return research;
-}
-
-const researchTool = new FunctionTool(researchTopic, {
-  name: "research_topic",
-  description: "Research a topic using memory and external sources",
+const listFilesTool = createTool({
+  name: "list_files",
+  description: "List all files available in the session",
+  schema: z.object({}),
+  fn: async (_args, ctx: ToolContext) => {
+    const files = await ctx.listArtifacts();
+    return { files, count: files.length };
+  },
 });
 ```
 
-### Artifact Processing Tool
+<Callout type="info">
+  Throws if no artifact service is configured. Check that you've called
+  `.withArtifactService(...)` on the agent builder.
+</Callout>
 
-Tools that work with multiple artifacts:
+### `searchMemory()`
 
-```typescript
-async function processDocuments(
-  params: { operation: "summarize" | "analyze" | "compare" },
-  toolContext: ToolContext,
-) {
-  // Get all available documents
-  const allArtifacts = await toolContext.listArtifacts();
-  const documents = allArtifacts.filter(
-    name =>
-      name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".json"),
-  );
-
-  if (documents.length === 0) {
-    return { error: "No documents found to process" };
-  }
-
-  const results = [];
-
-  for (const docName of documents) {
-    const document = await toolContext.loadArtifact(docName);
-    if (!document?.text) continue;
-
-    let result;
-    switch (params.operation) {
-      case "summarize":
-        result = { summary: document.text.substring(0, 200) + "..." };
-        break;
-      case "analyze":
-        result = {
-          wordCount: document.text.split(" ").length,
-          paragraphs: document.text.split("\n\n").length,
-        };
-        break;
-      case "compare":
-        // Compare with memory knowledge
-        const related = await toolContext.searchMemory(
-          document.text.substring(0, 100),
-        );
-        result = { relatedMemories: related.memories?.length || 0 };
-        break;
-    }
-
-    results.push({
-      document: docName,
-      result: result,
-    });
-  }
-
-  // Save processing results
-  const reportName = `processing_report_${Date.now()}.json`;
-  await toolContext.saveArtifact(reportName, {
-    text: JSON.stringify(
-      {
-        operation: params.operation,
-        processedDocuments: results,
-        timestamp: new Date().toISOString(),
-      },
-      null,
-      2,
-    ),
-  });
-
-  // Update state
-  toolContext.state.lastProcessing = {
-    operation: params.operation,
-    documentsProcessed: results.length,
-    reportFile: reportName,
-  };
-
-  return {
-    operation: params.operation,
-    processedCount: results.length,
-    results: results,
-    reportFile: reportName,
-  };
-}
-```
-
-## Event Action Management
-
-### Flow Control Actions
-
-ToolContext provides direct access to flow control through the `actions` property:
+Searches the long-term memory store for records relevant to the query. Returns an array of `MemorySearchResult` objects, each with a `memory` record and a numeric `score` (0–1, higher is better).
 
 ```typescript
-async function smartExitTool(
-  params: { condition: string },
-  toolContext: ToolContext,
-) {
-  // Check condition against memory and state
-  const memoryCheck = await toolContext.searchMemory(params.condition);
-  const stateCheck = toolContext.state.exitConditions?.[params.condition];
-
-  if (memoryCheck.memories?.length > 0 || stateCheck) {
-    // Exit the current loop/flow
-    toolContext.actions.escalate = true;
-
-    return {
-      action: "exit",
-      reason: "Condition met",
-      condition: params.condition,
-    };
-  }
-
-  return {
-    action: "continue",
-    condition: params.condition,
-    status: "not_met",
-  };
-}
+async searchMemory(query: string): Promise<MemorySearchResult[]>
 ```
-
-### Agent Transfer
-
-Tools can transfer control to other agents:
 
 ```typescript
-async function intelligentTransfer(
-  params: { userQuery: string },
-  toolContext: ToolContext,
-) {
-  // Search memory for best agent for this query
-  const agentSuggestions = await toolContext.searchMemory(
-    `agent for ${params.userQuery}`,
-  );
+import { createTool, ToolContext } from "@iqai/adk";
+import type { MemorySearchResult } from "@iqai/adk";
+import { z } from "zod";
 
-  // Analyze current state
-  const currentAgent = toolContext.agentName;
-  const userHistory = toolContext.state.userHistory || [];
+const recallTool = createTool({
+  name: "recall",
+  description: "Search the user's long-term memory",
+  schema: z.object({ query: z.string() }),
+  fn: async ({ query }, ctx: ToolContext) => {
+    const results: MemorySearchResult[] = await ctx.searchMemory(query);
 
-  // Determine best agent based on memory and context
-  let targetAgent = "general_assistant"; // default
-
-  if (params.userQuery.includes("code")) {
-    targetAgent = "code_assistant";
-  } else if (params.userQuery.includes("research")) {
-    targetAgent = "research_assistant";
-  }
-
-  // Transfer to the determined agent
-  toolContext.actions.transferToAgent = targetAgent;
-
-  // Update state with transfer info
-  toolContext.state.lastTransfer = {
-    from: currentAgent,
-    to: targetAgent,
-    reason: params.userQuery,
-    timestamp: new Date().toISOString(),
-  };
-
-  return {
-    action: "transfer",
-    fromAgent: currentAgent,
-    toAgent: targetAgent,
-    reason: "Specialized agent better suited for this query",
-  };
-}
+    return results.map(r => ({
+      score: r.score,
+      content: r.memory.content,
+    }));
+  },
+});
 ```
 
-## Advanced Use Cases
+<Callout type="info">
+  Throws if no memory service is configured. You can also check
+  `ctx.memoryService` before calling to avoid the throw in optional scenarios.
+</Callout>
 
-### Multi-Source Information Synthesis
+## Flow control with `actions`
 
-Combine memory, artifacts, and state for comprehensive responses:
+The `actions` property exposes the `EventActions` for this tool call. Setting flags on it signals the framework to change execution flow after the tool returns.
+
+Transfer to another agent:
 
 ```typescript
-async function synthesizeInformation(
-  params: { topic: string },
-  toolContext: ToolContext,
-) {
-  // Gather information from all sources
-  const [memories, artifacts, state] = await Promise.all([
-    toolContext.searchMemory(params.topic),
-    toolContext.listArtifacts(),
-    Promise.resolve(toolContext.state),
-  ]);
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
 
-  // Load relevant artifacts
-  const relevantArtifacts = artifacts.filter(name =>
-    name.toLowerCase().includes(params.topic.toLowerCase()),
-  );
-
-  const artifactContents = await Promise.all(
-    relevantArtifacts.map(async name => ({
-      name,
-      content: await toolContext.loadArtifact(name),
-    })),
-  );
-
-  // Synthesize information
-  const synthesis = {
-    topic: params.topic,
-    sources: {
-      memories: memories.memories?.length || 0,
-      artifacts: artifactContents.length,
-      stateReferences: Object.keys(state).filter(key =>
-        key.toLowerCase().includes(params.topic.toLowerCase()),
-      ).length,
-    },
-    summary: `Found information about ${params.topic} from multiple sources`,
-    details: {
-      memoryInsights: memories.memories?.slice(0, 3) || [],
-      relevantFiles: relevantArtifacts,
-      stateData: state[params.topic] || null,
-    },
-  };
-
-  // Save comprehensive report
-  await toolContext.saveArtifact(
-    `synthesis_${params.topic}_${Date.now()}.json`,
-    {
-      text: JSON.stringify(synthesis, null, 2),
-    },
-  );
-
-  return synthesis;
-}
+const routeTool = createTool({
+  name: "route_to_billing",
+  description: "Transfer the conversation to the billing agent",
+  schema: z.object({}),
+  fn: (_args, ctx: ToolContext) => {
+    ctx.actions.transferToAgent = "billing_agent";
+    return { status: "transferring" };
+  },
+});
 ```
 
-### Context-Aware Decision Making
-
-Use all available context for intelligent decisions:
+Escalate out of the current loop:
 
 ```typescript
-async function makeContextualDecision(
-  params: { decision: string; options: string[] },
-  toolContext: ToolContext,
-) {
-  // Gather contextual information
-  const userHistory = toolContext.state.userHistory || [];
-  const recentChoices = toolContext.state.recentChoices || [];
-  const memoryGuidance = await toolContext.searchMemory(
-    `decision ${params.decision} options ${params.options.join(" ")}`,
-  );
+import { createTool, ToolContext } from "@iqai/adk";
+import { z } from "zod";
 
-  // Analyze patterns
-  const patterns = {
-    userPreference: analyzeUserPreferences(userHistory, params.options),
-    pastChoices: recentChoices.slice(-5),
-    memoryInsights: memoryGuidance.memories || [],
-  };
-
-  // Make intelligent choice
-  const recommendedOption = patterns.userPreference || params.options[0];
-
-  // Update decision history
-  toolContext.state.recentChoices = [
-    ...recentChoices.slice(-9), // Keep last 9
-    {
-      decision: params.decision,
-      recommended: recommendedOption,
-      timestamp: new Date().toISOString(),
-      functionCallId: toolContext.functionCallId,
-    },
-  ];
-
-  return {
-    decision: params.decision,
-    recommended: recommendedOption,
-    reasoning: patterns,
-    confidence: calculateConfidence(patterns),
-  };
-}
-
-function analyzeUserPreferences(
-  history: any[],
-  options: string[],
-): string | null {
-  // Analyze user history to determine preferences
-  // Implementation depends on your specific needs
-  return null;
-}
-
-function calculateConfidence(patterns: any): number {
-  // Calculate confidence score based on available patterns
-  return 0.7; // Placeholder
-}
+const escalateTool = createTool({
+  name: "escalate",
+  description: "Escalate to a human agent",
+  schema: z.object({ reason: z.string() }),
+  fn: ({ reason }, ctx: ToolContext) => {
+    ctx.actions.escalate = true;
+    return { escalated: true, reason };
+  },
+});
 ```
 
-## Best Practices
+## Next steps
 
-### Error Handling
-
-```typescript
-async function robustToolExecution(params: any, toolContext: ToolContext) {
-  try {
-    // Attempt operations with fallbacks
-    let result;
-
-    try {
-      const memories = await toolContext.searchMemory(params.query);
-      result = processWithMemory(memories);
-    } catch (memoryError) {
-      console.warn(
-        "Memory search failed, using local processing:",
-        memoryError,
-      );
-      result = processLocally(params);
-    }
-
-    // Save successful result
-    await toolContext.saveArtifact("operation_result.json", {
-      text: JSON.stringify(result, null, 2),
-    });
-
-    return result;
-  } catch (error) {
-    // Log error and update state
-    toolContext.state.lastError = {
-      tool: "robustToolExecution",
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString(),
-      functionCallId: toolContext.functionCallId,
-    };
-
-    return { error: "Operation failed", details: String(error) };
-  }
-}
-
-function processWithMemory(memories: any) {
-  // Implementation with memory results
-  return { source: "memory", data: memories };
-}
-
-function processLocally(params: any) {
-  // Fallback local processing
-  return { source: "local", data: params };
-}
-```
-
-### Resource Optimization
-
-```typescript
-async function optimizedToolExecution(params: any, toolContext: ToolContext) {
-  // Check cache first
-  const cacheKey = `tool_cache_${JSON.stringify(params)}`;
-  const cached = await toolContext.loadArtifact(cacheKey);
-
-  if (cached) {
-    toolContext.state.cacheHits = (toolContext.state.cacheHits || 0) + 1;
-    return JSON.parse(cached.text || "{}");
-  }
-
-  // Batch operations when possible
-  const [artifacts, memories] = await Promise.all([
-    toolContext.listArtifacts(),
-    toolContext.searchMemory(params.query || ""),
-  ]);
-
-  // Process efficiently
-  const result = {
-    artifacts: artifacts.length,
-    memories: memories.memories?.length || 0,
-    processed: true,
-  };
-
-  // Cache result
-  await toolContext.saveArtifact(cacheKey, {
-    text: JSON.stringify(result, null, 2),
-  });
-
-  return result;
-}
-```
-
-## Related Contexts
-
-- **CallbackContext**: Base class providing state management and artifact operations
-- **ReadonlyContext**: For read-only access without modification capabilities
-- **InvocationContext**: For complete framework access in agent implementations
+<Cards>
+  <Card
+    title="🔁 CallbackContext"
+    description="The parent class — mutable state and artifact operations"
+    href="/docs/framework/context/callback-context"
+  />
+  <Card
+    title="⚙️ InvocationContext"
+    description="Full service access for custom agent implementations"
+    href="/docs/framework/context/invocation-context"
+  />
+  <Card
+    title="📝 ToolContext in Tools"
+    description="How to receive ToolContext in createTool, function tools, and class-based tools"
+    href="/docs/framework/tools/tool-context"
+  />
+  <Card
+    title="💡 Context Patterns"
+    description="State scoping, anti-patterns, and testing strategies"
+    href="/docs/framework/context/context-patterns"
+  />
+</Cards>
