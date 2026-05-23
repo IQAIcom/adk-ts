@@ -1,280 +1,253 @@
 ---
 title: Context Integration
-description: Using artifacts through CallbackContext and ToolContext for file management and data processing
+description: Save and load artifacts inside ADK-TS agent callbacks and tools using CallbackContext and ToolContext.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-Artifacts are accessed through context objects that provide convenient methods for storing and retrieving binary data. Different context types offer varying levels of functionality depending on your use case.
+When you write a callback or a tool, the context object passed to your function already has artifact methods built in — you do not need to import or pass the service manually.
 
-<Callout type="info" title="Auto-save input blobs">
+- **`CallbackContext`** — available in `beforeAgentCallback`, `afterAgentCallback`, `beforeModelCallback`, and `afterModelCallback`. Provides `saveArtifact` and `loadArtifact`.
+- **`ToolContext`** — available inside tools. Extends `CallbackContext` and adds `listArtifacts()`, which lets a tool discover what files are available in the current session.
 
-When `saveInputBlobsAsArtifacts` is enabled in the run config, the runner saves any incoming user `inlineData` parts as artifacts automatically before appending the event. Enable it via `withRunConfig({ saveInputBlobsAsArtifacts: true })` on your agent builder, or per run. An `artifactService` on the `Runner` is required.
-
+<Callout type="info" title="Auto-saving user uploads">
+  If you enable `saveInputBlobsAsArtifacts: true` in your run config, the runner
+  automatically saves any `inlineData` parts from the user's message as
+  artifacts before the agent runs — no callback code needed. See [Runner
+  Configuration](/docs/framework/artifacts/runner-configuration#auto-save-user-uploads)
+  for setup details.
 </Callout>
 
-<Callout type="info" title="Prefer createTool">
+## Available methods
 
-Use `createTool` for concise, schema-validated tools instead of subclassing.
-See Recipes for examples.
+| Method                             | Available on       | Description                                                                                             |
+| ---------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------- |
+| `saveArtifact(filename, part)`     | Both               | Saves a new version of the artifact. Returns the version number (starts at `0`).                        |
+| `loadArtifact(filename, version?)` | Both               | Loads the latest version, or a specific version if you pass a number. Returns `undefined` if not found. |
+| `listArtifacts()`                  | `ToolContext` only | Returns the filenames of all artifacts in the current session.                                          |
 
+<Callout type="info" title="Deletion is not on contexts">
+  `deleteArtifact` is intentionally not exposed through context objects — call
+  it directly on the service instance. See [Cleanup and
+  Deletion](/docs/framework/artifacts/best-practices#cleanup-and-deletion).
 </Callout>
 
-## CallbackContext Access
+## Using artifacts in agent callbacks
 
-The `CallbackContext` provides basic artifact operations available in agent callbacks.
+`CallbackContext` is available in both `beforeAgentCallback` and `afterAgentCallback`. Use `beforeAgent` to load data the agent needs before it starts, and `afterAgent` to persist data once it finishes.
 
-### Available Methods
+<Tabs items={['Before agent — load', 'After agent — save']}>
+  <Tab value="Before agent — load">
+    Load user preferences and conversation history from previous sessions, then write them into state so the agent can reference them:
+
+    ```typescript
+    import { AgentBuilder, InMemoryArtifactService } from "@iqai/adk";
+    import type { CallbackContext } from "@iqai/adk";
+
+    const { runner } = await AgentBuilder.create("my_agent")
+      .withModel("gemini-2.5-flash")
+      .withArtifactService(new InMemoryArtifactService())
+      .withBeforeAgentCallback(async (ctx: CallbackContext) => {
+        // Load user preferences (user-scoped — persists across sessions)
+        const prefsArtifact = await ctx.loadArtifact("user:preferences.json");
+        if (prefsArtifact?.inlineData) {
+          const prefs = JSON.parse(
+            Buffer.from(prefsArtifact.inlineData.data, "base64").toString(),
+          );
+          ctx.state.set("theme", prefs.theme ?? "light");
+          ctx.state.set("user_preferences", prefs);
+        }
+
+        // Load conversation history (session-scoped)
+        const historyArtifact = await ctx.loadArtifact("conversation_history.json");
+        if (historyArtifact?.inlineData) {
+          const history = JSON.parse(
+            Buffer.from(historyArtifact.inlineData.data, "base64").toString(),
+          );
+          ctx.state.set("conversation_count", history.length);
+        }
+
+        return undefined;
+      })
+      .build();
+    ```
+
+  </Tab>
+
+  <Tab value="After agent — save">
+    Persist the conversation history and a session summary after each turn so they're available next time:
+
+    ```typescript
+    import { AgentBuilder, InMemoryArtifactService } from "@iqai/adk";
+    import type { CallbackContext } from "@iqai/adk";
+
+    const { runner } = await AgentBuilder.create("my_agent")
+      .withModel("gemini-2.5-flash")
+      .withArtifactService(new InMemoryArtifactService())
+      .withAfterAgentCallback(async (ctx: CallbackContext) => {
+        // Save conversation history
+        const history = ctx.state.get("conversation_history") ?? [];
+        await ctx.saveArtifact("conversation_history.json", {
+          inlineData: {
+            data: Buffer.from(JSON.stringify(history)).toString("base64"),
+            mimeType: "application/json",
+          },
+        });
+
+        // Save session summary if the agent produced one
+        const summary = ctx.state.get("session_summary");
+        if (summary) {
+          await ctx.saveArtifact("session_summary.json", {
+            inlineData: {
+              data: Buffer.from(JSON.stringify(summary)).toString("base64"),
+              mimeType: "application/json",
+            },
+          });
+        }
+
+        return undefined;
+      })
+      .build();
+    ```
+
+  </Tab>
+</Tabs>
+
+## Using artifacts in model callbacks
+
+`beforeModelCallback` fires before every LLM call and `afterModelCallback` fires after. Use them to inject context into state before the model runs, or to capture metadata from the response.
+
+<Tabs items={['Before model — load config', 'After model — save metadata']}>
+  <Tab value="Before model — load config">
+    Load a stored model config and inject its settings into state before each LLM call:
+
+    ```typescript
+    import { AgentBuilder, InMemoryArtifactService } from "@iqai/adk";
+    import type { CallbackContext, LlmRequest } from "@iqai/adk";
+
+    const { runner } = await AgentBuilder.create("my_agent")
+      .withModel("gemini-2.5-flash")
+      .withArtifactService(new InMemoryArtifactService())
+      .withBeforeModelCallback(async ({
+        callbackContext,
+      }: {
+        callbackContext: CallbackContext;
+        llmRequest: LlmRequest;
+      }) => {
+        const configArtifact = await callbackContext.loadArtifact("model_config.json");
+        if (configArtifact?.inlineData) {
+          const config = JSON.parse(
+            Buffer.from(configArtifact.inlineData.data, "base64").toString(),
+          );
+          callbackContext.state.set("temperature", config.temperature ?? 0.7);
+          callbackContext.state.set("max_tokens", config.maxTokens ?? 1000);
+        }
+
+        // Optionally load additional context to pass to the model
+        const contextArtifact = await callbackContext.loadArtifact("context_data.txt");
+        if (contextArtifact?.inlineData) {
+          const contextText = Buffer.from(
+            contextArtifact.inlineData.data,
+            "base64",
+          ).toString();
+          callbackContext.state.set("additional_context", contextText);
+        }
+
+        return undefined;
+      })
+      .build();
+    ```
+
+  </Tab>
+
+  <Tab value="After model — save metadata">
+    Record metadata about each model response — useful for auditing, cost tracking, or debugging:
+
+    ```typescript
+    import { AgentBuilder, InMemoryArtifactService } from "@iqai/adk";
+    import type { CallbackContext, LlmResponse } from "@iqai/adk";
+
+    const { runner } = await AgentBuilder.create("my_agent")
+      .withModel("gemini-2.5-flash")
+      .withArtifactService(new InMemoryArtifactService())
+      .withAfterModelCallback(async ({
+        callbackContext,
+      }: {
+        callbackContext: CallbackContext;
+        llmResponse: LlmResponse;
+      }) => {
+        const metadata = {
+          timestamp: new Date().toISOString(),
+          model: callbackContext.state.get("current_model"),
+          tokensUsed: callbackContext.state.get("tokens_used"),
+        };
+
+        await callbackContext.saveArtifact("response_metadata.json", {
+          inlineData: {
+            data: Buffer.from(JSON.stringify(metadata)).toString("base64"),
+            mimeType: "application/json",
+          },
+        });
+
+        return undefined;
+      })
+      .build();
+    ```
+
+  </Tab>
+</Tabs>
+
+## Using artifacts in tools
+
+Inside a tool, `ctx` is a `ToolContext`. It has all the same methods as `CallbackContext` plus `listArtifacts()`, which returns the filenames of every artifact in the current session. Use it to check what's available before loading.
 
 ```typescript
-class CallbackContext {
-  // Load an artifact by filename, optionally specifying version
-  async loadArtifact(
-    filename: string,
-    version?: number,
-  ): Promise<Part | undefined>;
+import { createTool } from "@iqai/adk";
+import * as z from "zod";
 
-  // Save an artifact and record it as a delta for the session
-  async saveArtifact(filename: string, artifact: Part): Promise<number>;
-}
-```
-
-<Callout type="info" title="Artifact Deletion">
-
-The `deleteArtifact` method is not exposed through `CallbackContext` or
-`ToolContext` for safety reasons. To delete artifacts, access the artifact
-service directly. See [Best
-Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion)
-for cleanup strategies.
-
-</Callout>
-
-### Basic Usage in Callbacks
-
-```typescript
-import { LlmAgent, CallbackContext } from "@iqai/adk";
-
-const beforeAgentCallback = async (callbackContext: CallbackContext) => {
-  try {
-    // Load user preferences
-    const prefsArtifact = await callbackContext.loadArtifact(
-      "user:preferences.json",
-    );
-
-    if (prefsArtifact) {
-      const preferences = JSON.parse(
-        Buffer.from(prefsArtifact.inlineData.data, "base64").toString(),
-      );
-
-      // Apply user preferences to session state
-      callbackContext.state.set("user_preferences", preferences);
-      callbackContext.state.set("theme", preferences.theme || "light");
+export const inspectFile = createTool({
+  name: "inspect_file",
+  description: "Describe a specific artifact by filename",
+  schema: z.object({ filename: z.string() }),
+  fn: async ({ filename }, ctx) => {
+    // Check what's available before loading
+    const files = await ctx.listArtifacts();
+    if (!files.includes(filename)) {
+      return { error: "File not found", available: files };
     }
 
-    // Load conversation history if available
-    const historyArtifact = await callbackContext.loadArtifact(
-      "conversation_history.json",
-    );
+    const artifact = await ctx.loadArtifact(filename);
 
-    if (historyArtifact) {
-      const history = JSON.parse(
-        Buffer.from(historyArtifact.inlineData.data, "base64").toString(),
-      );
-
-      callbackContext.state.set("conversation_count", history.length);
+    if (artifact?.text) {
+      return { filename, type: "text", sizeBytes: artifact.text.length };
     }
-  } catch (error) {
-    console.warn("Failed to load user data:", error);
-  }
 
-  return undefined;
-};
-
-const afterAgentCallback = async (callbackContext: CallbackContext) => {
-  try {
-    // Save updated conversation history
-    const currentHistory =
-      callbackContext.state.get("conversation_history") || [];
-    const historyArtifact = {
-      inlineData: {
-        data: Buffer.from(JSON.stringify(currentHistory)).toString("base64"),
-        mimeType: "application/json",
-      },
-    };
-
-    await callbackContext.saveArtifact(
-      "conversation_history.json",
-      historyArtifact,
-    );
-
-    // Save session summary
-    const summary = callbackContext.state.get("session_summary");
-    if (summary) {
-      const summaryArtifact = {
-        inlineData: {
-          data: Buffer.from(JSON.stringify(summary)).toString("base64"),
-          mimeType: "application/json",
-        },
+    if (artifact?.inlineData) {
+      return {
+        filename,
+        mimeType: artifact.inlineData.mimeType,
+        sizeBytes: Buffer.from(artifact.inlineData.data, "base64").length,
       };
-
-      await callbackContext.saveArtifact(
-        "session_summary.json",
-        summaryArtifact,
-      );
-    }
-  } catch (error) {
-    console.error("Failed to save session data:", error);
-  }
-
-  return undefined;
-};
-```
-
-### Model Callback Integration
-
-```typescript
-const beforeModelCallback = async ({
-  callbackContext,
-}: {
-  callbackContext: CallbackContext;
-}) => {
-  try {
-    // Load model configuration
-    const configArtifact =
-      await callbackContext.loadArtifact("model_config.json");
-
-    if (configArtifact) {
-      const config = JSON.parse(
-        Buffer.from(configArtifact.inlineData.data, "base64").toString(),
-      );
-
-      // Apply model-specific settings
-      callbackContext.state.set("temperature", config.temperature || 0.7);
-      callbackContext.state.set("max_tokens", config.maxTokens || 1000);
     }
 
-    // Load context files for the model
-    const contextArtifact =
-      await callbackContext.loadArtifact("context_data.txt");
-
-    if (contextArtifact) {
-      const contextText = Buffer.from(
-        contextArtifact.inlineData.data,
-        "base64",
-      ).toString();
-
-      // Add context to the request (implementation depends on your setup)
-      callbackContext.state.set("additional_context", contextText);
-    }
-  } catch (error) {
-    console.warn("Failed to load model configuration:", error);
-  }
-
-  return undefined;
-};
-
-const afterModelCallback = async ({
-  callbackContext,
-}: {
-  callbackContext: CallbackContext;
-}) => {
-  try {
-    // Save model response metadata
-    const responseMetadata = {
-      timestamp: new Date().toISOString(),
-      model: callbackContext.state.get("current_model"),
-      tokens_used: callbackContext.state.get("tokens_used"),
-    };
-
-    const metadataArtifact = {
-      inlineData: {
-        data: Buffer.from(JSON.stringify(responseMetadata)).toString("base64"),
-        mimeType: "application/json",
-      },
-    };
-
-    await callbackContext.saveArtifact(
-      "response_metadata.json",
-      metadataArtifact,
-    );
-  } catch (error) {
-    console.error("Failed to save response metadata:", error);
-  }
-
-  return undefined;
-};
+    return { error: "Could not read file" };
+  },
+});
 ```
 
-## ToolContext Access
+## Next steps
 
-The `ToolContext` extends `CallbackContext` with additional artifact management capabilities.
-
-### Enhanced Methods
-
-```typescript
-class ToolContext extends CallbackContext {
-  // Inherited from CallbackContext
-  async loadArtifact(
-    filename: string,
-    version?: number,
-  ): Promise<Part | undefined>;
-  async saveArtifact(filename: string, artifact: Part): Promise<number>;
-
-  // Additional tool-specific methods
-  async listArtifacts(): Promise<string[]>;
-}
-```
-
-<Callout type="info" title="Artifact Deletion">
-
-The `deleteArtifact` method is not exposed through `ToolContext` for safety
-reasons. To delete artifacts, access the artifact service directly. See [Best
-Practices](/docs/framework/artifacts/best-practices#artifact-cleanup-and-deletion)
-for cleanup strategies.
-
-</Callout>
-
-### File Processing Tools
-
-See focused, production-ready examples in the Recipes page:
-
-- Upload → process → save results
-- Generate media → save + reuse
-- Cache expensive outputs
-
-[Open recipes](/docs/framework/artifacts/recipes)
-
-### Document Processing Tool
-
-For end-to-end document handling examples, see the recipe collection:
-
-- Text extraction (plain text)
-- Simple summarization
-- Format conversion
-
-[Open recipes](/docs/framework/artifacts/recipes)
-
-## Report Generation
-
-See Recipes for JSON and CSV report generation with concise code.
-
-[Open recipes](/docs/framework/artifacts/recipes)
-
-## File Processing
-
-See the end-to-end file processing flow in the Recipes page.
-
-[Open recipes](/docs/framework/artifacts/recipes)
-
-## Media Creation
-
-See Recipes for a minimal SVG/image generation and save workflow.
-
-[Open recipes](/docs/framework/artifacts/recipes)
-
-<Callout type="info">
-
-Context integration provides a convenient abstraction over the artifact
-service, handling session scoping and error management automatically.
-
-</Callout>
+<Cards>
+  <Card
+    title="🍳 Recipes"
+    description="Full upload → process → save patterns and media generation"
+    href="/docs/framework/artifacts/recipes"
+  />
+  <Card
+    title="🗂️ Scoping & Versioning"
+    description="Session vs user namespaces and how versions work"
+    href="/docs/framework/artifacts/scoping-and-versioning"
+  />
+</Cards>

@@ -4,5 +4,6 @@ export {
 	type ParsedArtifactUri,
 	parseArtifactUri,
 } from "./artifact-util";
+export type { BaseArtifactService } from "./base-artifact-service";
 export { GcsArtifactService } from "./gcs-artifact-service";
 export { InMemoryArtifactService } from "./in-memory-artifact-service";

@@ -91,7 +91,7 @@ const developerLinks = [
 ];
 
 const resourceLinks = [
-	{ href: "https://blog.iqai.com/", text: "Blog", external: true },
+	{ href: "https://blog.iqai.com/tag/dev//", text: "Blog", external: true },
 	{ href: "/showcase", text: "Showcase" },
 	{
 		href: "https://github.com/IQAIcom/adk-ts-samples",
@@ -112,7 +112,7 @@ const supportLinks = [
 		external: true,
 	},
 	{
-		href: "https://github.com/IQAIcom/adk-ts/blob/main/CONTRIBUTION.md",
+		href: "https://github.com/IQAIcom/adk-ts/blob/main/CONTRIBUTING.md",
 		text: "Contributing",
 		external: true,
 	},

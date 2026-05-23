@@ -1,466 +1,179 @@
 ---
 title: CallbackContext
-description: State management and artifact operations for agent lifecycle callbacks
+description: Mutable state and artifact operations for agent lifecycle callbacks.
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-CallbackContext extends ReadonlyContext with state modification capabilities and artifact operations. It's designed for agent lifecycle callbacks where you need to manage state and handle file operations.
-
-## Overview
-
-CallbackContext provides mutable access to session state and artifact management capabilities. It automatically tracks state changes and integrates with the event system for proper state synchronization.
+`CallbackContext` extends `ReadonlyContext` with the ability to write to session state and interact with the artifact service. ADK-TS passes it to every agent lifecycle callback — `beforeAgentCallback`, `afterAgentCallback`, `beforeModelCallback`, and `afterModelCallback`.
 
 ```typescript
 import { CallbackContext } from "@iqai/adk";
 ```
 
-## Key Features
+## Added properties
 
-- **Mutable State**: Read and write session state with automatic change tracking
-- **Artifact Management**: Load and save artifacts with session integration
-- **Event Integration**: Automatic state delta tracking through the event system
-- **Inherited Properties**: All ReadonlyContext properties (userContent, invocationId, agentName)
+### `state`
 
-## Properties
-
-### state (Mutable)
-
-Unlike ReadonlyContext, CallbackContext provides a mutable state object:
+A mutable `State` object that replaces the frozen read-only snapshot from `ReadonlyContext`. Writes are tracked as a delta and flushed to the session store at the end of the turn.
 
 ```typescript
 get state(): State
 ```
 
-The state object supports direct modification and automatically tracks changes:
+You can use bracket notation or the `set` / `get` methods interchangeably:
 
 ```typescript
-function updateUserPreferences(ctx: CallbackContext) {
-  // Direct state modification - changes are tracked automatically
-  ctx.state.userPreferences = {
-    theme: "dark",
-    language: "en",
-    notifications: true,
-  };
+// Bracket assignment (tracked automatically)
+ctx.state["user:name"] = "Alice";
 
-  // Nested modifications also work
-  ctx.state.user = ctx.state.user || {};
-  ctx.state.user.lastActive = new Date().toISOString();
-}
+// Equivalent method call
+ctx.state.set("user:name", "Alice");
+
+// Reading back
+const name = ctx.state["user:name"];
+// or
+const name = ctx.state.get("user:name");
 ```
 
-### eventActions
+### `eventActions`
 
-Access to the event actions for advanced state and flow control:
+The `EventActions` instance for this callback turn. Normally you don't need to access this directly — the framework reads it after the callback returns. It is exposed for advanced use cases such as setting `skipSummarization` on function response callbacks.
 
 ```typescript
 get eventActions(): EventActions
 ```
 
-This provides access to underlying event tracking and action management.
+### `invocationContext`
 
-## Artifact Operations
+The underlying `InvocationContext` for this invocation, provided for advanced scenarios where you need direct service access inside a callback.
 
-### loadArtifact()
+```typescript
+get invocationContext(): InvocationContext
+```
 
-Loads an artifact attached to the current session:
+## Artifact methods
+
+Both methods throw if no artifact service is configured in the runner.
+
+### `loadArtifact()`
+
+Loads a previously saved artifact. Omit `version` to retrieve the latest.
 
 ```typescript
 async loadArtifact(filename: string, version?: number): Promise<Part | undefined>
 ```
 
-```typescript
-async function processUserDocument(ctx: CallbackContext) {
-  // Load the latest version of a document
-  const document = await ctx.loadArtifact("user-document.pdf");
+### `saveArtifact()`
 
-  if (document) {
-    console.log("Document loaded successfully");
-    // Process the document content
-  }
-
-  // Load a specific version
-  const previousVersion = await ctx.loadArtifact("user-document.pdf", 2);
-}
-```
-
-<Callout type="info">
-
-Requires an artifact service to be configured in the runner or agent setup.
-
-</Callout>
-
-### saveArtifact()
-
-Saves an artifact and records it in the session:
+Saves an artifact and registers it in the event delta so the session reflects the new version. Returns the version number assigned to this save (starting at 0).
 
 ```typescript
 async saveArtifact(filename: string, artifact: Part): Promise<number>
 ```
 
-```typescript
-async function saveProcessedData(ctx: CallbackContext, data: any) {
-  // Create an artifact part
-  const artifactPart = {
-    text: JSON.stringify(data, null, 2),
-  };
+<Callout type="info">
+  Artifacts are `Part` objects from `@google/genai`. A text artifact is `{
+  text: "..." }`. For binary data use `{ inlineData: { mimeType, data } }`. See
+  the [Artifacts](/docs/framework/artifacts) section for details.
+</Callout>
 
-  // Save the artifact
-  const version = await ctx.saveArtifact("processed-data.json", artifactPart);
+## State scoping
 
-  // Update state with artifact reference
-  ctx.state.lastProcessedData = {
-    filename: "processed-data.json",
-    version: version,
-    timestamp: new Date().toISOString(),
-  };
+ADK-TS uses key prefixes to scope state to different lifetimes. Choose the prefix that matches how long you need the value to persist:
 
-  return version;
-}
-```
+| Prefix        | Scope                                      | Example                    |
+| ------------- | ------------------------------------------ | -------------------------- |
+| _(no prefix)_ | Current session                            | `ctx.state["currentTask"]` |
+| `user:`       | Across all sessions for this user          | `ctx.state["user:name"]`   |
+| `app:`        | Shared across all users of this app        | `ctx.state["app:version"]` |
+| `temp:`       | Current turn only (cleared after response) | `ctx.state["temp:draft"]`  |
 
-## Common Use Cases
+## Common callback patterns
 
-### Pre-Processing Callbacks
+### Before-agent callback — enrich context
 
-Modify state before agent or model execution:
+A `beforeAgentCallback` runs before each agent call. Use it to hydrate state from an artifact, increment counters, or inject metadata the agent needs:
 
 ```typescript
-async function preprocessCallback(ctx: CallbackContext) {
-  // Add session metadata
-  ctx.state.sessionStart = ctx.state.sessionStart || new Date().toISOString();
-  ctx.state.requestCount = (ctx.state.requestCount || 0) + 1;
+import {
+  AgentBuilder,
+  CallbackContext,
+  InMemoryArtifactService,
+} from "@iqai/adk";
 
-  // Load user context if available
-  const userProfile = await ctx.loadArtifact("user-profile.json");
-  if (userProfile && userProfile.text) {
-    ctx.state.userContext = JSON.parse(userProfile.text);
-  }
+const { runner } = await AgentBuilder.create("assistant")
+  .withModel("gemini-2.5-flash")
+  .withArtifactService(new InMemoryArtifactService())
+  .withBeforeAgentCallback(async (ctx: CallbackContext) => {
+    // Track how many times this agent has been called
+    const callCount = ((ctx.state["agentCalls"] as number) ?? 0) + 1;
+    ctx.state["agentCalls"] = callCount;
 
-  // Set processing flags
-  ctx.state.preprocessing = {
-    completed: true,
-    timestamp: new Date().toISOString(),
-  };
-}
-```
-
-### Post-Processing Callbacks
-
-Update state based on execution results:
-
-```typescript
-async function postprocessCallback(ctx: CallbackContext) {
-  // Update interaction history
-  const history = ctx.state.interactionHistory || [];
-  history.push({
-    invocationId: ctx.invocationId,
-    agentName: ctx.agentName,
-    timestamp: new Date().toISOString(),
-    userContent: ctx.userContent,
-  });
-
-  // Keep only last 10 interactions
-  ctx.state.interactionHistory = history.slice(-10);
-
-  // Save session summary
-  const summary = {
-    totalInteractions: history.length,
-    lastAgent: ctx.agentName,
-    lastUpdate: new Date().toISOString(),
-  };
-
-  await ctx.saveArtifact("session-summary.json", {
-    text: JSON.stringify(summary, null, 2),
-  });
-}
-```
-
-### Artifact Processing
-
-Handle file uploads and processing:
-
-```typescript
-async function processUploadedFile(ctx: CallbackContext, filename: string) {
-  // Load the uploaded file
-  const file = await ctx.loadArtifact(filename);
-
-  if (!file) {
-    ctx.state.error = `File ${filename} not found`;
-    return;
-  }
-
-  // Process based on file type
-  let processedContent;
-  if (filename.endsWith(".json")) {
-    processedContent = JSON.parse(file.text || "{}");
-  } else if (filename.endsWith(".txt")) {
-    processedContent = {
-      content: file.text,
-      wordCount: file.text?.split(" ").length || 0,
-    };
-  }
-
-  // Save processed result
-  const processedFilename = `processed-${filename}`;
-  await ctx.saveArtifact(processedFilename, {
-    text: JSON.stringify(processedContent, null, 2),
-  });
-
-  // Update state
-  ctx.state.processedFiles = ctx.state.processedFiles || [];
-  ctx.state.processedFiles.push({
-    original: filename,
-    processed: processedFilename,
-    timestamp: new Date().toISOString(),
-  });
-}
-```
-
-## State Management Patterns
-
-### State Scoping
-
-Use proper state prefixes for different scopes:
-
-```typescript
-function manageStateScopes(ctx: CallbackContext) {
-  // Session-specific state (persists across agent calls)
-  ctx.state.sessionData = { sessionId: "abc123" };
-
-  // User-specific state (persists across sessions)
-  ctx.state["user.preferences"] = { theme: "dark" };
-
-  // App-specific state (shared across all users)
-  ctx.state["app.config"] = { version: "1.0.0" };
-
-  // Temporary state (cleared at session end)
-  ctx.state["temp.processing"] = { status: "active" };
-}
-```
-
-### Conditional State Updates
-
-Update state based on conditions:
-
-```typescript
-async function conditionalStateUpdate(ctx: CallbackContext) {
-  // Check if this is a new user
-  if (!ctx.state.userInitialized) {
-    ctx.state.userInitialized = true;
-    ctx.state.userJoinDate = new Date().toISOString();
-
-    // Save welcome artifact
-    await ctx.saveArtifact("welcome-message.txt", {
-      text: "Welcome to the system! This is your first interaction.",
-    });
-  }
-
-  // Update last seen
-  ctx.state.lastSeen = new Date().toISOString();
-
-  // Track user level progression
-  const interactionCount = (ctx.state.interactionCount || 0) + 1;
-  ctx.state.interactionCount = interactionCount;
-
-  if (interactionCount === 5) {
-    ctx.state.userLevel = "intermediate";
-  } else if (interactionCount === 20) {
-    ctx.state.userLevel = "advanced";
-  }
-}
-```
-
-### Error Handling and Recovery
-
-Implement robust error handling for state operations:
-
-```typescript
-async function robustStateUpdate(ctx: CallbackContext) {
-  try {
-    // Attempt to load previous state
-    const backup = await ctx.loadArtifact("state-backup.json");
-
-    if (backup) {
-      const backupState = JSON.parse(backup.text || "{}");
-      // Merge with current state
-      Object.assign(ctx.state, backupState);
+    // Load a user profile saved in a previous session
+    const profile = await ctx.loadArtifact("user-profile.json");
+    if (profile?.text) {
+      ctx.state["user:profile"] = JSON.parse(profile.text);
     }
 
-    // Perform operations
-    ctx.state.operationStarted = new Date().toISOString();
+    return undefined; // Returning undefined lets execution continue normally
+  })
+  .build();
+```
 
-    // Save new backup
-    await ctx.saveArtifact("state-backup.json", {
-      text: JSON.stringify(ctx.state, null, 2),
-    });
-  } catch (error) {
-    console.error("Error in state update:", error);
+### After-agent callback — persist results
 
-    // Set error state
-    ctx.state.lastError = {
-      message: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString(),
+An `afterAgentCallback` runs after the agent produces its response. Use it to save a summary or checkpoint before the turn closes:
+
+```typescript
+import {
+  AgentBuilder,
+  CallbackContext,
+  InMemoryArtifactService,
+} from "@iqai/adk";
+
+const { runner } = await AgentBuilder.create("summarizer")
+  .withModel("gemini-2.5-flash")
+  .withArtifactService(new InMemoryArtifactService())
+  .withAfterAgentCallback(async (ctx: CallbackContext) => {
+    const summary = {
       invocationId: ctx.invocationId,
-    };
-  }
-}
-```
-
-## Advanced Patterns
-
-### State Migration
-
-Handle state schema changes:
-
-```typescript
-async function migrateState(ctx: CallbackContext) {
-  const currentVersion = ctx.state.stateVersion || 1;
-
-  if (currentVersion < 2) {
-    // Migrate from v1 to v2
-    if (ctx.state.oldUserData) {
-      ctx.state.userData = {
-        profile: ctx.state.oldUserData,
-        migrated: true,
-      };
-      delete ctx.state.oldUserData;
-    }
-    ctx.state.stateVersion = 2;
-  }
-
-  if (currentVersion < 3) {
-    // Migrate from v2 to v3
-    if (ctx.state.preferences) {
-      ctx.state["user.preferences"] = ctx.state.preferences;
-      delete ctx.state.preferences;
-    }
-    ctx.state.stateVersion = 3;
-  }
-}
-```
-
-### Batch Artifact Operations
-
-Process multiple artifacts efficiently:
-
-```typescript
-async function processBatchArtifacts(
-  ctx: CallbackContext,
-  filenames: string[],
-) {
-  const results = [];
-
-  for (const filename of filenames) {
-    try {
-      const artifact = await ctx.loadArtifact(filename);
-      if (artifact) {
-        // Process artifact
-        const processed = processArtifact(artifact);
-
-        // Save processed version
-        const processedName = `batch-${Date.now()}-${filename}`;
-        await ctx.saveArtifact(processedName, processed);
-
-        results.push({
-          original: filename,
-          processed: processedName,
-          success: true,
-        });
-      }
-    } catch (error) {
-      results.push({
-        original: filename,
-        error: error instanceof Error ? error.message : String(error),
-        success: false,
-      });
-    }
-  }
-
-  // Update state with batch results
-  ctx.state.batchProcessing = {
-    timestamp: new Date().toISOString(),
-    results: results,
-    totalProcessed: results.filter(r => r.success).length,
-  };
-}
-
-function processArtifact(artifact: any) {
-  // Implementation depends on artifact type
-  return {
-    text: `Processed: ${artifact.text || "No text content"}`,
-  };
-}
-```
-
-## Best Practices
-
-### State Consistency
-
-```typescript
-// Good - Atomic state updates
-function atomicUpdate(ctx: CallbackContext) {
-  const userData = ctx.state.userData || {};
-  userData.lastUpdate = new Date().toISOString();
-  userData.version = (userData.version || 0) + 1;
-  ctx.state.userData = userData;
-}
-
-// Avoid - Partial state modifications that could leave inconsistent state
-function inconsistentUpdate(ctx: CallbackContext) {
-  ctx.state.userData.lastUpdate = new Date().toISOString();
-  // If this fails, state is partially updated
-  ctx.state.userData.version = (ctx.state.userData.version || 0) + 1;
-}
-```
-
-### Error Recovery
-
-```typescript
-async function safeArtifactOperation(ctx: CallbackContext) {
-  const originalState = JSON.stringify(ctx.state);
-
-  try {
-    // Perform operation
-    const result = await ctx.loadArtifact("important-data.json");
-    ctx.state.importantData = JSON.parse(result?.text || "{}");
-  } catch (error) {
-    // Restore original state on error
-    Object.assign(ctx.state, JSON.parse(originalState));
-
-    // Log error state
-    ctx.state.lastError = {
-      operation: "loadImportantData",
-      error: error instanceof Error ? error.message : String(error),
+      agentName: ctx.agentName,
       timestamp: new Date().toISOString(),
+      callCount: ctx.state["agentCalls"],
     };
-  }
-}
+
+    await ctx.saveArtifact("session-summary.json", {
+      text: JSON.stringify(summary, null, 2),
+    });
+
+    return undefined;
+  })
+  .build();
 ```
 
-### Resource Management
+## Next steps
 
-```typescript
-async function efficientArtifactManagement(ctx: CallbackContext) {
-  // Check if artifact exists before loading
-  const artifactList = ctx.state.availableArtifacts || [];
-
-  if (artifactList.includes("user-data.json")) {
-    const userData = await ctx.loadArtifact("user-data.json");
-    // Process userData
-  }
-
-  // Clean up old artifacts
-  const cutoffDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-  ctx.state.artifactCleanup = {
-    lastRun: new Date().toISOString(),
-    cutoffDate: cutoffDate.toISOString(),
-  };
-}
-```
-
-## Related Contexts
-
-- **ReadonlyContext**: For read-only access without state modification
-- **ToolContext**: When you need memory search and enhanced tool capabilities
-- **InvocationContext**: For complete framework access in agent implementations
+<Cards>
+  <Card
+    title="📖 ReadonlyContext"
+    description="The base class — read-only access to invocation identity and state"
+    href="/docs/framework/context/readonly-context"
+  />
+  <Card
+    title="🛠️ ToolContext"
+    description="Extends CallbackContext with memory search and artifact listing"
+    href="/docs/framework/context/tool-context"
+  />
+  <Card
+    title="🗂️ Artifacts"
+    description="Artifact scoping, versioning, and service implementations"
+    href="/docs/framework/artifacts"
+  />
+  <Card
+    title="🔔 Callbacks"
+    description="All callback types and how they receive context"
+    href="/docs/framework/callbacks"
+  />
+</Cards>

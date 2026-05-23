@@ -24,7 +24,7 @@ export function createBranchContextForSubAgent(
 		agent: subAgent,
 		userContent: invocationContext.userContent,
 		session: invocationContext.session,
-		endInvocation: invocationContext.endInvocation,
+		invocationFlags: invocationContext.getInvocationFlags(),
 		liveRequestQueue: invocationContext.liveRequestQueue,
 		activeStreamingTools: invocationContext.activeStreamingTools,
 		transcriptionCache: invocationContext.transcriptionCache,

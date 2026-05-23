@@ -1,185 +1,119 @@
 ---
 title: Evaluation Concepts
-description: Core principles and challenges in agent evaluation
+description: Why agent evaluation differs from traditional testing, and the principles behind the ADK-TS evaluation framework
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Agent evaluation differs fundamentally from traditional software testing due to the probabilistic and conversational nature of LLM-based systems.
+## Why You Can't Just Unit Test an Agent
 
-## Why Evaluate Agents?
+With traditional code, you write a test like `expect(add(2, 2)).toBe(4)` and it either passes or fails. Agents don't work that way — ask the same question twice and you might get two different (but equally valid) answers. The tools it calls, the reasoning path it takes, even the phrasing of its response can all vary between runs.
 
-Traditional software testing relies on deterministic "pass/fail" assertions, but LLM agents introduce variability that requires different evaluation approaches.
+This means standard assertions break down. You need a different approach: instead of checking for exact matches, you score the agent's behavior across multiple dimensions and check that those scores stay above acceptable thresholds.
 
-### Challenges with Agent Testing
+### What Makes Agents Hard to Test
 
-- **Probabilistic Responses**: LLMs generate different outputs for the same input
-- **Multi-Step Reasoning**: Agents follow complex trajectories to reach solutions
-- **Tool Interactions**: Evaluation must consider tool usage patterns and effectiveness
-- **Context Sensitivity**: Performance varies based on conversation context and history
-- **Emergent Behavior**: Complex interactions between components can produce unexpected results
+- **Non-deterministic outputs** — the same input can produce different valid responses across runs
+- **Variable tool usage** — agents may take different paths through tool calls and reasoning to reach the same result
+- **Argument sensitivity** — it's not just _which_ tools are called, but _what arguments_ they're called with
+- **Stateful behavior** — performance can shift based on conversation history and session state
+- **Compound effects** — changes to prompts, tools, or models can interact in unexpected ways
 
-### Benefits of Systematic Evaluation
+### What You Get From Evaluation
 
-- **Quality Assurance**: Ensure consistent performance across different scenarios
-- **Regression Testing**: Detect performance degradation during development
-- **Performance Optimization**: Identify areas for improvement in agent behavior
-- **Production Readiness**: Validate agents before deployment to real users
-- **Trust Building**: Demonstrate reliability to stakeholders and users
+- **Regression detection** — catch performance drops before they reach users
+- **Confidence in changes** — modify prompts, swap models, or add tools knowing you have a safety net
+- **Production readiness** — validate agent behavior systematically before deployment
+- **Measurable progress** — track improvement with concrete scores over time
 
-<Callout type="info" title="Investment in Evaluation">
+<Callout type="info" title="Start Early">
 
-Setting up evaluation may seem like extra work, but automating evaluations
-pays off quickly and is essential for progressing beyond prototype stage.
+Even a handful of test cases with basic thresholds catches most regressions. You don't need a perfect evaluation suite to get value — start simple and
+expand as your agent matures.
 
 </Callout>
 
 ## Evaluation Dimensions
 
-Agent evaluation encompasses multiple aspects of performance, requiring comprehensive assessment beyond simple output quality.
+The evaluation framework measures agents across three dimensions, each with dedicated metrics.
 
-### Trajectory Evaluation
+### Tool Trajectory
 
-Analyzing the sequence of steps agents take to reach solutions:
+Did the agent call the right tools, in the right order, with the right arguments?
 
-**Key Aspects:**
+The `TrajectoryEvaluator` compares the actual sequence of tool calls against an expected sequence defined in your test cases. It performs an exact match on tool names and arguments.
 
-- **Tool Selection**: Choice of appropriate tools for each task
-- **Step Ordering**: Logical sequence of actions and decisions
-- **Efficiency**: Minimizing unnecessary steps and redundant actions
-- **Strategy**: Overall approach to problem-solving
-- **Error Recovery**: How agents handle and recover from mistakes
+**What it catches:**
 
-**Common Patterns:**
+- Wrong tool selected for a task
+- Missing tool calls in a workflow
+- Incorrect arguments passed to tools
+- Unnecessary extra tool calls
 
-- **Exact Match**: Perfect alignment with expected trajectory
-- **In-Order Match**: Correct actions in proper sequence, allowing extra steps
-- **Any-Order Match**: Required actions completed regardless of order
-- **Precision/Recall**: Statistical measures of trajectory accuracy
+### Response Quality
 
-### Response Quality Evaluation
+Is the agent's final response accurate and relevant?
 
-Assessing the final outputs provided to users:
+Two approaches are available:
 
-**Quality Dimensions:**
+- **ROUGE-1 matching** — compares word overlap between the actual response and a reference response. Fast, deterministic, and good for factual answers.
+- **LLM-as-judge** — uses a separate LLM to qualitatively assess response quality. Better for open-ended responses where multiple valid answers exist.
 
-- **Accuracy**: Correctness of information and answers
-- **Relevance**: Appropriateness to user queries and context
-- **Completeness**: Coverage of all necessary information
-- **Clarity**: Clear communication and appropriate tone
-- **Consistency**: Reliable behavior across similar scenarios
+### Safety
 
-**Evaluation Methods:**
+Is the response safe and harmless?
 
-- **Reference Comparison**: Compare against expected responses
-- **Semantic Similarity**: Measure meaning similarity using metrics like ROUGE
-- **Human Assessment**: Manual evaluation for nuanced quality factors
-- **Automated Scoring**: Rule-based evaluation for specific criteria
+The `SafetyEvaluatorV1` evaluates responses for harmful content, producing a binary pass/fail score.
 
-### Behavioral Consistency
+## Key Principles
 
-Ensuring agents behave predictably and reliably:
+### Threshold-Based, Not Exact-Match
 
-**Consistency Types:**
+Because agent outputs vary between runs, the framework uses **thresholds** rather than exact assertions. You define minimum acceptable scores for each metric. For example, tool calls must match exactly (threshold 1.0), but response text only needs 80% ROUGE-1 similarity (threshold 0.8).
 
-- **Cross-Session**: Same behavior across different conversations
-- **Multi-Turn**: Maintaining context and coherence within conversations
-- **Cross-User**: Consistent responses to similar queries from different users
-- **Temporal**: Stable behavior over time and system updates
+### Multiple Runs for Confidence
 
-## Evaluation Philosophy
+A single run can be misleading due to LLM variability. The evaluator defaults to 2 runs per test case and averages the scores. Increase this for higher confidence before deploying.
 
-### Probabilistic vs Deterministic
+### Fail-Fast Design
 
-Unlike traditional software, agent behavior is inherently probabilistic. Evaluation frameworks must:
+The evaluator **throws an Error** when any metric falls below its threshold. This makes it easy to integrate into CI pipelines and test runners — a non-zero exit code means something regressed.
 
-- **Accept Variability**: Allow for multiple valid responses to the same input
-- **Focus on Patterns**: Look for consistent patterns rather than exact matches
-- **Statistical Significance**: Use multiple runs to assess true performance
-- **Threshold-Based**: Define acceptable ranges rather than exact values
+### Composable Metrics
 
-### Holistic Assessment
+Each metric is evaluated independently. Mix and match based on what matters for your use case:
 
-Effective evaluation considers the complete agent experience:
-
-- **End-to-End Performance**: From user input to final response
-- **Multi-Modal Interactions**: Text, function calls, and state changes
-- **Context Awareness**: How well agents use available context
-- **User Experience**: Beyond correctness to usability and satisfaction
-
-## Quality Assurance Principles
-
-### Representativeness
-
-Evaluation scenarios should reflect real-world usage:
-
-- **User Journey Coverage**: Test complete workflows, not just isolated features
-- **Edge Case Inclusion**: Include challenging and unusual scenarios
-- **Domain Specificity**: Tailor evaluations to specific use cases
-- **Scale Consideration**: Test behavior under various load conditions
-
-### Measurability
-
-Establish clear, quantifiable success criteria:
-
-- **Objective Metrics**: Quantifiable measures of performance
-- **Subjective Assessment**: Structured approaches to qualitative evaluation
-- **Baseline Comparison**: Compare against previous versions or alternatives
-- **Performance Thresholds**: Define minimum acceptable performance levels
-
-### Reproducibility
-
-Ensure evaluation results are consistent and reliable:
-
-- **Version Control**: Track evaluation data and scenarios
-- **Environment Consistency**: Standardize testing conditions
-- **Randomness Control**: Manage randomness for reproducible results
-- **Documentation**: Clear documentation of evaluation procedures
-
-## Continuous Improvement
-
-### Feedback Loops
-
-Use evaluation results to drive improvements:
-
-- **Performance Tracking**: Monitor metrics over time
-- **Failure Analysis**: Systematic investigation of evaluation failures
-- **Iterative Refinement**: Regular updates to evaluation criteria
-- **Stakeholder Feedback**: Incorporate user and business feedback
-
-### Adaptive Evaluation
-
-Evolve evaluation approaches as agents improve:
-
-- **Dynamic Thresholds**: Adjust expectations as capabilities grow
-- **New Scenario Addition**: Continuously expand evaluation coverage
-- **Metric Evolution**: Develop new metrics for emerging capabilities
-- **Evaluation Validation**: Assess whether evaluations truly measure quality
-
-## Implementation Considerations
-
-### Resource Management
-
-Balance comprehensive evaluation with practical constraints:
-
-- **Execution Time**: Trade-off between coverage and speed
-- **Computational Cost**: Manage LLM API costs during evaluation
-- **Human Resources**: Balance automated and manual evaluation
-- **Infrastructure**: Plan for evaluation infrastructure needs
-
-### Integration
-
-Embed evaluation into development workflows:
-
-- **CI/CD Integration**: Automated evaluation in deployment pipelines
-- **Development Feedback**: Fast feedback during active development
-- **Production Monitoring**: Ongoing evaluation of deployed agents
-- **Alert Systems**: Notifications when performance degrades
+- Testing a tool-heavy agent? Focus on `tool_trajectory_avg_score`.
+- Testing a conversational agent? Focus on `response_match_score` or `response_evaluation_score`.
+- Need safety guarantees? Add `safety_v1`.
 
 <Callout type="warning" title="Evaluation Limitations">
 
-Remember that evaluation is a proxy for real-world performance. No evaluation
-framework can capture every aspect of agent behavior or guarantee production
-success.
+Evaluation is a proxy for real-world performance. High evaluation scores don't guarantee production success, and low scores on one metric don't necessarily mean the agent is broken. Use evaluation as one signal among many.
 
 </Callout>
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🧪 Testing Agents"
+    description="Hands-on guide to writing test cases and running evaluations"
+    href="/docs/framework/evaluation/testing-agents"
+  />
+  <Card
+    title="📊 Metrics & Scoring"
+    description="How each built-in metric works and how scores are calculated"
+    href="/docs/framework/evaluation/metrics-and-scoring"
+  />
+  <Card
+    title="📐 Evaluation Patterns"
+    description="Domain-specific strategies and production evaluation workflows"
+    href="/docs/framework/evaluation/evaluation-patterns"
+  />
+  <Card
+    title="🤖 Agents"
+    description="Learn about the agent types you can evaluate"
+    href="/docs/framework/agents"
+  />
+</Cards>

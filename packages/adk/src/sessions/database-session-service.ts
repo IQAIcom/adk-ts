@@ -76,6 +76,7 @@ export interface DatabaseSessionServiceConfig {
 export class DatabaseSessionService extends BaseSessionService {
 	private db: Kysely<Database>;
 	private initialized = false;
+	private initPromise: Promise<void> | null = null;
 
 	constructor(config: DatabaseSessionServiceConfig) {
 		super();
@@ -90,13 +91,32 @@ export class DatabaseSessionService extends BaseSessionService {
 	}
 
 	/**
-	 * Initialize the database by creating required tables if they don't exist
+	 * Initialize the database by creating required tables if they don't exist.
+	 * Uses promise deduplication so concurrent callers share a single initialization.
 	 */
-	private async initializeDatabase(): Promise<void> {
+	private initializeDatabase(): Promise<void> {
 		if (this.initialized) {
-			return;
+			return Promise.resolve();
+		}
+		if (this.initPromise) {
+			return this.initPromise;
 		}
 
+		const promise = this._doInitialize();
+		this.initPromise = promise;
+
+		// Clear the promise on failure to allow retries.
+		promise.catch(() => {
+			// Avoid race conditions if a new initialization has started.
+			if (this.initPromise === promise) {
+				this.initPromise = null;
+			}
+		});
+
+		return promise;
+	}
+
+	private async _doInitialize(): Promise<void> {
 		try {
 			// Create sessions table
 			await this.db.schema

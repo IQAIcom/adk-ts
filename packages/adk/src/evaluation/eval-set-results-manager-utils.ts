@@ -9,7 +9,7 @@ export function createEvalSetResult(
 	evalSetId: string,
 	evalCaseResults: EvalCaseResult[],
 ): EvalResult {
-	const timestamp = Date.now() / 1000;
+	const timestamp = Date.now();
 	const evalSetResultId = `${appName}_${evalSetId}_${timestamp}`;
 	const evalSetResultName = sanitizeEvalSetResultName(evalSetResultId);
 

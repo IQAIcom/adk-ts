@@ -1,9 +1,17 @@
 ---
 title: Recipes
-description: Practical patterns for saving, loading, and transforming artifacts
+description: Copy-paste patterns for common artifact workflows in ADK-TS — upload processing, media generation, and result caching.
 ---
 
-## Upload → Process → Save Results
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+These are self-contained patterns you can drop into your own agents. Each recipe covers a common workflow — pick the one that matches your use case and adapt the filenames and logic to fit.
+
+## Upload → Process → Save results
+
+When a user uploads a file (e.g. via auto-save or a direct tool call), you often want to parse it, compute something, and save the result as a new artifact so the agent can reference it later without re-processing.
+
+This recipe receives a CSV filename, parses it, and saves a JSON analysis artifact. Because it uses `createTool`, the agent can call it by name once the upload is in place:
 
 ```typescript
 import { createTool } from "@iqai/adk";
@@ -11,15 +19,18 @@ import * as z from "zod";
 
 export const analyzeCsv = createTool({
   name: "analyze_csv",
-  description: "Analyze uploaded CSV",
+  description: "Analyze an uploaded CSV file and save the results as JSON",
   schema: z.object({ filename: z.string() }),
   fn: async ({ filename }, ctx) => {
+    // Confirm the file exists in this session before trying to load it
     const files = await ctx.listArtifacts();
-    if (!files.includes(filename)) return { error: "File not found", files };
+    if (!files.includes(filename))
+      return { error: "File not found", available: files };
 
     const artifact = await ctx.loadArtifact(filename);
     if (!artifact?.inlineData) return { error: "Could not load file" };
 
+    // Decode and parse the CSV
     const text = Buffer.from(artifact.inlineData.data, "base64").toString(
       "utf-8",
     );
@@ -27,64 +38,115 @@ export const analyzeCsv = createTool({
     const headers = header.split(",").map(h => h.trim());
 
     const result = {
-      summary: "CSV analysis complete",
       rowCount: rows.length,
       columnCount: headers.length,
       headers,
     };
 
-    const resultArtifact = {
+    // Save the analysis as a new artifact
+    const outputFilename = `analysis_${filename.replace(/\.[^/.]+$/, "")}.json`;
+    await ctx.saveArtifact(outputFilename, {
       inlineData: {
         data: Buffer.from(JSON.stringify(result, null, 2)).toString("base64"),
         mimeType: "application/json",
       },
-    };
-    const out = `analysis_${filename.replace(/\.[^/.]+$/, "")}.json`;
-    await ctx.saveArtifact(out, resultArtifact);
-    return { output: out, ...result };
+    });
+
+    return { output: outputFilename, ...result };
   },
 });
 ```
 
-## Generate Media → Save + Reuse
+## Generate media → Save + reuse
+
+If your agent generates an image, SVG, or other binary output that's expensive to produce, save it as an artifact on first generation and load the cached version on subsequent calls instead of regenerating it.
+
+This recipe generates an SVG banner inside a callback and caches it — repeated invocations return the stored version immediately:
 
 ```typescript
 import type { CallbackContext } from "@iqai/adk";
 
-export async function generateSvg(ctx: CallbackContext) {
-  const svg = `<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="100" fill="black"/></svg>`;
-  await ctx.saveArtifact("banner.svg", {
+export async function generateAndCacheSvg(ctx: CallbackContext) {
+  const cacheKey = "banner.svg";
+
+  // Return the cached version if it already exists
+  const cached = await ctx.loadArtifact(cacheKey);
+  if (cached?.inlineData) {
+    return Buffer.from(cached.inlineData.data, "base64").toString("utf-8");
+  }
+
+  // Generate the SVG and save it for future calls
+  const svg = `<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="100" fill="black"/>
+  </svg>`;
+
+  await ctx.saveArtifact(cacheKey, {
     inlineData: {
       data: Buffer.from(svg).toString("base64"),
       mimeType: "image/svg+xml",
     },
   });
 
-  // Later
-  const loaded = await ctx.loadArtifact("banner.svg");
-  if (loaded) {
-    const svgText = Buffer.from(loaded.inlineData.data, "base64").toString(
-      "utf-8",
-    );
-    // Use svgText (serve to UI, embed in response, etc.)
-  }
+  return svg;
 }
 ```
 
-## Cache Expensive Binary Output
+## Cache expensive computation
+
+Use the same check-before-compute pattern for any operation with a deterministic or memoizable output — model inference on a fixed input, a database aggregation, a report generation step.
+
+This recipe checks for a cached result before running the expensive work, and saves it so the next call skips the computation entirely:
 
 ```typescript
 import type { CallbackContext } from "@iqai/adk";
 
-export async function cachedChart(ctx: CallbackContext) {
-  const cacheKey = "chart.png";
-  const cached = await ctx.loadArtifact(cacheKey);
-  if (cached) return { info: "hit", cacheKey };
+export async function cachedComputation(ctx: CallbackContext) {
+  const cacheKey = "result.json";
 
-  const png = Buffer.from(/* expensive render */);
+  // Return early if the result is already cached
+  const cached = await ctx.loadArtifact(cacheKey);
+  if (cached) return { hit: true, cacheKey };
+
+  // Run the expensive operation and cache the result
+  const result = { value: Math.random(), computedAt: Date.now() };
+
   await ctx.saveArtifact(cacheKey, {
-    inlineData: { data: png.toString("base64"), mimeType: "image/png" },
+    inlineData: {
+      data: Buffer.from(JSON.stringify(result)).toString("base64"),
+      mimeType: "application/json",
+    },
   });
-  return { info: "miss", cacheKey };
+
+  return { hit: false, cacheKey };
 }
 ```
+
+## Save and load plain text
+
+For simple string content you don't need `inlineData` at all. The `text` Part format is shorter to write and easier to read back — no base64 encoding or decoding required:
+
+```typescript
+// Save
+await ctx.saveArtifact("notes.txt", { text: "Meeting notes: ..." });
+
+// Load — artifact.text is the string directly
+const notes = await ctx.loadArtifact("notes.txt");
+console.log(notes?.text);
+```
+
+Use this for log output, agent-generated summaries, plain JSON strings, or any content where binary encoding adds no value.
+
+## Next steps
+
+<Cards>
+  <Card
+    title="🔌 Context Integration"
+    description="Full API reference for CallbackContext and ToolContext artifact methods"
+    href="/docs/framework/artifacts/context-integration"
+  />
+  <Card
+    title="🗂️ Scoping & Versioning"
+    description="Use user: prefix for cross-session persistence"
+    href="/docs/framework/artifacts/scoping-and-versioning"
+  />
+</Cards>

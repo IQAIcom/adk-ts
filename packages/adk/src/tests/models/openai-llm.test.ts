@@ -6,6 +6,7 @@ vi.mock("@adk/helpers/logger", () => ({
 	Logger: vi.fn(() => ({
 		debug: vi.fn(),
 		error: vi.fn(),
+		warn: vi.fn(),
 	})),
 }));
 vi.mock("openai", () => ({
@@ -240,6 +241,41 @@ describe("OpenAiLlm", () => {
 			process.env.OPENAI_API_KEY = "test-key";
 			const llm2 = new OpenAiLlm();
 			expect((llm2 as any).client).toBeDefined();
+		});
+	});
+
+	describe("openAiMessageToLlmResponse", () => {
+		it("should handle malformed tool call JSON without crashing", () => {
+			const choice = {
+				message: {
+					role: "assistant",
+					content: null,
+					tool_calls: [
+						{
+							id: "call_bad",
+							type: "function",
+							function: {
+								name: "get_weather",
+								arguments: '{"location": "Tok',
+							},
+						},
+					],
+				},
+				finish_reason: "tool_calls",
+				index: 0,
+			};
+
+			const response = (llm as any).openAiMessageToLlmResponse(choice);
+
+			expect(response).toBeInstanceOf(LlmResponse);
+			const toolPart = response.content.parts.find((p: any) => p.functionCall);
+			expect(toolPart).toEqual({
+				functionCall: {
+					id: "call_bad",
+					name: "get_weather",
+					args: {},
+				},
+			});
 		});
 	});
 

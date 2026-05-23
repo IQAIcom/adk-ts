@@ -135,7 +135,7 @@ We welcome various types of contributions to improve the documentation:
 - **[Check existing issues](https://github.com/IQAIcom/adk-ts/issues)** for similar questions or problems
 - **[Ask in discussions](https://github.com/IQAIcom/adk-ts/discussions)** for clarification on documentation topics
 
-For more detailed contribution guidelines, see the main project's [Contributing Guide](../../CONTRIBUTION.md).
+For more detailed contribution guidelines, see the main project's [Contributing Guide](../../CONTRIBUTING.md).
 
 ## 📚 Resources for Contributors
 
@@ -149,7 +149,7 @@ For more detailed contribution guidelines, see the main project's [Contributing 
 
 - **[ADK-TS Repository](https://github.com/IQAIcom/adk-ts)** - Main framework repository
 - **[Live Documentation](https://adk.iqai.com)** - Published documentation site
-- **[Contributing Guide](../../CONTRIBUTION.md)** - General project contribution guidelines
+- **[Contributing Guide](../../CONTRIBUTING.md)** - General project contribution guidelines
 - **[Examples](../../apps/examples/)** - Code examples and tutorials
 
 ### Writing & Style Resources
