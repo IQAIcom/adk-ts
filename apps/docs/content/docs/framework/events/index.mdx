@@ -5,117 +5,142 @@ description: Understanding ADK-TS's event system for communication and control f
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Card, Cards } from "fumadocs-ui/components/card";
+import { Mermaid } from "@/components/mdx/mermaid";
 
-Events are the fundamental units of information flow within ADK-TS. They represent every significant occurrence during an agent's interaction lifecycle, from initial user input to the final response and all the steps in between.
+Events are the fundamental units of information flow within ADK-TS. Every user message, agent reply, tool call, state change, and control signal is represented as an `Event` — an immutable record appended to the session history and streamed to your application through `Runner.runAsync()`.
 
-## What Events Are
+## What events represent
 
-An `Event` in ADK-TS is an immutable record representing a specific point in the agent's execution. It captures:
+An `Event` captures a single point in an agent interaction:
 
-- **User messages** - Direct input from end users
-- **Agent replies** - Responses and actions from agents
-- **Tool interactions** - Function calls and their results
-- **State changes** - Updates to session state and artifacts
-- **Control signals** - Flow control and error conditions
+- **User messages** — input appended to the session
+- **Agent replies** — model text, tool calls, or code execution results
+- **Tool interactions** — function calls and their responses
+- **State and artifact changes** — carried in `event.actions`
+- **Control signals** — agent transfers, escalation, compaction, and rewind markers
 
 <Callout type="info">
 
-Events serve as the standard message format between the user interface, the
-`Runner`, agents, the LLM, and tools. Everything flows as an `Event`.
+Events are the standard message format between the UI, the `Runner`, agents, the LLM, and tools. The sequence stored in `session.events` is the complete, chronological history of an interaction.
 
 </Callout>
 
-## Event Structure
+## Event structure
 
-Events build upon the basic `LlmResponse` structure by adding essential ADK-TS-specific metadata:
+`Event` extends `LlmResponse`, inheriting LLM response fields and adding ADK-TS-specific metadata:
 
 ```typescript
 import { Event, EventActions } from "@iqai/adk";
 
+// Event extends LlmResponse
 class Event extends LlmResponse {
-  // Core identification
-  id: string; // Unique event identifier
-  invocationId: string; // ID for the whole interaction run
-  author: string; // 'user' or agent name
-  timestamp: number; // Creation time (seconds since epoch)
+  // ADK-TS identification
+  id: string; // Unique event ID (8-char hex)
+  invocationId: string; // ID for the current invocation run
+  author: string; // "user" or the agent name
+  timestamp: number; // Unix timestamp in seconds
 
-  // Content and flow control
-  content?: any; // Event payload (text, function calls, etc.)
+  // Inherited from LlmResponse
+  content?: Content; // Text, function calls, function responses, etc.
   partial?: boolean; // True for streaming chunks
-  turnComplete?: boolean; // True when agent's turn is finished
+  turnComplete?: boolean; // True when the model turn is finished
+  errorCode?: string;
+  errorMessage?: string;
+  usageMetadata?: GenerateContentResponseUsageMetadata;
+  groundingMetadata?: GroundingMetadata;
+  interrupted?: boolean;
+  finishReason?: string;
 
-  // ADK-TS-specific features
-  actions: EventActions; // Side-effects & control signals
-  longRunningToolIds?: Set<string>; // Background tool execution
-  branch?: string; // Hierarchy path for multi-agent scenarios
+  // ADK-TS extensions
+  actions: EventActions; // Side effects and control signals
+  longRunningToolIds?: Set<string>; // IDs of background tool calls
+  branch?: string; // Multi-agent hierarchy path (e.g. "parent.child")
 
   // Helper methods
   isFinalResponse(): boolean;
-  getFunctionCalls(): any[];
-  getFunctionResponses(): any[];
+  getFunctionCalls(): FunctionCall[];
+  getFunctionResponses(): FunctionResponse[];
+  hasTrailingCodeExecutionResult(): boolean;
+  static newId(): string;
 }
 ```
 
-## Event Types
+### When is a response final?
 
-### User Events
+`isFinalResponse()` tells you when an event is ready to display to the user. It returns `true` when:
 
-Events with `author: 'user'` represent direct input from the end-user.
-
-### Agent Events
-
-Events with `author: 'AgentName'` represent output or actions from a specific agent.
-
-### Tool Events
-
-Events containing function calls or responses for tool execution.
-
-### Control Events
-
-Events carrying state changes, control flow signals, or configuration updates.
-
-## Core Concepts
-
-<Cards>
-  <Card
-    title="Event Actions"
-    description="Understanding state management, artifact tracking, and control flow signals"
-    href="/docs/framework/events/event-actions"
-  />
-  <Card
-    title="Working with Events"
-    description="Practical patterns for processing and handling events in your applications"
-    href="/docs/framework/events/working-with-events"
-  />
-  <Card
-    title="Event Compaction"
-    description="Automatically manage long session histories with LLM-generated summaries"
-    href="/docs/framework/events/compaction"
-  />
-  <Card
-    title="Event Streaming"
-    description="Real-time event processing and streaming patterns for responsive UIs"
-    href="/docs/framework/events/streaming"
-  />
-  <Card
-    title="Event Patterns"
-    description="Architectural patterns and best practices for event-driven applications"
-    href="/docs/framework/events/patterns"
-  />
-</Cards>
-
-## Quick Example
-
-Here's a basic example of processing events from an agent:
+1. `actions.skipSummarization` is set, or `longRunningToolIds` is present — the client should surface the result directly
+2. Otherwise, when the event has no function calls or responses, is not a partial stream chunk, and has no trailing code execution result
 
 ```typescript
-import { LlmAgent, Event } from "@iqai/adk";
+// Simplified logic from the framework
+event.isFinalResponse() === event.actions.skipSummarization ||
+  !!event.longRunningToolIds ||
+  (event.getFunctionCalls().length === 0 &&
+    event.getFunctionResponses().length === 0 &&
+    !event.partial &&
+    !event.hasTrailingCodeExecutionResult());
+```
 
-// Process events from an agent interaction
-for await (const event of runner.runAsync(query, session)) {
+## Event flow
+
+<Mermaid
+  chart={`
+flowchart LR
+    UI["Client / UI"]
+    Runner["Runner.runAsync()"]
+    Agent["Agent"]
+    LLM["LLM"]
+    Tools["Tools"]
+    Session["session.events"]
+
+    UI -->|"newMessage"| Runner
+    Runner --> Agent
+    Agent --> LLM
+    Agent --> Tools
+    LLM -->|"yield Event"| Agent
+    Tools -->|"yield Event"| Agent
+    Agent -->|"yield Event"| Runner
+    Runner -->|"persist + stream"| Session
+    Runner -->|"AsyncGenerator Event"| UI
+
+`}
+/>
+
+1. **User input** — the Runner appends a user event to the session
+2. **Agent processing** — the agent yields events with text, tool calls, or partial stream chunks
+3. **Tool execution** — tool results are yielded as events with `functionResponse` parts
+4. **State updates** — changes are recorded in `event.actions.stateDelta`
+5. **Final response** — `isFinalResponse()` returns `true` on the event ready for display
+
+For the full Runner processing pipeline, see [Runner & Event Processing](/docs/framework/runtime/runner-events).
+
+## Processing events
+
+Use `Runner.runAsync()` to stream events. Pass a `userId`, `sessionId`, and the user's message:
+
+```typescript
+import { Runner, InMemorySessionService, LlmAgent } from "@iqai/adk";
+
+const agent = new LlmAgent({
+  name: "assistant",
+  model: "gemini-2.5-flash",
+  instruction: "You are a helpful assistant.",
+});
+
+const runner = new Runner({
+  appName: "my-app",
+  agent,
+  sessionService: new InMemorySessionService(),
+});
+
+for await (const event of runner.runAsync({
+  userId: "user_123",
+  sessionId: "session_456",
+  newMessage: { role: "user", parts: [{ text: "What's the weather?" }] },
+})) {
   console.log(`Event from: ${event.author}`);
 
-  // Handle different event types
   if (event.content?.parts?.[0]?.text) {
     console.log("Text:", event.content.parts[0].text);
   }
@@ -124,7 +149,10 @@ for await (const event of runner.runAsync(query, session)) {
     console.log("Tool calls:", event.getFunctionCalls());
   }
 
-  if (event.actions?.stateDelta) {
+  if (
+    event.actions?.stateDelta &&
+    Object.keys(event.actions.stateDelta).length > 0
+  ) {
     console.log("State changes:", event.actions.stateDelta);
   }
 
@@ -134,44 +162,47 @@ for await (const event of runner.runAsync(query, session)) {
 }
 ```
 
-## Event Flow in ADK-TS
-
-Events enable communication throughout the ADK-TS system:
-
-1. **User Input** → Creates user event
-2. **Agent Processing** → Generates agent events with text or tool calls
-3. **Tool Execution** → Creates tool response events
-4. **State Updates** → Tracked via event actions
-5. **Final Response** → Delivered as final event ready for display
-
 <Callout type="info">
 
-The sequence of events recorded in `session.events` provides a complete,
-chronological history of an interaction, invaluable for debugging, auditing,
-and understanding agent behavior.
+For text-only streaming without handling full `Event` objects, use the helpers in `@iqai/adk/utils`: `textStreamFrom()`, `collectTextFrom()`, and `streamTextWithFinalEvent()`. See [Event Streaming](/docs/framework/events/streaming).
 
 </Callout>
 
-## Key Features
+## Event categories
 
-### State Management
+| Category       | How to identify                                               | Typical content                             |
+| -------------- | ------------------------------------------------------------- | ------------------------------------------- |
+| User events    | `author === "user"`                                           | User message text                           |
+| Agent events   | `author` is an agent name                                     | Model text, tool calls                      |
+| Tool events    | `getFunctionCalls()` or `getFunctionResponses()` is non-empty | Tool request or result                      |
+| Control events | Non-empty `actions` fields                                    | State deltas, transfers, compaction, rewind |
 
-Events carry state changes through `actions.stateDelta`, allowing components to update session state reactively.
+## Guides in this section
 
-### Artifact Tracking
-
-File operations and artifact versions are tracked through `actions.artifactDelta`.
-
-### Control Flow
-
-Events can signal agent transfers (`transferToAgent`), loop termination (`escalate`), and other control flow changes.
-
-### Streaming Support
-
-Events support real-time streaming with `partial` flags for progressive content delivery.
-
-### Error Handling
-
-Events inherit error properties (`errorCode`, `errorMessage`) for comprehensive error tracking.
-
-Events are the backbone of the ADK-TS communication system, enabling powerful features like state management, tool orchestration, and complex agent workflows. Explore the detailed guides above to learn how to leverage events effectively in your applications.
+<Cards>
+  <Card
+    title="Event Actions"
+    description="State management, artifact tracking, compaction, rewind, and control flow signals"
+    href="/docs/framework/events/event-actions"
+  />
+  <Card
+    title="Working with Events"
+    description="Practical patterns for processing and filtering events in your applications"
+    href="/docs/framework/events/working-with-events"
+  />
+  <Card
+    title="Event Compaction"
+    description="Automatically manage long session histories with LLM-generated summaries"
+    href="/docs/framework/events/compaction"
+  />
+  <Card
+    title="Event Streaming"
+    description="Real-time streaming with partial events and utility helpers"
+    href="/docs/framework/events/streaming"
+  />
+  <Card
+    title="Event Patterns"
+    description="Architectural patterns for event-driven agent applications"
+    href="/docs/framework/events/patterns"
+  />
+</Cards>

@@ -8,6 +8,12 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 This guide covers common architectural patterns for building robust, scalable event-driven applications with ADK-TS.
 
+<Callout type="info">
+
+The examples below use simplified APIs for clarity. In production, stream events via `Runner.runAsync({ userId, sessionId, newMessage })` — see [Working with Events](/docs/framework/events/working-with-events).
+
+</Callout>
+
 ## Architectural Patterns
 
 ### Event Sourcing

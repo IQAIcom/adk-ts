@@ -52,6 +52,7 @@ Access different types of content from events:
 
 <Tabs items={['Text Content', 'Function Calls', 'Function Responses']}>
 <Tab value="Text Content">
+
 ```typescript
 function extractText(event: Event): string | null {
   if (event.content?.parts?.[0]?.text) {
@@ -63,10 +64,10 @@ function extractText(event: Event): string | null {
 // Usage
 const text = extractText(event);
 if (text) {
-console.log("Message:", text);
+  console.log("Message:", text);
 }
+```
 
-````
 </Tab>
 
 <Tab value="Function Calls">
@@ -74,9 +75,9 @@ console.log("Message:", text);
 function processFunctionCalls(event: Event) {
   const calls = event.getFunctionCalls();
 
-  for (const call of calls) {
-    console.log(`Tool requested: ${call.name}`);
-    console.log(`Arguments:`, call.args);
+for (const call of calls) {
+console.log(`Tool requested: ${call.name}`);
+console.log(`Arguments:`, call.args);
 
     // Dispatch based on tool name
     switch (call.name) {
@@ -89,8 +90,10 @@ function processFunctionCalls(event: Event) {
       default:
         console.log(`Unknown tool: ${call.name}`);
     }
-  }
+
 }
+}
+
 ````
 
 </Tab>
@@ -106,14 +109,13 @@ console.log(`Tool ${response.name} returned:`, response.response);
     // Handle specific tool responses
     if (response.name === 'search') {
       displaySearchResults(response.response);
-    } else if (response.name === 'sendEmail') {
+    } else if (response.name === "sendEmail") {
       showEmailConfirmation(response.response);
     }
-
+  }
 }
-}
-
 ````
+
 </Tab>
 </Tabs>
 
@@ -124,38 +126,43 @@ console.log(`Tool ${response.name} returned:`, response.response);
 Use the built-in helper to identify display-ready events:
 
 ```typescript
-async function processAgentConversation(runner, query, session) {
-  let streamingText = '';
+async function processAgentConversation(
+  runner: Runner,
+  userId: string,
+  sessionId: string,
+  message: string,
+) {
+  let streamingText = "";
 
-  for await (const event of runner.runAsync(query, session)) {
+  for await (const event of runner.runAsync({
+    userId,
+    sessionId,
+    newMessage: { role: "user", parts: [{ text: message }] },
+  })) {
     // Handle streaming content
     if (event.partial && event.content?.parts?.[0]?.text) {
       streamingText += event.content.parts[0].text;
-      updateUI(streamingText); // Real-time updates
+      updateUI(streamingText);
     }
 
     // Handle final responses
     if (event.isFinalResponse()) {
       if (event.content?.parts?.[0]?.text) {
-        // Complete text response
-        const finalText = streamingText + (event.content.parts[0].text || '');
+        const finalText = streamingText + (event.content.parts[0].text || "");
         displayFinalMessage(finalText.trim());
-        streamingText = ''; // Reset
+        streamingText = "";
       } else if (event.actions?.skipSummarization) {
-        // Raw tool result
         const toolResponse = event.getFunctionResponses()[0];
         displayToolResult(toolResponse.response);
-      } else if (event.longRunningToolIds) {
-        // Background process
+      } else if (event.longRunningToolIds?.size) {
         showProcessingIndicator();
       }
     }
 
-    // Handle actions
     processEventActions(event);
   }
 }
-````
+```
 
 ### Custom Event Filters
 
@@ -344,8 +351,19 @@ function handleEventError(event: Event) {
 
 ```typescript
 import { useState, useEffect } from "react";
+import type { Event, Runner } from "@iqai/adk";
 
-function ConversationComponent({ runner, query, session }) {
+function ConversationComponent({
+  runner,
+  userId,
+  sessionId,
+  message,
+}: {
+  runner: Runner;
+  userId: string;
+  sessionId: string;
+  message: string;
+}) {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -355,9 +373,13 @@ function ConversationComponent({ runner, query, session }) {
       const newEvents: Event[] = [];
 
       try {
-        for await (const event of runner.runAsync(query, session)) {
+        for await (const event of runner.runAsync({
+          userId,
+          sessionId,
+          newMessage: { role: "user", parts: [{ text: message }] },
+        })) {
           newEvents.push(event);
-          setEvents([...newEvents]); // Update UI with each event
+          setEvents([...newEvents]);
         }
       } finally {
         setIsLoading(false);
@@ -365,7 +387,7 @@ function ConversationComponent({ runner, query, session }) {
     }
 
     runConversation();
-  }, [query]);
+  }, [message, runner, sessionId, userId]);
 
   return (
     <div>

@@ -12,15 +12,17 @@ Event Actions are the mechanism by which ADK-TS components signal side effects, 
 
 The `EventActions` class represents the actions attached to an event. It contains instructions for:
 
-- **State Changes**: Updates to session state via `stateDelta`
-- **Artifact Management**: Tracking file versions via `artifactDelta`
-- **Control Flow**: Agent transfers and escalation signals
-- **Tool Behavior**: Skipping summarization and authentication requests
+- **State changes** — updates to session state via `stateDelta`
+- **Artifact management** — tracking file versions via `artifactDelta`
+- **Control flow** — agent transfers and escalation signals
+- **Tool behavior** — skipping summarization and authentication requests
+- **Compaction** — LLM-generated summaries of event ranges via `compaction`
+- **Rewind** — session rewind markers via `rewindBeforeInvocationId`
 
 ## EventActions Structure
 
 ```typescript
-import { EventActions } from "@iqai/adk";
+import { EventActions, type EventCompaction } from "@iqai/adk";
 
 class EventActions {
   // Control tool response processing
@@ -38,6 +40,18 @@ class EventActions {
 
   // Authentication
   requestedAuthConfigs?: Record<string, any>;
+
+  // Event compaction (see Event Compaction guide)
+  compaction?: EventCompaction;
+
+  // Session rewind marker (see Rewind guide)
+  rewindBeforeInvocationId?: string;
+}
+
+interface EventCompaction {
+  startTimestamp: number;
+  endTimestamp: number;
+  compactedContent: Content;
 }
 ```
 
@@ -156,6 +170,41 @@ const actions = new EventActions({
 });
 ```
 
+### Compaction Actions
+
+When event compaction runs, the framework appends a special event whose `actions.compaction` field contains the summarized content and the timestamp range it covers. Original events in that range are filtered out when building LLM requests.
+
+```typescript
+// Created automatically by the compaction system — not typically hand-authored
+const actions = new EventActions({
+  compaction: {
+    startTimestamp: 1710000000,
+    endTimestamp: 1710003600,
+    compactedContent: {
+      role: "model",
+      parts: [{ text: "User asked about weather. Agent provided a forecast." }],
+    },
+  },
+});
+```
+
+See [Event Compaction](/docs/framework/events/compaction) for configuration and custom summarizers.
+
+### Rewind Actions
+
+When you call `runner.rewind()`, the Runner appends a rewind event with `rewindBeforeInvocationId` set to the target invocation. The event also carries `stateDelta` and `artifactDelta` values that restore session state to the rewind point.
+
+```typescript
+// Created by Runner.rewind() — restores session to a prior invocation
+const actions = new EventActions({
+  rewindBeforeInvocationId: "invocation_abc123",
+  stateDelta: { current_task: null },
+  artifactDelta: { "report.pdf": 1 },
+});
+```
+
+See [Rewind](/docs/framework/runtime/rewind) for usage and examples.
+
 ## Working with Actions in Events
 
 ### Detecting Actions
@@ -163,26 +212,38 @@ const actions = new EventActions({
 Check for actions in received events:
 
 ```typescript
-for await (const event of runner.runAsync(query, session)) {
-  if (event.actions) {
-    // Check for state changes
-    if (Object.keys(event.actions.stateDelta).length > 0) {
-      console.log("State updated:", event.actions.stateDelta);
-    }
+for await (const event of runner.runAsync({
+  userId: "user_123",
+  sessionId: "session_456",
+  newMessage: { role: "user", parts: [{ text: "Hello" }] },
+})) {
+  if (!event.actions) continue;
 
-    // Check for artifact updates
-    if (Object.keys(event.actions.artifactDelta).length > 0) {
-      console.log("Artifacts saved:", event.actions.artifactDelta);
-    }
+  if (Object.keys(event.actions.stateDelta).length > 0) {
+    console.log("State updated:", event.actions.stateDelta);
+  }
 
-    // Check for control signals
-    if (event.actions.transferToAgent) {
-      console.log(`Transferring to: ${event.actions.transferToAgent}`);
-    }
+  if (Object.keys(event.actions.artifactDelta).length > 0) {
+    console.log("Artifacts saved:", event.actions.artifactDelta);
+  }
 
-    if (event.actions.escalate) {
-      console.log("Escalation signal received");
-    }
+  if (event.actions.transferToAgent) {
+    console.log(`Transferring to: ${event.actions.transferToAgent}`);
+  }
+
+  if (event.actions.escalate) {
+    console.log("Escalation signal received");
+  }
+
+  if (event.actions.compaction) {
+    console.log("Compaction range:", [
+      event.actions.compaction.startTimestamp,
+      event.actions.compaction.endTimestamp,
+    ]);
+  }
+
+  if (event.actions.rewindBeforeInvocationId) {
+    console.log("Rewound to:", event.actions.rewindBeforeInvocationId);
   }
 }
 ```
