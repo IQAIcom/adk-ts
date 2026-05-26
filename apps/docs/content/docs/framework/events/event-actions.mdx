@@ -1,257 +1,212 @@
 ---
 title: Event Actions
-description: Understanding the EventActions system for state management and control flow
+description: EventActions carries side-effect signals on every ADK-TS event — state changes, artifact versions, agent transfers, escalation, and compaction metadata.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-Event Actions are the mechanism by which ADK-TS components signal side effects, state changes, and control flow instructions. They enable powerful features like state management, agent transfers, and artifact tracking.
+`EventActions` is the side-effect envelope attached to every `Event`. Rather than letting agents and tools mutate state directly, ADK-TS routes all changes through actions so the `Runner` can apply them atomically and record them in the session history.
 
-## What Event Actions Are
-
-The `EventActions` class represents the actions attached to an event. It contains instructions for:
-
-- **State Changes**: Updates to session state via `stateDelta`
-- **Artifact Management**: Tracking file versions via `artifactDelta`
-- **Control Flow**: Agent transfers and escalation signals
-- **Tool Behavior**: Skipping summarization and authentication requests
-
-## EventActions Structure
+## Full reference
 
 ```typescript
 import { EventActions } from "@iqai/adk";
 
-class EventActions {
-  // Control tool response processing
-  skipSummarization?: boolean;
-
-  // State management
-  stateDelta: Record<string, any> = {};
-
-  // Artifact versioning
-  artifactDelta: Record<string, number> = {};
-
-  // Flow control
-  transferToAgent?: string;
-  escalate?: boolean;
-
-  // Authentication
-  requestedAuthConfigs?: Record<string, any>;
-}
-```
-
-## Action Types
-
-### State Management
-
-State deltas track changes to session state:
-
-<Tabs items={['Usage', 'Example']}>
-<Tab value="Usage">
-```typescript
 const actions = new EventActions({
-  stateDelta: {
-    'user_preference': 'dark_mode',
-    'last_activity': Date.now(),
-    'temp_calculation': 42  // Will be filtered out (temp_ prefix)
-  }
-});
-
-const event = new Event({
-author: 'MyAgent',
-actions: actions,
-content: { parts: [{ text: 'Updated preferences' }] }
-});
-
-````
-</Tab>
-
-<Tab value="Example">
-```typescript
-// In a tool or agent callback
-context.state['user_preference'] = 'dark_mode';
-context.state['app:global_setting'] = 'enabled';
-context.state['temp_intermediate_result'] = calculation;
-
-// These changes automatically populate the next event's stateDelta
-````
-
-</Tab>
-</Tabs>
-
-<Callout type="info">
-
-State keys with `temp_` prefix are excluded from persistence to avoid
-cluttering permanent session state.
-
-</Callout>
-
-### Artifact Management
-
-Artifact deltas track file saves and versions:
-
-```typescript
-const actions = new EventActions({
-  artifactDelta: {
-    "report.pdf": 1,
-    "analysis.json": 3,
-    "diagram.png": 1,
-  },
-});
-```
-
-### Control Flow Actions
-
-#### Agent Transfer
-
-Transfer control to another agent:
-
-```typescript
-const actions = new EventActions({
-  transferToAgent: "BillingAgent",
-});
-
-// The framework will route the next turn to BillingAgent
-```
-
-#### Escalation
-
-Signal that a loop or process should terminate:
-
-```typescript
-const actions = new EventActions({
-  escalate: true,
-});
-
-// Useful in loop agents or error handling
-```
-
-### Tool Behavior Control
-
-#### Skip Summarization
-
-Prevent the LLM from summarizing tool results:
-
-```typescript
-const actions = new EventActions({
+  // Prevent the LLM from summarising this tool response —
+  // used when the raw result should be shown directly.
   skipSummarization: true,
-});
 
-// Tool result will be displayed directly without LLM processing
-```
+  // Key-value pairs to merge into session.state.
+  stateDelta: { task_status: "done", result_count: 3 },
 
-#### Authentication Requests
+  // Artifact filenames → new version numbers saved this turn.
+  artifactDelta: { "report.pdf": 1 },
 
-Signal that tools need authentication:
+  // Route the next turn to a different agent.
+  transferToAgent: "BillingAgent",
 
-```typescript
-const actions = new EventActions({
-  requestedAuthConfigs: {
-    "gmail-tool": {
-      type: "oauth",
-      provider: "gmail",
-    },
+  // Signal that a LoopAgent or parent agent should stop iterating.
+  escalate: true,
+
+  // OAuth / API-key auth configs requested by tools.
+  requestedAuthConfigs: { "gmail-tool": { type: "oauth" } },
+
+  // Set by the compaction system — marks this event as a summary
+  // that replaces a range of earlier events.
+  compaction: {
+    startTimestamp: 1700000000,
+    endTimestamp: 1700001000,
+    compactedContent: { role: "model", parts: [{ text: "Summary…" }] },
   },
+
+  // Rewind the session to just before this invocation ID.
+  rewindBeforeInvocationId: "abc123",
 });
 ```
 
-## Working with Actions in Events
+All fields are optional and default to empty / undefined. You only set the ones relevant to what just happened.
 
-### Detecting Actions
+## stateDelta
 
-Check for actions in received events:
+State changes travel inside `stateDelta` as a plain key-value map. The `Runner` merges each delta into `session.state` after appending the event, so every downstream event in the same run sees the updated values.
 
 ```typescript
-for await (const event of runner.runAsync(query, session)) {
-  if (event.actions) {
-    // Check for state changes
-    if (Object.keys(event.actions.stateDelta).length > 0) {
-      console.log("State updated:", event.actions.stateDelta);
-    }
+import { AgentBuilder } from "@iqai/adk";
+import type { CallbackContext } from "@iqai/adk";
 
-    // Check for artifact updates
-    if (Object.keys(event.actions.artifactDelta).length > 0) {
-      console.log("Artifacts saved:", event.actions.artifactDelta);
-    }
+const { runner } = await AgentBuilder.create("assistant")
+  .withModel("gemini-2.5-flash")
+  .withAfterAgentCallback(async (ctx: CallbackContext) => {
+    // Writing to ctx.state is the normal way to update state —
+    // the framework populates stateDelta from these writes automatically.
+    ctx.state["task_status"] = "complete";
+    ctx.state["app:theme"] = "dark"; // app: prefix → persisted app-wide
+    ctx.state["user:lang"] = "en"; // user: prefix → persisted per user
+    ctx.state["temp_scratch"] = "xyz"; // temp_ prefix → not persisted
+    return undefined;
+  })
+  .build();
+```
 
-    // Check for control signals
-    if (event.actions.transferToAgent) {
-      console.log(`Transferring to: ${event.actions.transferToAgent}`);
-    }
+When you read `event.actions.stateDelta` in your event loop, you see exactly which keys changed during that event — useful for driving reactive UI updates.
 
-    if (event.actions.escalate) {
-      console.log("Escalation signal received");
+### State key prefixes
+
+| Prefix   | Scope                     | Persisted |
+| -------- | ------------------------- | --------- |
+| `app:`   | All users of this app     | Yes       |
+| `user:`  | This user across sessions | Yes       |
+| `temp_`  | Current turn only         | No        |
+| _(none)_ | This session              | Yes       |
+
+## artifactDelta
+
+When a tool or callback saves an artifact, the framework records the filename and version in `artifactDelta`. Your event loop can use this to refresh UI file viewers or trigger downstream processing without polling.
+
+```typescript
+for await (const event of runner.runAsync(request)) {
+  if (Object.keys(event.actions.artifactDelta).length > 0) {
+    for (const [filename, version] of Object.entries(
+      event.actions.artifactDelta,
+    )) {
+      console.log(`${filename} saved at version ${version}`);
     }
   }
 }
 ```
 
-### Creating Events with Actions
+## transferToAgent
 
-When building custom agents:
+Setting `transferToAgent` tells the `Runner` to hand the next turn to a different named agent. This is the mechanism behind multi-agent routing: a routing agent yields an event with this field set, and the framework looks up the target agent and continues from there.
+
+```typescript
+// Inside a custom BaseAgent.runAsyncImpl()
+import { Event, EventActions } from "@iqai/adk";
+
+yield new Event({
+  author: this.name,
+  invocationId: ctx.invocationId,
+  content: { parts: [{ text: "Routing you to billing support." }] },
+  actions: new EventActions({ transferToAgent: "BillingAgent" }),
+});
+```
+
+## escalate
+
+`escalate: true` signals that the current loop or sub-agent chain should terminate. `LoopAgent` checks this flag after each iteration — when it sees it, the loop stops and control returns to the caller.
+
+```typescript
+// Stop a LoopAgent when the task is complete
+yield new Event({
+  author: this.name,
+  invocationId: ctx.invocationId,
+  actions: new EventActions({ escalate: true }),
+});
+```
+
+## skipSummarization
+
+By default, when a tool returns a result, the LLM generates a human-readable summary of that result before the agent responds. Set `skipSummarization: true` on the function-response event to bypass that step and use the raw tool output directly.
+
+```typescript
+// The framework sets this automatically when you use certain tool patterns.
+// You can also set it manually in custom tool implementations.
+actions: new EventActions({ skipSummarization: true });
+```
+
+## requestedAuthConfigs
+
+Tools that need OAuth or API-key credentials populate `requestedAuthConfigs` with one entry per tool. The framework surfaces this to your application so it can trigger an auth flow before the tool call is retried.
+
+```typescript
+// Reading auth requests from events
+for await (const event of runner.runAsync(request)) {
+  if (event.actions.requestedAuthConfigs) {
+    for (const [toolName, config] of Object.entries(
+      event.actions.requestedAuthConfigs,
+    )) {
+      console.log(`Tool "${toolName}" needs auth:`, config);
+    }
+  }
+}
+```
+
+## compaction
+
+When [event compaction](/docs/framework/events/compaction) runs, it produces an event whose entire purpose is to carry a summary of earlier events. That summary lives in `actions.compaction`. You do not set this field manually — the compaction system manages it.
+
+```typescript
+interface EventCompaction {
+  startTimestamp: number; // earliest event covered by this summary
+  endTimestamp: number; // latest event covered by this summary
+  compactedContent: Content; // { role: "model", parts: [{ text: "…" }] }
+}
+```
+
+## rewindBeforeInvocationId
+
+The [Rewind](/docs/framework/runtime/rewind) feature sets this field to mark the invocation that should be rolled back. Like `compaction`, this is managed by the framework — you will see it when iterating events on a rewound session, but you do not set it yourself.
+
+## Creating events with actions
+
+When building a custom `BaseAgent`, construct `EventActions` in the same `new Event(…)` call:
 
 ```typescript
 import { Event, EventActions } from "@iqai/adk";
+import type { InvocationContext } from "@iqai/adk";
 
-export class CustomAgent extends BaseAgent {
-  async *runAsyncImpl(context: InvocationContext): AsyncGenerator<Event> {
-    // Perform some logic...
+async *runAsyncImpl(ctx: InvocationContext): AsyncGenerator<Event> {
+  const result = await doWork();
 
-    const actions = new EventActions({
-      stateDelta: {
-        task_status: "completed",
-        result_count: 5,
-      },
-      transferToAgent: "ReviewAgent",
-    });
-
-    yield new Event({
-      author: this.name,
-      invocationId: context.invocationId,
-      content: {
-        parts: [{ text: "Task completed, transferring for review" }],
-      },
-      actions: actions,
-    });
-  }
+  yield new Event({
+    author: this.name,
+    invocationId: ctx.invocationId,
+    content: { parts: [{ text: `Done. Found ${result.count} items.` }] },
+    actions: new EventActions({
+      stateDelta: { result_count: result.count, task_status: "complete" },
+    }),
+  });
 }
 ```
 
-## State Scope Patterns
+## Next steps
 
-Use prefixes to indicate state scope:
-
-- **`app:`** - Application-wide settings
-- **`user:`** - User-specific preferences across sessions
-- **`temp_`** - Temporary values (filtered from persistence)
-- **No prefix** - Session-specific state
-
-```typescript
-context.state["app:theme"] = "dark"; // App setting
-context.state["user:language"] = "en"; // User preference
-context.state["temp_calculation"] = result; // Temporary (not persisted)
-context.state["current_task"] = "processing"; // Session state
-```
-
-## Best Practices
-
-### Action Design
-
-- **Use specific actions**: Be explicit about what each action signals
-- **Combine logically**: Group related state changes in one event
-- **Document side effects**: Clear comments for complex action combinations
-
-### State Management
-
-- **Minimize state**: Only store what's needed across turns
-- **Use appropriate prefixes**: Indicate scope and persistence intent
-- **Avoid large objects**: Keep state values reasonably sized
-
-### Control Flow
-
-- **Single responsibility**: One control action per event when possible
-- **Clear transfers**: Use descriptive agent names for transfers
-- **Document escalation**: Explain why escalation occurs
-
-Event Actions provide the foundation for sophisticated agent behaviors and seamless component communication in ADK-TS applications.
+<Cards>
+  <Card
+    title="🔍 Working with Events"
+    description="Read content, detect final responses, and filter the event stream"
+    href="/docs/framework/events/working-with-events"
+  />
+  <Card
+    title="📦 Event Compaction"
+    description="How compaction events are created and consumed"
+    href="/docs/framework/events/compaction"
+  />
+  <Card
+    title="🔄 Session & State"
+    description="How session.state is updated from stateDelta across turns"
+    href="/docs/framework/session-state-memory/state"
+  />
+</Cards>
