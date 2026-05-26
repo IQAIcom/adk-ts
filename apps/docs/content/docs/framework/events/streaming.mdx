@@ -1,531 +1,159 @@
 ---
-title: Event Streaming
-description: Real-time event processing and streaming patterns in ADK-TS
+title: Streaming
+description: Stream text responses in real time from ADK-TS agents using textStreamFrom, collectTextFrom, and streamTextWithFinalEvent — purpose-built utilities for partial event handling.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-ADK-TS event streaming enables real-time interaction with agents, allowing your applications to process and display responses as they're generated rather than waiting for complete responses.
+ADK-TS agents emit text incrementally as the LLM generates it. Rather than waiting for the complete response, your application can display each fragment the moment it arrives. ADK-TS ships three utility functions in `@iqai/adk/utils` that abstract the `partial` flag and event iteration so you can work with a clean string stream.
 
-## Understanding Streaming Events
+## How streaming events work
 
-Streaming events allow for progressive content delivery, improving user experience by showing partial results immediately.
+When the LLM is mid-generation, the runner emits `Event` objects with `partial: true`. Each partial event contains a text fragment in `event.content.parts`. Once generation finishes, a final event arrives with `partial` unset (or `false`) — this is the event `isFinalResponse()` returns `true` for.
 
-### Event Properties for Streaming
+```
+Event { partial: true,  content: { parts: [{ text: "The answer" }] } }   ← delta
+Event { partial: true,  content: { parts: [{ text: " is 42." }] } }      ← delta
+Event { partial: false, content: { parts: [{ text: "The answer is 42." }] } }  ← final (full text)
+```
 
-Key properties that control streaming behavior:
+You can handle `partial` events manually, but the streaming utilities make the common cases much simpler.
+
+## textStreamFrom
+
+`textStreamFrom` converts a `runner.runAsync()` generator into a generator that yields only the raw text deltas. Use it when you need to print or display each word as it arrives and don't need any other event metadata:
 
 ```typescript
-interface Event {
-  partial?: boolean; // True for incomplete streaming chunks
-  turnComplete?: boolean; // True when the agent's turn is finished
-  content?: any; // Contains the partial or complete content
-  // ... other properties
+import { AgentBuilder } from "@iqai/adk";
+import { textStreamFrom } from "@iqai/adk/utils";
+
+const { runner } = await AgentBuilder.create("assistant")
+  .withModel("gemini-2.5-flash")
+  .withInstruction("You are a helpful assistant.")
+  .build();
+
+const events = runner.runAsync({
+  userId: "user-1",
+  sessionId: "session-1",
+  newMessage: { role: "user", parts: [{ text: "Tell me about black holes." }] },
+});
+
+for await (const text of textStreamFrom(events)) {
+  process.stdout.write(text); // prints each chunk immediately
 }
 ```
 
-## Basic Streaming Patterns
+`textStreamFrom` only yields text from `partial: true` events, so it silently skips function calls, function responses, and the non-streaming final event.
 
-### Simple Text Streaming
+## collectTextFrom
 
-Handle streaming text responses:
+`collectTextFrom` accumulates all text deltas and resolves to the complete response string once the stream ends. Use it when you want the streaming benefit of low first-byte latency from the model but only need the final string in your code:
 
 ```typescript
-async function handleStreamingResponse(runner, query, session) {
-  let accumulatedText = "";
+import { collectTextFrom } from "@iqai/adk/utils";
 
-  for await (const event of runner.runAsync(query, session)) {
-    if (event.content?.parts?.[0]?.text) {
-      if (event.partial) {
-        // Partial chunk - accumulate and display
-        accumulatedText += event.content.parts[0].text;
-        displayPartialText(accumulatedText);
-      } else {
-        // Complete chunk
-        accumulatedText += event.content.parts[0].text;
-        if (event.isFinalResponse()) {
-          displayFinalText(accumulatedText);
-          accumulatedText = ""; // Reset for next response
-        }
-      }
-    }
-  }
+const events = runner.runAsync({
+  userId: "user-1",
+  sessionId: "session-1",
+  newMessage: { role: "user", parts: [{ text: "What is TypeScript?" }] },
+});
+
+const fullText = await collectTextFrom(events);
+console.log(fullText); // complete response
+```
+
+## streamTextWithFinalEvent
+
+`streamTextWithFinalEvent` combines streaming and full event access in one call. It returns a `textStream` async generator for progressive display and a `finalEvent` promise that resolves with the last event once streaming completes — giving you both the text stream and the metadata (usage stats, tool calls, state deltas) from the final event:
+
+```typescript
+import { streamTextWithFinalEvent } from "@iqai/adk/utils";
+
+const events = runner.runAsync({
+  userId: "user-1",
+  sessionId: "session-1",
+  newMessage: { role: "user", parts: [{ text: "Calculate 17 × 23." }] },
+});
+
+const { textStream, finalEvent } = streamTextWithFinalEvent(events);
+
+// Stream the text as it arrives
+for await (const text of textStream) {
+  process.stdout.write(text);
+}
+
+// Inspect the final event for metadata
+const final = await finalEvent;
+if (final) {
+  console.log("\nState changes:", final.actions.stateDelta);
+  console.log("Tool calls:", final.getFunctionCalls());
 }
 ```
 
-### Progressive UI Updates
-
-<Tabs items={['React Hook', 'Vanilla JS', 'Vue Composition']}>
-<Tab value="React Hook">
-```typescript
-import { useState, useEffect } from 'react';
-
-function useEventStream(runner, query, session) {
-const [streamingText, setStreamingText] = useState('');
-const [events, setEvents] = useState<Event[]>([]);
-const [isStreaming, setIsStreaming] = useState(false);
-
-useEffect(() => {
-let currentText = '';
-
-    async function processStream() {
-      setIsStreaming(true);
-
-      try {
-        for await (const event of runner.runAsync(query, session)) {
-          setEvents(prev => [...prev, event]);
-
-          if (event.content?.parts?.[0]?.text) {
-            if (event.partial) {
-              currentText += event.content.parts[0].text;
-              setStreamingText(currentText);
-            } else if (event.isFinalResponse()) {
-              currentText += event.content.parts[0].text;
-              setStreamingText(currentText);
-              currentText = ''; // Reset for next response
-            }
-          }
-        }
-      } finally {
-        setIsStreaming(false);
-      }
-    }
-
-    processStream();
-
-}, [query]);
-
-return { streamingText, events, isStreaming };
-}
-
-````
-</Tab>
-
-<Tab value="Vanilla JS">
-```typescript
-class StreamingRenderer {
-  private container: HTMLElement;
-  private currentElement: HTMLElement | null = null;
-
-  constructor(containerId: string) {
-    this.container = document.getElementById(containerId)!;
-  }
-
-  async processStream(runner, query, session) {
-    let currentText = '';
-
-    for await (const event of runner.runAsync(query, session)) {
-      if (event.content?.parts?.[0]?.text) {
-        if (event.partial) {
-          currentText += event.content.parts[0].text;
-          this.updateCurrentElement(currentText);
-        } else if (event.isFinalResponse()) {
-          currentText += event.content.parts[0].text;
-          this.finalizeCurrentElement(currentText);
-          this.createNewElement();
-          currentText = '';
-        }
-      }
-    }
-  }
-
-  private updateCurrentElement(text: string) {
-    if (!this.currentElement) {
-      this.createNewElement();
-    }
-    this.currentElement!.textContent = text;
-  }
-
-  private createNewElement() {
-    this.currentElement = document.createElement('div');
-    this.currentElement.className = 'streaming-text';
-    this.container.appendChild(this.currentElement);
-  }
-
-  private finalizeCurrentElement(text: string) {
-    if (this.currentElement) {
-      this.currentElement.textContent = text;
-      this.currentElement.className = 'final-text';
-    }
-  }
-}
-````
-
-</Tab>
-
-<Tab value="Vue Composition">
-```typescript
-import { ref, onMounted } from 'vue';
-
-export function useEventStream(runner, query, session) {
-  const streamingText = ref('');
-  const events = ref<Event[]>([]);
-  const isStreaming = ref(false);
-
-const processStream = async () => {
-let currentText = '';
-isStreaming.value = true;
-
-    try {
-      for await (const event of runner.runAsync(query, session)) {
-        events.value.push(event);
-
-        if (event.content?.parts?.[0]?.text) {
-          if (event.partial) {
-            currentText += event.content.parts[0].text;
-            streamingText.value = currentText;
-          } else if (event.isFinalResponse()) {
-            currentText += event.content.parts[0].text;
-            streamingText.value = currentText;
-            currentText = '';
-          }
-        }
-      }
-    } finally {
-      isStreaming.value = false;
-    }
-
-};
-
-onMounted(processStream);
-
-return { streamingText, events, isStreaming };
-}
-
-````
-</Tab>
-</Tabs>
-
-## Advanced Streaming Patterns
-
-### Multi-Stream Handling
-
-Handle multiple concurrent streams:
-
-```typescript
-class MultiStreamManager {
-  private streams = new Map<string, StreamState>();
-
-  interface StreamState {
-    text: string;
-    isActive: boolean;
-    lastUpdate: number;
-  }
-
-  async processEvent(event: Event) {
-    const streamId = event.invocationId;
-
-    if (!this.streams.has(streamId)) {
-      this.streams.set(streamId, {
-        text: '',
-        isActive: true,
-        lastUpdate: Date.now()
-      });
-    }
-
-    const stream = this.streams.get(streamId)!;
-
-    if (event.content?.parts?.[0]?.text) {
-      if (event.partial) {
-        stream.text += event.content.parts[0].text;
-        stream.lastUpdate = Date.now();
-        this.onStreamUpdate(streamId, stream.text);
-      } else if (event.isFinalResponse()) {
-        stream.text += event.content.parts[0].text;
-        stream.isActive = false;
-        this.onStreamComplete(streamId, stream.text);
-      }
-    }
-  }
-
-  private onStreamUpdate(streamId: string, text: string) {
-    // Update UI for specific stream
-    console.log(`Stream ${streamId} updated:`, text);
-  }
-
-  private onStreamComplete(streamId: string, text: string) {
-    // Finalize stream display
-    console.log(`Stream ${streamId} completed:`, text);
-    this.streams.delete(streamId);
-  }
-}
-````
-
-### Buffered Streaming
-
-Implement buffering for smoother display:
-
-```typescript
-class BufferedStreamRenderer {
-  private buffer: string[] = [];
-  private isDisplaying = false;
-  private displayInterval = 50; // ms
-
-  addChunk(text: string) {
-    this.buffer.push(text);
-    this.startDisplayLoop();
-  }
-
-  private startDisplayLoop() {
-    if (this.isDisplaying) return;
-    this.isDisplaying = true;
-
-    const displayNext = () => {
-      if (this.buffer.length > 0) {
-        const chunk = this.buffer.shift()!;
-        this.displayChunk(chunk);
-        setTimeout(displayNext, this.displayInterval);
-      } else {
-        this.isDisplaying = false;
-      }
-    };
-
-    displayNext();
-  }
-
-  private displayChunk(chunk: string) {
-    // Implement smooth character-by-character display
-    const element = document.getElementById("output");
-    if (element) {
-      element.textContent += chunk;
-    }
-  }
-}
-```
-
-## Event Queue Management
-
-### Priority Queue
-
-Handle events with different priorities:
-
-```typescript
-class PriorityEventQueue {
-  private queues = {
-    high: [] as Event[],
-    normal: [] as Event[],
-    low: [] as Event[],
-  };
-
-  enqueue(event: Event, priority: "high" | "normal" | "low" = "normal") {
-    this.queues[priority].push(event);
-    this.processNext();
-  }
-
-  private processNext() {
-    const event = this.dequeue();
-    if (event) {
-      this.handleEvent(event);
-      // Schedule next processing
-      setImmediate(() => this.processNext());
-    }
-  }
-
-  private dequeue(): Event | null {
-    if (this.queues.high.length > 0) {
-      return this.queues.high.shift()!;
-    }
-    if (this.queues.normal.length > 0) {
-      return this.queues.normal.shift()!;
-    }
-    if (this.queues.low.length > 0) {
-      return this.queues.low.shift()!;
-    }
-    return null;
-  }
-
-  private handleEvent(event: Event) {
-    // Process the event based on its type
-    if (event.partial) {
-      this.handleStreamingEvent(event);
-    } else if (event.isFinalResponse()) {
-      this.handleFinalEvent(event);
-    }
-  }
-}
-```
-
-## Real-Time Features
-
-### Live Status Updates
-
-Show real-time processing status:
-
-```typescript
-class LiveStatusManager {
-  private statusElement: HTMLElement;
-  private currentStatus = "idle";
-
-  constructor(elementId: string) {
-    this.statusElement = document.getElementById(elementId)!;
-  }
-
-  updateFromEvent(event: Event) {
-    if (event.partial) {
-      this.setStatus("streaming", "Receiving response...");
-    } else if (event.getFunctionCalls().length > 0) {
-      this.setStatus("processing", "Using tools...");
-    } else if (event.getFunctionResponses().length > 0) {
-      this.setStatus("processing", "Processing results...");
-    } else if (event.isFinalResponse()) {
-      this.setStatus("complete", "Response complete");
-      setTimeout(() => this.setStatus("idle", "Ready"), 2000);
-    }
-  }
-
-  private setStatus(status: string, message: string) {
-    this.currentStatus = status;
-    this.statusElement.textContent = message;
-    this.statusElement.className = `status ${status}`;
-  }
-}
-```
-
-### Typing Indicators
-
-Show when agents are "thinking":
-
-```typescript
-class TypingIndicator {
-  private element: HTMLElement;
-  private timer: NodeJS.Timeout | null = null;
-
-  constructor(elementId: string) {
-    this.element = document.getElementById(elementId)!;
-  }
-
-  show(agentName: string) {
-    this.element.textContent = `${agentName} is thinking...`;
-    this.element.style.display = "block";
-    this.startAnimation();
-  }
-
-  hide() {
-    this.element.style.display = "none";
-    this.stopAnimation();
-  }
-
-  private startAnimation() {
-    let dots = "";
-    this.timer = setInterval(() => {
-      dots = dots.length >= 3 ? "" : dots + ".";
-      this.element.textContent =
-        this.element.textContent?.replace(/\.+$/, "") + dots;
-    }, 500);
-  }
-
-  private stopAnimation() {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
-  }
-}
-```
-
-## Performance Optimization
-
-### Debounced Updates
-
-Reduce UI update frequency:
-
-```typescript
-function debounce<T extends (...args: any[]) => void>(
-  func: T,
-  delay: number,
-): (...args: Parameters<T>) => void {
-  let timeoutId: NodeJS.Timeout;
-
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  };
-}
-
-class OptimizedStreamRenderer {
-  private debouncedUpdate = debounce((text: string) => {
-    this.updateUI(text);
-  }, 16); // ~60fps
-
-  handleStreamingEvent(event: Event) {
-    if (event.partial && event.content?.parts?.[0]?.text) {
-      this.debouncedUpdate(event.content.parts[0].text);
-    }
-  }
-
-  private updateUI(text: string) {
-    // Expensive UI update operation
-    document.getElementById("output")!.textContent = text;
-  }
-}
-```
-
-### Memory Management
-
-Handle large streams efficiently:
-
-```typescript
-class MemoryEfficientStream {
-  private maxEvents = 1000;
-  private events: Event[] = [];
-
-  addEvent(event: Event) {
-    this.events.push(event);
-
-    // Keep only recent events
-    if (this.events.length > this.maxEvents) {
-      this.events = this.events.slice(-this.maxEvents);
-    }
-  }
-
-  getRecentEvents(count: number = 100): Event[] {
-    return this.events.slice(-count);
-  }
-
-  cleanup() {
-    this.events = [];
-  }
-}
-```
-
-## Error Handling in Streams
-
-### Stream Recovery
-
-Handle stream interruptions gracefully:
-
-```typescript
-async function robustStreamProcessing(runner, query, session) {
-  let retries = 0;
-  const maxRetries = 3;
-
-  while (retries < maxRetries) {
-    try {
-      for await (const event of runner.runAsync(query, session)) {
-        await processEvent(event);
-      }
-      break; // Success, exit retry loop
-    } catch (error) {
-      retries++;
-      console.warn(`Stream interrupted (attempt ${retries}):`, error);
-
-      if (retries < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * retries));
-      } else {
-        console.error("Max retries exceeded, stream failed");
-        throw error;
-      }
-    }
-  }
-}
-```
-
-<Callout type="warn">
-
-When implementing streaming, always handle network interruptions and provide
-fallback mechanisms for critical functionality.
-
+<Callout type="info">
+  `finalEvent` resolves after the `textStream` generator completes, so always
+  `await` the `finalEvent` after finishing the `for await` loop — not before.
 </Callout>
 
-Event streaming enables responsive, real-time agent interactions that significantly improve user experience in ADK-TS applications.
+## Choosing the right utility
+
+| Utility                    | Use when                                                             |
+| -------------------------- | -------------------------------------------------------------------- |
+| `textStreamFrom`           | You need progressive display and nothing else                        |
+| `collectTextFrom`          | You need the complete string; don't need per-chunk display           |
+| `streamTextWithFinalEvent` | You need progressive display AND metadata from the final event       |
+| Raw `runner.runAsync()`    | You need to handle tool calls, state changes, or non-text events too |
+
+## Manual streaming loop
+
+When you need finer control — for example, to handle both streaming text and tool events in the same loop — work with `event.partial` directly:
+
+```typescript
+let buffer = "";
+
+for await (const event of runner.runAsync(request)) {
+  // Accumulate streaming chunks
+  if (event.partial && event.content?.parts?.[0]?.text) {
+    buffer += event.content.parts[0].text;
+    updateUI(buffer); // show partial text in real time
+    continue;
+  }
+
+  // Handle function calls while streaming
+  if (event.getFunctionCalls().length > 0) {
+    showToolActivity(event.getFunctionCalls());
+    continue;
+  }
+
+  // Final response — the final event carries the full accumulated text,
+  // so use it directly rather than appending to the buffer (which already
+  // holds all the deltas and would duplicate the content).
+  if (event.isFinalResponse()) {
+    const text = event.content?.parts?.[0]?.text ?? buffer;
+    finalizeUI(text);
+    buffer = "";
+  }
+}
+```
+
+## Next steps
+
+<Cards>
+  <Card
+    title="🔍 Working with Events"
+    description="Read content, detect final responses, and handle tool events in the event stream"
+    href="/docs/framework/events/working-with-events"
+  />
+  <Card
+    title="📦 Event Compaction"
+    description="Keep context windows manageable for long streaming conversations"
+    href="/docs/framework/events/compaction"
+  />
+  <Card
+    title="⚙️ Runner"
+    description="How the Runner drives the event loop and surfaces events to your code"
+    href="/docs/framework/runtime/runner"
+  />
+</Cards>
