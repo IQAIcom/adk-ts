@@ -31,7 +31,8 @@ const actions = new EventActions({
   escalate: true,
 
   // OAuth / API-key auth configs requested by tools.
-  requestedAuthConfigs: { "gmail-tool": { type: "oauth" } },
+  // Keys are function call IDs, not tool names.
+  requestedAuthConfigs: { "call-abc123": { type: "oauth" } },
 
   // Set by the compaction system — marks this event as a summary
   // that replaces a range of earlier events.
@@ -138,16 +139,16 @@ actions: new EventActions({ skipSummarization: true });
 
 ## requestedAuthConfigs
 
-Tools that need OAuth or API-key credentials populate `requestedAuthConfigs` with one entry per tool. The framework surfaces this to your application so it can trigger an auth flow before the tool call is retried.
+Tools that need OAuth or API-key credentials populate `requestedAuthConfigs` with one entry per pending tool invocation. The key is the **function call ID** (not the tool name) — the framework uses it to match the auth response back to the specific call that triggered it.
 
 ```typescript
 // Reading auth requests from events
 for await (const event of runner.runAsync(request)) {
   if (event.actions.requestedAuthConfigs) {
-    for (const [toolName, config] of Object.entries(
+    for (const [functionCallId, config] of Object.entries(
       event.actions.requestedAuthConfigs,
     )) {
-      console.log(`Tool "${toolName}" needs auth:`, config);
+      console.log(`Function call "${functionCallId}" needs auth:`, config);
     }
   }
 }

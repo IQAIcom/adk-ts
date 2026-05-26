@@ -15,17 +15,15 @@ Text lives in `event.content.parts` as an array of `Part` objects. Each text par
 
 ```typescript
 for await (const event of runner.runAsync(request)) {
-  if (!event.content?.parts) continue;
-
-  for (const part of event.content.parts) {
-    if (part.text) {
-      process.stdout.write(part.text);
-    }
+  // Only write streaming deltas — the final non-partial event contains
+  // the full accumulated text, so writing both would duplicate output.
+  if (event.partial && event.content?.parts?.[0]?.text) {
+    process.stdout.write(event.content.parts[0].text);
   }
 }
 ```
 
-During streaming, the agent emits many events with `partial: true` before the final complete event. Each partial event contains an incremental chunk of text — concatenate them to build the full response, or use the [streaming utilities](/docs/framework/events/streaming) to do that automatically.
+During streaming, the LLM emits many events with `partial: true`, each carrying a text delta. Once generation finishes, a final non-partial event is emitted containing the full accumulated text. To avoid duplicating output, only process one of the two — use the [streaming utilities](/docs/framework/events/streaming) which handle this automatically, or filter by `event.partial` yourself.
 
 ## Detecting the final response
 

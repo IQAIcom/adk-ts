@@ -14,9 +14,9 @@ ADK-TS agents emit text incrementally as the LLM generates it. Rather than waiti
 When the LLM is mid-generation, the runner emits `Event` objects with `partial: true`. Each partial event contains a text fragment in `event.content.parts`. Once generation finishes, a final event arrives with `partial` unset (or `false`) — this is the event `isFinalResponse()` returns `true` for.
 
 ```
-Event { partial: true,  content: { parts: [{ text: "The answer" }] } }
-Event { partial: true,  content: { parts: [{ text: " is 42." }] } }
-Event { partial: false, content: { parts: [{ text: "" }] } }  ← final
+Event { partial: true,  content: { parts: [{ text: "The answer" }] } }   ← delta
+Event { partial: true,  content: { parts: [{ text: " is 42." }] } }      ← delta
+Event { partial: false, content: { parts: [{ text: "The answer is 42." }] } }  ← final (full text)
 ```
 
 You can handle `partial` events manually, but the streaming utilities make the common cases much simpler.
@@ -127,10 +127,12 @@ for await (const event of runner.runAsync(request)) {
     continue;
   }
 
-  // Final response
+  // Final response — the final event carries the full accumulated text,
+  // so use it directly rather than appending to the buffer (which already
+  // holds all the deltas and would duplicate the content).
   if (event.isFinalResponse()) {
-    const text = event.content?.parts?.[0]?.text ?? "";
-    finalizeUI(buffer + text);
+    const text = event.content?.parts?.[0]?.text ?? buffer;
+    finalizeUI(text);
     buffer = "";
   }
 }

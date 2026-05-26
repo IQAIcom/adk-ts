@@ -100,10 +100,9 @@ const runner = new Runner({
 When no `summarizer` is provided, ADK-TS uses `LlmEventSummarizer` with the agent's own model. You can also instantiate it explicitly to use a different model — for example, a smaller, cheaper model dedicated to summarisation:
 
 ```typescript
-import { AgentBuilder, LlmEventSummarizer } from "@iqai/adk";
-import { LlmRegistry } from "@iqai/adk";
+import { AgentBuilder, LlmEventSummarizer, LLMRegistry } from "@iqai/adk";
 
-const cheapModel = LlmRegistry.newLlm("gemini-2.0-flash-lite");
+const cheapModel = LLMRegistry.newLLM("gemini-2.0-flash-lite");
 const summarizer = new LlmEventSummarizer(cheapModel);
 
 const { runner } = await AgentBuilder.create("assistant")

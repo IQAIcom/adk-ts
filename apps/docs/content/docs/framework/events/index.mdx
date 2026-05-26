@@ -31,8 +31,8 @@ event.branch; // dotted agent path for multi-agent hierarchies
 Two helper methods let you inspect content without parsing `parts` manually:
 
 ```typescript
-event.getFunctionCalls(); // Part[] — tool calls the agent wants to make
-event.getFunctionResponses(); // Part[] — results returned from tools
+event.getFunctionCalls(); // { name, args }[] — tool calls the agent wants to make
+event.getFunctionResponses(); // { name, response }[] — results returned from tools
 event.isFinalResponse(); // true when this event is ready to display
 ```
 
