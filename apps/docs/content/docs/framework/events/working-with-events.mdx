@@ -164,10 +164,8 @@ const agentReplies = run.filter(
 
 ```typescript
 for await (const event of runner.runAsync(request)) {
-  if ((event as any).errorCode) {
-    console.error(
-      `Error ${(event as any).errorCode}: ${(event as any).errorMessage}`,
-    );
+  if (event.errorCode) {
+    console.error(`Error ${event.errorCode}: ${event.errorMessage}`);
     break;
   }
 
