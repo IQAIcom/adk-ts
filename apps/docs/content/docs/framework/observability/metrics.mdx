@@ -1,181 +1,171 @@
 ---
 title: Metrics
-description: Monitor agent performance with counters, histograms, and token usage tracking
+description: Counters and histograms ADK-TS records automatically, plus how to record your own measurements
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-ADK-TS collects metrics for agent performance, tool usage, LLM interactions, and error rates. All metrics follow OpenTelemetry standards and are exported via OTLP.
+ADK-TS records metrics for every agent invocation, tool execution, and LLM call. Metrics are exported via OTLP on a configurable interval and follow OpenTelemetry standards, so they work with Prometheus, Grafana, Datadog, and any other OTLP-compatible metrics backend.
 
-## Available Metrics
+<Callout type="info" title="Jaeger only supports traces">
+  Jaeger does not ingest metrics. Use Grafana with Tempo or a full OTLP backend
+  like Datadog for metrics visualization.
+</Callout>
 
-The telemetry system automatically collects metrics for all agent operations. Metrics are exported at regular intervals (configurable via `metricExportIntervalMs`). Metrics can be monitored using counters and histograms.
+## Automatic Metrics
 
 ### Counters
 
-Counters track the total number of operations:
+Counters increment once per operation and reset on process restart:
 
-| Metric                  | Description             | Labels                                             |
-| ----------------------- | ----------------------- | -------------------------------------------------- |
-| `adk.agent.invocations` | Total agent invocations | `agent.name`, `environment`, `status`              |
-| `adk.tool.executions`   | Total tool executions   | `tool.name`, `agent.name`, `environment`, `status` |
-| `adk.llm.calls`         | Total LLM calls         | `model`, `agent.name`, `environment`, `status`     |
-| `adk.errors`            | Total errors            | `error_type`, `context`                            |
+| Metric                  | Labels                                             | Description             |
+| ----------------------- | -------------------------------------------------- | ----------------------- |
+| `adk.agent.invocations` | `agent.name`, `environment`, `status`              | Total agent invocations |
+| `adk.tool.executions`   | `tool.name`, `agent.name`, `environment`, `status` | Total tool executions   |
+| `adk.llm.calls`         | `model`, `agent.name`, `environment`, `status`     | Total LLM calls         |
+| `adk.errors`            | `error_type`, `context`                            | Total errors            |
 
 ### Histograms
 
-Histograms track distributions of values:
+Histograms record distributions of values, enabling percentile queries:
 
-| Metric                  | Description                | Labels                                             | Unit  |
-| ----------------------- | -------------------------- | -------------------------------------------------- | ----- |
-| `adk.agent.duration`    | Agent execution duration   | `agent.name`, `environment`, `status`              | ms    |
-| `adk.tool.duration`     | Tool execution duration    | `tool.name`, `agent.name`, `environment`, `status` | ms    |
-| `adk.llm.duration`      | LLM call duration          | `model`, `agent.name`, `environment`, `status`     | ms    |
-| `adk.llm.tokens`        | Total tokens per LLM call  | `model`, `agent.name`, `environment`, `status`     | count |
-| `adk.llm.tokens.input`  | Input tokens per LLM call  | `model`, `agent.name`, `environment`, `status`     | count |
-| `adk.llm.tokens.output` | Output tokens per LLM call | `model`, `agent.name`, `environment`, `status`     | count |
+| Metric                  | Unit   | Labels                                             | Description                |
+| ----------------------- | ------ | -------------------------------------------------- | -------------------------- |
+| `adk.agent.duration`    | ms     | `agent.name`, `environment`, `status`              | Agent execution duration   |
+| `adk.tool.duration`     | ms     | `tool.name`, `agent.name`, `environment`, `status` | Tool execution duration    |
+| `adk.llm.duration`      | ms     | `model`, `agent.name`, `environment`, `status`     | LLM call duration          |
+| `adk.llm.tokens`        | tokens | `model`, `agent.name`, `environment`, `status`     | Total tokens per LLM call  |
+| `adk.llm.tokens.input`  | tokens | `model`, `agent.name`, `environment`, `status`     | Input tokens per LLM call  |
+| `adk.llm.tokens.output` | tokens | `model`, `agent.name`, `environment`, `status`     | Output tokens per LLM call |
 
-## Metric Labels
+The `status` label is either `success` or `error`. All metrics also pick up any resource attributes you set via `resourceAttributes` during initialization.
 
-All metrics include labels for filtering and aggregation:
+## Metric Export Interval
 
-- **`agent.name`** - Name of the agent
-- **`tool.name`** - Name of the tool (for tool metrics)
-- **`model`** - LLM model name (for LLM metrics)
-- **`environment`** - Deployment environment
-- **`status`** - Operation status (`success`, `error`)
-- **`error_type`** - Type of error (for error metrics)
-- **`context`** - Error context (for error metrics)
-
-## Metric Dimensions
-
-When recording metrics, you can include additional dimensions:
+Metrics are buffered and exported periodically rather than per-operation. The default interval is 60 seconds. Shorten it for dashboards that need near-real-time data; lengthen it for production to reduce overhead:
 
 ```typescript
-telemetryService.recordAgentInvocation({
-  agentName: "my-agent",
-  environment: "production",
-  status: "success",
-  // Additional dimensions can be added via resource attributes
+await telemetryService.initialize({
+  appName: "my-agent-app",
+  otlpEndpoint: "http://localhost:4318/v1/traces",
+  metricExportIntervalMs: 30000, // export every 30 seconds
 });
 ```
 
-Resource attributes are automatically included as metric labels, allowing you to filter and aggregate by deployment, team, or any custom attribute.
+ADK-TS derives the metrics endpoint from the traces endpoint by replacing `/v1/traces` with `/v1/metrics`. Both point to the same host and port, so a single `otlpEndpoint` value covers both.
 
 ## Recording Custom Metrics
 
-You can manually record metrics for custom operations:
+For operations outside the automatic instrumentation — batch jobs, background workers, or business-level counters — you can record metrics directly:
 
 ```typescript
 import { telemetryService } from "@iqai/adk";
 
-// Record agent invocation
+// Count a successful agent run
 telemetryService.recordAgentInvocation({
-  agentName: "my-agent",
+  agentName: "research-agent",
   environment: "production",
   status: "success",
 });
 
-// Record agent duration
+// Record how long the agent took
 telemetryService.recordAgentDuration(1500, {
-  agentName: "my-agent",
+  agentName: "research-agent",
   environment: "production",
   status: "success",
 });
 
-// Record tool execution
+// Count a tool execution
 telemetryService.recordToolExecution({
   toolName: "search_web",
-  agentName: "my-agent",
+  agentName: "research-agent",
   environment: "production",
   status: "success",
 });
 
-// Record LLM tokens
-telemetryService.recordLlmTokens(150, 75, {
-  model: "gpt-4",
-  agentName: "my-agent",
+// Record tool duration
+telemetryService.recordToolDuration(450, {
+  toolName: "search_web",
+  agentName: "research-agent",
   environment: "production",
   status: "success",
 });
+
+// Count an LLM call
+telemetryService.recordLlmCall({
+  model: "gemini-2.5-flash",
+  agentName: "research-agent",
+  environment: "production",
+  status: "success",
+});
+
+// Record LLM duration
+telemetryService.recordLlmDuration(1200, {
+  model: "gemini-2.5-flash",
+  agentName: "research-agent",
+  environment: "production",
+  status: "success",
+});
+
+// Record token usage (input tokens, output tokens, then dimensions)
+telemetryService.recordLlmTokens(150, 75, {
+  model: "gemini-2.5-flash",
+  agentName: "research-agent",
+  environment: "production",
+  status: "success",
+});
+
+// Record an error
+telemetryService.recordError("tool", "search_web");
 ```
 
-## Metric Export
+The `recordError` method increments `adk.errors` with `error_type` set to `"agent"`, `"tool"`, or `"llm"` and `context` set to the string you pass.
 
-Metrics are automatically exported to your configured OTLP endpoint at regular intervals. The default export interval is 60 seconds (60000ms), but you can configure it:
+## Metric Name Constants
+
+Use the `METRICS` constant when building dashboards or alert queries — it lists all metric names in one place:
 
 ```typescript
-await telemetryService.initialize({
-  appName: "my-app",
-  otlpEndpoint: "http://localhost:4318/v1/traces",
-  metricExportIntervalMs: 30000, // Export every 30 seconds
-});
+import { METRICS } from "@iqai/adk";
+
+METRICS.AGENT_INVOCATIONS; // "adk.agent.invocations"
+METRICS.TOOL_EXECUTIONS; // "adk.tool.executions"
+METRICS.LLM_CALLS; // "adk.llm.calls"
+METRICS.ERRORS; // "adk.errors"
+METRICS.AGENT_DURATION; // "adk.agent.duration"
+METRICS.TOOL_DURATION; // "adk.tool.duration"
+METRICS.LLM_DURATION; // "adk.llm.duration"
+METRICS.LLM_TOKENS; // "adk.llm.tokens"
+METRICS.LLM_INPUT_TOKENS; // "adk.llm.tokens.input"
+METRICS.LLM_OUTPUT_TOKENS; // "adk.llm.tokens.output"
 ```
 
-<Callout type="info" title="Export Interval">
-  Adjust the export interval based on your needs. More frequent exports provide
-  real-time metrics but may increase overhead.
-</Callout>
+## Common Dashboard Queries
 
-## Viewing Metrics
+These PromQL examples work with Grafana backed by Prometheus or any OTLP-to-Prometheus bridge:
 
-ADK-TS sends metrics via OTLP to any compatible observability backend. You'll need to set up an external metrics visualization tool separately. Popular options include Grafana (with Tempo or Prometheus), Datadog, New Relic, and Honeycomb.
+```text
+# Agent invocation rate (per minute)
+rate(adk_agent_invocations_total[5m]) * 60
 
-<Callout type="info" title="No Built-in Viewer">
-  ADK-TS does not include a built-in metrics viewer. You need to set up an
-  external observability platform to view metrics. See the [Platform
-  Integrations](/docs/framework/observability/integrations) guide for setup
-  instructions.
-</Callout>
+# 95th percentile LLM latency
+histogram_quantile(0.95, rate(adk_llm_duration_bucket[5m]))
 
-### Grafana
+# Error rate across all agent operations
+sum(rate(adk_errors_total[5m]))
 
-Grafana is a popular open-source visualization tool that can display metrics from various backends:
-
-1. **Set up Grafana**: See the [Platform Integrations](/docs/framework/observability/integrations#grafana--tempo) guide for Docker setup instructions
-2. **Configure OTLP receiver** in your observability backend
-3. **Create dashboards** with queries for ADK-TS metrics
-4. **Set up alerts** based on metric thresholds
-
-Example Grafana queries:
-
-- `rate(adk_agent_invocations_total[5m])` - Agent invocation rate
-- `histogram_quantile(0.95, adk_llm_duration_bucket)` - 95th percentile LLM latency
-- `sum(rate(adk_errors_total[5m]))` - Error rate
-
-### Prometheus
-
-Prometheus is a metrics database that can be used with Grafana for visualization. If using Prometheus, configure the OpenTelemetry Collector to export metrics in Prometheus format:
-
-```yaml
-# otel-collector-config.yaml
-exporters:
-  prometheus:
-    endpoint: "0.0.0.0:8889"
-
-service:
-  pipelines:
-    metrics:
-      receivers: [otlp]
-      exporters: [prometheus]
+# Token cost breakdown by model
+sum by (model) (rate(adk_llm_tokens_input_bucket[1h]))
+sum by (model) (rate(adk_llm_tokens_output_bucket[1h]))
 ```
 
-## Common Use Cases
-
-| Use Case        | Metrics to Monitor                                              |
-| --------------- | --------------------------------------------------------------- |
-| **Performance** | `adk.agent.duration`, `adk.tool.duration`, `adk.llm.duration`   |
-| **Costs**       | `adk.llm.tokens.input`, `adk.llm.tokens.output`                 |
-| **Reliability** | `adk.errors`, error rates by `error_type`                       |
-| **Usage**       | `adk.agent.invocations`, `adk.tool.executions`, `adk.llm.calls` |
-
-## Related Topics
+## Next Steps
 
 <Cards>
   <Card
     title="🔍 Distributed Tracing"
-    description="Correlate metrics with traces for debugging"
+    description="Correlate metrics with traces to identify bottlenecks"
     href="/docs/framework/observability/tracing"
   />
   <Card
@@ -184,8 +174,8 @@ service:
     href="/docs/framework/observability/integrations"
   />
   <Card
-    title="🔒 Production Deployment"
-    description="Configure optimal metric collection for production"
+    title="🔒 Production"
+    description="Tune export intervals and sampling for production workloads"
     href="/docs/framework/observability/production"
   />
 </Cards>
