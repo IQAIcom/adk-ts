@@ -134,14 +134,23 @@ await telemetryService.initialize({
 });
 
 const sessionId = "session-abc";
+const { runner } = await AgentBuilder.create("my-agent")
+  .withModel("gemini-2.5-flash")
+  .build();
 
-await AgentBuilder.withModel("gemini-2.5-flash").ask("Hello!");
+for await (const _ of runner.runAsync({
+  userId: "user-1",
+  sessionId,
+  newMessage: { role: "user", parts: [{ text: "Hello!" }] },
+})) {
+  // consume events
+}
 
 // Retrieve all spans collected so far
 const allSpans = telemetryService.getTraces();
 console.log(`Captured ${allSpans.length} spans`);
 
-// Or retrieve only spans for a specific session
+// Or retrieve only spans tagged with a specific session ID
 const sessionSpans = telemetryService.getTracesForSession(sessionId);
 console.log(`Session spans: ${sessionSpans.length}`);
 ```

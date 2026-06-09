@@ -183,7 +183,17 @@ await telemetryService.initialize({
 });
 
 const sessionId = "session-abc";
-await AgentBuilder.withModel("gemini-2.5-flash").ask("Hello!");
+const { runner } = await AgentBuilder.create("my-agent")
+  .withModel("gemini-2.5-flash")
+  .build();
+
+for await (const _ of runner.runAsync({
+  userId: "user-1",
+  sessionId,
+  newMessage: { role: "user", parts: [{ text: "Hello!" }] },
+})) {
+  // consume events
+}
 
 const spans = telemetryService.getTracesForSession(sessionId);
 for (const span of spans) {

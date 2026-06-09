@@ -119,10 +119,14 @@ Spans emitted before `initialize()` completes are not captured. Build your telem
 await telemetryService.initialize({
   /* config */
 });
-const agent = AgentBuilder.withModel("gemini-2.5-flash").buildLlm();
+const { runner } = await AgentBuilder.create("my-agent")
+  .withModel("gemini-2.5-flash")
+  .build();
 
 // ❌ Traces will be missing
-const agent = AgentBuilder.withModel("gemini-2.5-flash").buildLlm();
+const { runner } = await AgentBuilder.create("my-agent")
+  .withModel("gemini-2.5-flash")
+  .build();
 await telemetryService.initialize({
   /* config */
 });
