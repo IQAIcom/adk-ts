@@ -1,470 +1,268 @@
 ---
 title: Metrics and Scoring
-description: Measurement approaches for trajectory and response quality
+description: How each built-in evaluation metric works, how scores are calculated, and how to configure thresholds
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
 
-Effective agent evaluation requires quantifiable metrics that capture both the quality of agent decisions and the value of their outputs.
+The evaluation framework ships with five prebuilt metrics. Each metric is implemented as an `Evaluator` subclass and registered in the `MetricEvaluatorRegistry`.
 
-<Callout type="info" title="Implemented Metrics">
+## Overview
 
-Currently implemented prebuilt metrics: `tool_trajectory_avg_score`,
-`response_match_score` (ROUGE‑1), `response_evaluation_score` (LLM judge 1‑5),
-`safety_v1`, and experimental `final_response_match_v2` (LLM judge binary).
-Configure via `criteria` thresholds.
+| Metric Key                  | Evaluator Class                 | Range | Description                              |
+| --------------------------- | ------------------------------- | ----- | ---------------------------------------- |
+| `tool_trajectory_avg_score` | `TrajectoryEvaluator`           | 0-1   | Exact match of tool call sequences       |
+| `response_match_score`      | `ResponseEvaluator`             | 0-1   | ROUGE-1 F-measure text similarity        |
+| `response_evaluation_score` | `ResponseEvaluator` (Vertex AI) | 1-5   | LLM-based qualitative scoring            |
+| `safety_v1`                 | `SafetyEvaluatorV1`             | 0-1   | Safety / harmlessness check              |
+| `final_response_match_v2`   | `FinalResponseMatchV2Evaluator` | 0-1   | LLM judge binary validity (experimental) |
 
-</Callout>
-
-## Trajectory Metrics
-
-Trajectory metrics measure the quality of the decision-making process and tool usage patterns.
-
-### Tool Usage Analysis
-
-**Tool Selection Accuracy:**
-
-- **Metric**: Percentage of appropriate tool choices for given tasks
-- **Calculation**: `(Correct tool selections / Total tool selections) * 100`
-- **Threshold**: Typically 85%+ for production agents
-
-**Tool Trajectory Average Score:**
-
-- - **Purpose**: Compares actual vs expected tool usage sequences
-- **Scoring**: Binary (1 for matches, 0 for mismatches)
-- **Patterns**:
-  - Exact match: Perfect sequence alignment
-  - In-order match: Correct order, allowing extra steps
-  - Any-order match: Required tools used regardless of order
-
-**Current Implementation Example:**
+These keys are defined in the `PrebuiltMetrics` enum:
 
 ```typescript
-function calculateToolAccuracy(events: Event[], expectedTools: string[]) {
-  const actualTools = events
-    .flatMap(e => e.getFunctionCalls())
-    .map(fc => fc.name);
+import { PrebuiltMetrics } from "@iqai/adk";
 
-  const correctSelections = expectedTools.filter(tool =>
-    actualTools.includes(tool),
-  ).length;
-
-  const accuracy = (correctSelections / expectedTools.length) * 100;
-  console.log(`Tool selection accuracy: ${accuracy}%`);
-
-  return {
-    accuracy,
-    expected: expectedTools,
-    actual: actualTools,
-    correct: correctSelections,
-  };
-}
+const criteria = {
+  [PrebuiltMetrics.TOOL_TRAJECTORY_AVG_SCORE]: 1.0,
+  [PrebuiltMetrics.RESPONSE_MATCH_SCORE]: 0.8,
+};
 ```
 
-### Decision Quality Metrics
+## Tool Trajectory Score
 
-**Step Efficiency:**
+**Key:** `tool_trajectory_avg_score`
+**Evaluator:** `TrajectoryEvaluator`
+**Range:** 0.0 - 1.0
 
-- **Definition**: Ratio of necessary steps to total steps taken
-- **Formula**: `Necessary steps / Total steps`
-- **Target**: Minimize unnecessary actions while maintaining effectiveness
+Compares the actual sequence of tool calls made by the agent against the expected sequence defined in your test case's `intermediateData.toolUses`.
 
-**Error Recovery Rate:**
+### How It Works
 
-- **Measurement**: Percentage of errors successfully recovered from
-- **Calculation**: `(Successful recoveries / Total errors) * 100`
-- **Assessment**: Track how agents handle tool failures and incorrect responses
+1. For each invocation, the evaluator compares actual vs expected `FunctionCall` arrays
+2. It checks **exact match** on both `name` and `args` (JSON equality) for every tool call
+3. The sequence must match exactly — same tools, same order, same arguments
+4. Each invocation scores 1.0 (match) or 0.0 (mismatch)
+5. The final score is the average across all invocations
 
-**Strategy Consistency:**
+### What Triggers a Mismatch
 
-- **Evaluation**: Consistent approach across similar scenarios
-- **Measurement**: Variance in tool usage patterns for equivalent tasks
-- **Goal**: Minimize unnecessary strategy variation
+- Different number of tool calls
+- Different tool names at any position
+- Different arguments (keys or values) for any tool call
+- Different ordering of tool calls
 
-### Performance Metrics
-
-**Response Time Analysis:**
-
-```typescript
-async function measureResponseTime(agent: LlmAgent, query: string) {
-  const startTime = Date.now();
-
-  let responseComplete = false;
-  const events = [];
-
-  for await (const event of agent.runAsync(context)) {
-    events.push(event);
-    if (event.isFinalResponse()) {
-      responseComplete = true;
-      break;
-    }
-  }
-
-  const totalTime = Date.now() - startTime;
-  const toolCalls = events.flatMap(e => e.getFunctionCalls()).length;
-
-  return {
-    totalTime,
-    toolCallCount: toolCalls,
-    avgTimePerTool: toolCalls > 0 ? totalTime / toolCalls : 0,
-    responseComplete,
-  };
-}
-```
-
-## Response Quality Metrics
-
-Response quality metrics assess the value and appropriateness of agent outputs.
-
-### Semantic Similarity Scoring
-
-**ROUGE‑1 (response_match_score):**
-
-- Key: `response_match_score`
-- Range: 0.0–1.0 (F1 overlap of unigrams)
-- Typical threshold: 0.7–0.9
-- Auto-applied when `response_match_score` present in `criteria`.
-
-**LLM Judge (response_evaluation_score):**
-
-- Key: `response_evaluation_score`
-- Range: 1–5 (higher is better)
-- Provide threshold (e.g. 3.5) and optional `judgeModelOptions` (model + numSamples) when extending internals.
-
-**Tool Trajectory (tool_trajectory_avg_score):**
-
-- Binary per case; average across runs.
-- Requires test samples with `expected_tool_use` (legacy path) or tool expectations embedded (future expansion).
-
-**Safety (safety_v1):**
-
-- Integration for safety / harmlessness (returns pass/fail style score 0/1 internally mapped to threshold).
-
-**Experimental Final Response Match V2 (final_response_match_v2):**
-
-- LLM judge binary validity vs reference; score in [0,1].
-- May change; not yet exposed by default criteria (add explicitly if needed).
-
-**Current Manual Assessment:**
-
-```typescript
-function assessResponseQuality(response: string, query: string) {
-  const quality = {
-    relevance: 0,
-    completeness: 0,
-    clarity: 0,
-    accuracy: 0,
-  };
-
-  // Relevance assessment
-  if (responseAddressesQuery(response, query)) {
-    quality.relevance = 1;
-  }
-
-  // Completeness check
-  if (responseIsComplete(response, query)) {
-    quality.completeness = 1;
-  }
-
-  // Clarity evaluation
-  if (responseIsClear(response)) {
-    quality.clarity = 1;
-  }
-
-  // Accuracy validation
-  if (responseIsAccurate(response, query)) {
-    quality.accuracy = 1;
-  }
-
-  const overallScore = Object.values(quality).reduce((a, b) => a + b) / 4;
-  return { ...quality, overall: overallScore };
-}
-```
-
-### Content Analysis
-
-**Accuracy Assessment:**
-
-- **Factual Correctness**: Verification against known ground truth
-- **Consistency**: Alignment with previous responses and established facts
-- **Source Attribution**: Proper citation when using external information
-
-**Relevance Measurement:**
-
-- **Query Alignment**: How well response addresses the user question
-- **Context Appropriateness**: Suitable for the conversation context
-- **User Intent**: Fulfillment of underlying user needs
-
-**Completeness Evaluation:**
-
-- **Information Coverage**: All necessary information provided
-- **Follow-up Handling**: Addressing natural follow-up questions
-- **Detail Level**: Appropriate depth for the query complexity
-
-### Tone and Style Analysis
-
-**Communication Quality:**
-
-```typescript
-function analyzeCommunicationStyle(response: string) {
-  return {
-    tone: detectTone(response), // friendly, professional, helpful
-    clarity: assessClarity(response), // clear, confusing, verbose
-    appropriateness: checkAppropriatenessForContext(response),
-    engagement: measureEngagementLevel(response),
-  };
-}
-
-function detectTone(text: string): string {
-  // Simple keyword-based analysis
-  const friendlyWords = ["please", "thank you", "happy to help"];
-  const professionalWords = ["regarding", "furthermore", "consequently"];
-
-  if (friendlyWords.some(word => text.toLowerCase().includes(word))) {
-    return "friendly";
-  }
-  if (professionalWords.some(word => text.toLowerCase().includes(word))) {
-    return "professional";
-  }
-  return "neutral";
-}
-```
-
-## Composite Scoring
-
-### Weighted Evaluation
-
-Combine multiple metrics for holistic assessment:
-
-```typescript
-interface EvaluationWeights {
-  trajectory: number; // 0.4 - How agents reach solutions
-  accuracy: number; // 0.3 - Correctness of responses
-  relevance: number; // 0.2 - Appropriateness to query
-  efficiency: number; // 0.1 - Speed and resource usage
-}
-
-function calculateCompositeScore(
-  trajectoryScore: number,
-  accuracyScore: number,
-  relevanceScore: number,
-  efficiencyScore: number,
-  weights: EvaluationWeights = {
-    trajectory: 0.4,
-    accuracy: 0.3,
-    relevance: 0.2,
-    efficiency: 0.1,
-  },
-): number {
-  return (
-    trajectoryScore * weights.trajectory +
-    accuracyScore * weights.accuracy +
-    relevanceScore * weights.relevance +
-    efficiencyScore * weights.efficiency
-  );
-}
-```
-
-### Pass/Fail Criteria
-
-**Threshold-Based Evaluation:**
-
-```typescript
-interface QualityThresholds {
-  trajectory: number; // Minimum 0.85
-  accuracy: number; // Minimum 0.90
-  relevance: number; // Minimum 0.75
-  overall: number; // Minimum 0.80
-}
-
-function evaluateAgentPerformance(
-  scores: Record<string, number>,
-  thresholds: QualityThresholds,
-): { pass: boolean; details: Record<string, boolean> } {
-  const details = {
-    trajectory: scores.trajectory >= thresholds.trajectory,
-    accuracy: scores.accuracy >= thresholds.accuracy,
-    relevance: scores.relevance >= thresholds.relevance,
-    overall: scores.overall >= thresholds.overall,
-  };
-
-  const pass = Object.values(details).every(Boolean);
-
-  return { pass, details };
-}
-```
-
-## Statistical Analysis
-
-### Confidence Intervals
-
-Since agent responses vary, multiple runs provide statistical significance:
-
-```typescript
-async function runMultipleEvaluations(
-  agent: LlmAgent,
-  query: string,
-  runs: number = 5,
-) {
-  const scores = [];
-
-  for (let i = 0; i < runs; i++) {
-    const result = await evaluateSingleRun(agent, query);
-    scores.push(result.overallScore);
-  }
-
-  const mean = scores.reduce((a, b) => a + b) / scores.length;
-  const variance =
-    scores.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / scores.length;
-  const stdDev = Math.sqrt(variance);
-
-  return {
-    mean,
-    stdDev,
-    confidence95: [mean - 1.96 * stdDev, mean + 1.96 * stdDev],
-    allScores: scores,
-  };
-}
-```
-
-### Trend Analysis
-
-Track performance over time:
-
-```typescript
-interface PerformanceRecord {
-  timestamp: Date;
-  version: string;
-  scores: Record<string, number>;
-  testScenario: string;
-}
-
-function analyzePerformanceTrend(records: PerformanceRecord[]) {
-  const byVersion = records.reduce(
-    (acc, record) => {
-      if (!acc[record.version]) acc[record.version] = [];
-      acc[record.version].push(record.scores.overall);
-      return acc;
-    },
-    {} as Record<string, number[]>,
-  );
-
-  return Object.entries(byVersion).map(([version, scores]) => ({
-    version,
-    avgScore: scores.reduce((a, b) => a + b) / scores.length,
-    minScore: Math.min(...scores),
-    maxScore: Math.max(...scores),
-    sampleSize: scores.length,
-  }));
-}
-```
-
-## Domain-Specific Metrics
-
-### Customer Support Agents
-
-**Resolution Rate:**
-
-- **Metric**: Percentage of issues successfully resolved
-- **Measurement**: Track escalation vs resolution outcomes
-- **Target**: 80%+ first-contact resolution
-
-**User Satisfaction Proxy:**
-
-- **Indicators**: Response helpfulness, clarity, completeness
-- **Measurement**: Structured evaluation of response quality
-- **Benchmarking**: Compare against human agent performance
-
-### Information Retrieval Agents
-
-**Search Accuracy:**
-
-- **Precision**: Relevant results / Total results returned
-- **Recall**: Relevant results found / Total relevant results available
-- **F1 Score**: Harmonic mean of precision and recall
-
-**Source Attribution:**
-
-- **Metric**: Percentage of claims with proper citations
-- **Quality**: Accuracy and reliability of cited sources
-- **Compliance**: Adherence to attribution requirements
-
-### Task Automation Agents
-
-**Completion Rate:**
-
-- **Success**: Tasks completed successfully without intervention
-- **Efficiency**: Time to completion vs baseline
-- **Error Handling**: Graceful handling of unexpected conditions
-
-**Integration Quality:**
-
-- **API Usage**: Proper integration with external systems
-- **Data Handling**: Correct processing and transformation
-- **Error Recovery**: Resilience to system failures
-
-## Available Evaluation Metrics
-
-<Callout type="info" title="Current Implementation">
-
-The following metrics are available in the ADK-TS evaluation framework.
-Additional advanced analytics are planned for future releases.
-
-</Callout>
-
-**Built-in Metric Keys (use in criteria):**
-
-| Key                                    | Description                                           | Range | Typical Threshold |
-| -------------------------------------- | ----------------------------------------------------- | ----- | ----------------- |
-| tool_trajectory_avg_score              | Avg binary match of expected vs actual tool sequences | 0–1   | 1.0 (strict)      |
-| response_match_score                   | ROUGE‑1 similarity F1                                 | 0–1   | 0.7–0.9           |
-| response_evaluation_score              | LLM judge qualitative score                           | 1–5   | 3–4               |
-| safety_v1                              | Safety / harmlessness (pass/fail mapped)              | 0–1   | 1.0               |
-| final_response_match_v2 (experimental) | LLM judged exactness vs reference                     | 0–1   | 0.8–0.95          |
-
-**Criteria Configuration Example (test_config.json):**
+### Example Test Data
 
 ```json
 {
-  "criteria": {
-    "tool_trajectory_avg_score": 1.0,
-    "response_match_score": 0.8,
-    "safety_v1": 1.0
+  "intermediateData": {
+    "toolUses": [
+      { "name": "search_web", "args": { "query": "TypeScript generics" } },
+      { "name": "summarize", "args": { "maxLength": 200 } }
+    ],
+    "intermediateResponses": []
   }
 }
-
-
-**Future Capabilities:**
-- **Real-time Analytics**: Live performance dashboards
-- **Comparative Analysis**: Benchmark against other agents
-- **Predictive Metrics**: Early warning systems for performance degradation
-
-**Integration Capabilities:**
-- **CI/CD Pipeline Integration**: Automated quality gates
-- **Performance Monitoring**: Production quality tracking
-- **Alert Systems**: Threshold-based notifications
-- **Trend Analysis**: Long-term performance patterns
-
-## Best Practices
-
-### Metric Selection
-
-**Relevance**: Choose metrics that align with business objectives
-**Balance**: Combine objective measurements with subjective assessment
-**Actionability**: Select metrics that guide improvement efforts
-**Consistency**: Maintain consistent measurement approaches over time
-
-### Threshold Setting
-
-**Baseline Establishment**: Use initial performance as baseline
-**Gradual Improvement**: Incrementally raise quality standards
-**Context Sensitivity**: Adjust thresholds for different use cases
-**Stakeholder Alignment**: Ensure thresholds match business requirements
-
-### Performance Monitoring
-
-**Regular Assessment**: Continuous evaluation of key metrics
-**Trend Analysis**: Monitor performance patterns over time
-**Root Cause Analysis**: Investigate performance degradations
-**Improvement Tracking**: Measure impact of optimization efforts
 ```
+
+The agent must call `search_web` with exactly `{ "query": "TypeScript generics" }`, then `summarize` with exactly `{ "maxLength": 200 }` to score 1.0.
+
+### Typical Threshold
+
+```json
+{ "tool_trajectory_avg_score": 1.0 }
+```
+
+Use 1.0 for strict validation (all tools must match). Lower to 0.5-0.8 if you expect some variability in tool usage across runs.
+
+## Response Match Score (ROUGE-1)
+
+**Key:** `response_match_score`
+**Evaluator:** `ResponseEvaluator`
+**Range:** 0.0 - 1.0
+
+Measures word-level overlap between the agent's actual response and the expected `finalResponse` using the ROUGE-1 F-measure.
+
+### How It Works
+
+1. Both the actual response and the reference are tokenized into lowercase unigrams (non-word characters removed)
+2. Precision = common unigrams / response unigrams
+3. Recall = common unigrams / reference unigrams
+4. F-measure = 2 x (precision x recall) / (precision + recall)
+5. Returns 0 if either text is empty
+
+### Scoring Examples
+
+| Reference                          | Response                           | Score |
+| ---------------------------------- | ---------------------------------- | ----- |
+| `"The weather in London is sunny"` | `"The weather in London is sunny"` | 1.0   |
+| `"The weather in London is sunny"` | `"It's sunny in London today"`     | ~0.57 |
+| `"4"`                              | `"The answer is 4"`                | ~0.4  |
+| `"Hello world"`                    | `"Goodbye universe"`               | 0.0   |
+
+### When to Use
+
+- Factual responses where specific words matter
+- Short, precise answers (calculations, lookups)
+- Cases where you have a clear "golden" reference
+
+### When to Prefer LLM-as-Judge Instead
+
+- Open-ended responses where phrasing varies
+- Long-form content where word overlap is a poor proxy for quality
+- Responses where meaning matters more than exact wording
+
+### Typical Threshold
+
+```json
+{ "response_match_score": 0.7 }
+```
+
+Use 0.7-0.8 for factual answers. Use 0.5-0.6 for longer, more open-ended responses.
+
+## Response Evaluation Score (LLM-as-Judge)
+
+**Key:** `response_evaluation_score`
+**Evaluator:** `ResponseEvaluator` (delegates to Vertex AI)
+**Range:** 1 - 5
+
+Uses a separate LLM to qualitatively assess the agent's response against the reference. The judge model scores on a 1-5 scale.
+
+### How It Works
+
+1. A judge prompt is constructed with the user query, expected response, and actual response
+2. The judge LLM evaluates the response
+3. Multiple samples are taken for reliability
+4. The scores are aggregated
+
+### Configuration
+
+Pass `judgeModelOptions` when working with the evaluator directly:
+
+```typescript
+import type { JudgeModelOptions } from "@iqai/adk";
+
+const judgeOptions: JudgeModelOptions = {
+  judgeModel: "gemini-2.5-flash",
+  numSamples: 5,
+};
+```
+
+### Typical Threshold
+
+```json
+{ "response_evaluation_score": 3.5 }
+```
+
+Scores below 3 generally indicate poor responses. Aim for 3.5-4.0 for production agents.
+
+## Safety Score
+
+**Key:** `safety_v1`
+**Evaluator:** `SafetyEvaluatorV1`
+**Range:** 0 - 1 (binary: 0 = unsafe, 1 = safe)
+
+Evaluates whether the agent's response is safe and harmless.
+
+### Typical Threshold
+
+```json
+{ "safety_v1": 1.0 }
+```
+
+Safety is typically a hard requirement — set to 1.0 to enforce that every response must pass.
+
+## Final Response Match V2 (Experimental)
+
+**Key:** `final_response_match_v2`
+**Evaluator:** `FinalResponseMatchV2Evaluator`
+**Range:** 0 - 1
+
+<Callout type="warning" title="Experimental">
+
+This metric may change in future releases. Add it explicitly to your criteria
+if you want to use it — it is not included in default criteria.
+
+</Callout>
+
+Uses an LLM judge to determine binary validity: is the actual response a valid answer given the reference? Returns the proportion of "valid" judgments across multiple samples.
+
+### Typical Threshold
+
+```json
+{ "final_response_match_v2": 0.8 }
+```
+
+## How Scoring Works End-to-End
+
+### 1. Inference
+
+The `LocalEvalService` runs the agent against each eval case. For each `Invocation` in the conversation, it sends the `userContent` to the agent and records the actual response and tool calls.
+
+### 2. Metric Evaluation
+
+For each metric in your `criteria`, the corresponding evaluator compares actual vs expected invocations:
+
+- `TrajectoryEvaluator` compares `intermediateData.toolUses`
+- `ResponseEvaluator` compares `finalResponse` text (ROUGE-1 or LLM judge depending on metric)
+- `SafetyEvaluatorV1` and `FinalResponseMatchV2Evaluator` use their respective comparison logic
+
+### 3. Aggregation
+
+Scores are calculated per-invocation, then averaged across all invocations within a test case, then averaged across all runs (when `numRuns > 1`).
+
+### 4. Threshold Check
+
+If any metric's aggregated score falls below its threshold, `AgentEvaluator` throws an Error with details:
+
+```
+response_match_score for my_agent Failed. Expected 0.8, but got 0.65.
+```
+
+Enable detailed output to see per-case breakdowns:
+
+```typescript
+await AgentEvaluator.evaluateEvalSet(
+  agent,
+  evalSet,
+  criteria,
+  2,
+  true, // printDetailedResults — outputs a table with per-case scores
+);
+```
+
+## Choosing the Right Metrics
+
+| Scenario                               | Recommended Metrics                                  |
+| -------------------------------------- | ---------------------------------------------------- |
+| Tool-heavy agent (API calls, searches) | `tool_trajectory_avg_score`                          |
+| Factual Q&A agent                      | `response_match_score`                               |
+| Conversational / creative agent        | `response_evaluation_score`                          |
+| Safety-critical application            | `safety_v1`                                          |
+| General production agent               | `tool_trajectory_avg_score` + `response_match_score` |
+
+## Related Topics
+
+<Cards>
+  <Card
+    title="🧪 Testing Agents"
+    description="Write test cases, configure criteria, and run evaluations with AgentEvaluator"
+    href="/docs/framework/evaluation/testing-agents"
+  />
+  <Card
+    title="📐 Evaluation Patterns"
+    description="Domain-specific evaluation strategies, CI/CD gates, and production monitoring"
+    href="/docs/framework/evaluation/evaluation-patterns"
+  />
+  <Card
+    title="💡 Evaluation Concepts"
+    description="Core principles and challenges in agent evaluation"
+    href="/docs/framework/evaluation/evaluation-concepts"
+  />
+  <Card
+    title="🔧 Tools"
+    description="Tool integration — essential for trajectory scoring"
+    href="/docs/framework/tools"
+  />
+</Cards>

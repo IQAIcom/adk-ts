@@ -492,7 +492,7 @@ export function mergeParallelFunctionResponseEvents(
 
 	// Create the new merged event
 	const mergedEvent = new Event({
-		invocationId: Event.newId(),
+		invocationId: baseEvent.invocationId,
 		author: baseEvent.author,
 		branch: baseEvent.branch,
 		content: { role: "user", parts: mergedParts },

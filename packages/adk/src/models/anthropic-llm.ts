@@ -6,6 +6,7 @@ import type { BaseLLMConnection } from "./base-llm-connection";
 import { RateLimitError } from "./errors";
 import type { LlmRequest } from "./llm-request";
 import { LlmResponse } from "./llm-response";
+import { safeParseToolArgs } from "./llm-utils";
 
 type AnthropicRole = "user" | "assistant";
 
@@ -279,7 +280,7 @@ export class AnthropicLlm extends BaseLlm {
 								functionCall: {
 									id: block.id,
 									name: block.name,
-									args: JSON.parse(block.inputJson || "{}"),
+									args: safeParseToolArgs(block.inputJson, this.logger),
 								},
 							});
 						}

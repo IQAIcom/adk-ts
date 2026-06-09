@@ -62,8 +62,31 @@ export class GcsArtifactService implements BaseArtifactService {
 
 		const blob = this.bucket.file(blobName);
 
-		await blob.save(artifact.inlineData.data, {
-			contentType: artifact.inlineData.mimeType,
+		let data: string;
+		let contentType: string;
+		let partType: string;
+
+		if (artifact.text !== undefined) {
+			data = artifact.text;
+			contentType = "text/plain";
+			partType = "text";
+		} else if (artifact.inlineData) {
+			data = artifact.inlineData.data;
+			contentType = artifact.inlineData.mimeType;
+			partType = "inlineData";
+		} else if (artifact.fileData) {
+			data = artifact.fileData.fileUri;
+			contentType = artifact.fileData.mimeType || "application/octet-stream";
+			partType = "fileData";
+		} else {
+			throw new Error(
+				"Unsupported artifact Part type: must have text, inlineData, or fileData",
+			);
+		}
+
+		await blob.save(data, {
+			contentType,
+			metadata: { partType },
 			preconditionOpts: { ifGenerationMatch: 0 },
 		});
 
@@ -109,12 +132,27 @@ export class GcsArtifactService implements BaseArtifactService {
 				return null;
 			}
 
-			const part: Part = {
-				inlineData: {
-					data: artifactBuffer.toString(),
-					mimeType: metadata.contentType || "application/octet-stream",
-				},
-			};
+			const partType = metadata.metadata?.partType;
+			let part: Part;
+
+			if (partType === "text") {
+				part = { text: artifactBuffer.toString() };
+			} else if (partType === "fileData") {
+				part = {
+					fileData: {
+						fileUri: artifactBuffer.toString(),
+						mimeType: metadata.contentType || "application/octet-stream",
+					},
+				};
+			} else {
+				part = {
+					inlineData: {
+						data: artifactBuffer.toString(),
+						mimeType: metadata.contentType || "application/octet-stream",
+					},
+				};
+			}
+
 			return part;
 		} catch (error: unknown) {
 			if ((error as any)?.code === 404) {

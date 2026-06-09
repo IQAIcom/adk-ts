@@ -101,7 +101,7 @@ pnpm start
 
 ## 🤝 Contributing
 
-All contributions are welcome! Please check out our [Contributing Guide](CONTRIBUTION.md) for details on how to get started.
+All contributions are welcome! Please check out our [Contributing Guide](CONTRIBUTING.md) for details on how to get started.
 
 ## 🌍 Community
 

@@ -10,13 +10,18 @@ import { DEFAULT_METRIC_EVALUATOR_REGISTRY } from "./metric-evaluator-registry";
 
 export class LocalEvalService extends BaseEvalService {
 	private runner: any;
+	private readyPromise: Promise<void>;
 
 	constructor(
 		private readonly agent: BaseAgent,
 		private readonly parallelism: number = 4,
 	) {
 		super();
-		this.initializeRunner();
+		this.readyPromise = this.initializeRunner();
+	}
+
+	private ensureReady(): Promise<void> {
+		return this.readyPromise;
 	}
 
 	private async initializeRunner() {
@@ -147,9 +152,7 @@ export class LocalEvalService extends BaseEvalService {
 	private async runInference(evalCase: EvalCase): Promise<Invocation[]> {
 		const results: Invocation[] = [];
 
-		if (!this.runner) {
-			await this.initializeRunner();
-		}
+		await this.ensureReady();
 
 		if (evalCase.sessionInput) {
 			try {

@@ -3,6 +3,7 @@ title: Context Caching
 description: A guide explaining how to configure and use context caching in ADK-TS with Gemini and Anthropic models to reuse large prompts efficiently, reducing latency and token costs.
 ---
 
+import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
 When working with agents to complete tasks, you may want to reuse extended instructions or large sets of data across multiple agent requests to a generative AI model. Resending this data for each agent request is slow, inefficient, and can be expensive. Using context caching features in generative AI models can significantly speed up responses and lower the number of tokens sent to the model for each request.
@@ -140,9 +141,25 @@ Additionally, follow these best practices:
 
 ## Next steps
 
-If your use case relies on instructions that should persist across an entire
-session, consider using static or session-level instructions instead of
-re-sending them on every request.
-
-To evaluate the impact of context caching, compare latency and token usage with
-and without caching enabled while running the same agent workload.
+<Cards>
+  <Card
+    title="⚙️ InvocationContext"
+    description="Where contextCacheConfig lives — understand the full invocation data model"
+    href="/docs/framework/context/invocation-context"
+  />
+  <Card
+    title="🤖 Agents"
+    description="Attach context caching to agents via AgentBuilder or LlmAgent"
+    href="/docs/framework/agents"
+  />
+  <Card
+    title="🔁 CallbackContext"
+    description="Use callbacks to observe or control state around cached invocations"
+    href="/docs/framework/context/callback-context"
+  />
+  <Card
+    title="📦 Session, State, Memory"
+    description="Session lifecycle and how state persists across invocations"
+    href="/docs/framework/session-state-memory/session"
+  />
+</Cards>

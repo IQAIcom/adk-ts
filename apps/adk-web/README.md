@@ -259,7 +259,7 @@ We welcome various types of contributions:
 
 - **[Check existing issues](https://github.com/IQAIcom/adk-ts/issues)** for similar questions or problems
 - **[Ask in discussions](https://github.com/IQAIcom/adk-ts/discussions)** for clarification on development topics
-- **[Contributing Guide](../../CONTRIBUTION.md)** - Main project contribution guidelines
+- **[Contributing Guide](../../CONTRIBUTING.md)** - Main project contribution guidelines
 
 ---
 

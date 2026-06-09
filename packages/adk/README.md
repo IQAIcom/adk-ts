@@ -322,7 +322,7 @@ pnpm install && pnpm dev
 
 ## 🤝 Contributing
 
-Contributions are welcome! See our [Contributing Guide](https://github.com/IQAIcom/adk-ts/blob/main/CONTRIBUTION.md) for details.
+Contributions are welcome! See our [Contributing Guide](https://github.com/IQAIcom/adk-ts/blob/main/CONTRIBUTING.md) for details.
 
 ## 📜 License
 

@@ -5,40 +5,34 @@ description: Monitor and debug AI agents with OpenTelemetry-based distributed tr
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
+import { Mermaid } from "@/components/mdx/mermaid";
 
-ADK-TS provides built-in observability through OpenTelemetry integration. Monitor your agents' performance, trace execution flows, collect metrics, and gain insights into LLM interactions, tool usage, and agent behavior.
+ADK-TS has built-in OpenTelemetry support. Every agent run, tool call, and LLM request automatically creates spans and records metrics — no manual instrumentation required. The data travels via OTLP to any compatible backend: Jaeger, Grafana, Datadog, New Relic, Honeycomb, or any OTLP endpoint.
 
-<Callout type="info" title="Built-in Support">
-  All telemetry dependencies are included in `@iqai/adk`. No additional packages
-  required.
-</Callout>
+## How It Works
 
-## What You'll Learn
+<Mermaid
+  chart={`
+flowchart LR
+    A[AgentBuilder] --> B[telemetryService.initialize]
+    B --> C[Agent runs]
+    C --> D[agent_run span]
+    D --> E[llm_generate span]
+    D --> F[execute_tool span]
+    E --> G[OTLP Export]
+    F --> G
+    G --> H[(Traces backend\nJaeger / Grafana / Datadog)]
+    G --> I[(Metrics backend\nPrometheus / Datadog)]
+`}
+/>
 
-This section covers everything you need to know about observability in ADK-TS:
+Initialize once before your first agent call. All subsequent agent, tool, and LLM operations emit spans and metrics automatically.
 
-- **Setting up telemetry** - Initialize and configure the telemetry service
-- **Distributed tracing** - Track agent invocations, tool executions, and LLM calls
-- **Metrics collection** - Monitor performance with counters and histograms
-- **Platform integrations** - Connect to Jaeger, Grafana, Datadog, and more
-- **Production deployment** - Privacy controls, performance tuning, and best practices
-
-## Key Features
-
-| Feature                  | Description                                                                                |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| **Distributed Tracing**  | Track agent invocations, tool executions, and LLM calls across your system                 |
-| **Metrics Collection**   | Monitor performance with counters, histograms, and token usage tracking                    |
-| **Auto-Instrumentation** | Optional automatic tracing of HTTP calls and database queries                              |
-| **Privacy Controls**     | Configurable content capture for production environments                                   |
-| **Platform Integration** | Works with Jaeger, Grafana, Datadog, New Relic, Honeycomb, and any OTLP-compatible backend |
-
-## Quick Example
+## Quick Start
 
 ```typescript
 import { telemetryService, AgentBuilder } from "@iqai/adk";
 
-// Initialize telemetry before any agent operations
 await telemetryService.initialize({
   appName: "my-agent-app",
   otlpEndpoint: "http://localhost:4318/v1/traces",
@@ -47,20 +41,22 @@ await telemetryService.initialize({
   enableTracing: true,
 });
 
-// Your agents automatically send traces and metrics
 const response = await AgentBuilder.withModel("gemini-2.5-flash").ask("Hello!");
 console.log(response);
 
-// Shutdown gracefully to flush pending telemetry
 await telemetryService.shutdown(5000);
 ```
 
-## Related Topics
+<Callout type="info" title="No extra packages">
+  All telemetry dependencies ship with `@iqai/adk`. Nothing extra to install.
+</Callout>
+
+## Next Steps
 
 <Cards>
   <Card
     title="🚀 Getting Started"
-    description="Initialize and configure telemetry for local development"
+    description="Initialize and configure telemetry with all available options"
     href="/docs/framework/observability/getting-started"
   />
   <Card
@@ -70,17 +66,17 @@ await telemetryService.shutdown(5000);
   />
   <Card
     title="📊 Metrics"
-    description="Monitor agent performance with counters and histograms"
+    description="Monitor performance with counters, histograms, and token tracking"
     href="/docs/framework/observability/metrics"
   />
   <Card
     title="🔌 Platform Integrations"
-    description="Connect to Jaeger, Grafana, Datadog, and other backends"
+    description="Connect to Jaeger, Grafana, Datadog, and other OTLP backends"
     href="/docs/framework/observability/integrations"
   />
   <Card
-    title="🔒 Production Deployment"
-    description="Privacy controls, performance tuning, and best practices"
+    title="🔒 Production"
+    description="Privacy controls, sampling, and best practices for production"
     href="/docs/framework/observability/production"
   />
 </Cards>
