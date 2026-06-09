@@ -116,7 +116,10 @@ export interface GoogleLlmConfig {
 	vertexai?: boolean;
 	project?: string;
 	location?: string;
-	/** Pre-built client — bypasses all other config / env vars */
+	/**
+	 * Pre-built client — bypasses all other config / env vars.
+	 * Set `vertexai: true` alongside to classify the backend as Vertex AI.
+	 */
 	client?: GoogleGenAI;
 }
 
@@ -309,7 +312,7 @@ export class GoogleLlm extends BaseLlm {
 	get apiBackend(): GoogleLLMVariant {
 		if (!this.#apiBackend) {
 			const cfg = this.#config;
-			if (cfg?.vertexai && cfg.project && cfg.location) {
+			if (cfg?.vertexai && (cfg.client || (cfg.project && cfg.location))) {
 				this.#apiBackend = GoogleLLMVariant.VERTEX_AI;
 			} else if (cfg) {
 				this.#apiBackend = GoogleLLMVariant.GEMINI_API;

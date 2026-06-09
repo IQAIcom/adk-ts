@@ -328,6 +328,19 @@ describe("AiSdkLlm", () => {
 	});
 
 	describe("googleGenaiClient option", () => {
+		beforeEach(() => {
+			// restoreMocks: true in vitest.config clears mockImplementation between tests;
+			// re-apply it here so the constructor returns a usable instance.
+			vi.mocked(GeminiContextCacheManager).mockImplementation(
+				() =>
+					({
+						handleContextCaching: vi.fn().mockResolvedValue(null),
+						populateCacheMetadataInResponse: vi.fn(),
+						getGenaiClient: vi.fn(),
+					}) as any,
+			);
+		});
+
 		it("passes googleGenaiClient to GeminiContextCacheManager", async () => {
 			const fakeClient = { models: {} } as any;
 
@@ -366,9 +379,15 @@ describe("AiSdkLlm", () => {
 
 			// Trigger the flow that initializes the cache manager
 			const gen = llm["generateContentAsyncImpl"](request, true);
-			for await (const _ of gen) {
-				// consume
+			const responses: LlmResponse[] = [];
+			for await (const r of gen) {
+				responses.push(r);
 			}
+
+			// Verify the happy path ran (no error response swallowed by the catch block)
+			const lastResponse = responses[responses.length - 1];
+			expect(lastResponse.turnComplete).toBe(true);
+			expect(lastResponse.errorCode).toBeUndefined();
 
 			// Verify GeminiContextCacheManager was constructed with our client
 			expect(GeminiContextCacheManager).toHaveBeenCalledWith(

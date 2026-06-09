@@ -252,6 +252,21 @@ describe("GoogleLlm", () => {
 			});
 			expect(llm.apiBackend).toBe("GEMINI_API");
 		});
+
+		it("apiBackend returns VERTEX_AI when pre-built client is provided with vertexai: true", () => {
+			const fakeClient = { models: {} } as unknown as GoogleGenAI;
+			const llm = new GoogleLlm("gemini-2.5-flash", {
+				client: fakeClient,
+				vertexai: true,
+			});
+			expect(llm.apiBackend).toBe("VERTEX_AI");
+		});
+
+		it("apiBackend returns GEMINI_API when pre-built client is provided without vertexai flag", () => {
+			const fakeClient = { models: {} } as unknown as GoogleGenAI;
+			const llm = new GoogleLlm("gemini-2.5-flash", { client: fakeClient });
+			expect(llm.apiBackend).toBe("GEMINI_API");
+		});
 	});
 
 	describe("race condition safety", () => {
