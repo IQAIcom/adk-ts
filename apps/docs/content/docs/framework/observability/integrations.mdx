@@ -1,26 +1,27 @@
 ---
 title: Platform Integrations
-description: Connect ADK-TS to Jaeger, Grafana, Datadog, New Relic, Honeycomb, and other OTLP backends
+description: Connect ADK-TS to Jaeger, Grafana, Datadog, New Relic, Honeycomb, and any OTLP-compatible backend
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-ADK-TS uses the OpenTelemetry Protocol (OTLP) for telemetry export, making it compatible with any observability platform that supports OTLP.
+ADK-TS exports telemetry via OTLP HTTP, making it compatible with any observability platform that accepts OTLP. Point `otlpEndpoint` at your backend and the framework handles the rest.
 
-## OTLP Compatibility
-
-All integrations use the standard OTLP HTTP endpoint. ADK-TS sends traces and metrics via OTLP, which is supported by most modern observability platforms.
+<Callout type="info" title="Endpoint format">
+  The `otlpEndpoint` value is used as-is for traces. For metrics, ADK-TS derives
+  the metrics URL by replacing `/v1/traces` with `/v1/metrics` in the same
+  string. Always include the full path in your endpoint.
+</Callout>
 
 ## Jaeger
 
-Jaeger is an open-source distributed tracing system, perfect for local development and production deployments.
+Jaeger is an open-source distributed tracing system. It only supports traces, not metrics — use it for local development or as a dedicated tracing backend.
 
-### Docker Setup
+**Start Jaeger locally with Docker:**
 
 ```bash
-# Start Jaeger all-in-one
 docker run -d \
   --name jaeger \
   -p 4318:4318 \
@@ -28,63 +29,52 @@ docker run -d \
   jaegertracing/all-in-one:latest
 ```
 
-### Configuration
+Port `4318` accepts OTLP HTTP and port `16686` serves the Jaeger UI.
 
-<Tabs items={['Local Development', 'Production']}>
-  <Tab value="Local Development">
-```typescript
-import { telemetryService } from '@iqai/adk';
+<Tabs items={['Local development', 'Production']}>
+  <Tab value="Local development">
+    ```typescript
+    import { telemetryService } from "@iqai/adk";
 
-await telemetryService.initialize({
-appName: 'my-agent-app',
-otlpEndpoint: 'http://localhost:4318/v1/traces',
-enableMetrics: true,
-enableTracing: true,
-});
+    await telemetryService.initialize({
+      appName: "my-agent-app",
+      otlpEndpoint: "http://localhost:4318/v1/traces",
+      enableTracing: true,
+      enableMetrics: false, // Jaeger doesn't support metrics
+    });
+    ```
 
-````
   </Tab>
   <Tab value="Production">
-```typescript
-import { telemetryService } from '@iqai/adk';
+    ```typescript
+    import { telemetryService } from "@iqai/adk";
 
-await telemetryService.initialize({
-  appName: 'my-agent-app',
-  otlpEndpoint: 'https://jaeger.your-domain.com:4318/v1/traces',
-  enableMetrics: true,
-  enableTracing: true,
-  environment: 'production',
-});
-````
+    await telemetryService.initialize({
+      appName: "my-agent-app",
+      otlpEndpoint: "https://jaeger.your-domain.com:4318/v1/traces",
+      enableTracing: true,
+      enableMetrics: false,
+      environment: "production",
+    });
+    ```
 
   </Tab>
 </Tabs>
 
-<Callout type="info" title="Production Deployment">
-  For production, deploy Jaeger using Docker Compose or Kubernetes with proper
-  persistence and scaling. Replace `localhost` with your Jaeger instance URL.
-  See the [Production Deployment](/docs/framework/observability/production)
-  guide for more details.
-</Callout>
-
-### Viewing Traces
-
-- **Local**: Open `http://localhost:16686` in your browser
-- **Production**: Access your Jaeger UI at your configured domain
+Open `http://localhost:16686`, select your service name, and click **Find Traces** to view spans.
 
 ## Grafana + Tempo
 
-Grafana with Tempo provides a complete observability stack with traces, metrics, and logs.
+Grafana with Tempo provides traces and metrics together. The following Docker Compose setup runs everything locally.
 
-### Docker Compose Setup
+**`docker-compose.yml`:**
 
 ```yaml
-# docker-compose.yml
 services:
   tempo:
     image: grafana/tempo:latest
     ports:
-      - "4318:4318" # OTLP HTTP
+      - "4318:4318"
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
     command: ["-config.file=/etc/tempo.yaml"]
@@ -99,12 +89,9 @@ services:
       - tempo
 ```
 
-### Tempo Configuration
-
-Create a `tempo.yaml` file in the same directory as your `docker-compose.yml`:
+**`tempo.yaml`:**
 
 ```yaml
-# tempo.yaml
 server:
   http_listen_port: 3200
 
@@ -122,15 +109,9 @@ storage:
       path: /tmp/tempo/traces
 ```
 
-This minimal configuration:
-
-- Sets up the Tempo HTTP server on port 3200
-- Configures OTLP receiver on port 4318 (matching the docker-compose port mapping)
-- Uses local storage for traces (suitable for development)
-
-### Configuration
-
 ```typescript
+import { telemetryService } from "@iqai/adk";
+
 await telemetryService.initialize({
   appName: "my-agent-app",
   otlpEndpoint: "http://localhost:4318/v1/traces",
@@ -139,71 +120,50 @@ await telemetryService.initialize({
 });
 ```
 
-### Viewing Traces
-
-1. Open `http://localhost:3000`
-2. Configure Tempo as a data source
-3. Create dashboards for traces and metrics
+Open Grafana at `http://localhost:3000`, add Tempo as a data source pointing to `http://tempo:3200`, then create dashboards for traces and metrics.
 
 ## Datadog
 
-Datadog provides comprehensive APM and monitoring capabilities.
-
-### Configuration
+Datadog's OTLP ingestion accepts both traces and metrics. The endpoint domain varies by Datadog site.
 
 ```typescript
+import { telemetryService } from "@iqai/adk";
+
 await telemetryService.initialize({
   appName: "my-agent-app",
-  otlpEndpoint: "https://otlp.datadoghq.com:4318",
+  otlpEndpoint: "https://otlp.datadoghq.com:4318/v1/traces",
   otlpHeaders: {
     "DD-API-KEY": process.env.DD_API_KEY,
   },
   enableMetrics: true,
   enableTracing: true,
+  environment: "production",
 });
 ```
 
-<Callout type="info">
-  The ADK-TS telemetry service automatically appends `/v1/traces` and
-  `/v1/metrics` to the OTLP endpoint, so you should only specify the base URL
-  without the path suffix.
-</Callout>
+**Endpoint by Datadog site:**
 
-### Environment Variables
+| Site          | Endpoint                                        |
+| ------------- | ----------------------------------------------- |
+| US1 (default) | `https://otlp.datadoghq.com:4318/v1/traces`     |
+| EU            | `https://otlp.datadoghq.eu:4318/v1/traces`      |
+| US3           | `https://otlp.us3.datadoghq.com:4318/v1/traces` |
+| US5           | `https://otlp.us5.datadoghq.com:4318/v1/traces` |
+| AP1           | `https://otlp.ap1.datadoghq.com:4318/v1/traces` |
 
-Create a `.env` file in your project root:
+Store your API key in an environment variable and never commit it to source control:
 
 ```bash
 DD_API_KEY=your-datadog-api-key
-DD_SITE=datadoghq.com  # or datadoghq.eu for EU
 ```
-
-### Datadog Site Configuration
-
-The OTLP endpoint domain varies based on your Datadog site:
-
-- **US**: `https://otlp.datadoghq.com:4318` (default)
-- **EU**: `https://otlp.datadoghq.eu:4318`
-- **US3**: `https://otlp.us3.datadoghq.com:4318`
-- **US5**: `https://otlp.us5.datadoghq.com:4318`
-- **AP1**: `https://otlp.ap1.datadoghq.com:4318`
-
-Configure the endpoint based on your Datadog site setting.
-
-### Features
-
-- Automatic service mapping
-- APM traces with flame graphs
-- Custom metrics and dashboards
-- Alerting and monitoring
 
 ## New Relic
 
-New Relic offers full-stack observability with APM, infrastructure monitoring, and logs.
-
-### Configuration
+New Relic accepts OTLP directly via its ingest endpoint:
 
 ```typescript
+import { telemetryService } from "@iqai/adk";
+
 await telemetryService.initialize({
   appName: "my-agent-app",
   otlpEndpoint: "https://otlp.nr-data.net:4318/v1/traces",
@@ -215,153 +175,129 @@ await telemetryService.initialize({
 });
 ```
 
-### Environment Variables
-
-Create a `.env` file in your project root:
-
 ```bash
 NEW_RELIC_LICENSE_KEY=your-license-key
 ```
 
-### Features
-
-- Distributed tracing
-- Application performance monitoring
-- Custom metrics and dashboards
-- Alert policies
-
 ## Honeycomb
 
-Honeycomb provides high-cardinality observability with powerful query capabilities.
-
-### Configuration
+Honeycomb targets a specific dataset per request. Pass your API key and dataset name as headers:
 
 ```typescript
+import { telemetryService } from "@iqai/adk";
+
 await telemetryService.initialize({
   appName: "my-agent-app",
   otlpEndpoint: "https://api.honeycomb.io/v1/traces",
   otlpHeaders: {
     "x-honeycomb-team": process.env.HONEYCOMB_API_KEY,
-    "x-honeycomb-dataset": "my-dataset",
+    "x-honeycomb-dataset": "my-agents",
   },
   enableMetrics: true,
   enableTracing: true,
 });
 ```
 
-### Environment Variables
-
-Create a `.env` file in your project root:
-
 ```bash
 HONEYCOMB_API_KEY=your-api-key
-HONEYCOMB_DATASET=my-dataset
 ```
-
-### Features
-
-- High-cardinality data exploration
-- Powerful query language
-- BubbleUp for anomaly detection
-- Custom dashboards
 
 ## OpenTelemetry Collector
 
-For advanced setups, use the OpenTelemetry Collector to route telemetry to multiple backends.
+The Collector is a middleware process that receives OTLP from ADK-TS and forwards it to one or more backends. Use it when you need to route telemetry to multiple destinations, apply attribute processing, or run a sampling processor.
 
-### Collector Configuration
+**`otel-collector-config.yaml`:**
 
 ```yaml
-# otel-collector-config.yaml
 receivers:
   otlp:
     protocols:
       http:
         endpoint: 0.0.0.0:4318
 
-exporters:
-  logging:
-    loglevel: debug
-  jaeger:
-    endpoint: jaeger:14250
-    tls:
-      insecure: true
-  otlp/datadog:
-    endpoint: https://otlp.datadoghq.com:4318
-    headers:
-      DD-API-KEY: ${DD_API_KEY}
-
 processors:
   batch:
     timeout: 10s
     send_batch_size: 1024
+
+exporters:
+  otlphttp/jaeger:
+    endpoint: http://jaeger:4318
+  otlphttp/datadog:
+    endpoint: https://otlp.datadoghq.com:4318
+    headers:
+      DD-API-KEY: ${env:DD_API_KEY}
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, jaeger, otlp/datadog]
+      exporters: [otlphttp/jaeger, otlphttp/datadog]
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging]
+      exporters: [otlphttp/datadog]
 ```
 
-### Running the Collector
+**Start the Collector:**
 
 ```bash
 docker run -d \
   -v $(pwd)/otel-collector-config.yaml:/etc/otel-collector-config.yaml \
   -p 4318:4318 \
   -e DD_API_KEY=your-key \
-  otel/opentelemetry-collector:latest \
+  otel/opentelemetry-collector-contrib:latest \
   --config=/etc/otel-collector-config.yaml
 ```
 
-### Configuration
-
 ```typescript
+import { telemetryService } from "@iqai/adk";
+
 await telemetryService.initialize({
   appName: "my-agent-app",
-  otlpEndpoint: "http://localhost:4318/v1/traces", // Send to collector
+  otlpEndpoint: "http://localhost:4318/v1/traces",
   enableMetrics: true,
   enableTracing: true,
 });
 ```
 
-## Custom Backends
+ADK-TS sends to the Collector, which fans out to all configured exporters.
 
-Any backend that supports OTLP HTTP can be used:
+## Custom OTLP Backends
+
+Any backend that accepts OTLP HTTP works without additional configuration:
 
 ```typescript
+import { telemetryService } from "@iqai/adk";
+
 await telemetryService.initialize({
   appName: "my-agent-app",
-  otlpEndpoint: "https://your-custom-backend.com/v1/traces",
+  otlpEndpoint: "https://telemetry.your-company.com/v1/traces",
   otlpHeaders: {
-    Authorization: `Bearer ${process.env.API_TOKEN}`,
+    Authorization: `Bearer ${process.env.TELEMETRY_TOKEN}`,
   },
   enableMetrics: true,
   enableTracing: true,
 });
 ```
 
-## Related Topics
+## Next Steps
 
 <Cards>
   <Card
-    title="🔒 Production Deployment"
-    description="Privacy controls, performance tuning, and best practices"
+    title="🔒 Production"
+    description="Privacy controls, sampling, and performance tuning"
     href="/docs/framework/observability/production"
   />
   <Card
     title="🔍 Distributed Tracing"
-    description="Understand what gets traced and create custom spans"
+    description="What gets traced and how to add custom spans"
     href="/docs/framework/observability/tracing"
   />
   <Card
     title="📊 Metrics"
-    description="Monitor agent performance with counters and histograms"
+    description="Available metrics and how to query them"
     href="/docs/framework/observability/metrics"
   />
 </Cards>

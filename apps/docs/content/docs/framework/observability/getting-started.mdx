@@ -1,217 +1,183 @@
 ---
 title: Getting Started
-description: Initialize telemetry and start collecting traces and metrics for your AI agents
+description: Initialize the ADK-TS telemetry service and start collecting traces and metrics
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-This guide covers initializing the telemetry service and collecting traces and metrics. The patterns shown here work for both local development and production environments.
-
-For production-specific considerations like privacy controls and performance tuning, see the [Production Deployment](/docs/framework/observability/production) guide.
-
-## Prerequisites
-
-Telemetry dependencies are included in `@iqai/adk`—no additional packages required.
+Call `telemetryService.initialize()` once, before any agent operations, and ADK-TS starts emitting OpenTelemetry spans and metrics for every agent run, LLM call, and tool execution automatically.
 
 ## Basic Initialization
 
-Initialize the telemetry service before any agent operations:
+The minimal setup requires an `appName` to identify your service in the trace backend. An `otlpEndpoint` is needed to export data anywhere; without it, initialization still succeeds but no data leaves the process.
 
-<Tabs items={['Basic', 'With Options', 'Environment Variables']}>
-  <Tab value="Basic">
+```typescript
+import { telemetryService, AgentBuilder } from "@iqai/adk";
+
+await telemetryService.initialize({
+  appName: "my-agent-app",
+  otlpEndpoint: "http://localhost:4318/v1/traces",
+});
+
+const response = await AgentBuilder.withModel("gemini-2.5-flash").ask("Hello!");
+console.log(response);
+
+await telemetryService.shutdown(5000);
+```
+
+<Callout type="warn" title="Initialize before agents">
+  Always call `initialize()` before creating or running any agent. Spans created
+  before initialization are not captured.
+</Callout>
+
+## Configuration Options
+
+<Tabs items={['Full options', 'Environment variables']}>
+  <Tab value="Full options">
     ```typescript
-    import { telemetryService } from '@iqai/adk';
+    import { telemetryService } from "@iqai/adk";
 
     await telemetryService.initialize({
-      appName: 'my-agent-app',
-      otlpEndpoint: 'http://localhost:4318/v1/traces',
-      appVersion: '1.0.0',
-      enableMetrics: true,
-      enableTracing: true,
-    });
-    ```
+      // Service identification
+      appName: "my-agent-app",
+      appVersion: "1.0.0",
+      environment: "development",
 
-  </Tab>
-
-  <Tab value="With Options">
-    ```typescript
-    import { telemetryService } from '@iqai/adk';
-
-    await telemetryService.initialize({
-      // Required
-      appName: 'my-agent-app',
-      otlpEndpoint: 'http://localhost:4318/v1/traces',
-
-      // Optional
-      appVersion: '1.0.0',
-      environment: 'development',
+      // OTLP export
+      otlpEndpoint: "http://localhost:4318/v1/traces",
+      otlpHeaders: { Authorization: `Bearer ${process.env.OTEL_API_KEY}` },
 
       // Feature flags
       enableTracing: true,
       enableMetrics: true,
-      enableAutoInstrumentation: true, // Enable HTTP/database auto-tracing
+      enableAutoInstrumentation: false,
 
       // Privacy controls
-      captureMessageContent: true, // Set false for production
+      captureMessageContent: true,
 
       // Performance tuning
-      samplingRatio: 1.0, // 1.0 = 100% sampling
-      metricExportIntervalMs: 60000, // 1 minute
+      samplingRatio: 1.0,
+      metricExportIntervalMs: 60000,
 
       // Custom resource attributes
       resourceAttributes: {
-        'deployment.name': 'local',
-        'team': 'platform',
+        "deployment.name": "local",
+        "team": "platform",
+        "revision": 42,
       },
+
+      // Enable in-memory exporter for testing/debugging
+      debug: false,
     });
     ```
 
   </Tab>
-
-  <Tab value="Environment Variables">
-    ```typescript
-    import { telemetryService } from '@iqai/adk';
-
-    // The telemetry system respects standard OpenTelemetry environment variables
-    // OTEL_SERVICE_NAME, OTEL_RESOURCE_ATTRIBUTES, NODE_ENV, etc.
-
-    await telemetryService.initialize({
-      appName: process.env.OTEL_SERVICE_NAME || 'my-agent-app',
-      otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
-      environment: process.env.NODE_ENV || 'development',
-    });
-    ```
+  <Tab value="Environment variables">
+    Standard OpenTelemetry environment variables are respected alongside the configuration object. If both are set, the configuration object takes precedence.
 
     ```bash
-    # Set environment variables (shell session)
     export OTEL_SERVICE_NAME=my-agent-app
+    export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces
     export OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development,team=platform
-    export NODE_ENV=development
     export ADK_CAPTURE_MESSAGE_CONTENT=true
+    export NODE_ENV=development
     ```
 
-    <Callout type="tip" title="Using .env Files">
-      For local development, you can also set these variables in a `.env` file in your project root. ADK-TS automatically loads `.env` files using `dotenv`.
-    </Callout>
+    ```typescript
+    import { telemetryService } from "@iqai/adk";
+
+    await telemetryService.initialize({
+      appName: process.env.OTEL_SERVICE_NAME || "my-agent-app",
+      otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318/v1/traces",
+      environment: process.env.NODE_ENV || "development",
+    });
+    ```
 
   </Tab>
 </Tabs>
 
-<Callout type="warn" title="Initialize Early">
-  Always initialize telemetry before any agent operations to ensure all traces
-  and metrics are captured.
-</Callout>
-
 ## Configuration Reference
 
-### Required Options
+| Option                      | Type                                          | Default                       | Description                                                |
+| --------------------------- | --------------------------------------------- | ----------------------------- | ---------------------------------------------------------- |
+| `appName`                   | `string`                                      | —                             | **Required.** Service name shown in trace backends         |
+| `otlpEndpoint`              | `string`                                      | —                             | OTLP HTTP endpoint, e.g. `http://localhost:4318/v1/traces` |
+| `otlpHeaders`               | `Record<string, string>`                      | —                             | Auth headers sent with every OTLP request                  |
+| `appVersion`                | `string`                                      | `"unknown"`                   | Application version                                        |
+| `environment`               | `string`                                      | Auto-detected from `NODE_ENV` | Deployment environment                                     |
+| `enableTracing`             | `boolean`                                     | `true`                        | Enable distributed tracing                                 |
+| `enableMetrics`             | `boolean`                                     | `true`                        | Enable metrics collection                                  |
+| `enableAutoInstrumentation` | `boolean`                                     | `false`                       | Trace outbound HTTP and database calls automatically       |
+| `captureMessageContent`     | `boolean`                                     | `true`                        | Capture LLM prompts, completions, and tool arguments       |
+| `samplingRatio`             | `number`                                      | `1.0`                         | Fraction of traces to sample (0.0–1.0)                     |
+| `metricExportIntervalMs`    | `number`                                      | `60000`                       | How often metrics are exported, in milliseconds            |
+| `resourceAttributes`        | `Record<string, string \| number \| boolean>` | —                             | Extra attributes attached to all spans and metrics         |
+| `debug`                     | `boolean`                                     | `false`                       | Activate in-memory exporter for local inspection           |
 
-| Option         | Type     | Description                                                      |
-| -------------- | -------- | ---------------------------------------------------------------- |
-| `appName`      | `string` | Service name for identification in traces                        |
-| `otlpEndpoint` | `string` | OTLP HTTP endpoint URL (e.g., `http://localhost:4318/v1/traces`) |
-
-### Optional Options
-
-| Option                      | Type                     | Default       | Description                                               |
-| --------------------------- | ------------------------ | ------------- | --------------------------------------------------------- |
-| `appVersion`                | `string`                 | `"unknown"`   | Application version                                       |
-| `environment`               | `string`                 | Auto-detected | Deployment environment (development, staging, production) |
-| `enableTracing`             | `boolean`                | `true`        | Enable distributed tracing                                |
-| `enableMetrics`             | `boolean`                | `true`        | Enable metrics collection                                 |
-| `enableAutoInstrumentation` | `boolean`                | `false`       | Enable automatic HTTP/database tracing                    |
-| `captureMessageContent`     | `boolean`                | `true`        | Capture LLM prompts and completions                       |
-| `samplingRatio`             | `number`                 | `1.0`         | Trace sampling ratio (0.0-1.0)                            |
-| `metricExportIntervalMs`    | `number`                 | `60000`       | Metrics export interval in milliseconds                   |
-| `otlpHeaders`               | `Record<string, string>` | —             | Custom headers for OTLP requests                          |
-| `resourceAttributes`        | `Record<string, string>` | —             | Custom resource attributes                                |
-| `debug`                     | `boolean`                | `false`       | Enable in-memory exporter for debugging                   |
-
-<Callout type="warn" title="Privacy in Production">
-  Set `captureMessageContent: false` in production to avoid capturing sensitive
-  user data in traces.
+<Callout type="warn" title="Privacy in production">
+  Set `captureMessageContent: false` in production to prevent LLM prompts and
+  tool arguments from appearing in your trace backend.
 </Callout>
 
-## Local Development Setup
+## Debug Mode and In-Memory Traces
 
-### Running with Jaeger
+When `debug: true`, ADK-TS additionally routes all spans to an in-memory exporter. You can read them back without a running backend — useful for unit tests or quick local inspection.
 
-Jaeger is a popular open-source distributed tracing system. Use it for local development:
+```typescript
+import { telemetryService, AgentBuilder } from "@iqai/adk";
 
-```bash
-# Start Jaeger all-in-one (includes OTLP receiver)
-docker run -d \
-  --name jaeger \
-  -p 4318:4318 \
-  -p 16686:16686 \
-  jaegertracing/all-in-one:latest
+await telemetryService.initialize({
+  appName: "my-agent-app",
+  debug: true,
+});
+
+const sessionId = "session-abc";
+
+await AgentBuilder.withModel("gemini-2.5-flash").ask("Hello!");
+
+// Retrieve all spans collected so far
+const allSpans = telemetryService.getTraces();
+console.log(`Captured ${allSpans.length} spans`);
+
+// Or retrieve only spans for a specific session
+const sessionSpans = telemetryService.getTracesForSession(sessionId);
+console.log(`Session spans: ${sessionSpans.length}`);
 ```
 
-Your ADK-TS app will send traces to `http://localhost:4318/v1/traces`, and you can view them at `http://localhost:16686`.
+`getTraces()` returns `ReadableSpan[]` from `@opentelemetry/sdk-trace-base`. Each span exposes `name`, `attributes`, `startTime`, `endTime`, and `status`.
 
-### Running with OpenTelemetry Collector
+## Graceful Shutdown
 
-For more advanced setups that need to route telemetry to multiple backends or apply processing, use the OpenTelemetry Collector:
+Always call `shutdown()` before your process exits to flush any pending spans and metrics. Pass a timeout in milliseconds; if the flush takes longer than the timeout, the method throws.
 
-**1. Create collector configuration** (`otel-collector-config.yaml`):
+```typescript
+import { telemetryService } from "@iqai/adk";
 
-```yaml
-receivers:
-  otlp:
-    protocols:
-      http:
-        endpoint: 0.0.0.0:4318
+process.on("SIGTERM", async () => {
+  await telemetryService.shutdown(5000);
+  process.exit(0);
+});
 
-exporters:
-  logging:
-    loglevel: debug
-  otlp/jaeger:
-    endpoint: http://localhost:4317
-    tls:
-      insecure: true
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      exporters: [logging, otlp/jaeger]
-    metrics:
-      receivers: [otlp]
-      exporters: [logging]
+process.on("SIGINT", async () => {
+  await telemetryService.shutdown(5000);
+  process.exit(0);
+});
 ```
 
-**2. Run the collector:**
+To flush without shutting down — for example between test cases — use `flush()`:
 
-```bash
-docker run -d \
-  -v $(pwd)/otel-collector-config.yaml:/etc/otel-collector-config.yaml \
-  -p 4318:4318 \
-  otel/opentelemetry-collector:latest \
-  --config=/etc/otel-collector-config.yaml
+```typescript
+await telemetryService.flush(5000);
 ```
-
-<Callout type="info" title="When to Use the Collector">
-  
-For simple setups, sending directly to Jaeger is sufficient. Use the
-OpenTelemetry Collector when you need to:
-
-- Route telemetry to multiple backends
-- Apply processing, filtering, or sampling
-- Transform or enrich telemetry data
-
-</Callout>
 
 ## Complete Example
-
-Here's a complete example that initializes telemetry and runs an agent:
 
 ```typescript
 import { telemetryService, AgentBuilder } from "@iqai/adk";
 
 async function main() {
-  // Initialize telemetry first
   await telemetryService.initialize({
     appName: "example-agent",
     appVersion: "1.0.0",
@@ -220,13 +186,6 @@ async function main() {
     enableTracing: true,
   });
 
-  // Build and run agent
-  const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
-    "What is the capital of France?",
-  );
-  console.log(response);
-
-  // Graceful shutdown
   process.on("SIGTERM", async () => {
     await telemetryService.shutdown(5000);
     process.exit(0);
@@ -236,53 +195,37 @@ async function main() {
     await telemetryService.shutdown(5000);
     process.exit(0);
   });
+
+  const response = await AgentBuilder.withModel("gemini-2.5-flash").ask(
+    "What is the capital of France?",
+  );
+  console.log(response);
 }
 
 main().catch(console.error);
 ```
 
-## Viewing Traces
-
-<Callout type="info" title="Prerequisites">
-  Make sure Jaeger is running before viewing traces. If you haven't set it up
-  yet, see the "Running with Jaeger" section above for setup instructions.
-</Callout>
-
-Once your application is running and sending traces:
-
-1. **Open Jaeger UI**: Navigate to `http://localhost:16686`
-2. **Select Service**: Choose your service name (e.g., `example-agent`)
-3. **Find Traces**: Click "Find Traces" to see all traces
-4. **Explore**: Click on any trace to see the detailed execution flow
-
-You'll see:
-
-- Agent invocation spans
-- Tool execution spans
-- LLM call spans with token usage
-- Auto-instrumented HTTP calls
-
-## Related Topics
+## Next Steps
 
 <Cards>
   <Card
     title="🔍 Distributed Tracing"
-    description="Understand what gets traced and create custom spans"
+    description="What gets traced automatically and how to add custom spans"
     href="/docs/framework/observability/tracing"
   />
   <Card
     title="📊 Metrics"
-    description="Monitor agent performance with counters and histograms"
+    description="Available metrics and how to record custom measurements"
     href="/docs/framework/observability/metrics"
   />
   <Card
     title="🔌 Platform Integrations"
-    description="Connect to Jaeger, Grafana, Datadog, and other backends"
+    description="Set up Jaeger, Grafana, Datadog, and other backends"
     href="/docs/framework/observability/integrations"
   />
   <Card
-    title="🔒 Production Deployment"
-    description="Privacy controls, performance tuning, and best practices"
+    title="🔒 Production"
+    description="Privacy controls, sampling ratios, and production best practices"
     href="/docs/framework/observability/production"
   />
 </Cards>
