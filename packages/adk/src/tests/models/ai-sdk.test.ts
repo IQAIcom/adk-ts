@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { streamText, generateText } from "ai";
 import { AiSdkLlm, type LlmRequest, LlmResponse } from "@adk/models";
+import { GeminiContextCacheManager } from "../../models/context-cache-manager";
 import { textStreamFrom } from "@adk/utils/streaming-utils";
 import type { Event } from "@adk/events/event";
 
@@ -18,6 +19,18 @@ vi.mock("@adk/helpers/logger", () => ({
 		error: vi.fn(),
 	})),
 }));
+
+vi.mock("../../models/context-cache-manager", async (importOriginal) => {
+	const actual = await importOriginal<any>();
+	return {
+		...actual,
+		GeminiContextCacheManager: vi.fn().mockImplementation(() => ({
+			handleContextCaching: vi.fn().mockResolvedValue(null),
+			populateCacheMetadataInResponse: vi.fn(),
+			getGenaiClient: vi.fn(),
+		})),
+	};
+});
 
 describe("AiSdkLlm", () => {
 	const mockModelInstance = {
@@ -311,6 +324,81 @@ describe("AiSdkLlm", () => {
 
 			expect(responses).toHaveLength(1);
 			expect(responses[0].content?.parts?.[0]?.text).toBe("");
+		});
+	});
+
+	describe("googleGenaiClient option", () => {
+		beforeEach(() => {
+			// restoreMocks: true in vitest.config clears mockImplementation between tests;
+			// re-apply it here so the constructor returns a usable instance.
+			vi.mocked(GeminiContextCacheManager).mockImplementation(
+				() =>
+					({
+						handleContextCaching: vi.fn().mockResolvedValue(null),
+						populateCacheMetadataInResponse: vi.fn(),
+						getGenaiClient: vi.fn(),
+					}) as any,
+			);
+		});
+
+		it("passes googleGenaiClient to GeminiContextCacheManager", async () => {
+			const fakeClient = { models: {} } as any;
+
+			const googleModel = {
+				modelId: "google/gemini-2.5-flash",
+				provider: "google",
+				specificationVersion: "v2",
+			} as any;
+
+			const llm = new AiSdkLlm(googleModel, {
+				googleGenaiClient: fakeClient,
+			});
+
+			const mockTextStream = (async function* () {
+				yield "ok";
+			})();
+
+			(streamText as any).mockReturnValue({
+				textStream: mockTextStream,
+				toolCalls: Promise.resolve([]),
+				usage: Promise.resolve({
+					inputTokens: 5,
+					outputTokens: 5,
+					totalTokens: 10,
+				}),
+				finishReason: Promise.resolve("stop"),
+				providerMetadata: Promise.resolve({}),
+			});
+
+			const request = {
+				contents: [{ role: "user", parts: [{ text: "Hi" }] }],
+				config: {},
+				cacheConfig: { ttlSeconds: 300, cacheIntervals: 1, minTokens: 100 },
+				getSystemInstructionText: vi.fn().mockReturnValue(""),
+			} as unknown as LlmRequest;
+
+			// Trigger the flow that initializes the cache manager
+			const gen = llm["generateContentAsyncImpl"](request, true);
+			const responses: LlmResponse[] = [];
+			for await (const r of gen) {
+				responses.push(r);
+			}
+
+			// Verify the happy path ran (no error response swallowed by the catch block)
+			const lastResponse = responses[responses.length - 1];
+			expect(lastResponse.turnComplete).toBe(true);
+			expect(lastResponse.errorCode).toBeUndefined();
+
+			// Verify GeminiContextCacheManager was constructed with our client
+			expect(GeminiContextCacheManager).toHaveBeenCalledWith(
+				expect.anything(), // logger
+				fakeClient,
+			);
+		});
+
+		it("creates AiSdkLlm without options (backward compatible)", () => {
+			const llm = new AiSdkLlm(mockModelInstance);
+			expect(llm.model).toBe("gpt-4o");
 		});
 	});
 });

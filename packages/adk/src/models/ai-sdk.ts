@@ -1,5 +1,5 @@
 import { Logger } from "@adk/logger";
-import type { Content, Part } from "@google/genai";
+import { type Content, GoogleGenAI, type Part } from "@google/genai";
 import {
 	AssistantContent,
 	generateText,
@@ -53,13 +53,22 @@ interface AiSdkRequestParams {
 }
 
 /**
+ * Options for AiSdkLlm.
+ */
+export interface AiSdkLlmOptions {
+	/** Pre-built Google GenAI client for context caching (avoids env race conditions) */
+	googleGenaiClient?: GoogleGenAI;
+}
+
+/**
  * AI SDK integration that accepts a pre-configured LanguageModel.
  * Enables ADK-TS to work with any provider supported by Vercel's AI SDK.
  */
 export class AiSdkLlm extends BaseLlm {
-	private modelInstance: LanguageModel;
+	#modelInstance: LanguageModel;
 	protected logger = new Logger({ name: "AiSdkLlm" });
-	private cacheManager: ContextCacheManager | null = null;
+	#cacheManager: ContextCacheManager | null = null;
+	#options?: AiSdkLlmOptions;
 
 	/**
 	 * Model provider patterns for detection
@@ -72,15 +81,17 @@ export class AiSdkLlm extends BaseLlm {
 
 	/**
 	 * Constructor accepts a pre-configured LanguageModel instance
-	 * @param model - Pre-configured LanguageModel from provider(modelName)
+	 * @param modelInstance - Pre-configured LanguageModel from provider(modelName)
+	 * @param options - Optional configuration (e.g. googleGenaiClient for caching)
 	 */
-	constructor(modelInstance: LanguageModel) {
+	constructor(modelInstance: LanguageModel, options?: AiSdkLlmOptions) {
 		let modelId = "ai-sdk-model";
 		if (typeof modelInstance !== "string") {
 			modelId = modelInstance.modelId;
 		}
 		super(modelId);
-		this.modelInstance = modelInstance;
+		this.#modelInstance = modelInstance;
+		this.#options = options;
 	}
 
 	/**
@@ -132,11 +143,13 @@ export class AiSdkLlm extends BaseLlm {
 
 	/**
 	 * Initializes the cache manager for Google models
-	 * The manager lazily initializes its Google GenAI client on first use
 	 */
 	private initializeCacheManager(): void {
-		if (!this.cacheManager) {
-			this.cacheManager = new GeminiContextCacheManager(this.logger);
+		if (!this.#cacheManager) {
+			this.#cacheManager = new GeminiContextCacheManager(
+				this.logger,
+				this.#options?.googleGenaiClient,
+			);
 		}
 	}
 
@@ -152,14 +165,14 @@ export class AiSdkLlm extends BaseLlm {
 		this.initializeCacheManager();
 
 		// Normalize model ID for Google API compatibility
-		const modelId = this.getModelId(this.modelInstance);
+		const modelId = this.getModelId(this.#modelInstance);
 		llmRequest.model = this.normalizeGoogleModelId(modelId);
 
 		this.logger.debug(`Using model for caching: ${llmRequest.model}`);
 
 		// Handle caching through the manager
 		const cacheMetadata =
-			await this.cacheManager!.handleContextCaching(llmRequest);
+			await this.#cacheManager!.handleContextCaching(llmRequest);
 
 		if (cacheMetadata?.cacheName) {
 			this.logger.debug(`Using cache: ${cacheMetadata.cacheName}`);
@@ -182,7 +195,7 @@ export class AiSdkLlm extends BaseLlm {
 		cacheMetadata: CacheMetadata | null,
 	): AiSdkRequestParams {
 		const params: AiSdkRequestParams = {
-			model: this.modelInstance,
+			model: this.#modelInstance,
 			messages,
 			maxTokens: llmRequest.config?.maxOutputTokens,
 			temperature: llmRequest.config?.temperature,
@@ -251,7 +264,7 @@ export class AiSdkLlm extends BaseLlm {
 		stream = false,
 	): AsyncGenerator<LlmResponse, void, unknown> {
 		try {
-			const provider = this.detectModelProvider(this.modelInstance);
+			const provider = this.detectModelProvider(this.#modelInstance);
 			const messages = this.convertToAiSdkMessages(llmRequest);
 			const systemMessage = llmRequest.getSystemInstructionText();
 			const tools = this.convertToAiSdkTools(llmRequest);
