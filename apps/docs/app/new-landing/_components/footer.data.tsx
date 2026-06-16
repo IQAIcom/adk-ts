@@ -34,7 +34,7 @@ export const SOCIAL_LINKS = [
 		),
 	},
 	{
-		href: "https://X.com/IQAICOM",
+		href: "https://X.com/IQOfficial",
 		title: "X (Twitter)",
 		icon: (
 			<svg

@@ -32,7 +32,7 @@ const socialLinks = [
 		),
 	},
 	{
-		href: "https://X.com/IQAICOM",
+		href: "https://X.com/IQOfficial",
 		title: "X (Twitter) Icon",
 		icon: (
 			<svg
