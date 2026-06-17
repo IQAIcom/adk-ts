@@ -8,7 +8,7 @@ const DEFAULT_DESCRIPTION =
 	"Complete API reference for ADK-TS, the TypeScript-native AI agent framework. Browse classes, interfaces, types, and methods for agents, tools, sessions, and more.";
 const OG_IMAGE = `${BASE_URL}/og-image.png`;
 const FAVICON = `${BASE_URL}/adk.png`;
-const TWITTER_HANDLE = "@iqaicom";
+const TWITTER_HANDLE = "@IQOfficial";
 
 const metaTags = `
 <meta property="og:type" content="website" />

@@ -57,8 +57,8 @@ export const metadata: Metadata = {
 	},
 	twitter: {
 		card: "summary_large_image",
-		site: "@iqaicom",
-		creator: "@iqaicom",
+		site: "@IQOfficial",
+		creator: "@IQOfficial",
 		title: {
 			default: "ADK-TS - The TypeScript-Native AI Agent Framework",
 			template: "ADK-TS | %s",
@@ -115,7 +115,7 @@ const jsonLd = [
 			url: "https://iqai.com",
 			sameAs: [
 				"https://github.com/IQAIcom",
-				"https://x.com/iqaicom",
+				"https://x.com/IQOfficial",
 				"https://www.npmjs.com/package/@iqai/adk",
 			],
 		},
