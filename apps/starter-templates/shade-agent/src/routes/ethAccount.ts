@@ -7,6 +7,9 @@ const app = new Hono();
 app.get("/", async (c) => {
 	// Fetch the environment variable inside the route
 	const contractId = env.NEXT_PUBLIC_contractId;
+	if (!contractId) {
+		return c.json({ error: "Contract ID not configured" }, 500);
+	}
 	try {
 		// Derive the price pusher Ethereum address
 		const { address: senderAddress } = await Evm.deriveAddressAndPublicKey(
