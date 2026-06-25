@@ -1,11 +1,12 @@
 import { Hono } from "hono";
+import { env } from "../env";
 import { Evm } from "../utils/ethereum";
 
 const app = new Hono();
 
 app.get("/", async (c) => {
 	// Fetch the environment variable inside the route
-	const contractId = process.env.NEXT_PUBLIC_contractId;
+	const contractId = env.NEXT_PUBLIC_contractId;
 	try {
 		// Derive the price pusher Ethereum address
 		const { address: senderAddress } = await Evm.deriveAddressAndPublicKey(

@@ -14,6 +14,9 @@ export const envSchema = z.object({
 	ADK_DEBUG: z.coerce.boolean().default(false),
 	GOOGLE_API_KEY: z.string(),
 	LLM_MODEL: z.string().default("gemini-2.5-flash"),
+	// Optional, not required: a missing value must stay a graceful runtime
+	// error (handled in the routes), not a fail-at-boot Zod throw.
+	NEXT_PUBLIC_contractId: z.string().optional(),
 });
 
 /**
