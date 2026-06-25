@@ -1,4 +1,5 @@
 import { AgentBuilder } from "@iqai/adk";
+import { DEFAULT_MODEL } from "../../config";
 import { getCustomerAnalyzerAgent } from "./customer-analyzer/agent";
 import { getMenuValidatorAgent } from "./menu-validator/agent";
 import { getOrderFinalizerAgent } from "./order-finalizer/agent";
@@ -14,7 +15,7 @@ export function getRootAgent() {
 	};
 
 	return AgentBuilder.create("restaurant_order_system")
-		.withModel(process.env.LLM_MODEL || "gemini-3-flash-preview")
+		.withModel(process.env.LLM_MODEL || DEFAULT_MODEL)
 		.withSubAgents([customerAnalyzer, menuValidator, orderFinalizer])
 		.withQuickSession({ state: initialState })
 		.build();

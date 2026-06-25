@@ -6,6 +6,7 @@ import {
 	createDatabaseSessionService,
 	InMemoryArtifactService,
 } from "@iqai/adk";
+import { DEFAULT_MODEL } from "../../config";
 import { counterTool, saveCounterReportTool } from "./tools";
 
 export async function getRootAgent() {
@@ -19,9 +20,7 @@ export async function getRootAgent() {
 	);
 	const artifactService = new InMemoryArtifactService();
 
-	return await AgentBuilder.withModel(
-		process.env.LLM_MODEL || "gemini-3-flash-preview",
-	)
+	return await AgentBuilder.withModel(process.env.LLM_MODEL || DEFAULT_MODEL)
 		.withTools(counterTool, saveCounterReportTool)
 		.withSessionService(sessionService)
 		.withArtifactService(artifactService)

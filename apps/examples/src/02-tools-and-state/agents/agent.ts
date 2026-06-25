@@ -1,5 +1,6 @@
 import { AgentBuilder } from "@iqai/adk";
 import dedent from "dedent";
+import { DEFAULT_MODEL } from "../../config";
 import { addItemTool, viewCartTool } from "./tools";
 
 export function getRootAgent() {
@@ -9,7 +10,7 @@ export function getRootAgent() {
 	};
 
 	return AgentBuilder.create("shopping_cart_agent")
-		.withModel(process.env.LLM_MODEL || "gemini-3-flash-preview")
+		.withModel(process.env.LLM_MODEL || DEFAULT_MODEL)
 		.withInstruction(
 			dedent`
 			You are a shopping cart assistant. Help users manage their cart.
