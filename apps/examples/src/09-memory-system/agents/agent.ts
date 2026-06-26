@@ -9,6 +9,7 @@ import {
 	RecallMemoryTool,
 	VectorStorageProvider,
 } from "@iqai/adk";
+import { DEFAULT_MODEL_STABLE } from "../../config";
 
 export async function getRootAgent() {
 	const sessionService = new InMemorySessionService();
@@ -32,7 +33,7 @@ export async function getRootAgent() {
 		}),
 	});
 
-	return AgentBuilder.withModel(process.env.LLM_MODEL || "gemini-2.5-flash")
+	return AgentBuilder.withModel(process.env.LLM_MODEL || DEFAULT_MODEL_STABLE)
 		.withInstruction(
 			"You are a helpful assistant. When asked about previous conversations or user preferences, use the recall_memory tool to search your memory. Only use tools that are provided to you.",
 		)

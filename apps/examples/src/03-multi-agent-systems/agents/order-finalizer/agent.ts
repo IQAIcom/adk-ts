@@ -1,5 +1,6 @@
 import { LlmAgent } from "@iqai/adk";
 import dedent from "dedent";
+import { DEFAULT_MODEL } from "../../../config";
 
 export function getOrderFinalizerAgent() {
 	return new LlmAgent({
@@ -12,6 +13,6 @@ export function getOrderFinalizerAgent() {
 
 			Create final order summary with items, prices ($8-25 per item), total, and prep time (15-45 min).
 		`,
-		model: process.env.LLM_MODEL || "gemini-3-flash-preview",
+		model: process.env.LLM_MODEL || DEFAULT_MODEL,
 	});
 }

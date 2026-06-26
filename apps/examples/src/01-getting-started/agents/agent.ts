@@ -1,5 +1,6 @@
 import { AgentBuilder } from "@iqai/adk";
 import z from "zod/v4"; // Ensure its v4!
+import { DEFAULT_MODEL } from "../../config";
 
 export function getRootAgent() {
 	const outputSchema = z.object({
@@ -12,9 +13,7 @@ export function getRootAgent() {
 		funFact: z.string().describe("An interesting fact about the city"),
 	});
 
-	return AgentBuilder.withModel(
-		process.env.LLM_MODEL || "gemini-3-flash-preview",
-	)
+	return AgentBuilder.withModel(process.env.LLM_MODEL || DEFAULT_MODEL)
 		.withOutputSchema(outputSchema)
 		.build();
 }

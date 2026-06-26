@@ -1,4 +1,5 @@
 import { createMDX } from "fumadocs-mdx/next";
+import { posthogConfig } from "./config/posthog.mjs";
 
 const withMDX = createMDX();
 
@@ -30,16 +31,16 @@ const config = {
 				destination: "/llms.mdx/:path*",
 			},
 			{
-				source: "/ingest/static/:path*",
-				destination: "https://us-assets.i.posthog.com/static/:path*",
+				source: `${posthogConfig.apiHost}/static/:path*`,
+				destination: `${posthogConfig.assetsHost}/static/:path*`,
 			},
 			{
-				source: "/ingest/:path*",
-				destination: "https://us.i.posthog.com/:path*",
+				source: `${posthogConfig.apiHost}/:path*`,
+				destination: `${posthogConfig.ingestHost}/:path*`,
 			},
 			{
-				source: "/ingest/decide",
-				destination: "https://us.i.posthog.com/decide",
+				source: `${posthogConfig.apiHost}/decide`,
+				destination: `${posthogConfig.ingestHost}/decide`,
 			},
 		];
 	},

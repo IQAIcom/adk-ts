@@ -1,5 +1,6 @@
 import { LlmAgent } from "@iqai/adk";
 import dedent from "dedent";
+import { DEFAULT_MODEL } from "../../../config";
 
 export function getCustomerAnalyzerAgent() {
 	return new LlmAgent({
@@ -10,6 +11,6 @@ export function getCustomerAnalyzerAgent() {
 			Return the extracted information in a clear, structured format.
 		`,
 		outputKey: "customer_preferences",
-		model: process.env.LLM_MODEL || "gemini-3-flash-preview",
+		model: process.env.LLM_MODEL || DEFAULT_MODEL,
 	});
 }

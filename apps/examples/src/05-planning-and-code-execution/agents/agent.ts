@@ -1,5 +1,6 @@
 import { AgentBuilder, BuiltInCodeExecutor, PlanReActPlanner } from "@iqai/adk";
 import dedent from "dedent";
+import { DEFAULT_MODEL_STABLE } from "../../config";
 
 /**
  * Creates an agent with planning and code execution capabilities.
@@ -14,7 +15,7 @@ import dedent from "dedent";
  */
 export async function getRootAgent() {
 	return await AgentBuilder.create("code_planner_agent")
-		.withModel(process.env.LLM_MODEL || "gemini-2.5-flash")
+		.withModel(process.env.LLM_MODEL || DEFAULT_MODEL_STABLE)
 		.withDescription("Agent with planning and code execution capabilities")
 		.withInstruction(
 			dedent`

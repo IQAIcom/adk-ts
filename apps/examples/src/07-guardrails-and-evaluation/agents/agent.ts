@@ -1,5 +1,6 @@
 import { AgentBuilder } from "@iqai/adk";
 import dedent from "dedent";
+import { DEFAULT_MODEL } from "../../config";
 import { GuardrailsPlugin } from "./plugins";
 import { getWeatherTool } from "./tools";
 
@@ -7,7 +8,7 @@ export function getRootAgent() {
 	const guardrailsPlugin = new GuardrailsPlugin();
 
 	return AgentBuilder.create("weather_guardrails_agent")
-		.withModel(process.env.LLM_MODEL || "gemini-3-flash-preview")
+		.withModel(process.env.LLM_MODEL || DEFAULT_MODEL)
 		.withDescription("A weather assistant with guardrails")
 		.withInstruction(
 			dedent`

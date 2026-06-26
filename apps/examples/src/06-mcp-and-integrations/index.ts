@@ -1,4 +1,5 @@
 import { AgentBuilder, createSamplingHandler, LlmRequest } from "@iqai/adk";
+import { DEFAULT_MODEL_STABLE } from "../config";
 import { ask } from "../utils";
 import { getCoingeckoTools, getGreetingTools } from "./tools";
 
@@ -21,7 +22,7 @@ import { getCoingeckoTools, getGreetingTools } from "./tools";
  * This bidirectional flow is powerful for complex integrations.
  */
 async function main() {
-	const modelName = process.env.LLM_MODEL || "gemini-2.5-flash";
+	const modelName = process.env.LLM_MODEL || DEFAULT_MODEL_STABLE;
 
 	// Two specialized agents for the sampling handler to route between
 	const { runner: creativeRunner } = await AgentBuilder.withModel(modelName)
